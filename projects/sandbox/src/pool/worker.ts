@@ -14,7 +14,7 @@ import * as crypto from 'crypto';
 import * as http from 'http';
 import * as https from 'https';
 import * as dns from 'dns';
-import { isInternalAddress } from '../utils/network';
+import { isInternalAddress } from '@fastgpt/service/common/system/utils';
 const _OriginalFunction = Function;
 
 // ===== 安全 shim =====

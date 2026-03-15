@@ -1,7 +1,7 @@
 {
   "name": "@fastgpt-sdk/logger",
   "private": false,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "FastGPT SDK for logger",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,8 +1,6 @@
 packages:
   - packages/*
-  - projects/app
-  - projects/marketplace
-  - projects/mcp_server
+  - projects/*
   - scripts/icon
   - sdk/*
 
@@ -23,7 +21,7 @@ catalog:
   '@emotion/styled': ^11
   '@modelcontextprotocol/sdk': ^1
   '@fastgpt-sdk/storage': 0.6.15
-  '@fastgpt-sdk/logger': 0.1.1
+  '@fastgpt-sdk/logger': 0.1.2
   '@types/lodash': ^4
   '@types/react': ^18
   '@types/react-dom': ^18

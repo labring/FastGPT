@@ -112,7 +112,8 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
           categoryStyle: 'reset',
           timestampStyle: 'reset',
           categorySeparator: ':',
-          timestamp: formatTimestamp
+          timestamp: formatTimestamp,
+          inspectOptions: { depth: 5 }
         })
       }),
       (record) => levelFilter(record, consoleOptions.level)

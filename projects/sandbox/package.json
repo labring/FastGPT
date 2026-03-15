@@ -16,18 +16,19 @@
     "pnpm": ">=9"
   },
   "dependencies": {
-    "@fastgpt-sdk/logger": "^0.1.1",
-    "axios": "^1.7.9",
+    "@fastgpt-sdk/logger": "catalog:",
+    "@fastgpt/service": "workspace:*",
+    "axios": "catalog:",
     "crypto-js": "^4.2.0",
-    "dayjs": "^1.11.13",
+    "dayjs": "catalog:",
     "dotenv": "^17.3.1",
     "hono": "^4.7.6",
-    "lodash": "^4.17.21",
+    "lodash": "catalog:",
     "moment": "^2.30.1",
     "qs": "^6.13.1",
     "tiktoken": "1.0.17",
     "uuid": "^9.0.1",
-    "zod": "^4.3.6"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.2.4",

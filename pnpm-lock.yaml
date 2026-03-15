@@ -31,8 +31,8 @@ catalogs:
       specifier: ^11
       version: 11.11.0
     '@fastgpt-sdk/logger':
-      specifier: 0.1.1
-      version: 0.1.1
+      specifier: 0.1.2
+      version: 0.1.2
     '@fastgpt-sdk/storage':
       specifier: 0.6.15
       version: 0.6.15
@@ -245,7 +245,7 @@ importers:
         version: 11.7.2
       '@fastgpt-sdk/logger':
         specifier: 'catalog:'
-        version: 0.1.1
+        version: 0.1.2
       '@fastgpt-sdk/sandbox-adapter':
         specifier: ^0.0.18
         version: 0.0.18
@@ -890,7 +890,7 @@ importers:
         version: 2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1)
       '@fastgpt-sdk/logger':
         specifier: 'catalog:'
-        version: 0.1.1
+        version: 0.1.2
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -960,7 +960,7 @@ importers:
     dependencies:
       '@fastgpt-sdk/logger':
         specifier: 'catalog:'
-        version: 0.1.1
+        version: 0.1.2
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -983,6 +983,64 @@ importers:
       '@types/express':
         specifier: ^5.0.1
         version: 5.0.1
+
+  projects/sandbox:
+    dependencies:
+      '@fastgpt-sdk/logger':
+        specifier: 'catalog:'
+        version: 0.1.2
+      '@fastgpt/service':
+        specifier: workspace:*
+        version: link:../../packages/service
+      axios:
+        specifier: 'catalog:'
+        version: 1.13.6
+      crypto-js:
+        specifier: ^4.2.0
+        version: 4.2.0
+      dayjs:
+        specifier: 'catalog:'
+        version: 1.11.19
+      dotenv:
+        specifier: ^17.3.1
+        version: 17.3.1
+      hono:
+        specifier: ^4.7.6
+        version: 4.11.7
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.23
+      moment:
+        specifier: ^2.30.1
+        version: 2.30.1
+      qs:
+        specifier: ^6.13.1
+        version: 6.14.1
+      tiktoken:
+        specifier: 1.0.17
+        version: 1.0.17
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
+    devDependencies:
+      '@types/bun':
+        specifier: ^1.2.4
+        version: 1.3.10
+      '@types/node':
+        specifier: ^20.14.2
+        version: 20.17.24
+      '@vitest/coverage-v8':
+        specifier: ^3.0.9
+        version: 3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.9
+        version: 3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
 
   scripts/icon:
     dependencies:
@@ -2575,9 +2633,9 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@fastgpt-sdk/logger@0.1.1':
-    resolution: {integrity: sha512-y/MhruEKs7CbFLT5+lvzosGt+gpVkcunAhyepERRkNC5IJJonkLfrMYhN/Rw8GxMdvLXG4Wnaad5KVJJiyAykw==}
-    engines: {node: 22.x, pnpm: 9.x}
+  '@fastgpt-sdk/logger@0.1.2':
+    resolution: {integrity: sha512-nt1qCq7frcRiR+406vEERWC1vEPVIKPUGH/ZRP/mlBxvNJp1RycWQT8RhK7/tHmW6xPNZoRL/q2WfhM4Q+L7eg==}
+    engines: {node: '>=20', pnpm: '>=9'}
 
   '@fastgpt-sdk/plugin@0.3.8':
     resolution: {integrity: sha512-GjKrXMHxeF5UMkYGXawrUpzZjVRw3DICNYODeYwsUVOy+/ltu5zuwsqLkuuGQ7Arp/SBCmYRjG/MHmeNp4xxfw==}
@@ -4506,6 +4564,9 @@ packages:
   '@types/body-parser@1.19.5':
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
 
+  '@types/bun@1.3.10':
+    resolution: {integrity: sha512-0+rlrUrOrTSskibryHbvQkDOWRJwJZqZlxrUs1u4oOoTln8+WIXBPmAuCF35SWB2z4Zl3E84Nl/D0P7803nigQ==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -5522,6 +5583,9 @@ packages:
   bullmq@5.52.2:
     resolution: {integrity: sha512-fK/dKIv8ymyys4K+zeNEPA+yuYWzRPmBWUmwIMz8DvYekadl8VG19yUx94Na0n0cLAi+spdn3a/+ufkYK7CBUg==}
 
+  bun-types@1.3.10:
+    resolution: {integrity: sha512-tcpfCCl6XWo6nCVnpcVrxQ+9AYN1iqMIzgrSKYMB/fjLtV2eyAVEg7AxQJuCq/26R6HpKWykQXuSOq/21RYcbg==}
+
   bundle-n-require@1.1.2:
     resolution: {integrity: sha512-bEk2jakVK1ytnZ9R2AAiZEeK/GxPUM8jvcRxHZXifZDMcjkI4EG/GlsJ2YGSVYT9y/p/gA9/0yDY8rCGsSU6Tg==}
 
@@ -5890,6 +5954,9 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
+
+  crypto-js@4.2.0:
+    resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
 
   crypto-random-string@4.0.0:
     resolution: {integrity: sha512-x8dy3RnvYdlUcPOjkEHqozhiwzKNSq7GcPuXFbnyMOCHxX8V3OgIg/pYuabl2sbUPfIJaeAQB7PMOK8DFIdoRA==}
@@ -6363,12 +6430,12 @@ packages:
     resolution: {integrity: sha512-tE7ztYzXHIeyvc7N+hR3oi7FIbf/NIjVP9hmAt3yMXzrQ072/fpjGLx2GxNxGxUl5V73MEqYzioOMoVhGMJ5cA==}
     engines: {node: '>=10'}
 
-  dotenv@16.4.7:
-    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
-    engines: {node: '>=12'}
-
   dotenv@16.5.0:
     resolution: {integrity: sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==}
+    engines: {node: '>=12'}
+
+  dotenv@17.3.1:
+    resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
     engines: {node: '>=12'}
 
   dts-resolver@2.1.3:
@@ -8551,6 +8618,9 @@ packages:
     resolution: {integrity: sha512-dyAyMR+cRykZd1mw5altC9f4vKpCsuywPwo8l/L5fKqDay2zmqT0mF/BvUoXnQiqGn+nceO914rkPKJoyFnGxA==}
     engines: {node: '>=10', npm: '>=6'}
 
+  moment@2.30.1:
+    resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
+
   monaco-editor@0.52.2:
     resolution: {integrity: sha512-GEQWEZmfkOGLdd3XK8ryrfWz3AIP8YymVXiPHEdewrUq7mh0qrKrfHLNCXcbB6sTnMLnOZ3ztSiKcciFUkIJwQ==}
 
@@ -9377,10 +9447,6 @@ packages:
 
   qs@6.13.0:
     resolution: {integrity: sha512-+38qI9SOr8tfZ4QmJNplMUxqjbe7LKvvZgWdExBOmd+egZTtjLB67Gu0HRX3u/XOq7UU2Nx6nsjvS16Z9uwfpg==}
-    engines: {node: '>=0.6'}
-
-  qs@6.14.0:
-    resolution: {integrity: sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w==}
     engines: {node: '>=0.6'}
 
   qs@6.14.1:
@@ -13351,7 +13417,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@fastgpt-sdk/logger@0.1.1':
+  '@fastgpt-sdk/logger@0.1.2':
     dependencies:
       '@logtape/logtape': 2.0.2
       '@logtape/pretty': 2.0.2(@logtape/logtape@2.0.2)
@@ -15592,6 +15658,10 @@ snapshots:
       '@types/connect': 3.4.38
       '@types/node': 20.17.24
 
+  '@types/bun@1.3.10':
+    dependencies:
+      bun-types: 1.3.10
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -16056,6 +16126,24 @@ snapshots:
       unhead: 1.11.20
       vue: 3.5.22(typescript@5.8.2)
 
+  '@vitest/coverage-v8@3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))':
+    dependencies:
+      '@ampproject/remapping': 2.3.0
+      '@bcoe/v8-coverage': 1.0.2
+      debug: 4.4.3
+      istanbul-lib-coverage: 3.2.2
+      istanbul-lib-report: 3.0.1
+      istanbul-lib-source-maps: 5.0.6
+      istanbul-reports: 3.1.7
+      magic-string: 0.30.21
+      magicast: 0.3.5
+      std-env: 3.10.0
+      test-exclude: 7.0.1
+      tinyrainbow: 2.0.0
+      vitest: 3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - supports-color
+
   '@vitest/coverage-v8@3.1.1(vitest@3.1.1(@types/debug@4.1.12)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -16484,7 +16572,7 @@ snapshots:
       mime: 2.6.0
       platform: 1.3.6
       pump: 3.0.2
-      qs: 6.14.0
+      qs: 6.14.1
       sdk-base: 2.0.1
       stream-http: 2.8.2
       stream-wormhole: 1.1.0
@@ -16515,7 +16603,7 @@ snapshots:
       mime: 2.6.0
       platform: 1.3.6
       pump: 3.0.2
-      qs: 6.14.0
+      qs: 6.14.1
       sdk-base: 2.0.1
       stream-http: 2.8.2
       stream-wormhole: 1.1.0
@@ -16914,6 +17002,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  bun-types@1.3.10:
+    dependencies:
+      '@types/node': 20.17.24
+
   bundle-n-require@1.1.2:
     dependencies:
       esbuild: 0.25.1
@@ -17309,6 +17401,8 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
+
+  crypto-js@4.2.0: {}
 
   crypto-random-string@4.0.0:
     dependencies:
@@ -17792,9 +17886,9 @@ snapshots:
     dependencies:
       is-obj: 2.0.0
 
-  dotenv@16.4.7: {}
-
   dotenv@16.5.0: {}
+
+  dotenv@17.3.1: {}
 
   dts-resolver@2.1.3: {}
 
@@ -18135,7 +18229,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -18157,7 +18251,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -19674,7 +19768,7 @@ snapshots:
 
   langbase@1.1.44(encoding@0.1.13)(react@18.3.1):
     dependencies:
-      dotenv: 16.4.7
+      dotenv: 16.5.0
       openai: 4.104.0(encoding@0.1.13)(zod@3.25.76)
       zod: 3.25.76
       zod-validation-error: 3.4.0(zod@3.25.76)
@@ -20626,6 +20720,8 @@ snapshots:
 
   mmdb-lib@3.0.1: {}
 
+  moment@2.30.1: {}
+
   monaco-editor@0.52.2: {}
 
   mongodb-connection-string-url@3.0.2:
@@ -21547,10 +21643,6 @@ snapshots:
       yargs: 15.4.1
 
   qs@6.13.0:
-    dependencies:
-      side-channel: 1.1.0
-
-  qs@6.14.0:
     dependencies:
       side-channel: 1.1.0
 
