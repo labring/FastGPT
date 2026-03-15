@@ -369,6 +369,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     private runningNodeCount = 0;
     private maxConcurrency: number;
     private resolve: (e: WorkflowQueue) => void;
+    private processingActive = false; // 标记是否正在处理队列
 
     constructor({
       maxConcurrency = 10,
@@ -397,50 +398,74 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       }
       this.activeRunQueue.add(nodeId);
 
-      this.processActiveNode();
+      // 非递归触发：如果没有正在处理，则启动处理循环
+      if (!this.processingActive) {
+        this.startProcessing();
+      }
     }
-    // Process next active node
-    private async processActiveNode() {
-      // Finish
-      if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
-        if (isDebugMode) {
-          // 没有下一个激活节点，说明debug 进入了一个“即将结束”状态。可以开始处理 skip 节点
-          if (this.debugNextStepRunNodes.length === 0 && this.skipNodeQueue.size > 0) {
-            this.processSkipNodes();
-          } else {
-            this.resolve(this);
+
+    // 迭代处理队列（替代递归的 processActiveNode）
+    private async startProcessing() {
+      // 防止重复启动
+      if (this.processingActive) {
+        return;
+      }
+
+      this.processingActive = true;
+
+      try {
+        // 迭代循环替代递归
+        while (true) {
+          // 检查结束条件
+          if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
+            if (isDebugMode) {
+              // 没有下一个激活节点，说明debug 进入了一个”即将结束”状态。可以开始处理 skip 节点
+              if (this.debugNextStepRunNodes.length === 0 && this.skipNodeQueue.size > 0) {
+                await this.processSkipNodes();
+                continue;
+              } else {
+                this.resolve(this);
+                break;
+              }
+            }
+
+            // 如果没有交互响应，则开始处理 skip（交互响应的 skip 需要留给后续处理）
+            if (this.skipNodeQueue.size > 0 && !this.nodeInteractiveResponse) {
+              await this.processSkipNodes();
+              continue;
+            } else {
+              this.resolve(this);
+              break;
+            }
           }
-          return;
+
+          // 检查并发限制
+          if (this.activeRunQueue.size === 0 || this.runningNodeCount >= this.maxConcurrency) {
+            // 等待正在运行的节点完成
+            await surrenderProcess();
+            continue;
+          }
+
+          // 处理下一个节点
+          await surrenderProcess();
+          const nodeId = this.activeRunQueue.keys().next().value;
+          const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
+
+          if (nodeId) {
+            this.activeRunQueue.delete(nodeId);
+          }
+
+          if (node) {
+            this.runningNodeCount++;
+
+            // 不再递归调用，异步执行节点（不等待完成）
+            this.checkNodeCanRun(node).finally(() => {
+              this.runningNodeCount--;
+            });
+          }
         }
-
-        // 如果没有交互响应，则开始处理 skip（交互响应的 skip 需要留给后续处理）
-        if (this.skipNodeQueue.size > 0 && !this.nodeInteractiveResponse) {
-          this.processSkipNodes();
-        } else {
-          this.resolve(this);
-        }
-        return;
-      }
-
-      // Over max concurrency（如果 this.activeRunQueue.size === 0 条件触发，代表肯定有节点在运行）
-      if (this.activeRunQueue.size === 0 || this.runningNodeCount >= this.maxConcurrency) {
-        return;
-      }
-
-      await surrenderProcess();
-      const nodeId = this.activeRunQueue.keys().next().value;
-      const node = nodeId ? this.runtimeNodesMap.get(nodeId) : undefined;
-
-      if (nodeId) {
-        this.activeRunQueue.delete(nodeId);
-      }
-      if (node) {
-        this.runningNodeCount++;
-
-        this.checkNodeCanRun(node).finally(() => {
-          this.runningNodeCount--;
-          this.processActiveNode();
-        });
+      } finally {
+        this.processingActive = false;
       }
     }
 
@@ -453,17 +478,16 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       this.skipNodeQueue.set(node.nodeId, { node, skippedNodeIdList: concatSkippedNodeIdList });
     }
+
+    // 迭代处理 skip 节点（每次只处理一个，然后返回主循环检查 active）
     private async processSkipNodes() {
-      // 取一个 node，并且从队列里删除
       await surrenderProcess();
       const skipItem = this.skipNodeQueue.values().next().value;
       if (skipItem) {
         this.skipNodeQueue.delete(skipItem.node.nodeId);
-        this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).finally(() => {
-          this.processActiveNode();
+        await this.checkNodeCanRun(skipItem.node, skipItem.skippedNodeIdList).catch((error) => {
+          logger.error('Workflow skip node run error', { error });
         });
-      } else {
-        this.processActiveNode();
       }
     }
 
@@ -900,11 +924,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         return;
       }
 
-      logger.debug('Run workflow node', {
-        maxRunTimes: data.maxRunTimes,
-        appId: data.runningAppInfo.id
-      });
-
       // Get node run status by edges
       const status = checkNodeRunStatus({
         nodesMap: this.runtimeNodesMap,
@@ -1111,6 +1130,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   });
 
   const workflowQueue = await new Promise<WorkflowQueue>((resolve) => {
+    logger.info('Workflow run start', {
+      maxRunTimes: data.maxRunTimes,
+      appId: data.runningAppInfo.id
+    });
     const workflowQueue = new WorkflowQueue({
       resolve,
       defaultSkipNodeQueue: data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue

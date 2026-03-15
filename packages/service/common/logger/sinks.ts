@@ -67,7 +67,9 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
           timestampStyle: 'reset',
 
           categorySeparator: ':',
-          timestamp: () => dayjs().format('YYYY-MM-DD HH:mm:ss')
+          timestamp: () => dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          // Full depth for nested objects (e.g. Zod errors) in console output
+          inspectOptions: { depth: Infinity }
         })
       }),
       (record) => levelFilter(record, consoleLevel)
