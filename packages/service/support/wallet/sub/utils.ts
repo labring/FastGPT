@@ -40,11 +40,11 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
   );
 };
 const buildStandardPlan = (
-  standard: TeamSubSchemaType | undefined,
+  standard: TeamSubSchemaType,
   standardConstants: NonNullable<ReturnType<typeof getStandardPlanConfig>>
 ): TeamPlanStandardType => {
   return {
-    ...(standard as TeamPlanStandardType),
+    ...standard,
     name: standardConstants.name,
     desc: standardConstants.desc,
     price: standardConstants.price,
