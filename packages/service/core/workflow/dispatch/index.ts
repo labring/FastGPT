@@ -366,7 +366,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       string,
       { node: RuntimeNodeItemType; skippedNodeIdList: Set<string> }
     >();
-    private runningNodeCount = 0;
     private maxConcurrency: number;
     private resolve: (e: WorkflowQueue) => void;
     private processingActive = false; // 标记是否正在处理队列
@@ -415,11 +414,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       try {
         const runningNodePromises = new Set<Promise<unknown>>();
+        const runningNodeCount = runningNodePromises.size;
 
         // 迭代循环替代递归
         while (true) {
           // 检查结束条件
-          if (this.activeRunQueue.size === 0 && this.runningNodeCount === 0) {
+          if (this.activeRunQueue.size === 0 && runningNodeCount === 0) {
             if (isDebugMode) {
               // 没有下一个激活节点，说明debug 进入了一个”即将结束”状态。可以开始处理 skip 节点
               if (this.debugNextStepRunNodes.length === 0 && this.skipNodeQueue.size > 0) {
@@ -442,8 +442,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
 
           // 检查并发限制
-          if (this.activeRunQueue.size === 0 || this.runningNodeCount >= this.maxConcurrency) {
-            if (runningNodePromises.size > 0) {
+          if (this.activeRunQueue.size === 0 || runningNodeCount >= this.maxConcurrency) {
+            if (runningNodeCount > 0) {
               await Promise.race(runningNodePromises);
             } else {
               // 理论上不应出现此情况，防御性退回到让出进程
@@ -461,12 +461,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
 
           if (node) {
-            this.runningNodeCount++;
-
             // 不再递归调用，异步执行节点（不等待完成）
             let nodePromise: Promise<unknown>;
             nodePromise = this.checkNodeCanRun(node).finally(() => {
-              this.runningNodeCount--;
               runningNodePromises.delete(nodePromise);
             });
             runningNodePromises.add(nodePromise);
