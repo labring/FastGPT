@@ -227,7 +227,7 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
         </Flex>
 
         <Box mt={6} color={'myGray.900'} fontWeight={'medium'}>
-          {t('common:Params')}
+          {t('app:raw_params')}
         </Box>
 
         <Box mt={3}>

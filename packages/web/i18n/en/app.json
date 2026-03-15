@@ -334,6 +334,7 @@
   "publish_channel.wecom.empty": "Publish to WeCom bot. Please <a>bind a custom domain</a> and complete domain verification first.",
   "publish_success": "Publish Successful",
   "question_guide_tip": "After the conversation, 3 guiding questions will be generated for you.",
+  "raw_params": "original parameters",
   "reasoning_response": "Output thinking",
   "recharge": "Go to recharge",
   "reference_variable": "Reference variables",
