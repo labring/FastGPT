@@ -199,3 +199,8 @@ export type GetSkillFolderPathResponse = {
   parentId: string | null;
   parentName: string;
 }[];
+
+// ==================== Export Skill ====================
+export type ExportSkillQuery = {
+  skillId: string;
+};
