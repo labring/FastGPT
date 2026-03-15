@@ -2,7 +2,9 @@ import z from 'zod';
 import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
-// Content of plan
+/**
+ * Static plan config, stored in global.subPlans
+ */
 export const TeamStandardSubPlanItemSchema = z.object({
   name: z.string().optional(),
   desc: z.string().optional(),
@@ -71,6 +73,10 @@ export const SubPlanSchema = z.object({
 });
 export type SubPlanType = z.infer<typeof SubPlanSchema>;
 
+/**
+ * TeamSub Schema in DB.
+ * Configs are optional
+ */
 export const TeamSubSchema = z.object({
   _id: ObjectIdSchema,
   teamId: ObjectIdSchema,
@@ -105,7 +111,7 @@ export const TeamSubSchema = z.object({
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
 
-// Merged plan type: combines DB subscription record metadata with effective plan limits
+/** Merged plan type: combines DB subscription record metadata with effective plan limits */
 export const TeamPlanStandardSchema = z.object({
   ...TeamSubSchema.omit({
     maxApp: true,

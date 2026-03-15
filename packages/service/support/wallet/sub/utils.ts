@@ -42,34 +42,30 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
 export const buildStandardPlan = (
   standard: TeamSubSchemaType,
   standardConstants: NonNullable<ReturnType<typeof getStandardPlanConfig>>
-): TeamPlanStandardType => {
-  return {
-    ...standard,
-    name: standardConstants.name,
-    desc: standardConstants.desc,
-    price: standardConstants.price,
-    priceDescription: standardConstants.priceDescription,
-    customFormUrl: standardConstants.customFormUrl,
-    customDescriptions: standardConstants.customDescriptions,
-    wecom: standardConstants.wecom,
-    maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
-    maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
-    maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
-    requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-    chatHistoryStoreDuration:
-      standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-    maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-    websiteSyncPerDataset:
-      standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
-    appRegistrationCount: standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-    auditLogStoreDuration:
-      standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-    ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-    customDomain: standard?.customDomain ?? standardConstants.customDomain,
-    maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-    maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
-  };
-};
+): TeamPlanStandardType => ({
+  ...standard,
+  name: standardConstants.name,
+  desc: standardConstants.desc,
+  price: standardConstants.price,
+  priceDescription: standardConstants.priceDescription,
+  customFormUrl: standardConstants.customFormUrl,
+  customDescriptions: standardConstants.customDescriptions,
+  wecom: standardConstants.wecom,
+  maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
+  maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
+  maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
+  requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+  chatHistoryStoreDuration:
+    standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+  maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+  websiteSyncPerDataset: standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
+  appRegistrationCount: standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+  auditLogStoreDuration: standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+  ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+  customDomain: standard?.customDomain ?? standardConstants.customDomain,
+  maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+  maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+});
 
 export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const plans = await MongoTeamSub.find(

@@ -12,7 +12,7 @@ import Markdown from '@/components/Markdown';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamPlanStandardType } from '@fastgpt/global/support/wallet/sub/type';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -25,7 +25,7 @@ const StandardPlanContentList = ({
 }: {
   level: `${StandardSubLevelEnum}`;
   mode: `${SubModeEnum}`;
-  standplan?: TeamSubSchemaType;
+  standplan?: TeamPlanStandardType;
 }) => {
   const { t } = useTranslation();
 
@@ -58,8 +58,8 @@ const StandardPlanContentList = ({
           : plan.totalPoints * (formatMode === SubModeEnum.month ? 1 : 12)),
       requestsPerMinute: standplan?.requestsPerMinute ?? plan.requestsPerMinute,
       maxTeamMember: standplan?.maxTeamMember ?? plan.maxTeamMember,
-      maxAppAmount: standplan?.maxApp ?? plan.maxAppAmount,
-      maxDatasetAmount: standplan?.maxDataset ?? plan.maxDatasetAmount,
+      maxAppAmount: standplan?.maxAppAmount ?? plan.maxAppAmount,
+      maxDatasetAmount: standplan?.maxDatasetAmount ?? plan.maxDatasetAmount,
       maxDatasetSize: standplan?.maxDatasetSize ?? plan.maxDatasetSize,
       websiteSyncPerDataset: standplan?.websiteSyncPerDataset ?? plan.websiteSyncPerDataset,
       chatHistoryStoreDuration:
@@ -84,8 +84,8 @@ const StandardPlanContentList = ({
     standplan?.annualBonusPoints,
     standplan?.requestsPerMinute,
     standplan?.maxTeamMember,
-    standplan?.maxApp,
-    standplan?.maxDataset,
+    standplan?.maxAppAmount,
+    standplan?.maxDatasetAmount,
     standplan?.maxDatasetSize,
     standplan?.websiteSyncPerDataset,
     standplan?.chatHistoryStoreDuration,
