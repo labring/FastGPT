@@ -370,6 +370,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     private resolve: (e: WorkflowQueue) => void;
     private processingActive = false; // 标记是否正在处理队列
 
+    // Buffer
+    // 可以根据 nodeId 获取所有的 source 边和 target 边
+    private edgeIndex = {
+      bySource: new Map<string, RuntimeEdgeItemType[]>(),
+      byTarget: new Map<string, RuntimeEdgeItemType[]>()
+    };
+
     constructor({
       maxConcurrency = 10,
       defaultSkipNodeQueue,
@@ -387,6 +394,20 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         const node = this.runtimeNodesMap.get(id);
         if (!node) return;
         this.addSkipNode(node, new Set(skippedNodeIdList));
+      });
+
+      // 一次性构建索引 - O(m)
+      const filteredEdges = filterWorkflowEdges(runtimeEdges);
+      filteredEdges.forEach((edge) => {
+        if (!this.edgeIndex.bySource.has(edge.source)) {
+          this.edgeIndex.bySource.set(edge.source, []);
+        }
+        this.edgeIndex.bySource.get(edge.source)!.push(edge);
+
+        if (!this.edgeIndex.byTarget.has(edge.target)) {
+          this.edgeIndex.byTarget.set(edge.target, []);
+        }
+        this.edgeIndex.byTarget.get(edge.target)!.push(edge);
       });
     }
 
@@ -607,7 +628,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       // run module
       const dispatchRes: NodeResponseType = await (async () => {
         if (callbackMap[node.flowNodeType]) {
-          const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
+          const targetEdges = this.edgeIndex.bySource.get(node.nodeId) || [];
           const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
 
           try {
@@ -876,9 +897,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         // Get next source edges and update status
         const skipHandleId = result[DispatchNodeResponseKeyEnum.skipHandleId] || [];
 
-        const targetEdges = filterWorkflowEdges(runtimeEdges).filter(
-          (item) => item.source === node.nodeId
-        );
+        const targetEdges = this.edgeIndex.bySource.get(node.nodeId) || [];
 
         // update edge status
         targetEdges.forEach((edge) => {
@@ -892,23 +911,20 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         // 同时可以去重
         const nextStepActiveNodesMap = new Map<string, RuntimeNodeItemType>();
         const nextStepSkipNodesMap = new Map<string, RuntimeNodeItemType>();
-        runtimeNodes.forEach((node) => {
-          if (targetEdges.some((item) => item.target === node.nodeId && item.status === 'active')) {
-            nextStepActiveNodesMap.set(node.nodeId, node);
-          }
-          if (
-            targetEdges.some((item) => item.target === node.nodeId && item.status === 'skipped')
-          ) {
-            nextStepSkipNodesMap.set(node.nodeId, node);
+        targetEdges.forEach((edge) => {
+          const targetNode = this.runtimeNodesMap.get(edge.target);
+          if (!targetNode) return;
+
+          if (edge.status === 'active') {
+            nextStepActiveNodesMap.set(targetNode.nodeId, targetNode);
+          } else if (edge.status === 'skipped') {
+            nextStepSkipNodesMap.set(targetNode.nodeId, targetNode);
           }
         });
 
-        const nextStepActiveNodes = Array.from(nextStepActiveNodesMap.values());
-        const nextStepSkipNodes = Array.from(nextStepSkipNodesMap.values());
-
         return {
-          nextStepActiveNodes,
-          nextStepSkipNodes
+          nextStepActiveNodes: Array.from(nextStepActiveNodesMap.values()),
+          nextStepSkipNodes: Array.from(nextStepSkipNodesMap.values())
         };
       };
 
