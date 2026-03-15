@@ -22,10 +22,14 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     per: AppReadChatLogPerVal
   });
 
-  await MongoChatItemResponse.deleteMany({
-    appId,
-    chatId: { $in: chatIds }
-  });
+  await Promise.all([
+    MongoChatItemResponse.deleteMany({
+      appId,
+      chatId: { $in: chatIds }
+    }),
+    // Delete sandboxes
+    deleteSandboxesByChatIds({ appId, chatIds })
+  ]);
   await mongoSessionRun(async (session) => {
     const chatList = await MongoChat.find(
       {
@@ -51,9 +55,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       },
       { session }
     );
-
-    // Delete sandboxes
-    await deleteSandboxesByChatIds({ appId, chatIds });
 
     // Delete s3
     await Promise.all(
