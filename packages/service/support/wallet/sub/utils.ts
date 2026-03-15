@@ -5,9 +5,11 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import {
-  type TeamPlanStatusType,
-  type TeamSubSchemaType
+import type {
+  TeamStandardSubPlanItemType,
+  TeamPlanStatusType,
+  TeamPlanStandardType,
+  TeamSubSchemaType
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
 import { type ClientSession } from '../../../common/mongo';
@@ -38,55 +40,33 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
   );
 };
-export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
-  const plans = await MongoTeamSub.find(
-    {
-      teamId,
-      type: SubTypeEnum.standard
-    },
-    undefined,
-    {
-      ...readFromSecondary
-    }
-  );
-  sortStandPlans(plans);
-
-  const standardPlans = global.subPlans?.standard;
-  const standard = plans[0];
-
-  const standardConstants =
-    standard.currentSubLevel && standardPlans
-      ? standardPlans[
-          standard.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standard.currentSubLevel
-        ]
-      : undefined;
-
-  return {
-    [SubTypeEnum.standard]: standard,
-    standardConstants: standardConstants
-      ? {
-          ...standardConstants,
-          maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
-          maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
-          maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
-          requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-          chatHistoryStoreDuration:
-            standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-          maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-          websiteSyncPerDataset:
-            standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
-          appRegistrationCount:
-            standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-          auditLogStoreDuration:
-            standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-          ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-          customDomain: standard?.customDomain ?? standardConstants.customDomain
-        }
-      : undefined
-  };
-};
+export const buildStandardPlan = (
+  standard: TeamSubSchemaType,
+  standardConstants: TeamStandardSubPlanItemType
+): TeamPlanStandardType => ({
+  ...standard,
+  name: standardConstants.name,
+  desc: standardConstants.desc,
+  price: standardConstants.price,
+  priceDescription: standardConstants.priceDescription,
+  customFormUrl: standardConstants.customFormUrl,
+  customDescriptions: standardConstants.customDescriptions,
+  wecom: standardConstants.wecom,
+  maxTeamMember: standard?.maxTeamMember ?? standardConstants.maxTeamMember,
+  maxAppAmount: standard?.maxApp ?? standardConstants.maxAppAmount,
+  maxDatasetAmount: standard?.maxDataset ?? standardConstants.maxDatasetAmount,
+  requestsPerMinute: standard?.requestsPerMinute ?? standardConstants.requestsPerMinute,
+  chatHistoryStoreDuration:
+    standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
+  maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
+  websiteSyncPerDataset: standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
+  appRegistrationCount: standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
+  auditLogStoreDuration: standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
+  ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
+  customDomain: standard?.customDomain ?? standardConstants.customDomain,
+  maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
+  maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+});
 
 export const initTeamFreePlan = async ({
   teamId,
@@ -176,11 +156,46 @@ export const initTeamFreePlan = async ({
   );
 };
 
+// 获取团队标准套餐
+export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
+  const plans = await MongoTeamSub.find(
+    {
+      teamId,
+      type: SubTypeEnum.standard
+    },
+    undefined,
+    {
+      ...readFromSecondary
+    }
+  );
+  sortStandPlans(plans);
+
+  const standardPlans = global.subPlans?.standard;
+  const standard = plans[0];
+
+  const standardConstants =
+    standard.currentSubLevel && standardPlans
+      ? standardPlans[
+          standard.currentSubLevel === StandardSubLevelEnum.custom
+            ? StandardSubLevelEnum.advanced
+            : standard.currentSubLevel
+        ]
+      : undefined;
+
+  return {
+    [SubTypeEnum.standard]: standardConstants
+      ? buildStandardPlan(standard, standardConstants)
+      : undefined
+  };
+};
+
+// 获取团队所有套餐内容
 export const getTeamPlanStatus = async ({
   teamId
 }: {
   teamId: string;
 }): Promise<TeamPlanStatusType> => {
+  /** 配置里的套餐 */
   const standardPlans = global.subPlans?.standard;
 
   /* Get all plans and datasetSize */
@@ -190,6 +205,7 @@ export const getTeamPlanStatus = async ({
   const teamStandardPlans = sortStandPlans(
     plans.filter((plan) => plan.type === SubTypeEnum.standard)
   );
+  /** 数据库里的，用户目前 active 的套餐 */
   const standardPlan = teamStandardPlans[0];
 
   const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
@@ -230,6 +246,7 @@ export const getTeamPlanStatus = async ({
     standardMaxDatasetSize +
     extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
 
+  /** 静态的套餐配置，如果是 custom 则返回 advanced */
   const standardConstants =
     standardPlan?.currentSubLevel && standardPlans
       ? standardPlans[
@@ -242,56 +259,8 @@ export const getTeamPlanStatus = async ({
   teamPoint.updateTeamPointsCache({ teamId, totalPoints, surplusPoints });
 
   return {
-    standard:
-      standardPlan.currentSubLevel === StandardSubLevelEnum.custom && standardConstants
-        ? {
-            ...standardPlan,
-            maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
-            maxApp: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
-            maxDataset: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
-            requestsPerMinute:
-              standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-            chatHistoryStoreDuration:
-              standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-            maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-            websiteSyncPerDataset:
-              standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
-            appRegistrationCount:
-              standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-            auditLogStoreDuration:
-              standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-            ticketResponseTime:
-              standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-            customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
-            maxUploadFileSize:
-              standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-            maxUploadFileCount:
-              standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
-          }
-        : standardPlan,
-    standardConstants: standardConstants
-      ? {
-          ...standardConstants,
-          maxTeamMember: standardPlan?.maxTeamMember ?? standardConstants.maxTeamMember,
-          maxAppAmount: standardPlan?.maxApp ?? standardConstants.maxAppAmount,
-          maxDatasetAmount: standardPlan?.maxDataset ?? standardConstants.maxDatasetAmount,
-          requestsPerMinute: standardPlan?.requestsPerMinute ?? standardConstants.requestsPerMinute,
-          chatHistoryStoreDuration:
-            standardPlan?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
-          maxDatasetSize: standardPlan?.maxDatasetSize ?? standardConstants.maxDatasetSize,
-          websiteSyncPerDataset:
-            standardPlan?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
-          appRegistrationCount:
-            standardPlan?.appRegistrationCount ?? standardConstants.appRegistrationCount,
-          auditLogStoreDuration:
-            standardPlan?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
-          ticketResponseTime:
-            standardPlan?.ticketResponseTime ?? standardConstants.ticketResponseTime,
-          customDomain: standardPlan?.customDomain ?? standardConstants.customDomain,
-          maxUploadFileSize: standardPlan?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-          maxUploadFileCount:
-            standardPlan?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
-        }
+    [SubTypeEnum.standard]: standardConstants
+      ? buildStandardPlan(standardPlan, standardConstants)
       : undefined,
 
     totalPoints,
@@ -301,6 +270,7 @@ export const getTeamPlanStatus = async ({
   };
 };
 
+/* ===== Buffer controller ===== */
 export const teamPoint = {
   getTeamPoints: async ({ teamId }: { teamId: string }) => {
     const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
@@ -368,9 +338,7 @@ export const teamQPM = {
 
     // 2. Computed
     const teamPlanStatus = await getTeamPlanStatus({ teamId });
-    const limit =
-      teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute ??
-      teamPlanStatus.standardConstants?.requestsPerMinute;
+    const limit = teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute;
 
     if (!limit) {
       if (process.env.CHAT_MAX_QPM) return Number(process.env.CHAT_MAX_QPM);

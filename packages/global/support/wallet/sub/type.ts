@@ -2,7 +2,9 @@ import z from 'zod';
 import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
-// Content of plan
+/**
+ * Static plan config, stored in global.subPlans
+ */
 export const TeamStandardSubPlanItemSchema = z.object({
   name: z.string().optional(),
   desc: z.string().optional(),
@@ -71,6 +73,10 @@ export const SubPlanSchema = z.object({
 });
 export type SubPlanType = z.infer<typeof SubPlanSchema>;
 
+/**
+ * TeamSub Schema in DB.
+ * Configs are optional
+ */
 export const TeamSubSchema = z.object({
   _id: ObjectIdSchema,
   teamId: ObjectIdSchema,
@@ -105,9 +111,30 @@ export const TeamSubSchema = z.object({
 });
 export type TeamSubSchemaType = z.infer<typeof TeamSubSchema>;
 
+/**
+ * Merged plan type: combines DB subscription record metadata with effective plan limits
+ *
+ * Omits:
+ * - maxApp/maxDataset from TeamSubSchema: 这些字段在 DB 中存储，但在合并后的类型中使用 maxAppAmount/maxDatasetAmount
+ * - pointPrice from TeamStandardSubPlanItemSchema: 避免与 price 字段冲突
+ *
+ * Field priority: TeamStandardSubPlanItemSchema fields override TeamSubSchema fields when both exist
+ */ export const TeamPlanStandardSchema = z.object({
+  ...TeamSubSchema.omit({
+    maxApp: true,
+    maxDataset: true
+  }).shape,
+  ...TeamStandardSubPlanItemSchema.omit({
+    pointPrice: true,
+    price: true
+  }).shape,
+  price: z.number().optional()
+});
+
+export type TeamPlanStandardType = z.infer<typeof TeamPlanStandardSchema>;
+
 export const TeamPlanStatusSchema = z.object({
-  [SubTypeEnum.standard]: TeamSubSchema.optional(),
-  standardConstants: TeamStandardSubPlanItemSchema.optional(),
+  [SubTypeEnum.standard]: TeamPlanStandardSchema.optional(),
   totalPoints: z.int(),
   usedPoints: z.int(),
   datasetMaxSize: z.int()
