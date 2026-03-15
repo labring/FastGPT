@@ -60,7 +60,7 @@ const buildStandardPlan = (
       standard?.chatHistoryStoreDuration ?? standardConstants.chatHistoryStoreDuration,
     maxDatasetSize: standard?.maxDatasetSize ?? standardConstants.maxDatasetSize,
     websiteSyncPerDataset:
-      standard?.websiteSyncPerDataset || standardConstants.websiteSyncPerDataset,
+      standard?.websiteSyncPerDataset ?? standardConstants.websiteSyncPerDataset,
     appRegistrationCount: standard?.appRegistrationCount ?? standardConstants.appRegistrationCount,
     auditLogStoreDuration:
       standard?.auditLogStoreDuration ?? standardConstants.auditLogStoreDuration,
