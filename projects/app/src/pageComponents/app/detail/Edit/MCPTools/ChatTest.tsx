@@ -130,7 +130,8 @@ const ChatTest = ({
                         inputType={inputType}
                         form={form}
                         fieldName={paramName}
-                        placeholder={paramInfo.description}
+                        bg={'myGray.50'}
+                        description={paramInfo.description}
                       />
                     );
                   }

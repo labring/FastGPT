@@ -334,6 +334,7 @@
   "publish_channel.wecom.empty": "发布到企业微信机器人，请先 <a>绑定自定义域名</a>，并且通过域名校验。",
   "publish_success": "发布成功",
   "question_guide_tip": "对话结束后，会为你生成 3 个引导性问题。",
+  "raw_params": "原始参数",
   "reasoning_response": "输出思考",
   "recharge": "去充值",
   "reference_variable": "引用变量",

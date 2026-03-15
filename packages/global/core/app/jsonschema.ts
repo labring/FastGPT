@@ -19,7 +19,7 @@ export const JsonSchemaPropertiesItemSchema = z.object({
   not: z.any().optional(), // 不匹配
 
   // 枚举和常量
-  enum: z.array(z.string()).optional(), // 枚举值
+  enum: z.array(z.any()).optional(), // 枚举值
   const: z.any().optional(), // 常量值
 
   // 字符串约束
