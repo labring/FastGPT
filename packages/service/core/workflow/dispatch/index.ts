@@ -414,12 +414,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 
       try {
         const runningNodePromises = new Set<Promise<unknown>>();
-        const runningNodeCount = runningNodePromises.size;
 
         // 迭代循环替代递归
         while (true) {
           // 检查结束条件
-          if (this.activeRunQueue.size === 0 && runningNodeCount === 0) {
+          if (this.activeRunQueue.size === 0 && runningNodePromises.size === 0) {
             if (isDebugMode) {
               // 没有下一个激活节点，说明debug 进入了一个”即将结束”状态。可以开始处理 skip 节点
               if (this.debugNextStepRunNodes.length === 0 && this.skipNodeQueue.size > 0) {
@@ -442,8 +441,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           }
 
           // 检查并发限制
-          if (this.activeRunQueue.size === 0 || runningNodeCount >= this.maxConcurrency) {
-            if (runningNodeCount > 0) {
+          if (this.activeRunQueue.size === 0 || runningNodePromises.size >= this.maxConcurrency) {
+            if (runningNodePromises.size > 0) {
               // 当上一个节点运行结束时，立即运行下一轮
               await Promise.race(runningNodePromises);
             } else {
