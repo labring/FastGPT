@@ -39,7 +39,7 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
   );
 };
-const buildStandardPlan = (
+export const buildStandardPlan = (
   standard: TeamSubSchemaType,
   standardConstants: NonNullable<ReturnType<typeof getStandardPlanConfig>>
 ): TeamPlanStandardType => {
