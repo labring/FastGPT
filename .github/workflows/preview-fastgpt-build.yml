@@ -88,13 +88,3 @@ jobs:
           name: ${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}
           path: /tmp/${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}.tar
           retention-days: 1
-
-      - name: Comment build status
-        uses: FinleyGe/github-tools@0.0.1
-        if: success()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tool: issue-comment
-          title: 'Preview ${{ matrix.image }} Image Built:'
-          body: |
-            Build completed. Waiting for push workflow...
