@@ -3,16 +3,46 @@ title: 'V4.14.9(进行中)'
 description: 'FastGPT V4.14.9 更新说明'
 ---
 
+### 环境变量更新
+
+```bash
+# 调整 FastGPT 环境变量：CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN
+SANDBOX_URL=代码运行沙盒的地址
+SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
+# 新增 Agent sandbox 沙盒环境变量
+AGENT_SANDBOX_PROVIDER=
+AGENT_SANDBOX_SEALOS_BASEURL=
+AGENT_SANDBOX_SEALOS_TOKEN=
+
+```
+
+## 接口变更
+
+`/api/core/chat/getPaginationRecords` 接口，增加返回`useAgentSandbox:boolean`字段，代表本轮对话，是否使用了虚拟机工具。即将移除`llmModuleAccount`和`historyPreviewLength`字段，如使用该字段，请尽快适配。
+
 
 ## 🚀 新增内容
 
+1. 新增 AI 虚拟机功能，可以给 AI 挂载一个虚拟机工具进行更丰富的操作。
+2. 封装 logger sdk。
+3. 更新知识库数据时候，同步更新 collection 更新时间。
+4. 表单输入文件时，支持打开文件进行预览。
 
 ## ⚙️ 优化
 
-1. HTTP 工具，增加 SSRF 防御。
+1. api 知识库同步时，增加更多 fallback 获取文件名方式。
+2. HTTP 工具，增加 SSRF 防御。
+3. 兼容更多 MCP JsonSchema 字段。
+4. 优化部分工作流运行池逻辑，减少计算复杂度
 
 ## 🐛 修复
 
 1. 工作流嵌套插件时，未成功保留插件运行详情。同时整理所有 tool 类型前缀。
 2. 更新 MCP toolset 后可能无法正常调用。
 3. API 知识库，文件列表搜索框丢失。
+4. 工作流变量值，包含特殊值($.)的时候，导致值替换异常。
+5. 工作流引用 agent 工具时，获取版本异常。
+6. 不支持某些属性的参数的模型，从支持该参数的模型切换过来时，该模型未被去掉，导致模型调用失败。
+7. 分享链接关闭状态显示后，会导致历史记录里的 AI 回复内容无法正常展示。
+8. 修复工作流预览模式下，重新打开预览弹窗，会丢失表单输入内容。
+9. 修复订阅套餐自定义字段未生效

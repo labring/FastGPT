@@ -8,6 +8,8 @@ export const TagsMap = {
   aiSkill: 'AI技能管理',
   // AI
   aiCommon: 'AI 通用 接口',
+  // Sandbox
+  sandbox: 'AI 沙盒',
 
   // App 管理
   // Agent - common

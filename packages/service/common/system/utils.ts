@@ -1,11 +1,14 @@
-import { isIP } from 'net';
-import * as dns from 'node:dns/promises';
-import { SERVICE_LOCAL_HOST } from './tools';
-import { isDevEnv } from '@fastgpt/global/common/system/constants';
+import { isIP, isIPv6 } from 'net';
+import dns from 'dns/promises';
+
+const isDevEnv = process.env.NODE_ENV === 'development';
+const SERVICE_LOCAL_PORT = `${process.env.PORT || 3000}`;
+const SERVICE_LOCAL_HOST =
+  process.env.HOSTNAME && isIPv6(process.env.HOSTNAME)
+    ? `[${process.env.HOSTNAME}]:${SERVICE_LOCAL_PORT}`
+    : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
 export const isInternalAddress = async (url: string): Promise<boolean> => {
-  if (isDevEnv) return false;
-
   const isInternalIPv6 = (ip: string): boolean => {
     // 移除 IPv6 地址中的方括号（如果有）
     const cleanIp = ip.replace(/^\[|\]$/g, '');

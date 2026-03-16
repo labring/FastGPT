@@ -1,6 +1,6 @@
 /**
  * API 测试 - 使用 app.request() 直接测试 Hono 路由
- * 无需启动服务或配置 SANDBOX_URL
+ * 无需启动服务或配置 CODE_SANDBOX_URL
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { app, poolReady } from '../../src/index';

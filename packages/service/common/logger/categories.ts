@@ -75,7 +75,8 @@ export const LogCategories = {
       LLM: ['ai', 'llm'],
       MODEL: ['ai', 'model'],
       OPTIMIZE_PROMPT: ['ai', 'optimize-prompt'],
-      RERANK: ['ai', 'rerank']
+      RERANK: ['ai', 'rerank'],
+      SANDBOX: ['ai', 'sandbox']
     }),
     USER: Object.assign(['user'], {
       ACCOUNT: ['user', 'account'],

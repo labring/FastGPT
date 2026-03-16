@@ -34,6 +34,7 @@ import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
+import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -97,16 +98,17 @@ const AIChatSettingsModal = ({
   const temperature = watch('temperature');
   const useVision = watch('aiChatVision');
 
-  const selectedModel = useMemo(() => {
-    return getWebLLMModel(model);
+  const data = useMemo(() => {
+    const modelData = getWebLLMModel(model);
+    const support = getLLMSupportParams(modelData);
+
+    return {
+      selectedModel: modelData,
+      supportParams: support
+    };
   }, [model]);
-  const llmSupportVision = !!selectedModel?.vision;
-  const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
-  const llmSupportReasoning = !!selectedModel?.reasoning;
-  const llmSupportTopP = !!selectedModel?.showTopP;
-  const llmSupportStopSign = !!selectedModel?.showStopSign;
-  const llmSupportResponseFormat =
-    !!selectedModel?.responseFormatList && selectedModel?.responseFormatList.length > 0;
+  const selectedModel = data.selectedModel;
+  const supportParams = data.supportParams;
 
   const topP = watch(NodeInputKeyEnum.aiChatTopP);
   const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
@@ -288,7 +290,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportTemperature && showTemperature && (
+        {supportParams.temperature && showTemperature && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -318,7 +320,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportTopP && showTopP && (
+        {supportParams.topP && showTopP && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -348,7 +350,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {showStopSign && llmSupportStopSign && (
+        {showStopSign && supportParams.stop && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -373,7 +375,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {showResponseFormat && llmSupportResponseFormat && selectedModel?.responseFormatList && (
+        {showResponseFormat && supportParams.responseFormat && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:response_format')}</Flex>
@@ -393,7 +395,7 @@ const AIChatSettingsModal = ({
                 isDisabled={responseFormat === undefined}
                 size={'sm'}
                 bg={'myGray.25'}
-                list={selectedModel.responseFormatList.map((item) => ({
+                list={selectedModel.responseFormatList!.map((item) => ({
                   value: item,
                   label: item
                 }))}
@@ -425,7 +427,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportReasoning && showReasoning && (
+        {supportParams.reasoning && showReasoning && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>
@@ -442,12 +444,12 @@ const AIChatSettingsModal = ({
         )}
         {showVisionSwitch && (
           <Flex {...FlexItemStyles} h={'25px'}>
-            <Box {...LabelStyles} w={llmSupportVision ? '9rem' : 'auto'}>
+            <Box {...LabelStyles} w={supportParams.vision ? '9rem' : 'auto'}>
               <Flex alignItems={'center'}>
                 {t('app:llm_use_vision')}
                 <QuestionTip ml={1} label={t('app:llm_use_vision_tip')}></QuestionTip>
               </Flex>
-              {llmSupportVision ? (
+              {supportParams.vision ? (
                 <Switch
                   isChecked={useVision}
                   size={'sm'}

@@ -2,17 +2,15 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
 
 // Mock dns module
-vi.mock('node:dns/promises', () => ({
+vi.mock('dns/promises', () => ({
   default: {
     resolve4: vi.fn(),
     resolve6: vi.fn()
-  },
-  resolve4: vi.fn(),
-  resolve6: vi.fn()
+  }
 }));
 
 // Import mocked dns after mock setup
-import * as dns from 'node:dns/promises';
+import dns from 'dns/promises';
 
 describe('SSRF Protection - isInternalAddress', () => {
   const originalEnv = process.env.CHECK_INTERNAL_IP;
