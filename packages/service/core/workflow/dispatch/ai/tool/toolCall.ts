@@ -27,6 +27,7 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxClient } from '../../../../ai/sandbox/controller';
 import { getSandboxToolWorkflowResponse } from './constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type ResponseType = {
   requestIds: string[];
@@ -277,7 +278,7 @@ export const runToolCall = async (
             };
           } catch (error) {
             return {
-              response: `Sandbox execution error: ${error}`
+              response: `Sandbox execution error: ${getErrText(error)}`
             };
           }
         } else {

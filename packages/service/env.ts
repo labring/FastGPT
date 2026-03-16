@@ -11,7 +11,7 @@ const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fa
 export const env = createEnv({
   server: {
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox']).optional(),
-    AGENT_SANDBOX_SEALOS_BASEURL: z.string().optional(),
+    AGENT_SANDBOX_SEALOS_BASEURL: z.string().url().optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
 
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),
@@ -19,7 +19,7 @@ export const env = createEnv({
     LOG_ENABLE_OTEL: BoolSchema.default(false),
     LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
     LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
-    LOG_OTEL_URL: z.url().optional()
+    LOG_OTEL_URL: z.string().url().optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

@@ -13,7 +13,7 @@ import {
 } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
-import { addMilliseconds } from 'date-fns';
+import { subMinutes } from 'date-fns';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
@@ -29,7 +29,7 @@ export class SandboxClient {
   private userId?: string;
   private chatId?: string;
   private sandboxId: string;
-  provider: ISandbox;
+  readonly provider: ISandbox;
 
   constructor(
     props:
@@ -66,6 +66,10 @@ export class SandboxClient {
           },
           createConfig: undefined
         };
+      } else if (!providerName) {
+        throw new Error(
+          'AGENT_SANDBOX_PROVIDER is not configured. Please set it in your environment variables.'
+        );
       } else {
         throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
       }
@@ -97,6 +101,7 @@ export class SandboxClient {
     try {
       await this.ensureAvailable();
     } catch (err) {
+      logger.error('Failed to ensure sandbox available', { sandboxId: this.sandboxId, error: err });
       return {
         stdout: '',
         stderr: `Sandbox service is not available: ${getErrText(err)}`,
@@ -109,9 +114,10 @@ export class SandboxClient {
         timeoutMs: timeout ? timeout * 1000 : undefined
       })
       .catch((err) => {
+        logger.error('Failed to execute sandbox', { sandboxId: this.sandboxId, error: err });
         return {
           stdout: '',
-          stderr: getErrText(err),
+          stderr: `Failed to execute sandbox: ${getErrText(err)}`,
           exitCode: -1
         };
       });
@@ -146,7 +152,11 @@ export const deleteSandboxesByChatIds = async ({
     instances.map((doc) =>
       new SandboxClient({
         sandboxId: doc.sandboxId
-      }).delete()
+      })
+        .delete()
+        .catch((err) => {
+          logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
+        })
     )
   );
 };
@@ -168,7 +178,7 @@ export const cronJob = async () => {
   setCron('*/5 * * * *', async () => {
     const instances = await MongoSandboxInstance.find({
       status: SandboxStatusEnum.running,
-      lastActiveAt: { $lt: addMilliseconds(new Date(), -SANDBOX_SUSPEND_MINUTES * 60 * 1000) }
+      lastActiveAt: { $lt: subMinutes(new Date(), SANDBOX_SUSPEND_MINUTES) }
     }).lean();
     if (!instances.length) return;
 
