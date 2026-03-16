@@ -58,15 +58,5 @@ jobs:
           path: /tmp/fastgpt-docs-${{ steps.datetime.outputs.datetime }}.tar
           retention-days: 1
 
-      - name: Comment build status
-        uses: FinleyGe/github-tools@0.0.1
-        if: success()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tool: issue-comment
-          title: 'Docs Preview Build:'
-          body: |
-            Build completed. Waiting for deployment...
-
     outputs:
       datetime: ${{ steps.datetime.outputs.datetime }}

@@ -16,6 +16,7 @@ jobs:
       attestations: write
       id-token: write
       pull-requests: write
+      issues: write  # Required for issue-comment (PR comments use Issues API)
 
     runs-on: ubuntu-24.04
     strategy:
