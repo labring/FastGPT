@@ -51,15 +51,13 @@ export const authCode = async ({
       },
       undefined,
       { session }
-    ).lean();
+    );
 
     if (!result) {
       return Promise.reject(new UserError(i18nT('common:error.code_error')));
     }
 
-    setTimeout(async () => {
-      await MongoUserAuth.deleteOne({ _id: result._id }).catch();
-    }, 60000);
+    await result.deleteOne();
 
     return 'SUCCESS';
   });
