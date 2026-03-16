@@ -76,6 +76,12 @@ export const appWorkflow2AgentForm = ({
       if (datasetParams) {
         defaultAppForm.dataset = datasetParams;
       }
+
+      // Skills configuration
+      const skills = inputMap.get(NodeInputKeyEnum.skills) as string[] | undefined;
+      if (skills && skills.length > 0) {
+        defaultAppForm.skills = skills;
+      }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
         chatConfig,
@@ -237,6 +243,18 @@ export function agentForm2AppWorkflow(
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: data.aiSettings.useAgentSandbox ?? false
             }
+            // Skills configuration
+            ...(data.skills && data.skills.length > 0
+              ? [
+                  {
+                    key: NodeInputKeyEnum.skills,
+                    renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                    label: '',
+                    valueType: WorkflowIOValueTypeEnum.arrayString,
+                    value: data.skills
+                  }
+                ]
+              : [])
           ],
           outputs: AgentNode.outputs
         }

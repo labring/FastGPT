@@ -240,9 +240,6 @@ importers:
 
   packages/service:
     dependencies:
-      '@anyany/sandbox_provider':
-        specifier: ^0.1.1
-        version: 0.1.1(typescript@5.9.3)
       '@apidevtools/json-schema-ref-parser':
         specifier: ^11.7.2
         version: 11.7.2
@@ -1150,12 +1147,6 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
-
-  '@anyany/sandbox_provider@0.1.1':
-    resolution: {integrity: sha512-zX+Bl+xVv7aSw8wl9x5XTBtNhk8PCRRVY+iFkymU9FYLjzP3d2DhC0K5CXc5l5wpsjmVEdTwgtD7woPlSncV/g==}
-    engines: {node: '>=16.0.0'}
-    peerDependencies:
-      typescript: ^5.0.0
 
   '@apidevtools/json-schema-ref-parser@11.7.2':
     resolution: {integrity: sha512-4gY54eEGEstClvEkGnwVkTkrx0sqwemEFG5OSRRn3tD91XH0+Q8XIkYIfo7IwEWPpJZwILb9GUXeShtplRc/eA==}
@@ -11500,11 +11491,6 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
 
-  '@anyany/sandbox_provider@0.1.1(typescript@5.9.3)':
-    dependencies:
-      '@alibaba-group/opensandbox': 0.1.4
-      typescript: 5.9.3
-
   '@apidevtools/json-schema-ref-parser@11.7.2':
     dependencies:
       '@jsdevtools/ono': 7.1.3
@@ -21106,6 +21092,7 @@ snapshots:
       zod: 4.1.12
     transitivePeerDependencies:
       - encoding
+
   openapi-fetch@0.14.1:
     dependencies:
       openapi-typescript-helpers: 0.0.15

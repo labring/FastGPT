@@ -210,6 +210,28 @@ export type SkillDebugSessionDeleteBody = {
   chatId: string;
 };
 
+// ==================== List Apps By SkillId ====================
+export type ListAppsBySkillIdQuery = {
+  skillId: string;
+};
+
+export type AppsBySkillIdItem = {
+  _id: string;
+  name: string;
+  avatar: string;
+  intro: string;
+  tmbId: string;
+  type: string;
+  updateTime: Date;
+  sourceMember: {
+    name: string;
+    avatar?: string | null;
+    status: string;
+  };
+};
+
+export type ListAppsBySkillIdResponse = AppsBySkillIdItem[];
+
 // ==================== Create Skill Folder ====================
 export type CreateSkillFolderBody = {
   parentId?: string | null;
