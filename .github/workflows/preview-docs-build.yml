@@ -34,12 +34,6 @@ jobs:
         id: datetime
         run: echo "datetime=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
 
-      - name: Save PR metadata
-        run: |
-          mkdir -p /tmp/pr-metadata
-          echo "${{ github.event.pull_request.number }}" > /tmp/pr-metadata/pr-number.txt
-          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-metadata/pr-sha.txt
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -64,21 +58,21 @@ jobs:
           path: /tmp/fastgpt-docs-${{ steps.datetime.outputs.datetime }}.tar
           retention-days: 1
 
-      - name: Upload PR metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-metadata-docs-${{ steps.datetime.outputs.datetime }}
-          path: /tmp/pr-metadata/
-          retention-days: 1
+    outputs:
+      datetime: ${{ steps.datetime.outputs.datetime }}
 
   call-push-workflow:
     needs: build-docs-image
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      pull-requests: write
+      issues: write
     uses: ./.github/workflows/preview-docs-push.yml
     secrets: inherit
     with:
-      pr_number: ${{ github.event.pull_request.number }}
+      pr_number: ${{ format('{0}', github.event.pull_request.number) }}
       datetime: ${{ needs.build-docs-image.outputs.datetime }}
-      run_id: ${{ github.run_id }}
-
-    outputs:
-      datetime: ${{ steps.datetime.outputs.datetime }}
+      run_id: ${{ format('{0}', github.run_id) }}

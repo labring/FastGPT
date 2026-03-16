@@ -16,15 +16,16 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+  pull-requests: write
+  issues: write
+
 jobs:
   push-preview-images:
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
-      pull-requests: write
-      issues: write # Required for issue-comment (PR comments use Issues API)
 
     runs-on: ubuntu-24.04
 
