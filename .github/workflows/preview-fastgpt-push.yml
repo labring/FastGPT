@@ -1,72 +1,55 @@
-name: FastGPT Push (Privileged)
+name: Preview fastgpt push
 
 on:
-  workflow_run:
-    workflows: ["FastGPT Build (Unprivileged)"]
-    types: [completed]
-    branches:
-      - '**'  # 监听所有分支
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+      pr_sha:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
 
 jobs:
   push-preview-images:
-    # 只在构建成功时运行
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
       pull-requests: write
-      issues: write  # Required for issue-comment (PR comments use Issues API)
+      issues: write # Required for issue-comment (PR comments use Issues API)
 
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        image: [fastgpt, sandbox, mcp_server]
-      fail-fast: false
 
     steps:
-      - name: Get PR information
+      - name: Read PR information
         id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // 获取触发工作流的 PR 信息
-            const { data: pullRequests } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-            });
-
-            // 查找匹配的 PR（支持 fork 仓库）
-            const pr = pullRequests.find(pr =>
-              pr.head.ref === context.payload.workflow_run.head_branch &&
-              pr.head.sha === context.payload.workflow_run.head_sha
-            );
-
-            if (!pr) {
-              core.setFailed('No open PR found for this branch and commit');
-              return;
-            }
-
-            core.setOutput('number', pr.number);
-            core.setOutput('sha', context.payload.workflow_run.head_sha);
+        run: |
+          echo "number=${{ inputs.pr_number }}" >> $GITHUB_OUTPUT
+          echo "sha=${{ inputs.pr_sha }}" >> $GITHUB_OUTPUT
+          echo "Found PR #${{ inputs.pr_number }} (SHA: ${{ inputs.pr_sha }})"
 
       - name: Set image config
         id: config
         run: |
           SHA="${{ steps.pr.outputs.sha }}"
 
-          if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
+          if [[ "${{ inputs.image }}" == "fastgpt" ]]; then
             echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:fastgpt_${SHA}" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
+          elif [[ "${{ inputs.image }}" == "sandbox" ]]; then
             echo "IMAGE_NAME=fastgpt-sandbox" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:fastgpt_sandbox_${SHA}" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
+          elif [[ "${{ inputs.image }}" == "mcp_server" ]]; then
             echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:fastgpt_mcp_server_${SHA}" >> $GITHUB_OUTPUT
@@ -77,7 +60,7 @@ jobs:
         with:
           name: ${{ steps.config.outputs.IMAGE_NAME }}-${{ steps.pr.outputs.sha }}
           path: /tmp/
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ inputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load Docker image
@@ -115,7 +98,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tool: issue-comment
           issue-number: ${{ steps.pr.outputs.number }}
-          title: 'Preview ${{ matrix.image }} Image:'
+          title: 'Preview ${{ inputs.image }} Image:'
           body: |
             ```
             ${{ steps.config.outputs.DOCKER_REPO_TAGGED }}
@@ -128,6 +111,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           tool: issue-comment
           issue-number: ${{ steps.pr.outputs.number }}
-          title: 'Preview ${{ matrix.image }} Image Push Failed'
+          title: 'Preview ${{ inputs.image }} Image Push Failed'
           body: |
             Failed to push preview image. Please check workflow logs.

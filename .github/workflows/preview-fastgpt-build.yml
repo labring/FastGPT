@@ -1,4 +1,4 @@
-name: FastGPT Build (Unprivileged)
+name: Preview fastgpt build
 
 on:
   pull_request:
@@ -32,6 +32,12 @@ jobs:
           # 对于 pull_request_target，检出 PR 的代码
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
+      - name: Save PR metadata
+        run: |
+          mkdir -p /tmp/pr-metadata
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-metadata/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-metadata/pr-sha.txt
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -88,3 +94,24 @@ jobs:
           name: ${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}
           path: /tmp/${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}.tar
           retention-days: 1
+
+      - name: Upload PR metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-metadata-${{ matrix.image }}-${{ github.sha }}
+          path: /tmp/pr-metadata/
+          retention-days: 1
+
+  call-push-workflow:
+    needs: build-preview-images
+    strategy:
+      matrix:
+        image: [fastgpt, sandbox, mcp_server]
+      fail-fast: false
+    uses: ./.github/workflows/preview-fastgpt-push.yml
+    secrets: inherit
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      pr_sha: ${{ github.sha }}
+      run_id: ${{ github.run_id }}
+      image: ${{ matrix.image }}
