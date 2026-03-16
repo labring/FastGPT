@@ -258,3 +258,13 @@ export type GetSkillFolderPathResponse = {
 export type ExportSkillQuery = {
   skillId: string;
 };
+
+// ==================== Skill Debug Session Records ====================
+export type SkillDebugRecordsBody = {
+  skillId: string;
+  chatId: string;
+  pageSize?: number;
+  initialId?: string;
+  nextId?: string;
+  prevId?: string;
+};
