@@ -33,50 +33,14 @@ x-log-config: &x-log-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
-
+${{vec.config}}
 
 version: '3.3'
 services:
   # Vector DB
-  vectorDB:
-    image:  oceanbase/oceanbase-ce:4.3.5-lts
-    container_name: ob
-    restart: always
-    # ports: # 生产环境建议不要暴露
-    #   - 2881:2881
-    networks:
-      - fastgpt
-    environment:
-      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
-      - OB_SYS_PASSWORD=obsyspassword
-      # 不同于传统数据库，OceanBase 数据库的账号包含更多字段，包括用户名、租户名和集群名。经典格式为"用户名@租户名#集群名"
-      # 比如用mysql客户端连接时，根据本文件的默认配置，应该指定 "-uroot@tenantname"
-      - OB_TENANT_NAME=tenantname
-      - OB_TENANT_PASSWORD=tenantpassword
-      # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
-      - MODE=MINI
-      - OB_SERVER_IP=127.0.0.1
-      # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
-    volumes:
-      - ./ob/data:/root/ob
-      - ./ob/config:/root/.obd/cluster
-    configs:
-      - source: init_sql
-        target: /root/boot/init.d/init.sql
-    healthcheck:
-      # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
-      test:
-        [
-          "CMD-SHELL",
-          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 1000
-      start_period: 10s
+${{vec.db}}
   mongo:
-    image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
+    image: ${{mongo.image}}:${{mongo.tag}} # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
     restart: always
     networks:
@@ -124,7 +88,7 @@ services:
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
   redis:
-    image: redis:7.2-alpine
+    image: ${{redis.image}}:${{redis.tag}}
     container_name: redis
     networks:
       - fastgpt
@@ -140,7 +104,7 @@ services:
     volumes:
       - ./redis/data:/data
   fastgpt-minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: ${{minio.image}}:${{minio.tag}}
     container_name: fastgpt-minio
     restart: always
     ports:
@@ -160,17 +124,41 @@ services:
       timeout: 20s
       retries: 3
 
+  opensandbox-server:
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.1.7
+    container_name: opensandbox-server
+    restart: always
+    networks:
+      - fastgpt
+    extra_hosts:
+      - 'host.docker.internal:host-gateway' # Enable access to host machine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.8 # git
+    image: ${{fastgpt.image}}:${{fastgpt.tag}} # git
     ports:
       - 3000:3000
     networks:
       - fastgpt
+    extra_hosts:
+      - 'host.docker.internal:host-gateway' # Enable access to host machine
     depends_on:
       - mongo
       - sandbox
       - vectorDB
+      - opensandbox-server
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
@@ -192,6 +180,8 @@ services:
       PLUGIN_TOKEN: *x-plugin-auth-token
       # sandbox 地址
       CODE_SANDBOX_URL: http://sandbox:3000
+      # opensandbox server 地址
+      OPENSANDBOX_SERVER_URL: http://opensandbox-server:8090
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -214,7 +204,7 @@ services:
       - ./config.json:/app/data/config.json
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.8
+    image: ${{fastgpt-sandbox.image}}:${{fastgpt-sandbox.tag}}
     networks:
       - fastgpt
     restart: always
@@ -228,7 +218,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.8
+    image: ${{fastgpt-mcp_server.image}}:${{fastgpt-mcp_server.tag}}
     networks:
       - fastgpt
     ports:
@@ -238,7 +228,7 @@ services:
       <<: [*x-log-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.5.4
+    image: ${{fastgpt-plugin.image}}:${{fastgpt-plugin.tag}}
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -262,7 +252,7 @@ services:
       retries: 3
   # AI Proxy
   aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.3.5
+    image: ${{aiproxy.image}}:${{aiproxy.tag}}
     container_name: aiproxy
     restart: unless-stopped
     depends_on:
@@ -290,7 +280,7 @@ services:
       timeout: 5s
       retries: 10
   aiproxy_pg:
-    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    image: ${{aiproxy-pg.image}}:${{aiproxy-pg.tag}} # docker hub
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
@@ -311,9 +301,30 @@ networks:
   fastgpt:
   aiproxy:
   vector:
+${{vec.extra}}
+
 configs:
-  init_sql:
-    name: init_sql
+  # opensandbox config
+  opensandbox-config:
     content: |
-      ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
-    
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.7"
+
+      [egress]
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
+
+      [docker]
+      network_mode = "bridge"
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
+
+      [ingress]
+      mode = "direct"
