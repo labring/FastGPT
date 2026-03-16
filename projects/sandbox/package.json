@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
+    "build": "sh build.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },
