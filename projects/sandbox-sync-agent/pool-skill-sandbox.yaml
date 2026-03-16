@@ -1,0 +1,112 @@
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: skill-sandbox-with-sync
+  namespace: opensandbox
+  labels:
+    app: skill-sandbox
+    component: sync-enabled
+spec:
+  # 预热池大小
+  minReady: 2
+  maxSize: 20
+
+  template:
+    metadata:
+      labels:
+        app: skill-sandbox
+    spec:
+      volumes:
+        - name: workspace
+          emptyDir:
+            sizeLimit: 1Gi
+
+      containers:
+        # 主容器：Skill Sandbox（code-server 开发环境）
+        - name: sandbox
+          image: fastgpt-agent-sandbox:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            # FASTGPT_WORKDIR: the workspace directory opened by code-server.
+            # This is a subdirectory of the volume mountPath (/home/sandbox),
+            # keeping code under /home/sandbox/workspace separate from home files.
+            - name: FASTGPT_WORKDIR
+              value: "/home/sandbox/workspace"
+          volumeMounts:
+            - name: workspace
+              mountPath: /home/sandbox
+          ports:
+            - containerPort: 8080
+              name: code-server
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+        # Sidecar：Sync Agent（MinIO 文件同步）
+        - name: sync-agent
+          image: fastgpt-agent-sandbox:k8s
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: FASTGPT_MINIO_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: endpoint
+            - name: FASTGPT_MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: accessKey
+            - name: FASTGPT_MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: secretKey
+            - name: FASTGPT_MINIO_BUCKET
+              value: "fastgpt-private"
+            - name: FASTGPT_SESSION_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['session-id']
+            - name: FASTGPT_SYNC_PATH
+              value: "/home/sandbox/workspace"
+            - name: SYNC_INTERVAL
+              value: "60"
+            - name: HTTP_PORT
+              value: "8081"
+          volumeMounts:
+            - name: workspace
+              mountPath: /home/sandbox
+          ports:
+            - containerPort: 8081
+              name: sync-api
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
