@@ -1,0 +1,23 @@
+{{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.namePrefix }}controller-manager-metrics-monitor
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+spec:
+  endpoints:
+  - path: /metrics
+    port: https
+    scheme: https
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+    interval: {{ .Values.metrics.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.metrics.serviceMonitor.scrapeTimeout }}
+  selector:
+    matchLabels:
+      {{- include "opensandbox-controller.selectorLabels" . | nindent 6 }}
+      control-plane: controller-manager
+{{- end }}

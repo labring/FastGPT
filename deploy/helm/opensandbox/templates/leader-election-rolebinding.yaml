@@ -1,0 +1,17 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.namePrefix }}leader-election-rolebinding
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.namePrefix }}leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "opensandbox-controller.serviceAccountName" . }}
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+{{- end }}

@@ -1,0 +1,33 @@
+{{- if .Values.server.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opensandbox-controller.fullname" . }}-server
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+  {{- with .Values.server.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.server.service.type }}
+  {{- if and (eq .Values.server.service.type "NodePort") .Values.server.service.nodePort }}
+  ports:
+  - port: {{ .Values.server.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+    nodePort: {{ .Values.server.service.nodePort }}
+  {{- else }}
+  ports:
+  - port: {{ .Values.server.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  {{- end }}
+  selector:
+    {{- include "opensandbox-controller.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+{{- end }}
