@@ -183,6 +183,27 @@ services:
       timeout: 20s
       retries: 3
 
+  opensandbox-server:
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.1.7
+    container_name: opensandbox-server
+    restart: always
+    networks:
+      - fastgpt
+    extra_hosts:
+      - 'host.docker.internal:host-gateway' # Enable access to host machine
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   fastgpt:
     container_name: fastgpt
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.8 # git
@@ -190,10 +211,13 @@ services:
       - 3000:3000
     networks:
       - fastgpt
+    extra_hosts:
+      - 'host.docker.internal:host-gateway' # Enable access to host machine
     depends_on:
       - mongo
       - sandbox
       - vectorDB
+      - opensandbox-server
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
@@ -215,6 +239,8 @@ services:
       PLUGIN_TOKEN: *x-plugin-auth-token
       # sandbox 地址
       CODE_SANDBOX_URL: http://sandbox:3000
+      # opensandbox server 地址
+      OPENSANDBOX_SERVER_URL: http://opensandbox-server:8090
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -335,3 +361,28 @@ networks:
   aiproxy:
   vector:
 
+configs:
+  # opensandbox config
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.7"
+
+      [egress]
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
+
+      [docker]
+      network_mode = "bridge"
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
+
+      [ingress]
+      mode = "direct"
