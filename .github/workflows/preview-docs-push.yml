@@ -1,11 +1,17 @@
-name: Deploy Docs Preview (Privileged)
+name: Preview docs push
 
 on:
-  workflow_run:
-    workflows: ["Build Docs Preview (Unprivileged)"]
-    types: [completed]
-    branches:
-      - '**'  # 监听所有分支
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+      datetime:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,67 +19,40 @@ permissions:
   attestations: write
   id-token: write
   pull-requests: write
-  issues: write  # Required for issue-comment (PR comments use Issues API)
+  issues: write # Required for issue-comment (PR comments use Issues API)
 
 jobs:
   push-and-deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Get PR information
+      - name: Download PR metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-metadata-docs-${{ inputs.datetime }}
+          path: /tmp/pr-metadata/
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read PR information
         id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // 获取触发工作流的 PR 信息
-            const { data: pullRequests } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-            });
+        run: |
+          PR_NUMBER="${{ inputs.pr_number }}"
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Found PR #$PR_NUMBER"
 
-            // 查找匹配的 PR（支持 fork 仓库）
-            const pr = pullRequests.find(pr =>
-              pr.head.ref === context.payload.workflow_run.head_branch &&
-              pr.head.sha === context.payload.workflow_run.head_sha
-            );
-
-            if (!pr) {
-              core.setFailed('No open PR found for this branch and commit');
-              return;
-            }
-
-            core.setOutput('number', pr.number);
-
-      - name: Get workflow artifacts
-        uses: actions/github-script@v7
+      - name: Get artifact name
         id: artifacts
-        with:
-          script: |
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.payload.workflow_run.id,
-            });
-
-            const artifact = artifacts.data.artifacts[0];
-            if (!artifact) {
-              core.setFailed('No artifact found');
-              return;
-            }
-
-            // Extract datetime from artifact name
-            const datetime = artifact.name.replace('fastgpt-docs-', '');
-            core.setOutput('datetime', datetime);
-            core.setOutput('artifact_name', artifact.name);
+        run: |
+          echo "datetime=${{ inputs.datetime }}" >> $GITHUB_OUTPUT
+          echo "artifact_name=fastgpt-docs-${{ inputs.datetime }}" >> $GITHUB_OUTPUT
 
       - name: Download image artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.artifacts.outputs.artifact_name }}
           path: /tmp/
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ inputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load Docker image
