@@ -155,12 +155,27 @@ export const rewriteHistoriesByInteractiveResponse = ({
         finalInteractive.type === 'userInput' ||
         finalInteractive.type === 'agentPlanAskUserForm'
       ) {
+        const submittedData: Record<string, any> = (() => {
+          try {
+            return JSON.parse(interactiveVal);
+          } catch (error) {
+            return {};
+          }
+        })();
+
+        // 更新 inputForm 中的 value
+        const updatedInputForm = finalInteractive.params.inputForm.map((item) => ({
+          ...item,
+          value: submittedData[item.key] ?? item.value
+        }));
+
         return {
           ...val,
           interactive: {
             ...finalInteractive,
             params: {
               ...finalInteractive.params,
+              inputForm: updatedInputForm,
               submitted: true
             }
           }

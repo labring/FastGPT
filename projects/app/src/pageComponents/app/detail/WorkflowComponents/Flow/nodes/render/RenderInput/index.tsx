@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
 import InputLabel from './Label';
@@ -9,6 +9,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import CommonInputForm from './templates/CommonInputForm';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
+import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -100,6 +104,9 @@ type Props = {
 };
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = teamPlanStatus?.standard?.enableSandbox;
+  const showSandbox = feConfigs.show_agent_sandbox;
 
   const filterProInputs = useMemoEnhance(() => {
     return flowInputList.filter((input) => {
@@ -149,8 +156,17 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
           };
         })();
 
+        const isRowUI = renderType === FlowNodeInputTypeEnum.switch;
+
         return (
-          <Box key={input.key} _notLast={{ mb }} position={'relative'}>
+          <Box
+            key={input.key}
+            _notLast={{ mb }}
+            position={'relative'}
+            display={isRowUI ? 'flex' : 'block'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
             {!!input.label && !hideLabelTypeList.includes(renderType) && (
               <InputLabel
                 nodeId={nodeId}
@@ -158,10 +174,29 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
                 RightComponent={RenderComponent?.LableRightComponent}
               />
             )}
-            {!!RenderComponent && (
-              <Box mt={2} className={'nodrag'}>
-                {RenderComponent.Component}
-              </Box>
+
+            {/* tmp */}
+            {input.key === NodeInputKeyEnum.useAgentSandbox ? (
+              showSandbox ? (
+                enableSandbox ? (
+                  <Flex alignItems={'center'} gap={1}>
+                    <SandboxTipTag />
+                    {RenderComponent!.Component}
+                  </Flex>
+                ) : (
+                  <SandboxNotSupportTip type="freeDisable" />
+                )
+              ) : (
+                <SandboxNotSupportTip type="systemDisable" />
+              )
+            ) : (
+              <>
+                {!!RenderComponent && (
+                  <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
+                    {RenderComponent.Component}
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         );

@@ -275,6 +275,7 @@ export const runAgentCall = async ({
       throwError: false,
       body: {
         ...body,
+        max_tokens,
         model,
         messages: requestMessages,
         tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',

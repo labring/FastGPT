@@ -8,7 +8,7 @@ import express from 'express';
 
 import { callTool, getTools } from './api/fastgpt';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { configureLogger, getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { configureLogger, getLogger, LogCategories } from './logger';
 
 const app = express();
 const logger = getLogger(LogCategories.MODULE.MCP.SERVER);
@@ -100,7 +100,7 @@ const PORT = process.env.PORT || 3000;
 
 async function bootstrap() {
   await init();
-  await configureLogger();
+  await configureLogger({ serviceName: 'fastgpt-mcp-server' });
 
   app
     .listen(PORT, () => {

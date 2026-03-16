@@ -1,6 +1,6 @@
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getLogger, LogCategories } from '../logger';
 
-const logger = getLogger(LogCategories.MODULE.MCP.SERVER);
+const logger = getLogger(LogCategories.MODULE.MCP.API);
 
 type ConfigType = {
   headers?: Record<string, string>;
@@ -18,7 +18,7 @@ type ResponseDataType = {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
-    console.log('error->', data, 'data is empty');
+    logger.error('Response data is empty', { data });
     return Promise.reject('服务器异常');
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data);

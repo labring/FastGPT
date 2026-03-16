@@ -124,7 +124,8 @@ export const useConfirm = (props?: {
 
       const isInputDeleteConfirmValid = !isInputDelete
         ? true
-        : !!customContentInputConfirmText && inputValue.trim() === customContentInputConfirmText;
+        : !!customContentInputConfirmText &&
+          inputValue.trim() === customContentInputConfirmText.trim();
 
       return (
         <MyModal
@@ -150,6 +151,7 @@ export const useConfirm = (props?: {
                 <Input
                   size={'sm'}
                   value={inputValue}
+                  autoFocus
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={t('common:confirm_input_delete_placeholder', {
                     confirmText: customContentInputConfirmText

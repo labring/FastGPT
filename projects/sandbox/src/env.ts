@@ -13,6 +13,7 @@ const int = (defaultValue: number) => z.coerce.number().int().default(defaultVal
 
 /** 字符串，带默认值 */
 const str = (defaultValue: string) => z.string().default(defaultValue);
+const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 
 const envSchema = z.object({
   // ===== 服务 =====
@@ -26,6 +27,14 @@ const envSchema = z.object({
         'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
     }),
 
+  // Logger
+  LOG_ENABLE_CONSOLE: z.boolean().default(true),
+  LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
+  LOG_ENABLE_OTEL: z.boolean().default(false),
+  LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
+  LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-code-sandbox'),
+  LOG_OTEL_URL: z.url().optional(),
+
   // ===== 进程池 =====
   /** 进程池大小（预热 worker 数量） */
   SANDBOX_POOL_SIZE: int(20).pipe(z.number().min(1).max(100)),
@@ -35,6 +44,7 @@ const envSchema = z.object({
   SANDBOX_MAX_MEMORY_MB: int(256).pipe(z.number().min(32).max(4096)),
 
   // ===== 网络请求限制 =====
+  CHECK_INTERNAL_IP: z.coerce.boolean().default(false),
   SANDBOX_REQUEST_MAX_COUNT: int(30).pipe(z.number().min(1).max(1000)),
   SANDBOX_REQUEST_TIMEOUT: int(60000).pipe(z.number().min(1000).max(300000)),
   SANDBOX_REQUEST_MAX_RESPONSE_MB: int(10).pipe(z.number().min(1).max(100)),
@@ -84,6 +94,7 @@ export const env = {
   poolSize: e.SANDBOX_POOL_SIZE,
 
   // 网络请求限制
+  checkInternalIp: e.CHECK_INTERNAL_IP,
   maxRequests: e.SANDBOX_REQUEST_MAX_COUNT,
   requestTimeoutMs: e.SANDBOX_REQUEST_TIMEOUT,
   maxResponseSize: e.SANDBOX_REQUEST_MAX_RESPONSE_MB,

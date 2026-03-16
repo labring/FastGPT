@@ -6,7 +6,8 @@ import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/walle
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { type TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamPlanStandardType } from '@fastgpt/global/support/wallet/sub/type';
+
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { getDiscountCouponList } from '@/web/support/wallet/sub/discountCoupon/api';
@@ -35,7 +36,7 @@ const Standard = ({
   standardPlan: myStandardPlan,
   onPaySuccess
 }: {
-  standardPlan?: TeamSubSchemaType;
+  standardPlan?: TeamPlanStandardType;
   onPaySuccess?: () => void;
 }) => {
   const { t } = useTranslation();
@@ -112,9 +113,9 @@ const Standard = ({
                   ? value.wecom.price
                   : value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
               level: level as `${StandardSubLevelEnum}`,
-              maxTeamMember: myStandardPlan?.maxTeamMember || value.maxTeamMember,
-              maxAppAmount: myStandardPlan?.maxApp || value.maxAppAmount,
-              maxDatasetAmount: myStandardPlan?.maxDataset || value.maxDatasetAmount,
+              maxTeamMember: myStandardPlan?.maxTeamMember ?? value.maxTeamMember,
+              maxAppAmount: myStandardPlan?.maxAppAmount ?? value.maxAppAmount,
+              maxDatasetAmount: myStandardPlan?.maxDatasetAmount ?? value.maxDatasetAmount,
               chatHistoryStoreDuration: value.chatHistoryStoreDuration,
               maxDatasetSize: value.maxDatasetSize,
               annualBonusPoints: selectSubMode === SubModeEnum.month ? 0 : value.annualBonusPoints,
@@ -135,8 +136,8 @@ const Standard = ({
     isWecomTeam,
     selectSubMode,
     myStandardPlan?.maxTeamMember,
-    myStandardPlan?.maxApp,
-    myStandardPlan?.maxDataset
+    myStandardPlan?.maxAppAmount,
+    myStandardPlan?.maxDatasetAmount
   ]);
 
   // Pay code

@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.MODULE.API);
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -39,7 +42,7 @@ export const NextAPI = (...handlers: NextApiHandler[]): NextApiHandler => {
         });
       }
     } catch (error) {
-      console.error('Marketplace API Error:', error);
+      logger.error('Marketplace API Error', { error });
 
       if (!res.writableFinished) {
         res.status(500).json({

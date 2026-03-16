@@ -4,17 +4,16 @@ import {
   Flex,
   Grid,
   type BoxProps,
-  useTheme,
   useDisclosure,
   Button,
-  HStack
+  HStack,
+  Switch
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
 import dynamic from 'next/dynamic';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
@@ -35,6 +34,10 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import { SmallAddIcon } from '@chakra-ui/icons';
+import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/constants';
+import SandboxTipTag from '../../components/SandboxTipTag';
+import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -66,11 +69,12 @@ const EditForm = ({
   appForm: AppFormEditFormType;
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
-  const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { defaultModels } = useSystemStore();
-
+  const { defaultModels, feConfigs } = useSystemStore();
+  const showSandbox = feConfigs.show_agent_sandbox;
+  const { teamPlanStatus } = useUserStore();
+  const enableSandbox = teamPlanStatus?.standard?.enableSandbox;
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
@@ -249,6 +253,70 @@ const EditForm = ({
           </Box>
         </Box>
 
+        {/* Use Computer */}
+        <Box {...BoxStyles}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} flex={1}>
+              <MyIcon name={SANDBOX_ICON} w={'20px'} />
+              <FormLabel ml={2}>{t('app:use_agent_sandbox')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:use_computer_desc')} />
+            </Flex>
+            {showSandbox ? (
+              enableSandbox ? (
+                <>
+                  <Box mr={2}>
+                    <SandboxTipTag />
+                  </Box>
+                  <Switch
+                    isChecked={appForm.aiSettings.useAgentSandbox ?? false}
+                    onChange={(e) => {
+                      setAppForm((state) => ({
+                        ...state,
+                        aiSettings: {
+                          ...state.aiSettings,
+                          useAgentSandbox: e.target.checked
+                        }
+                      }));
+                    }}
+                  />
+                </>
+              ) : (
+                <SandboxNotSupportTip type="freeDisable" />
+              )
+            ) : (
+              <SandboxNotSupportTip type="systemDisable" />
+            )}
+          </Flex>
+        </Box>
+
+        {/* tool choice */}
+        <Box {...BoxStyles}>
+          <ToolSelect
+            selectedModel={selectedModel}
+            selectedTools={appForm.selectedTools}
+            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
+            onAddTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: [e, ...(state.selectedTools || [])]
+              }));
+            }}
+            onUpdateTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools:
+                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+              }));
+            }}
+            onRemoveTool={(id) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
+              }));
+            }}
+          />
+        </Box>
+
         {/* dataset */}
         <Box {...BoxStyles}>
           <Flex alignItems={'center'}>
@@ -350,34 +418,6 @@ const EditForm = ({
               </Flex>
             ))}
           </Grid>
-        </Box>
-
-        {/* tool choice */}
-        <Box {...BoxStyles}>
-          <ToolSelect
-            selectedModel={selectedModel}
-            selectedTools={appForm.selectedTools}
-            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-            onAddTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
-              }));
-            }}
-            onUpdateTool={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools:
-                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-              }));
-            }}
-            onRemoveTool={(id) => {
-              setAppForm((state) => ({
-                ...state,
-                selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
-              }));
-            }}
-          />
         </Box>
 
         {/* File select */}

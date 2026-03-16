@@ -6,7 +6,7 @@ import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/utils';
-import { isInternalAddress } from '../../common/system/utils';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -138,15 +138,20 @@ export const runHTTPTool = async ({
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
     // Construct full base URL
-    const fullBaseUrl =
-      baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+    const fullBaseUrl = !baseUrl
+      ? ''
+      : baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
         ? baseUrl
         : `https://${baseUrl}`;
 
     // SSRF Protection: Validate URL before making request
-    const fullUrl = new URL(toolPath, fullBaseUrl).toString();
+    // When baseUrl is empty, toolPath must be a complete URL
+    const fullUrl = fullBaseUrl
+      ? new URL(toolPath, fullBaseUrl).toString()
+      : new URL(toolPath).toString();
+
     if (await isInternalAddress(fullUrl)) {
-      return { errorMsg: 'Access to internal addresses is not allowed' };
+      return { errorMsg: PRIVATE_URL_TEXT };
     }
 
     const { headers, body, queryParams } = buildHttpRequest({
@@ -170,7 +175,8 @@ export const runHTTPTool = async ({
     });
 
     return { data };
-  } catch (error: any) {
+  } catch (error) {
+    console.log(error);
     return { errorMsg: getErrText(error) };
   }
 };

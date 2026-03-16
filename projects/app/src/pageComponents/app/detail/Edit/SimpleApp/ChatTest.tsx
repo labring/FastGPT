@@ -18,6 +18,7 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
+import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -26,6 +27,7 @@ type Props = {
 };
 const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
+  const { chatId } = useChatStore();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -36,6 +38,12 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
+  });
+
+  // Sandbox state
+  const { SandboxEditorModal, SandboxEntryIcon, setSandboxExists } = useSandboxEditor({
+    appId: appDetail._id,
+    chatId
   });
 
   useEffect(() => {
@@ -72,6 +80,8 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           </Box>
           {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
+
+          <SandboxEntryIcon size={'smSquare'} mr={2} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
@@ -83,6 +93,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
               onClick={(e) => {
                 e.stopPropagation();
                 restartChat();
+                setSandboxExists(false);
               }}
             />
           </MyTooltip>
@@ -100,6 +111,8 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           />
         </Box>
       )}
+
+      <SandboxEditorModal />
     </Flex>
   );
 };

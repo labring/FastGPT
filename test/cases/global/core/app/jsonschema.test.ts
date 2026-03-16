@@ -253,6 +253,124 @@ describe('getNodeInputTypeFromSchemaInputType', () => {
     });
     expect(result).toBe(WorkflowIOValueTypeEnum.arrayAny);
   });
+
+  it('should return any when type is undefined (for anyOf/oneOf)', () => {
+    const result = getNodeInputTypeFromSchemaInputType({
+      type: undefined,
+      arrayItems: undefined
+    });
+    expect(result).toBe(WorkflowIOValueTypeEnum.any);
+  });
+});
+
+describe('jsonSchema2NodeInput with anyOf/oneOf (union types)', () => {
+  it('should handle Optional[str] with anyOf as any type', () => {
+    const jsonSchema: JSONSchemaInputType = {
+      type: 'object',
+      properties: {
+        optional_field: {
+          anyOf: [{ type: 'string' }, { type: 'null' }],
+          description: 'An optional string field'
+        }
+      },
+      required: []
+    };
+
+    const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].key).toBe('optional_field');
+    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(result[0].required).toBe(false);
+    expect(result[0].description).toBe('An optional string field');
+  });
+
+  it('should handle oneOf with null as any type', () => {
+    const jsonSchema: JSONSchemaInputType = {
+      type: 'object',
+      properties: {
+        optional_number: {
+          oneOf: [{ type: 'number' }, { type: 'null' }]
+        }
+      }
+    };
+
+    const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
+
+    expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.any);
+  });
+
+  it('should handle mixed schema with anyOf and regular types', () => {
+    const jsonSchema: JSONSchemaInputType = {
+      type: 'object',
+      properties: {
+        required_field: {
+          type: 'string',
+          description: 'A required string'
+        },
+        optional_field: {
+          anyOf: [{ type: 'string' }, { type: 'null' }],
+          description: 'An optional string'
+        },
+        number_field: {
+          type: 'number'
+        }
+      },
+      required: ['required_field']
+    };
+
+    const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
+
+    expect(result).toHaveLength(3);
+
+    const requiredField = result.find((i) => i.key === 'required_field');
+    expect(requiredField?.valueType).toBe(WorkflowIOValueTypeEnum.string);
+    expect(requiredField?.required).toBe(true);
+
+    const optionalField = result.find((i) => i.key === 'optional_field');
+    expect(optionalField?.valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(optionalField?.required).toBe(false);
+
+    const numberField = result.find((i) => i.key === 'number_field');
+    expect(numberField?.valueType).toBe(WorkflowIOValueTypeEnum.number);
+  });
+
+  it('should handle weather API real-world example', () => {
+    const jsonSchema: JSONSchemaInputType = {
+      type: 'object',
+      properties: {
+        location: {
+          type: 'string',
+          description: '地点名称'
+        },
+        date: {
+          anyOf: [{ type: 'string' }, { type: 'null' }],
+          description: '日期（可选）'
+        },
+        forecast_type: {
+          type: 'string',
+          enum: ['daily', 'hourly', 'weekly']
+        }
+      },
+      required: ['location']
+    };
+
+    const result = jsonSchema2NodeInput({ jsonSchema, schemaType: 'mcp' });
+
+    expect(result).toHaveLength(3);
+
+    const location = result.find((i) => i.key === 'location');
+    expect(location?.valueType).toBe(WorkflowIOValueTypeEnum.string);
+    expect(location?.required).toBe(true);
+
+    const date = result.find((i) => i.key === 'date');
+    expect(date?.valueType).toBe(WorkflowIOValueTypeEnum.any);
+    expect(date?.required).toBe(false);
+
+    const forecastType = result.find((i) => i.key === 'forecast_type');
+    expect(forecastType?.valueType).toBe(WorkflowIOValueTypeEnum.string);
+    expect(forecastType?.list).toHaveLength(3);
+  });
 });
 
 describe('jsonSchema2NodeOutput', () => {

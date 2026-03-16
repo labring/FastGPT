@@ -15,6 +15,7 @@ import type { GetMcpToolsBodyType } from '@fastgpt/global/openapi/core/app/mcpTo
 import { getMCPTools } from '@/web/core/app/api/tool';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 
 const EditForm = ({
   url,
@@ -208,25 +209,30 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
       w={'530px'}
     >
       <ModalBody>
-        <Flex pb={6} borderBottom={'1px solid'} borderColor={'myGray.200'}>
+        <Flex
+          pb={6}
+          borderBottom={'1px solid'}
+          borderColor={'myGray.200'}
+          alignItems={'flex-start'}
+        >
           <Avatar src={appDetail.avatar} borderRadius={'md'} w={'40px'} />
           <Box ml={'14px'}>
             <Box fontSize={'16px'} color={'myGray.900'}>
               {tool.name}
             </Box>
-            <Box fontSize={'12px'} color={'myGray.500'}>
+            <Box fontSize={'12px'} color={'myGray.500'} maxH={'100px'} overflow={'auto'}>
               {tool.description}
             </Box>
           </Box>
         </Flex>
 
         <Box mt={6} color={'myGray.900'} fontWeight={'medium'}>
-          {t('common:Params')}
+          {t('app:raw_params')}
         </Box>
 
         <Box mt={3}>
           {Object.entries(tool.inputSchema.properties || {}).map(
-            ([paramName, paramInfo]: [string, any]) => (
+            ([paramName, paramInfo]: [string, JsonSchemaPropertiesItemType]) => (
               <Box key={paramName} py={2} borderBottom={'1px solid'} borderColor={'myGray.150'}>
                 <Flex alignItems="center">
                   {tool.inputSchema.required?.includes(paramName) && (
@@ -248,7 +254,11 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
                     border={'1px solid'}
                     borderColor={'myGray.200'}
                   >
-                    {paramInfo.type}
+                    {paramInfo.type ||
+                      paramInfo.anyOf?.map((item) => item.type).join(',') ||
+                      paramInfo.oneOf?.map((item) => item.type).join(',') ||
+                      paramInfo.allOf?.map((item) => item.type).join(',') ||
+                      'any'}
                   </Box>
                 </Flex>
 

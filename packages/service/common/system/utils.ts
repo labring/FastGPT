@@ -1,6 +1,12 @@
-import { SERVICE_LOCAL_HOST } from './tools';
-import { isIP } from 'net';
-import * as dns from 'node:dns/promises';
+import { isIP, isIPv6 } from 'net';
+import dns from 'dns/promises';
+
+const isDevEnv = process.env.NODE_ENV === 'development';
+const SERVICE_LOCAL_PORT = `${process.env.PORT || 3000}`;
+const SERVICE_LOCAL_HOST =
+  process.env.HOSTNAME && isIPv6(process.env.HOSTNAME)
+    ? `[${process.env.HOSTNAME}]:${SERVICE_LOCAL_PORT}`
+    : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
 export const isInternalAddress = async (url: string): Promise<boolean> => {
   const isInternalIPv6 = (ip: string): boolean => {
@@ -138,9 +144,8 @@ export const isInternalAddress = async (url: string): Promise<boolean> => {
       return true;
     }
 
-    // 3. 默认启用内部 IP 检查（安全优先）
-    // 只有显式设置 CHECK_INTERNAL_IP=false 时才禁用检查
-    if (process.env.CHECK_INTERNAL_IP === 'false') {
+    // 3. 只有显式设置 CHECK_INTERNAL_IP=true 时才启用私有 IP 检查
+    if (process.env.CHECK_INTERNAL_IP !== 'true') {
       return false;
     }
 
@@ -185,3 +190,4 @@ export const isInternalAddress = async (url: string): Promise<boolean> => {
     return false;
   }
 };
+export const PRIVATE_URL_TEXT = 'Request to private network not allowed';

@@ -25,7 +25,8 @@ export const AppFormEditFormV1TypeSchema = z.object({
     [NodeInputKeyEnum.aiChatTopP]: z.number().optional(),
     [NodeInputKeyEnum.aiChatStopSign]: z.string().optional(),
     [NodeInputKeyEnum.aiChatResponseFormat]: z.string().optional(),
-    [NodeInputKeyEnum.aiChatJsonSchema]: z.string().optional()
+    [NodeInputKeyEnum.aiChatJsonSchema]: z.string().optional(),
+    [NodeInputKeyEnum.useAgentSandbox]: z.boolean().default(false).optional()
   }),
   dataset: AppDatasetSearchParamsTypeSchema.extend({
     datasets: z.array(SelectedDatasetSchema)

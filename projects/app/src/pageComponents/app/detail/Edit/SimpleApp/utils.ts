@@ -98,6 +98,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiChatJsonSchema
       );
+      defaultAppForm.aiSettings.useAgentSandbox = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.useAgentSandbox
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -527,7 +531,7 @@ export function form2AppWorkflow(
         : null;
 
     // Computed tools config
-    const pluginTool: WorkflowType[] = formData.selectedTools.map((tool, i) => {
+    const tools: WorkflowType[] = formData.selectedTools.map((tool, i) => {
       const nodeId = getNanoid(6);
       return {
         nodes: [
@@ -608,7 +612,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.model
             },
             {
-              key: 'temperature',
+              key: NodeInputKeyEnum.aiChatTemperature,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               label: '',
               value: formData.aiSettings.temperature,
@@ -618,7 +622,14 @@ export function form2AppWorkflow(
               step: 1
             },
             {
-              key: 'maxToken',
+              key: NodeInputKeyEnum.aiChatTopP,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.number,
+              value: formData.aiSettings.aiChatTopP
+            },
+            {
+              key: NodeInputKeyEnum.aiChatMaxToken,
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
               label: '',
               value: formData.aiSettings.maxToken,
@@ -628,7 +639,14 @@ export function form2AppWorkflow(
               step: 50
             },
             {
-              key: 'systemPrompt',
+              key: NodeInputKeyEnum.useAgentSandbox,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: formData.aiSettings.useAgentSandbox ?? false
+            },
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
               max: 3000,
               valueType: WorkflowIOValueTypeEnum.string,
@@ -638,7 +656,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.systemPrompt
             },
             {
-              key: 'history',
+              key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
               label: 'core.module.input.label.chat history',
@@ -652,7 +670,7 @@ export function form2AppWorkflow(
               value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {
-              key: 'userChatInput',
+              key: NodeInputKeyEnum.userChatInput,
               renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
               valueType: WorkflowIOValueTypeEnum.string,
               label: i18nT('common:core.module.input.label.user question'),
@@ -678,7 +696,7 @@ export function form2AppWorkflow(
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),
-        ...pluginTool.map((tool) => tool.nodes).flat()
+        ...tools.map((tool) => tool.nodes).flat()
       ],
       edges: [
         {
@@ -689,7 +707,7 @@ export function form2AppWorkflow(
         },
         // tool edges
         ...(datasetTool ? datasetTool.edges : []),
-        ...pluginTool.map((tool) => tool.edges).flat()
+        ...tools.map((tool) => tool.edges).flat()
       ]
     };
 
@@ -709,7 +727,8 @@ export function form2AppWorkflow(
   }
 
   const workflow = (() => {
-    if (data.selectedTools.length > 0) return toolTemplates(data);
+    if (data.selectedTools.length > 0 || data.aiSettings.useAgentSandbox)
+      return toolTemplates(data);
     if (selectedDatasets.length > 0) return datasetTemplate(data);
     return simpleChatTemplate(data);
   })();
