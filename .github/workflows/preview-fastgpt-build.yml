@@ -5,15 +5,15 @@ on:
     # 支持所有分支
     types: [opened, synchronize, reopened]
   pull_request_target:
-    # 外部贡献者需要标签批准
-    types: [labeled]
+    # 外部贡献者也支持自动构建
+    types: [opened, synchronize, reopened]
 
 jobs:
   build-preview-images:
-    # 外部贡献者需要 'safe-to-build' 标签
+    # 内部和外部贡献者都可以触发构建
     if: |
       (github.event_name == 'pull_request') ||
-      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe-to-build'))
+      (github.event_name == 'pull_request_target')
 
     permissions:
       contents: read

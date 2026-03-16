@@ -8,14 +8,14 @@ on:
   pull_request_target:
     paths:
       - 'document/**'
-    types: [labeled]
+    types: [opened, synchronize, reopened]
 
 jobs:
   build-docs-image:
-    # 外部贡献者需要 'safe-to-build' 标签
+    # 内部和外部贡献者都可以触发构建
     if: |
       (github.event_name == 'pull_request') ||
-      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe-to-build'))
+      (github.event_name == 'pull_request_target')
 
     permissions:
       contents: read
