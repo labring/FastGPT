@@ -247,8 +247,8 @@ importers:
         specifier: 'catalog:'
         version: 0.1.2
       '@fastgpt-sdk/sandbox-adapter':
-        specifier: ^0.0.18
-        version: 0.0.18
+        specifier: ^0.0.19
+        version: 0.0.19
       '@fastgpt-sdk/storage':
         specifier: 'catalog:'
         version: 0.6.15(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
@@ -2640,8 +2640,8 @@ packages:
   '@fastgpt-sdk/plugin@0.3.8':
     resolution: {integrity: sha512-GjKrXMHxeF5UMkYGXawrUpzZjVRw3DICNYODeYwsUVOy+/ltu5zuwsqLkuuGQ7Arp/SBCmYRjG/MHmeNp4xxfw==}
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.18':
-    resolution: {integrity: sha512-5xjBQzG9wHi7oRxAlMHz5Sz282QEHCmJnqaX4o0H0vfDgOwanBfglwejmF9bPlqy+HnIZi3rIJseCleE3MqH2g==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.19':
+    resolution: {integrity: sha512-024C9Ljoic7/oQm1awyLMWVl7kk9NuOGgUa8NC3wOS4GQrCVZCPCHK8YwqkRbKX9T0Akczc6RFaZj+kRJd3m4Q==}
     engines: {node: '>=18'}
 
   '@fastgpt-sdk/storage@0.6.15':
@@ -13433,7 +13433,7 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.18':
+  '@fastgpt-sdk/sandbox-adapter@0.0.19':
     dependencies:
       '@alibaba-group/opensandbox': 0.1.4
 

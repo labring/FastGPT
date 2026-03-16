@@ -1,0 +1,72 @@
+name: Build Docs Preview (Unprivileged)
+
+on:
+  pull_request:
+    paths:
+      - 'document/**'
+    types: [opened, synchronize, reopened]
+  pull_request_target:
+    paths:
+      - 'document/**'
+    types: [labeled]
+
+jobs:
+  build-docs-image:
+    # 外部贡献者需要 'safe-to-build' 标签
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'safe-to-build'))
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          # 对于 pull_request_target，检出 PR 的代码
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Get current datetime
+        id: datetime
+        run: echo "datetime=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./document
+          file: ./document/Dockerfile
+          push: false
+          tags: fastgpt-docs:${{ steps.datetime.outputs.datetime }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=FastGPT Docs Preview
+          build-args: |
+            FASTGPT_HOME_DOMAIN=https://fastgpt.io
+          outputs: type=docker,dest=/tmp/fastgpt-docs-${{ steps.datetime.outputs.datetime }}.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastgpt-docs-${{ steps.datetime.outputs.datetime }}
+          path: /tmp/fastgpt-docs-${{ steps.datetime.outputs.datetime }}.tar
+          retention-days: 1
+
+      - name: Comment build status
+        uses: FinleyGe/github-tools@0.0.1
+        if: success()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          title: 'Docs Preview Build:'
+          body: |
+            Build completed. Waiting for deployment...
+
+    outputs:
+      datetime: ${{ steps.datetime.outputs.datetime }}
