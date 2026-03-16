@@ -6,8 +6,6 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
-import fs from 'node:fs';
-import path from 'node:path';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { feishuDocToMarkdown } from './feishuDocToMarkdown';
@@ -150,23 +148,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       baseUrl: feishuBaseUrl,
       appId: feishuServer.appId,
       appSecret: feishuServer.appSecret!,
-      docToken: apiFileId,
-      handleImage: async (localImagePath: string) => {
-        try {
-          const buffer = await fs.promises.readFile(localImagePath);
-          const ext = path.extname(localImagePath).toLowerCase().replace('.', '');
-          const mime: Record<string, string> = {
-            png: 'image/png',
-            gif: 'image/gif',
-            webp: 'image/webp'
-          };
-          const mimeType = mime[ext] || 'image/jpeg';
-          return `data:${mimeType};base64,${buffer.toString('base64')}`;
-        } catch (err) {
-          logger.warn('Feishu image read failed', { localImagePath, error: err });
-          return '';
-        }
-      }
+      docToken: apiFileId
     });
 
     if (result) {

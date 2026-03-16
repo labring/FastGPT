@@ -11,13 +11,12 @@ import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
-import { retryFn, batchRun } from '@fastgpt/global/common/system/utils';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
-import { getFileS3Key, isS3ObjectKey, uploadImage2S3Bucket } from '../../common/s3/utils';
-import { Mimes } from '../../common/s3/constants';
+import { getFileS3Key, isS3ObjectKey, uploadMdImagesToS3 } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -253,9 +252,6 @@ export const readDatasetSourceRawText = async ({
       return { title, rawText: rawMarkdown || '' };
     }
 
-    // Reuse the exact same image processing pipeline as readFileContentByBuffer:
-    // matchMdImg extracts base64 images into ImageType[] with UUID placeholders,
-    // then batchRun uploads each image to S3 via uploadImage2S3Bucket.
     const { text, imageList } = matchMdImg(rawMarkdown || '');
     let rawText = text;
 
@@ -265,26 +261,20 @@ export const readDatasetSourceRawText = async ({
         filename: sourceId
       });
 
-      await batchRun(imageList, async (item) => {
-        const src = await (async () => {
-          try {
-            const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
-            return await uploadImage2S3Bucket('private', {
-              base64Img: `data:${item.mime};base64,${item.base64}`,
-              uploadKey: `${fileParsedPrefix}/${item.uuid}${ext}`,
-              mimetype: Mimes[ext as keyof typeof Mimes],
-              filename: `${item.uuid}${ext}`
-            });
-          } catch (error) {
-            logger.warn('Failed to upload parsed image to S3', {
-              imageUuid: item.uuid,
-              error
-            });
-            return `[Image Upload Failed: ${item.uuid}]`;
-          }
-        })();
-        rawText = rawText.replace(item.uuid, src);
+      const replacements = await uploadMdImagesToS3({
+        imageList,
+        prefix: fileParsedPrefix,
+        onError: (item, error) => {
+          logger.warn('Failed to upload parsed image to S3', {
+            imageUuid: item.uuid,
+            error
+          });
+        }
       });
+
+      for (const [uuid, src] of replacements) {
+        rawText = rawText.replace(uuid, src);
+      }
     }
 
     return {
