@@ -1,0 +1,123 @@
+name: FastGPT Push (Privileged)
+
+on:
+  workflow_run:
+    workflows: ["FastGPT Build (Unprivileged)"]
+    types: [completed]
+
+jobs:
+  push-preview-images:
+    # 只在构建成功时运行
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      pull-requests: write
+
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [fastgpt, sandbox, mcp_server]
+      fail-fast: false
+
+    steps:
+      - name: Get PR information
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
+            });
+
+            if (pullRequests.length === 0) {
+              core.setFailed('No open PR found for this branch');
+              return;
+            }
+
+            const pr = pullRequests[0];
+            core.setOutput('number', pr.number);
+            core.setOutput('sha', context.payload.workflow_run.head_sha);
+
+      - name: Set image config
+        id: config
+        run: |
+          SHA="${{ steps.pr.outputs.sha }}"
+
+          if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
+            echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:fastgpt_${SHA}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
+            echo "IMAGE_NAME=fastgpt-sandbox" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:fastgpt_sandbox_${SHA}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
+            echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:fastgpt_mcp_server_${SHA}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.config.outputs.IMAGE_NAME }}-${{ steps.pr.outputs.sha }}
+          path: /tmp/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load Docker image
+        run: |
+          docker load -i /tmp/${{ steps.config.outputs.IMAGE_NAME }}-${{ steps.pr.outputs.sha }}.tar
+
+      - name: Scan image for vulnerabilities
+        continue-on-error: true
+        run: |
+          # 安装 Trivy
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+          # 扫描镜像
+          trivy image --severity HIGH,CRITICAL --exit-code 0 preview-image:${{ steps.pr.outputs.sha }}
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
+      - name: Tag and push image
+        run: |
+          docker tag preview-image:${{ steps.pr.outputs.sha }} ${{ steps.config.outputs.DOCKER_REPO_TAGGED }}
+          docker push ${{ steps.config.outputs.DOCKER_REPO_TAGGED }}
+
+      - name: Comment push status
+        uses: FinleyGe/github-tools@0.0.1
+        if: success()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          title: 'Preview ${{ matrix.image }} Image:'
+          body: |
+            ```
+            ${{ steps.config.outputs.DOCKER_REPO_TAGGED }}
+            ```
+
+      - name: Comment on failure
+        uses: FinleyGe/github-tools@0.0.1
+        if: failure()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          title: 'Preview ${{ matrix.image }} Image Push Failed'
+          body: |
+            Failed to push preview image. Please check workflow logs.

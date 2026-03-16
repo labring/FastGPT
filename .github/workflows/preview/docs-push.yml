@@ -1,0 +1,125 @@
+name: Deploy Docs Preview (Privileged)
+
+on:
+  workflow_run:
+    workflows: ["Build Docs Preview (Unprivileged)"]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+  pull-requests: write
+
+jobs:
+  push-and-deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Get PR information
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
+            });
+
+            if (pullRequests.length === 0) {
+              core.setFailed('No open PR found for this branch');
+              return;
+            }
+
+            const pr = pullRequests[0];
+            core.setOutput('number', pr.number);
+
+      - name: Get workflow artifacts
+        uses: actions/github-script@v7
+        id: artifacts
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            });
+
+            const artifact = artifacts.data.artifacts[0];
+            if (!artifact) {
+              core.setFailed('No artifact found');
+              return;
+            }
+
+            // Extract datetime from artifact name
+            const datetime = artifact.name.replace('fastgpt-docs-', '');
+            core.setOutput('datetime', datetime);
+            core.setOutput('artifact_name', artifact.name);
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifacts.outputs.artifact_name }}
+          path: /tmp/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load Docker image
+        run: |
+          docker load -i /tmp/fastgpt-docs-${{ steps.artifacts.outputs.datetime }}.tar
+
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
+      - name: Tag and push image
+        run: |
+          docker tag fastgpt-docs:${{ steps.artifacts.outputs.datetime }} \
+            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+          docker push ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_CN }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/fastgpt-docs-preview \
+            fastgpt-docs-preview=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+
+      - name: Annotate deployment
+        run: |
+          kubectl annotate deployment/fastgpt-docs-preview \
+            originImageName="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}" --overwrite
+
+      - name: Comment deployment status
+        uses: FinleyGe/github-tools@0.0.1
+        if: success()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          title: 'Docs Preview:'
+          body: |
+            ---
+            🚀 **FastGPT Document Preview Ready!**
+
+            🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
+
+      - name: Comment on failure
+        uses: FinleyGe/github-tools@0.0.1
+        if: failure()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          title: 'Docs Preview Deployment Failed'
+          body: |
+            Failed to deploy docs preview. Please check workflow logs.
