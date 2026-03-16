@@ -12,6 +12,15 @@ on:
       run_id:
         required: true
         type: string
+    secrets:
+      ALI_IMAGE_USER:
+        required: true
+      ALI_IMAGE_PSW:
+        required: true
+      ALI_IMAGE_PREFIX:
+        required: true
+      KUBE_CONFIG_CN:
+        required: true
 
 permissions:
   contents: read
@@ -55,14 +64,14 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+          username: ${{ secrets.ALI_IMAGE_USER }}
+          password: ${{ secrets.ALI_IMAGE_PSW }}
 
       - name: Tag and push image
         run: |
           docker tag fastgpt-docs:${{ steps.artifacts.outputs.datetime }} \
-            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
-          docker push ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+            ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+          docker push ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
 
       - name: Setup kubeconfig
         run: |
@@ -73,12 +82,12 @@ jobs:
       - name: Update deployment image
         run: |
           kubectl set image deployment/fastgpt-docs-preview \
-            fastgpt-docs-preview=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+            fastgpt-docs-preview=${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
 
       - name: Annotate deployment
         run: |
           kubectl annotate deployment/fastgpt-docs-preview \
-            originImageName="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}" --overwrite
+            originImageName="${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}" --overwrite
 
       - name: Comment deployment status
         uses: FinleyGe/github-tools@0.0.1

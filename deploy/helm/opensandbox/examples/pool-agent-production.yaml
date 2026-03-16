@@ -1,0 +1,342 @@
+# ==============================================================================
+# OpenSandbox Agent Pool - 生产级配置
+# ==============================================================================
+#
+# 用途：为多 Agent 并发场景提供预热的沙箱资源池（SDK 模式）
+#
+# 注意：此配置适用于 SDK 场景（需要 execd）
+# 如果只使用 kubectl 管理 BatchSandbox，可以移除 execd 相关配置
+#
+# 架构说明：
+#   Pool 维护预热的 Pod 池（不是 Sandbox 池）
+#   - 每个 Pod 包含 execd（SDK 通信）+ task-executor（任务注入）
+#   - SDK.create() 从 Pool 分配 Pod，创建新的 BatchSandbox
+#   - SDK.kill() 删除 BatchSandbox，Pod 返回 Pool
+#
+# 使用模式：
+#   1. Helm 部署时创建此 Pool（长期运行）
+#   2. Agent 运行时通过 SDK 动态创建/删除 BatchSandbox
+#   3. 不需要预创建 BatchSandbox
+#
+# 容量规划建议：
+#   | 并发 Agent 数 | bufferMin | bufferMax | poolMin | poolMax |
+#   |--------------|-----------|-----------|---------|---------|
+#   | 1-10         | 2         | 5         | 2       | 20      |
+#   | 10-50        | 10        | 20        | 10      | 100     |
+#   | 50-200       | 50        | 100       | 50      | 300     |
+#   | 200+         | 100       | 200       | 100     | 500     |
+#
+# 相关文档：
+#   - /data/home/cz/sandbox-test/pool-analysis/opensandbox_pool_usage_guide.md
+#   - /data/home/cz/OpenSandbox/kubernetes/helm-chart/values.yaml (查看 pools 配置)
+#
+# ==============================================================================
+
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: agent-pool
+  namespace: default  # 使用与 Helm chart namespaceOverride 一致的命名空间
+  labels:
+    app: opensandbox
+    component: agent-pool
+  annotations:
+    description: "生产级 Agent Pool，支持 SDK 动态创建 sandbox"
+spec:
+  template:
+    metadata:
+      labels:
+        pool: agent-pool
+        sdk-compatible: "true"
+    spec:
+      # ========================================
+      # 必需：共享进程命名空间
+      # ========================================
+      # task-executor 需要访问 sandbox 容器的进程树
+      shareProcessNamespace: true
+
+      # ========================================
+      # Init Container：安装 execd（仅 SDK 场景需要）
+      # ========================================
+      # 注意：如果只使用 kubectl 管理 BatchSandbox（不使用 SDK），
+      # 可以移除此 init container 和相关的 execd 配置。
+      #
+      # execd 的作用：
+      #   - 提供 SDK 与 Pod 的通信接口（44772 端口）
+      #   - 执行 SDK 发送的命令（commands.run(), files.read_file() 等）
+      #
+      # 使用场景：
+      #   ✅ 需要：SDK 动态创建 sandbox（Agent、Code Interpreter 等）
+      #   ❌ 不需要：纯 kubectl 批量任务（RL 训练、压力测试等）
+      initContainers:
+      - name: execd-installer
+        image: opensandbox/execd:v1.0.5
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            # 复制 execd 二进制和启动脚本
+            cp ./execd /opt/opensandbox/bin/execd && \
+            cp ./bootstrap.sh /opt/opensandbox/bin/bootstrap.sh && \
+            chmod +x /opt/opensandbox/bin/execd && \
+            chmod +x /opt/opensandbox/bin/bootstrap.sh && \
+            echo "execd installed successfully"
+        volumeMounts:
+        - name: opensandbox-bin
+          mountPath: /opt/opensandbox/bin
+
+      # ========================================
+      # 主容器：Sandbox 环境
+      # ========================================
+      containers:
+      - name: sandbox-container
+        # 镜像说明：
+        # - Pool 中的镜像由 Pool 预定义，SDK 指定的镜像会被忽略
+        # - 根据 Agent 需求选择合适的基础镜像（nginx, ubuntu, python, etc.）
+        # - 确保镜像包含 /bin/sh 用于执行 bootstrap.sh
+        image: nginx:latest
+        imagePullPolicy: IfNotPresent
+
+        # 启动命令：使用 bootstrap.sh 启动 execd
+        # bootstrap.sh 会：
+        #   1. 后台启动 execd（监听 44772 端口）
+        #   2. 执行用户指定的命令（这里是 sleep infinity）
+        command: ["/opt/opensandbox/bin/bootstrap.sh", "sleep", "infinity"]
+
+        # 环境变量
+        env:
+        - name: EXECD
+          value: /opt/opensandbox/bin/execd
+        # 可添加其他环境变量：
+        # - name: CUSTOM_VAR
+        #   value: "custom-value"
+
+        # 端口配置
+        ports:
+        - containerPort: 44772
+          name: execd
+          protocol: TCP
+        # 可暴露其他端口（如应用端口）：
+        # - containerPort: 8080
+        #   name: app
+        #   protocol: TCP
+
+        # 资源配置
+        # 根据 Agent 任务复杂度调整
+        resources:
+          requests:
+            cpu: "100m"      # 最小 CPU（保证调度）
+            memory: "128Mi"  # 最小内存
+          limits:
+            cpu: "500m"      # 最大 CPU（防止资源抢占）
+            memory: "256Mi"  # 最大内存
+
+        # 卷挂载
+        volumeMounts:
+        - name: opensandbox-bin
+          mountPath: /opt/opensandbox/bin
+          readOnly: true
+
+        # 健康检查（可选）
+        # livenessProbe:
+        #   tcpSocket:
+        #     port: execd
+        #   initialDelaySeconds: 10
+        #   periodSeconds: 30
+        # readinessProbe:
+        #   tcpSocket:
+        #     port: execd
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+
+      # ========================================
+      # Sidecar：Task Executor
+      # ========================================
+      - name: task-executor
+        # 镜像说明：
+        # - 使用 Helm chart 中配置的 task-executor 镜像
+        # - 版本应与 controller 版本保持一致
+        # - 开发环境可用：opensandbox/task-executor:dev
+        # - 生产环境建议：your-registry/opensandbox-task-executor:v1.0.0
+        image: opensandbox/task-executor:dev
+        imagePullPolicy: Never  # 开发环境使用本地镜像；生产环境改为 IfNotPresent
+
+        # 端口配置
+        ports:
+        - containerPort: 5758
+          name: task-executor
+          protocol: TCP
+
+        # 资源配置
+        # task-executor 需要更多 CPU 用于进程注入
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"      # 可能需要更多 CPU
+            memory: "256Mi"
+
+        # 安全上下文
+        # 必需：SYS_PTRACE 权限用于注入进程到 sandbox 容器
+        securityContext:
+          capabilities:
+            add: ["SYS_PTRACE"]
+          # 生产环境建议添加其他安全设置：
+          # runAsNonRoot: true
+          # runAsUser: 1000
+          # allowPrivilegeEscalation: false
+
+      # ========================================
+      # 卷配置
+      # ========================================
+      volumes:
+      - name: opensandbox-bin
+        emptyDir: {}
+      # 可添加其他卷（如配置文件、数据持久化）：
+      # - name: config
+      #   configMap:
+      #     name: agent-config
+      # - name: data
+      #   persistentVolumeClaim:
+      #     claimName: agent-data-pvc
+
+      # ========================================
+      # 调度配置（可选）
+      # ========================================
+      # 节点选择器
+      # nodeSelector:
+      #   workload-type: agent
+      #   zone: production
+
+      # 容忍度（允许调度到特定污点的节点）
+      # tolerations:
+      # - key: "workload"
+      #   operator: "Equal"
+      #   value: "agent"
+      #   effect: "NoSchedule"
+
+      # 亲和性（控制 Pod 分布）
+      # affinity:
+      #   podAntiAffinity:
+      #     preferredDuringSchedulingIgnoredDuringExecution:
+      #     - weight: 100
+      #       podAffinityTerm:
+      #         labelSelector:
+      #           matchExpressions:
+      #           - key: pool
+      #             operator: In
+      #             values:
+      #             - agent-pool
+      #         topologyKey: kubernetes.io/hostname
+
+  # ========================================
+  # Pool 容量配置
+  # ========================================
+  capacitySpec:
+    # bufferMin: 最小缓冲 - Pool 保证至少有这么多可用 Pod
+    # - 保证快速响应，避免 Agent 等待
+    # - 根据并发 Agent 峰值设置
+    bufferMin: 10
+
+    # bufferMax: 最大缓冲 - Pool 最多预热这么多 Pod
+    # - 控制预热成本，避免资源浪费
+    # - 通常设为 bufferMin 的 2-5 倍
+    bufferMax: 50
+
+    # poolMin: Pool 最小容量 - 即使没人用，也保持这么多 Pod
+    # - 低峰期保底容量，避免冷启动
+    # - 通常与 bufferMin 相同或稍大
+    poolMin: 10
+
+    # poolMax: Pool 最大容量 - 高峰期最多这么多 Pod
+    # - 限制最大资源使用，避免集群资源耗尽
+    # - 根据集群资源和业务峰值设置
+    poolMax: 200
+
+    # 容量规划示例：
+    # 场景：200 个并发 Agent，平均每个 Agent 会话 5 分钟
+    #   bufferMin: 50  （保证 50 个 Agent 立即可用）
+    #   bufferMax: 100 （预热 100 个，覆盖短期突发）
+    #   poolMin: 50    （低峰期保持 50 个）
+    #   poolMax: 300   （高峰期最多 300 个）
+
+# ==============================================================================
+# SDK 使用示例
+# ==============================================================================
+#
+# Python SDK 使用此 Pool：
+#
+# ```python
+# import asyncio
+# from datetime import timedelta
+# from opensandbox import Sandbox
+# from opensandbox.config import ConnectionConfig
+#
+# async def create_agent_sandbox(agent_id: str):
+#     """为 Agent 创建 sandbox"""
+#     sandbox = await Sandbox.create(
+#         "nginx:latest",  # 镜像会被忽略，使用 Pool 中的镜像
+#         entrypoint=["/bin/sh", "-c", "sleep infinity"],  # 可自定义
+#         env={"AGENT_ID": agent_id},  # 可传递环境变量
+#         timeout=timedelta(hours=1),
+#         connection_config=ConnectionConfig(domain="<server-ip>:8088"),
+#         extensions={"poolRef": "agent-pool"}  # 指定 Pool 名称
+#     )
+#     return sandbox
+#
+# async def handle_agent_request(agent_id: str, task: str):
+#     """处理单个 Agent 请求"""
+#     sandbox = await create_agent_sandbox(agent_id)
+#     try:
+#         result = await sandbox.commands.run(task)
+#         return result
+#     finally:
+#         await sandbox.kill()  # Pod 返回 Pool
+# ```
+#
+# ==============================================================================
+# 部署和监控
+# ==============================================================================
+#
+# 1. 部署 Pool：
+#    kubectl apply -f pool-agent-production.yaml
+#
+# 2. 验证 Pool 状态：
+#    kubectl get pool agent-pool -n default
+#    kubectl get pool agent-pool -n default -o jsonpath='{.status}' | jq
+#
+# 3. 查看 Pool 的 Pod：
+#    kubectl get pods -l pool=agent-pool -n default
+#
+# 4. 监控 Pool 使用率：
+#    watch kubectl get pool agent-pool -n default -o jsonpath='{.status}'
+#    # 输出示例：
+#    # {
+#    #   "total": 50,      # 总 Pod 数
+#    #   "allocated": 30,  # 已分配
+#    #   "available": 20   # 可用
+#    # }
+#
+# 5. 优化建议：
+#    - 如果 available 经常为 0 → 增加 bufferMax
+#    - 如果 available 总是接近 total → 减少 bufferMin
+#    - 如果 total 经常达到 poolMax → 增加 poolMax 或优化 Agent 使用
+#
+# ==============================================================================
+# 故障排查
+# ==============================================================================
+#
+# Pool Pod 无法启动：
+#   kubectl describe pod -l pool=agent-pool -n default
+#   kubectl logs -l pool=agent-pool -n default -c sandbox-container
+#   kubectl logs -l pool=agent-pool -n default -c task-executor
+#
+# execd 连接失败：
+#   kubectl exec -it <pod-name> -n default -c sandbox-container -- ps aux | grep execd
+#   kubectl exec -it <pod-name> -n default -c sandbox-container -- nc -zv localhost 44772
+#
+# task-executor 权限问题：
+#   kubectl get pod <pod-name> -n default -o yaml | grep -A 10 securityContext
+#
+# ==============================================================================
