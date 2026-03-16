@@ -4,6 +4,8 @@ on:
   workflow_run:
     workflows: ["FastGPT Build (Unprivileged)"]
     types: [completed]
+    branches:
+      - '**'  # 监听所有分支
 
 jobs:
   push-preview-images:
@@ -30,19 +32,24 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // 获取触发工作流的 PR 信息
             const { data: pullRequests } = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`
             });
 
-            if (pullRequests.length === 0) {
-              core.setFailed('No open PR found for this branch');
+            // 查找匹配的 PR（支持 fork 仓库）
+            const pr = pullRequests.find(pr =>
+              pr.head.ref === context.payload.workflow_run.head_branch &&
+              pr.head.sha === context.payload.workflow_run.head_sha
+            );
+
+            if (!pr) {
+              core.setFailed('No open PR found for this branch and commit');
               return;
             }
 
-            const pr = pullRequests[0];
             core.setOutput('number', pr.number);
             core.setOutput('sha', context.payload.workflow_run.head_sha);
 
@@ -107,6 +114,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tool: issue-comment
+          issue-number: ${{ steps.pr.outputs.number }}
           title: 'Preview ${{ matrix.image }} Image:'
           body: |
             ```
@@ -119,6 +127,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tool: issue-comment
+          issue-number: ${{ steps.pr.outputs.number }}
           title: 'Preview ${{ matrix.image }} Image Push Failed'
           body: |
             Failed to push preview image. Please check workflow logs.
