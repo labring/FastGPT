@@ -5,18 +5,9 @@ on:
     paths:
       - 'document/**'
     types: [opened, synchronize, reopened]
-  pull_request_target:
-    paths:
-      - 'document/**'
-    types: [opened, synchronize, reopened]
 
 jobs:
   build-docs-image:
-    # 内部和外部贡献者都可以触发构建
-    if: |
-      (github.event_name == 'pull_request') ||
-      (github.event_name == 'pull_request_target')
-
     permissions:
       contents: read
       pull-requests: write
@@ -26,9 +17,6 @@ jobs:
     steps:
       - name: Checkout PR code
         uses: actions/checkout@v4
-        with:
-          # 对于 pull_request_target，检出 PR 的代码
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Get current datetime
         id: datetime
