@@ -1,0 +1,25 @@
+packages/global/core/agentSkills/api.ts
+  cba2fde9d71420c1 1
+packages/global/openapi/index.ts
+  cba2fde9d71420c1 9,24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "46bb74324fe75c4101a2b4e23c13d52d34f43392",
+  "prompts": {
+    "cba2fde9d71420c1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cfb44-7bb9-78f2-a8ab-e5dd77312071",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 276,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
