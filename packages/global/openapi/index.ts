@@ -6,6 +6,7 @@ import { AppPath } from './core/app';
 import { SupportPath } from './support';
 import { DatasetPath } from './core/dataset';
 import { AIPath } from './core/ai';
+import { AgentSkillsPath } from './core/agentSkills';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -20,7 +21,8 @@ export const openAPIDocument = createDocument({
     ...DatasetPath,
     ...PluginPath,
     ...SupportPath,
-    ...AIPath
+    ...AIPath,
+    ...AgentSkillsPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
