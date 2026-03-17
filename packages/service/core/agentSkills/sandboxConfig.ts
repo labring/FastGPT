@@ -11,12 +11,7 @@ import type {
 import { createSandbox, type ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
-
-/** Parse an integer from an env-var string, returning defaultValue when the result is NaN. */
-function safeParseInt(value: string | undefined, defaultValue: number): number {
-  const n = parseInt(value ?? '', 10);
-  return isNaN(n) ? defaultValue : n;
-}
+import { env } from '../../env';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -82,24 +77,23 @@ function toOpenSandboxCreateConfig(
  * Get sandbox provider configuration from environment variables
  */
 export function getSandboxProviderConfig(): SandboxProviderConfig {
-  const provider = (process.env.SANDBOX_PROVIDER_NAME || 'opensandbox') as SandboxProviderType;
-  const baseUrl = process.env.SANDBOX_PROVIDER_BASE_URL || 'http://127.0.0.1:8080';
-  const runtime = (process.env.SANDBOX_PROVIDER_RUNTIME || 'kubernetes') as SandboxRuntime;
+  const provider = (env.AGENT_SANDBOX_PROVIDER ?? 'opensandbox') as SandboxProviderType;
+  const runtime = (env.AGENT_SANDBOX_RUNTIME ?? 'kubernetes') as SandboxRuntime;
 
   switch (provider) {
     case 'opensandbox':
       return {
         provider,
-        baseUrl,
-        apiKey: process.env.SANDBOX_PROVIDER_API_KEY,
+        baseUrl: env.AGENT_SANDBOX_BASE_URL ?? 'http://127.0.0.1:8080',
+        apiKey: env.AGENT_SANDBOX_API_KEY,
         runtime
       };
 
     case 'sealosdevbox':
       return {
         provider,
-        baseUrl,
-        token: process.env.SANDBOX_PROVIDER_TOKEN || process.env.SANDBOX_PROVIDER_API_KEY || '',
+        baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL ?? env.AGENT_SANDBOX_BASE_URL ?? '',
+        token: env.AGENT_SANDBOX_SEALOS_TOKEN ?? env.AGENT_SANDBOX_API_KEY ?? '',
         runtime
       };
 
@@ -114,16 +108,16 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
 export function getSandboxDefaults(): SandboxDefaults {
   return {
     defaultImage: {
-      repository: process.env.SANDBOX_DEFAULT_IMAGE || 'fastgpt-agent-sandbox',
-      tag: process.env.SANDBOX_DEFAULT_IMAGE_TAG || 'docker'
+      repository: env.AGENT_SANDBOX_DEFAULT_IMAGE ?? 'fastgpt-agent-sandbox',
+      tag: env.AGENT_SANDBOX_DEFAULT_IMAGE_TAG ?? 'docker'
     },
-    workDirectory: process.env.SANDBOX_WORK_DIRECTORY || '/home/sandbox/workspace',
+    workDirectory: env.AGENT_SANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
     targetPort: 8080,
     entrypoint: {
-      editDebugKubernetes: process.env.SANDBOX_K8S_ENTRYPOINT || '/home/sandbox/entrypoint.sh',
+      editDebugKubernetes: env.AGENT_SANDBOX_K8S_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh',
       sessionKubernetes:
-        process.env.SANDBOX_SESSION_K8S_ENTRYPOINT || '/opt/sync-agent/docker-entrypoint.sh',
-      docker: process.env.SANDBOX_DOCKER_ENTRYPOINT || '/opt/sync-agent/docker-entrypoint.sh'
+        env.AGENT_SANDBOX_SESSION_K8S_ENTRYPOINT ?? '/opt/sync-agent/docker-entrypoint.sh',
+      docker: env.AGENT_SANDBOX_DOCKER_ENTRYPOINT ?? '/opt/sync-agent/docker-entrypoint.sh'
     }
   };
 }
@@ -133,16 +127,10 @@ export function getSandboxDefaults(): SandboxDefaults {
  */
 export function getSkillSizeLimits(): SkillSizeLimits {
   return {
-    maxUploadBytes: safeParseInt(process.env.AGENT_SKILL_MAX_UPLOAD_SIZE, 50 * 1024 * 1024),
-    maxUncompressedBytes: safeParseInt(
-      process.env.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE,
-      200 * 1024 * 1024
-    ),
-    maxDownloadBytes: safeParseInt(process.env.AGENT_SKILL_MAX_DOWNLOAD_SIZE, 200 * 1024 * 1024),
-    maxSandboxPackageBytes: safeParseInt(
-      process.env.AGENT_SKILL_MAX_SANDBOX_SIZE,
-      200 * 1024 * 1024
-    )
+    maxUploadBytes: env.AGENT_SKILL_MAX_UPLOAD_SIZE ?? 50 * 1024 * 1024,
+    maxUncompressedBytes: env.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE ?? 200 * 1024 * 1024,
+    maxDownloadBytes: env.AGENT_SKILL_MAX_DOWNLOAD_SIZE ?? 200 * 1024 * 1024,
+    maxSandboxPackageBytes: env.AGENT_SKILL_MAX_SANDBOX_SIZE ?? 200 * 1024 * 1024
   };
 }
 

@@ -5,7 +5,7 @@ import {
   SANDBOX_TOOL_DESCRIPTION
 } from '../../../ai/sandbox/constants';
 import type { I18nStringType } from '../../../../common/i18n/type';
-import { SandboxToolIds } from './sandboxTools';
+import { SandboxToolIds, sandboxToolDescriptions } from './sandboxTools';
 
 export enum SubAppIds {
   plan = 'plan_agent',
@@ -79,7 +79,7 @@ export const systemSubInfo: Record<
       en: 'ReadFile'
     },
     avatar: 'core/workflow/template/readFiles',
-    toolDescription: 'Read file contents in the sandbox'
+    toolDescription: sandboxToolDescriptions[SandboxToolIds.readFile]
   },
   [SandboxToolIds.writeFile]: {
     name: {
@@ -88,7 +88,7 @@ export const systemSubInfo: Record<
       en: 'WriteFile'
     },
     avatar: 'core/workflow/template/readFiles',
-    toolDescription: 'Create or overwrite a file in the sandbox'
+    toolDescription: sandboxToolDescriptions[SandboxToolIds.writeFile]
   },
   [SandboxToolIds.editFile]: {
     name: {
@@ -97,7 +97,7 @@ export const systemSubInfo: Record<
       en: 'EditFile'
     },
     avatar: 'core/workflow/template/readFiles',
-    toolDescription: 'Edit files in the sandbox precisely'
+    toolDescription: sandboxToolDescriptions[SandboxToolIds.editFile]
   },
   [SandboxToolIds.execute]: {
     name: {
@@ -106,7 +106,7 @@ export const systemSubInfo: Record<
       en: 'Execute'
     },
     avatar: 'core/workflow/template/codeRun',
-    toolDescription: 'Execute a shell command in the sandbox'
+    toolDescription: sandboxToolDescriptions[SandboxToolIds.execute]
   },
   [SandboxToolIds.search]: {
     name: {
@@ -115,7 +115,7 @@ export const systemSubInfo: Record<
       en: 'SearchFile'
     },
     avatar: 'core/workflow/template/datasetSearch',
-    toolDescription: 'Search for files in the sandbox'
+    toolDescription: sandboxToolDescriptions[SandboxToolIds.search]
   },
   [SandboxToolIds.fetchUserFile]: {
     name: {
@@ -124,6 +124,6 @@ export const systemSubInfo: Record<
       en: 'FetchUserFile'
     },
     avatar: 'core/workflow/template/readFiles',
-    toolDescription: 'Download a user-uploaded file into the sandbox filesystem'
+    toolDescription: sandboxToolDescriptions[SandboxToolIds.fetchUserFile]
   }
 };

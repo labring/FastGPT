@@ -1,15 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  buildSandboxAdapter,
-  connectToProviderSandbox,
-  disconnectFromProviderSandbox,
-  getProviderSandboxEndpoint,
-  getSandboxProviderConfig,
-  validateSandboxConfig
-} from '@fastgpt/service/core/agentSkills/sandboxConfig';
-
 const envBackup = { ...process.env };
+
+const loadSandboxConfigModule = async () => {
+  vi.resetModules();
+  return import('@fastgpt/service/core/agentSkills/sandboxConfig');
+};
 
 describe('sandboxConfig provider helpers', () => {
   beforeEach(() => {
@@ -21,11 +17,13 @@ describe('sandboxConfig provider helpers', () => {
     process.env = { ...envBackup };
   });
 
-  it('parses sealosdevbox config from env', () => {
-    process.env.SANDBOX_PROVIDER_NAME = 'sealosdevbox';
-    process.env.SANDBOX_PROVIDER_BASE_URL = 'https://devbox.example.com';
-    process.env.SANDBOX_PROVIDER_TOKEN = 'sealos-token';
-    process.env.SANDBOX_PROVIDER_RUNTIME = 'docker';
+  it('parses sealosdevbox config from env', async () => {
+    process.env.AGENT_SANDBOX_PROVIDER = 'sealosdevbox';
+    process.env.AGENT_SANDBOX_SEALOS_BASEURL = 'https://devbox.example.com';
+    process.env.AGENT_SANDBOX_SEALOS_TOKEN = 'sealos-token';
+    process.env.AGENT_SANDBOX_RUNTIME = 'docker';
+
+    const { getSandboxProviderConfig } = await loadSandboxConfigModule();
 
     const config = getSandboxProviderConfig();
 
@@ -37,7 +35,9 @@ describe('sandboxConfig provider helpers', () => {
     });
   });
 
-  it('builds opensandbox adapter through createSandbox factory', () => {
+  it('builds opensandbox adapter through createSandbox factory', async () => {
+    const { buildSandboxAdapter } = await loadSandboxConfigModule();
+
     const result = buildSandboxAdapter(
       {
         provider: 'opensandbox',
@@ -69,7 +69,9 @@ describe('sandboxConfig provider helpers', () => {
     });
   });
 
-  it('rejects unsupported managed create config for sealosdevbox', () => {
+  it('rejects unsupported managed create config for sealosdevbox', async () => {
+    const { buildSandboxAdapter } = await loadSandboxConfigModule();
+
     expect(() =>
       buildSandboxAdapter(
         {
@@ -92,6 +94,8 @@ describe('sandboxConfig provider helpers', () => {
   });
 
   it('connects opensandbox via provider-specific connect hook', async () => {
+    const { buildSandboxAdapter, connectToProviderSandbox } = await loadSandboxConfigModule();
+
     const connectMock = vi
       .spyOn(
         Object.getPrototypeOf(
@@ -121,6 +125,8 @@ describe('sandboxConfig provider helpers', () => {
   });
 
   it('disconnects opensandbox and keeps other providers as no-op', async () => {
+    const { disconnectFromProviderSandbox } = await loadSandboxConfigModule();
+
     const closeMock = vi.fn().mockResolvedValue(undefined);
     await disconnectFromProviderSandbox({
       provider: 'opensandbox',
@@ -136,6 +142,8 @@ describe('sandboxConfig provider helpers', () => {
   });
 
   it('throws when endpoint capability is unavailable on current provider', async () => {
+    const { getProviderSandboxEndpoint } = await loadSandboxConfigModule();
+
     await expect(
       getProviderSandboxEndpoint(
         {
@@ -146,7 +154,9 @@ describe('sandboxConfig provider helpers', () => {
     ).rejects.toThrow('does not expose endpoint capability');
   });
 
-  it('validates sealosdevbox token requirement', () => {
+  it('validates sealosdevbox token requirement', async () => {
+    const { validateSandboxConfig } = await loadSandboxConfigModule();
+
     expect(() =>
       validateSandboxConfig({
         provider: 'sealosdevbox',

@@ -10,6 +10,21 @@ export enum SandboxToolIds {
   fetchUserFile = 'sandbox_fetch_user_file'
 }
 
+export const sandboxToolDescriptions = {
+  [SandboxToolIds.readFile]:
+    'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.',
+  [SandboxToolIds.writeFile]:
+    'Create or overwrite a file in the sandbox. Used to write input data, create config files, etc.',
+  [SandboxToolIds.editFile]:
+    'Edit files in the sandbox precisely by finding and replacing specified content. Supports batch editing across multiple files.',
+  [SandboxToolIds.execute]:
+    'Execute a shell command in the sandbox. Used to run scripts, install dependencies, execute skills, etc.',
+  [SandboxToolIds.search]:
+    'Search for files in the sandbox. Find matching file paths by filename pattern (glob).',
+  [SandboxToolIds.fetchUserFile]:
+    'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.'
+} as const;
+
 // Zod parameter schemas (runtime validation)
 export const SandboxReadFileSchema = z.object({
   paths: z.array(z.string()).describe('Array of absolute file paths')
@@ -50,8 +65,7 @@ export const sandboxReadFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.readFile,
-    description:
-      'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.',
+    description: sandboxToolDescriptions[SandboxToolIds.readFile],
     parameters: {
       type: 'object',
       properties: {
@@ -70,8 +84,7 @@ export const sandboxWriteFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.writeFile,
-    description:
-      'Create or overwrite a file in the sandbox. Used to write input data, create config files, etc.',
+    description: sandboxToolDescriptions[SandboxToolIds.writeFile],
     parameters: {
       type: 'object',
       properties: {
@@ -87,8 +100,7 @@ export const sandboxEditFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.editFile,
-    description:
-      'Edit files in the sandbox precisely by finding and replacing specified content. Supports batch editing across multiple files.',
+    description: sandboxToolDescriptions[SandboxToolIds.editFile],
     parameters: {
       type: 'object',
       properties: {
@@ -115,8 +127,7 @@ export const sandboxExecuteTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.execute,
-    description:
-      'Execute a shell command in the sandbox. Used to run scripts, install dependencies, execute skills, etc.',
+    description: sandboxToolDescriptions[SandboxToolIds.execute],
     parameters: {
       type: 'object',
       properties: {
@@ -133,8 +144,7 @@ export const sandboxSearchTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.search,
-    description:
-      'Search for files in the sandbox. Find matching file paths by filename pattern (glob).',
+    description: sandboxToolDescriptions[SandboxToolIds.search],
     parameters: {
       type: 'object',
       properties: {
@@ -150,8 +160,7 @@ export const sandboxFetchUserFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.fetchUserFile,
-    description:
-      'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.',
+    description: sandboxToolDescriptions[SandboxToolIds.fetchUserFile],
     parameters: {
       type: 'object',
       properties: {
