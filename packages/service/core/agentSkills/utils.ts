@@ -139,7 +139,7 @@ export function extractSkillFromMarkdown(markdown: string): { skill: any; error?
   const skill: any = {
     name: frontmatter.name,
     description,
-    category: ['other'], // default
+    category: [AgentSkillCategoryEnum.other], // default
     config: {}
   };
 
@@ -287,7 +287,7 @@ export function createSkillTemplate(name: string): SkillPackageType {
     skill: {
       name: name || 'New Skill',
       description: 'Enter a description for your skill',
-      category: ['other'],
+      category: [AgentSkillCategoryEnum.other],
       config: {}
     }
   };

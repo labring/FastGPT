@@ -13,7 +13,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import * as responseModule from '@fastgpt/service/common/response';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -305,6 +305,7 @@ describe('debugChat handler — parameter validation', () => {
   it('should NOT call sseErrRes with sandbox error when edit-debug sandbox exists', async () => {
     // Create sandbox instance
     await MongoSandboxInstance.create({
+      provider: 'opensandbox',
       sandboxId: getNanoid(),
       appId: skillId,
       chatId: 'edit-debug',

@@ -17,7 +17,7 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
-import { MongoSandboxInstance } from '../../../../../../agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '../../../../../../ai/sandbox/schema';
 import { MongoAgentSkillsVersion } from '../../../../../../agentSkills/versionSchema';
 import { downloadSkillPackage } from '../../../../../../agentSkills/storage';
 import { parseSkillMarkdown } from '../../../../../../agentSkills/utils';
@@ -220,7 +220,7 @@ export async function createAgentSandbox(
       { lastActiveAt: new Date() }
     );
 
-    const reusedSkillIds = existingInstance.detail.skillIds
+    const reusedSkillIds = existingInstance.detail?.skillIds
       ? existingInstance.detail.skillIds.map(String)
       : skillIds;
     const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
@@ -329,6 +329,7 @@ export async function createAgentSandbox(
 
     // Step 5: Persist to MongoDB
     await MongoSandboxInstance.create({
+      provider: providerConfig.provider,
       sandboxId: sandboxInfo.id,
       appId: teamId, // session-runtime uses teamId as appId
       userId: tmbId,
@@ -422,7 +423,8 @@ export async function connectEditDebugSandbox(
 
   const instanceDoc = await MongoSandboxInstance.findOne({
     appId: skillId,
-    chatId: 'edit-debug'
+    chatId: 'edit-debug',
+    'detail.sandboxType': SandboxTypeEnum.editDebug
   });
   if (!instanceDoc) {
     throw new Error('No active edit-debug sandbox found for this skill');

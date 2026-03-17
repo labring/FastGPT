@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 
 import type { ImportSkillBody } from '@fastgpt/global/core/agentSkills/api';
 import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
+import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
 import {
   getSupportedArchiveFormat,
   findSkillMdKey,
@@ -51,7 +52,7 @@ function buildSkillPackage(
     skill: {
       name: pkgName,
       description: pkgDescription,
-      category: ['other'],
+      category: [AgentSkillCategoryEnum.other],
       config: {},
       avatar
     }

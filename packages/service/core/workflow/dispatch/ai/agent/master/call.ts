@@ -193,7 +193,7 @@ export const masterCall = async ({
           systemPrompt,
           hasUserTools,
           useAgentSandbox,
-	  !!capabilityToolCallHandler
+          hasSandboxSkills: !!capabilityToolCallHandler
         })
       },
       ...masterMessages

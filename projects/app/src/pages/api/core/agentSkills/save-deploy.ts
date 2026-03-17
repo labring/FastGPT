@@ -16,9 +16,9 @@ import {
   standardizeSkillPackage
 } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
-import { MongoSandboxInstance } from '@fastgpt/service/core/agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
   SaveDeploySkillBody,
   SaveDeploySkillResponse
@@ -60,10 +60,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sandboxInfo = await MongoSandboxInstance.findOne({
       appId: skillId,
       chatId: 'edit-debug',
-      status: SandboxStatusEnum.running
+      status: SandboxStatusEnum.running,
+      'detail.sandboxType': SandboxTypeEnum.editDebug
     });
 
-    if (!sandboxInfo || sandboxInfo.detail.providerStatus.state !== 'Running') {
+    if (!sandboxInfo || sandboxInfo.detail?.providerStatus.state !== 'Running') {
       return jsonRes(res, {
         code: 404,
         error: 'Edit sandbox not found or not running'

@@ -8,6 +8,7 @@ import { MongoSandboxInstance } from '@fastgpt/service/core/agentSkills/sandboxS
 describe('SandboxInstance Schema', () => {
   it('should create a sandbox instance document with required fields', async () => {
     const mockInstance = {
+      provider: 'opensandbox',
       sandboxId: 'provider-sandbox-abc123',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
@@ -41,6 +42,7 @@ describe('SandboxInstance Schema', () => {
 
   it('should have default values for optional fields', async () => {
     const doc = new MongoSandboxInstance({
+      provider: 'opensandbox',
       sandboxId: 'provider-sandbox-def456',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
@@ -65,6 +67,7 @@ describe('SandboxInstance Schema', () => {
 
   it('should validate status enum', async () => {
     const doc = new MongoSandboxInstance({
+      provider: 'opensandbox',
       sandboxId: 'provider-sandbox-ghi789',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
@@ -88,6 +91,7 @@ describe('SandboxInstance Schema', () => {
 
   it('should validate detail.sandboxType enum', async () => {
     const doc = new MongoSandboxInstance({
+      provider: 'opensandbox',
       sandboxId: 'provider-sandbox-jkl012',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
@@ -111,6 +115,7 @@ describe('SandboxInstance Schema', () => {
 
   it('should allow endpoint and storage as optional fields in detail', async () => {
     const doc = new MongoSandboxInstance({
+      provider: 'opensandbox',
       sandboxId: 'provider-sandbox-mno345',
       appId: '507f1f77bcf86cd799439011',
       userId: '507f1f77bcf86cd799439013',
@@ -146,6 +151,7 @@ describe('SandboxInstance Schema', () => {
 
   it('should support stopped status', async () => {
     const doc = new MongoSandboxInstance({
+      provider: 'opensandbox',
       sandboxId: 'provider-sandbox-pqr678',
       appId: '507f1f77bcf86cd799439012',
       userId: '507f1f77bcf86cd799439013',

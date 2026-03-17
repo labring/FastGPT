@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/service/core/agentSkills/archiveUtils';
 import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/agentSkills/api';
 import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
+import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getSkillSizeLimits } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import fs from 'fs/promises';
@@ -102,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       skill: {
         name: pkgName,
         description: pkgDescription,
-        category: ['other'],
+        category: [AgentSkillCategoryEnum.other],
         config: {},
         avatar: body.avatar
       }

@@ -242,7 +242,7 @@ export function agentForm2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: data.aiSettings.useAgentSandbox ?? false
-            }
+            },
             // Skills configuration
             ...(data.skills && data.skills.length > 0
               ? [

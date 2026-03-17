@@ -7,7 +7,7 @@
 
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import mongoose from 'mongoose';
-import { MongoSandboxInstance } from './sandboxSchema';
+import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';
 import { MongoAgentSkillsVersion } from './versionSchema';
 import { downloadSkillPackage } from './storage';
@@ -124,7 +124,8 @@ export async function createEditDebugSandbox(
   // Check for existing sandbox instance by skillId
   const existingInstance = await MongoSandboxInstance.findOne({
     appId: skillId,
-    chatId: EDIT_DEBUG_CHAT_ID
+    chatId: EDIT_DEBUG_CHAT_ID,
+    'detail.sandboxType': SandboxTypeEnum.editDebug
   });
 
   if (existingInstance?.status === SandboxStatusEnum.running) {
@@ -134,7 +135,7 @@ export async function createEditDebugSandbox(
       sandboxId: existingInstance.sandboxId
     });
 
-    const endpointInfo = existingInstance.detail.endpoint!;
+    const endpointInfo = existingInstance.detail!.endpoint!;
 
     await MongoSandboxInstance.updateOne(
       { _id: existingInstance._id },
@@ -153,8 +154,8 @@ export async function createEditDebugSandbox(
       providerSandboxId: existingInstance.sandboxId,
       endpoint: endpointInfo,
       status: {
-        state: existingInstance.detail.providerStatus.state,
-        message: existingInstance.detail.providerStatus.message
+        state: existingInstance.detail!.providerStatus.state,
+        message: existingInstance.detail!.providerStatus.message
       }
     };
   }
@@ -297,6 +298,7 @@ export async function createEditDebugSandbox(
       const doc = await MongoSandboxInstance.create(
         [
           {
+            provider: providerConfig.provider,
             sandboxId: sandboxInfo.id,
             appId: skillId,
             userId: tmbId,
@@ -390,7 +392,7 @@ export async function getSandboxInfo(
     throw new Error('Sandbox not found or access denied');
   }
 
-  return sandbox;
+  return sandbox as unknown as SandboxInstanceSchemaType;
 }
 
 /**

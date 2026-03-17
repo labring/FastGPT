@@ -32,7 +32,7 @@ import type { WorkflowResponseType } from '../../../type';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type { AgentSandboxContext, DeployedSkillInfo } from '../sub/sandbox/types';
 import { MongoAgentSkills } from '../../../../../agentSkills/schema';
-import { MongoSandboxInstance } from '../../../../../agentSkills/sandboxSchema';
+import { MongoSandboxInstance } from '../../../../../ai/sandbox/schema';
 import { getSandboxDefaults } from '../../../../../agentSkills/sandboxConfig';
 import { downloadSkillPackage } from '../../../../../agentSkills/storage';
 import { extractSkillMdInfoFromBuffer } from '../../../../../agentSkills/archiveUtils';
