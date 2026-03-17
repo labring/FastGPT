@@ -57,6 +57,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
   } = usePagination(getAppChatLogs, {
     defaultPageSize: 20,
     params: params || undefined,
+    disabled: !params,
     refreshDeps: [params]
   });
 

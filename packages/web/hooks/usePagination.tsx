@@ -44,7 +44,8 @@ export function usePagination<DataT, ResT = {}>(
     EmptyTip,
     pollingInterval,
     pollingWhenHidden = false,
-    storeToQuery = false
+    storeToQuery = false,
+    disabled = false
   }: {
     defaultPageSize?: number;
     defaultPageNum?: number;
@@ -59,6 +60,7 @@ export function usePagination<DataT, ResT = {}>(
     pollingInterval?: number;
     pollingWhenHidden?: boolean;
     storeToQuery?: boolean;
+    disabled?: boolean;
   }
 ) {
   const router = useRouter();
@@ -95,6 +97,7 @@ export function usePagination<DataT, ResT = {}>(
 
   const fetchData = useMemoizedFn(
     async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
+      if (disabled) return;
       // Only check noMore if we have already loaded data (total > 0 or data.length > 0)
       // This prevents blocking the initial load when total is still 0
       if (noMore && num !== 1 && (total > 0 || data.length > 0)) {
@@ -348,6 +351,7 @@ export function usePagination<DataT, ResT = {}>(
   const isFirstLoad = useRef(true);
   const { runAsync: refresh } = useRequest(
     async () => {
+      if (disabled) return;
       if (isFirstLoad.current) {
         isFirstLoad.current = false;
         fetchData(numPage);
