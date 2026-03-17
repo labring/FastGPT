@@ -1,0 +1,25 @@
+packages/global/core/workflow/node/agent/constants.ts
+  cba2fde9d71420c1 8,82,91,100,109,118,127
+packages/global/core/workflow/node/agent/sandboxTools.ts
+  cba2fde9d71420c1 13-27,68,87,103,130,147,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "38d300cb86d0a1bb90598124b9c0212b865fa4f9",
+  "prompts": {
+    "cba2fde9d71420c1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cfb44-7bb9-78f2-a8ab-e5dd77312071",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 19,
+      "accepted_lines": 28,
+      "overriden_lines": 0
+    }
+  }
+}
