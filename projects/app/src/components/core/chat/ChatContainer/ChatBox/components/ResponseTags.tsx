@@ -15,6 +15,8 @@ import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -24,7 +26,6 @@ export type CitationRenderItem = {
   onClick: () => any;
 };
 
-const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
 const ResponseTags = ({
@@ -49,13 +50,15 @@ const ResponseTags = ({
 
   const chatTime = historyItem.time || new Date();
   const durationSeconds = historyItem.durationSeconds || 0;
+  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const {
     totalQuoteList: quoteList = [],
-    llmModuleAccount = 0,
-    historyPreviewLength = 0,
-    toolCiteLinks = []
+    toolCiteLinks = [],
+    useAgentSandbox
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
@@ -78,11 +81,12 @@ const ResponseTags = ({
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
-  const {
-    isOpen: isOpenContextModal,
-    onOpen: onOpenContextModal,
-    onClose: onCloseContextModal
-  } = useDisclosure();
+
+  const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData
+  });
 
   useSize(quoteListRef);
   const quoteIsOverflow = quoteListRef.current
@@ -246,6 +250,14 @@ const ResponseTags = ({
 
       {notEmptyTags && (
         <Flex alignItems={'center'} mt={3} flexWrap={'wrap'} gap={2}>
+          {isPc && durationSeconds > 0 && (
+            <MyTooltip label={t('chat:module_runtime_and')}>
+              <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
+                {durationSeconds.toFixed(2)}s
+              </MyTag>
+            </MyTooltip>
+          )}
+
           {quoteList.length > 0 && (
             <MyTooltip label={t('chat:view_citations')}>
               <MyTag
@@ -261,33 +273,19 @@ const ResponseTags = ({
               </MyTag>
             </MyTooltip>
           )}
-          {llmModuleAccount === 1 && notSharePage && (
+
+          {useAgentSandbox && (
             <>
-              {historyPreviewLength > 0 && (
-                <MyTooltip label={t('chat:click_contextual_preview')}>
-                  <MyTag
-                    colorSchema="green"
-                    cursor={'pointer'}
-                    type="borderSolid"
-                    onClick={onOpenContextModal}
-                  >
-                    {t('chat:contextual', { num: historyPreviewLength })}
-                  </MyTag>
-                </MyTooltip>
-              )}
-            </>
-          )}
-          {llmModuleAccount > 1 && notSharePage && (
-            <MyTag type="borderSolid" colorSchema="blue">
-              {t('chat:multiple_AI_conversations')}
-            </MyTag>
-          )}
-          {isPc && durationSeconds > 0 && (
-            <MyTooltip label={t('chat:module_runtime_and')}>
-              <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
-                {durationSeconds.toFixed(2)}s
+              <MyTag
+                colorSchema="green"
+                type="borderSolid"
+                cursor={'pointer'}
+                onClick={onOpenSandboxModal}
+              >
+                {t('chat:sandbox_files')}
               </MyTag>
-            </MyTooltip>
+              <SandboxEditorModal />
+            </>
           )}
 
           {notSharePage && showWholeResponse && (
@@ -305,7 +303,6 @@ const ResponseTags = ({
         </Flex>
       )}
 
-      {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
       {isOpenWholeModal && (
         <WholeResponseModal dataId={dataId} chatTime={chatTime} onClose={onCloseWholeModal} />
       )}

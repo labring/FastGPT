@@ -2,8 +2,8 @@
   "name": "@fastgpt/web",
   "version": "1.0.0",
   "engines": {
-    "node": ">=20.x",
-    "pnpm": ">=9.x"
+    "node": ">=20",
+    "pnpm": ">=9"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
@@ -24,7 +24,7 @@
     "@lexical/selection": "0.12.6",
     "@lexical/text": "0.12.6",
     "@lexical/utils": "0.12.6",
-    "@monaco-editor/react": "^4.6.0",
+    "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^4.24.10",
     "ahooks": "^3.9.5",
     "axios": "catalog:",

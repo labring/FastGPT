@@ -70,7 +70,7 @@ const ModelPriceModal = dynamic(() =>
 const Info = () => {
   const { isPc } = useSystem();
   const { teamPlanStatus, initUserInfo } = useUserStore();
-  const standardPlan = teamPlanStatus?.standardConstants;
+  const standardPlan = teamPlanStatus?.standard;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
   useMount(() => {
@@ -125,7 +125,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
-  const standardPlan = teamPlanStatus?.standardConstants;
+  const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
   const { toast } = useToast();
 
@@ -389,11 +389,10 @@ const PlanUsage = () => {
   const standardPlan = teamPlanStatus?.standard;
 
   const isFreeTeam = useMemo(() => {
-    if (!teamPlanStatus || !teamPlanStatus?.standardConstants) return false;
+    if (!teamPlanStatus || !teamPlanStatus?.standard) return false;
     const hasExtraDatasetSize =
-      teamPlanStatus.datasetMaxSize > teamPlanStatus.standardConstants.maxDatasetSize;
-    const hasExtraPoints =
-      teamPlanStatus.totalPoints > teamPlanStatus.standardConstants.totalPoints;
+      teamPlanStatus.datasetMaxSize > teamPlanStatus.standard.maxDatasetSize;
+    const hasExtraPoints = teamPlanStatus.totalPoints > teamPlanStatus.standard.totalPoints;
     if (
       teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free &&
       !hasExtraDatasetSize &&
@@ -449,38 +448,32 @@ const PlanUsage = () => {
       {
         label: t('account_info:member_amount'),
         value: teamPlanStatus.usedMember,
-        max: teamPlanStatus?.standardConstants?.maxTeamMember ?? t('account_info:unlimited'),
-        rate:
-          (teamPlanStatus.usedMember / (teamPlanStatus?.standardConstants?.maxTeamMember || 1)) *
-          100
+        max: teamPlanStatus?.standard?.maxTeamMember ?? t('account_info:unlimited'),
+        rate: (teamPlanStatus.usedMember / (teamPlanStatus?.standard?.maxTeamMember || 1)) * 100
       },
       {
         label: t('account_info:app_amount'),
         value: teamPlanStatus.usedAppAmount,
-        max: teamPlanStatus?.standardConstants?.maxAppAmount ?? t('account_info:unlimited'),
-        rate:
-          (teamPlanStatus.usedAppAmount / (teamPlanStatus?.standardConstants?.maxAppAmount || 1)) *
-          100
+        max: teamPlanStatus?.standard?.maxAppAmount ?? t('account_info:unlimited'),
+        rate: (teamPlanStatus.usedAppAmount / (teamPlanStatus?.standard?.maxAppAmount || 1)) * 100
       },
       {
         label: t('account_info:dataset_amount'),
         value: teamPlanStatus.usedDatasetSize,
-        max: teamPlanStatus?.standardConstants?.maxDatasetAmount ?? t('account_info:unlimited'),
+        max: teamPlanStatus?.standard?.maxDatasetAmount ?? t('account_info:unlimited'),
         rate:
-          (teamPlanStatus.usedDatasetSize /
-            (teamPlanStatus?.standardConstants?.maxDatasetAmount || 1)) *
-          100
+          (teamPlanStatus.usedDatasetSize / (teamPlanStatus?.standard?.maxDatasetAmount || 1)) * 100
       }
     ];
 
-    if (teamPlanStatus?.standardConstants?.appRegistrationCount) {
+    if (teamPlanStatus?.standard?.appRegistrationCount) {
       data.push({
         label: t('account_info:app_registration_count'),
         value: teamPlanStatus.usedRegistrationCount || 0,
-        max: teamPlanStatus.standardConstants.appRegistrationCount,
+        max: teamPlanStatus.standard.appRegistrationCount,
         rate:
           ((teamPlanStatus.usedRegistrationCount || 0) /
-            teamPlanStatus.standardConstants.appRegistrationCount) *
+            teamPlanStatus.standard.appRegistrationCount) *
           100
       });
     }

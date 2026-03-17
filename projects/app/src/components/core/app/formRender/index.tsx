@@ -219,6 +219,7 @@ const InputRender = (props: InputRenderProps) => {
         value={files}
         onChange={(e) => onChange?.(e)}
         isDisabled={isDisabled}
+        isInvalid={isInvalid}
         maxFiles={props.maxFiles}
         canSelectFile={props.canSelectFile}
         canSelectImg={props.canSelectImg}

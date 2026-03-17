@@ -34,14 +34,17 @@ async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiR
     per: WritePermissionVal
   });
 
+  const mode = getTrainingModeByCollection(collection);
+
   // auth dataset limit
   await checkDatasetIndexLimit({
     teamId,
-    insertLen: predictDataLimitLength(getTrainingModeByCollection(collection), data)
+    insertLen: predictDataLimitLength(mode, data)
   });
 
   return pushDataListToTrainingQueue({
     ...body,
+    mode, // Use collection's training mode
     teamId,
     tmbId,
     datasetId: collection.datasetId,

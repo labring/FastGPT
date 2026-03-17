@@ -91,7 +91,7 @@ const CustomDomain = () => {
               <Box fontSize="20px" fontWeight="500">
                 {t('account:custom_domain')}
                 {customDomainList?.length ? (
-                  `: (${customDomainList.length}/${teamPlanStatus?.standardConstants?.customDomain})`
+                  `: (${customDomainList.length}/${teamPlanStatus?.standard?.customDomain})`
                 ) : (
                   <></>
                 )}

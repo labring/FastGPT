@@ -172,7 +172,7 @@ services:
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
       # sandbox 地址
-      SANDBOX_URL: http://sandbox:3000
+      CODE_SANDBOX_URL: http://sandbox:3000
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -199,6 +199,14 @@ services:
     networks:
       - fastgpt
     restart: always
+    environment:
+      <<: [*x-log-config]
+      LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
     image: ghcr.io/labring/fastgpt-mcp_server:v4.14.8
@@ -228,6 +236,11 @@ services:
     depends_on:
       fastgpt-minio:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
   # AI Proxy
   aiproxy:
     image: ghcr.io/labring/aiproxy:v0.3.5

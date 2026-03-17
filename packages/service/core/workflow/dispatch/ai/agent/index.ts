@@ -49,6 +49,9 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
 
   // Knowledge base search configuration
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
+
+  // Sandbox (Computer Use)
+  [NodeInputKeyEnum.useAgentSandbox]?: boolean;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -85,7 +88,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
-      agent_datasetParams: datasetParams
+      agent_datasetParams: datasetParams,
+      // Sandbox (Computer Use)
+      useAgentSandbox = false
     }
   } = props;
   const chatHistories = getHistories(history, histories);
@@ -162,7 +167,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         lang,
         getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
-        hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile
+        hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
+        useAgentSandbox
       }
     );
 
