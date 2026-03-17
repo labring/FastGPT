@@ -286,6 +286,7 @@ export const iconPaths = {
   'core/dataset/databaseColor': () => import('./icons/core/dataset/databaseColor.svg'),
   'core/dataset/datasetDb': () => import('./icons/core/dataset/datasetDb.svg'),
   'core/dataset/loading': () => import('./icons/core/dataset/loading.svg'),
+  'core/skill/skill': () => import('./icons/core/skill/skill.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fitView': () => import('./icons/core/modules/fitView.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),

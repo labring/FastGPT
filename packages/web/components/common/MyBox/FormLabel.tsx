@@ -14,12 +14,14 @@ const FormLabel = ({
       color={'myGray.900'}
       fontWeight={'medium'}
       fontSize={'sm'}
-      position={'relative'}
       flexShrink={0}
+      display={'flex'}
+      alignItems={'center'}
+      gap={'2px'}
       {...props}
     >
       {required && (
-        <Box color={'red.600'} position={'absolute'} top={'-4px'} left={'-6px'}>
+        <Box color={'red.600'} lineHeight={1}>
           *
         </Box>
       )}

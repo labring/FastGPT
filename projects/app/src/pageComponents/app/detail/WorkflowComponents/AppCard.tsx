@@ -17,6 +17,7 @@ const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 const ExportConfigPopover = dynamic(
   () => import('@/pageComponents/app/detail/ExportConfigPopover')
 );
+const ExportSkillModal = dynamic(() => import('@/components/core/app/ExportSkillModal'));
 
 const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved: boolean }) => {
   const { t } = useTranslation();
@@ -29,6 +30,11 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
+  const {
+    isOpen: isOpenExportSkill,
+    onOpen: onOpenExportSkill,
+    onClose: onCloseExportSkill
+  } = useDisclosure();
 
   const InfoMenu = useCallback(
     ({ children }: { children: React.ReactNode }) => {
@@ -82,6 +88,19 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
               >
                 <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
                 <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
+              </MyBox>
+              <MyBox
+                display={'flex'}
+                size={'md'}
+                px={1}
+                py={1.5}
+                rounded={'4px'}
+                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                cursor={'pointer'}
+                onClick={onOpenExportSkill}
+              >
+                <MyIcon name={'core/skill/skill'} w={'16px'} mr={2} />
+                <Box fontSize={'sm'}>{t('skill:export_as_skill')}</Box>
               </MyBox>
               <MyBox
                 display={'flex'}
@@ -151,6 +170,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
       feConfigs?.show_team_chat,
       flowData2StoreData,
       onDelApp,
+      onOpenExportSkill,
       onOpenImport,
       onOpenInfoEdit,
       onOpenTeamTagModal,
@@ -207,14 +227,26 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
         </InfoMenu>
 
         {isOpenImport && <ImportSettings onClose={onCloseImport} />}
+        {isOpenExportSkill && (
+          <ExportSkillModal
+            appId={appDetail._id}
+            appName={appDetail.name}
+            appIntro={appDetail.intro}
+            onClose={onCloseExportSkill}
+          />
+        )}
       </HStack>
     );
   }, [
     InfoMenu,
+    appDetail._id,
     appDetail.avatar,
+    appDetail.intro,
     appDetail.name,
+    isOpenExportSkill,
     isOpenImport,
     isSaved,
+    onCloseExportSkill,
     onCloseImport,
     showSaveStatus,
     t
