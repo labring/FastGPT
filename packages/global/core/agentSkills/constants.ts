@@ -1,3 +1,5 @@
+import type { I18nStringType } from '../../common/i18n/type';
+
 export enum AgentSkillSourceEnum {
   system = 'system',
   personal = 'personal'
@@ -15,34 +17,62 @@ export enum AgentSkillCategoryEnum {
 
 export const AgentSkillCategoryMap: Record<
   `${AgentSkillCategoryEnum}`,
-  { label: string; icon: string }
+  { label: I18nStringType; icon: string }
 > = {
   [AgentSkillCategoryEnum.search]: {
-    label: '搜索',
+    label: {
+      'zh-CN': '搜索',
+      'zh-Hant': '搜索',
+      en: 'Search'
+    },
     icon: 'core/agentSkill/search'
   },
   [AgentSkillCategoryEnum.tool]: {
-    label: '工具',
+    label: {
+      'zh-CN': '工具',
+      'zh-Hant': '工具',
+      en: 'Tool'
+    },
     icon: 'core/agentSkill/tool'
   },
   [AgentSkillCategoryEnum.coding]: {
-    label: '编程',
+    label: {
+      'zh-CN': '编程',
+      'zh-Hant': '編程',
+      en: 'Coding'
+    },
     icon: 'core/agentSkill/coding'
   },
   [AgentSkillCategoryEnum.data]: {
-    label: '数据处理',
+    label: {
+      'zh-CN': '数据处理',
+      'zh-Hant': '數據處理',
+      en: 'Data Processing'
+    },
     icon: 'core/agentSkill/data'
   },
   [AgentSkillCategoryEnum.analysis]: {
-    label: '分析',
+    label: {
+      'zh-CN': '分析',
+      'zh-Hant': '分析',
+      en: 'Analysis'
+    },
     icon: 'core/agentSkill/analysis'
   },
   [AgentSkillCategoryEnum.communication]: {
-    label: '通信',
+    label: {
+      'zh-CN': '通信',
+      'zh-Hant': '通訊',
+      en: 'Communication'
+    },
     icon: 'core/agentSkill/communication'
   },
   [AgentSkillCategoryEnum.other]: {
-    label: '其他',
+    label: {
+      'zh-CN': '其他',
+      'zh-Hant': '其他',
+      en: 'Other'
+    },
     icon: 'core/agentSkill/other'
   }
 };
