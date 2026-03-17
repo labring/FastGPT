@@ -60,6 +60,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
+import { observeWorkflowStep } from '../metrics';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
@@ -736,233 +737,245 @@ export class WorkflowQueue {
     runStatus: 'run';
     result: NodeResponseCompleteType;
   }> {
-    /* Inject data into module input */
-    const getNodeRunParams = (node: RuntimeNodeItemType) => {
-      if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-        // Format plugin input to object
-        return node.inputs.reduce<Record<string, any>>((acc, item) => {
-          acc[item.key] = valueTypeFormat(item.value, item.valueType);
-          return acc;
-        }, {});
-      }
-
-      // Dynamic input need to store a key.
-      const dynamicInput = node.inputs.find(
-        (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
-      );
-      const params: Record<string, any> = dynamicInput
-        ? {
-            [dynamicInput.key]: {}
+    return observeWorkflowStep(
+      {
+        workflowId: this.data.runningAppInfo.id,
+        workflowName: this.data.runningAppInfo.name,
+        nodeId: node.nodeId,
+        nodeName: node.name,
+        nodeType: node.flowNodeType,
+        mode: this.isDebugMode ? 'test' : this.data.mode
+      },
+      async () => {
+        /* Inject data into module input */
+        const getNodeRunParams = (node: RuntimeNodeItemType) => {
+          if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
+            // Format plugin input to object
+            return node.inputs.reduce<Record<string, any>>((acc, item) => {
+              acc[item.key] = valueTypeFormat(item.value, item.valueType);
+              return acc;
+            }, {});
           }
-        : {};
 
-      node.inputs.forEach((input) => {
-        // Special input, not format
-        if (input.key === dynamicInput?.key) return;
+          // Dynamic input need to store a key.
+          const dynamicInput = node.inputs.find(
+            (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
+          );
+          const params: Record<string, any> = dynamicInput
+            ? {
+                [dynamicInput.key]: {}
+              }
+            : {};
 
-        // Skip some special key
-        if (
-          [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
-            input.key as NodeInputKeyEnum
-          )
-        ) {
-          params[input.key] = input.value;
-          return;
-        }
+          node.inputs.forEach((input) => {
+            // Special input, not format
+            if (input.key === dynamicInput?.key) return;
 
-        // replace {{$xx.xx$}} and {{xx}} variables
-        let value = replaceEditorVariable({
-          text: input.value,
-          nodes: this.data.runtimeNodes,
-          variables: this.data.variables
-        });
-
-        // replace reference variables
-        value = getReferenceVariableValue({
-          value,
-          nodes: this.data.runtimeNodes,
-          variables: this.data.variables
-        });
-
-        // Dynamic input is stored in the dynamic key
-        if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
-          params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
-        }
-        params[input.key] = valueTypeFormat(value, input.valueType);
-      });
-
-      return params;
-    };
-
-    // push run status messages
-    if (node.showStatus && !this.data.isToolCall) {
-      this.data.workflowStreamResponse?.({
-        event: SseResponseEventEnum.flowNodeStatus,
-        data: {
-          status: 'running',
-          name: node.name
-        }
-      });
-    }
-    const startTime = Date.now();
-
-    // get node running params
-    const params = getNodeRunParams(node);
-
-    const dispatchData: ModuleDispatchProps<Record<string, any>> = {
-      ...this.data,
-      usagePush: this.usagePush.bind(this),
-      lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
-        ? this.data.lastInteractive
-        : undefined,
-      variables: this.data.variables,
-      histories: this.data.histories,
-      retainDatasetCite: this.data.retainDatasetCite,
-      node,
-      runtimeNodes: this.data.runtimeNodes,
-      runtimeEdges: this.data.runtimeEdges,
-      params,
-      mode: this.isDebugMode ? 'test' : this.data.mode
-    };
-
-    // run module
-    const dispatchRes: NodeResponseType = await (async () => {
-      if (callbackMap[node.flowNodeType]) {
-        const targetEdges = this.edgeIndex.bySource.get(node.nodeId) || [];
-        const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
-
-        try {
-          const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
-
-          if (result.error) {
-            // Run error and not catch error, skip all edges
-            if (!node.catchError) {
-              return {
-                ...result,
-                [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
-                  (item) => item.sourceHandle
-                )
-              };
+            // Skip some special key
+            if (
+              [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
+                input.key as NodeInputKeyEnum
+              )
+            ) {
+              params[input.key] = input.value;
+              return;
             }
 
-            // Catch error, skip unError handle
-            const skipHandleIds = targetEdges
-              .filter((item) => item.sourceHandle !== errorHandleId)
-              .map((item) => item.sourceHandle);
+            // replace {{$xx.xx$}} and {{xx}} variables
+            let value = replaceEditorVariable({
+              text: input.value,
+              nodes: this.data.runtimeNodes,
+              variables: this.data.variables
+            });
 
-            return {
-              ...result,
-              [DispatchNodeResponseKeyEnum.skipHandleId]: result[
-                DispatchNodeResponseKeyEnum.skipHandleId
-              ]
-                ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], ...skipHandleIds].filter(
-                    Boolean
-                  )
-                : skipHandleIds
-            };
-          }
+            // replace reference variables
+            value = getReferenceVariableValue({
+              value,
+              nodes: this.data.runtimeNodes,
+              variables: this.data.variables
+            });
 
-          // Not error
-          const errorHandle =
-            targetEdges.find((item) => item.sourceHandle === errorHandleId)?.sourceHandle || '';
-
-          return {
-            ...result,
-            [DispatchNodeResponseKeyEnum.skipHandleId]: (result[
-              DispatchNodeResponseKeyEnum.skipHandleId
-            ]
-              ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], errorHandle]
-              : [errorHandle]
-            ).filter(Boolean)
-          };
-        } catch (error) {
-          // Skip all edges and return error
-          let skipHandleId = targetEdges.map((item) => item.sourceHandle);
-          if (node.catchError) {
-            skipHandleId = skipHandleId.filter((item) => item !== errorHandleId);
-          }
-
-          return {
-            [DispatchNodeResponseKeyEnum.nodeResponse]: {
-              error: getErrText(error)
-            },
-            [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
-          };
-        }
-      }
-      return {};
-    })();
-
-    const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
-    // format response data. Add modulename and module type
-    const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
-      if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
-
-      const val = {
-        moduleName: node.name,
-        moduleType: node.flowNodeType,
-        moduleLogo: node.avatar,
-        ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
-        id: getNanoid(),
-        nodeId: node.nodeId,
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
-      };
-      nodeResponses.push(val);
-      return val;
-    })();
-
-    // Response node response
-    if (
-      this.data.apiVersion === 'v2' &&
-      !this.data.isToolCall &&
-      this.isRootRuntime &&
-      nodeResponses.length > 0
-    ) {
-      const filteredResponses = this.data.responseAllData
-        ? nodeResponses
-        : filterPublicNodeResponseData({
-            nodeRespones: nodeResponses,
-            responseDetail: this.data.responseDetail
+            // Dynamic input is stored in the dynamic key
+            if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+              params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+            }
+            params[input.key] = valueTypeFormat(value, input.valueType);
           });
 
-      filteredResponses.forEach((item) => {
-        this.data.workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeResponse,
-          data: item
-        });
-      });
-    }
+          return params;
+        };
 
-    // Add output default value
-    if (dispatchRes.data) {
-      node.outputs.forEach((item) => {
-        if (!item.required) return;
-        if (dispatchRes.data?.[item.key] !== undefined) return;
-        dispatchRes.data![item.key] = valueTypeFormat(item.defaultValue, item.valueType);
-      });
-    }
+        // push run status messages
+        if (node.showStatus && !this.data.isToolCall) {
+          this.data.workflowStreamResponse?.({
+            event: SseResponseEventEnum.flowNodeStatus,
+            data: {
+              status: 'running',
+              name: node.name
+            }
+          });
+        }
+        const startTime = Date.now();
 
-    // Update new variables
-    if (dispatchRes[DispatchNodeResponseKeyEnum.newVariables]) {
-      this.data.variables = {
-        ...this.data.variables,
-        ...dispatchRes[DispatchNodeResponseKeyEnum.newVariables]
-      };
-    }
+        // get node running params
+        const params = getNodeRunParams(node);
 
-    // Error
-    if (dispatchRes?.responseData?.error) {
-      logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
-    }
+        const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+          ...this.data,
+          usagePush: this.usagePush.bind(this),
+          lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
+            ? this.data.lastInteractive
+            : undefined,
+          variables: this.data.variables,
+          histories: this.data.histories,
+          retainDatasetCite: this.data.retainDatasetCite,
+          node,
+          runtimeNodes: this.data.runtimeNodes,
+          runtimeEdges: this.data.runtimeEdges,
+          params,
+          mode: this.isDebugMode ? 'test' : this.data.mode
+        };
 
-    return {
-      node,
-      runStatus: 'run',
-      result: {
-        ...dispatchRes,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData
+        // run module
+        const dispatchRes: NodeResponseType = await (async () => {
+          if (callbackMap[node.flowNodeType]) {
+            const targetEdges = this.edgeIndex.bySource.get(node.nodeId) || [];
+            const errorHandleId = getHandleId(node.nodeId, 'source_catch', 'right');
+
+            try {
+              const result = (await callbackMap[node.flowNodeType](dispatchData)) as NodeResponseType;
+
+              if (result.error) {
+                // Run error and not catch error, skip all edges
+                if (!node.catchError) {
+                  return {
+                    ...result,
+                    [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
+                      (item) => item.sourceHandle
+                    )
+                  };
+                }
+
+                // Catch error, skip unError handle
+                const skipHandleIds = targetEdges
+                  .filter((item) => item.sourceHandle !== errorHandleId)
+                  .map((item) => item.sourceHandle);
+
+                return {
+                  ...result,
+                  [DispatchNodeResponseKeyEnum.skipHandleId]: result[
+                    DispatchNodeResponseKeyEnum.skipHandleId
+                  ]
+                    ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], ...skipHandleIds].filter(
+                        Boolean
+                      )
+                    : skipHandleIds
+                };
+              }
+
+              // Not error
+              const errorHandle =
+                targetEdges.find((item) => item.sourceHandle === errorHandleId)?.sourceHandle || '';
+
+              return {
+                ...result,
+                [DispatchNodeResponseKeyEnum.skipHandleId]: (result[
+                  DispatchNodeResponseKeyEnum.skipHandleId
+                ]
+                  ? [...result[DispatchNodeResponseKeyEnum.skipHandleId], errorHandle]
+                  : [errorHandle]
+                ).filter(Boolean)
+              };
+            } catch (error) {
+              // Skip all edges and return error
+              let skipHandleId = targetEdges.map((item) => item.sourceHandle);
+              if (node.catchError) {
+                skipHandleId = skipHandleId.filter((item) => item !== errorHandleId);
+              }
+
+              return {
+                [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                  error: getErrText(error)
+                },
+                [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
+              };
+            }
+          }
+          return {};
+        })();
+
+        const nodeResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
+        // format response data. Add modulename and module type
+        const formatResponseData: NodeResponseCompleteType['responseData'] = (() => {
+          if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
+
+          const val = {
+            moduleName: node.name,
+            moduleType: node.flowNodeType,
+            moduleLogo: node.avatar,
+            ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse],
+            id: getNanoid(),
+            nodeId: node.nodeId,
+            runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+          };
+          nodeResponses.push(val);
+          return val;
+        })();
+
+        // Response node response
+        if (
+          this.data.apiVersion === 'v2' &&
+          !this.data.isToolCall &&
+          this.isRootRuntime &&
+          nodeResponses.length > 0
+        ) {
+          const filteredResponses = this.data.responseAllData
+            ? nodeResponses
+            : filterPublicNodeResponseData({
+                nodeRespones: nodeResponses,
+                responseDetail: this.data.responseDetail
+              });
+
+          filteredResponses.forEach((item) => {
+            this.data.workflowStreamResponse?.({
+              event: SseResponseEventEnum.flowNodeResponse,
+              data: item
+            });
+          });
+        }
+
+        // Add output default value
+        if (dispatchRes.data) {
+          node.outputs.forEach((item) => {
+            if (!item.required) return;
+            if (dispatchRes.data?.[item.key] !== undefined) return;
+            dispatchRes.data![item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+          });
+        }
+
+        // Update new variables
+        if (dispatchRes[DispatchNodeResponseKeyEnum.newVariables]) {
+          this.data.variables = {
+            ...this.data.variables,
+            ...dispatchRes[DispatchNodeResponseKeyEnum.newVariables]
+          };
+        }
+
+        // Error
+        if (dispatchRes?.responseData?.error) {
+          logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
+        }
+
+        return {
+          node,
+          runStatus: 'run',
+          result: {
+            ...dispatchRes,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData
+          }
+        };
       }
-    };
+    );
   }
   private nodeRunWithSkip(node: RuntimeNodeItemType): {
     node: RuntimeNodeItemType;
