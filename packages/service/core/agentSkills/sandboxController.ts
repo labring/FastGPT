@@ -9,7 +9,7 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import mongoose from 'mongoose';
 import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';
-import { MongoAgentSkillsVersion } from './versionSchema';
+import { MongoAgentSkillsVersion } from './version/schema';
 import { downloadSkillPackage } from './storage';
 import {
   getSandboxProviderConfig,

@@ -10,7 +10,7 @@ import {
 import { buildSkillMd, generateSkillMd } from '@fastgpt/service/core/agentSkills/skillMdBuilder';
 import { createSkillPackage } from '@fastgpt/service/core/agentSkills/zipBuilder';
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
-import { createVersion } from '@fastgpt/service/core/agentSkills/versionController';
+import { createVersion } from '@fastgpt/service/core/agentSkills/version/controller';
 import type { CreateSkillBody, CreateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
 import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';

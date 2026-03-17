@@ -18,7 +18,7 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../../ai/sandbox/schema';
-import { MongoAgentSkillsVersion } from '../../../../../../agentSkills/versionSchema';
+import { MongoAgentSkillsVersion } from '../../../../../../agentSkills/version/schema';
 import { downloadSkillPackage } from '../../../../../../agentSkills/storage';
 import { parseSkillMarkdown } from '../../../../../../agentSkills/utils';
 import {

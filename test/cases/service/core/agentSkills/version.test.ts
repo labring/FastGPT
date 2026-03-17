@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll, beforeEach, afterEach } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { MongoAgentSkillsVersion } from '@fastgpt/service/core/agentSkills/versionSchema';
+import { MongoAgentSkillsVersion } from '@fastgpt/service/core/agentSkills/version/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
 import {
   createVersion,
@@ -11,7 +11,7 @@ import {
   getActiveVersion,
   deleteVersion,
   restoreVersion
-} from '@fastgpt/service/core/agentSkills/versionController';
+} from '@fastgpt/service/core/agentSkills/version/controller';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 describe('versionController', () => {

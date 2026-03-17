@@ -4,8 +4,8 @@
  * Provides CRUD operations for skill version management.
  */
 
-import { MongoAgentSkillsVersion } from './versionSchema';
-import type { ClientSession } from '../../common/mongo';
+import { MongoAgentSkillsVersion } from './schema';
+import type { ClientSession } from '../../../common/mongo';
 import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/agentSkills/type';
 
 export type CreateVersionData = {

@@ -4,7 +4,7 @@
  * Defines the database schema for skill versions.
  */
 
-import { connectionMongo, getMongoModel } from '../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import {
   agentSkillsCollectionName,
   agentSkillsVersionCollectionName

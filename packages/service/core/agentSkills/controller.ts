@@ -1,5 +1,5 @@
 import { MongoAgentSkills } from './schema';
-import { MongoAgentSkillsVersion } from './versionSchema';
+import { MongoAgentSkillsVersion } from './version/schema';
 import {
   AgentSkillSourceEnum,
   AgentSkillTypeEnum
@@ -11,7 +11,7 @@ import type {
 } from '@fastgpt/global/core/agentSkills/type';
 import type { ClientSession } from '../../common/mongo';
 import { uploadSkillPackage, deleteSkillAllPackages } from './storage';
-import { createVersion } from './versionController';
+import { createVersion } from './version/controller';
 
 // Types for service operations
 type CreateSkillData = {

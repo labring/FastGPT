@@ -8,7 +8,7 @@ import {
   createVersion,
   getNextVersionNumber,
   setActiveVersion
-} from '@fastgpt/service/core/agentSkills/versionController';
+} from '@fastgpt/service/core/agentSkills/version/controller';
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import {
   validateZipStructure,
