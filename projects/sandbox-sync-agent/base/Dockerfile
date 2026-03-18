@@ -29,7 +29,7 @@ RUN curl -fsSL https://code-server.dev/install.sh | sh
 # Create a non-root user for security
 RUN useradd --create-home --shell /bin/bash sandbox
 
-USER sandbox
+USER root
 WORKDIR /home/sandbox
 
 # Copy VS Code settings
