@@ -197,7 +197,7 @@ const Render = (props: Props) => {
       appId,
       loadCustomFeedbacks: true,
       type: GetChatTypeEnum.normal,
-      filterDeleted: false // 管理员日志详情页需要显示已删除的记录
+      includeDeleted: true // 管理员日志详情页需要显示已删除的记录
     };
   }, [appId, chatId]);
 

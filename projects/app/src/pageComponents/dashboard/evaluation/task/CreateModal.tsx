@@ -383,7 +383,7 @@ const CreateModal = ({ isOpen, onClose, onSubmit }: CreateModalProps) => {
   // 转换版本数据为下拉选项格式
   const appVersionOptions = useMemo(() => {
     return appVersions.map((version) => ({
-      label: version.versionName || formatTime2YMDHMS(version.time),
+      label: t(version.versionName) || formatTime2YMDHMS(version.time),
       value: version._id,
       description: formatTime2YMDHMS(version.time)
     }));
