@@ -69,13 +69,15 @@ export type SandboxStatusItemType = {
   providerSandboxId?: string; // present on 'ready' for edit-debug
 };
 
-/* Skill call announce */
-export type SkillCallItemType = {
-  name: string; // skill name
-  description: string; // skill description
-  avatar?: string; // skill avatar
-  skillMdPath: string; // path of the SKILL.md being loaded
-};
+/* Skill module response */
+export const SkillModuleResponseItemSchema = z.object({
+  id: z.string(),
+  skillName: z.string(),
+  skillAvatar: z.string(),
+  description: z.string(),
+  skillMdPath: z.string()
+});
+export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItemSchema>;
 
 /* --------- chat ---------- */
 export type ChatSchemaType = {
@@ -187,6 +189,7 @@ export const AIChatItemValueSchema = z.object({
     })
     .nullish(),
   tools: z.array(ToolModuleResponseItemSchema).nullish(),
+  skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
   plan: AgentPlanSchema.nullish(),
   stepTitle: StepTitleItemSchema.nullish(),

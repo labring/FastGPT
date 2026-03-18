@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import JSZip from 'jszip';
 
 import type { ImportSkillBody } from '@fastgpt/global/core/agentSkills/api';
 import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
@@ -10,7 +9,7 @@ import {
   getRootPrefix,
   stripRootPrefix
 } from '@fastgpt/service/core/agentSkills/archiveUtils';
-import { repackFileMapAsZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
+import { repackFileMapAsZip, JSZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
 
 // ---------------------------------------------------------------------------
 // Helpers that mirror the core logic in the import API route

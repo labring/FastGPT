@@ -58,6 +58,7 @@ const buildOutLinkConfig = (
     type: PublishChannelEnum.share,
     showCite: true,
     showRunningStatus: true,
+    showSkillReferences: false,
     showFullText: false,
     canDownloadSource: false,
     showWholeResponse: false,
@@ -134,6 +135,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -171,6 +173,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -201,6 +204,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -365,6 +369,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         showCite: true,
         showRunningStatus: false,
+        showSkillReferences: false,
         showFullText: false,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.outLink
@@ -472,6 +477,7 @@ describe('authChatCrud', () => {
         uid: 'tmb1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -512,6 +518,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -553,6 +560,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -586,6 +594,7 @@ describe('authChatCrud', () => {
         uid: 'tmb1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain

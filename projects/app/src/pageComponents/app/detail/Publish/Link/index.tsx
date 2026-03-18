@@ -186,6 +186,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 canDownloadSource: item.canDownloadSource,
                                 showFullText: item.showFullText,
                                 showRunningStatus: item.showRunningStatus,
+                                showSkillReferences: item.showSkillReferences,
                                 limit: item.limit
                               })
                           },
@@ -413,7 +414,27 @@ function EditLinkModal({
           </Box>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <FormLabel>{t('publish:show_node')}</FormLabel>
-            <Switch {...register('showRunningStatus')} />
+            <Switch
+              {...register('showRunningStatus', {
+                onChange(e) {
+                  if (!e.target.checked) {
+                    setValue('showSkillReferences', false);
+                  }
+                }
+              })}
+            />
+          </Flex>
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+            <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
+            <Switch
+              {...register('showSkillReferences', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showRunningStatus', true);
+                  }
+                }
+              })}
+            />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>

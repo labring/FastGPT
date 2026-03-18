@@ -90,6 +90,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     usagePush,
     mode,
     chatId,
+    showSkillReferences,
     params: {
       model,
       systemPrompt,
@@ -212,6 +213,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sessionId: sandboxSessionId,
       mode: sandboxMode,
       workflowStreamResponse,
+      showSkillReferences: showSkillReferences === true,
       allFilesMap
     });
     capabilities.push(sandboxCap);
@@ -475,6 +477,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 stepId: step.id
               }));
             assistantResponses.push(...assistantResponse);
+            if (result.capabilityAssistantResponses?.length) {
+              assistantResponses.push(
+                ...result.capabilityAssistantResponses.map((item) => ({
+                  ...item,
+                  stepId: step.id
+                }))
+              );
+            }
 
             step.response = result.stepResponse?.rawResponse;
             step.summary = result.stepResponse?.summary;
@@ -546,6 +556,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           .map((item) => item.value as AIChatItemValueItemType[])
           .flat();
         assistantResponses.push(...assistantResponse);
+        if (result.capabilityAssistantResponses?.length) {
+          assistantResponses.push(...result.capabilityAssistantResponses);
+        }
 
         // 触发了 plan
         if (result.planResponse) {
