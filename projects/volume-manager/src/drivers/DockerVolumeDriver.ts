@@ -14,7 +14,7 @@ export class DockerVolumeDriver implements IVolumeDriver {
 
   private dockerFetch(path: string, init?: RequestInit): Promise<Response> {
     // Bun supports unix socket via the `unix` fetch option
-    return fetch(`http://localhost/v1.41${path}`, {
+    return fetch(`http://localhost/${env.VM_DOCKER_API_VERSION}${path}`, {
       ...init,
       // @ts-ignore - Bun-specific option
       unix: this.socketPath

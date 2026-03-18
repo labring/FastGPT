@@ -91,7 +91,9 @@ const RenderList: Record<
 
   [FlowNodeInputTypeEnum.customVariable]: undefined,
   [FlowNodeInputTypeEnum.hidden]: undefined,
-  [FlowNodeInputTypeEnum.custom]: undefined
+  [FlowNodeInputTypeEnum.custom]: undefined,
+  [FlowNodeInputTypeEnum.selectSkill]: undefined,
+  [FlowNodeInputTypeEnum.selectTool]: undefined
 };
 
 const hideLabelTypeList = [FlowNodeInputTypeEnum.addInputParam];

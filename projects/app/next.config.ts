@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/((?!chat/share$).*)',
+        source: '/((?!chat\\/share$)(?!proxy\\/)(?!absproxy\\/).*)',
         headers: [
           {
             key: 'X-Frame-Options',

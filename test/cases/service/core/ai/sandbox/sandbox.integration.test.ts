@@ -128,7 +128,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       await sandbox.stop();
 
       const doc = await MongoSandboxInstance.findOne({ chatId: testParams.chatId });
-      expect(doc?.status).toBe(SandboxStatusEnum.stoped);
+      expect(doc?.status).toBe(SandboxStatusEnum.stopped);
     });
 
     it('should update lastActiveAt on each exec', async () => {
