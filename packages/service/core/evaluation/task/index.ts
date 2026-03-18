@@ -794,9 +794,9 @@ export class EvaluationTaskService {
   ) {
     const { status, belowThreshold, userInput, expectedOutput, actualOutput } = filters;
 
-    // Base match conditions
+    // Base match conditions - 确保 evalId 是 ObjectId 类型，aggregate 不会自动转换类型
     const matchConditions: Record<string, any> = {
-      evalId: evaluation._id
+      evalId: new Types.ObjectId(String(evaluation._id))
     };
 
     // Use status for status filtering
