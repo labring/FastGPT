@@ -29,6 +29,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 export const defaultResponseShow = {
   showCite: true,
   showRunningStatus: true,
+  showSkillReferences: true,
   showFullText: true,
   canDownloadSource: true
 };
@@ -60,6 +61,7 @@ export async function authChatCrud({
   chat?: ChatSchemaType;
   showCite: boolean;
   showRunningStatus: boolean;
+  showSkillReferences: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
@@ -117,6 +119,7 @@ export async function authChatCrud({
 
         showCite: outLinkConfig.showCite ?? false,
         showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+        showSkillReferences: outLinkConfig.showSkillReferences ?? false,
         showFullText: outLinkConfig.showFullText ?? false,
         canDownloadSource: outLinkConfig.canDownloadSource ?? false,
         authType: AuthUserTypeEnum.outLink
@@ -132,6 +135,7 @@ export async function authChatCrud({
         uid,
         showCite: outLinkConfig.showCite ?? false,
         showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+        showSkillReferences: outLinkConfig.showSkillReferences ?? false,
         showFullText: outLinkConfig.showFullText ?? false,
         canDownloadSource: outLinkConfig.canDownloadSource ?? false,
         authType: AuthUserTypeEnum.outLink
@@ -145,6 +149,7 @@ export async function authChatCrud({
       uid,
       showCite: outLinkConfig.showCite ?? false,
       showRunningStatus: outLinkConfig.showRunningStatus ?? true,
+      showSkillReferences: outLinkConfig.showSkillReferences ?? false,
       showFullText: outLinkConfig.showFullText ?? false,
       canDownloadSource: outLinkConfig.canDownloadSource ?? false,
       authType: AuthUserTypeEnum.outLink

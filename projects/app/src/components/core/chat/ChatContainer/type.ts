@@ -5,7 +5,7 @@ import type {
   StepTitleItemType,
   ToolModuleResponseItemType,
   SandboxStatusItemType,
-  SkillCallItemType
+  SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
@@ -36,7 +36,7 @@ export type generatingMessageProps = {
 
   // Sandbox
   sandboxStatus?: SandboxStatusItemType;
-  skill?: SkillCallItemType;
+  skill?: SkillModuleResponseItemType;
 
   // HelperBot
   collectionForm?: UserInputInteractive;

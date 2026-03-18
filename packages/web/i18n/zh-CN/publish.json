@@ -26,6 +26,7 @@
   "qpm_tips": "每个 IP 每分钟最多提问多少次",
   "request_address": "请求地址",
   "show_node": "实时运行状态",
+  "show_skill_reference": "查看 skill 引用",
   "show_share_link_modal_title": "开始使用",
   "token_auth": "身份验证",
   "token_auth_tips": "身份校验服务器地址",

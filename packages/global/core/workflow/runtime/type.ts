@@ -72,6 +72,7 @@ export type ChatDispatchProps = {
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   retainDatasetCite?: boolean;
+  showSkillReferences?: boolean;
   maxRunTimes: number;
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;

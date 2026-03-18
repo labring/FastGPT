@@ -323,14 +323,26 @@ const ChatBox = ({
             };
           }
           if (event === SseResponseEventEnum.skillCall && skill) {
+            // 去重检查：避免同一个 skill 在同一步骤中重复展示
+            const alreadyExists = item.value.some(
+              (v) =>
+                v.stepId === stepId && v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
+            );
+            if (alreadyExists) return item;
+
+            const skillId = skill.id || responseValueId || getNanoid(10);
             const val: AIChatItemValueItemType = {
               id: responseValueId,
               stepId,
-              stepTitle: {
-                stepId: responseValueId || '',
-                title: t('chat:skill_calling', { name: skill.name }),
-                folded: false
-              }
+              skills: [
+                {
+                  id: skillId,
+                  skillName: skill.skillName,
+                  skillAvatar: skill.skillAvatar || '',
+                  description: skill.description,
+                  skillMdPath: skill.skillMdPath
+                }
+              ]
             };
             return {
               ...item,
