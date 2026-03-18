@@ -197,7 +197,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
                   title={t('common:core.view_chat_detail')}
-                  onClick={() => setDetailLogsId(item._id)}
+                  onClick={() => setDetailLogsId(item.chatId)}
                 >
                   {filters?.logKeys
                     .filter((logKey) => logKey.enable)
