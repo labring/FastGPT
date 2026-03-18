@@ -24,6 +24,7 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       datasetSearchExtensionBg: ''
     },
     selectedTools: [],
+    selectedAgentSkills: [],
     chatConfig: {}
   };
 };

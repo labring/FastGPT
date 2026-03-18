@@ -13,7 +13,8 @@ import {
 import type {
   AIChatItemValueItemType,
   StepTitleItemType,
-  ToolModuleResponseItemType
+  ToolModuleResponseItemType,
+  SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -194,6 +195,48 @@ ${params}`}
                 source={`~~~json#Response
 ${response}`}
               />
+            )}
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+    );
+  },
+  (prevProps, nextProps) => isEqual(prevProps, nextProps)
+);
+
+const RenderSkill = React.memo(
+  function RenderSkill({
+    showAnimation,
+    skill
+  }: {
+    showAnimation: boolean;
+    skill: SkillModuleResponseItemType;
+  }) {
+    const { t } = useSafeTranslation();
+
+    return (
+      <Accordion allowToggle>
+        <AccordionItem borderTop={'none'} borderBottom={'none'}>
+          <AccordionButton {...accordionButtonStyle}>
+            <Avatar src={skill.skillAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
+            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
+              {skill.skillName}
+            </Box>
+            <AccordionIcon color={'myGray.600'} ml={5} />
+          </AccordionButton>
+          <AccordionPanel
+            py={0}
+            px={0}
+            mt={3}
+            borderRadius={'md'}
+            overflow={'hidden'}
+            maxH={'500px'}
+            overflowY={'auto'}
+          >
+            {skill.description && (
+              <Box mb={3} fontSize={'xs'} color={'myGray.500'} px={3}>
+                {skill.description}
+              </Box>
             )}
           </AccordionPanel>
         </AccordionItem>
@@ -428,8 +471,10 @@ const AIResponseBox = ({
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+  const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
   const tools = value.tool ? [value.tool] : value.tools;
   const disableStreamingInteraction = isChatting && isLastChild;
+  const skills = value.skills;
 
   if ('text' in value && value.text) {
     return (
@@ -456,6 +501,13 @@ const AIResponseBox = ({
     return tools.map((tool) => (
       <Box key={tool.id} _notLast={{ mb: 2 }}>
         <RenderTool showAnimation={isChatting} tool={tool} />
+      </Box>
+    ));
+  }
+  if (skills && showSkillReferences && showRunningStatus) {
+    return skills.map((skill) => (
+      <Box key={skill.id} _notLast={{ mb: 2 }}>
+        <RenderSkill showAnimation={isChatting} skill={skill} />
       </Box>
     ));
   }

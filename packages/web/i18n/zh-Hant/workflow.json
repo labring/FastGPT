@@ -168,8 +168,14 @@
   "special_array_format": "特殊陣列格式，搜尋結果為空時，回傳空陣列。",
   "start_with": "開頭為",
   "target_fields_description": "由「描述」和「鍵值」組成一個目標欄位，可以擷取多個目標欄位",
-  "template.agent": "工具调用",
+  "template.agent": "工具呼叫",
   "template.agent_intro": "透過 AI 模型自動選擇一或多個功能區塊進行呼叫，也可以呼叫外掛程式。",
+  "template.agent_module": "Agent",
+  "template.agent_module_intro": "關聯所需工具及 Skill，可實現 AI 自主呼叫與規劃",
+  "agent.tools": "工具",
+  "agent.prompt_skill_tip": "@選擇 Skill 及工具，\"/\"選擇變數",
+  "agent.select_skill": "選擇 Skill",
+  "agent.select_tool": "選擇工具",
   "template.ai_chat": "AI 對話",
   "template.ai_chat_intro": "AI 大型語言模型對話",
   "template.dataset_search": "知識庫搜尋",
@@ -218,5 +224,6 @@
   "workflow.My edit": "我的編輯",
   "workflow.Switch_success": "切換成功",
   "workflow.Team cloud": "團隊雲端",
-  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。"
+  "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
+  "params_setting": "參數設定"
 }

@@ -49,7 +49,7 @@ export class SandboxClient {
     private readonly opts: {
       resourceLimits?: ResourceLimits;
       vmConfig?: VolumeManagerResult | undefined;
-    }
+    } = {}
   ) {
     this.sandboxId = props.sandboxId;
     this.appId = props.appId;
@@ -109,7 +109,6 @@ export class SandboxClient {
             }
           }),
           metadata: {
-            sessionKey: this.sandboxId,
             volumeEnabled: !!this.opts?.vmConfig
           },
           createdAt: new Date()
@@ -158,7 +157,7 @@ export class SandboxClient {
     await this.provider.stop();
     await MongoSandboxInstance.updateOne(
       { sandboxId: this.sandboxId },
-      { $set: { status: SandboxStatusEnum.stoped } }
+      { $set: { status: SandboxStatusEnum.stopped } }
     );
   }
 }

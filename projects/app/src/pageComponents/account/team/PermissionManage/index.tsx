@@ -36,6 +36,8 @@ import {
   TeamDatasetCreateRoleVal,
   TeamManagePermissionVal,
   TeamManageRoleVal,
+  TeamSkillCreatePermissionVal,
+  TeamSkillCreateRoleVal,
   TeamRoleList
 } from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
@@ -234,6 +236,12 @@ function PermissionManage({
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
+                    {t('account_team:permission_skillCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_skillCreate_Tip')} />
+                  </Box>
+                </Th>
+                <Th bg="myGray.100">
+                  <Box mx="auto" w="fit-content">
                     {t('account_team:permission_datasetCreate')}
                     <QuestionTip ml="1" label={t('account_team:permission_datasetCreate_Tip')} />
                   </Box>
@@ -280,6 +288,12 @@ function PermissionManage({
                       <PermissionCheckBox
                         isDisabled={member.permission.hasManagePer && !userInfo?.permission.isOwner}
                         role={TeamAppCreateRoleVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={member.permission.hasManagePer && !userInfo?.permission.isOwner}
+                        role={TeamSkillCreateRoleVal}
                         clbPer={member.permission}
                         id={member.tmbId!}
                       />
@@ -342,6 +356,12 @@ function PermissionManage({
                       />
                       <PermissionCheckBox
                         isDisabled={org.permission.isOwner || !userManage}
+                        role={TeamSkillCreatePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userManage}
                         role={TeamDatasetCreatePermissionVal}
                         clbPer={org.permission}
                         id={org.orgId!}
@@ -399,6 +419,12 @@ function PermissionManage({
                       <PermissionCheckBox
                         isDisabled={group.permission.isOwner || !userManage}
                         role={TeamAppCreatePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userManage}
+                        role={TeamSkillCreatePermissionVal}
                         clbPer={group.permission}
                         id={group.groupId!}
                       />

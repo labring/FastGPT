@@ -201,6 +201,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+  const showAvatar = useContextSelector(ChatItemContext, (v) => v.showAvatar);
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -371,7 +372,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
             />
           </Flex>
         )}
-        <ChatAvatar src={avatar} type={chat.obj} />
+        {showAvatar !== false && <ChatAvatar src={avatar} type={chat.obj} />}
 
         {/* Workflow status */}
         {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
