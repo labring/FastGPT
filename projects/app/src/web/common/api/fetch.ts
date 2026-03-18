@@ -15,7 +15,7 @@ import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowCo
 import type {
   StepTitleItemType,
   ToolModuleResponseItemType,
-  SkillCallItemType
+  SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -71,7 +71,7 @@ type ResponseQueueItemType = CommonResponseType &
       }
     | {
         event: SseResponseEventEnum.skillCall;
-        skill: SkillCallItemType;
+        skill: SkillModuleResponseItemType;
       }
   );
 

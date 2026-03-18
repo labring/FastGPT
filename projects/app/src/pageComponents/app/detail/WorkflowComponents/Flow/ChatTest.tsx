@@ -221,6 +221,7 @@ const Render = (Props: Props) => {
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showSkillReferences={true}
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>

@@ -15,6 +15,9 @@
 
 import JSZip from 'jszip';
 
+// Re-export JSZip for test files that need direct access
+export { JSZip };
+
 export type CreateSkillPackageParams = {
   name: string;
   skillMd: string;

@@ -42,6 +42,7 @@ const AppChatWindow = () => {
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -108,7 +109,8 @@ const AppChatWindow = () => {
           responseChatItemId,
           appId,
           chatId,
-          retainDatasetCite: isShowCite
+          retainDatasetCite: isShowCite,
+          showSkillReferences
         },
         abortCtrl: controller,
         onMessage: generatingMessage
@@ -133,6 +135,7 @@ const AppChatWindow = () => {
       setChatBoxData,
       forbidLoadChat,
       isShowCite,
+      showSkillReferences,
       refreshRecentlyUsed
     ]
   );

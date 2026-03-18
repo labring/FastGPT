@@ -17,6 +17,7 @@ type ContextProps = {
   isShowCite: boolean;
   isShowFullText: boolean;
   showRunningStatus: boolean;
+  showSkillReferences: boolean;
   showWholeResponse: boolean;
 };
 type ChatBoxDataType = {
@@ -88,6 +89,13 @@ type ChatItemContextType = {
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
+  showRouteToDatasetDetail: true,
+  canDownloadSource: true,
+  isShowCite: true,
+  isShowFullText: true,
+  showRunningStatus: true,
+  showSkillReferences: true,
+  showWholeResponse: true,
   ChatBoxRef: null,
   // @ts-ignore
   variablesForm: undefined,
@@ -125,6 +133,7 @@ const ChatItemContextProvider = ({
   isShowCite,
   isShowFullText,
   showRunningStatus,
+  showSkillReferences,
   showWholeResponse
 }: {
   children: ReactNode;
@@ -202,6 +211,7 @@ const ChatItemContextProvider = ({
       isShowCite,
       isShowFullText,
       showRunningStatus,
+      showSkillReferences,
       showWholeResponse,
 
       datasetCiteData,
@@ -220,6 +230,7 @@ const ChatItemContextProvider = ({
     canDownloadSource,
     isShowCite,
     showRunningStatus,
+    showSkillReferences,
     isShowFullText,
     showWholeResponse,
     datasetCiteData,

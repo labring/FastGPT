@@ -119,6 +119,7 @@ async function discoverSkillsInSandbox(
     if (!frontmatter.name) continue;
     const directory = file.path.replace(/\/SKILL\.md$/i, '');
     result.push({
+      id: file.path,
       name: String(frontmatter.name),
       description: frontmatter.description ? String(frontmatter.description) : '',
       directory,
