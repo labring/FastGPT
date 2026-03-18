@@ -1,4 +1,4 @@
-import { configureMetricsFromEnv, disposeMetrics, getMeter } from '@fastgpt-sdk/metrics';
+import { configureMetricsFromEnv, disposeMetrics, getMeter } from '@fastgpt-sdk/otel/metrics';
 import { env } from '../../env';
 
 export async function configureMetrics() {

@@ -246,12 +246,6 @@ importers:
       '@apidevtools/json-schema-ref-parser':
         specifier: ^11.7.2
         version: 11.7.2
-      '@fastgpt-sdk/logger':
-        specifier: 'catalog:'
-        version: 0.1.2
-      '@fastgpt-sdk/metrics':
-        specifier: workspace:*
-        version: link:../../sdk/metrics
       '@fastgpt-sdk/otel':
         specifier: 'catalog:'
         version: 0.1.0
@@ -1083,34 +1077,6 @@ importers:
       '@opentelemetry/sdk-logs':
         specifier: ^0.203.0
         version: 0.203.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/semantic-conventions':
-        specifier: ^1.39.0
-        version: 1.39.0
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 20.17.24
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.21.4(typescript@5.9.3)
-      typescript:
-        specifier: 'catalog:'
-        version: 5.9.3
-
-  sdk/metrics:
-    dependencies:
-      '@opentelemetry/api':
-        specifier: ^1.9.0
-        version: 1.9.0
-      '@opentelemetry/exporter-metrics-otlp-http':
-        specifier: ^0.203.0
-        version: 0.203.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/resources':
-        specifier: ^2.0.1
-        version: 2.5.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-metrics':
-        specifier: ^2.0.1
-        version: 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions':
         specifier: ^1.39.0
         version: 1.39.0
@@ -13669,7 +13635,7 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/api-logs': 0.203.0
       '@opentelemetry/exporter-logs-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/resources': 2.5.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-logs': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.39.0
 

@@ -29,6 +29,7 @@ export async function register() {
         { instrumentationCheck },
         { getErrText },
         { configureMetrics },
+        { configureTracing },
         { configureLogger, getLogger, LogCategories },
         { InitialErrorEnum }
       ] = await Promise.all([
@@ -51,11 +52,13 @@ export async function register() {
         import('@/service/common/system/health'),
         import('@fastgpt/global/common/error/utils'),
         import('@fastgpt/service/common/metrics'),
+        import('@fastgpt/service/common/tracing'),
         import('@fastgpt/service/common/logger'),
         import('@fastgpt/service/common/system/constants')
       ]);
 
       await configureMetrics();
+      await configureTracing();
       await configureLogger();
       const logger = getLogger(LogCategories.SYSTEM);
       logger.info('Starting system initialization...');

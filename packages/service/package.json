@@ -11,7 +11,6 @@
     "@fastgpt-sdk/sandbox-adapter": "^0.0.22",
     "@fastgpt-sdk/metrics": "workspace:*",
     "@fastgpt-sdk/storage": "catalog:",
-    "@fastgpt-sdk/logger": "catalog:",
     "@fastgpt-sdk/otel": "catalog:",
     "@fastgpt/global": "workspace:*",
     "@maxmind/geoip2-node": "^6.3.4",
