@@ -2,15 +2,15 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from './type';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { AppCollectionName } from '../../app/schema';
-import { SandboxLimitSchema, SandboxProviderSchema } from './type';
+import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxLimitSchema, SandboxProviderValues, SharedSandboxStatusValues } from './type';
 
 export const collectionName = 'agent_sandbox_instances';
 
 const SandboxInstanceSchema = new Schema({
   provider: {
     type: String,
-    enum: SandboxProviderSchema.options,
+    enum: SandboxProviderValues,
     required: true
   },
   // 唯一 id，chat 模式下，由 3 个 id hash 获取。
@@ -18,17 +18,14 @@ const SandboxInstanceSchema = new Schema({
     type: String,
     required: true
   },
-  // Chat 模式下会关联会话。Skill editor 不需要 appId,userId,chatId
-  appId: {
-    type: Schema.Types.ObjectId,
-    ref: AppCollectionName
-  },
+  // Chat 模式和 skill sandbox 都会复用这组根字段。
+  appId: String,
   userId: String,
   chatId: String,
 
   status: {
     type: String,
-    enum: Object.values(SandboxStatusEnum),
+    enum: SharedSandboxStatusValues,
     default: SandboxStatusEnum.running,
     required: true
   },
@@ -44,6 +41,54 @@ const SandboxInstanceSchema = new Schema({
   },
   limit: {
     type: SandboxLimitSchema.shape
+  },
+  detail: {
+    sandboxType: {
+      type: String,
+      enum: Object.values(SandboxTypeEnum)
+    },
+    teamId: String,
+    tmbId: String,
+    skillId: String,
+    sessionId: String,
+    skillIds: [String],
+    provider: {
+      type: String,
+      enum: SandboxProviderValues
+    },
+    image: {
+      repository: String,
+      tag: {
+        type: String,
+        default: 'latest'
+      }
+    },
+    providerStatus: {
+      state: String,
+      message: String,
+      reason: String
+    },
+    providerCreatedAt: Date,
+    endpoint: {
+      host: String,
+      port: Number,
+      protocol: {
+        type: String,
+        enum: Object.values(SandboxProtocolEnum),
+        default: SandboxProtocolEnum.http
+      },
+      url: String
+    },
+    storage: {
+      bucket: String,
+      key: String,
+      size: Number,
+      uploadedAt: Date
+    },
+    metadata: {
+      type: Map,
+      of: Schema.Types.Mixed
+    }
   }
 });
 
@@ -60,6 +105,19 @@ SandboxInstanceSchema.index(
 );
 SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1 });
 SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
+SandboxInstanceSchema.index(
+  { appId: 1, chatId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      appId: { $exists: true },
+      chatId: { $exists: true },
+      'detail.sandboxType': { $exists: true }
+    }
+  }
+);
+SandboxInstanceSchema.index({ 'detail.skillId': 1 });
+SandboxInstanceSchema.index({ 'detail.sandboxType': 1, chatId: 1 });
 
 export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
   collectionName,

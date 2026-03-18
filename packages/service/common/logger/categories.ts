@@ -78,6 +78,10 @@ export const LogCategories = {
       RERANK: ['ai', 'rerank'],
       SANDBOX: ['ai', 'sandbox']
     }),
+    AGENT_SKILLS: Object.assign(['agent-skills'], {
+      CREATION: ['agent-skills', 'create-skill'],
+      EXPORT: ['agent-skills', 'export-skill']
+    }),
     USER: Object.assign(['user'], {
       ACCOUNT: ['user', 'account'],
       TEAM: ['user', 'team']

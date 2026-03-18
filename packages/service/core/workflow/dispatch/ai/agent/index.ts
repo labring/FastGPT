@@ -33,6 +33,9 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { masterCall } from './master/call';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import { getSubapps } from './utils';
+import type { AgentCapability } from './capability/type';
+import { createCapabilityToolCallHandler } from './capability/type';
+import { createSandboxSkillsCapability } from './capability/sandboxSkills';
 import { type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
@@ -49,6 +52,8 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
+  [NodeInputKeyEnum.skills]?: string[]; // skill ID 数组
+  [NodeInputKeyEnum.useEditDebugSandbox]?: boolean; // 客户端显式指定使用 editDebug 沙箱
 
   // Knowledge base search configuration
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
@@ -83,6 +88,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     stream,
     workflowStreamResponse,
     usagePush,
+    mode,
+    chatId,
     params: {
       model,
       systemPrompt,
@@ -91,6 +98,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrlList: fileLinks,
       aiChatVision = true,
       agent_selectedTools: selectedTools = [],
+      skills: skillIds,
+      useEditDebugSandbox,
       // Dataset search configuration
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
@@ -118,6 +127,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
+  const capabilities: AgentCapability[] = [];
 
   try {
     // Get files
@@ -125,7 +135,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     if (!fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0) {
       fileLinks = undefined;
     }
-    const { filesMap, prompt: fileInputPrompt } = formatFileInput({
+
+    const {
+      filesMap,
+      allFilesMap,
+      prompt: fileInputPrompt
+    } = formatFileInput({
       fileUrls: fileLinks,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
@@ -186,6 +201,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           : restoredMasterMessages;
       }
     })();
+    // Initialize capabilities — always create sandbox capability (lazy-init, no container yet)
+    const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
+    const useEditDebugSandbox_flag = !!useEditDebugSandbox;
+    const sandboxMode = useEditDebugSandbox_flag ? 'editDebug' : 'sessionRuntime';
+
+    const sandboxCap = await createSandboxSkillsCapability({
+      skillIds: skillIds ?? [],
+      teamId: runningAppInfo.teamId,
+      tmbId: runningAppInfo.tmbId,
+      sessionId: sandboxSessionId,
+      mode: sandboxMode,
+      workflowStreamResponse,
+      allFilesMap
+    });
+    capabilities.push(sandboxCap);
+
+    // Aggregate capability contributions
+    const capabilitySystemPrompt = capabilities
+      .map((c) => c.systemPrompt)
+      .filter(Boolean)
+      .join('\n\n');
+    const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
+    const capabilityToolCallHandler =
+      capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
 
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
@@ -196,7 +235,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox
+        useAgentSandbox,
+        extraTools: capabilityTools
       }
     );
 
@@ -228,7 +268,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     };
 
     const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: systemPrompt,
+      userSystemPrompt: capabilitySystemPrompt
+        ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`
+        : systemPrompt,
       selectedDataset: datasetParams?.datasets
     });
 
@@ -415,7 +457,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               completionTools: agentCompletionTools,
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
               step,
-              filesMap
+              filesMap,
+              capabilityToolCallHandler
             });
             nodeResponses.push(result.nodeResponse);
 
@@ -489,7 +532,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           getSubAppInfo,
           getSubApp,
           completionTools: agentCompletionTools,
-          filesMap
+          filesMap,
+          capabilityToolCallHandler
         });
         nodeResponses.push(result.nodeResponse);
         masterMessages = result.masterMessages;
@@ -550,6 +594,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
     };
   } catch (error) {
+    getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent Debug] dispatchRunAgent caught error`, {
+      error
+    });
     return getNodeErrResponse({ error });
+  } finally {
+    for (const cap of capabilities) {
+      await cap.dispose?.();
+    }
   }
 };

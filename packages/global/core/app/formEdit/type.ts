@@ -32,6 +32,7 @@ export const AppFormEditFormV1TypeSchema = z.object({
     datasets: z.array(SelectedDatasetSchema)
   }),
   selectedTools: z.array(SelectedToolItemTypeSchema),
+  skills: z.array(z.string()).optional(),
   chatConfig: AppChatConfigTypeSchema
 });
 export type AppFormEditFormType = z.infer<typeof AppFormEditFormV1TypeSchema>;
