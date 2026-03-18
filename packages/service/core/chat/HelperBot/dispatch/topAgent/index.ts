@@ -160,6 +160,7 @@ export const dispatchTopAgent = async (
         tools, // 从 execution_plan 提取
         datasets: filterDatasets,
         fileUploadEnabled: responseJson.resources?.system_features?.file_upload?.enabled || false,
+        enableSandboxEnabled: responseJson.resources?.system_features?.sandbox?.enabled || false,
         executionPlan: responseJson.execution_plan // 保存原始 execution_plan
       });
 

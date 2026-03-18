@@ -28,7 +28,8 @@ export const HelperBotContext = createContext<HelperBotContextType>({
     taskObject: '',
     selectedTools: [],
     selectedDatasets: [],
-    fileUpload: false
+    fileUpload: false,
+    enableSandbox: false
   },
   onApply: function (e): void {
     throw new Error('Function not implemented.');
