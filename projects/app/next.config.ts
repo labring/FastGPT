@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  webpack(config, { isServer, dev }) {
+  webpack(config, { isServer }) {
     config.ignoreWarnings = [
       ...(config.ignoreWarnings || []),
       {
@@ -97,6 +97,10 @@ const nextConfig: NextConfig = {
 
     if (isServer) {
       (config.externals as string[]).push('@node-rs/jieba');
+      config.externals.push({
+        '@e2b/code-interpreter': 'commonjs @e2b/code-interpreter',
+        e2b: 'commonjs e2b'
+      });
     }
 
     config.experiments = {
@@ -127,14 +131,15 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
+  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks', '@fastgpt-sdk/sandbox-adapter'],
   serverExternalPackages: [
     'mongoose',
     'pg',
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
-    '@opentelemetry/api-logs'
+    '@opentelemetry/api-logs',
+    'chalk'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {

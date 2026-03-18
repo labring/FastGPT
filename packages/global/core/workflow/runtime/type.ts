@@ -28,8 +28,18 @@ import type { localeType } from '../../../common/i18n/type';
 import { type UserChatItemValueItemType } from '../../chat/type';
 import type { DatasetSearchModeEnum } from '../../dataset/constants';
 import type { ChatRoleEnum } from '../../chat/constants';
-import type { MCPClient } from '../../../../service/core/app/mcp';
 import z from 'zod';
+
+/*
+  1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
+  2. 递归线，会根据最近的一个 target 分支进行分类，同一个分支的属于一组
+  2. 起始线全部非 waiting 执行，或递归线任意一组全部非 waiting 执行
+*/
+// 节点边分组结构（简化版：不再区分 common 和 recursive）
+export type NodeEdgeGroups = RuntimeEdgeItemType[][]; // 二维数组，每组代表一个独立的逻辑路径
+
+// 预构建的 Map
+export type NodeEdgeGroupsMap = Map<string, NodeEdgeGroups>;
 
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
