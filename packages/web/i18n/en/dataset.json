@@ -436,6 +436,7 @@
   "edit_chunk": "Edit chunk",
   "question": "Question",
   "answer": "Answer",
+  "markdown_tip": "Support Markdown editing, such as headings, bold, tables, etc.",
   "unsupported_file_format": "Unsupported file format: {{ext}}",
   "file_already_uploaded": "This file has already been uploaded",
   "file_duplicate": "Duplicate file",
@@ -462,4 +463,3 @@
   "filename_validation_error": "File name does not meet requirements",
   "filename_format_tip": "File names can only contain Chinese characters, English letters, numbers, and underscores, and cannot start with a number"
 }
-

@@ -2,6 +2,7 @@
   "Correction_Modal_Title": "回答纠错",
   "Correction_Question_Label": "问题",
   "Correction_Answer_Label": "答案",
+  "Correction_Answer_Label_Desc": "支持 Markdown 编辑，如标题、加粗、表格等格式",
   "Correction_Edit_Answer": "编辑答案",
   "Correction_Edit_Answer_Desc": "用户提问该问题时，将直接使用该答案进行回答",
   "Correction_Annotate_Knowledge": "标注答案引用的知识",

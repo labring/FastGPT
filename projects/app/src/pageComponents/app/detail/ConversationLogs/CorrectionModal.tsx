@@ -261,6 +261,16 @@ const CorrectionModal = ({
           <Box>
             <FormLabel mb={3} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} required>
               {t('app:Correction_Answer_Label')}
+              <Text
+                as="span"
+                display="inline"
+                color={'myGray.500'}
+                fontSize={'12px'}
+                fontWeight={'400'}
+                ml={2}
+              >
+                {t('app:Correction_Answer_Label_Desc')}
+              </Text>
             </FormLabel>
             <ChakraRadioGroup
               value={correctionMode}
