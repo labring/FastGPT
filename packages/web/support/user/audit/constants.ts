@@ -510,5 +510,41 @@ export const auditLogMap = {
     content: i18nT('account_team:log_delete_api_key'),
     typeLabel: i18nT('account_team:delete_api_key'),
     params: {} as { name?: string; keyName: string }
+  },
+  //Agent Skills
+  [AuditEventEnum.CREATE_SKILL]: {
+    content: i18nT('account_team:log_create_skill'),
+    typeLabel: i18nT('account_team:create_skill'),
+    params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.UPDATE_SKILL]: {
+    content: i18nT('account_team:log_update_skill'),
+    typeLabel: i18nT('account_team:update_skill'),
+    params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.DEPLOY_SKILL]: {
+    content: i18nT('account_team:log_deploy_skill'),
+    typeLabel: i18nT('account_team:deploy_skill'),
+    params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.DELETE_SKILL]: {
+    content: i18nT('account_team:log_delete_skill'),
+    typeLabel: i18nT('account_team:delete_skill'),
+    params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.IMPORT_SKILL]: {
+    content: i18nT('account_team:log_import_skill'),
+    typeLabel: i18nT('account_team:import_skill'),
+    params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.CREATE_SKILL_FOLDER]: {
+    content: i18nT('account_team:log_create_skill_folder'),
+    typeLabel: i18nT('account_team:create_skill_folder'),
+    params: {} as { name?: string; folderName: string }
+  },
+  [AuditEventEnum.EXPORT_SKILL]: {
+    content: i18nT('account_team:log_export_skill'),
+    typeLabel: i18nT('account_team:export_skill'),
+    params: {} as { name?: string; skillName: string }
   }
 } as const;
