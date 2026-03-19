@@ -17,7 +17,7 @@
     "seekdb": "1.0.1.0-100000392025122619",
     "opensandbox-server": "v0.1.7",
     "opensandbox-execd": "v1.0.7",
-    "opensandbox-egress": "v1.0.1"
+    "opensandbox-egress": "v1.0.3"
   },
   "images": {
     "cn": {
