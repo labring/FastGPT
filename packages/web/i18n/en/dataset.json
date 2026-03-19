@@ -436,6 +436,7 @@
   "edit_chunk": "Edit chunk",
   "question": "Question",
   "answer": "Answer",
+  "markdown_tip": "Support Markdown editing, such as headings, bold, tables, etc.",
   "unsupported_file_format": "Unsupported file format: {{ext}}",
   "file_already_uploaded": "This file has already been uploaded",
   "file_duplicate": "Duplicate file",
@@ -474,4 +475,3 @@
   "synthetic_index_desc": "Sample document content to generate hypothetical questions, which can also be used for knowledge reranking model tuning (time-consuming)",
   "small2big_desc": "When enabled, if the answer content is large, it will be split to generate indexes for small chunks"
 }
-

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Button, Textarea, ModalFooter } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, ModalFooter, Text } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { putDatasetDataById, getDatasetDataItemById } from '@/web/core/dataset/api';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -107,9 +107,15 @@ const EditContentModal = ({
       <MyBox display={'flex'} flexDir={'column'} h={'100%'} py={4}>
         <Flex flex={'1 0 0'} h={['auto', '0']} flexDir={'column'} px={7}>
           {/* Question/Content Input */}
-          <Flex flexDir={'column'} flex={isFAQ ? '1 0 0' : '1 0 0'} h={0}>
-            <FormLabel required={isFAQ ? true : undefined} mb={1}>
-              {isFAQ ? t('dataset:question') : ''}
+          <Flex flexDir={'column'} flex={'1 0 0'} h={0}>
+            <FormLabel required={isFAQ || undefined} mb={1}>
+              {isFAQ ? (
+                t('dataset:question')
+              ) : (
+                <Text as="span" color={'myGray.500'} fontSize={'12px'} fontWeight={400}>
+                  {t('dataset:markdown_tip')}
+                </Text>
+              )}
             </FormLabel>
             <Textarea
               resize={'vertical'}
@@ -135,6 +141,16 @@ const EditContentModal = ({
               <FormLabel required mb={1}>
                 {t('dataset:answer')}
               </FormLabel>
+              <Text
+                as="span"
+                display="inline"
+                color={'myGray.500'}
+                fontSize={'12px'}
+                fontWeight={400}
+                mb={1}
+              >
+                {t('dataset:markdown_tip')}
+              </Text>
               <Textarea
                 resize={'vertical'}
                 className={styles.scrollbar}

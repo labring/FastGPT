@@ -443,6 +443,7 @@
   "edit_chunk": "编辑分块",
   "question": "问题",
   "answer": "答案",
+  "markdown_tip": "支持 Markdown 编辑，如标题、加粗、表格等格式",
   "unsupported_file_format": "不支持 {{ext}} 文件格式",
   "file_already_uploaded": "已上传该文件",
   "file_duplicate": "文件重复",
