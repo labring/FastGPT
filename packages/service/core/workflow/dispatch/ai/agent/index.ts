@@ -18,6 +18,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
+  runtimePrompt2ChatsValue,
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
 import { getPlanCallResponseText } from '@fastgpt/global/core/chat/utils';
@@ -42,6 +43,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
   [NodeInputKeyEnum.userChatInput]: string;
 
+  [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
@@ -87,6 +89,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       userChatInput, // 本次任务的输入
       history = 6,
       fileUrlList: fileLinks,
+      aiChatVision = true,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
       agent_datasetParams: datasetParams,
@@ -130,16 +133,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // 交互模式进来的话，这个值才是交互输入的值
-    const queryInput = chatValue2RuntimePrompt(query).text;
+    const { text: queryInput, files: queryFiles } = chatValue2RuntimePrompt(query);
     const formatUserChatInput = fileInputPrompt
       ? `${fileInputPrompt}\n\n${userChatInput}`
       : userChatInput;
+    const currentUserMessage = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({
+            text: formatUserChatInput,
+            files: queryFiles
+          })
+        }
+      ],
+      reserveId: false
+    })[0];
 
     let {
-      masterMessages = historiesMessages.concat({
-        role: 'user',
-        content: formatUserChatInput
-      }),
+      masterMessages: restoredMasterMessages,
       planHistoryMessages,
       agentPlan,
       planBuffer
@@ -162,6 +174,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         planBuffer: undefined
       };
     })();
+    let masterMessages: ChatCompletionMessageParam[];
+    if (!restoredMasterMessages) {
+      masterMessages = historiesMessages.concat(currentUserMessage ? [currentUserMessage] : []);
+    } else if (planHistoryMessages?.length) {
+      masterMessages = restoredMasterMessages ?? historiesMessages;
+    } else {
+      masterMessages = currentUserMessage
+        ? restoredMasterMessages.concat(currentUserMessage)
+        : restoredMasterMessages;
+    }
 
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
