@@ -134,8 +134,14 @@ const nextConfig: NextConfig = {
     }
 
     if (isServer) {
-      // Native addon packages must be external (cannot be bundled by webpack).
-      (config.externals as string[]).push('@node-rs/jieba');
+      // ESM-only packages: Node.js 22+ supports require(esm), so string externals work at runtime.
+      // serverExternalPackages alone is insufficient for Pages Router API routes.
+      (config.externals as string[]).push(
+        '@node-rs/jieba',
+        '@fastgpt-sdk/sandbox-adapter',
+        '@e2b/code-interpreter',
+        'e2b'
+      );
     }
 
     config.experiments = {
@@ -173,7 +179,10 @@ const nextConfig: NextConfig = {
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
-    '@opentelemetry/api-logs'
+    '@opentelemetry/api-logs',
+    '@fastgpt-sdk/sandbox-adapter',
+    '@e2b/code-interpreter',
+    'e2b'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {
