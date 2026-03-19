@@ -174,6 +174,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         planBuffer: undefined
       };
     })();
+    let masterMessages: ChatCompletionMessageParam[];
+    if (!restoredMasterMessages) {
+      masterMessages = historiesMessages.concat(currentUserMessage ? [currentUserMessage] : []);
+    } else if (planHistoryMessages?.length) {
+      masterMessages = restoredMasterMessages ?? historiesMessages;
+    } else {
+      masterMessages = currentUserMessage
+        ? restoredMasterMessages.concat(currentUserMessage)
+        : restoredMasterMessages;
+    }
 
     let masterMessages = (() => {
       if (!restoredMasterMessages) {
