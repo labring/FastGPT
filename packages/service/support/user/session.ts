@@ -1,5 +1,6 @@
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getAllKeysByPrefix, getGlobalRedisConnection } from '../../common/redis';
+import { deleteKeys } from '../../common/redis/cluster';
 import { addLog } from '../../common/system/log';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -52,9 +53,10 @@ const setSession = async ({
   });
 };
 
-const delSession = (key: string) => {
+const delSession = async (key: string) => {
   const redis = getGlobalRedisConnection();
-  retryFn(() => redis.del(getSessionKey(key)));
+  const fullKey = getSessionKey(key);
+  await retryFn(() => redis.del(fullKey));
 };
 
 const getSession = async (key: string): Promise<SessionType> => {
@@ -79,19 +81,22 @@ const getSession = async (key: string): Promise<SessionType> => {
     };
   } catch (error) {
     addLog.error('Parse session error:', error);
-    delSession(formatKey);
+    await delSession(formatKey);
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 };
 export const delUserAllSession = async (userId: string, whiteList?: (string | undefined)[]) => {
-  const formatWhiteList = whiteList?.map((item) => item && getSessionKey(item));
+  // Whitelist items are in format "userId:sessionId", convert to "session:userId:sessionId" to match getAllKeysByPrefix return format
+  const formatWhiteList = whiteList?.map((item) => item && `${redisPrefix}${item}`);
   const redis = getGlobalRedisConnection();
+
   const keys = (await getAllKeysByPrefix(`${redisPrefix}${String(userId)}`)).filter(
     (item) => !formatWhiteList?.includes(item)
   );
 
   if (keys.length > 0) {
-    await redis.del(keys);
+    // getAllKeysByPrefix returns keys without prefix, redis.del will auto-add keyPrefix
+    await deleteKeys(redis, keys);
   }
 };
 
@@ -114,11 +119,12 @@ const delRedundantSession = async (userId: string) => {
   const sessionList = await Promise.all(
     keys.map(async (key) => {
       try {
+        // getAllKeysByPrefix returns keys without prefix, redis.hgetall will auto-add keyPrefix
         const data = await redis.hgetall(key);
         if (!data || Object.keys(data).length === 0) return null;
 
         return {
-          key,
+          key, // Store key for deletion (redis.del will auto-add keyPrefix)
           createdAt: parseInt(data.createdAt)
         };
       } catch (error) {
@@ -136,7 +142,7 @@ const delRedundantSession = async (userId: string) => {
   const delKeys = validSessions.slice(0, validSessions.length - maxSession).map((item) => item.key);
 
   if (delKeys.length > 0) {
-    await redis.del(delKeys);
+    await deleteKeys(redis, delKeys);
   }
 };
 export const createUserSession = async ({
@@ -167,7 +173,7 @@ export const createUserSession = async ({
     expireSeconds: 7 * 24 * 60 * 60
   });
 
-  delRedundantSession(userId);
+  await delRedundantSession(userId);
 
   return key;
 };
