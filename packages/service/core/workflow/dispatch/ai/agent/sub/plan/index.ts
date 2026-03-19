@@ -21,8 +21,7 @@ import { parseJsonArgs } from '../../../../../../ai/utils';
 import { AIAskAnswerSchema, AIAskTool } from './ask/constants';
 import { AgentPlanSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType } from '../../type';
-import { getNanoid, sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { jsonrepair } from 'jsonrepair';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
