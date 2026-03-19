@@ -6,6 +6,7 @@
  */
 
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { Volume } from '@alibaba-group/opensandbox';
 import mongoose from 'mongoose';
 import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';
@@ -15,13 +16,15 @@ import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
-  buildDockerSyncEnv,
   getSkillSizeLimits,
   buildSandboxAdapter,
   connectToProviderSandbox,
   disconnectFromProviderSandbox,
   getProviderSandboxEndpoint,
-  selectSandboxEntrypoint
+  getVolumeManagerConfig,
+  ensureSessionVolume,
+  buildVolumeConfig,
+  buildBaseContainerEnv
 } from './sandboxConfig';
 import type {
   SandboxInstanceSchemaType,
@@ -237,14 +240,24 @@ export async function createEditDebugSandbox(
     onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
     const sessionId = new mongoose.Types.ObjectId().toHexString();
 
-    const createEntrypoint = selectSandboxEntrypoint(providerConfig.runtime, defaults, 'editDebug');
+    const createEntrypoint = defaults.entrypoint;
+
+    let volumes: Volume[] | undefined;
+    if (providerConfig.provider === 'opensandbox') {
+      const vmConfig = getVolumeManagerConfig();
+      const claimName = await ensureSessionVolume(sessionId, vmConfig);
+      volumes = [
+        buildVolumeConfig(providerConfig.runtime, sessionId, claimName, vmConfig.mountPath)
+      ];
+    }
 
     const newSandbox = buildSandboxAdapter(providerConfig, {
       providerSandboxId: sessionId,
       createConfig: {
         image: sandboxImage,
         entrypoint: [entrypoint ?? createEntrypoint],
-        env: buildDockerSyncEnv(sessionId, defaults.workDirectory, true),
+        env: buildBaseContainerEnv(sessionId, defaults.workDirectory, true),
+        volumes,
         metadata: {
           skillId,
           teamId,
@@ -360,7 +373,10 @@ export async function createEditDebugSandbox(
       }
     };
   } catch (error) {
-    addLog.error('[Sandbox] Failed to create sandbox', { error });
+    addLog.error('[Sandbox] Failed to create sandbox', {
+      error,
+      rawBody: (error as any)?.cause?.rawBody ?? (error as any)?.rawBody
+    });
 
     // Cleanup provider sandbox if it was created
     if (sandbox) {

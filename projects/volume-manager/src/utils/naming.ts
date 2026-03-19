@@ -1,9 +1,12 @@
-// sessionId must be a 24-character hex string (MongoDB ObjectId)
-const SESSION_ID_RE = /^[0-9a-f]{24}$/i;
+// sessionId: lowercase alphanumeric and hyphens, no leading/trailing hyphen, 1-253 chars
+const SESSION_ID_RE = /^[a-z0-9]([a-z0-9-]{0,251}[a-z0-9])?$/;
 
 export function toVolumeName(prefix: string, sessionId: string): string {
-  if (!SESSION_ID_RE.test(sessionId)) {
-    throw new Error(`Invalid sessionId: must be a 24-character hex string, got "${sessionId}"`);
+  const normalized = sessionId.toLowerCase();
+  if (!SESSION_ID_RE.test(normalized)) {
+    throw new Error(
+      `Invalid sessionId: must be lowercase alphanumeric/hyphens, got "${sessionId}"`
+    );
   }
-  return `${prefix}-${sessionId}`;
+  return `${prefix}-${normalized}`;
 }
