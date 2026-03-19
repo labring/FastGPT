@@ -266,7 +266,12 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
         }));
 
         // Dynamic add or delete userFilesInput
-        const canUploadFiles = e.canSelectFile || e.canSelectImg;
+        const canUploadFiles =
+          e.canSelectFile ||
+          e.canSelectImg ||
+          e.canSelectVideo ||
+          e.canSelectAudio ||
+          e.canSelectCustomFileExtension;
         const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
         if (canUploadFiles) {
           !repeatKey &&
