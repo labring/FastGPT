@@ -57,14 +57,15 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         // 密码错误，需要清空 query 参数
         if (error.statusText === UserErrEnum.account_psw_error) {
           router.replace(
-            router.pathname,
             {
+              pathname: router.pathname,
               query: {
                 ...router.query,
                 u: '',
                 p: ''
               }
             },
+            undefined,
             {
               shallow: false
             }
