@@ -13,6 +13,7 @@
     "config/json",
     "config/signoz",
     "---Troubleshooting---",
+    "troubleshooting/attention",
     "troubleshooting/faq",
     "troubleshooting/methods",
     "troubleshooting/model-errors",
