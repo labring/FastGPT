@@ -1,13 +1,16 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 export type CapabilityToolCallResult = {
   response: string;
   usages?: any[];
+  assistantResponses?: AIChatItemValueItemType[];
 };
 
 export type CapabilityToolCallHandler = (
   toolId: string,
-  args: string
+  args: string,
+  toolCallId: string
 ) => Promise<CapabilityToolCallResult | null>;
 
 // Capability interface: each capability contributes system prompt, tools, tool handler, and cleanup
@@ -18,7 +21,11 @@ export type AgentCapability = {
   // Additional tool definitions
   completionTools?: ChatCompletionTool[];
   // Tool call handler: return result if recognized, null otherwise
-  handleToolCall?: (toolId: string, args: string) => Promise<CapabilityToolCallResult | null>;
+  handleToolCall?: (
+    toolId: string,
+    args: string,
+    toolCallId: string
+  ) => Promise<CapabilityToolCallResult | null>;
   // Resource cleanup (called in finally)
   dispose?: () => Promise<void>;
 };
@@ -27,10 +34,14 @@ export type AgentCapability = {
 export function createCapabilityToolCallHandler(
   capabilities: AgentCapability[]
 ): CapabilityToolCallHandler {
-  return async (toolId: string, args: string): Promise<CapabilityToolCallResult | null> => {
+  return async (
+    toolId: string,
+    args: string,
+    toolCallId: string
+  ): Promise<CapabilityToolCallResult | null> => {
     for (const cap of capabilities) {
       if (cap.handleToolCall) {
-        const result = await cap.handleToolCall(toolId, args);
+        const result = await cap.handleToolCall(toolId, args, toolCallId);
         if (result !== null) return result;
       }
     }

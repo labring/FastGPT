@@ -92,6 +92,7 @@ type ChatPageProps = {
   appId: string;
   isStandalone?: string;
   showRunningStatus: boolean;
+  showSkillReferences: boolean;
   showCite: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
@@ -153,6 +154,7 @@ const ChatContent = (props: ChatPageProps) => {
       <ChatItemContextProvider
         showRouteToDatasetDetail={isStandalone !== '1'}
         showRunningStatus={props.showRunningStatus}
+        showSkillReferences={props.showSkillReferences}
         canDownloadSource={props.canDownloadSource}
         isShowCite={props.showCite}
         isShowFullText={props.showFullText}
@@ -188,7 +190,7 @@ export async function getServerSideProps(context: any) {
           appId,
           type: PublishChannelEnum.playground
         },
-        'showRunningStatus showCite showFullText canDownloadSource showWholeResponse'
+        'showRunningStatus showSkillReferences showCite showFullText canDownloadSource showWholeResponse'
       ).lean();
 
       return config;
@@ -202,6 +204,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId,
       showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
+      showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
       showCite: chatQuoteReaderConfig?.showCite ?? true,
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,

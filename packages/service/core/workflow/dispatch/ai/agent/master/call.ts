@@ -22,7 +22,10 @@ import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
 import type { WorkflowResponseItemType } from '../../../type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
@@ -47,6 +50,7 @@ type Response = {
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   masterMessages: ChatCompletionMessageParam[];
+  capabilityAssistantResponses?: AIChatItemValueItemType[];
 
   nodeResponse: ChatHistoryItemResType;
 };
@@ -103,6 +107,7 @@ export const masterCall = async ({
 
   const startTime = Date.now();
   const childrenResponses: ChatHistoryItemResType[] = [];
+  const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
   const isStepCall = steps && step;
   const stepId = step?.id;
   const stepStreamResponse = (args: WorkflowResponseItemType) => {
@@ -452,9 +457,13 @@ export const masterCall = async ({
           // Capability tools (e.g. sandbox skills)
           const capResult = await capabilityToolCallHandler?.(
             toolId,
-            call.function.arguments ?? ''
+            call.function.arguments ?? '',
+            callId
           );
           if (capResult != null) {
+            if (capResult.assistantResponses?.length) {
+              capabilityAssistantResponses.push(...capResult.assistantResponses);
+            }
             const subInfo = getSubAppInfo(toolId);
             childrenResponses.push({
               nodeId: callId,
@@ -719,7 +728,8 @@ export const masterCall = async ({
       completeMessages,
       assistantMessages,
       nodeResponse,
-      masterMessages: masterMessages.concat(assistantMessages)
+      masterMessages: masterMessages.concat(assistantMessages),
+      capabilityAssistantResponses
     };
   }
 
@@ -730,6 +740,7 @@ export const masterCall = async ({
     completeMessages,
     assistantMessages,
     nodeResponse,
-    masterMessages: filterMemoryMessages(completeMessages)
+    masterMessages: filterMemoryMessages(completeMessages),
+    capabilityAssistantResponses
   };
 };

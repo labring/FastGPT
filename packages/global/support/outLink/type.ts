@@ -63,6 +63,8 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   showCite: boolean;
   // whether to show the running status
   showRunningStatus: boolean;
+  // whether to show skill reference logs
+  showSkillReferences: boolean;
   // whether to show the full text reader
   showFullText: boolean;
   // whether can download source
@@ -98,6 +100,7 @@ export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
   name: string;
   showCite?: OutLinkSchema<T>['showCite'];
   showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
+  showSkillReferences?: OutLinkSchema<T>['showSkillReferences'];
   showFullText?: OutLinkSchema<T>['showFullText'];
   canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
   // response when request
@@ -112,6 +115,7 @@ export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
 
 export const PlaygroundVisibilityConfigSchema = z.object({
   showRunningStatus: z.boolean(),
+  showSkillReferences: z.boolean(),
   showCite: z.boolean(),
   showFullText: z.boolean(),
   canDownloadSource: z.boolean(),
