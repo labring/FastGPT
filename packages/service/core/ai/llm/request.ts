@@ -845,10 +845,12 @@ const createChatCompletion = async ({
 
     const response = await ai.chat.completions.create(body, {
       ...options,
-      ...(modelData.requestUrl ? { path: modelData.requestUrl } : {}),
+      ...(modelData.requestUrl && !userKey ? { path: modelData.requestUrl } : {}),
       headers: {
         ...options?.headers,
-        ...(modelData.requestAuth ? { Authorization: `Bearer ${modelData.requestAuth}` } : {})
+        ...(modelData.requestAuth && !userKey
+          ? { Authorization: `Bearer ${modelData.requestAuth}` }
+          : {})
       }
     });
 
