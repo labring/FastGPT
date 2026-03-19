@@ -31,7 +31,9 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import TemplateCreatePanel from '@/pageComponents/dashboard/agent/TemplateCreatePanel';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import CreateModal from '@/pages/dashboard/create/CreateModal';
+import type { CreateAppType } from '@/pages/dashboard/create/CreateModal';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -91,6 +93,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     errorToast: 'Error'
   });
 
+  const [createAppType, setCreateAppType] = useState<CreateAppType>();
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
@@ -104,8 +108,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          {/* Only shown on pc root page */}
-          {!folderDetail && isPc && <TemplateCreatePanel type={appType} />}
           <Flex alignItems={'center'}>
             {!isPc ? (
               MenuIcon
@@ -127,7 +129,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </Box>
             ) : (
               <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-                Agent
+                {t('app:application')}
               </Box>
             )}
             <Flex flex={1} />
@@ -138,7 +140,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   value={searchKey}
                   bg={'white'}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_agent')}
+                  placeholder={t('app:search_name_intro')}
                   maxLength={30}
                 />
               )}
@@ -148,22 +150,61 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   folderDetail?.type !== AppTypeEnum.httpPlugin
                 : userInfo?.team.permission.hasAppCreatePer) && (
                 <>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                    onClick={() => setEditFolder({})}
-                    px={5}
-                  >
-                    {t('common:Folder')}
+                  <Button variant={'whiteBase'} onClick={() => setEditFolder({})} px={5}>
+                    {t('app:new_folder')}
                   </Button>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                    onClick={onOpenJsonImportModal}
-                    px={5}
-                  >
-                    {t('common:Import')}
-                  </Button>
+                  <MyMenu
+                    size="md"
+                    Button={
+                      <Button
+                        variant={'primary'}
+                        leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
+                      >
+                        {t('新建应用')}
+                      </Button>
+                    }
+                    menuList={[
+                      {
+                        children: [
+                          {
+                            icon: 'core/app/assistant/assistantIcon',
+                            label: t('app:smart_qa'),
+                            description: t('app:smart_qa_desc'),
+                            onClick: () => setCreateAppType(AppTypeEnum.assistant)
+                          },
+                          {
+                            icon: 'core/app/type/workflowFill',
+                            label: t('app:type.Workflow bot'),
+                            description: t('app:workflow_desc'),
+                            onClick: () => setCreateAppType(AppTypeEnum.workflow)
+                          }
+                        ]
+                      },
+                      {
+                        children: [
+                          {
+                            label: (
+                              <Flex alignItems="center" fontSize="14px">
+                                <MyIcon name="common/importLight" w="24px" mr={2} />
+                                {t('app:import_json_config')}
+                              </Flex>
+                            ),
+                            onClick: onOpenJsonImportModal
+                          },
+                          {
+                            label: (
+                              <Flex alignItems="center" fontSize="14px">
+                                <MyIcon name="core/importTemplateIcon" w="24px" mr={2} />
+                                {t('app:create_from_template')}
+                                <MyIcon name="core/share" w="16px" ml={'auto'} mr={2} />
+                              </Flex>
+                            ),
+                            onClick: () => router.push('/dashboard/templateMarket')
+                          }
+                        ]
+                      }
+                    ]}
+                  />
                 </>
               )}
             </Flex>
@@ -175,7 +216,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   maxW={['auto', '250px']}
                   value={searchKey}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
+                  placeholder={t('app:search_name_intro')}
                   maxLength={30}
                 />
               }
@@ -183,7 +224,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           )}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
-            <List />
+            <List showCreateCard={false} />
           </MyBox>
         </Flex>
 
@@ -239,6 +280,14 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         />
       )}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
+      {!!createAppType && (
+        <CreateModal
+          type={createAppType}
+          parentId={parentId}
+          onClose={() => setCreateAppType(undefined)}
+          onSuccess={loadMyApps}
+        />
+      )}
     </Flex>
   );
 };

@@ -104,7 +104,7 @@ const DashboardContainer = ({
       {
         groupId: TabEnum.agent,
         groupAvatar: 'core/chat/sidebar/star',
-        groupName: 'Agent',
+        groupName: t('app:application'),
         children: [
           {
             isActive: !currentType,
@@ -113,11 +113,7 @@ const DashboardContainer = ({
           },
           {
             typeId: AppTypeEnum.assistant,
-            typeName: t('app:type.Smart customer service')
-          },
-          {
-            typeId: AppTypeEnum.simple,
-            typeName: t('app:type.Chat_Agent')
+            typeName: t('app:smart_qa')
           },
           {
             typeId: AppTypeEnum.workflow,

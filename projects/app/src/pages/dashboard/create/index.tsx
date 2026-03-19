@@ -44,6 +44,8 @@ import AppTypeCard from '@/pageComponents/app/create/AppTypeCard';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import ToolModal from './ToolModal';
+import type { ToolModalAppType } from './ToolModal';
 
 type FormType = {
   avatar: string;
@@ -74,6 +76,7 @@ const CreateAppsPage = () => {
     (appType as CreateAppType) || AppTypeEnum.workflow
   );
   const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
+  const [toolModalType, setToolModalType] = useState<ToolModalAppType>();
   const isToolType = ToolTypeList.includes(selectedAppType);
 
   const { data: templateData, loading: isLoadingTemplates } = useRequest(
@@ -241,6 +244,10 @@ const CreateAppsPage = () => {
                     key={option.type}
                     selectedAppType={selectedAppType}
                     onClick={() => {
+                      if (option.type === AppTypeEnum.httpToolSet) {
+                        setToolModalType(AppTypeEnum.httpToolSet);
+                        return;
+                      }
                       setSelectedAppType(option.type as CreateAppType);
                       setValue(
                         'avatar',
@@ -599,6 +606,13 @@ const CreateAppsPage = () => {
         )}
       </Flex>
       <AvatarUploader />
+      {!!toolModalType && (
+        <ToolModal
+          type={toolModalType}
+          parentId={parentId as string}
+          onClose={() => setToolModalType(undefined)}
+        />
+      )}
     </Box>
   );
 };
