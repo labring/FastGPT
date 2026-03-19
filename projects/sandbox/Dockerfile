@@ -5,7 +5,7 @@ WORKDIR /app
 ARG proxy
 
 # 安装 pnpm
-RUN apk add --no-cache nodejs npm && npm install -g pnpm@9.4.0
+RUN apk add --no-cache nodejs npm && npm install -g pnpm@10
 
 # 复制 workspace 配置和依赖包
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
