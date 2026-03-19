@@ -73,20 +73,19 @@ jobs:
             ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
           docker push ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
 
-      - name: Setup kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG_CN }}" > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-
       - name: Update deployment image
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_CN }}
         run: |
-          kubectl set image deployment/fastgpt-docs-preview \
+          KUBECONFIG_FILE=$(mktemp)
+          trap "rm -f $KUBECONFIG_FILE" EXIT
+          echo "$KUBE_CONFIG" > "$KUBECONFIG_FILE"
+          chmod 600 "$KUBECONFIG_FILE"
+
+          kubectl --kubeconfig "$KUBECONFIG_FILE" set image deployment/fastgpt-docs-preview \
             fastgpt-docs-preview=${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
 
-      - name: Annotate deployment
-        run: |
-          kubectl annotate deployment/fastgpt-docs-preview \
+          kubectl --kubeconfig "$KUBECONFIG_FILE" annotate deployment/fastgpt-docs-preview \
             originImageName="${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}" --overwrite
 
       - name: Comment deployment status
