@@ -4,7 +4,12 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
-import { getInitialPlanPrompt, getContinuePlanPrompt, getInitialPlanQuery } from './prompt';
+import {
+  getInitialPlanPrompt,
+  getContinuePlanPrompt,
+  getInitialPlanQuery,
+  reTryPlanPrompt
+} from './prompt';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -84,43 +89,26 @@ const parsePlan = async ({
     return;
   }
 
-  const parsePlanData = async (value: unknown) => {
-    if (!value || typeof value !== 'object') {
-      return;
-    }
+  const result = parseJsonArgs<{ steps: AgentPlanType['steps'] }>(text);
 
-    const params = await AgentPlanSchema.safeParseAsync({
-      ...value,
-      task,
-      description,
-      background
-    });
-
-    if (!params.success) {
-      return;
-    }
-
-    return params.data;
-  };
-
-  const directResult = parseJsonArgs(text);
-  const directPlan = await parsePlanData(directResult);
-  if (directPlan) {
-    agentLogger.debug('[Plan Agent] JSON direct parsing successful');
-    return directPlan;
+  if (!result) {
+    return result;
   }
 
-  try {
-    const repairedText = jsonrepair(sliceJsonStr(text));
-    const repairedResult = parseJsonArgs(repairedText);
-    agentLogger.debug('[Plan Agent] JSON jsonrepair parsing successful');
-    return parsePlanData(repairedResult);
-  } catch (error) {
-    agentLogger.warn('[Plan Agent] local jsonrepair failed', {
-      error: error instanceof Error ? error.message : String(error)
-    });
+  const params = await AgentPlanSchema.safeParseAsync({
+    ...result,
+    planId,
+    task,
+    description,
+    background
+  });
+
+  if (!params.success) {
+    agentLogger.warn(`[Plan Agent] Not plan`, { text });
     return;
   }
+
+  return params.data;
 };
 const parseAskInteractive = async (
   toolCalls: ChatCompletionMessageToolCall[]
@@ -250,6 +238,14 @@ export const dispatchPlanAgent = async ({
   // console.dir({ requestMessages }, { depth: null });
   // console.log('userInput:', userInput, 'mode:', mode, 'interactive?.type:', interactive?.type);
 
+  const requestParams = {
+    model: modelData.model,
+    stream: true,
+    tools: props.mode === 'continue' ? undefined : [AIAskTool],
+    tool_choice: 'auto' as const,
+    toolCallMode: modelData.toolChoice ? ('toolChoice' as const) : ('prompt' as const),
+    parallel_tool_calls: false
+  };
   let {
     answerText,
     toolCalls = [],
@@ -260,13 +256,8 @@ export const dispatchPlanAgent = async ({
   } = await createLLMResponse({
     isAborted: checkIsStopping,
     body: {
-      model: modelData.model,
       messages: requestMessages,
-      stream: true,
-      tools: props.mode === 'continue' ? undefined : [AIAskTool],
-      tool_choice: 'auto',
-      toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
-      parallel_tool_calls: false
+      ...requestParams
     }
   });
 
@@ -281,114 +272,86 @@ export const dispatchPlanAgent = async ({
     2. toolCall: 调用ask工具
     3. text + confirm: 成功生成工具 + 确认操作
   */
-  // 获取交互结果
-  let askInteractive = await parseAskInteractive(toolCalls);
-  let plan: AgentPlanType | undefined;
+  // 1. 首次获取交互结果
+  const { askInteractive, plan } = await (async () => {
+    // 1. 首次获取交互结果
+    let [askInteractive, plan] = await Promise.all([
+      parseAskInteractive(toolCalls),
+      parsePlan({
+        text: answerText,
+        planId,
+        task,
+        description,
+        background
+      })
+    ]);
+    if (plan || askInteractive) {
+      return {
+        askInteractive,
+        plan
+      };
+    }
 
-  if (!askInteractive) {
-    plan = await parsePlan({
-      text: answerText,
-      planId,
-      task,
-      description,
-      background
-    });
-  }
-
-  if (!askInteractive && !plan) {
+    // 2. 二次尝试生成 plan
     agentLogger.warn('[Plan Agent] parse failed, try regenerate plan once', {
       requestId,
       mode: props.mode,
       answerText: answerText.slice(0, 2000)
     });
 
-    const regeneratePrompt = [
-      '上一轮 plan 输出不是合法 JSON，无法解析。',
-      '',
-      '请基于原始任务重新生成完整 plan，严格按 JSON 输出。',
-      '',
-      '要求：',
-      '- 仅返回 JSON',
-      '- 包含 task 和 steps 字段',
-      '- 每个 step 必须包含 id/title/description',
-      '',
-      'JSON 格式示例（只参考格式，不要照抄内容）：',
-      '{',
-      '  "task": "深入了解 Rust 编程语言（系统编程方向）",',
-      '  "steps": [',
-      '    {',
-      '      "id": "step1",',
-      '      "title": "了解 Rust 的核心特性",',
-      '      "description": "使用 @webSearch 搜索 Rust 的所有权、借用检查与并发安全机制"',
-      '    },',
-      '    {',
-      '      "id": "step2",',
-      '      "title": "调研 Rust 在系统编程的应用",',
-      '      "description": "使用 @webSearch 搜索 Rust 在操作系统、网络编程、嵌入式中的典型项目"',
-      '    }',
-      '  ]',
-      '}'
-    ].join('\n');
-
     const regenerateResponse = await createLLMResponse({
       isAborted: checkIsStopping,
       body: {
-        model: modelData.model,
         messages: [
-          ...requestMessages,
-          {
-            role: 'assistant',
-            ...(answerText && { content: answerText }),
-            ...(toolCalls.length > 0 && { tool_calls: toolCalls })
-          },
+          ...completeMessages,
           {
             role: 'user',
-            content: regeneratePrompt
+            content: reTryPlanPrompt
           }
         ],
-        stream: true,
-        tools: props.mode === 'continue' ? undefined : [AIAskTool],
-        tool_choice: 'auto',
-        toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
-        parallel_tool_calls: false
+        ...requestParams
       }
     });
-    if (regenerateResponse.responseEmptyTip) {
-      return Promise.reject(regenerateResponse.responseEmptyTip);
-    }
-
     usage.inputTokens += regenerateResponse.usage.inputTokens;
     usage.outputTokens += regenerateResponse.usage.outputTokens;
     llmRequestIds.push(regenerateResponse.requestId);
     completeMessages = regenerateResponse.completeMessages;
 
-    askInteractive = await parseAskInteractive(regenerateResponse.toolCalls || []);
-    if (!askInteractive) {
-      plan = await parsePlan({
+    [askInteractive, plan] = await Promise.all([
+      parseAskInteractive(regenerateResponse.toolCalls || []),
+      parsePlan({
         text: regenerateResponse.answerText,
         planId,
         task,
         description,
         background
-      });
+      })
+    ]);
+    if (plan || askInteractive) {
+      return {
+        askInteractive,
+        plan
+      };
     }
 
-    if (!askInteractive && !plan) {
-      agentLogger.warn('[Plan Agent] plan regenerate failed', {
-        requestId,
-        regenerateRequestId: regenerateResponse.requestId,
-        mode: props.mode,
-        answerText: regenerateResponse.answerText.slice(0, 2000)
-      });
-      askInteractive = {
-        type: 'agentPlanAskQuery',
-        params: {
-          content: i18nT('chat:agent_plan_parse_retry_tip')
-        }
-      };
-      completeMessages = [];
-    }
-  }
+    // 真的失败了
+    agentLogger.warn('[Plan Agent] plan regenerate failed', {
+      requestId,
+      regenerateRequestId: regenerateResponse.requestId,
+      mode: props.mode,
+      answerText: regenerateResponse.answerText.slice(0, 2000)
+    });
+    askInteractive = {
+      type: 'agentPlanAskQuery',
+      params: {
+        content: i18nT('chat:agent_plan_parse_retry_tip')
+      }
+    };
+
+    return {
+      askInteractive
+    };
+  })();
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: modelData.model,

@@ -38,16 +38,15 @@ import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getLLMModel } from '../../../../ai/model';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
   [NodeInputKeyEnum.userChatInput]: string;
 
+  [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
-  [NodeInputKeyEnum.aiChatVision]?: boolean;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
 
@@ -98,8 +97,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       useAgentSandbox = false
     }
   } = props;
-  const modelData = getLLMModel(model);
-  const normalizedVision = !!(aiChatVision && modelData?.vision);
   const chatHistories = getHistories(history, histories);
   const aiHistoryValues = chatHistories
     .filter((item) => item.obj === ChatRoleEnum.AI)
@@ -408,7 +405,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               systemPrompt: formatedSystemPrompt,
               masterMessages: [],
               planMessages: [],
-              useVision: normalizedVision,
               getSubAppInfo,
               getSubApp,
               completionTools: agentCompletionTools,
@@ -481,7 +477,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           ...props,
           masterMessages,
           planMessages: planHistoryMessages || [],
-          useVision: normalizedVision,
           systemPrompt: formatedSystemPrompt,
           getSubAppInfo,
           getSubApp,
