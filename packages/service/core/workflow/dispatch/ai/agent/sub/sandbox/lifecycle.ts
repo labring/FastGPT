@@ -28,6 +28,7 @@ import {
   buildBaseContainerEnv
 } from '../../../../../../agentSkills/sandboxConfig';
 import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { env } from '../../../../../../../env';
 import type {
   AgentSkillSchemaType,
   AgentSkillsVersionSchemaType,
@@ -264,6 +265,20 @@ export async function createAgentSandbox(
 
     if (deployableSkills.length === 0) {
       throw new Error('No deployable skills found (missing active versions)');
+    }
+  }
+
+  // Check active session-runtime sandbox count limit
+  const maxSessionRuntime = env.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
+  if (maxSessionRuntime !== undefined) {
+    const activeCount = await MongoSandboxInstance.countDocuments({
+      status: SandboxStatusEnum.running,
+      'detail.sandboxType': SandboxTypeEnum.sessionRuntime
+    });
+    if (activeCount >= maxSessionRuntime) {
+      const message = `Active session-runtime sandbox limit reached (${activeCount}/${maxSessionRuntime}). Please try again later.`;
+      onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
+      throw new Error(message);
     }
   }
 

@@ -70,8 +70,8 @@ export class SandboxClient {
         return {
           provider: 'opensandbox' as const,
           config: {
-            baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
-            token: env.AGENT_SANDBOX_OPENSANDBOX_TOKEN,
+            baseUrl: env.AGENT_SANDBOX_BASE_URL,
+            token: env.AGENT_SANDBOX_API_KEY,
             sandboxId: this.sandboxId
           }
         };
