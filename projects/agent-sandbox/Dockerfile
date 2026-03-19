@@ -1,5 +1,5 @@
-# Skill Sandbox 基础镜像
-# 提供 code-server 开发环境，供 K8s Sidecar 和 Docker 双进程两种运行时使用
+# Agent Sandbox 镜像
+# 提供 code-server 开发环境
 #
 # 构建：docker build -t fastgpt-agent-sandbox:latest .
 # 产物：fastgpt-agent-sandbox:latest
