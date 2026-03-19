@@ -1,6 +1,6 @@
 ---
-title: Model Availability Troubleshooting
-description: FastGPT Self-Hosting Model Availability Troubleshooting
+title: Model Troubleshooting
+description: FastGPT Self-Hosting Model Troubleshooting
 ---
 
 
@@ -98,3 +98,21 @@ Possible error issues:
 
 1. Domestic models hit risk control.
 2. Unsupported model parameters: only keep messages and necessary parameters for testing, delete other parameters for testing.
+
+---
+
+### (3) "Current group upstream load is saturated, please try again later"
+
+If you encounter this error (e.g. `request id:xxx`) in the logs or response, this is typically an OneAPI channel issue. Try switching to a different model or a different relay provider.
+
+---
+
+### (4) "Connection Error" in logs when using the API
+
+Most likely the API key is pointing to OpenAI's endpoint, but the server is deployed in mainland China and can't reach overseas endpoints. Use a relay service or reverse proxy to resolve the connectivity issue.
+
+---
+
+### (5) Enable image indexing reports 400
+
+You need to correctly configure the OCR model in `Admin` -> `System Configuration`.
