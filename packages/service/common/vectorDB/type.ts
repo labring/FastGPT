@@ -1,6 +1,7 @@
 import type { Pool as PgPool } from 'pg';
 import type { Pool as MysqlPool } from 'mysql2/promise';
 import type { MilvusClient } from '@zilliz/milvus2-sdk-node';
+import type { MilvusVersionManager } from './milvus/version';
 import { z } from 'zod';
 
 // Embedding recall item schema
@@ -19,7 +20,10 @@ export const InsertVectorControllerPropsSchema = z.object({
   vectors: z.array(z.array(z.number())),
   tableName: z.string().optional(),
   column_des_index: z.string().optional(),
-  column_val_index: z.string().optional()
+  column_val_index: z.string().optional(),
+  // Milvus 2.6+ optional fields
+  textContents: z.array(z.string()).optional(),
+  metadataList: z.array(z.record(z.string(), z.any())).optional()
 });
 export type InsertVectorControllerPropsType = z.infer<typeof InsertVectorControllerPropsSchema>;
 
@@ -124,20 +128,25 @@ export interface VectorControllerType {
   /**
    * Database embedding recall for Text2SQL column description/value search
    */
-  databaseEmbRecall(props: DatabaseEmbeddingRecallCtrlProps): Promise<DatabaseEmbeddingRecallResponse>;
+  databaseEmbRecall(
+    props: DatabaseEmbeddingRecallCtrlProps
+  ): Promise<DatabaseEmbeddingRecallResponse>;
 }
 
 declare global {
   var pgClient: PgPool | null;
   var obClient: MysqlPool | null;
   var milvusClient: MilvusClient | null;
+  var milvusVersionManager: MilvusVersionManager | undefined;
 }
 
 // Database embedding recall props schema
 export const DatabaseEmbeddingRecallCtrlPropsSchema = EmbeddingRecallCtrlPropsSchema.extend({
   tableName: z.string() // DBDatasetVectorTableName or DBDatasetValueVectorTableName
 });
-export type DatabaseEmbeddingRecallCtrlProps = z.infer<typeof DatabaseEmbeddingRecallCtrlPropsSchema>;
+export type DatabaseEmbeddingRecallCtrlProps = z.infer<
+  typeof DatabaseEmbeddingRecallCtrlPropsSchema
+>;
 
 // Database embedding recall item schema
 export const DatabaseEmbeddingRecallItemSchema = z.object({
