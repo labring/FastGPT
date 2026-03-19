@@ -96,6 +96,9 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
         runtime
       };
 
+    case 'e2b':
+      throw new Error('Sandbox provider "e2b" is not supported');
+
     default:
       return assertNever(provider);
   }

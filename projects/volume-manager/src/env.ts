@@ -5,7 +5,6 @@ const schema = z.object({
   VM_RUNTIME: z.enum(['docker', 'kubernetes']).default('kubernetes'),
   VM_DOCKER_SOCKET: z.string().default('/var/run/docker.sock'),
   VM_K8S_NAMESPACE: z.string().default('opensandbox'),
-  VM_K8S_KUBECONFIG: z.string().optional(),
   VM_K8S_PVC_STORAGE_CLASS: z.string().default('standard'),
   VM_K8S_PVC_STORAGE_SIZE: z.string().default('1Gi'),
   VM_VOLUME_NAME_PREFIX: z.string().default('fastgpt-session'),
