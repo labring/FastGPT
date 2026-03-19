@@ -1,0 +1,115 @@
+name: Preview docs push
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+      datetime:
+        required: true
+        type: string
+      run_id:
+        required: true
+        type: string
+    secrets:
+      ALI_IMAGE_USER:
+        required: true
+      ALI_IMAGE_PSW:
+        required: true
+      ALI_IMAGE_PREFIX:
+        required: true
+      KUBE_CONFIG_CN:
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+  pull-requests: write
+  issues: write # Required for issue-comment (PR comments use Issues API)
+
+jobs:
+  push-and-deploy:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Read PR information
+        id: pr
+        run: |
+          PR_NUMBER="${{ inputs.pr_number }}"
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Found PR #$PR_NUMBER"
+
+      - name: Get artifact name
+        id: artifacts
+        run: |
+          echo "datetime=${{ inputs.datetime }}" >> $GITHUB_OUTPUT
+          echo "artifact_name=fastgpt-docs-${{ inputs.datetime }}" >> $GITHUB_OUTPUT
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifacts.outputs.artifact_name }}
+          path: /tmp/
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load Docker image
+        run: |
+          docker load -i /tmp/fastgpt-docs-${{ steps.artifacts.outputs.datetime }}.tar
+
+      - name: Login to Aliyun
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_IMAGE_USER }}
+          password: ${{ secrets.ALI_IMAGE_PSW }}
+
+      - name: Tag and push image
+        run: |
+          docker tag fastgpt-docs:${{ steps.artifacts.outputs.datetime }} \
+            ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+          docker push ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+
+      - name: Setup kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG_CN }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/fastgpt-docs-preview \
+            fastgpt-docs-preview=${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+
+      - name: Annotate deployment
+        run: |
+          kubectl annotate deployment/fastgpt-docs-preview \
+            originImageName="${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}" --overwrite
+
+      - name: Comment deployment status
+        uses: FinleyGe/github-tools@0.0.1
+        if: success()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          issue-number: ${{ steps.pr.outputs.number }}
+          title: 'Docs Preview:'
+          body: |
+            ---
+            🚀 **FastGPT Document Preview Ready!**
+
+            🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
+
+      - name: Comment on failure
+        uses: FinleyGe/github-tools@0.0.1
+        if: failure()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: issue-comment
+          issue-number: ${{ steps.pr.outputs.number }}
+          title: 'Docs Preview Deployment Failed'
+          body: |
+            Failed to deploy docs preview. Please check workflow logs.

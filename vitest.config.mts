@@ -12,7 +12,8 @@ export default defineConfig({
   test: {
     coverage: {
       enabled: true,
-      reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
+      reporter: ['html', 'json-summary', 'json'],
+      // reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
       all: false, // 只包含被测试实际覆盖的文件，不包含空目录
       include: ['projects/app/**/*.ts', 'packages/**/*.ts'],

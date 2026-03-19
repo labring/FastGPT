@@ -1,0 +1,62 @@
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: sdk-pool
+  namespace: default
+spec:
+  template:
+    spec:
+      # Init container: 安装execd
+      initContainers:
+      - name: execd-installer
+        image: opensandbox/execd:v1.0.5
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            cp ./execd /opt/opensandbox/bin/execd && \
+            cp ./bootstrap.sh /opt/opensandbox/bin/bootstrap.sh && \
+            chmod +x /opt/opensandbox/bin/execd && \
+            chmod +x /opt/opensandbox/bin/bootstrap.sh
+        volumeMounts:
+        - name: opensandbox-bin
+          mountPath: /opt/opensandbox/bin
+
+      # 主容器：带execd
+      containers:
+      - name: sandbox-container
+        image: nginx:latest
+        command:
+        - /opt/opensandbox/bin/bootstrap.sh
+        - nginx
+        - -g
+        - daemon off;  # nginx前台运行
+        env:
+        - name: EXECD
+          value: /opt/opensandbox/bin/execd
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 44772
+          name: execd
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: opensandbox-bin
+          mountPath: /opt/opensandbox/bin
+
+      # 共享卷
+      volumes:
+      - name: opensandbox-bin
+        emptyDir: {}
+
+  capacitySpec:
+    bufferMax: 10
+    bufferMin: 2
+    poolMax: 20
+    poolMin: 5

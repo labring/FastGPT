@@ -10,9 +10,12 @@ const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fa
 
 export const env = createEnv({
   server: {
-    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox']).optional(),
+    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
     AGENT_SANDBOX_SEALOS_BASEURL: z.string().url().optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_BASEURL: z.string().url().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
 
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),
     LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
