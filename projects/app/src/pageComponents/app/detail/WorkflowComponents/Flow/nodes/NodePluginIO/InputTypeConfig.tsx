@@ -365,7 +365,6 @@ const InputTypeConfig = ({
                 placeholder={t('app:variable_key_placeholder')}
                 isReadOnly={identifierReadonly}
                 {...register('key', {
-                  required: true,
                   onChange: (e) => {
                     onKeyChange?.(e.target.value);
                   }

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { Flex, Stack } from '@chakra-ui/react';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
@@ -9,6 +9,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
 import { workflowSystemVariables } from '@/web/core/app/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
 import { getVariableInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
 import { addVariable } from '../VariableEdit';
@@ -17,11 +18,7 @@ import {
   useValidateFieldName,
   useSubmitErrorHandler
 } from '../utils/formValidation';
-import {
-  getInitialVariableIdentifier,
-  shouldLockVariableIdentifier,
-  syncVariableIdentifier
-} from '../utils/variableEditor';
+import { shouldLockVariableIdentifier } from '../utils/variableEditor';
 
 const VariableEditModal = ({
   onClose,
@@ -45,32 +42,11 @@ const VariableEditModal = ({
   });
   const { setValue, reset, watch, getValues } = form;
   const type = watch('type');
-  const label = watch('label');
-  const key = watch('key');
-  const [isIdentifierTouched, setIsIdentifierTouched] = useState(!!variable.key);
   const isIdentifierReadonly = useMemo(() => shouldLockVariableIdentifier(variable), [variable]);
 
   useEffect(() => {
     reset(variable);
-    setValue('key', getInitialVariableIdentifier(variable));
-    setIsIdentifierTouched(!!variable.key);
-  }, [variable, reset, setValue]);
-
-  useEffect(() => {
-    if (isIdentifierReadonly) return;
-
-    const nextKey = syncVariableIdentifier({
-      label: label || '',
-      key: key || '',
-      touched: isIdentifierTouched
-    });
-
-    if (nextKey !== key) {
-      setValue('key', nextKey, {
-        shouldDirty: false
-      });
-    }
-  }, [isIdentifierReadonly, isIdentifierTouched, key, label, setValue]);
+  }, [variable, reset]);
 
   const inputTypeList = useMemo(() => getVariableInputTypeList(), []);
 
@@ -119,12 +95,14 @@ const VariableEditModal = ({
         return;
       }
 
-      const isValidKey = validateFieldKey(data.key, {
-        existingKeys: otherVariables.map((v) => v.key),
-        reservedKeys: workflowSystemVariables.map((item) => item.key)
-      });
-      if (!isValidKey) {
-        return;
+      if (data.key) {
+        const isValidKey = validateFieldKey(data.key, {
+          existingKeys: otherVariables.map((v) => v.key),
+          reservedKeys: workflowSystemVariables.map((item) => item.key)
+        });
+        if (!isValidKey) {
+          return;
+        }
       }
 
       // For custom and internal types, user can select valueType manually, so don't override it
@@ -154,7 +132,7 @@ const VariableEditModal = ({
         }
       });
 
-      const submittedData = data;
+      const submittedData = data.key ? data : { ...data, key: getNanoid(8) };
 
       const updatedVariables =
         submittedData.key && variables.some((v) => v.key === submittedData.key)
@@ -172,10 +150,8 @@ const VariableEditModal = ({
         });
         reset({
           ...addVariable(),
-          key: getInitialVariableIdentifier(addVariable()),
           defaultValue: ''
         });
-        setIsIdentifierTouched(false);
       }
     },
     [
@@ -219,11 +195,6 @@ const VariableEditModal = ({
           inputType={type}
           defaultValueType={defaultValueType}
           identifierReadonly={isIdentifierReadonly}
-          onKeyChange={() => {
-            if (!isIdentifierReadonly) {
-              setIsIdentifierTouched(true);
-            }
-          }}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}
