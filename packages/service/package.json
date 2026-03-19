@@ -4,7 +4,7 @@
   "type": "module",
   "engines": {
     "node": ">=20",
-    "pnpm": ">=9"
+    "pnpm": "10.x"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.2",
