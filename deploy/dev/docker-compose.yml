@@ -5,10 +5,41 @@
 #   - pg: 5432
 #   - mongo: 27017
 #   - redis: 6379
-#   - fastgpt-sandbox: 3002
+#   - fastgpt-code-sandbox: 3002
 #   - fastgpt-plugin: 3003
+#   - opensandbox-server: 8090
+#   - volume-manager: 3004
 #   - aiproxy: 3010
 # - 使用 pgvector 作为默认的向量库
+# - 配置 opensandbox-config 的 network_mode 为 docker 网络，如 dev_fastgpt
+# - 配置 opensandbox-config 的 host_ip 为宿主机 LAN IP，如 192.168.1.100
+
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "opensandbox/execd:v1.0.7"
+
+      [egress]
+      image = "opensandbox/egress:v1.0.3"
+
+      [docker]
+      network_mode = "bridge"
+      # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable (e.g. host.docker.internal or the host LAN IP).
+      # It's required when server deployed with docker container under host.
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
+
+      [ingress]
+      mode = "direct"
 
 services:
   # Vector DB
@@ -26,7 +57,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
     volumes:
-      - ./pg/data:/var/lib/postgresql/data
+      - fastgpt-pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
       interval: 5s
@@ -47,7 +78,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=myusername
       - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
-      - ./mongo/data:/data/db
+      - fastgpt-mongo_data:/data/db
     healthcheck:
       test:
         [
@@ -113,9 +144,9 @@ services:
       retries: 3
       start_period: 30s
     volumes:
-      - ./redis/data:/data
+      - fastgpt-redis_data:/data
   fastgpt-minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z # cpu 不支持 AVX 时候使用 -cpuv1
     container_name: fastgpt-minio
     restart: always
     networks:
@@ -127,15 +158,15 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
-      - ./fastgpt-minio:/data
+      - fastgpt-minio_data:/data
     command: server /data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
       timeout: 20s
       retries: 3
-  sandbox:
-    container_name: sandbox
+  fastgpt-code-sandbox:
+    container_name: fastgpt-code-sandbox
     image: ghcr.io/labring/fastgpt-sandbox:v4.14.8
     ports:
       - 3002:3000
@@ -178,6 +209,11 @@ services:
     depends_on:
       fastgpt-minio:
         condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
   # AI Proxy
   aiproxy:
     image: ghcr.io/labring/aiproxy:v0.3.5
@@ -214,7 +250,7 @@ services:
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
-      - ./aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg_data:/var/lib/postgresql/data
     networks:
       - aiproxy
     environment:
@@ -227,6 +263,54 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  opensandbox-server:
+    image: opensandbox/server:v0.1.7
+    container_name: opensandbox-server
+    restart: always
+    networks:
+      - fastgpt
+    ports:
+      - '8090:8090'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  volume-manager:
+    image: fastgpt-volume-manager:latest
+    container_name: volume-manager
+    restart: always
+    networks:
+      - fastgpt
+    ports:
+      - 3004:3001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - VM_RUNTIME=docker
+      - VM_AUTH_TOKEN=changeme
+      - VM_VOLUME_NAME_PREFIX=fastgpt-session
+      - VM_LOG_LEVEL=info
+    healthcheck:
+      test:
+        ['CMD', 'bun', '-e', "fetch('http://localhost:3001/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 networks:
   fastgpt:
   aiproxy:
+
+volumes:
+  fastgpt-pg_data:
+  fastgpt-mongo_data:
+  fastgpt-redis_data:
+  fastgpt-minio_data:
+  fastgpt-aiproxy_pg_data:

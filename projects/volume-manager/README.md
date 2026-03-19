@@ -68,9 +68,53 @@ DELETE /v1/volumes/:sessionId
 | `VM_VOLUME_NAME_PREFIX` | | `fastgpt-session` | 卷名前缀 |
 | `VM_DOCKER_SOCKET` | | `/var/run/docker.sock` | Docker socket 路径（docker 模式） |
 | `VM_K8S_NAMESPACE` | | `opensandbox` | PVC 所在命名空间（k8s 模式） |
-| `VM_K8S_KUBECONFIG` | | - | kubeconfig 路径，集群内运行时留空 |
 | `VM_K8S_PVC_STORAGE_CLASS` | | `standard` | PVC StorageClass（k8s 模式） |
 | `VM_K8S_PVC_STORAGE_SIZE` | | `1Gi` | PVC 容量（k8s 模式） |
+
+## Kubernetes 部署要求
+
+### StorageClass
+
+volume-manager 默认使用 StorageClass `fastgpt-local`（可通过 `VM_K8S_PVC_STORAGE_CLASS` 覆盖）。参考配置：
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fastgpt-local
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+```
+
+关键特性说明：
+
+- `reclaimPolicy: Delete`：PVC 删除时自动清理底层数据
+- `volumeBindingMode: WaitForFirstConsumer`：延迟绑定，等待 Pod 调度后再绑定节点
+
+也可使用集群现有的其他 StorageClass，需支持 `ReadWriteOnce` accessMode。
+
+### RBAC 权限
+
+volume-manager 需要在 `VM_K8S_NAMESPACE` 命名空间内操作 PVC，最小权限如下：
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "create", "delete"]
+```
+
+volume-manager 使用集群内 ServiceAccount 认证，无需挂载外部 kubeconfig。
+
+### 部署检查清单
+
+- [ ] 命名空间 `opensandbox`（或自定义值）已存在
+- [ ] StorageClass `fastgpt-local`（或自定义值）已创建并可用
+- [ ] ServiceAccount + Role + RoleBinding 已创建
+- [ ] Secret 中包含有效的 `VM_AUTH_TOKEN`
 
 ## 项目结构
 
