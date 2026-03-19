@@ -1,4 +1,4 @@
 {
   "title": "Model Configuration",
-  "pages": ["intro", "siliconCloud"]
+  "pages": ["intro", "siliconCloud", "minimax"]
 }
