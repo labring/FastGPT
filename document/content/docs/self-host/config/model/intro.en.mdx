@@ -1,173 +1,227 @@
 ---
-title: FastGPT Model Configuration Guide
-description: FastGPT Model Configuration Guide
+title: Model Configuration
+description: FastGPT model configuration guide
 ---
 
 import { Alert } from '@/components/docs/Alert';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
-Before version 4.8.20, FastGPT model configuration was declared in the `config.json` file. You can find the legacy configuration file example at https://github.com/labring/FastGPT/blob/main/projects/app/data/model.json.
+## Introduction
 
-Starting from version 4.8.20, you can configure models directly in the FastGPT UI. The system includes a large number of built-in models, so you don't need to start from scratch. Here's the basic configuration flow:
-
-## Configuring Models
-
-### 1. Connect to Model Providers
-
-#### AI Proxy
-
-Starting from version 4.8.23, FastGPT supports configuring model providers directly in the UI using [AI Proxy](/docs/self-host/config/model/ai-proxy) for model aggregation, enabling connections to more providers.
-
-#### One API
-
-You can also use the [OneAPI Integration Guide](/docs/self-host/config/model/one-api). You'll need to apply for API access from each provider and add them to OneAPI before using them in FastGPT. Example flow:
-
-![alt text](/imgs/image-95.png)
-
-Besides official provider services, there are third-party services that offer model access. You can also use Ollama to deploy local models — all of these ultimately connect through OneAPI. Here are some third-party providers:
-
-<Alert icon=" " context="info">
-  - [SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4): A platform for open source model APIs. -
-  [Sealos AIProxy](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy):
-  Proxies for various Chinese model providers — no need to apply for each API separately.
-</Alert>
-
-Once you've configured models in OneAPI, open the FastGPT page and enable the corresponding models.
-
-### 2. Configuration Overview
+FastGPT uses the `AI Proxy` service to connect to different model providers. AI Proxy also provides load balancing, model logging, and analytics dashboards to help you monitor model usage.
 
 <Alert icon="🤖" context="success">
-  Note: 1. Only one speech recognition model can be active at a time, so you only need to configure one. 2.
-  The system requires at least one language model and one embedding model to function properly.
+  Notes:
+
+  1. Only one speech recognition model can be active at a time, so you only need to configure one.
+  2. The system requires at least one language model and one embedding model to function properly.
 </Alert>
 
-#### Core Configuration
+### Architecture Diagram
+
+![alt text](../../../../../public/imgs/image-95.png)
+
+### Model Types
+
+1. Language Models - Text-based conversations; multimodal models also support image recognition.
+2. Embedding Models - Index text chunks for semantic text retrieval.
+3. Rerank Models - Reorder retrieval results to optimize search ranking.
+4. Text-to-Speech (TTS) - Convert text to audio.
+5. Speech-to-Text (STT) - Convert audio to text.
+
+
+### Key Terminology
 
 - Model ID: The value of the `model` field in the API request body. Must be globally unique.
-- Custom Request URL/Key: If you need to bypass OneAPI, you can set a custom request URL and token. Generally not needed, but useful if OneAPI doesn't support certain models.
+- Model Name: The display name of the model, which can be customized.
+- Model Channel: The protocol of different model providers, such as OpenAI, Anthropic, Google, etc. Most self-hosted channels follow the OpenAI protocol. A single model can be configured across multiple channels to enable load balancing.
+- Custom Request URL / Key: Allows you to bypass Model Channels and send requests directly to a custom endpoint. You need to provide the full request URL and token. Generally not needed (not recommended as it's harder to manage).
 
-#### Model Types
+## Adding Channels and Models
 
-1. Language Model - Text conversations; multimodal models support image recognition.
-2. Embedding Model - Indexes text chunks for relevant text retrieval.
-3. Rerank Model - Reorders retrieval results to optimize ranking.
-4. Text-to-Speech - Converts text to audio.
-5. Speech-to-Text - Converts audio to text.
+You can configure models from the `Account - Model Providers` page in FastGPT.
 
-#### Enabling Models
+### 1. Create a Channel
 
-The system includes built-in models from mainstream providers. If you're unfamiliar with configuration, just click `Enable`. Make sure the `Model ID` matches the `Model` name in your OneAPI channel.
+Switch to the `Model Channels` tab. Note that you can only add models that already exist in `Model Configuration`. The system only includes mainstream models by default — if you need additional models, add them in `Model Configuration` first.
 
-|                                 |                                 |
+![aiproxy1](../../../../../public/imgs/aiproxy-1.png)
+
+Click "Add Channel" in the top-right corner to open the channel configuration page.
+
+![alt text](../../../../../public/imgs/image-122.png)
+
+Using Alibaba Bailian models as an example:
+
+![alt text](../../../../../public/imgs/image-123.png)
+
+1. Channel Name: A display label for the channel, used for identification only.
+2. Protocol Type: The API protocol for the model. Generally, select the provider that offers the model. Most providers support the OpenAI protocol, so you can also choose OpenAI as the protocol type.
+3. Models: The specific models available in this channel. The system includes popular models by default. If the model you need isn't in the dropdown, click "Add Model" to [add a custom model](/docs/self-host/config/model/intro/#add-a-custom-model).
+4. Model Mapping: Maps the model name in FastGPT requests to the actual model name at the provider. For example:
+
+```json
+{
+  "gpt-4o-test": "gpt-4o"
+}
+```
+
+In FastGPT, the model is `gpt-4o-test`, and requests to AI Proxy also use `gpt-4o-test`. When AI Proxy forwards the request upstream, the actual `model` value becomes `gpt-4o`.
+
+
+5. Proxy URL: Do not enter the full model request URL. Enter the `BaseUrl` instead, and check whether `/v1` needs to be appended.
+6. API Key: The API credentials obtained from the model provider. Some providers require multiple keys — follow the on-screen prompts to enter them.
+
+Click "Add" to save. The new channel will appear under "Model Channels".
+
+![aiproxy4](/imgs/aiproxy-4.png)
+
+### 2. Channel Testing
+
+You can test the channel to verify that the configured models are working properly.
+
+![aiproxy5](/imgs/aiproxy-5.png)
+
+Click "Model Test" to see the list of configured models, then click "Start Test".
+
+![aiproxy6](/imgs/aiproxy-6.png)
+
+Once testing completes, you'll see the results and response times for each model.
+
+![aiproxy7](/imgs/aiproxy-7.png)
+
+### 3. Enable Models
+
+The system includes models from major providers by default. If you're not familiar with the configuration, simply click `Enable`. The `Model ID` corresponds to the `Model` in `Model Channels`.
+
+Click "Enable" to activate the model.
+
+|         Enable Models                    |            Model ID Mapping                  |
 | ------------------------------- | ------------------------------- |
-| ![alt text](/imgs/image-91.png) | ![alt text](/imgs/image-92.png) |
+|![alt text](../../../../../public/imgs/image-92.png) | ![alt text](../../../../../public/imgs/image-124.png) |
 
-#### Modifying Model Configuration
+### 4. Test Models
 
-Click the gear icon on the right side of a model to configure it. Different model types have different configuration options.
+FastGPT provides simple tests for each model type on the UI to verify that models are working correctly. Each test sends an actual request using a template.
+
+![alt text](/imgs/image-105.png)
+
+## Model Configuration
+
+### Edit Model Configuration
+
+Click the gear icon next to a model to open its configuration. Different model types have different configuration options.
 
 |                                 |                                 |
 | ------------------------------- | ------------------------------- |
 | ![alt text](/imgs/image-93.png) | ![alt text](/imgs/image-94.png) |
 
-## Adding Custom Models
+### Add a Custom Model
 
-If the built-in models don't meet your needs, you can add custom models. If a custom model's `Model ID` matches a built-in model ID, it will be treated as a modification of the built-in model.
+If the built-in models don't meet your needs, you can add custom models. If the `Model ID` matches an existing built-in model ID, it will be treated as a modification rather than a new model.
+
+1. **Add via Form**
 
 |                                 |                                 |
 | ------------------------------- | ------------------------------- |
 | ![alt text](/imgs/image-96.png) | ![alt text](/imgs/image-97.png) |
 
-#### Configuration via Config File
+2. **Add via Configuration File**
 
-If you find UI-based model configuration tedious, or want to quickly copy configuration from one system to another, you can use config files instead.
+If you find it tedious to configure models through the UI, you can use a configuration file instead. This is also useful for quickly replicating the configuration from one system to another.
 
 |                                 |                                 |
 | ------------------------------- | ------------------------------- |
 | ![alt text](/imgs/image-98.png) | ![alt text](/imgs/image-99.png) |
 
-**Language Model Field Descriptions:**
-
+<Accordions>
+<Accordion title="Language Model Fields">
 ```json
 {
   "model": "Model ID",
   "metadata": {
     "isCustom": true, // Whether this is a custom model
-    "isActive": true, // Whether this model is enabled
-    "provider": "OpenAI", // Model provider, mainly for categorization display. Built-in providers: https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/provider.ts. You can submit a PR for new providers, or use "Other"
-    "model": "gpt-5", // Model ID (matches the model name in OneAPI channel)
-    "name": "gpt-5", // Model display name
-    "maxContext": 125000, // Max context length
-    "maxResponse": 16000, // Max response length
-    "quoteMaxToken": 120000, // Max quote content tokens
-    "maxTemperature": 1.2, // Max temperature
-    "charsPointsPrice": 0, // n points/1k tokens (commercial version)
-    "censor": false, // Enable content moderation (commercial version)
+    "isActive": true, // Whether the model is enabled
+    "provider": "OpenAI", // Model provider, used for categorization. Built-in providers: https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/provider.ts. You can submit a PR for new providers, or use "Other"
+    "model": "gpt-5", // Model ID (corresponds to the model name in the channel)
+    "name": "gpt-5", // Display name
+    "maxContext": 125000, // Maximum context length
+    "maxResponse": 16000, // Maximum response length
+    "quoteMaxToken": 120000, // Maximum citation content tokens
+    "maxTemperature": 1.2, // Maximum temperature
+    "charsPointsPrice": 0, // Credits per 1k tokens (commercial edition)
+    "censor": false, // Enable content moderation (commercial edition)
     "vision": true, // Supports image input
-    "datasetProcess": true, // Use as text understanding model (QA). At least one model must have this set to true, otherwise the knowledge base will error
-    "usedInClassify": true, // Use for question classification (at least one must be true)
-    "usedInExtractFields": true, // Use for content extraction (at least one must be true)
-    "usedInToolCall": true, // Use for tool calling (at least one must be true)
-    "toolChoice": true, // Supports tool choice (used in classification, extraction, and tool calling)
-    "functionCall": false, // Supports function calling (used in classification, extraction, and tool calling). toolChoice takes priority; if false, falls back to functionCall; if still false, falls back to prompt mode
-    "customCQPrompt": "", // Custom classification prompt (for models without tool/function call support)
+    "datasetProcess": true, // Used as a text comprehension model (QA). At least one model must have this set to true, or Knowledge Base will error
+    "usedInClassify": true, // Used for question classification (at least one must be true)
+    "usedInExtractFields": true, // Used for content extraction (at least one must be true)
+    "usedInToolCall": true, // Used for tool calls (at least one must be true)
+    "toolChoice": true, // Supports tool selection (used in classification, extraction, and tool calls)
+    "functionCall": false, // Supports function calling (used in classification, extraction, and tool calls). toolChoice takes priority; if false, functionCall is used; if also false, prompt mode is used
+    "customCQPrompt": "", // Custom text classification prompt (for models without tool/function call support)
     "customExtractPrompt": "", // Custom content extraction prompt
-    "defaultSystemChatPrompt": "", // Default system prompt for conversations
+    "defaultSystemChatPrompt": "", // Default system prompt included in conversations
     "defaultConfig": {}, // Default config sent with API requests (e.g., GLM4's top_p)
     "fieldMap": {} // Field mapping (e.g., o1 models need max_tokens mapped to max_completion_tokens)
   }
 }
 ```
+</Accordion>
 
-**Embedding Model Field Descriptions:**
+<Accordion title="Embedding Model Fields">
 
 ```json
 {
   "model": "Model ID",
   "metadata": {
     "isCustom": true, // Whether this is a custom model
-    "isActive": true, // Whether this model is enabled
+    "isActive": true, // Whether the model is enabled
     "provider": "OpenAI", // Model provider
     "model": "text-embedding-3-small", // Model ID
-    "name": "text-embedding-3-small", // Model display name
-    "charsPointsPrice": 0, // n points/1k tokens
+    "name": "text-embedding-3-small", // Display name
+    "charsPointsPrice": 0, // Credits per 1k tokens
     "defaultToken": 512, // Default token count for text splitting
-    "maxToken": 3000 // Max tokens
+    "maxToken": 3000 // Maximum token count
   }
 }
 ```
 
-**Rerank Model Field Descriptions:**
+</Accordion>
+
+<Accordion title="Rerank Model Fields">
 
 ```json
 {
   "model": "Model ID",
   "metadata": {
     "isCustom": true, // Whether this is a custom model
-    "isActive": true, // Whether this model is enabled
+    "isActive": true, // Whether the model is enabled
     "provider": "BAAI", // Model provider
     "model": "bge-reranker-v2-m3", // Model ID
-    "name": "ReRanker-Base", // Model display name
+    "name": "ReRanker-Base", // Display name
     "requestUrl": "", // Custom request URL
-    "requestAuth": "", // Custom request auth
+    "requestAuth": "", // Custom request authentication
     "type": "rerank" // Model type
   }
 }
 ```
 
-**Text-to-Speech Model Field Descriptions:**
+</Accordion>
+
+<Accordion title="Text-to-Speech Model Fields">
 
 ```json
 {
   "model": "Model ID",
   "metadata": {
-    "isActive": true, // Whether this model is enabled
+    "isActive": true, // Whether the model is enabled
     "isCustom": true, // Whether this is a custom model
     "type": "tts", // Model type
     "provider": "FishAudio", // Model provider
     "model": "fishaudio/fish-speech-1.5", // Model ID
-    "name": "fish-speech-1.5", // Model display name
+    "name": "fish-speech-1.5", // Display name
     "voices": [
-      // Voice options
+      // Available voices
       {
         "label": "fish-alex", // Voice name
         "value": "fishaudio/fish-speech-1.5:alex" // Voice ID
@@ -177,71 +231,62 @@ If you find UI-based model configuration tedious, or want to quickly copy config
         "value": "fishaudio/fish-speech-1.5:anna" // Voice ID
       }
     ],
-    "charsPointsPrice": 0 // n points/1k tokens
+    "charsPointsPrice": 0 // Credits per 1k tokens
   }
 }
 ```
 
-**Speech-to-Text Model Field Descriptions:**
+</Accordion>
+
+<Accordion title="Speech-to-Text Model Fields">
 
 ```json
 {
   "model": "whisper-1",
   "metadata": {
-    "isActive": true, // Whether this model is enabled
+    "isActive": true, // Whether the model is enabled
     "isCustom": true, // Whether this is a custom model
     "provider": "OpenAI", // Model provider
     "model": "whisper-1", // Model ID
-    "name": "whisper-1", // Model display name
-    "charsPointsPrice": 0, // n points/1k tokens
+    "name": "whisper-1", // Display name
+    "charsPointsPrice": 0, // Credits per 1k tokens
     "type": "stt" // Model type
   }
 }
 ```
 
-## Model Testing
+</Accordion>
 
-FastGPT provides simple tests for each model type on the UI. You can run a quick check to verify models are working correctly — it sends an actual request using a template.
+</Accordions>
 
-![alt text](/imgs/image-105.png)
+## Other
 
-## Special Integration Examples
+### Channel Priority
 
-### Integrating Rerank Models
+Range: 1–100. Higher values are prioritized.
 
-Since OneAPI doesn't support Rerank models, they need to be configured separately. FastGPT's model configuration supports custom request URLs, allowing you to bypass OneAPI and send requests directly to providers. You can use this feature to integrate Rerank models.
+![aiproxy9](/imgs/aiproxy-9.png)
 
-#### Using SiliconCloud's Online Models
+### Enable / Disable Channels
 
-A free `bge-reranker-v2-m3` model is available.
+In the control menu on the right side of each channel, you can enable or disable it. Disabled channels will no longer serve model requests.
 
-1. [Register a SiliconCloud account](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-2. Go to the console and get your API key: https://cloud.siliconflow.cn/account/ak
-3. Open FastGPT model configuration and add a `BAAI/bge-reranker-v2-m3` rerank model (or modify the built-in one if it already exists).
+![aiproxy10](/imgs/aiproxy-10.png)
 
-![alt text](/imgs/image-101.png)
+### Model Call Logs
 
-#### Self-Hosted Rerank Models
+Model calls made through channels are logged on the `Call Logs` page. Logs include input/output tokens, request time, latency, request URL, and more. Failed requests show detailed parameters and error messages for debugging, but logs are retained for only 1 hour by default (configurable via environment variables).
 
-[View the ReRank model deployment tutorial](/docs/self-host/custom-models/bge-rerank/)
+![aiproxy11](/imgs/aiproxy-11.png)
 
-### Integrating Speech Recognition Models
 
-OneAPI's speech recognition interface cannot correctly identify non-Whisper models (it always defaults to whisper-1). To integrate other models, use a custom request URL. For example, to integrate SiliconCloud's `FunAudioLLM/SenseVoiceSmall` model:
+### Self-Hosted Models
 
-Click model edit:
-
-![alt text](/imgs/image-106.png)
-
-Enter SiliconCloud's URL: `https://api.siliconflow.cn/v1/audio/transcriptions`, and enter your SiliconCloud API Key.
-
-![alt text](/imgs/image-107.png)
-
-## Other Configuration Options
+[See the ReRank model deployment tutorial](/docs/self-host/custom-models/bge-rerank/)
 
 ### Custom Request URL
 
-Setting this value allows you to bypass OneAPI and send requests directly to the custom URL. You need to provide the complete request URL, for example:
+If you set a custom request URL, requests will bypass `Model Channels` and be sent directly to the specified endpoint. You must provide the full request URL, for example:
 
 - LLM: [host]/v1/chat/completions
 - Embedding: [host]/v1/embeddings
@@ -249,214 +294,34 @@ Setting this value allows you to bypass OneAPI and send requests directly to the
 - TTS: [host]/v1/audio/speech
 - Rerank: [host]/v1/rerank
 
-The custom request key is sent as a request header: `Authorization: Bearer xxx`.
+The custom request key is included as the `Authorization: Bearer xxx` header when sending requests to the custom URL.
 
-All interfaces follow OpenAI's model format. See the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/introduction) for details.
+All endpoints follow the OpenAI model format. Refer to the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/introduction) for details.
 
-Since OpenAI doesn't provide a ReRank model, the Cohere format is used instead. [View request examples](/docs/self-host/faq/#how-to-check-model-issues)
+Since OpenAI does not provide a Rerank model, the Rerank endpoint follows the Cohere format. [See request examples](/docs/self-host/faq/#how-to-troubleshoot-model-issues)
 
-### Model Pricing Configuration
+### Adding Model Presets
 
-Commercial version users can configure model pricing for account billing. The system supports two billing modes: total token billing and separate input/output token billing.
+You can find model provider configuration files in the `modules/model/provider` directory of the `FastGPT-plugin` project and add model configurations there. Make sure the `model` field is unique across all models. For field descriptions, refer to [Model Configuration Fields](/docs/self-host/config/model/intro/#add-via-configuration-file).
 
-For **separate input/output token billing**, fill in both `Model Input Price` and `Model Output Price`.
-For **total token billing**, fill in only `Model Combined Price`.
 
-## How to Submit Built-in Models
+### Migrating from OneAPI to AI Proxy
 
-Since models update frequently, the official team may not always keep up. If you can't find the built-in model you need, you can [submit an Issue](https://github.com/labring/FastGPT/issues) with the model name and official website, or directly [submit a PR](https://github.com/labring/FastGPT/pulls) with the model configuration.
+If you were using OneAPI in an older version, you can migrate your channel configuration to AI Proxy using a script.
 
-### Adding Model Providers
+Send the following HTTP request from any terminal. Replace `{{host}}` with the AI Proxy address and `{{admin_key}}` with the `ADMIN_KEY` value in AI Proxy.
 
-To add a model provider, modify the following:
+The `dsn` parameter in the request body is the MySQL connection string for OneAPI.
 
-1. FastGPT/packages/web/components/common/Icon/icons/model - Add the provider's SVG logo in this directory.
-2. In the FastGPT root directory, run `pnpm initIcon` to load the icon into the config file.
-3. FastGPT/packages/global/core/ai/provider.ts - Add the provider configuration in this file.
-
-### Adding Models
-
-In the `FastGPT-plugin` project, find the corresponding provider's config file under the `modules/model/provider` directory and add the model configuration. Make sure the `model` field is unique across all models. For field descriptions, see [Model Configuration Field Descriptions](/docs/self-host/config/model/intro/#configuration-via-config-file).
-
-## Legacy Model Configuration
-
-After configuring OneAPI, you need to manually add model configuration to the `config.json` file and restart.
-
-Since environment variables aren't ideal for complex configuration, FastGPT uses ConfigMap to mount config files. You can find the default config file at `projects/app/data/config.json`. See [docker-compose Quick Deployment](/docs/self-host/deploy/docker/) for how to mount config files.
-
-**In development**, copy the example config file `config.json` to `config.local.json` for it to take effect.
-**In Docker deployment**, modifying `config.json` requires restarting the container.
-
-The example config file below includes system parameters and model configurations:
-
-```json
-{
-  "feConfigs": {
-    "lafEnv": "https://laf.dev" // Laf environment. https://laf.run (Hangzhou Alibaba Cloud), or a private Laf environment. Latest Laf version required for Laf OpenAPI features.
-  },
-  "systemEnv": {
-    "vectorMaxProcess": 15, // Vector processing thread count
-    "qaMaxProcess": 15, // QA splitting thread count
-    "tokenWorkers": 50, // Token calculation worker count (persistent memory usage — don't set too high)
-    "hnswEfSearch": 100 // Vector search parameter (PG and OB only). Higher = more accurate but slower. 100 gives 99%+ accuracy.
-  },
-  "llmModels": [
-    {
-      "provider": "OpenAI", // Model provider, mainly for categorization display. Built-in providers: https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/provider.ts. You can submit a PR for new providers, or use "Other"
-      "model": "gpt-5", // Model name (matches OneAPI channel model name)
-      "name": "gpt-5", // Model display name
-      "maxContext": 125000, // Max context
-      "maxResponse": 16000, // Max response
-      "quoteMaxToken": 120000, // Max quote content
-      "maxTemperature": 1.2, // Max temperature
-      "charsPointsPrice": 0, // n points/1k tokens (commercial version)
-      "censor": false, // Enable content moderation (commercial version)
-      "vision": true, // Supports image input
-      "datasetProcess": true, // Use as text understanding model (QA) — at least one must be true or knowledge base will error
-      "usedInClassify": true, // Use for question classification (at least one must be true)
-      "usedInExtractFields": true, // Use for content extraction (at least one must be true)
-      "usedInToolCall": true, // Use for tool calling (at least one must be true)
-      "toolChoice": true, // Supports tool choice (used in classification, extraction, tool calling)
-      "functionCall": false, // Supports function calling (used in classification, extraction, tool calling). toolChoice takes priority; if false, falls back to functionCall; if still false, falls back to prompt mode
-      "customCQPrompt": "", // Custom classification prompt (for models without tool/function call support)
-      "customExtractPrompt": "", // Custom content extraction prompt
-      "defaultSystemChatPrompt": "", // Default system prompt for conversations
-      "defaultConfig": {}, // Default config sent with API requests (e.g., GLM4's top_p)
-      "fieldMap": {} // Field mapping (e.g., o1 models need max_tokens mapped to max_completion_tokens)
-    },
-    {
-      "provider": "OpenAI",
-      "model": "gpt-4o",
-      "name": "gpt-4o",
-      "maxContext": 125000,
-      "maxResponse": 4000,
-      "quoteMaxToken": 120000,
-      "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
-      "censor": false,
-      "vision": true,
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
-      "toolChoice": true,
-      "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": "",
-      "defaultConfig": {},
-      "fieldMap": {}
-    },
-    {
-      "provider": "OpenAI",
-      "model": "o1-mini",
-      "name": "o1-mini",
-      "maxContext": 125000,
-      "maxResponse": 65000,
-      "quoteMaxToken": 120000,
-      "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
-      "censor": false,
-      "vision": false,
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
-      "toolChoice": false,
-      "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": "",
-      "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null,
-        "stream": false
-      }
-    },
-    {
-      "provider": "OpenAI",
-      "model": "o1-preview",
-      "name": "o1-preview",
-      "maxContext": 125000,
-      "maxResponse": 32000,
-      "quoteMaxToken": 120000,
-      "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
-      "censor": false,
-      "vision": false,
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
-      "toolChoice": false,
-      "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": "",
-      "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null,
-        "stream": false
-      }
-    }
-  ],
-  "vectorModels": [
-    {
-      "provider": "OpenAI",
-      "model": "text-embedding-3-small",
-      "name": "text-embedding-3-small",
-      "charsPointsPrice": 0,
-      "defaultToken": 512,
-      "maxToken": 3000,
-      "weight": 100
-    },
-    {
-      "provider": "OpenAI",
-      "model": "text-embedding-3-large",
-      "name": "text-embedding-3-large",
-      "charsPointsPrice": 0,
-      "defaultToken": 512,
-      "maxToken": 3000,
-      "weight": 100,
-      "defaultConfig": {
-        "dimensions": 1024
-      }
-    },
-    {
-      "provider": "OpenAI",
-      "model": "text-embedding-ada-002", // Model name (matches OneAPI)
-      "name": "Embedding-2", // Model display name
-      "charsPointsPrice": 0, // n points/1k tokens
-      "defaultToken": 700, // Default token count for text splitting
-      "maxToken": 3000, // Max tokens
-      "weight": 100, // Training priority weight
-      "defaultConfig": {}, // Custom extra parameters. For example, to use embedding3-large, pass dimensions:1024 to return 1024-dimensional vectors (currently must be less than 1536 dimensions)
-      "dbConfig": {}, // Extra parameters for storage (needed for asymmetric vector models)
-      "queryConfig": {} // Extra parameters for querying
-    }
-  ],
-  "reRankModels": [],
-  "audioSpeechModels": [
-    {
-      "provider": "OpenAI",
-      "model": "tts-1",
-      "name": "OpenAI TTS1",
-      "charsPointsPrice": 0,
-      "voices": [
-        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
-        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
-        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
-        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
-        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
-        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
-      ]
-    }
-  ],
-  "whisperModel": {
-    "provider": "OpenAI",
-    "model": "whisper-1",
-    "name": "Whisper1",
-    "charsPointsPrice": 0
-  }
-}
+```bash
+curl --location --request POST '{{host}}/api/channels/import/oneapi' \
+--header 'Authorization: Bearer {{admin_key}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "dsn": "mysql://root:s5mfkwst@tcp(dbconn.sealoshzh.site:33123)/mydb"
+}'
 ```
+
+A successful response will return `"success": true`.
+
+Note that the migration script performs a simple data mapping — it primarily transfers `proxy URLs`, `models`, and `API keys`. Manual verification after migration is recommended.
