@@ -4,8 +4,12 @@
 WORKDIR="${FASTGPT_WORKDIR:-/home/sandbox}"
 mkdir -p "${WORKDIR}"
 
-# Start code-server or sleep forever depending on FASTGPT_ENABLE_CODE_SERVER
-if [ "${FASTGPT_ENABLE_CODE_SERVER}" = "true" ]; then
+# Capture the flag before unsetting, then clear all FastGPT runtime vars
+_ENABLE_CODE_SERVER="${FASTGPT_ENABLE_CODE_SERVER}"
+unset FASTGPT_SESSION_ID FASTGPT_WORKDIR FASTGPT_ENABLE_CODE_SERVER
+
+# Start code-server or sleep forever
+if [ "${_ENABLE_CODE_SERVER}" = "true" ]; then
   # --bind-addr 0.0.0.0:8080 allows access from outside the container
   # --auth none removes password protection
   exec code-server \

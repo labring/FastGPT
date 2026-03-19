@@ -3,18 +3,13 @@
  *
  * Manages sandbox creation/destruction for agent skill execution.
  *
- * session-runtime 沙箱的数据持久化依赖 sync agent 与 MinIO 的联动：
- * - SESSION_ID 决定 MinIO 存储路径：agent-sessions/{SESSION_ID}/
- * - 沙箱启动时，sync agent 从 MinIO 恢复历史数据
- * - 运行时，文件变更实时同步到 MinIO
- * - 容器销毁后，数据仍保留在 MinIO，下次以相同 SESSION_ID 启动可恢复
- *
  * 沙箱容器生命周期：
  * - createAgentSandbox：优先复用已有容器（查 MongoDB），否则创建新容器并持久化到 MongoDB
  * - releaseAgentSandbox：断开 SDK 连接，不销毁容器
  */
 
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import type { Volume } from '@alibaba-group/opensandbox';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../../ai/sandbox/schema';
@@ -25,11 +20,13 @@ import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
-  buildDockerSyncEnv,
   buildSandboxAdapter,
   connectToProviderSandbox,
   disconnectFromProviderSandbox,
-  selectSandboxEntrypoint
+  getVolumeManagerConfig,
+  ensureSessionVolume,
+  buildVolumeConfig,
+  buildBaseContainerEnv
 } from '../../../../../../agentSkills/sandboxConfig';
 import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type {
@@ -45,7 +42,7 @@ type CreateAgentSandboxParams = {
   skillIds: string[];
   teamId: string;
   tmbId: string;
-  sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key，决定 MinIO 数据路径
+  sessionId: string; // chat 模式 = chatId，debug 模式 = 构造的 key
   entrypoint?: string; // override default entrypoint for this request
   image?: SandboxImageConfigType; // override default image for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
@@ -151,7 +148,6 @@ async function deploySkillsToSandbox(
       const packageBuffer = await downloadSkillPackage({ storageInfo: version.storage });
 
       // Write raw ZIP to sandbox and extract directly into workDirectory.
-      // Sync agent maps workDirectory/* to MinIO agent-sessions/{sessionId}/* directly.
       const zipPath = `${workDirectory}/package_${skill.name}.zip`;
       onProgress?.({ sandboxId, phase: 'uploadingPackage', skillName: skill.name });
       await sandbox.writeFiles([{ path: zipPath, data: packageBuffer }]);
@@ -180,7 +176,7 @@ async function deploySkillsToSandbox(
  *
  * 优先查询 MongoDB 中是否有相同 sessionId 的活跃容器：
  * - 有 → connect 复用，无冷启动
- * - 无 → 创建新容器（注入 SESSION_ID），sync agent 从 MinIO 恢复历史数据，持久化到 MongoDB
+ * - 无 → 创建新容器，挂载会话 Volume，持久化到 MongoDB
  */
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
@@ -276,16 +272,22 @@ export async function createAgentSandbox(
   let sandbox: ISandbox | null = null;
 
   try {
-    const createEntrypoint = selectSandboxEntrypoint(
-      providerConfig.runtime,
-      defaults,
-      'sessionRuntime'
-    );
+    const createEntrypoint = defaults.entrypoint;
+
+    let volumes: Volume[] | undefined;
+    if (providerConfig.provider === 'opensandbox') {
+      const vmConfig = getVolumeManagerConfig();
+      const claimName = await ensureSessionVolume(sessionId, vmConfig);
+      volumes = [
+        buildVolumeConfig(providerConfig.runtime, sessionId, claimName, vmConfig.mountPath)
+      ];
+    }
 
     const createConfig = {
       image: image ?? defaults.defaultImage,
       entrypoint: [entrypoint ?? createEntrypoint],
-      env: buildDockerSyncEnv(sessionId, defaults.workDirectory, false),
+      env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
+      volumes,
       metadata: {
         teamId,
         tmbId,

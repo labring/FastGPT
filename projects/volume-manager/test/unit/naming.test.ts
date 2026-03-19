@@ -7,20 +7,32 @@ describe('toVolumeName', () => {
     expect(toVolumeName('fastgpt-session', id)).toBe(`fastgpt-session-${id}`);
   });
 
-  it('accepts mixed-case hex', () => {
-    const id = 'aAbBcCdDeEfF001122334455';
-    expect(toVolumeName('pfx', id)).toBe(`pfx-${id}`);
+  it('normalizes uppercase to lowercase', () => {
+    expect(toVolumeName('pfx', 'ABC123')).toBe('pfx-abc123');
   });
 
-  it('throws for sessionId shorter than 24 chars', () => {
-    expect(() => toVolumeName('pfx', 'abc123')).toThrow('Invalid sessionId');
+  it('accepts debug-mode sessionId', () => {
+    const id = 'debug-69bb6a1aee77d10e6fb58e2d-7BdojPlukIQw';
+    expect(toVolumeName('fastgpt-session', id)).toBe(`fastgpt-session-${id.toLowerCase()}`);
   });
 
-  it('throws for sessionId longer than 24 chars', () => {
-    expect(() => toVolumeName('pfx', 'a'.repeat(25))).toThrow('Invalid sessionId');
+  it('accepts single character sessionId', () => {
+    expect(toVolumeName('pfx', 'a')).toBe('pfx-a');
   });
 
-  it('throws for non-hex characters', () => {
-    expect(() => toVolumeName('pfx', 'z'.repeat(24))).toThrow('Invalid sessionId');
+  it('throws for sessionId with leading hyphen', () => {
+    expect(() => toVolumeName('pfx', '-abc123')).toThrow('Invalid sessionId');
+  });
+
+  it('throws for sessionId with trailing hyphen', () => {
+    expect(() => toVolumeName('pfx', 'abc123-')).toThrow('Invalid sessionId');
+  });
+
+  it('throws for empty sessionId', () => {
+    expect(() => toVolumeName('pfx', '')).toThrow('Invalid sessionId');
+  });
+
+  it('throws for sessionId with invalid characters', () => {
+    expect(() => toVolumeName('pfx', 'abc_123')).toThrow('Invalid sessionId');
   });
 });

@@ -10,6 +10,7 @@ import type {
 } from '@fastgpt/global/core/agentSkills/type';
 import { createSandbox, type ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import type { Volume } from '@alibaba-group/opensandbox';
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 import { env } from '../../env';
 
@@ -24,6 +25,7 @@ type BaseSandboxProviderConfig = {
 export type OpenSandboxProviderConfig = BaseSandboxProviderConfig & {
   provider: 'opensandbox';
   apiKey?: string;
+  useServerProxy?: boolean;
 };
 
 export type SealosDevboxProviderConfig = BaseSandboxProviderConfig & {
@@ -43,11 +45,7 @@ export type SandboxDefaults = {
   defaultImage: SandboxImageConfigType;
   workDirectory: string;
   targetPort: number;
-  entrypoint: {
-    editDebugKubernetes: string; // SANDBOX_K8S_ENTRYPOINT
-    sessionKubernetes: string; // SANDBOX_SESSION_K8S_ENTRYPOINT
-    docker: string; // SANDBOX_DOCKER_ENTRYPOINT
-  };
+  entrypoint: string;
 };
 
 export type SkillSizeLimits = {
@@ -86,7 +84,8 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
         provider,
         baseUrl: env.AGENT_SANDBOX_BASE_URL ?? 'http://127.0.0.1:8080',
         apiKey: env.AGENT_SANDBOX_API_KEY,
-        runtime
+        runtime,
+        useServerProxy: env.AGENT_SANDBOX_USE_SERVER_PROXY
       };
 
     case 'sealosdevbox':
@@ -109,16 +108,11 @@ export function getSandboxDefaults(): SandboxDefaults {
   return {
     defaultImage: {
       repository: env.AGENT_SANDBOX_DEFAULT_IMAGE ?? 'fastgpt-agent-sandbox',
-      tag: env.AGENT_SANDBOX_DEFAULT_IMAGE_TAG ?? 'docker'
+      tag: env.AGENT_SANDBOX_DEFAULT_IMAGE_TAG ?? 'latest'
     },
     workDirectory: env.AGENT_SANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
     targetPort: 8080,
-    entrypoint: {
-      editDebugKubernetes: env.AGENT_SANDBOX_K8S_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh',
-      sessionKubernetes:
-        env.AGENT_SANDBOX_SESSION_K8S_ENTRYPOINT ?? '/opt/sync-agent/docker-entrypoint.sh',
-      docker: env.AGENT_SANDBOX_DOCKER_ENTRYPOINT ?? '/opt/sync-agent/docker-entrypoint.sh'
-    }
+    entrypoint: env.AGENT_SANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
   };
 }
 
@@ -172,7 +166,8 @@ export function buildSandboxAdapter(
         {
           apiKey: providerConfig.apiKey,
           baseUrl: providerConfig.baseUrl,
-          runtime: providerConfig.runtime
+          runtime: providerConfig.runtime,
+          useServerProxy: providerConfig.useServerProxy
         },
         toOpenSandboxCreateConfig(createConfig)
       );
@@ -259,57 +254,92 @@ export async function getProviderSandboxEndpoint(
   );
 }
 
+// ---- Volume Manager integration ----
+
+export type VolumeManagerConfig = {
+  url: string;
+  token: string;
+  mountPath: string;
+};
+
 /**
- * Select the correct entrypoint based on runtime and sandbox type.
- * Centralises the kubernetes/docker branching that was duplicated in two files.
+ * Read Volume Manager configuration from environment variables.
+ * Throws when any required field is missing.
  */
-export function selectSandboxEntrypoint(
-  runtime: SandboxProviderConfig['runtime'],
-  defaults: SandboxDefaults,
-  type: 'editDebug' | 'sessionRuntime'
-): string {
-  if (runtime === 'kubernetes') {
-    return type === 'editDebug'
-      ? defaults.entrypoint.editDebugKubernetes
-      : defaults.entrypoint.sessionKubernetes;
+export function getVolumeManagerConfig(): VolumeManagerConfig {
+  const { VOLUME_MANAGER_URL, VOLUME_MANAGER_TOKEN, VOLUME_MANAGER_MOUNT_PATH } = env;
+  if (!VOLUME_MANAGER_URL || !VOLUME_MANAGER_TOKEN || !VOLUME_MANAGER_MOUNT_PATH) {
+    throw new Error(
+      'Missing required Volume Manager configuration: VOLUME_MANAGER_URL, VOLUME_MANAGER_TOKEN, VOLUME_MANAGER_MOUNT_PATH must be set'
+    );
   }
-  return defaults.entrypoint.docker;
+  return {
+    url: VOLUME_MANAGER_URL,
+    token: VOLUME_MANAGER_TOKEN,
+    mountPath: VOLUME_MANAGER_MOUNT_PATH
+  };
 }
 
 /**
- * Docker 运行时下注入 Sync Agent 所需的环境变量
- *
- * K8s 运行时不需要此函数：SESSION_ID 由 Sync Agent Sidecar 从 Pod label 读取，
- * MinIO 凭证通过 K8s Secret 挂载到 Sidecar 容器，FastGPT 侧只需在 metadata 传 sessionId。
- *
- * @param sessionId  会话唯一 ID，作为 MinIO 存储路径前缀（sessions/{sessionId}/）
- * @param syncPath   沙箱内需要同步的目录，通常为 workDirectory
- * @param enableCodeServer 是否启动 code-server，editDebug 模式为 true，session-runtime 为 false
+ * Call volume-manager HTTP API to idempotently create a volume for the session.
+ * Returns the claimName (PVC name or Docker volume name).
  */
-export function buildDockerSyncEnv(
+export async function ensureSessionVolume(
   sessionId: string,
-  syncPath: string,
-  enableCodeServer: boolean
-): Record<string, string> {
-  const endpoint = process.env.STORAGE_S3_ENDPOINT;
-  const accessKey = process.env.STORAGE_ACCESS_KEY_ID;
-  const secretKey = process.env.STORAGE_SECRET_ACCESS_KEY;
-  const bucket = process.env.STORAGE_PRIVATE_BUCKET || 'fastgpt-private';
+  vmConfig: VolumeManagerConfig
+): Promise<string> {
+  const res = await fetch(`${vmConfig.url}/v1/volumes/ensure`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${vmConfig.token}`
+    },
+    body: JSON.stringify({ sessionId })
+  });
 
-  if (!endpoint || !accessKey || !secretKey) {
-    throw new Error(
-      'Missing required storage configuration: STORAGE_S3_ENDPOINT, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY must be set'
-    );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Volume Manager error ${res.status}: ${text}`);
   }
 
+  const data = (await res.json()) as { claimName: string };
+  return data.claimName;
+}
+
+/**
+ * Build the volumes entry for the sandbox create config.
+ *
+ * Both Docker and Kubernetes runtimes use the `pvc` backend:
+ * - Kubernetes: pvc.claimName is the K8s PVC name
+ * - Docker: pvc.claimName is the Docker named volume name (docker volume create)
+ *
+ * The `host` backend is for bind mounts (absolute paths) only and is not used here.
+ */
+export function buildVolumeConfig(
+  _runtime: SandboxRuntime,
+  sessionId: string,
+  claimName: string,
+  mountPath: string
+): Volume {
+  // Volume name must match DNS label format: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+  const name = sessionId
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return { name, pvc: { claimName }, mountPath, readOnly: false };
+}
+
+/**
+ * Build container env vars for the sandbox process.
+ */
+export function buildBaseContainerEnv(
+  sessionId: string,
+  workDirectory: string,
+  enableCodeServer: boolean
+): Record<string, string> {
   return {
     FASTGPT_SESSION_ID: sessionId,
-    FASTGPT_MINIO_ENDPOINT: endpoint,
-    FASTGPT_MINIO_ACCESS_KEY: accessKey,
-    FASTGPT_MINIO_SECRET_KEY: secretKey,
-    FASTGPT_MINIO_BUCKET: bucket,
-    FASTGPT_WORKDIR: syncPath,
-    FASTGPT_SYNC_PATH: syncPath,
+    FASTGPT_WORKDIR: workDirectory,
     FASTGPT_ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
   };
 }
