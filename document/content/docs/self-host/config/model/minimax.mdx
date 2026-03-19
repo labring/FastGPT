@@ -1,0 +1,30 @@
+---
+title: MiniMax 接入示例
+description: MiniMax 接入示例
+---
+
+[MiniMax](https://www.minimaxi.com) 是一家通用人工智能科技公司，提供高性能的大语言模型 API 服务。MiniMax 的 API 兼容 OpenAI 格式，可以方便地接入 FastGPT。
+
+在阅读该章之前，请先确保你阅读了[模型配置说明](/docs/self-host/config/model/intro)。
+
+## 1. 获取 API Key
+
+1. 访问 [MiniMax 开放平台](https://platform.minimaxi.com)，注册并登录账号。
+2. 进入控制台，创建 API Key。
+
+## 2. 新增模型
+
+系统内置了 MiniMax 的模型，直接在`模型配置`页面搜索 `MiniMax` 并启用即可。如果需要其他模型，可以[手动添加](/docs/self-host/config/model/intro/#新增自定义模型)。
+
+## 3. 新增模型渠道
+
+在模型渠道页，新增一个 MiniMax 的渠道：
+
+- 协议类型选择 **MiniMax**
+- 代理地址填写：`https://api.minimax.io/v1`
+- 填写 MiniMax 的 API Key
+- 选择刚刚启用的模型
+
+## 4. 测试模型
+
+配置完成后，可以在渠道列表中点击测试按钮，验证模型是否正常工作。
