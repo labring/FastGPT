@@ -762,6 +762,72 @@ describe('pushChatRecords', () => {
       }
     });
 
+    it('should persist agentPlanAskQuery answer before pushing new records', async () => {
+      await MongoChatItem.create({
+        chatId: 'test-chat-id',
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        appId: testAppId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'plan-ask-data-id',
+        value: [
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              planId: 'plan_1',
+              params: {
+                content: '请补充目标'
+              }
+            }
+          }
+        ]
+      });
+
+      const props = createMockProps(
+        {
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                text: { content: '深入了解 Rust 系统编程方向' }
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      const interactive = {
+        type: 'agentPlanAskQuery' as const,
+        planId: 'plan_1',
+        params: {
+          content: '请补充目标'
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
+
+      const chatItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'plan-ask-data-id'
+      });
+
+      if (chatItem?.obj !== ChatRoleEnum.AI) {
+        throw new Error('chatItem does not have AI interactive value');
+      }
+      const lastValue = chatItem.value[chatItem.value.length - 1];
+      if (lastValue.interactive?.type !== 'agentPlanAskQuery') {
+        throw new Error('chatItem does not have agentPlanAskQuery interactive');
+      }
+
+      expect(lastValue.interactive.params.answer).toBe('深入了解 Rust 系统编程方向');
+    });
+
     it('should remove paymentPause interactive value', async () => {
       // Create an AI chat item with paymentPause interactive
       await MongoChatItem.create({

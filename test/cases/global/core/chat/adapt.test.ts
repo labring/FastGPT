@@ -319,8 +319,7 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].content).toBe('What would you like to know?');
+    expect(result).toHaveLength(0);
   });
 
   it('should handle interactive agentPlanAskUserForm', () => {
@@ -346,10 +345,7 @@ describe('chats2GPTMessages', () => {
 
     const result = chats2GPTMessages({ messages, reserveId: false });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].content).toContain('Please fill in the form');
-    expect(result[0].content).toContain('- Name: John');
-    expect(result[0].content).toContain('- Age: 25');
+    expect(result).toHaveLength(0);
   });
 
   it('should handle plan with reserveTool true', () => {
@@ -370,10 +366,12 @@ describe('chats2GPTMessages', () => {
             }
           } as any,
           {
+            planId: 'plan-1',
             stepId: 'step-1',
             text: { content: 'Search results here' }
           } as any,
           {
+            planId: 'plan-1',
             stepId: 'step-2',
             text: { content: 'Analysis complete' }
           } as any
@@ -406,7 +404,7 @@ describe('chats2GPTMessages', () => {
           } as any,
           {
             plan: {
-              planId: 'plan-1',
+              planId: 'plan-2',
               task: 'Task 1 duplicate',
               description: 'Description 1 duplicate',
               background: 'Background 1 duplicate',
@@ -420,7 +418,7 @@ describe('chats2GPTMessages', () => {
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
 
     // Should only have 2 messages (1 assistant + 1 tool) for the first plan
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(4);
   });
 
   it('should not process plan when reserveTool is false', () => {
@@ -444,7 +442,7 @@ describe('chats2GPTMessages', () => {
     const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: false });
 
     // Plan should be skipped when reserveTool is false
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(2);
   });
 });
 

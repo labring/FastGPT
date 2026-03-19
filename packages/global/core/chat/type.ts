@@ -85,6 +85,7 @@ export const UserChatItemFileItemSchema = z.object({
 export type UserChatItemFileItemType = z.infer<typeof UserChatItemFileItemSchema>;
 
 export const UserChatItemValueItemSchema = z.object({
+  planId: z.string().nullish(),
   text: z
     .object({
       content: z.string()
@@ -130,6 +131,7 @@ export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 export const AIChatItemValueSchema = z.object({
   id: z.string().nullish(),
   stepId: z.string().nullish(),
+  planId: z.string().nullish(),
   text: z
     .object({
       content: z.string()

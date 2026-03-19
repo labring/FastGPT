@@ -12,6 +12,87 @@ import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
+import type { AgentPlanType } from '../ai/agent/type';
+
+export type PlanAskInfo = {
+  question: string;
+  answer: string;
+};
+
+export const getPlanCallResponseText = ({
+  plan,
+  assistantResponses
+}: {
+  plan: AgentPlanType;
+  assistantResponses: AIChatItemValueItemType[];
+}): string => {
+  // 1. 获取 ask 信息
+  const askText = (() => {
+    const asks = assistantResponses
+      .map((item) => {
+        const interactive = item.interactive;
+        if (!interactive) return;
+        if (interactive.type === 'agentPlanAskQuery') {
+          const question = interactive.params?.content?.trim();
+          if (!question) return;
+          const answer = interactive.params?.answer?.trim() || undefined;
+          return JSON.stringify({ question, answer });
+        }
+
+        if (interactive.type === 'agentPlanAskUserForm') {
+          const question = interactive.params?.description?.trim();
+          const answer =
+            interactive.params?.inputForm
+              ?.map((item) => {
+                if (!item?.label) return '';
+                const val =
+                  typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value);
+                return `${item.label}: ${val}`;
+              })
+              .filter(Boolean)
+              .join('; ') || undefined;
+
+          if (!question && !answer) return;
+          return JSON.stringify({ question, answer });
+        }
+        return undefined;
+      })
+      .filter(Boolean) as string[];
+
+    return asks.join('\n');
+  })();
+
+  // 2. 获取 step 信息; 如果是中途暂停，则需要提示用户暂停
+  const { stepText, isPause } = (() => {
+    const stepValues = assistantResponses.filter((item) => item.stepId);
+    let isPause = false;
+    const stepResults = plan.steps.map((step, index) => {
+      const result = stepValues
+        .map((item) => item.text?.content?.trim() || '')
+        .filter(Boolean)
+        .join('\n');
+
+      const executed = !!result;
+
+      if (!executed) {
+        isPause = true;
+      }
+
+      return `(${index + 1}) [${executed ? `executed` : `pending`}] id=${step.id}; title=${step.title || ''}; description=${step.description || ''}${result ? `; result: ${result}` : ''}`;
+    });
+
+    return {
+      stepText: stepResults.join('\n'),
+      isPause
+    };
+  })();
+
+  return `${isPause ? 'PLAN_PAUSE_HANDOFF' : ''}
+COLLECTED INFO:
+${askText}
+STEPS: 
+${stepText}`;
+};
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {

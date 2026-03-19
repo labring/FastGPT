@@ -425,9 +425,8 @@ export const masterCall = async ({
                 model,
                 stream,
                 mode: 'initial',
-                task: toolArgs.data.task,
-                description: toolArgs.data.description,
-                background: toolArgs.data.background
+                ...toolArgs.data,
+                planId: call.id
               });
 
               return {

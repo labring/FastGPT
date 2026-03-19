@@ -20,6 +20,7 @@ import {
   chatValue2RuntimePrompt,
   GPTMessages2Chats
 } from '@fastgpt/global/core/chat/adapt';
+import { getPlanCallResponseText } from '@fastgpt/global/core/chat/utils';
 import { filterMemoryMessages } from '../utils';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -94,6 +95,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const chatHistories = getHistories(history, histories);
+  const aiHistoryValues = chatHistories
+    .filter((item) => item.obj === ChatRoleEnum.AI)
+    .flatMap((item) => item.value);
   const historiesMessages = chats2GPTMessages({
     messages: chatHistories,
     reserveId: false,
@@ -234,11 +238,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         });
       }
 
+      if (askInteractive) {
+        // 这里存储一份冗余的 planId，便于告诉 AI value 也存储一份 planId
+        askInteractive.planId = planBuffer?.planId;
+      }
+
       return {
         completeMessages,
         askInteractive,
-        plan,
-        planBuffer
+        plan
       };
     };
     const planCallFn = async () => {
@@ -286,15 +294,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       getLogger(LogCategories.MODULE.AI.AGENT).debug(
         `All steps completed, check if need continue planning`
       );
-      const stepsResponse = agentPlan.steps.map((step) => {
-        const stepResponse = assistantResponses
-          .filter((item) => item.stepId === step.id)
-          ?.map((item) => item.text?.content)
-          .join('\n');
-        return {
-          title: step.title,
-          response: stepResponse
-        };
+      const planResponseText = getPlanCallResponseText({
+        plan: agentPlan,
+        assistantResponses: [...aiHistoryValues, ...assistantResponses]
       });
 
       try {
@@ -310,11 +312,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             task: agentPlan.task,
             description: agentPlan.description,
             background: agentPlan.background,
-            response: JSON.stringify(stepsResponse)
+            response: planResponseText
           }),
-          task: agentPlan.task,
-          description: agentPlan.description,
-          background: agentPlan.background
+          ...agentPlan
         });
 
         const { plan: continuePlan } = parsePlanCallResult(result);
@@ -350,6 +350,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         break;
       }
 
+      // Step calls
       if (agentPlan) {
         while (!checkIsStopping() && agentPlan.steps.filter((item) => !item.response).length) {
           for await (const step of agentPlan.steps) {
@@ -357,8 +358,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               break;
             }
             if (step.response) continue;
+
             getLogger(LogCategories.MODULE.AI.AGENT).debug(`Step call: ${step.id}`, step);
             assistantResponses.push({
+              planId: agentPlan.planId,
               stepTitle: {
                 stepId: step.id,
                 title: step.title
@@ -399,6 +402,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               .flat()
               .map((item) => ({
                 ...item,
+                planId: agentPlan!.planId,
                 stepId: step.id
               }));
             assistantResponses.push(...assistantResponse);
@@ -408,25 +412,20 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           }
         }
 
+        // 用户主动暂停（相当于强制结束本轮 task，会清空所有状态）
         if (checkIsStopping()) {
           break;
         }
 
         // 所有步骤执行完后，固定调用 Plan Agent（继续规划模式）
-        const stepsResponse = agentPlan.steps.map((step) => {
-          const stepResponse = assistantResponses
-            .filter((item) => item.stepId === step.id)
-            ?.map((item) => item.text?.content)
-            .join('\n');
-          return {
-            title: step.title,
-            response: stepResponse
-          };
+        const planResponseText = getPlanCallResponseText({
+          plan: agentPlan,
+          assistantResponses: [...aiHistoryValues, ...assistantResponses]
         });
         // 拼接 plan response 到 masterMessages 的 plan tool call 里（肯定在最后一个）
         const lastToolIndex = masterMessages.findLastIndex((item) => item.role === 'tool');
         if (lastToolIndex !== -1) {
-          masterMessages[lastToolIndex].content = JSON.stringify(stepsResponse);
+          masterMessages[lastToolIndex].content = planResponseText;
         }
         planIterationCount++;
 
@@ -452,7 +451,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         }
       } else {
         getLogger(LogCategories.MODULE.AI.AGENT).debug(`Start master agent`);
-
         const result = await masterCall({
           ...props,
           masterMessages,
@@ -478,7 +476,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
         // 触发了 plan
         if (result.planResponse) {
-          const { completeMessages, askInteractive, plan, planBuffer } = parsePlanCallResult(
+          const { completeMessages, askInteractive, plan } = parsePlanCallResult(
             result.planResponse
           );
 
@@ -490,7 +488,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 [masterMessagesKey]: masterMessages,
                 [planMessagesKey]: filterMemoryMessages(completeMessages),
                 [agentPlanKey]: plan,
-                [planBufferKey]: planBuffer
+                [planBufferKey]: result.planResponse.planBuffer
               },
               [DispatchNodeResponseKeyEnum.interactive]: askInteractive,
               [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
