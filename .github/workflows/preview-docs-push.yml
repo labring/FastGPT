@@ -1,26 +1,14 @@
-name: Preview docs push
+name: Preview Docs Image — Push
 
 on:
-  workflow_call:
-    inputs:
-      pr_number:
-        required: true
-        type: string
-      datetime:
-        required: true
-        type: string
-      run_id:
-        required: true
-        type: string
-    secrets:
-      ALI_IMAGE_USER:
-        required: true
-      ALI_IMAGE_PSW:
-        required: true
-      ALI_IMAGE_PREFIX:
-        required: true
-      KUBE_CONFIG_CN:
-        required: true
+  workflow_run:
+    workflows: ['Preview Docs Image — Build']
+    types: [completed]
+
+# Only one push at a time
+concurrency:
+  group: 'preview-docs-push'
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -28,50 +16,48 @@ permissions:
   attestations: write
   id-token: write
   pull-requests: write
-  issues: write # Required for issue-comment (PR comments use Issues API)
+  issues: write
+  actions: read
 
 jobs:
-  push-and-deploy:
+  push:
     runs-on: ubuntu-24.04
+    # Only push when the build succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Read PR information
-        id: pr
-        run: |
-          PR_NUMBER="${{ inputs.pr_number }}"
-          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "Found PR #$PR_NUMBER"
-
-      - name: Get artifact name
-        id: artifacts
-        run: |
-          echo "datetime=${{ inputs.datetime }}" >> $GITHUB_OUTPUT
-          echo "artifact_name=fastgpt-docs-${{ inputs.datetime }}" >> $GITHUB_OUTPUT
-
-      - name: Download image artifact
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ steps.artifacts.outputs.artifact_name }}
-          path: /tmp/
-          run-id: ${{ inputs.run_id }}
+          name: preview-docs-image
+          path: /tmp
+          run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load Docker image
+      - name: Read PR metadata
+        id: pr
         run: |
-          docker load -i /tmp/fastgpt-docs-${{ steps.artifacts.outputs.datetime }}.tar
+          echo "number=$(cat /tmp/pr-number.txt)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(cat /tmp/pr-sha.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Login to Aliyun
+      - name: Load Docker image
+        run: docker load --input /tmp/docs-image.tar
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun Container Registry
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.ALI_IMAGE_USER }}
-          password: ${{ secrets.ALI_IMAGE_PSW }}
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
-      - name: Tag and push image
+      - name: Tag and push Docker image
         run: |
-          docker tag fastgpt-docs:${{ steps.artifacts.outputs.datetime }} \
-            ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
-          docker push ${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+          docker tag fastgpt-docs-pr:${{ steps.pr.outputs.sha }} \
+            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
+          docker push ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
 
       - name: Update deployment image
         env:
@@ -83,32 +69,51 @@ jobs:
           chmod 600 "$KUBECONFIG_FILE"
 
           kubectl --kubeconfig "$KUBECONFIG_FILE" set image deployment/fastgpt-docs-preview \
-            fastgpt-docs-preview=${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}
+            fastgpt-docs-preview=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
 
           kubectl --kubeconfig "$KUBECONFIG_FILE" annotate deployment/fastgpt-docs-preview \
-            originImageName="${{ secrets.ALI_IMAGE_PREFIX }}/fastgpt-docs:${{ steps.artifacts.outputs.datetime }}" --overwrite
+            originImageName="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}" --overwrite
 
-      - name: Comment deployment status
-        uses: FinleyGe/github-tools@0.0.1
-        if: success()
+      - name: Add PR comment on success
+        if: success() && steps.pr.outputs.number != ''
+        uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tool: issue-comment
-          issue-number: ${{ steps.pr.outputs.number }}
-          title: 'Docs Preview:'
-          body: |
-            ---
-            🚀 **FastGPT Document Preview Ready!**
+          script: |
+            const prNumber = parseInt('${{ steps.pr.outputs.number }}');
+            const marker = '<!-- fastgpt-docs-preview -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const existingComment = comments.find(comment =>
+              comment.body.includes(marker)
+            );
+
+            const commentBody = `${marker}
+            ✅ **Docs Preview Deployed!**
 
             🔗 [👀 Click here to visit preview](https://pueuoharpgcl.sealoshzh.site)
 
-      - name: Comment on failure
-        uses: FinleyGe/github-tools@0.0.1
-        if: failure()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tool: issue-comment
-          issue-number: ${{ steps.pr.outputs.number }}
-          title: 'Docs Preview Deployment Failed'
-          body: |
-            Failed to deploy docs preview. Please check workflow logs.
+            \`\`\`
+            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-docs-pr:${{ steps.pr.outputs.sha }}
+            \`\`\`
+            `;
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: commentBody
+              });
+            }

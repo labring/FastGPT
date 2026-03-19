@@ -129,7 +129,7 @@ export async function generateMetadata(props: {
   });
 
   return {
-    title: `${page.data.title} | FastGPT`,
+    title: page.data.title,
     description: page.data.description,
     alternates: {
       canonical: url,
