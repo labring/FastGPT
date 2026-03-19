@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useState } from 'react';
 import { Flex, Stack } from '@chakra-ui/react';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
@@ -9,11 +9,19 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
 import { workflowSystemVariables } from '@/web/core/app/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
 import { getVariableInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
 import { addVariable } from '../VariableEdit';
-import { useValidateFieldName, useSubmitErrorHandler } from '../utils/formValidation';
+import {
+  useValidateFieldKey,
+  useValidateFieldName,
+  useSubmitErrorHandler
+} from '../utils/formValidation';
+import {
+  getInitialVariableIdentifier,
+  shouldLockVariableIdentifier,
+  syncVariableIdentifier
+} from '../utils/variableEditor';
 
 const VariableEditModal = ({
   onClose,
@@ -29,6 +37,7 @@ const VariableEditModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
+  const validateFieldKey = useValidateFieldKey();
   const onSubmitError = useSubmitErrorHandler();
 
   const form = useForm<VariableItemType>({
@@ -36,9 +45,32 @@ const VariableEditModal = ({
   });
   const { setValue, reset, watch, getValues } = form;
   const type = watch('type');
+  const label = watch('label');
+  const key = watch('key');
+  const [isIdentifierTouched, setIsIdentifierTouched] = useState(!!variable.key);
+  const isIdentifierReadonly = useMemo(() => shouldLockVariableIdentifier(variable), [variable]);
+
   useEffect(() => {
     reset(variable);
-  }, [variable, reset]);
+    setValue('key', getInitialVariableIdentifier(variable));
+    setIsIdentifierTouched(!!variable.key);
+  }, [variable, reset, setValue]);
+
+  useEffect(() => {
+    if (isIdentifierReadonly) return;
+
+    const nextKey = syncVariableIdentifier({
+      label: label || '',
+      key: key || '',
+      touched: isIdentifierTouched
+    });
+
+    if (nextKey !== key) {
+      setValue('key', nextKey, {
+        shouldDirty: false
+      });
+    }
+  }, [isIdentifierReadonly, isIdentifierTouched, key, label, setValue]);
 
   const inputTypeList = useMemo(() => getVariableInputTypeList(), []);
 
@@ -76,15 +108,22 @@ const VariableEditModal = ({
   const onSubmitSuccess = useCallback(
     (data: VariableItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
+      data.key = data?.key?.trim();
 
-      const otherVariables = variables.filter((v) => v.key !== data.key);
-      const isValid = validateFieldName(data.label, {
-        existingKeys: otherVariables.flatMap((v) => [v.key, v.label]),
-        systemVariables: workflowSystemVariables,
-        currentKey: data.key
+      const otherVariables = variables.filter((v) => v.key !== variable.key);
+      const isValidLabel = validateFieldName(data.label, {
+        existingKeys: otherVariables.map((v) => v.label),
+        systemVariables: workflowSystemVariables
       });
+      if (!isValidLabel) {
+        return;
+      }
 
-      if (!isValid) {
+      const isValidKey = validateFieldKey(data.key, {
+        existingKeys: otherVariables.map((v) => v.key),
+        reservedKeys: workflowSystemVariables.map((item) => item.key)
+      });
+      if (!isValidKey) {
         return;
       }
 
@@ -115,7 +154,7 @@ const VariableEditModal = ({
         }
       });
 
-      const submittedData = data.key ? data : { ...data, key: getNanoid(8) };
+      const submittedData = data;
 
       const updatedVariables =
         submittedData.key && variables.some((v) => v.key === submittedData.key)
@@ -133,11 +172,23 @@ const VariableEditModal = ({
         });
         reset({
           ...addVariable(),
+          key: getInitialVariableIdentifier(addVariable()),
           defaultValue: ''
         });
+        setIsIdentifierTouched(false);
       }
     },
-    [variables, inputTypeList, onChange, reset, onClose, validateFieldName, toast, t]
+    [
+      variables,
+      inputTypeList,
+      onChange,
+      reset,
+      onClose,
+      validateFieldName,
+      validateFieldKey,
+      toast,
+      t
+    ]
   );
 
   return (
@@ -167,6 +218,12 @@ const VariableEditModal = ({
           isEdit={!!variable?.key}
           inputType={type}
           defaultValueType={defaultValueType}
+          identifierReadonly={isIdentifierReadonly}
+          onKeyChange={() => {
+            if (!isIdentifierReadonly) {
+              setIsIdentifierTouched(true);
+            }
+          }}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}

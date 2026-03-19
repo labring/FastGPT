@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 
 // TopAgent 参数配置
 export const topAgentParamsSchema = z.object({

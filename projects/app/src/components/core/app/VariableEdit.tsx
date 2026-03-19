@@ -29,6 +29,7 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import VariableEditModal from './VariableEditModal';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 
 export const defaultVariable: VariableItemType = {
   key: '',
@@ -73,6 +74,7 @@ const VariableEdit = ({
   zoom?: number;
 }) => {
   const { t } = useTranslation();
+  const { copyData } = useCopyData();
 
   const [editingVariable, setEditingVariable] = useState<VariableItemType | null>(null);
 
@@ -116,6 +118,7 @@ const VariableEdit = ({
             <Thead>
               <Tr>
                 <Th>{t('workflow:Variable_name')}</Th>
+                <Th>{t('app:variable_key')}</Th>
                 <Th>{t('common:Required_input')}</Th>
                 <Th>{t('common:Operation')}</Th>
               </Tr>
@@ -133,6 +136,7 @@ const VariableEdit = ({
                   onEdit={setEditingVariable}
                   onChange={onChange}
                   variables={variables}
+                  copyData={copyData}
                 />
               )}
               zoom={zoom}
@@ -149,6 +153,7 @@ const VariableEdit = ({
                           onEdit={setEditingVariable}
                           onChange={onChange}
                           variables={variables}
+                          copyData={copyData}
                           key={item.key}
                         />
                       )}
@@ -180,7 +185,8 @@ const TableItem = ({
   item,
   onEdit,
   onChange,
-  variables
+  variables,
+  copyData
 }: {
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
@@ -190,6 +196,7 @@ const TableItem = ({
   onEdit: (variable: VariableItemType) => void;
   onChange: (data: VariableItemType[]) => void;
   variables: VariableItemType[];
+  copyData: (data: string, title?: string | null | undefined, duration?: number) => Promise<void>;
 }) => {
   return (
     <Tr
@@ -205,6 +212,19 @@ const TableItem = ({
         <Flex alignItems={'center'}>
           <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
           {item.label}
+        </Flex>
+      </Td>
+      <Td>
+        <Flex alignItems={'center'} gap={1}>
+          <Box fontSize={'sm'} color={'myGray.700'}>
+            {item.key}
+          </Box>
+          <MyIconButton
+            icon={'copy'}
+            onClick={() => {
+              copyData(item.key);
+            }}
+          />
         </Flex>
       </Td>
       <Td>

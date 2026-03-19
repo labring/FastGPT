@@ -57,6 +57,9 @@ const InputTypeConfig = ({
   type,
   inputType,
   defaultValueType,
+  identifierReadonly = false,
+  onLabelChange,
+  onKeyChange,
   onSubmitSuccess,
   onSubmitError
 }: {
@@ -69,6 +72,9 @@ const InputTypeConfig = ({
 
   // Plugin-specific fields
   defaultValueType?: WorkflowIOValueTypeEnum;
+  identifierReadonly?: boolean;
+  onLabelChange?: (label: string) => void;
+  onKeyChange?: (key: string) => void;
 
   // Update methods
   onSubmitSuccess: (data: any, action: 'confirm' | 'continue') => void;
@@ -341,10 +347,38 @@ const InputTypeConfig = ({
             maxLength={30}
             placeholder="appointment/sql"
             {...register('label', {
-              required: true
+              required: true,
+              onChange: (e) => {
+                onLabelChange?.(e.target.value);
+              }
             })}
           />
         </Flex>
+        {type === 'variable' && (
+          <Flex alignItems={'flex-start'}>
+            <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
+              {t('app:variable_key')}
+            </FormLabel>
+            <Box flex={1}>
+              <Input
+                bg={identifierReadonly ? 'myGray.100' : 'myGray.50'}
+                placeholder={t('app:variable_key_placeholder')}
+                isReadOnly={identifierReadonly}
+                {...register('key', {
+                  required: true,
+                  onChange: (e) => {
+                    onKeyChange?.(e.target.value);
+                  }
+                })}
+              />
+              <Box mt={1} color={'myGray.500'} fontSize={'xs'}>
+                {identifierReadonly
+                  ? t('app:variable_key_readonly')
+                  : t('app:variable_key_description')}
+              </Box>
+            </Box>
+          </Flex>
+        )}
         <Flex alignItems={'flex-start'}>
           <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
             {typeLabels.description[type] || typeLabels.description.plugin}

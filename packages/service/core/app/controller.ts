@@ -1,6 +1,10 @@
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  validateVariableIdentifier,
+  workflowVariableReservedKeys
+} from '@fastgpt/global/core/app/variableIdentifier';
+import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -31,10 +35,36 @@ import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteSandboxesByAppId } from '../ai/sandbox/controller';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
-export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
+export const validateAppChatConfigVariables = (chatConfig?: AppSchemaType['chatConfig']) => {
+  const variables = chatConfig?.variables || [];
+  const existingKeys = new Set<string>();
+
+  variables.forEach((variable) => {
+    const result = validateVariableIdentifier(variable.key, {
+      reservedKeys: workflowVariableReservedKeys
+    });
+
+    if (!result.valid || existingKeys.has(variable.key)) {
+      throw CommonErrEnum.invalidParams;
+    }
+
+    existingKeys.add(variable.key);
+  });
+};
+
+export const beforeUpdateAppFormat = ({
+  nodes,
+  chatConfig
+}: {
+  nodes?: StoreNodeItemType[];
+  chatConfig?: AppSchemaType['chatConfig'];
+}) => {
+  validateAppChatConfigVariables(chatConfig);
+
   if (!nodes) return;
 
   nodes.forEach((node) => {
