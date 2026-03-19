@@ -169,7 +169,6 @@ export const dispatchPlanAgent = async ({
   ...props
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const startTime = Date.now();
-  const currentPlanId = planId;
   const modelData = getLLMModel(model);
 
   // 移除 plan 工具
@@ -262,7 +261,7 @@ export const dispatchPlanAgent = async ({
   // 获取生成的 plan
   const plan = await parsePlan({
     text: answerText,
-    planId: currentPlanId,
+    planId,
     task,
     description,
     background
@@ -296,7 +295,7 @@ export const dispatchPlanAgent = async ({
     askInteractive,
     plan,
     planBuffer: {
-      planId: currentPlanId,
+      planId,
       task,
       description,
       background

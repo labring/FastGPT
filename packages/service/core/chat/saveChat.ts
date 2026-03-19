@@ -458,15 +458,25 @@ export const updateInteractiveChat = async ({
     interactive,
     input: userInteractiveVal
   });
+  // 提取嵌套在子流程里的交互节点
+  const finalInteractive = extractDeepestInteractive(interactive);
   if (status === 'query') {
-    // AskQuery 需要把用户答案回填到上一条 interactive，避免后续多轮恢复时丢失 answer。
-    const finalInteractive = extractDeepestInteractive(interactive);
-    if (finalInteractive.type === 'agentPlanAskQuery') {
-      finalInteractive.params.answer = userInteractiveVal;
-      chatItem.value[chatItem.value.length - 1].interactive = interactive;
-      chatItem.markModified('value');
-      await chatItem.save();
+    // 特殊处理：
+    {
+      // 1. AskQuery 需要把用户答案回填到上一条 interactive，避免后续多轮恢复时丢失 answer。
+      if (finalInteractive.type === 'agentPlanAskQuery') {
+        finalInteractive.params.answer = userInteractiveVal;
+        chatItem.value[chatItem.value.length - 1].interactive = interactive;
+        chatItem.markModified('value');
+        await chatItem.save();
+
+        // 追加 PlanId 给 userItem(便于适配器会跳过转化该条消息)
+        props.userContent.value.forEach((item) => {
+          item.planId = finalInteractive.planId;
+        });
+      }
     }
+
     return await pushChatRecords(props);
   }
 
@@ -491,9 +501,6 @@ export const updateInteractiveChat = async ({
   */
   // Update interactive value
   {
-    // 提取嵌套在子流程里的交互节点
-    const finalInteractive = extractDeepestInteractive(interactive);
-
     if (
       finalInteractive.type === 'userSelect' ||
       finalInteractive.type === 'agentPlanAskUserSelect'

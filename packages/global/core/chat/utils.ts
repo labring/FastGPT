@@ -10,128 +10,88 @@ import {
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
-import type {
-  InteractiveNodeResponseType,
-  WorkflowInteractiveResponseType
-} from '../workflow/template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import { ConfirmPlanAgentText } from '../workflow/runtime/constants';
+import type { AgentPlanType } from '../ai/agent/type';
 
 export type PlanAskInfo = {
-  question?: string;
-  answer?: string;
+  question: string;
+  answer: string;
 };
 
-export type BuildPlanAgentResponseTextParams = {
-  planId: string;
-  steps: Array<{
-    id: string;
-    title?: string;
-    description?: string;
-    response?: string | null;
-    summary?: string | null;
-  }>;
-  assistantResponses: AIChatItemValueItemType[];
-};
-
-export const getPlanAskInfoFromInteractive = (
-  interactive?: InteractiveNodeResponseType
-): PlanAskInfo | undefined => {
-  if (!interactive) return;
-
-  if (interactive.type === 'agentPlanAskQuery') {
-    const question = interactive.params?.content?.trim();
-    if (!question) return;
-    const answer = interactive.params?.answer?.trim() || undefined;
-    return { question, answer };
-  }
-
-  if (interactive.type === 'agentPlanAskUserForm') {
-    const question = interactive.params?.description?.trim();
-    const answer =
-      interactive.params?.inputForm
-        ?.map((item) => {
-          if (!item?.label) return '';
-          if (item.value === undefined || item.value === null || item.value === '') return '';
-          if (Array.isArray(item.value)) {
-            return `${item.label}: ${item.value.map((value) => String(value)).join(', ')}`;
-          }
-          return `${item.label}: ${String(item.value)}`;
-        })
-        .filter(Boolean)
-        .join('; ') || undefined;
-
-    if (!question && !answer) return;
-    return {
-      question,
-      answer
-    };
-  }
-};
-
-export const getPlanAsksByPlanId = ({
-  planId,
+export const getPlanCallResponseText = ({
+  plan,
   assistantResponses
 }: {
-  planId: string;
+  plan: AgentPlanType;
   assistantResponses: AIChatItemValueItemType[];
-}): PlanAskInfo[] =>
-  assistantResponses
-    .filter((item) => item.interactive && item.planId === planId)
-    .map((item) => getPlanAskInfoFromInteractive(item.interactive))
-    .filter((ask): ask is NonNullable<ReturnType<typeof getPlanAskInfoFromInteractive>> =>
-      Boolean(ask)
-    );
+}): string => {
+  // 1. 获取 ask 信息
+  const askText = (() => {
+    const asks = assistantResponses
+      .map((item) => {
+        const interactive = item.interactive;
+        if (!interactive) return;
+        if (interactive.type === 'agentPlanAskQuery') {
+          const question = interactive.params?.content?.trim();
+          if (!question) return;
+          const answer = interactive.params?.answer?.trim() || undefined;
+          return JSON.stringify({ question, answer });
+        }
 
-export const buildPlanAgentResponseTextFromAssistantResponses = ({
-  planId,
-  steps,
-  assistantResponses
-}: BuildPlanAgentResponseTextParams): string => {
-  const asks = getPlanAsksByPlanId({ planId, assistantResponses });
-  const askInfoList = asks
-    .map((ask) => {
-      return [
-        ask.question ? `question=${ask.question}` : '',
-        ask.answer ? `answer=${ask.answer}` : ''
-      ]
+        if (interactive.type === 'agentPlanAskUserForm') {
+          const question = interactive.params?.description?.trim();
+          const answer =
+            interactive.params?.inputForm
+              ?.map((item) => {
+                if (!item?.label) return '';
+                const val =
+                  typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value);
+                return `${item.label}: ${val}`;
+              })
+              .filter(Boolean)
+              .join('; ') || undefined;
+
+          if (!question && !answer) return;
+          return JSON.stringify({ question, answer });
+        }
+        return undefined;
+      })
+      .filter(Boolean) as string[];
+
+    return asks.join('\n');
+  })();
+
+  // 2. 获取 step 信息; 如果是中途暂停，则需要提示用户暂停
+  const { stepText, isPause } = (() => {
+    const stepValues = assistantResponses.filter((item) => item.stepId);
+    let isPause = false;
+    const stepResults = plan.steps.map((step, index) => {
+      const result = stepValues
+        .map((item) => item.text?.content?.trim() || '')
         .filter(Boolean)
-        .join('; ');
-    })
-    .filter(Boolean);
+        .join('\n');
 
-  const askText =
-    askInfoList.length === 0
-      ? 'COLLECTED INFO: '
-      : `COLLECTED INFO: ${askInfoList.map((askText, index) => `${index + 1}) ${askText}`).join('\n')}`;
+      const executed = !!result;
 
-  const stepExecutionStates = steps.map((step) => {
-    const extractedText = assistantResponses
-      .filter((item) => item.planId === planId && item.stepId === step.id)
-      .map((item) => item.text?.content?.trim() || '')
-      .filter(Boolean)
-      .join('\n');
+      if (!executed) {
+        isPause = true;
+      }
 
-    const result = extractedText?.trim() || 'none';
-    const executed = result !== 'none';
-    return { step, executed, result };
-  });
+      return `(${index + 1}) [${executed ? `executed` : `pending`}] id=${step.id}; title=${step.title || ''}; description=${step.description || ''}${result ? `; result: ${result}` : ''}`;
+    });
 
-  const parts: string[] = [askText, 'STEPS:'];
-  if (stepExecutionStates.some((item) => !item.executed)) {
-    parts.unshift('PLAN_PAUSE_HANDOFF');
-  }
+    return {
+      stepText: stepResults.join('\n'),
+      isPause
+    };
+  })();
 
-  stepExecutionStates.forEach(({ step, executed, result }, index) => {
-    parts.push(
-      `${index + 1}) [${executed ? 'executed' : 'pending'}] id=${step.id}; title=${step.title || ''}; description=${step.description || ''}`
-    );
-
-    if (executed) {
-      parts.push(`   result: ${result}`);
-    }
-  });
-
-  return parts.join('\n');
+  return `${isPause ? 'PLAN_PAUSE_HANDOFF' : ''}
+COLLECTED INFO:
+${askText}
+STEPS: 
+${stepText}`;
 };
 
 // Concat 2 -> 1, and sort by role

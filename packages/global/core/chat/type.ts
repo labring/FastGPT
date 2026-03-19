@@ -85,6 +85,7 @@ export const UserChatItemFileItemSchema = z.object({
 export type UserChatItemFileItemType = z.infer<typeof UserChatItemFileItemSchema>;
 
 export const UserChatItemValueItemSchema = z.object({
+  planId: z.string().nullish(),
   text: z
     .object({
       content: z.string()
