@@ -15,7 +15,6 @@ export type DeployedSkillInfo = {
 export type AgentSandboxContext = {
   sandbox: ISandbox;
   providerSandboxId: string;
-  // 与 sync agent SESSION_ID 对应的会话 key，决定 MinIO 数据路径
   sessionId: string;
   skills: AgentSkillSchemaType[];
   deployedSkills: DeployedSkillInfo[];
