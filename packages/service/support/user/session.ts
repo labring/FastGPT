@@ -81,7 +81,7 @@ const getSession = async (key: string): Promise<SessionType> => {
     };
   } catch (error) {
     addLog.error('Parse session error:', error);
-    await delSession(formatKey);
+    await delSession(key);
     return Promise.reject(ERROR_ENUM.unAuthorization);
   }
 };
