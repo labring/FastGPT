@@ -41,7 +41,7 @@
   "common.dataset.data.Input Error Tip": "[圖片數據集] 處理過程錯誤:",
   "common.error.unKnow": "未知錯誤",
   "common_dataset": "通用資料集",
-  "common_dataset_desc": "通過導入文件、網頁鏈接或手動錄入形式構建知識庫",
+  "common_dataset_desc": "通過匯入檔案、網頁連結形式建立知識庫",
   "condition": "條件",
   "config_sync_schedule": "設定定時同步",
   "confirm_delete_collection": "確認刪除 {{num }} 個文件？",
@@ -232,7 +232,7 @@
   "enterprise_database": "直連資料庫",
   "enterprise_database_desc": "授權 MySQL 資料庫後讀取選定的資料表，檢索時連接資料庫獲取相關資訊",
   "file_database": "文件資料庫",
-  "file_database_desc": "上傳excel或csv文件構建資料庫",
+  "file_database_desc": "上傳 excel 或 csv 文件構建資料庫",
   "direct_database": "直連資料庫",
   "enterprise_database_embedding_model_tip": "向量模型可將資料庫關鍵資訊（截取部分資料的表名、表描述、列名、列描述）轉成向量，用於進行語義檢索。",
   "database_structure_change_tip": "資料結構發生變化時，如資料表名稱變更或其中的列名變更等，請手動重新整理資料來源。",
@@ -459,6 +459,7 @@
   "database_auth_desc": "授權 MySQL、SQL server 等數據庫，檢索時連接數據庫獲取相關信息",
   "filename_validation_error": "文件名不符合要求",
   "filename_format_tip": "文件名称仅支持汉字、英文字母、数字和下划线，且不能以数字开头",
+  "new_dataset": "新建知识库",
   "question_generation": "問題生成",
   "summary_generation": "摘要生成",
   "image_index": "圖片索引",
@@ -472,4 +473,3 @@
   "synthetic_index_desc": "基於文檔內容抽樣，生成假設問，同時可用於知識重排模型調優（耗時較長）",
   "small2big_desc": "開啟後，當答案部分內容較多時將進行拆分，生成小塊內容的索引"
 }
-

@@ -26,6 +26,10 @@ export const appTypeTagMap = {
     label: i18nT('app:toolType_mcp'),
     icon: 'core/app/type/mcpTools'
   },
+  [AppTypeEnum.assistant]: {
+    label: i18nT('app:smart_qa'),
+    icon: 'core/app/assistant/assistantIcon'
+  },
   [AppTypeEnum.tool]: undefined,
   [AppTypeEnum.folder]: undefined,
   [AppTypeEnum.hidden]: undefined,

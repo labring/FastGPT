@@ -1,5 +1,5 @@
 {
-  "name": "简易对话 Agent",
+  "name": "智能问答",
   "intro": "专为客户服务打造的智能助手,结合知识库检索和智能对话能力",
   "author": "FastGPT",
   "avatar": "core/workflow/template/customerService",

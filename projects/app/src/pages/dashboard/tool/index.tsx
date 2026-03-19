@@ -31,6 +31,10 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import ToolModal from '@/pages/dashboard/create/ToolModal';
+import type { ToolModalAppType } from '@/pages/dashboard/create/ToolModal';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -55,6 +59,8 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
+
+  const [createAppType, setCreateAppType] = useState<ToolModalAppType>();
 
   const {
     isOpen: isOpenJsonImportModal,
@@ -90,7 +96,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} pt={5}>
+    <Flex flexDirection={'column'} h={'100%'}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
@@ -98,6 +104,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           h={'100%'}
           pr={folderDetail ? [3, 2] : [3, 6]}
           pl={6}
+          pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
@@ -126,16 +133,36 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </Box>
             )}
             <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3} pt={1}>
+            <Flex alignItems={'center'} gap={3}>
               {isPc && (
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  bg={'white'}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_tool')}
-                  maxLength={30}
-                />
+                <>
+                  <MySelect
+                    w={'120px'}
+                    value={(router.query.type as string) || 'all'}
+                    list={[
+                      { label: t('app:toolType_all'), value: 'all' },
+                      { label: t('app:toolType_workflow'), value: AppTypeEnum.workflowTool },
+                      { label: t('app:toolType_http'), value: AppTypeEnum.httpToolSet },
+                      { label: t('app:toolType_mcp'), value: AppTypeEnum.mcpToolSet }
+                    ]}
+                    onChange={(val) => {
+                      router.push({
+                        query: {
+                          ...router.query,
+                          type: val
+                        }
+                      });
+                    }}
+                  />
+                  <SearchInput
+                    maxW={['auto', '250px']}
+                    value={searchKey}
+                    bg={'white'}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                    placeholder={t('app:search_name_intro')}
+                    maxLength={30}
+                  />
+                </>
               )}
 
               {(folderDetail
@@ -143,22 +170,66 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   folderDetail?.type !== AppTypeEnum.httpPlugin
                 : userInfo?.team.permission.hasAppCreatePer) && (
                 <>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                    onClick={() => setEditFolder({})}
-                    px={5}
-                  >
-                    {t('common:Folder')}
+                  <Button variant={'whiteBase'} onClick={() => setEditFolder({})} px={5}>
+                    {t('app:new_folder')}
                   </Button>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                    onClick={onOpenJsonImportModal}
-                    px={5}
-                  >
-                    {t('common:Import')}
-                  </Button>
+                  <MyMenu
+                    size="md"
+                    Button={
+                      <Button
+                        variant={'primary'}
+                        leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
+                      >
+                        {t('app:new_tool')}
+                      </Button>
+                    }
+                    menuList={[
+                      {
+                        children: [
+                          {
+                            icon: 'core/app/type/pluginFill',
+                            label: t('app:toolType_workflow'),
+                            description: t('app:type_plugin_intro'),
+                            onClick: () => setCreateAppType(AppTypeEnum.workflowTool)
+                          },
+                          {
+                            icon: 'core/app/type/httpPluginFill',
+                            label: t('app:toolType_http'),
+                            description: t('app:type.Create http toolset tip'),
+                            onClick: () => setCreateAppType(AppTypeEnum.httpToolSet)
+                          },
+                          {
+                            icon: 'core/app/type/mcpToolsFill',
+                            label: t('app:toolType_mcp'),
+                            description: t('app:type.Create mcp tools tip'),
+                            onClick: () => setCreateAppType(AppTypeEnum.mcpToolSet)
+                          }
+                        ]
+                      },
+                      {
+                        children: [
+                          {
+                            label: (
+                              <Flex alignItems="center" fontSize="14px">
+                                <MyIcon name="common/importLight" w="24px" mr={2} />
+                                {t('app:import_json_config')}
+                              </Flex>
+                            ),
+                            onClick: onOpenJsonImportModal
+                          },
+                          {
+                            label: (
+                              <Flex alignItems="center" fontSize="14px">
+                                <MyIcon name="core/importTemplateIcon" w="24px" mr={2} />
+                                {t('app:create_from_template')}
+                              </Flex>
+                            ),
+                            onClick: () => router.push('/dashboard/templateMarket')
+                          }
+                        ]
+                      }
+                    ]}
+                  />
                 </>
               )}
             </Flex>
@@ -179,7 +250,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           )}
 
           <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
-            <List />
+            <List showCreateCard={false} />
           </MyBox>
         </Flex>
 
@@ -235,6 +306,14 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         />
       )}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
+      {!!createAppType && (
+        <ToolModal
+          type={createAppType}
+          parentId={parentId}
+          onClose={() => setCreateAppType(undefined)}
+          onSuccess={loadMyApps}
+        />
+      )}
     </Flex>
   );
 };

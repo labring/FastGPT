@@ -1,6 +1,6 @@
 'use client';
-import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { Box, Flex, Button } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -10,10 +10,9 @@ import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
 import MultipleMenu from '@fastgpt/web/components/common/MyMenu/Multiple';
-import { AddIcon } from '@chakra-ui/icons';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { type EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import dynamic from 'next/dynamic';
 import { postCreateDatasetFolder, resumeInheritPer } from '@/web/core/dataset/api';
@@ -77,27 +76,6 @@ const Dataset = () => {
     [t, toast, feConfigs]
   );
 
-  const RenderSearchInput = useMemo(
-    () => (
-      <InputGroup maxW={['auto', '250px']}>
-        <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-          <MyIcon color={'myGray.600'} name={'common/searchLight'} w={'1rem'} />
-        </InputLeftElement>
-        <Input
-          pl={'34px'}
-          value={searchKey}
-          onChange={(e) => setSearchKey(e.target.value)}
-          placeholder={t('common:dataset.dataset_name')}
-          py={0}
-          lineHeight={'34px'}
-          maxLength={30}
-          bg={'white'}
-        />
-      </InputGroup>
-    ),
-    [searchKey, setSearchKey, t]
-  );
-
   return (
     <MyBox
       isLoading={myDatasets.length === 0 && isFetchingDatasets}
@@ -108,7 +86,7 @@ const Dataset = () => {
     >
       <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
         <Flex flexGrow={1} flexDirection="column">
-          <Flex alignItems={'center'} justifyContent={'space-between'}>
+          <Flex alignItems={'center'}>
             <FolderPath
               paths={paths}
               FirstPathDom={
@@ -132,117 +110,132 @@ const Dataset = () => {
                 });
               }}
             />
-
-            {isPc && RenderSearchInput}
-
-            {(folderDetail
-              ? folderDetail.permission.hasWritePer
-              : userInfo?.team?.permission.hasDatasetCreatePer) && (
-              <Box pl={[0, 4]}>
-                <MultipleMenu
-                  size="md"
-                  Trigger={
-                    <Button variant={'primary'} px="0">
-                      <Flex alignItems={'center'} px={5}>
-                        <AddIcon mr={2} />
-                        <Box>{t('common:new_create')}</Box>
-                      </Flex>
-                    </Button>
-                  }
-                  menuList={[
-                    {
-                      children: [
-                        {
-                          icon: 'core/dataset/commonDatasetColor',
-                          label: t('dataset:common_dataset'),
-                          description: t('dataset:common_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
-                        },
-                        {
-                          icon: 'core/dataset/websiteDatasetColor',
-                          label: t('dataset:website_dataset'),
-                          description: t('dataset:website_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
-                        },
-                        {
-                          icon: 'core/dataset/datasetDb',
-                          label: t('dataset:database'),
-                          description: t('dataset:build_database_by_import'),
-                          menuList: [
-                            {
-                              children: [
-                                {
-                                  icon: 'core/dataset/fileDbColor',
-                                  label: t('dataset:file_database'),
-                                  description: t('dataset:file_database_desc'),
-                                  onClick: () =>
-                                    onSelectDatasetType(DatasetTypeEnum.structureDocument)
-                                },
-                                {
-                                  icon: 'core/dataset/databaseColor',
-                                  label: t('dataset:direct_database'),
-                                  description: t('dataset:database_auth_desc'),
-                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
-                                }
-                              ]
-                            }
-                          ]
-                        },
-                        {
-                          icon: 'core/dataset/otherDataset',
-                          label: t('dataset:other_dataset'),
-                          description: t('dataset:external_other_dataset_desc'),
-                          menuList: [
-                            {
-                              children: [
-                                {
-                                  icon: 'core/dataset/externalDatasetColor',
-                                  label: t('dataset:api_file'),
-                                  description: t('dataset:external_file_dataset_desc'),
-                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
-                                },
-                                ...(feConfigs?.show_dataset_feishu !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/feishuDatasetColor',
-                                        label: t('dataset:feishu_dataset'),
-                                        description: t('dataset:feishu_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
-                                      }
-                                    ]
-                                  : []),
-                                ...(feConfigs?.show_dataset_yuque !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/yuqueDatasetColor',
-                                        label: t('dataset:yuque_dataset'),
-                                        description: t('dataset:yuque_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
-                                      }
-                                    ]
-                                  : [])
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      children: [
-                        {
-                          icon: FolderIcon,
-                          label: t('common:Folder'),
-                          onClick: () => setEditFolderData({})
-                        }
-                      ]
-                    }
-                  ]}
+            <Flex flex={1} />
+            <Flex alignItems={'center'} gap={3}>
+              {isPc && (
+                <SearchInput
+                  maxW={['auto', '250px']}
+                  value={searchKey}
+                  bg={'white'}
+                  onChange={(e) => setSearchKey(e.target.value)}
+                  placeholder={t('app:search_name_intro')}
+                  maxLength={30}
                 />
-              </Box>
-            )}
+              )}
+
+              {(folderDetail
+                ? folderDetail.permission.hasWritePer
+                : userInfo?.team?.permission.hasDatasetCreatePer) && (
+                <>
+                  <Button variant={'whiteBase'} onClick={() => setEditFolderData({})} px={5}>
+                    {t('app:new_folder')}
+                  </Button>
+                  <MultipleMenu
+                    size="md"
+                    Trigger={
+                      <Button
+                        variant={'primary'}
+                        leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
+                      >
+                        {t('dataset:new_dataset')}
+                      </Button>
+                    }
+                    menuList={[
+                      {
+                        children: [
+                          {
+                            icon: 'core/dataset/commonDatasetColor',
+                            label: t('dataset:common_dataset'),
+                            description: t('dataset:common_dataset_desc'),
+                            onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
+                          },
+                          {
+                            icon: 'core/dataset/websiteDatasetColor',
+                            label: t('dataset:website_dataset'),
+                            description: t('dataset:website_dataset_desc'),
+                            onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
+                          },
+                          {
+                            icon: 'core/dataset/datasetDb',
+                            label: t('dataset:database'),
+                            description: t('dataset:build_database_by_import'),
+                            menuList: [
+                              {
+                                children: [
+                                  {
+                                    icon: 'core/dataset/fileDbColor',
+                                    label: t('dataset:file_database'),
+                                    description: t('dataset:file_database_desc'),
+                                    onClick: () =>
+                                      onSelectDatasetType(DatasetTypeEnum.structureDocument)
+                                  },
+                                  {
+                                    icon: 'core/dataset/databaseColor',
+                                    label: t('dataset:direct_database'),
+                                    description: t('dataset:database_auth_desc'),
+                                    onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            icon: 'core/dataset/otherDataset',
+                            label: t('dataset:other_dataset'),
+                            description: t('dataset:external_other_dataset_desc'),
+                            menuList: [
+                              {
+                                children: [
+                                  {
+                                    icon: 'core/dataset/externalDatasetColor',
+                                    label: t('dataset:api_file'),
+                                    description: t('dataset:external_file_dataset_desc'),
+                                    onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
+                                  },
+                                  ...(feConfigs?.show_dataset_feishu !== false
+                                    ? [
+                                        {
+                                          icon: 'core/dataset/feishuDatasetColor',
+                                          label: t('dataset:feishu_dataset'),
+                                          description: t('dataset:feishu_dataset_desc'),
+                                          onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                                        }
+                                      ]
+                                    : []),
+                                  ...(feConfigs?.show_dataset_yuque !== false
+                                    ? [
+                                        {
+                                          icon: 'core/dataset/yuqueDatasetColor',
+                                          label: t('dataset:yuque_dataset'),
+                                          description: t('dataset:yuque_dataset_desc'),
+                                          onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
+                                        }
+                                      ]
+                                    : [])
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]}
+                  />
+                </>
+              )}
+            </Flex>
           </Flex>
 
-          {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
+          {!isPc && (
+            <Box mt={2}>
+              <SearchInput
+                maxW={['auto', '250px']}
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('app:search_name_intro')}
+                maxLength={30}
+              />
+            </Box>
+          )}
 
           <Box flexGrow={1}>
             <List />
@@ -343,7 +336,7 @@ const Dataset = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dataset', 'user']))
+      ...(await serviceSideProps(content, ['dataset', 'user', 'app']))
     }
   };
 }

@@ -46,7 +46,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
-const List = () => {
+const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId = null } = router.query;
@@ -158,7 +158,7 @@ const List = () => {
       {myApps.length === 0 && !folderDetail ? (
         searchKey ? (
           <EmptyTip />
-        ) : isPc && hasCreatePer ? (
+        ) : isPc && hasCreatePer && showCreateCard ? (
           <CreateButton appType={appType} />
         ) : (
           <Grid
@@ -171,7 +171,8 @@ const List = () => {
             gridGap={5}
             alignItems={'stretch'}
           >
-            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+            {showCreateCard &&
+              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
           </Grid>
         )
       ) : (
@@ -185,7 +186,8 @@ const List = () => {
           gridGap={5}
           alignItems={'stretch'}
         >
-          {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
+          {showCreateCard &&
+            (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
           {myApps.map((app, index) => {
             const isAgent = AppTypeList.includes(app.type);
             const isTool = ToolTypeList.includes(app.type);
@@ -246,7 +248,13 @@ const List = () => {
                 >
                   <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
                     <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                    <Box color={'myGray.900'} fontWeight={'medium'} minWidth={0} overflow="hidden">
+                    <Box
+                      color={'myGray.900'}
+                      fontWeight={'medium'}
+                      minWidth={0}
+                      overflow="hidden"
+                      h="100%"
+                    >
                       <Box className={'textEllipsis'}>{app.name}</Box>
                     </Box>
                     <Box justifySelf="end" mr={-5}>
