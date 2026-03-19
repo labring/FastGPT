@@ -88,7 +88,8 @@ export type AgentPlanCheckInteractive = z.infer<typeof AgentPlanCheckInteractive
 export const AgentPlanAskQueryInteractiveSchema = z.object({
   type: z.literal('agentPlanAskQuery'),
   params: z.object({
-    content: z.string()
+    content: z.string(),
+    answer: z.string().optional()
   })
 });
 export type AgentPlanAskQueryInteractive = z.infer<typeof AgentPlanAskQueryInteractiveSchema>;
@@ -147,16 +148,21 @@ export const PaymentPauseInteractiveSchema = z.object({
 });
 export type PaymentPauseInteractive = z.infer<typeof PaymentPauseInteractiveSchema>;
 
-export const InteractiveNodeResponseTypeSchema = z.discriminatedUnion('type', [
-  UserSelectInteractiveSchema,
-  UserInputInteractiveSchema,
-  ChildrenInteractiveSchema,
-  ToolCallChildrenInteractiveSchema,
-  LoopInteractiveSchema,
-  PaymentPauseInteractiveSchema,
-  AgentPlanCheckInteractiveSchema,
-  AgentPlanAskQueryInteractiveSchema
-]);
+export const InteractiveNodeResponseTypeSchema = z.intersection(
+  z.discriminatedUnion('type', [
+    UserSelectInteractiveSchema,
+    UserInputInteractiveSchema,
+    ChildrenInteractiveSchema,
+    ToolCallChildrenInteractiveSchema,
+    LoopInteractiveSchema,
+    PaymentPauseInteractiveSchema,
+    AgentPlanCheckInteractiveSchema,
+    AgentPlanAskQueryInteractiveSchema
+  ]),
+  z.object({
+    planId: z.string().optional()
+  })
+);
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;
 
 export const WorkflowInteractiveResponseTypeSchema = z.intersection(

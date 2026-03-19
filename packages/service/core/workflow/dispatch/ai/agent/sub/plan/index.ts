@@ -9,8 +9,7 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
-  AgentPlanAskQueryInteractive,
-  UserInputInteractive,
+  InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { parseJsonArgs } from '../../../../../../ai/utils';
@@ -61,7 +60,7 @@ type DispatchPlanAgentProps = PlanAgentConfig &
   } & (InitialParams | ContinueParams | InteractiveParams);
 
 export type DispatchPlanAgentResponse = {
-  askInteractive?: UserInputInteractive | AgentPlanAskQueryInteractive;
+  askInteractive?: InteractiveNodeResponseType;
   plan?: AgentPlanType;
   planBuffer: PlanAgentParamsType;
   completeMessages: ChatCompletionMessageParam[];
@@ -71,6 +70,7 @@ export type DispatchPlanAgentResponse = {
 
 const parsePlan = async ({
   text,
+  planId,
   task,
   description,
   background
@@ -90,7 +90,8 @@ const parsePlan = async ({
     ...result,
     task,
     description,
-    background
+    background,
+    planId
   });
   if (!params.success) {
     getLogger(LogCategories.MODULE.AI.AGENT).warn(`[Plan Agent] Not plan`, { text });
@@ -101,7 +102,7 @@ const parsePlan = async ({
 };
 const parseAskInteractive = async (
   toolCalls: ChatCompletionMessageToolCall[]
-): Promise<UserInputInteractive | AgentPlanAskQueryInteractive | undefined> => {
+): Promise<InteractiveNodeResponseType | undefined> => {
   const tooCall = toolCalls[0];
   if (!tooCall) return;
   const params = await AIAskAnswerSchema.safeParseAsync(parseJsonArgs(tooCall.function.arguments));
@@ -161,6 +162,7 @@ export const dispatchPlanAgent = async ({
   getSubAppInfo,
   systemPrompt,
   model,
+  planId,
   task,
   description,
   background,
@@ -259,6 +261,7 @@ export const dispatchPlanAgent = async ({
   // 获取生成的 plan
   const plan = await parsePlan({
     text: answerText,
+    planId,
     task,
     description,
     background
@@ -292,6 +295,7 @@ export const dispatchPlanAgent = async ({
     askInteractive,
     plan,
     planBuffer: {
+      planId,
       task,
       description,
       background

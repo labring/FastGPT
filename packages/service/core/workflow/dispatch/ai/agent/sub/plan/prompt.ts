@@ -1092,7 +1092,11 @@ ${bestPractices}
 `;
 };
 
-export const getInitialPlanQuery = ({ task, description, background }: PlanAgentParamsType) => {
+export const getInitialPlanQuery = ({
+  task,
+  description,
+  background
+}: Omit<PlanAgentParamsType, 'planId'>) => {
   return `## 任务目标
 ${task}
 
@@ -1108,7 +1112,7 @@ export const getContinuePlanQuery = ({
   description,
   background,
   response
-}: PlanAgentParamsType & {
+}: Omit<PlanAgentParamsType, 'planId'> & {
   response: string;
 }) => {
   return `${getInitialPlanQuery({ task, description, background })}
