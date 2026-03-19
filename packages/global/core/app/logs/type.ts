@@ -1,7 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatSourceEnum } from '../../chat/constants';
 import { AppLogKeysEnum } from './constants';
-import z from 'zod';
+import { z } from 'zod';
 
 export const AppLogKeysSchema = z.object({
   key: z.enum(AppLogKeysEnum),
