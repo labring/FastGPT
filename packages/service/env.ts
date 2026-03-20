@@ -32,6 +32,7 @@ export const env = createEnv({
     VOLUME_MANAGER_URL: z.string().url().optional(),
     VOLUME_MANAGER_TOKEN: z.string().optional(),
     VOLUME_MANAGER_MOUNT_PATH: z.string().optional(),
+    AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(true),
 
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),
     LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),

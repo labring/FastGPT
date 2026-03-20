@@ -289,7 +289,7 @@ export async function createAgentSandbox(
     const createEntrypoint = defaults.entrypoint;
 
     let volumes: Volume[] | undefined;
-    if (providerConfig.provider === 'opensandbox') {
+    if (providerConfig.provider === 'opensandbox' && env.AGENT_SANDBOX_ENABLE_VOLUME) {
       const vmConfig = getVolumeManagerConfig();
       const claimName = await ensureSessionVolume(sessionId, vmConfig);
       volumes = [
