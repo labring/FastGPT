@@ -134,9 +134,8 @@ const nextConfig: NextConfig = {
     }
 
     if (isServer) {
-      config.externals.push({
-        '@node-rs/jieba': '@node-rs/jieba'
-      });
+      // Native addon packages must be external (cannot be bundled by webpack).
+      (config.externals as string[]).push('@node-rs/jieba');
     }
 
     config.experiments = {
