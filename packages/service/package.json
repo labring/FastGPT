@@ -4,11 +4,11 @@
   "type": "module",
   "engines": {
     "node": ">=20",
-    "pnpm": "10.x"
+    "pnpm": "9.x"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.2",
-    "@fastgpt-sdk/sandbox-adapter": "^0.0.21",
+    "@fastgpt-sdk/sandbox-adapter": "^0.0.22",
     "@fastgpt-sdk/storage": "catalog:",
     "@fastgpt-sdk/logger": "catalog:",
     "@fastgpt/global": "workspace:*",
