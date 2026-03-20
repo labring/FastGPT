@@ -284,7 +284,11 @@ export const appData2FlowNodeIO = ({
     inputs: [
       Input_Template_Stream_MODE,
       Input_Template_History,
-      ...(chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg
+      ...(chatConfig?.fileSelectConfig?.canSelectFile ||
+      chatConfig?.fileSelectConfig?.canSelectImg ||
+      chatConfig?.fileSelectConfig?.canSelectVideo ||
+      chatConfig?.fileSelectConfig?.canSelectAudio ||
+      chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
         ? [Input_Template_File_Link]
         : []),
       Input_Template_UserChatInput,

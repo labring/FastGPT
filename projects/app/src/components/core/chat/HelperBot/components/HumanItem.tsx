@@ -46,7 +46,7 @@ const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
         >
           <Flex flexDirection={'column'} gap={4}>
             {files.length > 0 && <FileBlock files={files} />}
-            {text && <Markdown source={text} />}
+            {text && <Box whiteSpace={'pre-wrap'} wordBreak={'break-word'}>{text}</Box>}
           </Flex>
         </Box>
         <ChatAvatar type={ChatRoleEnum.Human} src={humanAvatar} />
