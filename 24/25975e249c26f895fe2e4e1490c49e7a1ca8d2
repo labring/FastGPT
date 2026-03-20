@@ -1,0 +1,40 @@
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  097aabe6ed33c9d9 293
+packages/service/env.ts
+  097aabe6ed33c9d9 35
+packages/service/core/agentSkills/sandboxController.ts
+  097aabe6ed33c9d9 261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "2425975e249c26f895fe2e4e1490c49e7a1ca8d2",
+  "prompts": {
+    "097aabe6ed33c9d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe7b0ce7-3e3f-48b7-a998-9895933abd06",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 2,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "29a9bc250c98cb59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b151f6e8-82b0-47d0-ad79-f4552a4d66c8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 204,
+      "overriden_lines": 0
+    }
+  }
+}
