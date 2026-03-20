@@ -62,6 +62,14 @@ const nextConfig: NextConfig = {
       {
         module: /bullmq[\\/]dist[\\/](cjs|esm)[\\/]classes[\\/]child-processor\.js$/,
         message: /Critical dependency: the request of a dependency is an expression/
+      },
+      {
+        module: /e2b[\\/]dist[\\/]/,
+        message: /Critical dependency/
+      },
+      {
+        module: /vscode-languageserver-types[\\/]/,
+        message: /Critical dependency/
       }
     ];
 
@@ -96,16 +104,19 @@ const nextConfig: NextConfig = {
     }
 
     if (isServer) {
-      (config.externals as string[]).push('@node-rs/jieba');
       config.externals.push({
+        '@node-rs/jieba': '@node-rs/jieba',
+        // next-rspack does not support serverExternalPackages, add externals manually.
+        // e2b depends on chalk (ESM-only), which Rspack cannot bundle.
+        e2b: 'commonjs e2b',
         '@e2b/code-interpreter': 'commonjs @e2b/code-interpreter',
-        e2b: 'commonjs e2b'
+        '@fastgpt-sdk/sandbox-adapter': 'commonjs @fastgpt-sdk/sandbox-adapter',
+        chalk: 'commonjs chalk'
       });
     }
 
     config.experiments = {
-      asyncWebAssembly: true,
-      layers: true
+      asyncWebAssembly: true
     };
 
     if (isDev && !isServer) {
@@ -131,7 +142,7 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks', '@fastgpt-sdk/sandbox-adapter'],
+  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
   serverExternalPackages: [
     'mongoose',
     'pg',
@@ -139,6 +150,9 @@ const nextConfig: NextConfig = {
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
     '@opentelemetry/api-logs',
+    'e2b',
+    '@e2b/code-interpreter',
+    '@fastgpt-sdk/sandbox-adapter',
     'chalk'
   ],
   // 优化大库的 barrel exports tree-shaking
