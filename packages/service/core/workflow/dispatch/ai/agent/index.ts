@@ -319,7 +319,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       );
       const planResponseText = getPlanCallResponseText({
         plan: agentPlan,
-        assistantResponses: [...aiHistoryValues, ...assistantResponses]
+        assistantResponses: [
+          ...aiHistoryValues.filter((v) => v.planId === agentPlan!.planId),
+          ...assistantResponses
+        ]
       });
 
       try {
@@ -443,7 +446,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         // 所有步骤执行完后，固定调用 Plan Agent（继续规划模式）
         const planResponseText = getPlanCallResponseText({
           plan: agentPlan,
-          assistantResponses: [...aiHistoryValues, ...assistantResponses]
+          assistantResponses: [
+            ...aiHistoryValues.filter((v) => v.planId === agentPlan!.planId),
+            ...assistantResponses
+          ]
         });
         // 拼接 plan response 到 masterMessages 的 plan tool call 里（肯定在最后一个）
         const lastToolIndex = masterMessages.findLastIndex((item) => item.role === 'tool');

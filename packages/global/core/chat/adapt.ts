@@ -160,10 +160,16 @@ export const chats2GPTMessages = ({
           }
         } else if (value.plan) {
           // 查找该 Plan 产生的上下文，组成一个 toolcall
+          // 需要跨所有历史消息收集同 planId 的 values（ask 信息可能在之前的 AI 消息中）
           const planId = value.plan.planId;
+          const allPlanValues = messages
+            .filter((msg) => msg.obj === ChatRoleEnum.AI)
+            .flatMap((msg) =>
+              (msg.value as AIChatItemValueItemType[]).filter((v) => v.planId === planId)
+            );
           const planResponseText = getPlanCallResponseText({
             plan: value.plan,
-            assistantResponses: item.value.filter((item) => item.planId === planId)
+            assistantResponses: allPlanValues
           });
           aiResults.push({
             dataId,
