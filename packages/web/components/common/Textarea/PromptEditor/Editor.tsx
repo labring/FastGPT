@@ -7,7 +7,7 @@
  */
 
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -33,7 +33,7 @@ import type { FormPropsType } from './type';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
-import { textToEditorState } from './utils';
+import { textToEditorState, editorStateToText } from './utils';
 import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
@@ -145,6 +145,7 @@ export default function Editor({
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
+  const editorOutputRef = useRef(value);
 
   const initialConfig = {
     namespace: isRichText ? 'richPromptEditor' : 'promptEditor',
@@ -164,7 +165,7 @@ export default function Editor({
   };
 
   useDeepCompareEffect(() => {
-    if (focus) return;
+    if (focus && value === editorOutputRef.current) return;
     setKey(getNanoid(6));
   }, [value, variables, variableLabels, skillOption, selectedSkills]);
 
@@ -256,6 +257,7 @@ export default function Editor({
             <OnBlurPlugin onBlur={onBlur} />
             <OnChangePlugin
               onChange={(editorState, editor) => {
+                editorOutputRef.current = editorStateToText(editor);
                 const rootElement = editor.getRootElement();
                 setScrollHeight(rootElement?.scrollHeight || 0);
                 startSts(() => {

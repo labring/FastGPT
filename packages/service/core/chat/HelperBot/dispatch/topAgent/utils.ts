@@ -65,7 +65,8 @@ ${tool}
 ${dataset}
 
 ### 系统功能
-- **file_upload**: 文件上传功能 (enabled, purpose, file_types)
+- **file_upload**: 文件上传功能，允许用户在对话中上传文件，让 Agent 读取私有文件内容
+- **sandbox**: 虚拟机执行环境，为 Agent 提供代码运行能力（Python、Shell 等），适用于数据处理、科学计算、代码执行等场景
 `;
   };
 
@@ -109,10 +110,12 @@ ${dataset}
     })
   ]);
 
-  const allTools = [...systemTools, ...myTools];
-  const fileReadInfo = systemSubInfo[SubAppIds.fileRead];
-  const fileReadTool = `- **${SubAppIds.fileRead}** [工具]: ${parseI18nString(fileReadInfo.name, lang)} - ${fileReadInfo.toolDescription}`;
-  allTools.push(fileReadTool);
+  const builtinTools = [SubAppIds.fileRead, SubAppIds.sandboxTool].map((id) => {
+    const info = systemSubInfo[id];
+    return `- **${id}** [工具]: ${parseI18nString(info.name, lang)} - ${info.toolDescription}`;
+  });
+
+  const allTools = [...systemTools, ...myTools, ...builtinTools];
 
   return {
     resourceList: getPrompt({

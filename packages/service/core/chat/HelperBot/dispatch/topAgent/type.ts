@@ -27,6 +27,7 @@ export const TopAgentFormDataSchema = z.object({
   tools: z.array(z.string()).optional().default([]),
   datasets: z.array(SelectedDatasetSchema).optional().default([]),
   fileUploadEnabled: z.boolean().optional().default(false),
+  enableSandboxEnabled: z.boolean().optional().default(false),
   executionPlan: z.any().optional()
 });
 export type TopAgentFormDataType = z.infer<typeof TopAgentFormDataSchema>;
@@ -48,6 +49,10 @@ export const TopAgentGenerationAnswerSchema = z.object({
   resources: z.object({
     system_features: z.object({
       file_upload: z.object({
+        enabled: z.boolean(),
+        purpose: z.string().optional()
+      }),
+      sandbox: z.object({
         enabled: z.boolean(),
         purpose: z.string().optional()
       })

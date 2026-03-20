@@ -99,7 +99,8 @@ const EditForm = ({
       appForm.chatConfig.fileSelectConfig?.canSelectAudio ||
       appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
     ),
-    hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0
+    hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0,
+    useAgentSandbox: !!appForm.aiSettings.useAgentSandbox
   });
 
   const {

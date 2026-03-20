@@ -49,13 +49,15 @@ export const useSkillManager = ({
   onUpdateOrAddTool,
   onDeleteTool,
   canUploadFile,
-  hasSelectedDataset
+  hasSelectedDataset,
+  useAgentSandbox
 }: {
   selectedTools: SelectedToolItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
+  useAgentSandbox: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -105,6 +107,17 @@ export const useSkillManager = ({
           label: parseI18nString(datasetSearchInfo.name, i18n.language),
           icon: datasetSearchInfo.avatar,
           description: datasetSearchInfo.toolDescription,
+          canClick: true
+        });
+      }
+
+      const sandboxToolInfo = systemSubInfo[SubAppIds.sandboxTool];
+      if (sandboxToolInfo) {
+        apiTools.unshift({
+          id: SubAppIds.sandboxTool,
+          label: parseI18nString(sandboxToolInfo.name, i18n.language),
+          icon: sandboxToolInfo.avatar,
+          description: sandboxToolInfo.toolDescription,
           canClick: true
         });
       }
@@ -324,8 +337,25 @@ export const useSkillManager = ({
       });
     }
 
+    // Merge sandbox tool
+    const sandboxToolInfo = systemSubInfo[SubAppIds.sandboxTool];
+    if (sandboxToolInfo) {
+      tools.push({
+        id: SubAppIds.sandboxTool,
+        pluginId: SubAppIds.sandboxTool,
+        name: parseI18nString(sandboxToolInfo.name, i18n.language),
+        avatar: sandboxToolInfo.avatar,
+        intro: sandboxToolInfo.toolDescription,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        inputs: [],
+        outputs: [],
+        configStatus: useAgentSandbox ? 'noConfig' : 'invalid'
+      });
+    }
+
     return tools;
-  }, [selectedTools, canUploadFile, hasSelectedDataset, i18n.language]);
+  }, [selectedTools, canUploadFile, hasSelectedDataset, useAgentSandbox, i18n.language]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(
