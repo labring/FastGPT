@@ -68,6 +68,7 @@ export const getPlanCallResponseText = ({
     let isPause = false;
     const stepResults = plan.steps.map((step, index) => {
       const result = stepValues
+        .filter((item) => item.stepId === step.id)
         .map((item) => item.text?.content?.trim() || '')
         .filter(Boolean)
         .join('\n');
