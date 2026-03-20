@@ -1,8 +1,10 @@
 import { jsonRes } from '../response';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { SpanStatusCode } from '@opentelemetry/api';
 import { withNextCors } from './cors';
 import { type ApiRequestProps } from '../../type/next';
 import { getLogger, LogCategories, withContext } from '../logger';
+import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
 
@@ -24,7 +26,6 @@ export const NextEntry = ({
 
       const requestLogger = getLogger(LogCategories.HTTP.REQUEST);
       const responseLogger = getLogger(LogCategories.HTTP.RESPONSE);
-      const errorLogger = getLogger(LogCategories.HTTP.ERROR);
 
       const url = req.url || '';
       const method = req.method?.toUpperCase() || '';
@@ -32,75 +33,105 @@ export const NextEntry = ({
       const userAgent = req.headers['user-agent'];
       const contentLength = req.headers['content-length'];
 
-      return withContext({ requestId }, async () => {
-        requestLogger.info(`[${method}] ${url}`, {
-          verbose: false,
-          requestId,
-          method,
-          url,
-          ip,
-          userAgent,
-          contentLength
-        });
+      return withContext({ requestId }, async () =>
+        withActiveSpan(
+          {
+            name: `http.request ${method || 'UNKNOWN'} ${url || '/'}`,
+            tracerName: 'fastgpt.http',
+            attributes: {
+              'fastgpt.request.id': requestId,
+              'http.request.method': method,
+              'url.full': url,
+              'client.address': Array.isArray(ip) ? ip.join(',') : ip,
+              'user_agent.original': userAgent,
+              'http.request.body.size': contentLength
+            }
+          },
+          async (span) => {
+            requestLogger.info(`[${method}] ${url}`, {
+              verbose: false,
+              requestId,
+              method,
+              url,
+              ip,
+              userAgent,
+              contentLength
+            });
 
-        let responseLogged = false;
-        const logResponse = (event: 'request-finish' | 'request-close') => {
-          if (responseLogged) return;
-          responseLogged = true;
-          const durationMs = Date.now() - start;
-          const httpStatusCode = res.statusCode;
+            let responseLogged = false;
+            const logResponse = (event: 'request-finish' | 'request-close') => {
+              if (responseLogged) return;
+              responseLogged = true;
+              const durationMs = Date.now() - start;
+              const httpStatusCode = res.statusCode;
 
-          responseLogger.info(`[${method}] ${url} - ${httpStatusCode} in ${durationMs}ms`, {
-            verbose: false,
-            requestId,
-            method,
-            httpStatusCode,
-            event
-          });
-        };
+              responseLogger.info(`[${method}] ${url} - ${httpStatusCode} in ${durationMs}ms`, {
+                verbose: false,
+                requestId,
+                method,
+                httpStatusCode,
+                event
+              });
+            };
 
-        res.once('finish', () => logResponse('request-finish'));
-        res.once('close', () => logResponse('request-close'));
+            res.once('finish', () => logResponse('request-finish'));
+            res.once('close', () => logResponse('request-close'));
 
-        try {
-          await Promise.all([
-            withNextCors(req, res),
-            ...beforeCallback.map((item) => item(req, res))
-          ]);
+            try {
+              await Promise.all([
+                withNextCors(req, res),
+                ...beforeCallback.map((item) => item(req, res))
+              ]);
 
-          let response = null;
-          for await (const handler of args) {
-            response = await handler(req, res);
-            if (res.writableFinished) {
-              break;
+              let response = null;
+              for await (const handler of args) {
+                response = await handler(req, res);
+                if (res.writableFinished) {
+                  break;
+                }
+              }
+
+              const contentType = res.getHeader('Content-Type');
+              if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
+                const jsonResponse = await jsonRes(res, {
+                  code: 200,
+                  data: response
+                });
+
+                span.setAttribute('http.response.status_code', res.statusCode);
+                return jsonResponse;
+              }
+
+              span.setAttribute('http.response.status_code', res.statusCode);
+            } catch (error) {
+              // Handle Zod validation errors
+              if (error instanceof ZodError) {
+                span.setAttribute('http.response.status_code', 400);
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: 'Data validation error'
+                });
+
+                return jsonRes(res, {
+                  code: 400,
+                  message: 'Data validation error',
+                  error,
+                  url: req.url
+                });
+              }
+
+              span.setAttribute('http.response.status_code', 500);
+              setSpanError(span, error);
+
+              return jsonRes(res, {
+                code: 500,
+                error,
+                url: req.url
+              });
             }
           }
-
-          const contentType = res.getHeader('Content-Type');
-          if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
-            return jsonRes(res, {
-              code: 200,
-              data: response
-            });
-          }
-        } catch (error) {
-          // Handle Zod validation errors
-          if (error instanceof ZodError) {
-            return jsonRes(res, {
-              code: 400,
-              message: 'Data validation error',
-              error,
-              url: req.url
-            });
-          }
-
-          return jsonRes(res, {
-            code: 500,
-            error,
-            url: req.url
-          });
-        }
-      });
+        )
+      );
     };
   };
 };

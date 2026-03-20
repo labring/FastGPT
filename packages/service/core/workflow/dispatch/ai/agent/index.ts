@@ -89,6 +89,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       userChatInput, // 本次任务的输入
       history = 6,
       fileUrlList: fileLinks,
+      aiChatVision = true,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
       agent_datasetParams: datasetParams,
@@ -172,18 +173,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         agentPlan: undefined,
         planBuffer: undefined
       };
-    })();
-
-    let masterMessages = (() => {
-      if (!restoredMasterMessages) {
-        return historiesMessages.concat(currentUserMessage ? [currentUserMessage] : []);
-      } else if (planHistoryMessages?.length) {
-        return restoredMasterMessages ?? historiesMessages;
-      } else {
-        return currentUserMessage
-          ? restoredMasterMessages.concat(currentUserMessage)
-          : restoredMasterMessages;
-      }
     })();
 
     let masterMessages = (() => {
