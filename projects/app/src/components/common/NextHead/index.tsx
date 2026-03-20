@@ -1,14 +1,13 @@
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import Head from 'next/head';
 import React, { useMemo } from 'react';
 
 const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?: string }) => {
   const formatIcon = useMemo(() => {
-    if (!icon) return LOGO_ICON;
+    if (!icon) return '/favicon.ico';
     if (icon.startsWith('http') || icon.startsWith('/')) {
       return icon;
     }
-    return LOGO_ICON;
+    return '/favicon.ico';
   }, [icon]);
 
   return (

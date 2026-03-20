@@ -19,7 +19,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../../core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
-import { getNanoid } from '../../common/string/tools';
+import { getPlanCallResponseText } from './utils';
 
 export const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
@@ -52,7 +52,7 @@ export const chats2GPTMessages = ({
 }): ChatCompletionMessageParam[] => {
   let results: ChatCompletionMessageParam[] = [];
 
-  messages.forEach((item) => {
+  messages.forEach((item, index) => {
     const dataId = reserveId ? item.dataId : undefined;
     if (item.obj === ChatRoleEnum.System) {
       const content = item.value?.[0]?.text?.content;
@@ -65,6 +65,8 @@ export const chats2GPTMessages = ({
       }
     } else if (item.obj === ChatRoleEnum.Human) {
       const value = item.value
+        // 有 planId 的过滤掉，会被 planTool 一起处理
+        .filter((item) => !item.planId)
         .map((item) => {
           if (item.text) {
             return {
@@ -93,22 +95,28 @@ export const chats2GPTMessages = ({
         })
         .filter(Boolean) as ChatCompletionContentPart[];
 
-      results.push({
-        dataId,
-        hideInUI: item.hideInUI,
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: simpleUserContentPart(value)
-      });
+      if (value.length) {
+        results.push({
+          dataId,
+          hideInUI: item.hideInUI,
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: simpleUserContentPart(value)
+        });
+      }
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
-      const existsPlanId = new Set<string>();
 
       item.value.forEach((value, i) => {
-        // 只需要把根节点转化即可
-        if (value.stepId) return;
+        /* Plan agent 产生的上下文都需要合并到一个 toolCall 里。
+          Plan agent 产生的上下文都会携带 planId
+          value.plan 代表的是 plan 的具体内容，根据这个值去转化成 toolcall
+        */
+        if (value.planId && !value.plan) return;
 
-        if ((value.tools || value.tool) && reserveTool) {
-          const tools = value.tools || [value.tool!];
+        const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
+
+        if (reserveTool && (hasTools || value.tool)) {
+          const tools = hasTools ? value.tools! : [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
           const toolResponse: ChatCompletionToolMessageParam[] = [];
           tools.forEach((tool) => {
@@ -150,33 +158,25 @@ export const chats2GPTMessages = ({
               content: value.text.content
             });
           }
-        } else if (value.plan && reserveTool) {
+        } else if (value.plan) {
+          // 查找该 Plan 产生的上下文，组成一个 toolcall
+          // 需要跨所有历史消息收集同 planId 的 values（ask 信息可能在之前的 AI 消息中）
           const planId = value.plan.planId;
-          if (existsPlanId.has(planId)) {
-            return;
-          }
-          existsPlanId.add(planId);
-          const steps = item.value
-            .filter((item) => item.plan?.planId === planId)
-            .flatMap((item) => item.plan?.steps || [])
-            .map((step) => {
-              const stepResponse = item.value
-                .filter((item) => item.stepId === step.id)
-                ?.map((item) => item.text?.content)
-                .join('\n');
-
-              return {
-                title: step.title,
-                response: stepResponse
-              };
-            });
-          const toolId = getNanoid(6);
+          const allPlanValues = messages
+            .filter((msg) => msg.obj === ChatRoleEnum.AI)
+            .flatMap((msg) =>
+              (msg.value as AIChatItemValueItemType[]).filter((v) => v.planId === planId)
+            );
+          const planResponseText = getPlanCallResponseText({
+            plan: value.plan,
+            assistantResponses: allPlanValues
+          });
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
             tool_calls: [
               {
-                id: toolId,
+                id: planId,
                 type: 'function',
                 function: {
                   name: 'plan_agent',
@@ -192,25 +192,11 @@ export const chats2GPTMessages = ({
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
-            tool_call_id: toolId,
-            content: JSON.stringify(steps)
+            tool_call_id: planId,
+            content: planResponseText
           });
         } else if (value.interactive) {
-          if (value.interactive.type === 'agentPlanAskQuery') {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: value.interactive.params.content
-            });
-          } else if (value.interactive.type === 'agentPlanAskUserForm') {
-            aiResults.push({
-              dataId,
-              role: ChatCompletionRequestMessageRoleEnum.Assistant,
-              content: `${value.interactive.params.description}
-
-Answer: ${value.interactive.params.inputForm.map((item) => `- ${item.label}: ${item.value}`).join('\n')}`
-            });
-          }
+          // 目前只有 plan 里会有交互，所以这里暂时不需要处理
         }
       });
 

@@ -85,11 +85,12 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
 
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
   const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
+  const model = getLLMModel(body.model);
 
   // Messages process
   const requestMessages = await loadRequestMessages({
     messages,
-    useVision,
+    useVision: useVision && model.vision,
     origin: requestOrigin
   });
   // Message process

@@ -211,10 +211,15 @@ export async function dispatchWorkFlow({
   const checkStoppingTimer =
     apiVersion === 'v2'
       ? setInterval(async () => {
-          stopping = await shouldWorkflowStop({
+          if (stopping) return;
+
+          const shouldStop = await shouldWorkflowStop({
             appId: runningAppInfo.id,
             chatId
           });
+          if (shouldStop) {
+            stopping = true;
+          }
         }, 100)
       : undefined;
 
@@ -1209,11 +1214,11 @@ export class WorkflowQueue {
     }
 
     /*
-            特殊情况：
-            通过 skipEdges 可以判断是运行了分支节点。
-            由于分支节点，可能会实现递归调用（skip 连线往前递归）
-            需要把分支节点也加入到已跳过的记录里，可以保证递归 skip 运行时，至多只会传递到当前分支节点，不会影响分支后的内容。
-          */
+      特殊情况：
+      通过 skipEdges 可以判断是运行了分支节点。
+      由于分支节点，可能会实现递归调用（skip 连线往前递归）
+      需要把分支节点也加入到已跳过的记录里，可以保证递归 skip 运行时，至多只会传递到当前分支节点，不会影响分支后的内容。
+    */
     const skipEdges = (nodeRunResult.result[DispatchNodeResponseKeyEnum.skipHandleId] ||
       []) as string[];
     if (skipEdges && skipEdges?.length > 0) {
@@ -1310,6 +1315,7 @@ export class WorkflowQueue {
     }
 
     return {
+      planId: interactiveResult.planId,
       interactive: interactiveResult
     };
   }

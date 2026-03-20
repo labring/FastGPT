@@ -1092,7 +1092,11 @@ ${bestPractices}
 `;
 };
 
-export const getInitialPlanQuery = ({ task, description, background }: PlanAgentParamsType) => {
+export const getInitialPlanQuery = ({
+  task,
+  description,
+  background
+}: Omit<PlanAgentParamsType, 'planId'>) => {
   return `## 任务目标
 ${task}
 
@@ -1108,7 +1112,7 @@ export const getContinuePlanQuery = ({
   description,
   background,
   response
-}: PlanAgentParamsType & {
+}: Omit<PlanAgentParamsType, 'planId'> & {
   response: string;
 }) => {
   return `${getInitialPlanQuery({ task, description, background })}
@@ -1121,3 +1125,29 @@ ${response}
 ## 下一步任务
 请基于已执行步骤及结果，根据系统提示词来判断是否需要继续规划、生成总结报告步骤、还是任务已完成，或者遇到问题直接返回`;
 };
+
+export const reTryPlanPrompt = `上一轮 plan 输出不是合法 JSON，无法解析。
+
+请基于原始任务重新生成完整 plan，严格按 JSON 输出。
+
+要求：
+- 仅返回 JSON
+- 包含 task 和 steps 字段
+- 每个 step 必须包含 id/title/description
+
+JSON 格式示例（只参考格式，不要照抄内容）：
+{
+  "task": "深入了解 Rust 编程语言（系统编程方向）",
+  "steps": [
+    {
+      "id": "step1",
+      "title": "了解 Rust 的核心特性",
+      "description": "使用 @webSearch 搜索 Rust 的所有权、借用检查与并发安全机制"
+    },
+    {
+      "id": "step2",
+      "title": "调研 Rust 在系统编程的应用",
+      "description": "使用 @webSearch 搜索 Rust 在操作系统、网络编程、嵌入式中的典型项目"
+    }
+  ]
+}`;
