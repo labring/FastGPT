@@ -79,7 +79,11 @@ const HumanContentCard = React.memo(
     return (
       <Flex flexDirection={'column'} gap={4}>
         {files.length > 0 && <FilesBlock files={files} />}
-        {text && <Markdown source={text} />}
+        {text && (
+          <Box fontSize={'inherit'} color={'inherit'} whiteSpace={'pre-wrap'} wordBreak={'break-word'}>
+            {text}
+          </Box>
+        )}
       </Flex>
     );
   },

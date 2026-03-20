@@ -220,10 +220,15 @@ const NodeCard = (props: Props) => {
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
   const showVersion = useMemo(() => {
-    // 1. MCP tool & HTTP tool set do not have version
+    // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (
       isAppNode &&
-      (node.toolConfig?.mcpToolSet || node.toolConfig?.mcpTool || node?.toolConfig?.httpToolSet)
+      (
+        node.toolConfig?.mcpToolSet ||
+        node.toolConfig?.mcpTool ||
+        node?.toolConfig?.httpToolSet ||
+        node?.toolConfig?.systemToolSet
+      )
     )
       return false;
     // 2. Team app/System commercial plugin

@@ -5,6 +5,7 @@
   "Next": "Next",
   "Previous": "Previous",
   "agent_plan_continue": "Continue planning",
+  "agent_plan_parse_retry_tip": "The plan format was invalid. Add one more requirement and I will regenerate the plan.",
   "ai_reasoning": "Thinking process",
   "back_to_text": "Text input",
   "balance_not_enough_pause": "Workflow paused due to insufficient AI points",
