@@ -457,7 +457,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         }
       } else {
         getLogger(LogCategories.MODULE.AI.AGENT).debug(`Start master agent`);
-        console.dir(masterMessages, { depth: null });
         const result = await masterCall({
           ...props,
           masterMessages,
