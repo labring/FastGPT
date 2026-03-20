@@ -134,14 +134,9 @@ const nextConfig: NextConfig = {
     }
 
     if (isServer) {
-      // ESM-only packages: Node.js 22+ supports require(esm), so string externals work at runtime.
-      // serverExternalPackages alone is insufficient for Pages Router API routes.
-      (config.externals as string[]).push(
-        '@node-rs/jieba',
-        '@fastgpt-sdk/sandbox-adapter',
-        '@e2b/code-interpreter',
-        'e2b'
-      );
+      config.externals.push({
+        '@node-rs/jieba': '@node-rs/jieba'
+      });
     }
 
     config.experiments = {
@@ -179,10 +174,7 @@ const nextConfig: NextConfig = {
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
-    '@opentelemetry/api-logs',
-    '@fastgpt-sdk/sandbox-adapter',
-    '@e2b/code-interpreter',
-    'e2b'
+    '@opentelemetry/api-logs'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {
