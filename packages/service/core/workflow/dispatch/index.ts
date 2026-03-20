@@ -1,5 +1,6 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { SpanStatusCode } from '@opentelemetry/api';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -66,9 +67,6 @@ import { withActiveSpan } from '../../../common/tracing';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
-
-const SPAN_STATUS_CODE_OK = 1;
-const SPAN_STATUS_CODE_ERROR = 2;
 
 type Props = Omit<
   ChatDispatchProps,
@@ -987,12 +985,12 @@ export class WorkflowQueue {
           if (dispatchRes?.responseData?.error) {
             stepSpan.setAttribute('fastgpt.workflow.step.error', true);
             stepSpan.setStatus({
-              code: SPAN_STATUS_CODE_ERROR,
+              code: SpanStatusCode.ERROR,
               message: String(dispatchRes.responseData.error)
             });
             logger.warn('Workflow node returned error', { error: dispatchRes.responseData.error });
           } else {
-            stepSpan.setStatus({ code: SPAN_STATUS_CODE_OK });
+            stepSpan.setStatus({ code: SpanStatusCode.OK });
           }
 
           if (formatResponseData?.runningTime !== undefined) {
@@ -1501,7 +1499,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         'fastgpt.workflow.has_interactive_response',
         !!workflowQueue.nodeInteractiveResponse
       );
-      workflowSpan.setStatus({ code: SPAN_STATUS_CODE_OK });
+      workflowSpan.setStatus({ code: SpanStatusCode.OK });
 
       if (isRootRuntime) {
         data.workflowStreamResponse?.({

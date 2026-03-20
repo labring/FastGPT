@@ -1,4 +1,5 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { SpanStatusCode } from '@opentelemetry/api';
 import {
   configureTracingFromEnv,
   disposeTracing,
@@ -15,8 +16,6 @@ type SpanStatusLike = {
 };
 type TracerLike = ReturnType<typeof getTracer>;
 type SpanLike = ReturnType<TracerLike['startSpan']>;
-
-const SPAN_STATUS_CODE_ERROR = 2;
 
 export type TraceLogContext = {
   traceId: string;
@@ -73,7 +72,7 @@ export function setSpanError(
 ) {
   span.recordException(error instanceof Error ? error : new Error(getErrText(error)));
   span.setStatus({
-    code: SPAN_STATUS_CODE_ERROR,
+    code: SpanStatusCode.ERROR,
     message: extraStatus?.message ?? getErrText(error)
   });
 }
