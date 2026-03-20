@@ -103,7 +103,7 @@ function emitLogRecord(
   const exceptionMode = options.exceptionAttributes ?? 'semconv';
   const { category, level, message, timestamp, properties } = record;
   const severityNumber = mapLevelToSeverityNumber(level);
-  const attributes = convertToAttributes(properties, objectRenderer, exceptionMode);
+  const attributes = convertToAttributes(properties ?? {}, objectRenderer, exceptionMode);
 
   attributes['category'] = [...category];
 

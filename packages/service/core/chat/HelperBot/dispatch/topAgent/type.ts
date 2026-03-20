@@ -48,14 +48,19 @@ export const TopAgentGenerationAnswerSchema = z.object({
   execution_plan: ExecutionPlanSchema.optional(),
   resources: z.object({
     system_features: z.object({
-      file_upload: z.object({
-        enabled: z.boolean(),
-        purpose: z.string().optional()
-      }),
-      sandbox: z.object({
-        enabled: z.boolean(),
-        purpose: z.string().optional()
-      })
+      file_upload: z
+        .object({
+          enabled: z.boolean(),
+          purpose: z.string().optional()
+        })
+        .optional()
+        .default({ enabled: false }),
+      sandbox: z
+        .object({
+          enabled: z.boolean()
+        })
+        .optional()
+        .default({ enabled: false })
     })
   })
 });
