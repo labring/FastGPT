@@ -116,6 +116,7 @@ const nextConfig: NextConfig = {
     }
 
     config.experiments = {
+      ...config.experiments,
       asyncWebAssembly: true
     };
 
