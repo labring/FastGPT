@@ -223,12 +223,10 @@ const NodeCard = (props: Props) => {
     // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (
       isAppNode &&
-      (
-        node.toolConfig?.mcpToolSet ||
+      (node.toolConfig?.mcpToolSet ||
         node.toolConfig?.mcpTool ||
         node?.toolConfig?.httpToolSet ||
-        node?.toolConfig?.systemToolSet
-      )
+        node?.toolConfig?.systemToolSet)
     )
       return false;
     // 2. Team app/System commercial plugin
