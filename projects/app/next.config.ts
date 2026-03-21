@@ -110,7 +110,6 @@ const nextConfig: NextConfig = {
         // e2b depends on chalk (ESM-only), which Rspack cannot bundle.
         e2b: 'commonjs e2b',
         '@e2b/code-interpreter': 'commonjs @e2b/code-interpreter',
-        '@fastgpt-sdk/sandbox-adapter': 'commonjs @fastgpt-sdk/sandbox-adapter',
         chalk: 'commonjs chalk'
       });
     }
@@ -153,7 +152,6 @@ const nextConfig: NextConfig = {
     '@opentelemetry/api-logs',
     'e2b',
     '@e2b/code-interpreter',
-    '@fastgpt-sdk/sandbox-adapter',
     'chalk'
   ],
   // 优化大库的 barrel exports tree-shaking
