@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createEditDebugSandbox } from '@fastgpt/service/core/agentSkills/sandboxController';
 import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/agentSkills/api';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -26,13 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.flushHeaders();
 
   try {
-    // Authenticate user
-    const { teamId, tmbId } = await authUserPer({
-      req,
-      authToken: true,
-      authApiKey: true
-    });
-
     // Parse request body
     const { skillId, image } = req.body as CreateEditDebugSandboxBody;
 
@@ -48,6 +42,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end();
       return;
     }
+
+    // Authenticate user and verify write permission
+    const { teamId, tmbId } = await authSkill({
+      req,
+      authToken: true,
+      authApiKey: true,
+      skillId,
+      per: WritePermissionVal
+    });
 
     // Validate optional parameters
     if (image && !image.repository) {
