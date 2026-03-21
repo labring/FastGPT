@@ -37,9 +37,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
 
   await sandbox.ensureAvailable();
 
-  // 检查路径类型
-  const entries = await sandbox.provider.listDirectory(path);
-  const isDirectory = entries.length > 0 || path.endsWith('/');
+  // 通过 getFileInfo 准确判断路径是文件还是目录
+  const fileInfoMap = await sandbox.provider.getFileInfo([path]);
+  const fileInfo = fileInfoMap.get(path);
+  const isDirectory = fileInfo?.isDirectory ?? path.endsWith('/');
 
   if (isDirectory) {
     // 下载目录为 ZIP

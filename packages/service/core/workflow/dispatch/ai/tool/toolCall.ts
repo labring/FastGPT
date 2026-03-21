@@ -120,8 +120,10 @@ export const runToolCall = async (
   // 注入 sandbox_shell 工具和提示词
   let finalMessages = messages;
   if (useAgentSandbox) {
+    // 注入 sandbox_shell 工具
     tools.push(SANDBOX_SHELL_TOOL);
 
+    // 追加提示词
     const systemMessage = messages.find((m) => m.role === 'system');
     if (systemMessage) {
       finalMessages = messages.map((m) =>

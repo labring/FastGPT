@@ -147,16 +147,8 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
     async () => {
       if (!activeFile) return;
 
-      // 直接下载文件内容,不压缩
-      const blob = new Blob([activeFile.content], { type: 'text/plain;charset=utf-8' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = activeFile.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // 通过服务端下载接口获取原始文件,支持二进制文件(图片等)
+      await downloadSandbox({ appId, chatId, outLinkAuthData, path: activeFile.path });
     },
     { manual: true }
   );
