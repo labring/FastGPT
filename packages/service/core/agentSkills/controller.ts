@@ -11,9 +11,14 @@ import type {
 } from '@fastgpt/global/core/agentSkills/type';
 import type { ClientSession } from '../../common/mongo';
 import { uploadSkillPackage, deleteSkillAllPackages } from './storage';
+import { removeImageByPath } from '../../common/file/image/controller';
 import { createVersion } from './version/controller';
 import { MongoApp } from '../app/schema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
 // Types for service operations
 type CreateSkillData = {
@@ -155,6 +160,9 @@ export async function deleteSkill(skillId: string, session?: ClientSession): Pro
   for (const item of deleteList) {
     if (item.teamId && item.type !== AgentSkillTypeEnum.folder) {
       deleteSkillAllPackages(item.teamId.toString(), item._id);
+      if (item.avatar) {
+        removeImageByPath(item.avatar);
+      }
     }
   }
 }
@@ -441,7 +449,7 @@ export async function createSkillFolder(
     tmbId: string;
   },
   session?: ClientSession
-): Promise<string> {
+): Promise<AgentSkillSchemaType> {
   const { name, description, parentId, teamId, tmbId } = data;
 
   // Check name uniqueness in the same parent folder
@@ -468,7 +476,7 @@ export async function createSkillFolder(
   });
 
   await folder.save({ session });
-  return folder._id.toString();
+  return folder.toObject() as AgentSkillSchemaType;
 }
 
 /**
@@ -511,3 +519,28 @@ async function getParents(
 
   return paths;
 }
+
+/**
+ * Update parent folders' updateTime recursively (fire-and-forget)
+ */
+export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string | null }) => {
+  mongoSessionRun(async (session) => {
+    const existsId = new Set<string>();
+    let currentId: string | null | undefined = parentId;
+    while (true) {
+      if (!currentId || existsId.has(currentId)) return;
+
+      existsId.add(currentId);
+
+      const parentSkill = await MongoAgentSkills.findById(currentId, 'parentId updateTime');
+      if (!parentSkill) return;
+
+      parentSkill.updateTime = new Date();
+      await parentSkill.save({ session });
+
+      currentId = parentSkill.parentId ?? null;
+    }
+  }).catch((err) => {
+    logger.error('Failed to update parent folder updateTime', { error: err });
+  });
+};

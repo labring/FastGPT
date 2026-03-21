@@ -546,5 +546,44 @@ export const auditLogMap = {
     content: i18nT('account_team:log_export_skill'),
     typeLabel: i18nT('account_team:export_skill'),
     params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.COPY_SKILL]: {
+    content: i18nT('account_team:log_copy_skill'),
+    typeLabel: i18nT('account_team:copy_skill'),
+    params: {} as { name?: string; skillName: string }
+  },
+  [AuditEventEnum.MOVE_SKILL]: {
+    content: i18nT('account_team:log_move_skill'),
+    typeLabel: i18nT('account_team:move_skill'),
+    params: {} as { name?: string; skillName: string; targetFolderName: string }
+  },
+  [AuditEventEnum.UPDATE_SKILL_COLLABORATOR]: {
+    content: i18nT('account_team:log_update_skill_collaborator'),
+    typeLabel: i18nT('account_team:update_skill_collaborator'),
+    params: {} as {
+      name?: string;
+      skillName: string;
+      skillType: string;
+      tmbList: string[];
+      groupList: string[];
+      orgList: string[];
+      permission: string;
+    }
+  },
+  [AuditEventEnum.DELETE_SKILL_COLLABORATOR]: {
+    content: i18nT('account_team:log_delete_skill_collaborator'),
+    typeLabel: i18nT('account_team:delete_skill_collaborator'),
+    params: {} as {
+      name?: string;
+      skillName: string;
+      skillType: string;
+      itemName: string;
+      itemValueName: string;
+    }
+  },
+  [AuditEventEnum.TRANSFER_SKILL_OWNERSHIP]: {
+    content: i18nT('account_team:log_transfer_skill_ownership'),
+    typeLabel: i18nT('account_team:transfer_skill_ownership'),
+    params: {} as { name?: string; skillName: string; newOwnerName: string }
   }
 } as const;

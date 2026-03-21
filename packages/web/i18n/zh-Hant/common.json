@@ -137,6 +137,7 @@
   "code_error.app_error.un_auth_app": "無權操作此應用程式",
   "code_error.skill_error.not_exist": "技能不存在",
   "code_error.skill_error.un_auth_skill": "無權操作該技能",
+  "code_error.skill_error.can_not_edit_admin_permission": "不能編輯管理員權限",
   "code_error.chat_error.un_auth": "沒有權限操作此對話記錄",
   "code_error.error_code.400": "請求失敗",
   "code_error.error_code.401": "無存取權限",

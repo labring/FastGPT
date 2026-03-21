@@ -21,6 +21,11 @@ const AgentSkillsSchema = new Schema({
     enum: Object.values(AgentSkillTypeEnum),
     default: AgentSkillTypeEnum.skill
   },
+  // Permission inheritance
+  inheritPermission: {
+    type: Boolean,
+    default: true
+  },
   source: {
     type: String,
     enum: Object.values(AgentSkillSourceEnum),

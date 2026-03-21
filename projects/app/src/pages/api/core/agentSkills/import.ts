@@ -1,6 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { importSkill } from '@fastgpt/service/core/agentSkills/controller';
 import { repackFileMapAsZip } from '@fastgpt/service/core/agentSkills/zipBuilder';
@@ -46,6 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const file = result.fileMetadata;
     // Support both JSON-wrapped body ({"data": "..."}) and plain multipart form fields
     const body: ImportSkillBody = {
+      parentId: result.data.parentId ?? (req.body?.parentId as string | undefined),
       name: result.data.name ?? (req.body?.name as string | undefined),
       description: result.data.description ?? (req.body?.description as string | undefined),
       avatar: result.data.avatar ?? (req.body?.avatar as string | undefined),
@@ -60,11 +64,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const { teamId, tmbId, userId } = await authUserPer({
-      req,
-      authToken: true,
-      authApiKey: true
-    });
+    // Authenticate user and check permission
+    let teamId: string;
+    let tmbId: string;
+    let userId: string | undefined;
+
+    if (body.parentId) {
+      // If importing into a folder, check write permission on the parent folder
+      const authResult = await authSkill({
+        req,
+        authToken: true,
+        authApiKey: true,
+        skillId: body.parentId,
+        per: WritePermissionVal
+      });
+      teamId = authResult.teamId;
+      tmbId = authResult.tmbId;
+      userId = authResult.userId;
+    } else {
+      // If importing to root, check team-level skill create permission
+      const authResult = await authUserPer({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: TeamSkillCreatePermissionVal
+      });
+      teamId = authResult.teamId;
+      tmbId = authResult.tmbId;
+      userId = authResult.userId;
+    }
 
     // Check archive size (multer already enforces the limit, this is a secondary guard)
     const stats = await fs.stat(file.path);

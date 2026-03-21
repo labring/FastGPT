@@ -61,5 +61,8 @@
   "sandbox_ready_warm": "沙箱環境就緒（熱啟動）",
   "sandbox_failed": "沙箱創建失敗: {{message}}",
   "sandbox_retry": "重試",
-  "sandbox_error_title": "沙箱創建失敗"
+  "sandbox_error_title": "沙箱創建失敗",
+  "permission.des.read": "可查看 Agent Skill",
+  "permission.des.write": "可編輯 Agent Skill",
+  "permission.des.manage": "可管理 Agent Skill 和協作者"
 }
