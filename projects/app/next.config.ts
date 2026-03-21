@@ -62,6 +62,10 @@ const nextConfig: NextConfig = {
       {
         module: /bullmq[\\/]dist[\\/](cjs|esm)[\\/]classes[\\/]child-processor\.js$/,
         message: /Critical dependency: the request of a dependency is an expression/
+      },
+      {
+        module: /@fastgpt-sdk[\\/]sandbox-adapter[\\/]/,
+        message: /Critical dependency/
       }
     ];
 
@@ -96,16 +100,14 @@ const nextConfig: NextConfig = {
     }
 
     if (isServer) {
-      (config.externals as string[]).push('@node-rs/jieba');
       config.externals.push({
-        '@e2b/code-interpreter': 'commonjs @e2b/code-interpreter',
-        e2b: 'commonjs e2b'
+        '@node-rs/jieba': '@node-rs/jieba'
       });
     }
 
     config.experiments = {
-      asyncWebAssembly: true,
-      layers: true
+      ...config.experiments,
+      asyncWebAssembly: true
     };
 
     if (isDev && !isServer) {
@@ -131,15 +133,14 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks', '@fastgpt-sdk/sandbox-adapter'],
+  transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
   serverExternalPackages: [
     'mongoose',
     'pg',
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
-    '@opentelemetry/api-logs',
-    'chalk'
+    '@opentelemetry/api-logs'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {
@@ -151,14 +152,37 @@ const nextConfig: NextConfig = {
       'ahooks',
       'framer-motion',
       '@emotion/react',
-      '@emotion/styled'
+      '@emotion/styled',
+      'react-syntax-highlighter',
+      'recharts',
+      '@tanstack/react-query',
+      'react-hook-form',
+      'react-markdown'
     ],
     // 按页面拆分 CSS chunk，减少首屏 CSS 体积
     cssChunking: 'strict',
     // 减少内存占用
     memoryBasedWorkersCount: true
   },
-  outputFileTracingRoot: path.join(__dirname, '../../')
+  outputFileTracingRoot: path.join(__dirname, '../../'),
+  // Exclude build-time-only packages from standalone output file tracing
+  outputFileTracingExcludes: {
+    '*': [
+      // Rspack bindings - only used in dev, not needed at runtime
+      'node_modules/@next/rspack-binding-*/**',
+      'node_modules/@rspack/binding-*/**',
+      'node_modules/next-rspack/**',
+      // GNU platform binaries - Alpine uses musl only
+      'node_modules/**/*-linux-x64-gnu*/**',
+      // typescript - build-time only
+      'node_modules/typescript/**',
+      // sharp libvips GNU variant (keep musl)
+      'node_modules/@img/sharp-libvips-linux-x64/**',
+      // bundle-analyzer - build-time only
+      'node_modules/@next/bundle-analyzer/**',
+      'node_modules/webpack-bundle-analyzer/**'
+    ]
+  }
 };
 
 const configWithPluginsExceptWithRspack = withBundleAnalyzer(nextConfig);

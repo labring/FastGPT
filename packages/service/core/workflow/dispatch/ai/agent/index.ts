@@ -89,6 +89,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       userChatInput, // 本次任务的输入
       history = 6,
       fileUrlList: fileLinks,
+      aiChatVision = true,
       agent_selectedTools: selectedTools = [],
       // Dataset search configuration
       agent_datasetParams: datasetParams,
