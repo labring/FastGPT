@@ -130,6 +130,11 @@ async function handler(
                       $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
                     }
                   },
+                  correctedCount: {
+                    $sum: {
+                      $cond: [{ $ifNull: ['$correctionId', false] }, 1, 0]
+                    }
+                  },
                   goodFeedback: {
                     $sum: {
                       $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
@@ -235,6 +240,9 @@ async function handler(
               $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
             },
             markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] },
+            correctionCount: {
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.correctedCount', 0] }, 0]
+            },
             averageResponseTime: {
               $cond: [
                 {
@@ -289,6 +297,7 @@ async function handler(
             userBadFeedbackCount: 1,
             customFeedbacksCount: 1,
             markCount: 1,
+            correctionCount: 1,
             averageResponseTime: 1,
             errorCount: 1,
             totalPoints: 1,

@@ -4,8 +4,9 @@ import { type GetChatRecordsProps } from '@/global/core/chat/api';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { getChatItems, getChatItemStats } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -20,7 +21,14 @@ import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 
 export type getChatRecordsQuery = {};
 
-export type getChatRecordsBody = LinkedPaginationProps<GetChatRecordsProps>;
+// Local type extension to carry rewriteStandardizedQuery without modifying global ChatItemType
+type ChatItemWithRewrite = ChatItemType & {
+  rewriteStandardizedQuery?: string;
+};
+
+export type getChatRecordsBody = LinkedPaginationProps<GetChatRecordsProps> & {
+  chatLogsFilter?: `${ChatLogsFilterEnum}`;
+};
 
 export type getChatRecordsResponse = LinkedListResponse<ChatItemType> & {
   total: number;
@@ -42,7 +50,8 @@ async function handler(
     initialId,
     nextId,
     prevId,
-    includeDeleted = false
+    includeDeleted = false,
+    chatLogsFilter = ChatLogsFilterEnum.all
   } = req.body;
 
   if (!appId || !chatId) {
@@ -70,7 +79,7 @@ async function handler(
   const isPlugin = app.type === AppTypeEnum.workflowTool;
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
-  const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
+  const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg correctionId ${DispatchNodeResponseKeyEnum.nodeResponse}`;
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead deleteTime' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
@@ -78,16 +87,22 @@ async function handler(
     [GetChatTypeEnum.home]: commonField
   };
 
-  const result = await getChatItems({
-    includeDeleted,
-    appId,
-    chatId,
-    field: fieldMap[type],
-    limit: pageSize,
-    initialId,
-    prevId,
-    nextId
-  });
+  const [result, stats] = await Promise.all([
+    getChatItems({
+      includeDeleted,
+      appId,
+      chatId,
+      field: fieldMap[type as GetChatTypeEnum],
+      limit: pageSize,
+      initialId,
+      prevId,
+      nextId,
+      chatLogsFilter
+    }),
+    type === GetChatTypeEnum.normal && chatId
+      ? getChatItemStats({ appId, chatId })
+      : Promise.resolve(undefined)
+  ]);
 
   // Presign file urls
   await addPreviewUrlToChatItems(result.histories, isPlugin ? 'workflowTool' : 'chatFlow');
@@ -115,7 +130,31 @@ async function handler(
     });
   }
 
-  const list = isPlugin ? result.histories : transformPreviewHistories(result.histories, showCite);
+  // Add rewriteStandardizedQuery to Human messages from adjacent AI response data
+  const historiesWithRewrite = result.histories as ChatItemWithRewrite[];
+  historiesWithRewrite.forEach((item, index) => {
+    if (item.obj === ChatRoleEnum.Human) {
+      const nextItem = historiesWithRewrite[index + 1];
+      if (nextItem?.obj === ChatRoleEnum.AI && nextItem.responseData) {
+        const findStandardizedQuery = (responses: any[]): string | undefined => {
+          for (const response of responses) {
+            if (response.queryExtensionResult?.synonymRewriteResult?.standardizedQuery) {
+              return response.queryExtensionResult.synonymRewriteResult.standardizedQuery;
+            }
+          }
+          return undefined;
+        };
+        const standardizedQuery = findStandardizedQuery(nextItem.responseData);
+        if (standardizedQuery) {
+          item.rewriteStandardizedQuery = standardizedQuery;
+        }
+      }
+    }
+  });
+
+  const list = isPlugin
+    ? historiesWithRewrite
+    : transformPreviewHistories(historiesWithRewrite, showCite);
 
   return {
     list: list.map((item) => ({
@@ -124,7 +163,14 @@ async function handler(
     })),
     total: result.total,
     hasMorePrev: result.hasMorePrev,
-    hasMoreNext: result.hasMoreNext
+    hasMoreNext: result.hasMoreNext,
+    ...(stats
+      ? {
+          goodTotal: stats.goodTotal,
+          badTotal: stats.badTotal,
+          notFoundTotal: stats.notFoundTotal
+        }
+      : {})
   };
 }
 
