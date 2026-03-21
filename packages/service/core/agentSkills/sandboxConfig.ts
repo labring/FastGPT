@@ -8,9 +8,8 @@ import type {
   SandboxImageConfigType,
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
-import { createSandbox, type ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { createSandbox, type ISandbox, type Volume } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
-import type { Volume } from '@alibaba-group/opensandbox';
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 import { env } from '../../env';
 

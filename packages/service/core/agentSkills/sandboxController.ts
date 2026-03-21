@@ -5,8 +5,7 @@
  *
  */
 
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import type { Volume } from '@alibaba-group/opensandbox';
+import type { ISandbox, Volume } from '@fastgpt-sdk/sandbox-adapter';
 import mongoose from 'mongoose';
 import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';

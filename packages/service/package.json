@@ -8,9 +8,8 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.2",
-    "@fastgpt-sdk/sandbox-adapter": "^0.0.27",
+    "@fastgpt-sdk/sandbox-adapter": "^0.0.28",
     "@fastgpt-sdk/otel": "catalog:",
-    "@alibaba-group/opensandbox": "^0.1.4",
     "@fastgpt-sdk/storage": "catalog:",
     "@fastgpt/global": "workspace:*",
     "@maxmind/geoip2-node": "^6.3.4",
