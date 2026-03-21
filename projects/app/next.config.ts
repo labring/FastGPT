@@ -148,7 +148,6 @@ const nextConfig: NextConfig = {
       '@chakra-ui/react',
       '@chakra-ui/icons',
       'lodash',
-      'date-fns',
       'ahooks',
       'framer-motion',
       '@emotion/react',
