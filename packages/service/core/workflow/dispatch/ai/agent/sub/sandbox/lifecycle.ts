@@ -8,8 +8,7 @@
  * - releaseAgentSandbox：断开 SDK 连接，不销毁容器
  */
 
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import type { Volume } from '@alibaba-group/opensandbox';
+import type { ISandbox, Volume } from '@fastgpt-sdk/sandbox-adapter';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../../ai/sandbox/schema';
