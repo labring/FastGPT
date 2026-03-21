@@ -26,10 +26,13 @@ export const env = createEnv({
     AGENT_SKILL_MAX_UNCOMPRESSED_SIZE: z.coerce.number().optional(),
     AGENT_SKILL_MAX_DOWNLOAD_SIZE: z.coerce.number().optional(),
     AGENT_SKILL_MAX_SANDBOX_SIZE: z.coerce.number().optional(),
+    AGENT_SANDBOX_MAX_EDIT_DEBUG: z.coerce.number().optional(),
+    AGENT_SANDBOX_MAX_SESSION_RUNTIME: z.coerce.number().optional(),
 
     VOLUME_MANAGER_URL: z.string().url().optional(),
     VOLUME_MANAGER_TOKEN: z.string().optional(),
     VOLUME_MANAGER_MOUNT_PATH: z.string().optional(),
+    AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(true),
 
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),
     LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),

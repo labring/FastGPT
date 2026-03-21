@@ -33,6 +33,7 @@ import type {
 import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
+import { env } from '../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -228,6 +229,20 @@ export async function createEditDebugSandbox(
   // Package is already in ZIP format from import time.
   const standardizedBuffer = packageBuffer;
 
+  // Check active edit-debug sandbox count limit
+  const maxEditDebug = env.AGENT_SANDBOX_MAX_EDIT_DEBUG;
+  if (maxEditDebug !== undefined) {
+    const activeCount = await MongoSandboxInstance.countDocuments({
+      status: SandboxStatusEnum.running,
+      'detail.sandboxType': SandboxTypeEnum.editDebug
+    });
+    if (activeCount >= maxEditDebug) {
+      const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
+      onProgress?.({ sandboxId: skillId, phase: 'failed', message });
+      throw new Error(message);
+    }
+  }
+
   // === Phase 3: Sandbox operations ===
   let sandbox: ISandbox | null = null;
 
@@ -242,7 +257,7 @@ export async function createEditDebugSandbox(
     const createEntrypoint = defaults.entrypoint;
 
     let volumes: Volume[] | undefined;
-    if (providerConfig.provider === 'opensandbox') {
+    if (providerConfig.provider === 'opensandbox' && env.AGENT_SANDBOX_ENABLE_VOLUME) {
       const vmConfig = getVolumeManagerConfig();
       const claimName = await ensureSessionVolume(sessionId, vmConfig);
       volumes = [
