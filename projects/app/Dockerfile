@@ -45,6 +45,15 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
 RUN pnpm --filter=app build
 
+# Remove build-time-only packages from standalone output before copying to runner.
+# These are traced into standalone by mistake (rspack bindings, gnu platform binaries, etc.)
+RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding-*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/@rspack+binding-*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/next-rspack*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/typescript@*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/*-linux-x64-gnu@*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/
+
 # --------- runner -----------
 FROM node:20.14.0-alpine AS runner
 WORKDIR /app
@@ -70,16 +79,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks 
 # copy worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
 
-# Remove build-time-only packages traced into standalone by mistake
-# Rspack/rspack bindings (~227MB), gnu platform bindings (Alpine uses musl only),
-# typescript (~9MB), sharp libvips gnu variant (~16MB)
-RUN rm -rf node_modules/.pnpm/@next+rspack-binding-*/ \
-    node_modules/.pnpm/@rspack+binding-*/ \
-    node_modules/.pnpm/next-rspack*/ \
-    node_modules/.pnpm/typescript@*/ \
-    node_modules/.pnpm/*-linux-x64-gnu@*/ \
-    node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/
-
 # copy standload packages
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
 RUN rm -rf ./node_modules/tiktoken/encoders
@@ -91,8 +90,6 @@ COPY --from=builder /app/projects/app/package.json ./package.json
 COPY --chown=nextjs:nodejs ./projects/app/data/config.json /app/data/config.json
 COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
 COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
-
-# Add tmp directory permission control
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
