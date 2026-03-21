@@ -64,11 +64,7 @@ const nextConfig: NextConfig = {
         message: /Critical dependency: the request of a dependency is an expression/
       },
       {
-        module: /e2b[\\/]dist[\\/]/,
-        message: /Critical dependency/
-      },
-      {
-        module: /vscode-languageserver-types[\\/]/,
+        module: /@fastgpt-sdk[\\/]sandbox-adapter[\\/]/,
         message: /Critical dependency/
       }
     ];
@@ -105,12 +101,7 @@ const nextConfig: NextConfig = {
 
     if (isServer) {
       config.externals.push({
-        '@node-rs/jieba': '@node-rs/jieba',
-        // next-rspack does not support serverExternalPackages, add externals manually.
-        // e2b depends on chalk (ESM-only), which Rspack cannot bundle.
-        e2b: 'commonjs e2b',
-        '@e2b/code-interpreter': 'commonjs @e2b/code-interpreter',
-        chalk: 'commonjs chalk'
+        '@node-rs/jieba': '@node-rs/jieba'
       });
     }
 
@@ -149,10 +140,7 @@ const nextConfig: NextConfig = {
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
-    '@opentelemetry/api-logs',
-    'e2b',
-    '@e2b/code-interpreter',
-    'chalk'
+    '@opentelemetry/api-logs'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {
