@@ -152,14 +152,37 @@ const nextConfig: NextConfig = {
       'ahooks',
       'framer-motion',
       '@emotion/react',
-      '@emotion/styled'
+      '@emotion/styled',
+      'react-syntax-highlighter',
+      'recharts',
+      '@tanstack/react-query',
+      'react-hook-form',
+      'react-markdown'
     ],
     // 按页面拆分 CSS chunk，减少首屏 CSS 体积
     cssChunking: 'strict',
     // 减少内存占用
     memoryBasedWorkersCount: true
   },
-  outputFileTracingRoot: path.join(__dirname, '../../')
+  outputFileTracingRoot: path.join(__dirname, '../../'),
+  // Exclude build-time-only packages from standalone output file tracing
+  outputFileTracingExcludes: {
+    '*': [
+      // Rspack bindings - only used in dev, not needed at runtime
+      'node_modules/@next/rspack-binding-*/**',
+      'node_modules/@rspack/binding-*/**',
+      'node_modules/next-rspack/**',
+      // GNU platform binaries - Alpine uses musl only
+      'node_modules/**/*-linux-x64-gnu*/**',
+      // typescript - build-time only
+      'node_modules/typescript/**',
+      // sharp libvips GNU variant (keep musl)
+      'node_modules/@img/sharp-libvips-linux-x64/**',
+      // bundle-analyzer - build-time only
+      'node_modules/@next/bundle-analyzer/**',
+      'node_modules/webpack-bundle-analyzer/**'
+    ]
+  }
 };
 
 const configWithPluginsExceptWithRspack = withBundleAnalyzer(nextConfig);
