@@ -331,7 +331,7 @@
   "sandbox_free_not_support": "套餐不支援該功能",
   "sandbox_free_not_support_tip": "點擊升級套餐",
   "sandbox_free_tip": "限時免費",
-  "sandbox_not_support_tip": "系統未開啟虛擬機器功能",
+  "sandbox_not_support_tip": "系統未支援虛擬機器功能",
   "save_team_app_log_keys": "保存為團隊配置",
   "saved_success": "儲存成功！\n如需在外部使用該版本，請點選“儲存並發布”",
   "search_agent": "搜索 Agent",

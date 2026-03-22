@@ -346,7 +346,7 @@
   "sandbox_free_not_support": "The plan does not support this function",
   "sandbox_free_not_support_tip": "Click to upgrade package",
   "sandbox_free_tip": "Free for a limited time",
-  "sandbox_not_support_tip": "The sandbox function is not enabled in the system",
+  "sandbox_not_support_tip": "The system does not support this function",
   "save_team_app_log_keys": "Save as team configuration",
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
   "search_agent": "Search Agent",
