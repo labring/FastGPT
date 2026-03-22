@@ -186,30 +186,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       }
     })();
 
-    let masterMessages = (() => {
-      if (!restoredMasterMessages) {
-        return historiesMessages.concat(currentUserMessage ? [currentUserMessage] : []);
-      } else if (planHistoryMessages?.length) {
-        return restoredMasterMessages ?? historiesMessages;
-      } else {
-        return currentUserMessage
-          ? restoredMasterMessages.concat(currentUserMessage)
-          : restoredMasterMessages;
-      }
-    })();
-
-    let masterMessages = (() => {
-      if (!restoredMasterMessages) {
-        return historiesMessages.concat(currentUserMessage ? [currentUserMessage] : []);
-      } else if (planHistoryMessages?.length) {
-        return restoredMasterMessages ?? historiesMessages;
-      } else {
-        return currentUserMessage
-          ? restoredMasterMessages.concat(currentUserMessage)
-          : restoredMasterMessages;
-      }
-    })();
-
     // Get sub apps
     const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
       {
