@@ -4,7 +4,6 @@ import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type {
-  AgentPlanCheckInteractive,
   UserInputInteractive,
   UserSelectInteractive,
   UserSelectOptionItemType

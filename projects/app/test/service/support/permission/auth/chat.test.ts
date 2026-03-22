@@ -549,7 +549,7 @@ describe('authChatCrud', () => {
       expect(result).toEqual({
         teamId: 'team1',
         tmbId: 'tmb1',
-        uid: 'tmb1',
+        uid: 'different-tmb',
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,

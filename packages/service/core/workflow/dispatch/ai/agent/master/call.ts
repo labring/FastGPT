@@ -188,7 +188,7 @@ export const masterCall = async ({
         content: getMasterSystemPrompt({
           systemPrompt,
           hasUserTools,
-          useAgentSandbox
+          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox
         })
       },
       ...masterMessages
@@ -606,7 +606,7 @@ export const masterCall = async ({
         response,
         assistantMessages: [], // TODO
         usages,
-        stop: stop || checkIsStopping()
+        stop
       };
     },
     onToolCompress: ({ call, response, usage }) => {

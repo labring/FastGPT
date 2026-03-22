@@ -65,7 +65,8 @@ export const buildStandardPlan = (
   ticketResponseTime: standard?.ticketResponseTime ?? standardConstants.ticketResponseTime,
   customDomain: standard?.customDomain ?? standardConstants.customDomain,
   maxUploadFileSize: standard?.maxUploadFileSize ?? standardConstants.maxUploadFileSize,
-  maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount
+  maxUploadFileCount: standard?.maxUploadFileCount ?? standardConstants.maxUploadFileCount,
+  enableSandbox: standard?.enableSandbox ?? standardConstants.enableSandbox
 });
 
 export const initTeamFreePlan = async ({

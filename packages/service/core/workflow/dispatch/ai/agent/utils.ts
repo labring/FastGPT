@@ -46,7 +46,7 @@ export const getSubapps = async ({
   }
 
   /* Sandbox Shell */
-  if (useAgentSandbox) {
+  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     completionTools.push(...SANDBOX_TOOLS);
   }
 
