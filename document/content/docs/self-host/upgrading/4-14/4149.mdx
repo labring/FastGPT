@@ -10,10 +10,6 @@ description: 'FastGPT V4.14.9 更新说明'
 ```bash
 SANDBOX_URL=代码运行沙盒的地址
 SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
-# 新增 Agent sandbox 沙盒环境变量
-AGENT_SANDBOX_PROVIDER=
-AGENT_SANDBOX_SEALOS_BASEURL=
-AGENT_SANDBOX_SEALOS_TOKEN=
 ```
 
 2. 默认关闭内网安全检查，如需开启，需设置环境变量`CHECK_INTERNAL_IP=true`
@@ -25,7 +21,7 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 
 ## 🚀 新增内容
 
-1. 新增 AI 虚拟机功能，可以给 AI 挂载一个虚拟机工具进行更丰富的操作。
+1. 新增 AI 虚拟机功能，可以给 AI 挂载一个虚拟机工具进行更丰富的操作。（目前仅云服务开放使用,下个版本会推出轻量部署方案）
 2. AgentV2 上下文适配暂停态。
 3. 封装 logger sdk。增加 Metrics 追踪。
 4. 更新知识库单个数据时，同步更新 collection 更新时间。
