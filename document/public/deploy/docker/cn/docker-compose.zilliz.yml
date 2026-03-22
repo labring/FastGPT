@@ -144,7 +144,7 @@ services:
       - vectorDB
     restart: always
     environment:
-      <<: [*x-share-db-config, *x-vec-config]
+      <<: [*x-share-db-config, *x-vec-config, *x-log-config]
       # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       FE_DOMAIN: http://localhost:3000
@@ -177,7 +177,6 @@ services:
       AIPROXY_API_TOKEN: *x-aiproxy-token
 
       # ==================== 日志与监控 ====================
-      <<: [*x-log-config]
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-client
 
