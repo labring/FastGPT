@@ -195,7 +195,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getPlanTool: true,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox
+        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox
       }
     );
 

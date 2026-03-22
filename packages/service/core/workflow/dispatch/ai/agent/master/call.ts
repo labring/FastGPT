@@ -188,7 +188,7 @@ export const masterCall = async ({
         content: getMasterSystemPrompt({
           systemPrompt,
           hasUserTools,
-          useAgentSandbox
+          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox
         })
       },
       ...masterMessages

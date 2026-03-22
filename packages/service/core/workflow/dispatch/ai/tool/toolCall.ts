@@ -41,15 +41,13 @@ type ResponseType = {
   toolWorkflowInteractiveResponse?: ToolCallChildrenInteractive;
 };
 
-export const runToolCall = async (
-  props: DispatchToolModuleProps & { useAgentSandbox?: boolean }
-): Promise<ResponseType> => {
+export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
   const {
     messages,
     toolNodes,
     toolModel,
     childrenInteractiveParams,
-    useAgentSandbox,
+
     ...workflowProps
   } = props;
   const {
@@ -71,7 +69,8 @@ export const runToolCall = async (
       aiChatResponseFormat,
       aiChatJsonSchema,
       aiChatReasoning,
-      isResponseAnswerText = true
+      isResponseAnswerText = true,
+      useAgentSandbox
     }
   } = workflowProps;
 
@@ -119,7 +118,7 @@ export const runToolCall = async (
 
   // 注入 sandbox_shell 工具和提示词
   let finalMessages = messages;
-  if (useAgentSandbox) {
+  if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     // 注入 sandbox_shell 工具
     tools.push(SANDBOX_SHELL_TOOL);
 
