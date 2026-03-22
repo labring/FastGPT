@@ -56,14 +56,14 @@ export async function getChatItems({
   } else if (chatLogsFilter === ChatLogsFilterEnum.bad) {
     aiOnlyFilter = { userBadFeedback: { $exists: true, $ne: null } };
   } else if (chatLogsFilter === ChatLogsFilterEnum.notFoundKnowledge) {
-    aiOnlyFilter = {
-      responseData: {
-        $elemMatch: {
-          moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          $or: [{ quoteList: { $size: 0 } }, { quoteList: null }, { quoteList: { $exists: false } }]
-        }
-      }
-    };
+    const notFoundDataIds = await MongoChatItemResponse.distinct('chatItemDataId', {
+      appId,
+      chatId,
+      'data.moduleType': FlowNodeTypeEnum.datasetSearchNode,
+      $or: [{ 'data.quoteList': { $size: 0 } }, { 'data.quoteList': null }]
+    });
+    aiOnlyFilter =
+      notFoundDataIds.length > 0 ? { dataId: { $in: notFoundDataIds } } : { dataId: { $in: [] } };
   }
 
   const aiCondition = aiOnlyFilter
@@ -109,14 +109,15 @@ export async function getChatItems({
           MongoChatItem.find(aiCondition, field)
             .sort({ _id: -1 })
             .skip(offset)
-            .limit(aiLimit)
+            .limit(aiLimit + 1)
             .lean(),
           MongoChatItem.countDocuments(baseCondition)
         ]);
+        const sliced = (aiItems as any[]).slice(0, aiLimit).reverse();
         return {
-          histories: await fetchHumanPairs((aiItems as any[]).reverse()),
+          histories: await fetchHumanPairs(sliced),
           total: count,
-          hasMorePrev: count > aiLimit,
+          hasMorePrev: aiItems.length > aiLimit,
           hasMoreNext: offset > 0
         };
       }
@@ -520,53 +521,42 @@ export async function getChatItemStats({
   notFoundTotal: number;
 }> {
   const appObjectId = new Types.ObjectId(appId);
-  const pipeline: any[] = [
-    { $match: { appId: appObjectId, chatId, deleteTime: null } },
-    {
-      $addFields: {
-        hasNotFoundKnowledge: {
-          $cond: [
-            { $eq: ['$obj', ChatRoleEnum.AI] },
-            {
-              $gt: [
-                {
-                  $size: {
-                    $filter: {
-                      input: { $ifNull: ['$responseData', []] },
-                      as: 'node',
-                      cond: {
-                        $and: [
-                          { $eq: ['$$node.moduleType', FlowNodeTypeEnum.datasetSearchNode] },
-                          { $eq: [{ $size: { $ifNull: ['$$node.quoteList', []] } }, 0] }
-                        ]
-                      }
-                    }
-                  }
-                },
-                0
-              ]
-            },
-            false
-          ]
+
+  const [notFoundDataIds, aggResult] = await Promise.all([
+    MongoChatItemResponse.distinct('chatItemDataId', {
+      appId,
+      chatId,
+      'data.moduleType': FlowNodeTypeEnum.datasetSearchNode,
+      $or: [{ 'data.quoteList': { $size: 0 } }, { 'data.quoteList': null }]
+    }),
+    MongoChatItem.aggregate([
+      { $match: { appId: appObjectId, chatId, deleteTime: null } },
+      {
+        $group: {
+          _id: null,
+          goodTotal: { $sum: { $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0] } },
+          badTotal: { $sum: { $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0] } }
         }
       }
-    },
-    {
-      $group: {
-        _id: null,
-        goodTotal: { $sum: { $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0] } },
-        badTotal: { $sum: { $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0] } },
-        notFoundTotal: { $sum: { $cond: ['$hasNotFoundKnowledge', 1, 0] } }
-      }
-    }
-  ];
+    ])
+  ]);
 
-  const result = await MongoChatItem.aggregate(pipeline);
-  if (result.length === 0) return { goodTotal: 0, badTotal: 0, notFoundTotal: 0 };
+  const stats = aggResult[0] ?? { goodTotal: 0, badTotal: 0 };
+
+  const notFoundTotal =
+    notFoundDataIds.length > 0
+      ? await MongoChatItem.countDocuments({
+          appId,
+          chatId,
+          deleteTime: null,
+          dataId: { $in: notFoundDataIds }
+        })
+      : 0;
+
   return {
-    goodTotal: result[0].goodTotal,
-    badTotal: result[0].badTotal,
-    notFoundTotal: result[0].notFoundTotal
+    goodTotal: stats.goodTotal,
+    badTotal: stats.badTotal,
+    notFoundTotal
   };
 }
 

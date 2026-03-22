@@ -38,6 +38,9 @@ const ChatItemResponseSchema = new Schema({
 // Get response/Delete
 ChatItemResponseSchema.index({ appId: 1, chatId: 1, chatItemDataId: 1 });
 
+// Speed up notFoundKnowledge distinct queries on moduleType
+ChatItemResponseSchema.index({ appId: 1, chatId: 1, 'data.moduleType': 1 });
+
 // Clear expired response
 ChatItemResponseSchema.index({ teamId: 1, time: -1 });
 
