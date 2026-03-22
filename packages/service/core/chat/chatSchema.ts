@@ -113,7 +113,7 @@ const ChatSchema = new Schema({
 try {
   ChatSchema.index({ chatId: 1 });
   // Delete by appid; init chat; update chat; auth chat;
-  ChatSchema.index({ appId: 1, chatId: 1 });
+  ChatSchema.index({ appId: 1, chatId: 1 }, { unique: true });
 
   // Clear history(share),Init 4121
   ChatSchema.index(
