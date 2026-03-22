@@ -400,9 +400,12 @@ export const runAgentCall = async ({
       if (stop) {
         toolCallStep = true;
       }
+      if (isAborted?.()) {
+        break;
+      }
     }
 
-    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep) {
+    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep || isAborted?.()) {
       break;
     }
   }
