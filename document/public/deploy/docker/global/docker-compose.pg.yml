@@ -156,7 +156,7 @@ services:
       - fastgpt
     depends_on:
       - mongo
-      - codeSandbox
+      - code-sandbox
       - vectorDB
     restart: always
     environment:
@@ -185,7 +185,7 @@ services:
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
       # code-sandbox 地址
-      SANDBOX_URL: http://sandbox:3000
+      SANDBOX_URL: http://code-sandbox:3000
       SANDBOX_TOKEN: *x-code-sandbox-token
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
@@ -221,8 +221,8 @@ services:
       MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
       - ./config.json:/app/data/config.json
-  codeSandbox:
-    container_name: codeSandbox
+  code-sandbox:
+    container_name: code-sandbox
     image: ghcr.io/labring/fastgpt-sandbox:v4.14.8
     networks:
       - fastgpt
