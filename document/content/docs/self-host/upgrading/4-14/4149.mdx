@@ -16,7 +16,7 @@ AGENT_SANDBOX_SEALOS_BASEURL=
 AGENT_SANDBOX_SEALOS_TOKEN=
 ```
 
-2. 默认开启了内网安全检查，如需关闭，需设置环境变量`CHECK_INTERNAL_IP=false`
+2. 默认关闭内网安全检查，如需开启，需设置环境变量`CHECK_INTERNAL_IP=true`
 
 ## 接口变更
 
@@ -35,14 +35,15 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 
 1. api 知识库同步时，增加更多 fallback 获取文件名方式。
 2. HTTP 工具，增加 SSRF 防御。
-3. 兼容更多 MCP JsonSchema 字段。
+3. 兼容更多 MCP JsonSchema 字段，旧版无法适配混合类型字段。
 4. 优化部分工作流运行池逻辑，减少计算复杂度
 5. 调整工作流 runtime，用 Tarjan SCC 算法替代 DSC 进行 edges 分组，解决工作流复杂循环无法运行问题。
+6. 系统工具集不显示版本（因为其无版本可选）。
 
 ## 🐛 修复
 
 1. 工作流嵌套插件时，未成功保留插件运行详情。同时整理所有 tool 类型前缀。
-2. 更新 MCP toolset 后可能无法正常调用。
+2. 更新并保存 MCP toolset 后可能无法正常调用（由于 toolId 获取错误）。
 3. API 知识库，文件列表搜索框丢失。
 4. 工作流变量值，包含特殊值($.)的时候，导致值替换异常。
 5. 工作流引用 agent 工具时，获取版本异常。
@@ -52,10 +53,9 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 9. 修复订阅套餐自定义字段未生效
 10. login接口，存在异步 session 问题，会出现报错日志。
 12. 修复判断器 arrayAny 类型无判断条件可选
-13. 系统工具集不显示版本
-14. 修复视频音频自定义文件类型流程开始无文件链接变量
-15. 用户输入框消息不转义成 markdown 格式
-16. 修复 AgentV2 部分上下文错误。
+13. 修复视频音频自定义文件类型流程开始无文件链接变量
+14. 用户输入框消息不转义成 markdown 格式
+15. 修复 AgentV2 部分上下文拼接错误。
 
 ## 代码优化
 

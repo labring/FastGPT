@@ -80,13 +80,40 @@ const nextConfig: NextConfig = {
       'supports-color': false,
       'bson-ext': false,
       'pg-native': false,
-      ...(isDev && {
-        // In dev, fastgpt-pro + FastGPT nested pnpm workspaces create two separate .pnpm stores,
-        // causing duplicate React instances and "Cannot read properties of null (reading 'useContext')".
-        // Force all react imports to resolve from this package to guarantee a single instance.
-        react: path.resolve(__dirname, 'node_modules/react'),
-        'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
-      })
+      ...(isDev &&
+        (() => {
+          // In dev, fastgpt-pro + FastGPT nested pnpm workspaces create two separate .pnpm stores,
+          // causing duplicate module instances (React, Lexical, etc.) and runtime errors like
+          // "Cannot read properties of null (reading 'useContext')" or
+          // "Unable to find an active editor state".
+          // Force all shared packages to resolve from this project's node_modules.
+          const resolve = (pkg: string) => {
+            try {
+              return path.dirname(require.resolve(`${pkg}/package.json`, { paths: [__dirname] }));
+            } catch {
+              return undefined;
+            }
+          };
+          const dups = [
+            'react',
+            'react-dom',
+            'lexical',
+            '@lexical/react',
+            '@lexical/code',
+            '@lexical/list',
+            '@lexical/markdown',
+            '@lexical/rich-text',
+            '@lexical/selection',
+            '@lexical/text',
+            '@lexical/utils',
+            '@chakra-ui/react',
+            '@chakra-ui/system',
+            '@emotion/react',
+            '@emotion/styled',
+            'use-context-selector'
+          ];
+          return Object.fromEntries(dups.map((pkg) => [pkg, resolve(pkg)]).filter(([, v]) => v));
+        })())
     });
 
     config.module = {
