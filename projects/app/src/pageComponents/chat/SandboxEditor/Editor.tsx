@@ -462,7 +462,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
                   <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
                 </InputLeftElement>
                 <Input
-                  placeholder={t('app:sandbox.search_files')}
+                  placeholder={t('chat:sandbox_search_files')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   bg="white"
@@ -717,7 +717,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
             ) : filteredTree.length > 0 ? (
               <Center h="full">
                 <VStack spacing={3}>
-                  <EmptyTip text={t('app:sandbox.select_file')} mt={0} />
+                  <EmptyTip text={t('chat:sandbox_select_file_edit')} mt={0} />
                 </VStack>
               </Center>
             ) : null}
@@ -726,7 +726,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
       ) : !loadingRoot ? (
         <Center h="full" w={'full'}>
           <VStack spacing={3}>
-            <EmptyTip text={t('app:sandbox.no_file')} mt={0} />
+            <EmptyTip text={t('chat:sandbox_no_file')} mt={0} />
           </VStack>
         </Center>
       ) : null}

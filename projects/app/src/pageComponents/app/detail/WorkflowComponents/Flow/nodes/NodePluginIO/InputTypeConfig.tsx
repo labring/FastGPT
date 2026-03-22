@@ -526,8 +526,8 @@ const InputTypeConfig = ({
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
-                  min={min}
-                  max={max}
+                  min={min ? min : undefined}
+                  max={max ? max : undefined}
                   onChange={(e) => {
                     // @ts-ignore
                     setValue('defaultValue', e ?? '');

@@ -79,7 +79,14 @@ const nextConfig: NextConfig = {
       kerberos: false,
       'supports-color': false,
       'bson-ext': false,
-      'pg-native': false
+      'pg-native': false,
+      ...(isDev && {
+        // In dev, fastgpt-pro + FastGPT nested pnpm workspaces create two separate .pnpm stores,
+        // causing duplicate React instances and "Cannot read properties of null (reading 'useContext')".
+        // Force all react imports to resolve from this package to guarantee a single instance.
+        react: path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom')
+      })
     });
 
     config.module = {
@@ -148,7 +155,6 @@ const nextConfig: NextConfig = {
       '@chakra-ui/react',
       '@chakra-ui/icons',
       'lodash',
-      'date-fns',
       'ahooks',
       'framer-motion',
       '@emotion/react',
