@@ -52,9 +52,9 @@ SandboxInstanceSchema.index(
   {
     unique: true,
     partialFilterExpression: {
-      appId: { $exists: true, $ne: null },
-      userId: { $exists: true, $ne: null },
-      chatId: { $exists: true, $ne: null }
+      appId: { $exists: true },
+      userId: { $exists: true },
+      chatId: { $exists: true }
     }
   }
 );

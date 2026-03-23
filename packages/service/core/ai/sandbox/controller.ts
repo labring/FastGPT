@@ -66,6 +66,23 @@ export class SandboxClient {
           },
           createConfig: undefined
         };
+      } else if (providerName === 'opensandbox') {
+        return {
+          provider: 'opensandbox' as const,
+          config: {
+            baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+            token: env.AGENT_SANDBOX_OPENSANDBOX_TOKEN,
+            sandboxId: this.sandboxId
+          }
+        };
+      } else if (providerName === 'e2b') {
+        return {
+          provider: 'e2b' as const,
+          config: {
+            apiKey: env.AGENT_SANDBOX_E2B_API_KEY,
+            sandboxId: this.sandboxId
+          }
+        };
       } else if (!providerName) {
         throw new Error(
           'AGENT_SANDBOX_PROVIDER is not configured. Please set it in your environment variables.'

@@ -658,6 +658,41 @@ describe('appData2FlowNodeIO', () => {
     expect(fileLinkInput).toBeDefined();
   });
 
+  it.each([
+    {
+      title: 'video selection',
+      fileSelectConfig: {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectVideo: true
+      }
+    },
+    {
+      title: 'audio selection',
+      fileSelectConfig: {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectAudio: true
+      }
+    },
+    {
+      title: 'custom file extension selection',
+      fileSelectConfig: {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectCustomFileExtension: true
+      }
+    }
+  ])('should include file link input when fileSelectConfig allows $title', ({ fileSelectConfig }) => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        fileSelectConfig
+      }
+    });
+    const fileLinkInput = result.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
+    expect(fileLinkInput).toBeDefined();
+  });
+
   it('should not include file link input when fileSelectConfig disallows both', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {

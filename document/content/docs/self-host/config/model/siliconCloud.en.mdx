@@ -1,36 +1,40 @@
 ---
-title: Try Open Source Models with SiliconCloud
-description: Try Open Source Models with SiliconCloud
+title: SiliconCloud Integration Example
+description: SiliconCloud integration example for FastGPT
 ---
 
-[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform focused on providing open source model inference, with its own acceleration engine. It helps users test and use open source models quickly at low cost. In our experience, their models offer solid speed and stability, with a wide variety covering language, embedding, reranking, TTS, STT, image generation, and video generation models — meeting all model requirements in FastGPT.
+[SiliconCloud](https://cloud.siliconflow.cn/i/TR9Ym0c4) is a platform focused on open source model inference, with its own acceleration engine. It helps users test and use open source models quickly at low cost. In our experience, their models offer solid speed and stability, with a wide variety covering language, embedding, reranking, TTS, STT, image generation, and video generation — meeting all model requirements in FastGPT.
 
-If you want to use SiliconCloud for only some models, see [OneAPI Integration with SiliconCloud](/docs/self-host/config/model/one-api/#siliconcloud--open-source-model-collection).
+Before reading this guide, make sure you've read the [Model Configuration Guide](/docs/self-host/config/model/intro).
 
-This guide covers deploying FastGPT entirely with SiliconCloud models.
-
-## 1. Register a SiliconCloud Account
+## 1. Register an Account
 
 1. [Register a SiliconCloud account](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 2. Go to the console and get your API key: https://cloud.siliconflow.cn/account/ak
 
-## 2. Update FastGPT Environment Variables
+## 2. Add Models
 
-```bash
-OPENAI_BASE_URL=https://api.siliconflow.cn/v1
-# Enter the API Key from the SiliconCloud console
-CHAT_API_KEY=sk-xxxxxx
-```
+The system includes a few SiliconCloud models by default for quick testing. If you need additional models, you can [add them manually](/docs/self-host/config/model/intro/#add-a-custom-model).
 
-## 3. Update FastGPT Model Configuration
-
-The system includes a few SiliconCloud models by default for quick testing. You can add more models manually if needed.
-
-Here we enable `Qwen2.5 72b` for both text and vision models; `bge-m3` as the embedding model; `bge-reranker-v2-m3` as the reranking model; `fish-speech-1.5` as the TTS model; and `SenseVoiceSmall` as the STT model.
+Here we enable `Qwen2.5 72b` for both text and vision; `bge-m3` as the embedding model; `bge-reranker-v2-m3` as the reranking model; `fish-speech-1.5` as the TTS model; and `SenseVoiceSmall` as the STT model.
 
 ![alt text](/imgs/image-104.png)
 
-## 4. Testing
+
+## 3. Add a Model Channel
+
+On the Model Channels page, add a new SiliconCloud channel and select the models you just added.
+
+![alt text](../../../../../public/imgs/image-126.png)
+
+
+## 4. Test Models
+
+First, verify that all SiliconCloud models are running properly.
+
+![alt text](../../../../../public/imgs/image-127.png)
+
+## 5. Test in an App
 
 ### Test Chat and Image Recognition
 

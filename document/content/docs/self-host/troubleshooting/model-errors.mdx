@@ -1,6 +1,6 @@
 ---
-title: 模型可用性问题排查
-description: FastGPT 私有部署模型可用性问题排查
+title: 模型问题排查
+description: FastGPT 私有部署模型问题排查
 ---
 
 
@@ -255,3 +255,21 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 ### (4)向量检索得分大于 1
 
 由于模型没有归一化导致的。目前仅支持归一化的模型。
+
+---
+
+### (5) 当前分组上游负载已饱和，请稍后再试
+
+如果在日志或请求中遇到此错误（如 `request id:xxx`），这通常是 OneAPI 渠道的问题，可以换个模型使用或者换一家中转站。
+
+---
+
+### (6) 使用API时在日志中报错 Connection Error 
+
+大概率是 API Key 填写了 OpenAI 的地址，但是部署的服务器在国内，不能访问海外的 API。可以使用中转或者反代的手段解决访问不到的问题。
+
+---
+
+### (7) 开启图片索引报 400
+
+需在 `Admin` -> `系统配置` 中正确配置 OCR 模型。

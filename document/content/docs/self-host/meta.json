@@ -13,6 +13,7 @@
     "config/json",
     "config/signoz",
     "---故障排查---",
+    "troubleshooting/attention",
     "troubleshooting/faq",
     "troubleshooting/methods",
     "troubleshooting/model-errors",

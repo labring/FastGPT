@@ -5,16 +5,18 @@ description: 'FastGPT V4.14.9 更新说明'
 
 ### 环境变量更新
 
+1. 修改 FastGPT 环境变量：CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN：
+
 ```bash
-# 调整 FastGPT 环境变量：CODE_SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN
 SANDBOX_URL=代码运行沙盒的地址
 SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
 # 新增 Agent sandbox 沙盒环境变量
 AGENT_SANDBOX_PROVIDER=
 AGENT_SANDBOX_SEALOS_BASEURL=
 AGENT_SANDBOX_SEALOS_TOKEN=
-
 ```
+
+2. 默认开启了内网安全检查，如需关闭，需设置环境变量`CHECK_INTERNAL_IP=false`
 
 ## 接口变更
 
@@ -34,6 +36,7 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 2. HTTP 工具，增加 SSRF 防御。
 3. 兼容更多 MCP JsonSchema 字段。
 4. 优化部分工作流运行池逻辑，减少计算复杂度
+5. 调整工作流 runtime，用 Tarjan SCC 算法替代 DSC 进行 edges 分组，解决工作流复杂循环无法运行问题。
 
 ## 🐛 修复
 
@@ -46,3 +49,8 @@ AGENT_SANDBOX_SEALOS_TOKEN=
 7. 分享链接关闭状态显示后，会导致历史记录里的 AI 回复内容无法正常展示。
 8. 修复工作流预览模式下，重新打开预览弹窗，会丢失表单输入内容。
 9. 修复订阅套餐自定义字段未生效
+10. login接口，存在异步 session 问题，会出现报错日志。
+12. 修复判断器 arrayAny 类型无判断条件可选
+13. 系统工具集不显示版本
+14. 修复视频音频自定义文件类型流程开始无文件链接变量
+15. 用户输入框消息不转义成 markdown 格式

@@ -1,40 +1,32 @@
-name: Preview fastgpt build
+name: Preview FastGPT Image — Build
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches: ['*']
+
+# Only one build per PR branch at a time
+concurrency:
+  group: 'preview-fastgpt-build-${{ github.head_ref }}'
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  build-preview-images:
-    permissions:
-      contents: read
-      pull-requests: write
-
+  build:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
         image: [fastgpt, sandbox, mcp_server]
-      fail-fast: false # 即使一个镜像构建失败，也继续构建其他镜像
+      fail-fast: false
 
     steps:
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver-opts: network=host
-
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}-${{ matrix.image }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-${{ github.sha }}-
-            ${{ runner.os }}-buildx-
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Set image config
         id: config
@@ -53,51 +45,38 @@ jobs:
             echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build ${{ matrix.image }} image
-        run: |
-          docker buildx build \
-          -f ${{ steps.config.outputs.DOCKERFILE }} \
-          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=${{ steps.config.outputs.DESCRIPTION }}" \
-          --label "org.opencontainers.image.revision=${{ github.sha }}" \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
-          --output type=docker,dest=/tmp/${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}.tar \
-          -t preview-image:${{ github.sha }} \
-          .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.config.outputs.DOCKERFILE }}
+          platforms: linux/amd64
+          push: false
+          tags: ${{ steps.config.outputs.IMAGE_NAME }}-pr:${{ github.event.pull_request.head.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=${{ steps.config.outputs.DESCRIPTION }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+          outputs: type=docker,dest=/tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-      - name: Upload image artifact
+      - name: Save PR metadata
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
+          echo "${{ matrix.image }}" > /tmp/image-type.txt
+
+      - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}
-          path: /tmp/${{ steps.config.outputs.IMAGE_NAME }}-${{ github.sha }}.tar
+          name: preview-${{ matrix.image }}-image
+          path: |
+            /tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+            /tmp/pr-number.txt
+            /tmp/pr-sha.txt
+            /tmp/image-type.txt
           retention-days: 1
-
-  call-push-workflow:
-    needs: build-preview-images
-    strategy:
-      matrix:
-        image: [fastgpt, sandbox, mcp_server]
-      fail-fast: false
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
-      pull-requests: write
-      issues: write
-    uses: ./.github/workflows/preview-fastgpt-push.yml
-    secrets:
-      ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-      ALI_IMAGE_PSW: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
-      ALI_IMAGE_PREFIX: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}
-    with:
-      pr_number: ${{ format('{0}', github.event.pull_request.number) }}
-      pr_sha: ${{ github.sha }}
-      run_id: ${{ format('{0}', github.run_id) }}
-      image: ${{ matrix.image }}
