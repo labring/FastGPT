@@ -57,16 +57,16 @@ export const AddModelButton = ({
               onClick: () => onCreate(ModelTypeEnum.embedding)
             },
             {
+              label: t('common:model.type.reRank'),
+              onClick: () => onCreate(ModelTypeEnum.rerank)
+            },
+            {
               label: t('common:model.type.tts'),
               onClick: () => onCreate(ModelTypeEnum.tts)
             },
             {
               label: t('common:model.type.stt'),
               onClick: () => onCreate(ModelTypeEnum.stt)
-            },
-            {
-              label: t('common:model.type.reRank'),
-              onClick: () => onCreate(ModelTypeEnum.rerank)
             }
           ]
         }
