@@ -284,6 +284,8 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
       return ChatSourceEnum.feishu;
     case PublishChannelEnum.wecom:
       return ChatSourceEnum.wecom;
+    case PublishChannelEnum.wechat:
+      return ChatSourceEnum.wechat;
     case PublishChannelEnum.officialAccount:
       return ChatSourceEnum.official_account;
     default:

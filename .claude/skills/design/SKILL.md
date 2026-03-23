@@ -9,6 +9,10 @@ description: 当用户需要设计 FastGPT 的代码时，可调用此 Skill。
 
 * [AI 虚拟机设计文档](./core/ai/sandbox/prd.md)
 
+### Agent 构建
+
+* [微信个人号发布渠道设计文档](./support/outlink/wechat-clawbot.md)
+
 ### 工作流
 
 * [工作流设计文档](./core/workflow/index.md)

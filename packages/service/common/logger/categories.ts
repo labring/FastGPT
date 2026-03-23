@@ -93,7 +93,8 @@ export const LogCategories = {
       OFFIACCOUNT: ['outlink', 'offiaccount'],
       PLAYGROUND: ['outlink', 'playground'],
       TOOLS: ['outlink', 'tools'],
-      WECOM: ['outlink', 'wecom']
+      WECOM: ['outlink', 'wecom'],
+      WECHAT: ['outlink', 'wechat']
     }),
     CHAT: Object.assign(['chat'], {
       FEEDBACK: ['chat', 'feedback'],
@@ -133,9 +134,6 @@ export const LogCategories = {
 
   // 事件层
   EVENT: {
-    OUTLINK: ['event', 'outlink'],
-    FEISHU: ['event', 'feishu'],
-    WECHAT: ['event', 'wechat'],
     TRACK: ['event', 'track']
   }
 };

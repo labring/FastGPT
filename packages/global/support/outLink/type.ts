@@ -27,8 +27,17 @@ export interface WecomAppType {
   // SuiteSecret: string;
 }
 
-// TODO: unused
-export interface WechatAppType {}
+export const WechatAppSchema = z.object({
+  token: z.string().default(''),
+  baseUrl: z.string().default('https://ilinkai.weixin.qq.com'),
+  accountId: z.string().default(''),
+  userId: z.string().optional(),
+  syncBuf: z.string().default(''),
+  status: z.enum(['online', 'offline', 'error']).default('offline'),
+  loginTime: z.string().optional(),
+  lastError: z.string().optional()
+});
+export type WechatAppType = z.infer<typeof WechatAppSchema>;
 
 export interface OffiAccountAppType {
   appId: string;
@@ -46,6 +55,7 @@ export type OutlinkAppType =
   | WecomAppType
   | OffiAccountAppType
   | DingtalkAppType
+  | WechatAppType
   | undefined;
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
