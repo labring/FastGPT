@@ -2,13 +2,23 @@
 import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
+export const ModelPriceTierSchema = z.object({
+  maxInputTokens: z.number().int().positive().optional(),
+  inputPrice: z.number().optional(),
+  outputPrice: z.number().optional()
+});
+export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
+
 const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
-  // If inputPrice is set, the input-output charging scheme is adopted
+  // 旧版的价格计费字段
   inputPrice: z.number().optional(), // 1k tokens=n points
-  outputPrice: z.number().optional() // 1k tokens=n points
+  outputPrice: z.number().optional(), // 1k tokens=n points
+
+  // 新版的梯度价格计算字段
+  priceTiers: z.array(ModelPriceTierSchema).optional()
 });
-type PriceType = z.infer<typeof PriceTypeSchema>;
+export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 const BaseModelItemSchema = z.object({
   provider: z.string(),
@@ -48,6 +58,9 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   usedInExtractFields: z.boolean().optional(), // extract fields
   usedInToolCall: z.boolean().optional(), // tool call
   useInEvaluation: z.boolean().optional(), // evaluation
+
+  // Test mode: when enabled, all above functions are disabled
+  testMode: z.boolean().optional(), // test mode flag
 
   functionCall: z.boolean(),
   toolChoice: z.boolean(),

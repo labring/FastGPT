@@ -60,11 +60,13 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
     // Add default value
     if (model.type === ModelTypeEnum.llm) {
-      model.datasetProcess = model.datasetProcess ?? true;
-      model.usedInClassify = model.usedInClassify ?? true;
-      model.usedInExtractFields = model.usedInExtractFields ?? true;
-      model.usedInToolCall = model.usedInToolCall ?? true;
-      model.useInEvaluation = model.useInEvaluation ?? true;
+      // Determine default value based on testMode
+      const defaultFuncValue = model.testMode === true ? false : true;
+      model.datasetProcess = model.datasetProcess ?? defaultFuncValue;
+      model.usedInClassify = model.usedInClassify ?? defaultFuncValue;
+      model.usedInExtractFields = model.usedInExtractFields ?? defaultFuncValue;
+      model.usedInToolCall = model.usedInToolCall ?? defaultFuncValue;
+      model.useInEvaluation = model.useInEvaluation ?? defaultFuncValue;
     }
 
     if (model.isActive) {

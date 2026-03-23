@@ -3,12 +3,15 @@ packages:
   - projects/*
   - scripts/icon
   - sdk/*
-
-overrides:
-  '@types/react': ^18
-  '@types/react-dom': ^18
-  react: ^18
-  react-dom: ^18
+allowBuilds:
+  '@parcel/watcher': true
+  core-js: true
+  esbuild: true
+  mongodb-memory-server: true
+  msgpackr-extract: true
+  protobufjs: true
+  sharp: true
+  vue-demi: true
 
 catalog:
   '@chakra-ui/anatomy': ^2
@@ -19,14 +22,14 @@ catalog:
   '@chakra-ui/system': ^2
   '@emotion/react': ^11
   '@emotion/styled': ^11
-  '@modelcontextprotocol/sdk': ^1
-  '@fastgpt-sdk/storage': 0.6.15
   '@fastgpt-sdk/logger': 0.1.2
   '@fastgpt-sdk/otel': 0.1.0
+  '@fastgpt-sdk/storage': 0.6.15
+  '@modelcontextprotocol/sdk': ^1
   '@types/lodash': ^4
+  '@types/node': ^20
   '@types/react': ^18
   '@types/react-dom': ^18
-  '@types/node': ^20
   axios: 1.13.6
   date-fns: ^3.6.0
   dayjs: 1.11.19
@@ -62,3 +65,9 @@ onlyBuiltDependencies:
   - sharp
   - utf-8-validate
   - vue-demi
+
+overrides:
+  '@types/react': ^18
+  '@types/react-dom': ^18
+  react: ^18
+  react-dom: ^18

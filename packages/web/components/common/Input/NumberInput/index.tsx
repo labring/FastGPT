@@ -21,6 +21,28 @@ type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   hideStepper?: boolean;
 };
 
+const getSafeNumberValue = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      return undefined;
+    }
+
+    const parsedValue = Number(trimmedValue);
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+  }
+
+  return undefined;
+};
+
 const MyNumberInput = (props: Props) => {
   const {
     register,
@@ -30,52 +52,58 @@ const MyNumberInput = (props: Props) => {
     placeholder,
     inputFieldProps,
     hideStepper = false,
+    value,
     ...restProps
   } = props;
+
+  const registeredField =
+    register && name
+      ? register(name, {
+          required: props.isRequired,
+          min: props.min,
+          max: props.max,
+          setValueAs: (value) => getSafeNumberValue(value)
+        })
+      : undefined;
+  const inputFieldRegisterProps = registeredField
+    ? {
+        name: registeredField.name,
+        ref: registeredField.ref
+      }
+    : undefined;
+
+  const safeControlledValue =
+    value === '' ? '' : typeof value === 'undefined' ? undefined : getSafeNumberValue(value) ?? '';
 
   return (
     <NumberInput
       {...restProps}
+      {...(typeof value !== 'undefined' ? { value: safeControlledValue } : {})}
       onBlur={(e) => {
-        const numE = e.target.value === '' ? '' : Number(e.target.value);
+        const numE = getSafeNumberValue(e.target.value);
         if (onBlur) {
-          if (numE === '') {
-            // @ts-ignore
-            onBlur('');
-          } else {
-            onBlur(numE);
-          }
+          onBlur(numE);
         }
         if (onChange) {
-          if (numE === '') {
-            // @ts-ignore
-            onChange('');
-          } else {
-            onChange(numE);
-          }
+          onChange(numE);
         }
-        if (register && name) {
+        if (registeredField && name) {
           const event = {
             target: {
-              name,
-              value: numE
-            }
+              name
+            },
+            type: 'blur'
           };
-          register(name).onBlur(event);
+          registeredField.onBlur(event);
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : Number(e);
+        const numE =
+          e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : getSafeNumberValue(e) ?? '';
         if (onChange) {
-          if (numE === '') {
-            // @ts-ignore
-            onChange('');
-          } else {
-            // @ts-ignore
-            onChange(numE);
-          }
+          onChange(typeof numE === 'string' ? getSafeNumberValue(numE) : numE);
         }
-        if (register && name) {
+        if (registeredField && name) {
           const event = {
             target: {
               name,
@@ -83,7 +111,7 @@ const MyNumberInput = (props: Props) => {
             }
           };
 
-          register(name).onChange(event);
+          registeredField.onChange(event);
         }
       }}
     >
@@ -91,14 +119,7 @@ const MyNumberInput = (props: Props) => {
         placeholder={placeholder}
         h={restProps.h}
         defaultValue={restProps.defaultValue}
-        {...(register && name
-          ? register(name, {
-              required: props.isRequired,
-              min: props.min,
-              max: props.max,
-              valueAsNumber: true
-            })
-          : {})}
+        {...(inputFieldRegisterProps || {})}
         {...inputFieldProps}
       />
       {!hideStepper && (
