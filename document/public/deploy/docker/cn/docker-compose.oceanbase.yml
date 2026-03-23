@@ -168,7 +168,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.8 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.9.1 # git
     ports:
       - 3000:3000
     networks:
@@ -242,7 +242,7 @@ services:
       - ./config.json:/app/data/config.json
   code-sandbox:
     container_name: code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.8
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.9.1
     networks:
       - fastgpt
     restart: always
@@ -287,7 +287,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.8
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.9.1
     networks:
       - fastgpt
     ports:
@@ -297,7 +297,7 @@ services:
       <<: [*x-log-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.4
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.5
     container_name: fastgpt-plugin
     restart: always
     networks:
