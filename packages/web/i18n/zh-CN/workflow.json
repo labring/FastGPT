@@ -183,6 +183,12 @@
   "target_fields_description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
   "template.agent": "工具调用",
   "template.agent_intro": "由 AI 自主决定工具调用。",
+  "template.agent_module": "Agent",
+  "template.agent_module_intro": "关联所需工具及 Skill，可实现 AI 自主调用与规划",
+  "agent.tools": "工具",
+  "agent.prompt_skill_tip": "@选择 Skill 及工具，\"/\"选择变量",
+  "agent.select_skill": "选择 Skill",
+  "agent.select_tool": "选择工具",
   "template.ai_chat": "AI 对话",
   "template.ai_chat_intro": "AI 大模型对话",
   "template.dataset_search": "知识库搜索",
@@ -232,5 +238,6 @@
   "workflow.My edit": "我的编辑",
   "workflow.Switch_success": "切换成功",
   "workflow.Team cloud": "团队云端",
-  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
+  "params_setting": "参数设置"
 }

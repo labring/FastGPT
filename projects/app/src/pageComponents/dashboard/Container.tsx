@@ -17,6 +17,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   agent = 'agent',
+  skill = 'skill',
   tool = 'tool',
   system_tool = 'systemTool',
   app_templates = 'templateMarket',
@@ -125,6 +126,12 @@ const DashboardContainer = ({
             typeName: t('app:type.Chat_Agent_v2')
           }
         ]
+      },
+      {
+        groupId: TabEnum.skill,
+        groupAvatar: 'common/skill',
+        groupName: 'Skill',
+        children: []
       },
       {
         groupId: TabEnum.tool,

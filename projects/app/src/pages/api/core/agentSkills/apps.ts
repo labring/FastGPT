@@ -72,7 +72,7 @@ async function handler(
           inputs: {
             $elemMatch: {
               key: NodeInputKeyEnum.skills,
-              value: skillId
+              'value.skillId': skillId
             }
           }
         }

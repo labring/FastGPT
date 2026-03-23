@@ -48,7 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const body: ImportSkillBody = {
       name: result.data.name ?? (req.body?.name as string | undefined),
       description: result.data.description ?? (req.body?.description as string | undefined),
-      avatar: result.data.avatar ?? (req.body?.avatar as string | undefined)
+      avatar: result.data.avatar ?? (req.body?.avatar as string | undefined),
+      parentId: result.data.parentId ?? (req.body?.parentId as string | undefined)
     };
 
     const format = getSupportedArchiveFormat(file.originalname ?? '');
@@ -111,7 +112,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Create ONE DB record
     const skillId = await mongoSessionRun(async (session) =>
-      importSkill(skillPackage, teamId, tmbId, userId || '', zipBuffer, null, session)
+      importSkill(
+        skillPackage,
+        teamId,
+        tmbId,
+        userId || '',
+        zipBuffer,
+        body.parentId || null,
+        session
+      )
     );
 
     // Add audit log

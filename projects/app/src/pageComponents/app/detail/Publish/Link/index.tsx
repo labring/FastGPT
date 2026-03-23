@@ -282,6 +282,8 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
+  const showRunningStatus = watch('showRunningStatus');
+  const showSkillReferences = watch('showSkillReferences');
   const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
@@ -422,18 +424,7 @@ function EditLinkModal({
                   }
                 }
               })}
-            />
-          </Flex>
-          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
-            <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
-            <Switch
-              {...register('showSkillReferences', {
-                onChange(e) {
-                  if (e.target.checked) {
-                    setValue('showRunningStatus', true);
-                  }
-                }
-              })}
+              isChecked={showRunningStatus}
             />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
@@ -495,6 +486,22 @@ function EditLinkModal({
                 }
               })}
               isChecked={canDownloadSource}
+            />
+          </Flex>
+          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+            <Flex alignItems={'center'}>
+              <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
+              <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
+            </Flex>
+            <Switch
+              {...register('showSkillReferences', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showRunningStatus', true);
+                  }
+                }
+              })}
+              isChecked={showSkillReferences}
             />
           </Flex>
         </Box>

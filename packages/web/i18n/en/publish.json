@@ -27,6 +27,7 @@
   "request_address": "Request URL",
   "show_node": "real-time running status",
   "show_skill_reference": "Show skill references",
+  "show_skill_reference_tips": "View all referenced Skills and their loading process",
   "show_share_link_modal_title": "Get Started",
   "token_auth": "Token Authentication",
   "token_auth_tips": "Token authentication server URL. If provided, a request will be sent to the specified server for authentication before each conversation.",

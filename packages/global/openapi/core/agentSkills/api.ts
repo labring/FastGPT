@@ -106,7 +106,8 @@ export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema
 export const ImportSkillBodySchema = z.object({
   name: z.string().optional().describe('导入后的技能名称'),
   description: z.string().optional().describe('导入后的技能描述'),
-  avatar: z.string().optional().describe('导入后的技能头像')
+  avatar: z.string().optional().describe('导入后的技能头像'),
+  parentId: NullableParentIdSchema
 });
 export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
 
