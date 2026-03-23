@@ -1386,8 +1386,6 @@ export class WorkflowQueue {
   }
 }
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
-  let { runtimeNodes = [], runtimeEdges = [], variables = {}, externalProvider } = data;
-
   // Over max depth
   data.workflowDispatchDeep++;
   const isRootRuntime = data.workflowDispatchDeep === 1;
@@ -1406,20 +1404,19 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
       [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
-        variables,
-        removeObj: externalProvider.externalWorkflowVariables,
+        variables: data.variables,
+        removeObj: data.externalProvider.externalWorkflowVariables,
         userVariablesConfigs: data.chatConfig?.variables
       }),
       durationSeconds: 0
     };
   }
 
-  runtimeEdges = filterOrphanEdges({
-    edges: runtimeEdges,
-    nodes: runtimeNodes,
+  data.runtimeEdges = filterOrphanEdges({
+    edges: data.runtimeEdges,
+    nodes: data.runtimeNodes,
     workflowId: data.runningAppInfo.id
   });
-  data.runtimeEdges = runtimeEdges;
 
   return withActiveSpan(
     {
@@ -1434,23 +1431,27 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         'fastgpt.workflow.chat_id': data.chatId,
         'fastgpt.workflow.app_version': data.apiVersion,
         'fastgpt.workflow.is_tool_call': !!data.isToolCall,
-        'fastgpt.workflow.node_count': runtimeNodes.length,
-        'fastgpt.workflow.edge_count': runtimeEdges.length
+        'fastgpt.workflow.node_count': data.runtimeNodes.length,
+        'fastgpt.workflow.edge_count': data.runtimeEdges.length
       }
     },
     async (workflowSpan) => {
       const startTime = Date.now();
 
-      await rewriteRuntimeWorkFlow({ nodes: runtimeNodes, edges: runtimeEdges, lang: data.lang });
+      await rewriteRuntimeWorkFlow({
+        nodes: data.runtimeNodes,
+        edges: data.runtimeEdges,
+        lang: data.lang
+      });
       // Init default value
       data.retainDatasetCite = data.retainDatasetCite ?? true;
       data.responseDetail = data.responseDetail ?? true;
       data.responseAllData = data.responseAllData ?? true;
 
       // Start process width initInput
-      const entryNodes = runtimeNodes.filter((item) => item.isEntry);
+      const entryNodes = data.runtimeNodes.filter((item) => item.isEntry);
       // Reset entry
-      runtimeNodes.forEach((item) => {
+      data.runtimeNodes.forEach((item) => {
         // Interactively nodes will use the "isEntry", which does not need to be updated
         if (
           item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
@@ -1519,8 +1520,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         ),
         [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
         [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
-          variables,
-          removeObj: externalProvider.externalWorkflowVariables,
+          variables: data.variables,
+          removeObj: data.externalProvider.externalWorkflowVariables,
           userVariablesConfigs: data.chatConfig?.variables
         }),
         [DispatchNodeResponseKeyEnum.memories]:

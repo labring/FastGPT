@@ -28,7 +28,7 @@ catalog:
   '@types/react-dom': ^18
   '@types/node': ^20
   axios: 1.13.6
-  date-fns: ^4
+  date-fns: ^3.6.0
   dayjs: 1.11.19
   eslint: ^8
   eslint-config-next: 15.5.12
