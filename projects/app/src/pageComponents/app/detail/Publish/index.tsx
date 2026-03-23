@@ -51,7 +51,7 @@ const OutLink = () => {
       title: t('publish:wechat.bot'),
       desc: t('publish:wechat.bot_desc'),
       value: PublishChannelEnum.wechat,
-      isProFn: true
+      isProFn: false
     },
     ...(feConfigs?.show_publish_feishu !== false &&
     !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
