@@ -46,6 +46,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ToolModal from './ToolModal';
 import type { ToolModalAppType } from './ToolModal';
+import { updateDatasetSearchNodesLimit } from '@/web/core/app/utils';
 
 type FormType = {
   avatar: string;
@@ -155,21 +156,24 @@ const CreateAppsPage = () => {
 
       if (templateId) {
         const templateDetail = await getTemplateMarketItemDetail(templateId);
+        const updatedNodes = updateDatasetSearchNodesLimit(templateDetail.workflow.nodes || []);
         return postCreateApp({
           ...baseParams,
           avatar: templateDetail.avatar,
           name: templateDetail.name,
           type: appType,
-          modules: templateDetail.workflow.nodes || [],
+          modules: updatedNodes,
           edges: templateDetail.workflow.edges || [],
           chatConfig: templateDetail.workflow.chatConfig || {},
           templateId: templateDetail.templateId
         });
       }
+
+      const updatedNodes = updateDatasetSearchNodesLimit(emptyTemplates[appType].nodes);
       return postCreateApp({
         ...baseParams,
         type: appType,
-        modules: emptyTemplates[appType].nodes,
+        modules: updatedNodes,
         edges: emptyTemplates[appType].edges,
         chatConfig: emptyTemplates[appType].chatConfig
       });

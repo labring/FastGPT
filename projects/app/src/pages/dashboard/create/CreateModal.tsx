@@ -28,6 +28,7 @@ import { TabEnum } from '@/pageComponents/app/detail/context';
 import SmartCustomerServiceForm from './SmartCustomerServiceForm';
 import type { SmartCustomerServiceFormType } from './SmartCustomerServiceForm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { updateDatasetSearchNodesLimit } from '@/web/core/app/utils';
 
 type FormType = {
   avatar: string;
@@ -115,12 +116,15 @@ const CreateModal = ({
           return node;
         });
 
+        // Update limit based on the updated nodes
+        const finalNodes = updateDatasetSearchNodesLimit(updatedNodes);
+
         return postCreateApp({
           parentId: parentId as string,
           avatar,
           name,
           type,
-          modules: updatedNodes,
+          modules: finalNodes,
           edges: template.edges,
           chatConfig: template.chatConfig
         });
@@ -129,12 +133,15 @@ const CreateModal = ({
       // From template
       if (templateId) {
         const templateDetail = await getTemplateMarketItemDetail(templateId);
+        // assistant 类型不会走到这个分支,所以直接使用原始 nodes
+        const nodes = templateDetail.workflow.nodes || [];
+
         return postCreateApp({
           parentId: parentId as string,
           avatar: templateDetail.avatar,
           name,
           type,
-          modules: templateDetail.workflow.nodes || [],
+          modules: nodes,
           edges: templateDetail.workflow.edges || [],
           chatConfig: templateDetail.workflow.chatConfig || {},
           templateId: templateDetail.templateId
@@ -143,12 +150,15 @@ const CreateModal = ({
 
       // From empty template
       const emptyTemplate = emptyTemplates[type as keyof typeof emptyTemplates];
+      // assistant 类型不会走到这个分支,所以直接使用原始 nodes
+      const nodes = emptyTemplate?.nodes ?? [];
+
       return postCreateApp({
         parentId: parentId as string,
         avatar,
         name,
         type,
-        modules: emptyTemplate?.nodes ?? [],
+        modules: nodes,
         edges: emptyTemplate?.edges ?? [],
         chatConfig: emptyTemplate?.chatConfig ?? {}
       });

@@ -17,6 +17,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -41,6 +42,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from './constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { getWebLLMModel } from '@/web/common/system/utils';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -1249,4 +1251,96 @@ export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchema): str
       .find((m) => m.flowNodeType === FlowNodeTypeEnum.systemConfig)
       ?.inputs.find((i) => i.key === NodeInputKeyEnum.chatInputGuide)?.value.customUrl || ''
   );
+};
+
+/**
+ * 计算知识库搜索节点的动态 limit 值
+ * 根据工作流中所有 chatNode 的模型的 quoteMaxToken 取最小值
+ * 如果没有 chatNode 或模型为空，返回默认值 5000
+ *
+ * @param nodes - 工作流节点列表
+ * @returns 计算后的 limit 值
+ */
+/**
+ * 计算工作流中知识库搜索节点的动态 limit 值
+ * 基于所有 AI 对话节点的模型 quoteMaxToken 取最小值
+ *
+ * @param nodes - 工作流节点列表
+ * @returns 计算后的 limit 值
+ */
+export const calculateDatasetLimit = (nodes: StoreNodeItemType[]): number => {
+  const DEFAULT_LIMIT = 5000;
+  let minQuoteMaxToken: number | null = null;
+
+  nodes.forEach((node) => {
+    // 只处理 chatNode 和 agent 节点
+    if (
+      node.flowNodeType === FlowNodeTypeEnum.chatNode ||
+      node.flowNodeType === FlowNodeTypeEnum.agent
+    ) {
+      // 获取模型配置
+      const modelInput = node.inputs.find(
+        (input: FlowNodeInputItemType) => input.key === NodeInputKeyEnum.aiModel
+      );
+      const modelValue = modelInput?.value;
+
+      // getWebLLMModel 会自动处理空值情况，返回默认模型
+      const modelInfo = getWebLLMModel(modelValue);
+      const quoteMaxToken = modelInfo?.quoteMaxToken;
+
+      // 如果能获取到 quoteMaxToken
+      if (quoteMaxToken && quoteMaxToken > 0) {
+        if (minQuoteMaxToken === null) {
+          minQuoteMaxToken = quoteMaxToken;
+        } else {
+          minQuoteMaxToken = Math.min(minQuoteMaxToken, quoteMaxToken);
+        }
+      }
+    }
+  });
+
+  // 如果没有找到有效的 quoteMaxToken，返回默认值
+  return minQuoteMaxToken ?? DEFAULT_LIMIT;
+};
+
+/**
+ * 更新工作流中所有 datasetSearchNode 的 limit 值
+ * 会创建节点的深拷贝，不修改原始数据
+ *
+ * @param nodes - 工作流节点列表
+ * @returns 更新后的节点列表
+ */
+/**
+ * 更新工作流中所有 datasetSearchNode 的 limit 值
+ * 会创建节点的深拷贝，不修改原始数据
+ *
+ * @param nodes - 工作流节点列表
+ * @returns 更新后的节点列表
+ */
+export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): StoreNodeItemType[] => {
+  // 计算动态 limit
+  const calculatedLimit = calculateDatasetLimit(nodes);
+
+  // 深拷贝节点列表，避免修改原始数据
+  const updatedNodes = nodes.map((node) => {
+    // 只处理 datasetSearchNode
+    if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+      return {
+        ...node,
+        inputs: node.inputs.map((input: FlowNodeInputItemType) => {
+          // 只更新 datasetMaxTokens (limit) 字段
+          if (input.key === NodeInputKeyEnum.datasetMaxTokens) {
+            return {
+              ...input,
+              value: calculatedLimit
+            };
+          }
+          return input;
+        })
+      };
+    }
+    return node;
+  });
+
+  return updatedNodes;
 };
