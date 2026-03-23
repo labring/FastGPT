@@ -25,7 +25,7 @@
   "release_mouse_to_upload": "Drop the file to upload it.",
   "click_or_drag_license_file": "Drag & drop or click to upload file",
   "only_support_lic_type_files": "Only .lic files are supported.",
-  "max_support_one_file": "Only 1 file allowed. File size cannot exceed {maxSize}.",
+  "max_support_one_file": "Only 1 file allowed. File size cannot exceed {{maxSize}}.",
   "selected_files": "Selected files: ",
   "missing_license_info": "Licensing information is missing.",
   "device_info_format_incorrect": "Device information is invalid.",
