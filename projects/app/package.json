@@ -61,7 +61,6 @@
     "p-limit": "^7.2.0",
     "qrcode": "^1.5.4",
     "react": "catalog:",
-    "react-day-picker": "^8.7.1",
     "react-dom": "catalog:",
     "react-hook-form": "7.43.1",
     "react-i18next": "catalog:",

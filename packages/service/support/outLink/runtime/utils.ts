@@ -175,12 +175,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     await appendRedisCache(streamResKey, '', 120);
 
     // Merge global variables from database
-    let variables = {};
-    if (chatDetail?.variables) {
-      variables = {
-        ...chatDetail.variables
-      };
-    }
+    const variables = chatDetail?.variables ?? {};
 
     const {
       assistantResponses,
