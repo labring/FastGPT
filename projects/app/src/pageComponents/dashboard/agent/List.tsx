@@ -1,47 +1,35 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Grid, Flex, VStack, Spinner } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import PermissionIconText from '@/components/support/permission/IconText';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import {
-  AppFolderTypeList,
-  AppTypeEnum,
-  AppTypeList,
-  ToolTypeList
-} from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
   getCollaboratorList,
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
-import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import UserBox from '@fastgpt/web/components/common/UserBox';
-import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import AppCard from './AppCard';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -65,6 +53,8 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
     appType,
     loadMyApps,
     isFetchingApps,
+    hasMore,
+    sentinelCallbackRef,
     onUpdateApp,
     setMoveAppId,
     folderDetail,
@@ -151,6 +141,19 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
       }
     }
   );
+
+  // 稳定回调引用，辅助 AppCard 的 React.memo 生效
+  const stableSetEditedApp = useCallback(
+    (app: EditResourceInfoFormType) => setEditedApp(app),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const stableSetEditPerAppId = useCallback(
+    (id: string) => setEditPerAppId(id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   if (myApps.length === 0 && isFetchingApps) return null;
 
   return (
@@ -188,274 +191,34 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
         >
           {showCreateCard &&
             (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
-          {myApps.map((app, index) => {
-            const isAgent = AppTypeList.includes(app.type);
-            const isTool = ToolTypeList.includes(app.type);
-            const isFolder = AppFolderTypeList.includes(app.type);
-            return (
-              <MyTooltip
-                key={app._id}
-                label={
-                  app.type === AppTypeEnum.folder
-                    ? t('common:open_folder')
-                    : app.permission.hasWritePer || app.permission.hasReadChatLogPer
-                      ? t('app:edit_app')
-                      : t('app:go_to_chat')
-                }
-              >
-                <MyBox
-                  py={4}
-                  px={5}
-                  cursor={'pointer'}
-                  border={'base'}
-                  bg={'white'}
-                  borderRadius={'10px'}
-                  position={'relative'}
-                  display={'flex'}
-                  flexDirection={'column'}
-                  _hover={{
-                    borderColor: 'primary.300',
-                    boxShadow: '1.5',
-                    '& .more': {
-                      display: 'flex'
-                    },
-                    '& .time': {
-                      display: ['flex', 'none']
-                    }
-                  }}
-                  onClick={() => {
-                    if (AppFolderTypeList.includes(app.type)) {
-                      setSearchKey('');
-                      router.push({
-                        query: {
-                          ...router.query,
-                          parentId: app._id
-                        }
-                      });
-                    } else if (app.permission.hasWritePer || app.permission.hasReadChatLogPer) {
-                      router.push(`/app/detail?appId=${app._id}`);
-                    } else {
-                      window.open(
-                        `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
-                        '_blank'
-                      );
-                    }
-                  }}
-                  {...getBoxProps({
-                    dataId: app._id,
-                    isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
-                  })}
-                >
-                  <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
-                    <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                    <Box
-                      color={'myGray.900'}
-                      fontWeight={'medium'}
-                      minWidth={0}
-                      overflow="hidden"
-                      h="100%"
-                    >
-                      <Box className={'textEllipsis'}>{app.name}</Box>
-                    </Box>
-                    <Box justifySelf="end" mr={-5}>
-                      <AppTypeTag type={app.type} />
-                    </Box>
-                  </Grid>
-                  <Box
-                    flex={'1 0 56px'}
-                    mt={3}
-                    textAlign={'justify'}
-                    wordBreak={'break-all'}
-                    fontSize={'xs'}
-                    color={'myGray.500'}
-                  >
-                    <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-                      {app.intro || t('common:no_intro')}
-                    </Box>
-                  </Box>
-                  <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-                    <HStack flex={'1 0 0'}>
-                      <UserBox
-                        sourceMember={app.sourceMember}
-                        fontSize="xs"
-                        avatarSize="1rem"
-                        spacing={0.5}
-                      />
-                      <PermissionIconText
-                        private={app.private}
-                        color={'myGray.500'}
-                        iconColor={'myGray.400'}
-                        w={'0.875rem'}
-                      />
-                    </HStack>
-                    <HStack>
-                      {isPc && (
-                        <HStack spacing={0.5} className="time">
-                          <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                          <Box color={'myGray.500'}>
-                            {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
-                          </Box>
-                        </HStack>
-                      )}
-                      {(AppFolderTypeList.includes(app.type)
-                        ? app.permission.hasManagePer
-                        : app.permission.hasWritePer || app.permission.hasReadChatLogPer) && (
-                        <Box className="more" display={['', 'none']}>
-                          <MyMenu
-                            Button={
-                              <IconButton
-                                size={'xsSquare'}
-                                variant={'transparentBase'}
-                                icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                                aria-label={''}
-                              />
-                            }
-                            menuList={[
-                              ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
-                                ? [
-                                    {
-                                      children: [
-                                        {
-                                          icon: 'core/chat/chatLight',
-                                          type: 'grayBg' as MenuItemType,
-                                          label: t('app:go_to_chat'),
-                                          onClick: () => {
-                                            window.open(
-                                              `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
-                                              '_blank'
-                                            );
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                : []),
-                              ...([AppTypeEnum.workflowTool].includes(app.type)
-                                ? [
-                                    {
-                                      children: [
-                                        {
-                                          icon: 'core/chat/chatLight',
-                                          type: 'grayBg' as MenuItemType,
-                                          label: t('app:go_to_run'),
-                                          onClick: () => {
-                                            window.open(
-                                              `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
-                                              '_blank'
-                                            );
-                                          }
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                : []),
-                              ...(app.permission.hasManagePer
-                                ? [
-                                    {
-                                      children: [
-                                        {
-                                          icon: 'edit',
-                                          type: 'grayBg' as MenuItemType,
-                                          label: t('common:dataset.Edit Info'),
-                                          onClick: () => {
-                                            if (app.type === AppTypeEnum.httpPlugin) {
-                                              toast({
-                                                title: t('app:type.Http plugin_deprecated'),
-                                                status: 'warning'
-                                              });
-                                            }
-                                            setEditedApp({
-                                              id: app._id,
-                                              avatar: app.avatar,
-                                              name: app.name,
-                                              intro: app.intro
-                                            });
-                                          }
-                                        },
-                                        ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
-                                        !(parentApp ? parentApp.permission : app.permission)
-                                          .hasManagePer
-                                          ? []
-                                          : [
-                                              {
-                                                icon: 'common/file/move',
-                                                type: 'grayBg' as MenuItemType,
-                                                label: t('common:move_to'),
-                                                onClick: () => setMoveAppId(app._id)
-                                              }
-                                            ]),
-                                        ...(app.permission.hasManagePer
-                                          ? [
-                                              {
-                                                icon: 'key',
-                                                type: 'grayBg' as MenuItemType,
-                                                label: t('common:permission.Permission'),
-                                                onClick: () => setEditPerAppId(app._id)
-                                              }
-                                            ]
-                                          : [])
-                                      ]
-                                    }
-                                  ]
-                                : []),
-                              ...(!app.permission?.hasWritePer ||
-                              app.type === AppTypeEnum.mcpToolSet ||
-                              app.type === AppTypeEnum.folder ||
-                              app.type === AppTypeEnum.httpToolSet ||
-                              app.type === AppTypeEnum.httpPlugin
-                                ? []
-                                : [
-                                    {
-                                      children: [
-                                        {
-                                          icon: 'copy',
-                                          type: 'grayBg' as MenuItemType,
-                                          label: t('app:copy_one_app'),
-                                          onClick: () =>
-                                            openConfirmCopy({
-                                              onConfirm: () => onclickCopy({ appId: app._id })
-                                            })()
-                                        }
-                                      ]
-                                    }
-                                  ]),
-                              ...(app.permission.isOwner
-                                ? [
-                                    {
-                                      children: [
-                                        {
-                                          type: 'danger' as 'danger',
-                                          icon: 'delete',
-                                          label: t('common:Delete'),
-                                          onClick: () =>
-                                            openConfirmDel({
-                                              onConfirm: () => onclickDelApp(app._id),
-                                              inputConfirmText: app.name,
-                                              customContent: (() => {
-                                                if (isFolder)
-                                                  return t('app:confirm_delete_folder_tip');
-                                                if (isAgent) return t('app:confirm_del_app_tip');
-                                                if (isTool) return t('app:confirm_del_tool_tip');
-                                                return t('app:confirm_del_app_tip');
-                                              })()
-                                            })()
-                                        }
-                                      ]
-                                    }
-                                  ]
-                                : [])
-                            ]}
-                          />
-                        </Box>
-                      )}
-                    </HStack>
-                  </HStack>
-                </MyBox>
-              </MyTooltip>
-            );
-          })}
+          {myApps.map((app) => (
+            <AppCard
+              key={app._id}
+              app={app}
+              parentApp={parentApp}
+              getBoxProps={getBoxProps}
+              setEditedApp={stableSetEditedApp}
+              setEditPerAppId={stableSetEditPerAppId}
+              openConfirmDel={openConfirmDel}
+              openConfirmCopy={openConfirmCopy}
+              onclickDelApp={onclickDelApp}
+              onclickCopy={onclickCopy}
+              toast={toast}
+            />
+          ))}
         </Grid>
       )}
+      {/* 底部加载指示器：
+          - hasMore=true 时始终可见，让用户能直观看到"底部有更多"
+          - 搭配 rootMargin 提前加载：数据在用户滚动到此处之前已开始拉取，Spinner 正好作为等待反馈
+          - hasMore=false 且不在加载中时消失，表示已全部加载完 */}
+      {myApps.length > 0 && (hasMore || isFetchingApps) && (
+        <Flex justifyContent="center" py={4}>
+          <Spinner size="md" color="primary.500" />
+        </Flex>
+      )}
+      {/* 哨兵：始终挂载，IntersectionObserver 观察此元素来触发 loadMore */}
+      <Box ref={sentinelCallbackRef} h="1px" aria-hidden />
       <DelConfirmModal />
       <ConfirmCopyModal />
       {!!editedApp && (

@@ -17,6 +17,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 
@@ -25,10 +26,29 @@ export type GetDatasetListBody = {
   type?: DatasetTypeEnum;
   searchKey?: string;
   scene?: string;
+  pageNum?: number;
+  pageSize?: number;
 };
 
-async function handler(req: ApiRequestProps<GetDatasetListBody>) {
-  const { parentId, type, searchKey, scene } = req.body;
+type ListDatasetResponse = DatasetListItemType[] | { list: DatasetListItemType[]; total: number };
+
+async function handler(req: ApiRequestProps<GetDatasetListBody>): Promise<ListDatasetResponse> {
+  const { parentId, type, searchKey, scene, pageNum, pageSize } = req.body;
+  const isPaginated = pageNum !== undefined && pageSize !== undefined;
+
+  // 分页参数边界验证
+  if (isPaginated) {
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+      throw new Error('pageNum must be a positive integer');
+    }
+    if (pageSize < 1 || !Number.isInteger(pageSize)) {
+      throw new Error('pageSize must be a positive integer');
+    }
+  }
+
+  // 分页参数最大值限制
+  const MAX_PAGE_SIZE = 100;
+  const safePageSize = isPaginated ? Math.min(pageSize, MAX_PAGE_SIZE) : undefined;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -123,16 +143,28 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     };
   })();
 
-  const myDatasets = await MongoDataset.find(findDatasetQuery)
-    .sort({
-      updateTime: -1
-    })
-    .lean();
+  // 分页模式：使用数据库级分页 + countDocuments 获取准确的 total
+  // 非分页模式：保留全量查询（用于无限滚动等场景）
+
+  const baseQuery = findDatasetQuery;
+
+  // 分页模式下并行执行 count 和分页查询
+  const [total, myDatasets] = isPaginated
+    ? await Promise.all([
+        MongoDataset.countDocuments(baseQuery),
+        MongoDataset.find(baseQuery)
+          .sort({ updateTime: -1 })
+          .skip((pageNum! - 1) * safePageSize!)
+          .limit(safePageSize!)
+          .lean()
+      ])
+    : [0, await MongoDataset.find(baseQuery).sort({ updateTime: -1 }).lean()];
 
   let dataCountMap: Map<string, number> | undefined;
   if (scene !== undefined) {
     // Count data that conforms to QA structure
     // Only count data with q field
+    // 注意：分页模式下只统计当前页的数据，非分页模式下统计全量
     const dataCountsPromises = myDatasets.map((dataset) =>
       MongoDatasetData.countDocuments({
         teamId,
@@ -209,9 +241,12 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({
+  const result = await addSourceMember({
     list: formatDatasets
   });
+
+  if (isPaginated) return { list: result, total };
+  return result;
 }
 
 export default NextAPI(handler);

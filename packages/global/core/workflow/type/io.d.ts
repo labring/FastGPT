@@ -131,7 +131,7 @@ export type SelectedDatasetType = {
   datasetId: string;
   avatar: string;
   name: string;
-  vectorModel: EmbeddingModelItemType;
+  vectorModel?: EmbeddingModelItemType;
   dataCount?: number;
   datasetType?: `${DatasetTypeEnum}`;
 };
