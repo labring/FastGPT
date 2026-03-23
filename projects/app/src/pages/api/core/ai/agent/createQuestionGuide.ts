@@ -10,7 +10,7 @@ import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
-import { authOutLinkInit } from '@/service/support/permission/auth/outLink';
+import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';

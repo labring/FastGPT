@@ -336,74 +336,71 @@ export const runAgentCall = async ({
 
     // 4. Call tools
     let toolCallStep = false;
-    await Promise.all(
-      toolCalls.map(async (tool) => {
-        const {
+    for await (const tool of toolCalls) {
+      const {
+        response,
+        assistantMessages: toolAssistantMessages,
+        usages: toolUsages,
+        interactive,
+        stop
+      } = await handleToolResponse({
+        call: tool,
+        messages: cloneRequestMessages
+      });
+      childrenUsages.push(...toolUsages);
+      usagePush?.(toolUsages);
+
+      // 5. Add tool response to messages
+      // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
+      const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+
+      const { compressed: compressed_context, usage: compressionUsage } =
+        await compressToolResponse({
           response,
-          assistantMessages: toolAssistantMessages,
-          usages: toolUsages,
-          interactive,
-          stop
-        } = await handleToolResponse({
-          call: tool,
-          messages: cloneRequestMessages
+          model: modelData,
+          currentMessagesTokens,
+          toolLength: toolCalls.length,
+          reservedTokens: 8000 // 预留 8k tokens 给输出
         });
-        childrenUsages.push(...toolUsages);
-        usagePush?.(toolUsages);
+      if (compressionUsage) {
+        childrenUsages.push(compressionUsage);
+        usagePush?.([compressionUsage]);
+        onToolCompress?.({
+          call: tool,
+          response: compressed_context,
+          usage: {
+            inputTokens: compressionUsage.inputTokens || 0,
+            outputTokens: compressionUsage.outputTokens || 0,
+            totalPoints: compressionUsage.totalPoints || 0
+          }
+        });
+      }
 
-        // 5. Add tool response to messages
-        // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
-        const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+      const toolMessage: ChatCompletionMessageParam = {
+        tool_call_id: tool.id,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        content: compressed_context
+      };
+      assistantMessages.push(toolMessage);
+      requestMessages.push(toolMessage);
+      assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
 
-        const { compressed: compressed_context, usage: compressionUsage } =
-          await compressToolResponse({
-            response,
-            model: modelData,
-            currentMessagesTokens,
-            toolLength: toolCalls.length,
-            reservedTokens: 8000 // 预留 8k tokens 给输出
-          });
-        if (compressionUsage) {
-          childrenUsages.push(compressionUsage);
-          usagePush?.([compressionUsage]);
-          onToolCompress?.({
-            call: tool,
-            response: compressed_context,
-            usage: {
-              inputTokens: compressionUsage.inputTokens || 0,
-              outputTokens: compressionUsage.outputTokens || 0,
-              totalPoints: compressionUsage.totalPoints || 0
+      if (interactive) {
+        interactiveResponse = {
+          type: 'toolChildrenInteractive',
+          params: {
+            childrenResponse: interactive,
+            toolParams: {
+              memoryRequestMessages: [],
+              toolCallId: tool.id
             }
-          });
-        }
-
-        const toolMessage: ChatCompletionMessageParam = {
-          tool_call_id: tool.id,
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          content: compressed_context
+          }
         };
-        assistantMessages.push(toolMessage);
-        requestMessages.push(toolMessage);
-        assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
-
-        if (interactive) {
-          interactiveResponse = {
-            type: 'toolChildrenInteractive',
-            params: {
-              childrenResponse: interactive,
-              toolParams: {
-                memoryRequestMessages: [],
-                toolCallId: tool.id
-              }
-            }
-          };
-        }
-        if (stop) {
-          toolCallStep = true;
-        }
-      })
-    );
-
+      }
+      if (stop) {
+        toolCallStep = true;
+      }
+    }
     if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep || isAborted?.()) {
       break;
     }

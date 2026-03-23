@@ -33,6 +33,10 @@ export enum QueueNames {
   datasetDelete = 'datasetDelete',
   appDelete = 'appDelete',
   teamDelete = 'teamDelete',
+
+  // Publish
+  wechatPoll = 'wechatPoll',
+
   /** @deprecated */
   websiteSync = 'websiteSync'
 }

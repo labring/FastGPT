@@ -66,5 +66,6 @@
   "total_usage": "Total Usage",
   "usage_detail": "Details",
   "user_type": "type",
-  "wecom": "WeCom"
+  "wecom": "WeCom",
+  "wechat": "WeChat Personal"
 }

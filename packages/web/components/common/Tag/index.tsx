@@ -1,7 +1,15 @@
 import React, { useMemo } from 'react';
 import { Box, type BoxProps, Flex, type FlexProps } from '@chakra-ui/react';
 
-type ColorSchemaType = 'white' | 'blue' | 'green' | 'red' | 'yellow' | 'gray' | 'purple' | 'adora';
+export type ColorSchemaType =
+  | 'white'
+  | 'blue'
+  | 'green'
+  | 'red'
+  | 'yellow'
+  | 'gray'
+  | 'purple'
+  | 'adora';
 
 export type TagProps = FlexProps & {
   children: React.ReactNode | React.ReactNode[];

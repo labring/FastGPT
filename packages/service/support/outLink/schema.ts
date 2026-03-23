@@ -110,6 +110,11 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 try {
   OutLinkSchema.index({ shareId: -1 });
   OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
+  // Wechat polling recovery: find online channels on startup
+  OutLinkSchema.index(
+    { type: 1, 'app.status': 1 },
+    { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
+  );
 } catch (error) {
   logger.error('Failed to build outlink indexes', { error });
 }
