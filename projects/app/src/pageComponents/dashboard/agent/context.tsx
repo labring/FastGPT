@@ -79,6 +79,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
             AppTypeEnum.folder,
             AppTypeEnum.toolFolder,
             AppTypeEnum.simple,
+            AppTypeEnum.assistant,
             AppTypeEnum.workflow,
             AppTypeEnum.workflowTool
           ];
