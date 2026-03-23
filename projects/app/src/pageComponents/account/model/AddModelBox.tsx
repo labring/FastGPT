@@ -98,7 +98,48 @@ const InputStyles = {
 
 const PriceInputStyles = {
   bg: 'white',
-  w: '100%'
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
+};
+
+const BorderlessPriceInputStyles = {
+  variant: 'unstyled' as const,
+  bg: 'transparent',
+  border: 'none',
+  boxShadow: 'none',
+  _focus: {
+    boxShadow: 'none'
+  },
+  _focusVisible: {
+    boxShadow: 'none'
+  }
+};
+
+const FixedPriceValueInputStyles = {
+  boxSizing: 'border-box' as const,
+  appearance: 'textfield' as const,
+  sx: {
+    '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': {
+      appearance: 'none',
+      margin: 0
+    }
+  }
+};
+
+const InvalidPriceInputStyles = {
+  borderColor: 'red.500',
+  _hover: {
+    borderColor: 'red.500'
+  },
+  _focus: {
+    borderColor: 'red.500',
+    boxShadow: '0 0 0 1px var(--chakra-colors-red-500)'
+  },
+  _focusVisible: {
+    borderColor: 'red.500',
+    boxShadow: '0 0 0 1px var(--chakra-colors-red-500)'
+  }
 };
 
 const emptyPriceTier = {
@@ -112,6 +153,29 @@ const isEmptyTier = (tier?: ModelPriceTierType) =>
   (typeof tier.maxInputTokens !== 'number' &&
     typeof tier.inputPrice !== 'number' &&
     typeof tier.outputPrice !== 'number');
+
+const getOptionalNumber = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) return undefined;
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return undefined;
+
+    const parsedValue = Number(trimmedValue);
+    return Number.isFinite(parsedValue) ? parsedValue : undefined;
+  }
+
+  return undefined;
+};
+
+const getOptionalInteger = (value: unknown) => {
+  const parsedValue = getOptionalNumber(value);
+  return typeof parsedValue === 'number' ? Math.floor(parsedValue) : undefined;
+};
 
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
 
@@ -149,7 +213,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   <Grid
     templateColumns={['1fr', '140px minmax(0, 1fr)']}
     rowGap={[3, 4]}
-    columnGap={[6, 12]}
+    columnGap={8}
     py={[4, 5]}
     borderBottom={'1px solid'}
     borderColor={'myGray.200'}
@@ -222,7 +286,7 @@ const ProviderField = React.memo(function ProviderField({
   });
 
   return (
-    <Field label={t('common:model.provider')} colSpan={[1, 2]}>
+    <Field label={t('common:model.provider')}>
       <MySelect
         value={provider}
         onChange={(value) => setValue('provider', value)}
@@ -333,6 +397,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
   setValue: UseFormSetValue<SystemModelItemType>;
   t: any;
 }) {
+  const [invalidMaxInputMap, setInvalidMaxInputMap] = useState<Record<number, boolean>>({});
   const {
     fields: priceTierFields,
     append: appendPriceTier,
@@ -348,8 +413,9 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
   });
 
   const ensureNextEmptyPriceTier = useCallback(
-    (index: number, value?: number) => {
+    (index: number, value?: number, inputEl?: HTMLInputElement | null, lowerBound?: number) => {
       if (typeof value !== 'number' || Number.isNaN(value)) return;
+      if (typeof lowerBound === 'number' && value <= lowerBound) return;
 
       const tiers = getValues('priceTiers') || [];
       const isLastTier = index === tiers.length - 1;
@@ -357,6 +423,18 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
       if (!isLastTier) return;
 
       appendPriceTier(emptyPriceTier as any);
+
+      if (inputEl) {
+        const selectionStart = inputEl.selectionStart;
+        const selectionEnd = inputEl.selectionEnd;
+
+        requestAnimationFrame(() => {
+          inputEl.focus();
+          if (selectionStart !== null && selectionEnd !== null) {
+            inputEl.setSelectionRange(selectionStart, selectionEnd);
+          }
+        });
+      }
     },
     [appendPriceTier, getValues]
   );
@@ -395,6 +473,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
         filter={'none'}
         sx={{
           '&, & *': {
+            fontSize: '12px',
             boxShadow: 'none !important',
             filter: 'none !important'
           }
@@ -406,7 +485,6 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
           sx={{
             th: {
               borderBottom: 'none',
-              textAlign: 'center',
               verticalAlign: 'middle'
             },
             td: {
@@ -418,33 +496,33 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
           <Thead bg={'#F8FAFC'}>
             <Tr>
               <Th
-                px={3}
+                textTransform={'none'}
                 py={3}
-                fontSize={'xs'}
+                fontSize={'12px'}
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
               >
                 {t('account:model.price_tier_range')}
               </Th>
               <Th
-                px={3}
-                py={3}
-                fontSize={'xs'}
+                p={3}
+                w={'100px'}
+                fontSize={'12px'}
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
               >
                 {t('account:model.input_price')}
               </Th>
               <Th
-                px={3}
-                py={3}
-                fontSize={'xs'}
+                p={3}
+                w={'100px'}
+                fontSize={'12px'}
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
               >
                 {t('account:model.output_price')}
               </Th>
-              <Th px={3} py={3} fontSize={'xs'}>
+              <Th py={3} textAlign={'center'} fontSize={'12px'}>
                 {t('account:model.action')}
               </Th>
             </Tr>
@@ -460,13 +538,28 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       Number.isFinite(previousTier.maxInputTokens)
                     ? previousTier.maxInputTokens
                     : 0;
-              const minAllowedMax = previousTierMax + 1;
-              const lowerBoundLabel = index === 0 ? '1' : String(previousTierMax);
+              const lowerBound = index === 0 ? 1 : previousTierMax;
+              const minAllowedMax = lowerBound + 1;
+              const lowerBoundLabel = String(lowerBound);
               const isLastTier = index === priceTierFields.length - 1;
+              const isInvalidMaxInput =
+                invalidMaxInputMap[index] ??
+                (typeof currentTier?.maxInputTokens === 'number' &&
+                  currentTier.maxInputTokens <= lowerBound);
               const isEmptyAction =
                 !currentTier?.maxInputTokens &&
                 !currentTier?.inputPrice &&
                 !currentTier?.outputPrice;
+              const maxInputTokensRegister = register(`priceTiers.${index}.maxInputTokens`, {
+                min: minAllowedMax,
+                setValueAs: getOptionalInteger
+              });
+              const inputPriceRegister = register(`priceTiers.${index}.inputPrice`, {
+                setValueAs: getOptionalNumber
+              });
+              const outputPriceRegister = register(`priceTiers.${index}.outputPrice`, {
+                setValueAs: getOptionalNumber
+              });
 
               return (
                 <Tr key={field.id}>
@@ -477,51 +570,107 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                     borderRight={'1px solid'}
                     borderColor={'myGray.200'}
                   >
-                    <HStack spacing={2}>
-                      <Box color={'myGray.700'} fontSize={'sm'} whiteSpace={'nowrap'}>
-                        {`${lowerBoundLabel} < input tokens <=`}
+                    <Flex
+                      gap={1}
+                      alignItems={'center'}
+                      color={'myGray.700'}
+                      fontSize={'12px'}
+                      whiteSpace={'nowrap'}
+                    >
+                      <Input
+                        type={'number'}
+                        step={1}
+                        min={minAllowedMax}
+                        fontSize={'12px'}
+                        value={lowerBoundLabel}
+                        disabled
+                        _disabled={{
+                          bg: 'myGray.50',
+                          color: 'myGray.500',
+                          cursor: 'not-allowed'
+                        }}
+                        {...PriceInputStyles}
+                      />
+                      <Box>
+                        {' < '}
+                        {t('account:model.price_tier_input_tokens')}
+                        {' <= '}
                       </Box>
-                      <MyNumberInput
-                        register={register}
-                        name={`priceTiers.${index}.maxInputTokens`}
+                      <Input
+                        type={'number'}
                         step={1}
                         min={minAllowedMax}
                         placeholder={isLastTier ? t('account:model.price_tier_open_ended') : ''}
-                        fontSize={'sm'}
+                        fontSize={'12px'}
+                        {...maxInputTokensRegister}
                         {...PriceInputStyles}
+                        onChange={(e) => {
+                          maxInputTokensRegister.onChange(e);
+                          const nextValue = getOptionalInteger(e.target.value);
+                          setInvalidMaxInputMap((state) => ({
+                            ...state,
+                            [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                          }));
+                          ensureNextEmptyPriceTier(index, nextValue, e.currentTarget, lowerBound);
+                        }}
+                        onBlur={(e) => {
+                          maxInputTokensRegister.onBlur(e);
+                          const nextValue = getOptionalInteger(e.target.value);
+                          setInvalidMaxInputMap((state) => ({
+                            ...state,
+                            [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                          }));
+                        }}
+                        isInvalid={isInvalidMaxInput}
+                        {...(isInvalidMaxInput ? InvalidPriceInputStyles : {})}
                       />
-                    </HStack>
+                    </Flex>
                   </Td>
+
                   <Td
-                    px={3}
+                    px={0}
                     py={2}
                     borderTop={'1px solid'}
                     borderRight={'1px solid'}
                     borderColor={'myGray.200'}
                   >
-                    <MyNumberInput
-                      register={register}
-                      name={`priceTiers.${index}.inputPrice`}
-                      step={0.01}
-                      fontSize={'sm'}
-                      {...PriceInputStyles}
-                    />
+                    <Flex justifyContent={'center'} alignItems={'center'} gap={1} px={3}>
+                      <Input
+                        type={'number'}
+                        step={0.01}
+                        fontSize={'12px'}
+                        {...inputPriceRegister}
+                        {...PriceInputStyles}
+                        {...BorderlessPriceInputStyles}
+                        {...FixedPriceValueInputStyles}
+                      />
+                      <Box flexShrink={0} color={'myGray.500'}>
+                        {t('account:model.price_tier_input_price_unit')}
+                      </Box>
+                    </Flex>
                   </Td>
+
                   <Td
-                    px={3}
+                    px={0}
                     py={2}
                     borderTop={'1px solid'}
                     borderRight={'1px solid'}
                     borderColor={'myGray.200'}
                   >
-                    <MyNumberInput
-                      register={register}
-                      name={`priceTiers.${index}.outputPrice`}
-                      step={0.01}
-                      onBlur={(value) => ensureNextEmptyPriceTier(index, value)}
-                      fontSize={'sm'}
-                      {...PriceInputStyles}
-                    />
+                    <Flex justifyContent={'center'} alignItems={'center'} gap={1} px={3}>
+                      <Input
+                        type={'number'}
+                        step={0.01}
+                        fontSize={'12px'}
+                        {...outputPriceRegister}
+                        {...PriceInputStyles}
+                        {...BorderlessPriceInputStyles}
+                        {...FixedPriceValueInputStyles}
+                      />
+                      <Box flexShrink={0} color={'myGray.500'}>
+                        {t('account:model.price_tier_input_price_unit')}
+                      </Box>
+                    </Flex>
                   </Td>
                   <Td px={3} py={2} borderTop={'1px solid'} borderColor={'myGray.200'}>
                     <Button
@@ -529,6 +678,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       size={'sm'}
                       color={isEmptyAction ? 'myGray.400' : 'primary.600'}
                       fontWeight={'600'}
+                      fontSize={'12px'}
                       onClick={() => clearPriceTier(index)}
                       isDisabled={priceTierFields.length === 1 && isEmptyAction}
                       _hover={{ bg: 'transparent' }}
@@ -682,7 +832,7 @@ export const ModelEditModal = ({
 
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
-        let currentRangeStart = 1;
+        let currentLowerExclusiveBound = 1;
         priceTiers.forEach((tier, index) => {
           const hasPrice =
             typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
@@ -695,12 +845,15 @@ export const ModelEditModal = ({
             throw new Error(t('account:model.price_tier_max_required'));
           }
 
-          if (typeof tier.maxInputTokens === 'number' && tier.maxInputTokens < currentRangeStart) {
+          if (
+            typeof tier.maxInputTokens === 'number' &&
+            tier.maxInputTokens <= currentLowerExclusiveBound
+          ) {
             throw new Error(t('account:model.price_tier_range_invalid'));
           }
 
           if (typeof tier.maxInputTokens === 'number') {
-            currentRangeStart = tier.maxInputTokens + 1;
+            currentLowerExclusiveBound = tier.maxInputTokens;
           }
         });
 
@@ -789,7 +942,7 @@ export const ModelEditModal = ({
       w="800px"
       h={'100%'}
     >
-      <ModalBody py={[3, 4]}>
+      <ModalBody px={0} pr={2} py={[3, 4]}>
         <Box key={key}>
           <Section title={t('account:model.basic_config_section')}>
             <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
