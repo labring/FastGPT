@@ -32,6 +32,10 @@ import { formatFileInput } from './sub/file/utils';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { masterCall } from './master/call';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
+import {
+  normalizeSkillIds,
+  type SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import { getSubapps } from './utils';
 import type { AgentCapability } from './capability/type';
 import { createCapabilityToolCallHandler } from './capability/type';
@@ -52,7 +56,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiSystemPrompt]: string;
 
   [NodeInputKeyEnum.selectedTools]?: SkillToolType[];
-  [NodeInputKeyEnum.skills]?: string[]; // skill ID 数组
+  [NodeInputKeyEnum.skills]?: Array<string | SelectedAgentSkillItemType>; // 兼容 string[]（debugChat）和对象数组（workflow NodeAgent）
   [NodeInputKeyEnum.useEditDebugSandbox]?: boolean; // 客户端显式指定使用 editDebug 沙箱
 
   // Knowledge base search configuration
@@ -111,6 +115,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const aiHistoryValues = chatHistories
     .filter((item) => item.obj === ChatRoleEnum.AI)
     .flatMap((item) => item.value);
+  // 规范化：兼容 string[]（debugChat 路径）和 SelectedAgentSkillItemType[]（workflow NodeAgent 路径）
+  const normalizedSkillIds = normalizeSkillIds(skillIds);
   const historiesMessages = chats2GPTMessages({
     messages: chatHistories,
     reserveId: false,
@@ -208,7 +214,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const sandboxMode = useEditDebugSandbox_flag ? 'editDebug' : 'sessionRuntime';
 
     const sandboxCap = await createSandboxSkillsCapability({
-      skillIds: skillIds ?? [],
+      skillIds: normalizedSkillIds,
       teamId: runningAppInfo.teamId,
       tmbId: runningAppInfo.tmbId,
       sessionId: sandboxSessionId,

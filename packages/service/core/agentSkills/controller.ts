@@ -12,6 +12,8 @@ import type {
 import type { ClientSession } from '../../common/mongo';
 import { uploadSkillPackage, deleteSkillAllPackages } from './storage';
 import { createVersion } from './version/controller';
+import { MongoApp } from '../app/schema';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 // Types for service operations
 type CreateSkillData = {
@@ -225,8 +227,38 @@ export async function listSkills(
     MongoAgentSkills.countDocuments(query)
   ]);
 
+  // Append appCount for non-folder skills
+  const nonFolderSkills = skills.filter((s) => s.type !== AgentSkillTypeEnum.folder);
+  const appCountMap = new Map<string, number>();
+
+  if (nonFolderSkills.length > 0) {
+    const counts = await Promise.all(
+      nonFolderSkills.map((skill) =>
+        MongoApp.countDocuments({
+          deleteTime: null,
+          modules: {
+            $elemMatch: {
+              inputs: {
+                $elemMatch: {
+                  key: NodeInputKeyEnum.skills,
+                  'value.skillId': skill._id.toString()
+                }
+              }
+            }
+          }
+        })
+      )
+    );
+    nonFolderSkills.forEach((skill, i) => {
+      appCountMap.set(skill._id.toString(), counts[i]);
+    });
+  }
+
   return {
-    list: skills as AgentSkillListItemType[],
+    list: skills.map((s) => ({
+      ...s,
+      appCount: appCountMap.get(s._id.toString()) ?? 0
+    })) as AgentSkillListItemType[],
     total
   };
 }

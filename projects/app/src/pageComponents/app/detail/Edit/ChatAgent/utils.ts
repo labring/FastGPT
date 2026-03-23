@@ -1,5 +1,6 @@
 import {
   AppFormEditFormV1TypeSchema,
+  type SelectedAgentSkillItemType,
   type SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
@@ -78,9 +79,11 @@ export const appWorkflow2AgentForm = ({
       }
 
       // Skills configuration
-      const skills = inputMap.get(NodeInputKeyEnum.skills) as string[] | undefined;
+      const skills = inputMap.get(NodeInputKeyEnum.skills) as
+        | SelectedAgentSkillItemType[]
+        | undefined;
       if (skills && skills.length > 0) {
-        defaultAppForm.skills = skills;
+        defaultAppForm.selectedAgentSkills = skills;
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -251,14 +254,14 @@ export function agentForm2AppWorkflow(
               value: data.aiSettings.useAgentSandbox ?? false
             },
             // Skills configuration
-            ...(data.skills && data.skills.length > 0
+            ...(data.selectedAgentSkills && data.selectedAgentSkills.length > 0
               ? [
                   {
                     key: NodeInputKeyEnum.skills,
                     renderTypeList: [FlowNodeInputTypeEnum.hidden],
                     label: '',
-                    valueType: WorkflowIOValueTypeEnum.arrayString,
-                    value: data.skills
+                    valueType: WorkflowIOValueTypeEnum.arrayObject,
+                    value: data.selectedAgentSkills
                   }
                 ]
               : [])

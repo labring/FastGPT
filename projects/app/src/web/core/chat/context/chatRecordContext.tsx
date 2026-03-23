@@ -8,6 +8,7 @@ import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { GetChatRecordsProps } from '@/global/core/chat/api';
+import type { getChatRecordsResponse } from '@/pages/api/core/chat/record/getRecords_v2';
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -46,22 +47,25 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
   itemRefs: { current: new Map() }
 });
 
-/* 
+/*
   具体对话记录的上下文
 */
 const ChatRecordContextProvider = ({
   children,
   params,
-  feedbackRecordId
+  feedbackRecordId,
+  fetchFn
 }: {
   children: ReactNode;
   params: GetChatRecordsProps;
   feedbackRecordId?: string;
+  fetchFn?: (data: LinkedPaginationProps<GetChatRecordsProps>) => Promise<getChatRecordsResponse>;
 }) => {
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
 
   const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
+  const callApi = fetchFn ?? getChatRecords;
   const {
     dataList: chatRecords,
     setDataList: setChatRecords,
@@ -74,7 +78,7 @@ const ChatRecordContextProvider = ({
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
       setIsChatRecordsLoaded(false);
 
-      const res = await getChatRecords(data).finally(() => {
+      const res = await callApi(data).finally(() => {
         setIsChatRecordsLoaded(true);
       });
       setTotalRecordsCount(res.total);

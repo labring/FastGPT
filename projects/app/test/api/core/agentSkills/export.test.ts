@@ -277,7 +277,7 @@ describe('GET /api/core/agentSkills/export', () => {
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
-      expect.stringContaining('attachment; filename=')
+      expect.stringContaining("attachment; filename*=UTF-8''")
     );
     expect(res.setHeader).toHaveBeenCalledWith('Content-Length', zipContent.length);
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');

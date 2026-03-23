@@ -45,9 +45,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const zipBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
 
-    const filename = `${skill.name}.zip`.replace(/[^\w\s.\-]/g, '_');
+    const filename = `${skill.name}.zip`;
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
+    );
     res.setHeader('Content-Length', zipBuffer.length);
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).end(zipBuffer);
