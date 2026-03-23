@@ -87,7 +87,8 @@ export const AgentSkillListItemSchema = z.object({
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
   createTime: z.date(),
-  updateTime: z.date()
+  updateTime: z.date(),
+  appCount: z.number().optional()
 });
 export type AgentSkillListItemType = z.infer<typeof AgentSkillListItemSchema>;
 
