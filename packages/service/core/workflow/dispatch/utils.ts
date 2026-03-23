@@ -6,6 +6,8 @@ import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workf
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
+import type {
+  ChatDispatchProps} from '@fastgpt/global/core/workflow/runtime/type';
 import {
   type RuntimeNodeItemType,
   type SystemVariablesType
@@ -30,6 +32,74 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { anyValueDecrypt } from '../../../common/secret/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { presignVariablesFileUrls } from '../../chat/utils';
+import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+
+/* get system variable */
+export const getSystemVariables = async ({
+  timezone,
+  runningAppInfo,
+  chatId,
+  responseChatItemId,
+  histories = [],
+  uid,
+  chatConfig,
+  variables
+}: {
+  runningAppInfo: ChatDispatchProps['runningAppInfo'];
+  chatId: ChatDispatchProps['chatId'];
+  responseChatItemId: ChatDispatchProps['responseChatItemId'];
+  histories: ChatDispatchProps['histories'];
+  uid: ChatDispatchProps['uid'];
+  chatConfig: ChatDispatchProps['chatConfig'];
+  variables: ChatDispatchProps['variables'];
+  timezone: string;
+}): Promise<SystemVariablesType> => {
+  // Get global variables(Label -> key; Key -> key)
+  const variablesConfig = chatConfig?.variables || [];
+
+  const variablesMap: Record<string, any> = {};
+  for await (const item of variablesConfig) {
+    // For internal variables, ignore external input and use default value
+    if (item.type === VariableInputEnum.password) {
+      const val = variables[item.label] || variables[item.key] || item.defaultValue;
+      const actualValue = anyValueDecrypt(val);
+      variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
+    }
+    //  文件类型全局变量，签发成 string[] 格式
+    else if (item.type === VariableInputEnum.file) {
+      const vars = await presignVariablesFileUrls({
+        variables,
+        variableConfig: [item]
+      });
+
+      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
+    }
+    // API
+    else if (variables[item.label] !== undefined) {
+      variablesMap[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+    }
+    // Web
+    else if (variables[item.key] !== undefined) {
+      variablesMap[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+    } else {
+      variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    }
+  }
+
+  return {
+    ...variablesMap,
+    // System var:
+    userId: uid,
+    appId: String(runningAppInfo.id),
+    chatId,
+    responseChatItemId,
+    histories,
+    cTime: getSystemTime(timezone)
+  };
+};
 
 export const getWorkflowResponseWrite = ({
   res,
