@@ -18,7 +18,7 @@ export async function getChatItems({
   chatId,
   field,
   limit,
-
+  chatLogsFilter,
   offset,
   initialId,
   prevId,
@@ -29,7 +29,7 @@ export async function getChatItems({
   chatId?: string;
   field: string;
   limit: number;
-
+  chatLogsFilter?: `${ChatLogsFilterEnum}`;
   offset?: number;
   initialId?: string;
   prevId?: string;
@@ -44,16 +44,83 @@ export async function getChatItems({
     return { histories: [], total: 0, hasMorePrev: false, hasMoreNext: false };
   }
 
-  // 过滤已删除的记录（用户端看不到已删除的对话）
-  const query = { chatId, appId, deleted: { $ne: true } };
-
   // Extend dataId
   field = `dataId ${field}`;
   const baseCondition = includeDeleted ? { appId, chatId } : { appId, chatId, deleteTime: null };
 
+  // Build AI-only filter condition for chatLogsFilter.
+  // Human messages are never queried directly; they are fetched as pairs after AI results.
+  let aiOnlyFilter: Record<string, any> | null = null;
+  if (chatLogsFilter === ChatLogsFilterEnum.good) {
+    aiOnlyFilter = { userGoodFeedback: { $exists: true, $ne: null } };
+  } else if (chatLogsFilter === ChatLogsFilterEnum.bad) {
+    aiOnlyFilter = { userBadFeedback: { $exists: true, $ne: null } };
+  } else if (chatLogsFilter === ChatLogsFilterEnum.notFoundKnowledge) {
+    const notFoundDataIds = await MongoChatItemResponse.distinct('chatItemDataId', {
+      appId,
+      chatId,
+      'data.moduleType': FlowNodeTypeEnum.datasetSearchNode,
+      $or: [{ 'data.quoteList': { $size: 0 } }, { 'data.quoteList': null }]
+    });
+    aiOnlyFilter =
+      notFoundDataIds.length > 0 ? { dataId: { $in: notFoundDataIds } } : { dataId: { $in: [] } };
+  }
+
+  const aiCondition = aiOnlyFilter
+    ? { ...baseCondition, obj: ChatRoleEnum.AI, ...aiOnlyFilter }
+    : null;
+
+  // When filter is active each result item is an H+AI pair, so query ceil(limit/2) AIs
+  // to keep the total returned item count consistent with the unfiltered case.
+  const aiLimit = Math.ceil(limit / 2);
+
+  // For each AI item (ascending _id order), fetch its nearest Human predecessor in parallel.
+  // Deduplicates: a Human is paired with at most one AI (the earliest AI after it).
+  const fetchHumanPairs = async (aiItems: any[]): Promise<any[]> => {
+    if (aiItems.length === 0) return [];
+    const humans = await Promise.all(
+      aiItems.map((ai) =>
+        MongoChatItem.findOne(
+          { ...baseCondition, obj: ChatRoleEnum.Human, _id: { $lt: ai._id } },
+          field
+        )
+          .sort({ _id: -1 })
+          .lean()
+      )
+    );
+    const seen = new Set<string>();
+    const result: any[] = [];
+    for (let i = 0; i < aiItems.length; i++) {
+      const human = humans[i];
+      if (human && !seen.has(human._id.toString())) {
+        seen.add(human._id.toString());
+        result.push(human);
+      }
+      result.push(aiItems[i]);
+    }
+    return result;
+  };
+
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
     // Mode 1: offset pagination (original logic)
     if (offset !== undefined) {
+      if (aiCondition) {
+        const [aiItems, count] = await Promise.all([
+          MongoChatItem.find(aiCondition, field)
+            .sort({ _id: -1 })
+            .skip(offset)
+            .limit(aiLimit + 1)
+            .lean(),
+          MongoChatItem.countDocuments(baseCondition)
+        ]);
+        const sliced = (aiItems as any[]).slice(0, aiLimit).reverse();
+        return {
+          histories: await fetchHumanPairs(sliced),
+          total: count,
+          hasMorePrev: aiItems.length > aiLimit,
+          hasMoreNext: offset > 0
+        };
+      }
       const [foundHistories, count] = await Promise.all([
         MongoChatItem.find(baseCondition, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
         MongoChatItem.countDocuments(baseCondition)
@@ -68,20 +135,33 @@ export async function getChatItems({
     // Mode 2: prevId - get records before the target
     else if (prevId) {
       const prevItem = await MongoChatItem.findOne(
-        {
-          ...baseCondition,
-          dataId: prevId
-        },
+        { ...baseCondition, dataId: prevId },
         { _id: 1 }
       ).lean();
       if (!prevItem) return Promise.reject(new UserError('Prev item not found'));
 
+      if (aiCondition) {
+        const [aiItems, count] = await Promise.all([
+          MongoChatItem.find({ ...aiCondition, _id: { $lt: prevItem._id } }, field)
+            .sort({ _id: -1 })
+            .limit(aiLimit + 1)
+            .lean(),
+          MongoChatItem.countDocuments(baseCondition)
+        ]);
+        const sliced = (aiItems as any[]).slice(0, aiLimit).reverse();
+        return {
+          histories: await fetchHumanPairs(sliced),
+          total: count,
+          hasMorePrev: aiItems.length > aiLimit,
+          hasMoreNext: true
+        };
+      }
       const [items, count] = await Promise.all([
         MongoChatItem.find({ ...baseCondition, _id: { $lt: prevItem._id } }, field)
           .sort({ _id: -1 })
           .limit(limit + 1)
           .lean(),
-        MongoChatItem.countDocuments({ ...baseCondition })
+        MongoChatItem.countDocuments(baseCondition)
       ]);
 
       return {
@@ -94,20 +174,33 @@ export async function getChatItems({
     // Mode 3: nextId - get records after the target
     else if (nextId) {
       const nextItem = await MongoChatItem.findOne(
-        {
-          ...baseCondition,
-          dataId: nextId
-        },
+        { ...baseCondition, dataId: nextId },
         { _id: 1 }
       ).lean();
       if (!nextItem) return Promise.reject(new UserError('Next item not found'));
 
+      if (aiCondition) {
+        const [aiItems, total] = await Promise.all([
+          MongoChatItem.find({ ...aiCondition, _id: { $gt: nextItem._id } }, field)
+            .sort({ _id: 1 })
+            .limit(aiLimit + 1)
+            .lean(),
+          MongoChatItem.countDocuments(baseCondition)
+        ]);
+        const sliced = (aiItems as any[]).slice(0, aiLimit);
+        return {
+          histories: await fetchHumanPairs(sliced),
+          total,
+          hasMorePrev: true,
+          hasMoreNext: aiItems.length > aiLimit
+        };
+      }
       const [items, total] = await Promise.all([
         MongoChatItem.find({ ...baseCondition, _id: { $gt: nextItem._id } }, field)
           .sort({ _id: 1 })
           .limit(limit + 1)
           .lean(),
-        MongoChatItem.countDocuments({ ...baseCondition })
+        MongoChatItem.countDocuments(baseCondition)
       ]);
 
       return {
@@ -117,17 +210,37 @@ export async function getChatItems({
         hasMoreNext: items.length > limit
       };
     }
-    // Mode 2: initialId - get records around the target
+    // Mode 4: initialId - get records around the target (or from end if no initialId)
     else {
       if (!initialId) {
+        if (aiCondition) {
+          const [aiItems, count] = await Promise.all([
+            MongoChatItem.find(aiCondition, field)
+              .sort({ _id: -1 })
+              .limit(aiLimit + 1)
+              .lean(),
+            MongoChatItem.countDocuments(baseCondition)
+          ]);
+          const sliced = (aiItems as any[]).slice(0, aiLimit).reverse();
+          return {
+            histories: await fetchHumanPairs(sliced),
+            total: count,
+            hasMorePrev: aiItems.length > aiLimit,
+            hasMoreNext: false
+          };
+        }
         const [foundHistories, count] = await Promise.all([
-          MongoChatItem.find(baseCondition, field).sort({ _id: -1 }).skip(0).limit(limit).lean(),
+          MongoChatItem.find(baseCondition, field)
+            .sort({ _id: -1 })
+            .skip(0)
+            .limit(limit + 1)
+            .lean(),
           MongoChatItem.countDocuments(baseCondition)
         ]);
         return {
-          histories: foundHistories.reverse(),
+          histories: foundHistories.slice(0, limit).reverse(),
           total: count,
-          hasMorePrev: count > limit,
+          hasMorePrev: foundHistories.length > limit,
           hasMoreNext: false
         };
       }
@@ -141,6 +254,32 @@ export async function getChatItems({
       ).lean();
       if (!targetItem) return Promise.reject(new UserError('Target item not found'));
 
+      if (aiCondition) {
+        const aiHalfLimit = Math.floor(aiLimit / 2);
+        const aiCeilLimit = Math.ceil(aiLimit / 2);
+        // Use $lte to include the target itself if it is a matching AI
+        const [prevAIs, nextAIs, count] = await Promise.all([
+          MongoChatItem.find({ ...aiCondition, _id: { $lte: targetItem._id } }, field)
+            .sort({ _id: -1 })
+            .limit(aiHalfLimit + 1)
+            .lean(),
+          MongoChatItem.find({ ...aiCondition, _id: { $gt: targetItem._id } }, field)
+            .sort({ _id: 1 })
+            .limit(aiCeilLimit + 1)
+            .lean(),
+          MongoChatItem.countDocuments(baseCondition)
+        ]);
+        const allAIs = [
+          ...(prevAIs as any[]).slice(0, aiHalfLimit).reverse(),
+          ...(nextAIs as any[]).slice(0, aiCeilLimit)
+        ];
+        return {
+          histories: await fetchHumanPairs(allAIs),
+          total: count,
+          hasMorePrev: prevAIs.length > aiHalfLimit,
+          hasMoreNext: nextAIs.length > aiCeilLimit
+        };
+      }
       const [prevItems, nextItems, count] = await Promise.all([
         MongoChatItem.find({ ...baseCondition, _id: { $lt: targetItem._id } }, field)
           .sort({ _id: -1 })
@@ -364,6 +503,61 @@ function parseFieldsToProjection(fieldString: string): Record<string, 1> {
     }
   });
   return projection;
+}
+
+/**
+ * Get feedback statistics (goodTotal, badTotal, notFoundTotal) for a chat.
+ * Used by getRecords_v2 to populate statistics without offset pagination.
+ */
+export async function getChatItemStats({
+  appId,
+  chatId
+}: {
+  appId: string;
+  chatId: string;
+}): Promise<{
+  goodTotal: number;
+  badTotal: number;
+  notFoundTotal: number;
+}> {
+  const appObjectId = new Types.ObjectId(appId);
+
+  const [notFoundDataIds, aggResult] = await Promise.all([
+    MongoChatItemResponse.distinct('chatItemDataId', {
+      appId,
+      chatId,
+      'data.moduleType': FlowNodeTypeEnum.datasetSearchNode,
+      $or: [{ 'data.quoteList': { $size: 0 } }, { 'data.quoteList': null }]
+    }),
+    MongoChatItem.aggregate([
+      { $match: { appId: appObjectId, chatId, deleteTime: null } },
+      {
+        $group: {
+          _id: null,
+          goodTotal: { $sum: { $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0] } },
+          badTotal: { $sum: { $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0] } }
+        }
+      }
+    ])
+  ]);
+
+  const stats = aggResult[0] ?? { goodTotal: 0, badTotal: 0 };
+
+  const notFoundTotal =
+    notFoundDataIds.length > 0
+      ? await MongoChatItem.countDocuments({
+          appId,
+          chatId,
+          deleteTime: null,
+          dataId: { $in: notFoundDataIds }
+        })
+      : 0;
+
+  return {
+    goodTotal: stats.goodTotal,
+    badTotal: stats.badTotal,
+    notFoundTotal
+  };
 }
 
 export async function getPaginationChatItems({
