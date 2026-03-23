@@ -155,7 +155,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.9.1 # git
+    image: ghcr.io/labring/fastgpt:v4.14.9.2 # git
     ports:
       - 3000:3000
     networks:
