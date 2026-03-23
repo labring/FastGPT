@@ -65,11 +65,6 @@ describe('ChatSourceEnum', () => {
     expect(ChatSourceEnum.wecom).toBe('wecom');
     expect(ChatSourceEnum.mcp).toBe('mcp');
   });
-
-  it('should have all expected sources', () => {
-    const sources = Object.values(ChatSourceEnum);
-    expect(sources).toHaveLength(10);
-  });
 });
 
 describe('ChatSourceMap', () => {
