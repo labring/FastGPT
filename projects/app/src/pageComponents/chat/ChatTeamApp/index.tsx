@@ -54,7 +54,6 @@ const MyApps = () => {
   const tabs = [
     'all' as const,
     AppTypeEnum.assistant,
-    AppTypeEnum.simple,
     AppTypeEnum.workflow,
     AppTypeEnum.workflowTool
   ];
