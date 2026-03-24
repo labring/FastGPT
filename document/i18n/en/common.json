@@ -1,22 +1,7 @@
 {
-  "Documentation": "Documentation",
-  "nav": {
-    "home": "Home",
-    "docs": "Docs",
-    "blog": "Blog",
-    "about": "About"
-  },
-  "footer": {
-    "links": "Links",
-    "community": "Community",
-    "resources": "Resources"
-  },
   "introduction": "Introduction",
   "api_reference": "API Reference",
   "use-cases": "Use Cases",
-  "api": "API",
   "selfHost": "Self-Host",
-  "protocol": "Protocol",
-  "upgrading": "Upgrading",
   "faq": "FAQ"
 }
