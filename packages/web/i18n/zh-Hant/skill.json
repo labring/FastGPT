@@ -21,6 +21,7 @@
   "export_skill_description_helper": "最多 1024 個字元",
   "export_skill_description_length_error": "描述長度不能超過 1024 個字元",
   "export_skill_success": "匯出成功",
-  "export_skill_downloading": "正在產生 SKILL 包...",
-  "archive_error": "生成 Skill 壓縮包失敗"
+  "export_skill_downloading": "導出中...",
+  "archive_error": "生成 Skill 壓縮包失敗",
+  "field_required": "此字段为必填项"
 }

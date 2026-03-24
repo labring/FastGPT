@@ -88,7 +88,7 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
 
   return (
     <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-      <Table variant={'simple'} draggable={false}>
+      <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%' }}>
         <Thead draggable={false}>
           <Tr>
             <Th py={4}>

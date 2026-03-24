@@ -384,7 +384,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                 color={'myGray.600'}
               >
                 <Flex align={'center'}>
-                  {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
                   {titleLabel}
                   {i18n.language === 'en' ? '  ' : ''}
                   {t('common:count_in_bracket', { count: total })}
@@ -659,7 +658,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           )}
           {isStructureDocument && (
             <Button ml={1} onClick={onOpenFileUploadModal}>
-              {t('dataset:add_file')}
+              {t('dataset:add')}
             </Button>
           )}
           {/* apiDataset */}

@@ -22,5 +22,6 @@
   "export_skill_description_helper": "Max 1024 characters",
   "export_skill_description_length_error": "Description length cannot exceed 1024 characters",
   "export_skill_success": "Export successful",
-  "export_skill_downloading": "Generating SKILL package..."
+  "export_skill_downloading": "Exporting...",
+  "field_required": "This field is required"
 }

@@ -38,6 +38,7 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
     handleSubmit,
     formState: { errors }
   } = useForm<ExportSkillFormType>({
+    mode: 'onChange',
     defaultValues: {
       skillName: '',
       skillDescription: appIntro || ''
@@ -54,7 +55,7 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
 
       // Validate response type before downloading
       if (!response.type.includes('zip')) {
-        throw new Error(t('skill:export_skill_invalid_response'));
+        throw new Error(t('skill:archive_error'));
       }
 
       // Handle file download
@@ -86,6 +87,7 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
     <MyModal
       isOpen
       onClose={onClose}
+      w="600px"
       title={
         <Flex alignItems={'center'} gap={2}>
           <Box>{t('skill:export_skill_modal_title')}</Box>
@@ -96,29 +98,30 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
       <ModalBody>
         <FormControl isInvalid={!!errors.skillName} mb={4}>
           <Flex alignItems={'center'} gap={4}>
-            <MyTooltip label={t('skill:export_skill_name_helper')}>
-              <FormLabel mb={0} minW={'80px'} required>
-                {t('skill:export_skill_name_label')}
-              </FormLabel>
-            </MyTooltip>
+            <FormLabel mb={0} minW={'80px'} required>
+              {t('skill:export_skill_name_label')}
+            </FormLabel>
             <Box flex={1}>
-              <Input
-                {...register('skillName', {
-                  required: t('common:required_field', { defaultValue: '此字段为必填项' }),
-                  maxLength: {
-                    value: 64,
-                    message: t('skill:export_skill_name_length_error', {
-                      defaultValue: '名称长度不能超过 64 个字符'
-                    })
-                  },
-                  pattern: {
-                    value: /^[a-z0-9-]+$/,
-                    message: t('skill:export_skill_name_error')
-                  }
-                })}
-                bg={'myGray.50'}
-                autoFocus
-              />
+              <MyTooltip label={t('skill:export_skill_name_helper')} shouldWrapChildren={false}>
+                <Input
+                  {...register('skillName', {
+                    required: t('skill:field_required'),
+                    maxLength: {
+                      value: 64,
+                      message: t('skill:export_skill_name_length_error', {
+                        defaultValue: '名称长度不能超过 64 个字符'
+                      })
+                    },
+                    pattern: {
+                      value: /^[a-z0-9-]+$/,
+                      message: t('skill:export_skill_name_error')
+                    }
+                  })}
+                  bg={'myGray.50'}
+                  w={'100%'}
+                  autoFocus
+                />
+              </MyTooltip>
               <FormErrorMessage>{errors.skillName?.message}</FormErrorMessage>
             </Box>
           </Flex>
@@ -126,25 +129,30 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
 
         <FormControl isInvalid={!!errors.skillDescription}>
           <Flex alignItems={'flex-start'} gap={4}>
-            <MyTooltip label={t('skill:export_skill_description_helper')}>
-              <FormLabel mb={0} minW={'80px'} pt={2} required>
-                {t('skill:export_skill_description_label')}
-              </FormLabel>
-            </MyTooltip>
+            <FormLabel mb={0} minW={'80px'} pt={2} required>
+              {t('skill:export_skill_description_label')}
+            </FormLabel>
+
             <Box flex={1}>
-              <Textarea
-                {...register('skillDescription', {
-                  required: t('common:required_field', { defaultValue: '此字段为必填项' }),
-                  maxLength: {
-                    value: 1024,
-                    message: t('skill:export_skill_description_length_error', {
-                      defaultValue: '描述长度不能超过 1024 个字符'
-                    })
-                  }
-                })}
-                bg={'myGray.50'}
-                rows={4}
-              />
+              <MyTooltip
+                label={t('skill:export_skill_description_helper')}
+                shouldWrapChildren={false}
+              >
+                <Textarea
+                  {...register('skillDescription', {
+                    required: t('skill:field_required'),
+                    maxLength: {
+                      value: 1024,
+                      message: t('skill:export_skill_description_length_error', {
+                        defaultValue: '描述长度不能超过 1024 个字符'
+                      })
+                    }
+                  })}
+                  bg={'myGray.50'}
+                  w={'100%'}
+                  rows={4}
+                />
+              </MyTooltip>
               <FormErrorMessage>{errors.skillDescription?.message}</FormErrorMessage>
             </Box>
           </Flex>
@@ -154,8 +162,12 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button isLoading={loading} onClick={handleSubmit(onExport)} px={6}>
-          {loading ? t('skill:export_skill_downloading') : t('common:Export')}
+        <Button
+          isLoading={loading}
+          loadingText={t('skill:export_skill_downloading')}
+          onClick={handleSubmit(onExport)}
+        >
+          {t('common:Export')}
         </Button>
       </ModalFooter>
     </MyModal>

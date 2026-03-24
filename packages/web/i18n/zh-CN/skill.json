@@ -22,5 +22,6 @@
   "export_skill_description_helper": "最多1024个字符",
   "export_skill_description_length_error": "描述长度不能超过 1024 个字符",
   "export_skill_success": "导出成功",
-  "export_skill_downloading": "正在生成 SKILL 包..."
+  "export_skill_downloading": "导出中...",
+  "field_required": "此字段为必填项"
 }
