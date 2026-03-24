@@ -21,7 +21,7 @@ import { authOutLinkLimit } from './auth';
 import { addOutLinkUsage } from '../../../support/outLink/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { appendRedisCache } from '../../../common/redis/cache';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { getUsageSourceByPublishChannel } from '@fastgpt/global/support/wallet/usage/tools';
 import { getChatSourceByPublishChannel } from '@fastgpt/global/core/chat/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
@@ -75,7 +75,10 @@ export type outLinkInvokeChatProps<T extends OutlinkAppType> = {
   res?: NextApiResponse;
   messageId: string;
   chatUserId: string;
-  replyCallback?: (replyContent: string) => Promise<any>;
+  // Called once with complete response content (all channels except wecom)
+  onReply?: (replyContent: string) => Promise<void>;
+  // Called for each streaming chunk (feishu and other push channels)
+  onStreamChunk?: (text: string) => Promise<void>;
   streamId?: string;
 };
 
@@ -91,7 +94,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   res,
   messageId,
   chatUserId,
-  replyCallback,
+  onReply,
+  onStreamChunk,
   streamId
 }: outLinkInvokeChatProps<T>) {
   const streamResKey = `${STREAM_CACHE_KEY_PREFIX}${streamId}`;
@@ -112,7 +116,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     const userQuestion = query.find((item) => item.text)?.text?.content || '';
     if (RESET_CHAT_INPUT[userQuestion]) {
       await resetChat({ appId: outLinkConfig.appId, chatId });
-      await replyCallback?.(RESET_CHAT_REPLY);
+      await onReply?.(RESET_CHAT_REPLY);
       if (streamId) {
         await appendRedisCache(streamResKey, RESET_CHAT_REPLY, 60);
         await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
@@ -144,7 +148,9 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       ip: chatId
     });
 
-    const workflowStreamResponse = streamId
+    const enableStreaming = !!streamId || !!onStreamChunk;
+
+    const workflowStreamResponse = enableStreaming
       ? async ({
           write,
           event,
@@ -158,7 +164,12 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
             try {
               const text = data.choices?.[0]?.delta?.content;
               if (text) {
-                await appendRedisCache(streamResKey, text, 60);
+                if (streamId) {
+                  await appendRedisCache(streamResKey, text, 60);
+                }
+                if (onStreamChunk) {
+                  await onStreamChunk(text);
+                }
               }
             } catch (error) {
               logger.error('Outlink real-time streaming failed', {
@@ -171,8 +182,10 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
         }
       : undefined;
 
-    // Append first
-    await appendRedisCache(streamResKey, '', 120);
+    // Initialize Redis key only when needed
+    if (streamId) {
+      await appendRedisCache(streamResKey, '', 120);
+    }
 
     // Merge global variables from database
     const variables = chatDetail?.variables ?? {};
@@ -202,7 +215,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       histories,
       query: query,
       chatConfig,
-      stream: streamId ? true : false,
+      stream: enableStreaming,
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
@@ -225,31 +238,13 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     const replyResult = await (async () => {
       try {
         if (streamId) {
-          // if streamId is provided, do not reply
-          return;
+          // wecom model: Redis handles streaming, no reply needed
+          return { success: true };
         }
-        const result = await replyCallback?.(responseContent);
-
-        if (result.errcode !== 0) {
-          logger.error('Outlink official account reply failed', {
-            errmsg: result.errmsg
-          });
-          return {
-            success: false,
-            errmsg: result.errmsg
-          };
-        }
-
-        logger.debug('Outlink official account reply success', {
-          responseContent,
-          result
-        });
-        return {
-          success: true,
-          data: result
-        };
+        await onReply?.(responseContent);
+        return { success: true };
       } catch (error) {
-        logger.error('Outlink reply callback failed', { error });
+        logger.error('Outlink reply callback failed', { error: getErrResponse(error) });
         return {
           success: false,
           errmsg: getErrText(error)
@@ -306,9 +301,10 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     });
 
     try {
-      await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
-
-      await replyCallback?.(`App run error: ${getErrText(error)}`);
+      if (streamId) {
+        await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
+      }
+      await onReply?.(`App run error: ${getErrText(error)}`);
     } catch (error) {
       logger.error('Outlink invoke chat fallback reply failed', {
         shareId: outLinkConfig.shareId,

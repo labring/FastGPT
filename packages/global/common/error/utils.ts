@@ -28,6 +28,10 @@ export const getErrText = (err: any, def = ''): any => {
   return replaceSensitiveText(msg);
 };
 
+export const getErrResponse = (err: any): any => {
+  return err?.response?.data || err?.response || err;
+};
+
 export class UserError extends Error {
   constructor(message: string) {
     super(message);
