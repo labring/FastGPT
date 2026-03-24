@@ -650,6 +650,8 @@
   "eval_detail_rank_after_column": "學習後召回的排名",
   "eval_detail_improvement_column": "排名提升",
   "optimize_records": "優化記錄",
+  "export_optimize_records_tip": "導出包含答案的優化記錄",
+  "optimize_records_col_indexes": "索引",
   "knowledge_select_search_placeholder": "搜尋選擇知識",
   "knowledge_search_input_tip": "請先輸入關鍵詞",
   "knowledge_search_no_results": "未搜尋到相關知識",

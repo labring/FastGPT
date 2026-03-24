@@ -24,6 +24,11 @@ export const downloadFetch = async ({
       body: JSON.stringify(body)
     });
 
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return Promise.reject(err);
+    }
+
     const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
 

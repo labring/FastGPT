@@ -1,6 +1,7 @@
 import type { GetAppDatasetCollectionParams } from '@/global/core/api/appReq';
 import type { GetAppDatasetCollectionResponse } from '@/global/core/api/appRes';
 import { GET, POST } from '@/web/common/api/request';
+import { downloadFetch } from '@/web/common/system/utils';
 import type {
   getLogKeysQuery,
   getLogKeysResponseType,
@@ -15,6 +16,7 @@ import type {
 import type {
   DeleteChatCorrectionParams,
   DeleteChatCorrectionResponse,
+  ExportChatCorrectionParams,
   GetKeywordQuoteParams,
   GetKeywordQuoteResponse,
   ListChatCorrectionParams,
@@ -52,3 +54,8 @@ export const submitChatCorrection = (data: SubmitChatCorrectionParams) =>
 
 export const getAppDatasetCollection = (data: GetAppDatasetCollectionParams) =>
   POST<GetAppDatasetCollectionResponse>(`/core/app/getAppDatasetCollection`, data);
+
+export const exportChatCorrectionRecords = (
+  data: ExportChatCorrectionParams & { filename: string }
+) =>
+  downloadFetch({ url: '/api/core/chat/correction/export', filename: data.filename, body: data });

@@ -669,6 +669,8 @@
   "eval_detail_rank_after_column": "Rank after learning",
   "eval_detail_improvement_column": "Rank improvement",
   "optimize_records": "Optimization records",
+  "export_optimize_records_tip": "Export optimization records with answers",
+  "optimize_records_col_indexes": "Indexes",
   "knowledge_select_search_placeholder": "Search and select knowledge",
   "knowledge_search_input_tip": "Please enter keywords first",
   "knowledge_search_no_results": "No relevant knowledge found",
