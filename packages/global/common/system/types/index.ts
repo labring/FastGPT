@@ -108,6 +108,8 @@ export type FastGPTFeConfigsType = {
   limit?: {
     exportDatasetLimitMinutes?: number;
     websiteSyncLimitMinuted?: number;
+    agentSandboxMaxEditDebug?: number;
+    agentSandboxMaxSessionRuntime?: number;
   };
 
   uploadFileMaxAmount: number;
