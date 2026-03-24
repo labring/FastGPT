@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
 import {
@@ -18,18 +19,21 @@ import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   AgentSkillTypeEnum,
-  type AgentSkillSourceEnum
+  AgentSkillSourceEnum
 } from '@fastgpt/global/core/agentSkills/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type GetSkillListBody = {
   parentId?: ParentIdType;
-  source?: `${AgentSkillSourceEnum}`;
+  source?: 'store' | 'mine';
   searchKey?: string;
   category?: string;
+  page?: number;
+  pageSize?: number;
 };
 
 async function handler(req: ApiRequestProps<GetSkillListBody>) {
-  const { parentId, source, searchKey, category } = req.body;
+  const { parentId, source, searchKey, category, page, pageSize } = req.body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -95,6 +99,16 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
           }
         : { $or: [idList, { parentId: null }] };
 
+    // Map API source ('store'|'mine') to DB source enum
+    const sourceQuery = (() => {
+      if (source === 'store') return { source: AgentSkillSourceEnum.system };
+      if (source === 'mine') return { source: AgentSkillSourceEnum.personal };
+      return {};
+    })();
+
+    // Only restrict by teamId for personal (mine) skills; store (system) skills are global
+    const teamIdQuery = source === 'store' ? {} : { teamId };
+
     const searchMatch = searchKey
       ? {
           $or: [
@@ -107,10 +121,10 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     if (searchKey) {
       const data = {
         ...skillPerQuery,
-        teamId,
+        ...teamIdQuery,
         deleteTime: null,
         ...searchMatch,
-        ...(source ? { source } : {}),
+        ...sourceQuery,
         ...(category ? { category: { $in: [category] } } : {})
       };
       // @ts-ignore
@@ -120,9 +134,9 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
 
     return {
       ...skillPerQuery,
-      teamId,
+      ...teamIdQuery,
       deleteTime: null,
-      ...(source ? { source } : {}),
+      ...sourceQuery,
       ...(category ? { category: { $in: [category] } } : {}),
       ...parseParentIdInMongo(parentId)
     };
@@ -182,6 +196,8 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
         author: skill.author,
         inheritPermission: skill.inheritPermission,
         tmbId: skill.tmbId,
+        parentId: skill.parentId,
+        createTime: skill.createTime,
         updateTime: skill.updateTime,
         permission: Per,
         private: privateSkill
@@ -189,9 +205,50 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     })
     .filter((skill) => skill.permission.hasReadPer);
 
-  return addSourceMember({
-    list: formatSkills
-  });
+  // Compute appCount for non-folder skills
+  const nonFolderSkills = formatSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder);
+  const appCountMap = new Map<string, number>();
+  if (nonFolderSkills.length > 0) {
+    const counts = await Promise.all(
+      nonFolderSkills.map((skill) =>
+        MongoApp.countDocuments({
+          deleteTime: null,
+          modules: {
+            $elemMatch: {
+              inputs: {
+                $elemMatch: {
+                  key: NodeInputKeyEnum.skills,
+                  'value.skillId': skill._id.toString()
+                }
+              }
+            }
+          }
+        })
+      )
+    );
+    nonFolderSkills.forEach((skill, i) => {
+      appCountMap.set(skill._id.toString(), counts[i]);
+    });
+  }
+
+  const total = formatSkills.length;
+
+  // Apply pagination if requested
+  const pagedSkills = (() => {
+    if (page && pageSize) {
+      const skip = (page - 1) * pageSize;
+      return formatSkills.slice(skip, skip + pageSize);
+    }
+    return formatSkills;
+  })();
+
+  const listWithAppCount = pagedSkills.map((skill) => ({
+    ...skill,
+    appCount: appCountMap.get(skill._id.toString()) ?? 0
+  }));
+
+  const listWithSourceMember = await addSourceMember({ list: listWithAppCount });
+  return { list: listWithSourceMember, total };
 }
 
 export default NextAPI(handler);

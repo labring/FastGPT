@@ -4,17 +4,11 @@ import {
   AgentSkillSourceEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/agentSkills/constants';
-import type {
-  AgentSkillSchemaType,
-  AgentSkillListItemType,
-  SkillPackageType
-} from '@fastgpt/global/core/agentSkills/type';
+import type { AgentSkillSchemaType, SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
 import type { ClientSession } from '../../common/mongo';
 import { uploadSkillPackage, deleteSkillAllPackages } from './storage';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { createVersion } from './version/controller';
-import { MongoApp } from '../app/schema';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 
@@ -38,16 +32,6 @@ type CreateSkillData = {
 type UpdateSkillData = Partial<
   Pick<CreateSkillData, 'name' | 'description' | 'category' | 'config' | 'avatar'>
 >;
-
-type ListSkillsParams = {
-  source?: 'store' | 'mine';
-  teamId?: string;
-  searchKey?: string;
-  category?: string;
-  parentId?: string | null;
-  page: number;
-  pageSize: number;
-};
 
 // ==================== CRUD Operations ====================
 
@@ -177,98 +161,6 @@ export async function getSkillById(skillId: string): Promise<AgentSkillSchemaTyp
   }).lean();
 
   return skill as AgentSkillSchemaType | null;
-}
-
-// ==================== List Operations ====================
-
-/**
- * List skills with pagination and filtering
- */
-export async function listSkills(
-  params: ListSkillsParams
-): Promise<{ list: AgentSkillListItemType[]; total: number }> {
-  const { source, teamId, searchKey, category, parentId, page, pageSize } = params;
-
-  // Build query
-  const query: Record<string, any> = {
-    deleteTime: null
-  };
-
-  // Parent ID filter
-  if (parentId !== undefined) {
-    query.parentId = parentId || null;
-  }
-
-  // Source filter
-  if (source === 'store') {
-    query.source = AgentSkillSourceEnum.system;
-  } else if (source === 'mine' && teamId) {
-    query.source = AgentSkillSourceEnum.personal;
-    query.teamId = teamId;
-  }
-
-  // Category filter — use $in because category is an array field
-  if (category) {
-    query.category = { $in: [category] };
-  }
-
-  // Search key (text search on name and description)
-  if (searchKey) {
-    query.$or = [
-      { name: { $regex: searchKey, $options: 'i' } },
-      { description: { $regex: searchKey, $options: 'i' } }
-    ];
-  }
-
-  // Execute query with pagination
-  const skip = (page - 1) * pageSize;
-
-  const [skills, total] = await Promise.all([
-    MongoAgentSkills.find(query)
-      .select(
-        '_id source type parentId name description author category avatar createTime updateTime'
-      )
-      .sort({ type: -1, createTime: -1 }) // Folders first
-      .skip(skip)
-      .limit(pageSize)
-      .lean(),
-    MongoAgentSkills.countDocuments(query)
-  ]);
-
-  // Append appCount for non-folder skills
-  const nonFolderSkills = skills.filter((s) => s.type !== AgentSkillTypeEnum.folder);
-  const appCountMap = new Map<string, number>();
-
-  if (nonFolderSkills.length > 0) {
-    const counts = await Promise.all(
-      nonFolderSkills.map((skill) =>
-        MongoApp.countDocuments({
-          deleteTime: null,
-          modules: {
-            $elemMatch: {
-              inputs: {
-                $elemMatch: {
-                  key: NodeInputKeyEnum.skills,
-                  'value.skillId': skill._id.toString()
-                }
-              }
-            }
-          }
-        })
-      )
-    );
-    nonFolderSkills.forEach((skill, i) => {
-      appCountMap.set(skill._id.toString(), counts[i]);
-    });
-  }
-
-  return {
-    list: skills.map((s) => ({
-      ...s,
-      appCount: appCountMap.get(s._id.toString()) ?? 0
-    })) as AgentSkillListItemType[],
-    total
-  };
 }
 
 // ==================== Import/Export ====================

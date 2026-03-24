@@ -12,7 +12,7 @@ import { createSkill, updateCurrentStorage } from '@fastgpt/service/core/agentSk
 import { copySkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import { createVersion } from '@fastgpt/service/core/agentSkills/version/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -126,7 +126,7 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
       tmbId,
       teamId,
       event: AuditEventEnum.COPY_SKILL,
-      params: { skillName: skill.name }
+      params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();
 

@@ -4,7 +4,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteSkill } from '@fastgpt/service/core/agentSkills/controller';
 import type { DeleteSkillQuery } from '@fastgpt/global/core/agentSkills/api';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -33,7 +33,7 @@ async function handler(req: ApiRequestProps<{}, DeleteSkillQuery>) {
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_SKILL,
-      params: { skillName: skill.name }
+      params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();
 }

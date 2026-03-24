@@ -11,7 +11,10 @@ import { createSkillPackage } from '@fastgpt/service/core/agentSkills/zipBuilder
 import { uploadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import { createVersion } from '@fastgpt/service/core/agentSkills/version/controller';
 import type { CreateSkillBody, CreateSkillResponse } from '@fastgpt/global/core/agentSkills/api';
-import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillCategoryEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/agentSkills/constants';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import {
   WritePermissionVal,
@@ -20,7 +23,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -212,7 +215,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_SKILL,
-      params: { skillName: name.trim() }
+      params: { skillName: name.trim(), skillType: getI18nSkillType(AgentSkillTypeEnum.skill) }
     });
   })();
 

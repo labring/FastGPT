@@ -126,8 +126,7 @@ export const ImportSkillBodySchema = z.object({
   parentId: z.string().nullable().optional().describe('导入的目标目录 ID'),
   name: z.string().optional().describe('导入后的技能名称'),
   description: z.string().optional().describe('导入后的技能描述'),
-  avatar: z.string().optional().describe('导入后的技能头像'),
-  parentId: NullableParentIdSchema
+  avatar: z.string().optional().describe('导入后的技能头像')
 });
 export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
 

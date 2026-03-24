@@ -26,7 +26,7 @@ import {
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import type { UpdateSkillBody } from '@fastgpt/global/core/agentSkills/api';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -153,7 +153,7 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
         tmbId,
         teamId,
         event: AuditEventEnum.UPDATE_SKILL,
-        params: { skillName: skill.name }
+        params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
       });
     })();
   } else {
@@ -213,7 +213,7 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
         tmbId,
         teamId,
         event: AuditEventEnum.MOVE_SKILL,
-        params: { skillName: skill.name, targetFolderName }
+        params: { skillName: skill.name, skillType: getI18nSkillType(skill.type), targetFolderName }
       });
     })();
   }

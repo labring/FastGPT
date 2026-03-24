@@ -515,27 +515,27 @@ export const auditLogMap = {
   [AuditEventEnum.CREATE_SKILL]: {
     content: i18nT('account_team:log_create_skill'),
     typeLabel: i18nT('account_team:create_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.UPDATE_SKILL]: {
     content: i18nT('account_team:log_update_skill'),
     typeLabel: i18nT('account_team:update_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.DEPLOY_SKILL]: {
     content: i18nT('account_team:log_deploy_skill'),
     typeLabel: i18nT('account_team:deploy_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.DELETE_SKILL]: {
     content: i18nT('account_team:log_delete_skill'),
     typeLabel: i18nT('account_team:delete_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.IMPORT_SKILL]: {
     content: i18nT('account_team:log_import_skill'),
     typeLabel: i18nT('account_team:import_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.CREATE_SKILL_FOLDER]: {
     content: i18nT('account_team:log_create_skill_folder'),
@@ -545,17 +545,17 @@ export const auditLogMap = {
   [AuditEventEnum.EXPORT_SKILL]: {
     content: i18nT('account_team:log_export_skill'),
     typeLabel: i18nT('account_team:export_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.COPY_SKILL]: {
     content: i18nT('account_team:log_copy_skill'),
     typeLabel: i18nT('account_team:copy_skill'),
-    params: {} as { name?: string; skillName: string }
+    params: {} as { name?: string; skillName: string; skillType: string }
   },
   [AuditEventEnum.MOVE_SKILL]: {
     content: i18nT('account_team:log_move_skill'),
     typeLabel: i18nT('account_team:move_skill'),
-    params: {} as { name?: string; skillName: string; targetFolderName: string }
+    params: {} as { name?: string; skillName: string; skillType: string; targetFolderName: string }
   },
   [AuditEventEnum.UPDATE_SKILL_COLLABORATOR]: {
     content: i18nT('account_team:log_update_skill_collaborator'),
@@ -584,6 +584,12 @@ export const auditLogMap = {
   [AuditEventEnum.TRANSFER_SKILL_OWNERSHIP]: {
     content: i18nT('account_team:log_transfer_skill_ownership'),
     typeLabel: i18nT('account_team:transfer_skill_ownership'),
-    params: {} as { name?: string; skillName: string; newOwnerName: string }
+    params: {} as {
+      name?: string;
+      skillName: string;
+      skillType: string;
+      oldOwnerName: string;
+      newOwnerName: string;
+    }
   }
 } as const;
