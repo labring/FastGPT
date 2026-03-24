@@ -1,7 +1,7 @@
 import { addDays } from 'date-fns';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
-import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
+import type { TeamCouponSchemaType } from '@fastgpt/global/support/wallet/sub/coupon/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { CouponTypeEnum } from '@fastgpt/global/support/wallet/sub/coupon/constants';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -18,10 +18,16 @@ const CouponSchema = new Schema({
     enum: Object.values(CouponTypeEnum)
   },
   price: Number,
+  paidAmount: Number,
+  transactionId: String,
   description: String,
   subscriptions: {
     type: [Object],
     required: true
+  },
+  createdAt: {
+    type: Date,
+    default: () => new Date()
   },
   redeemedAt: {
     type: Date,
@@ -44,4 +50,7 @@ try {
   logger.error('Failed to build coupon indexes', { error });
 }
 
-export const MongoTeamCoupon = getMongoModel<TeamCouponSchema>(couponCollectionName, CouponSchema);
+export const MongoTeamCoupon = getMongoModel<TeamCouponSchemaType>(
+  couponCollectionName,
+  CouponSchema
+);
