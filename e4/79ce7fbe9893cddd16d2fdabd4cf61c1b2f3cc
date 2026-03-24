@@ -1,0 +1,109 @@
+projects/app/src/pages/api/core/app/agent/skills/import.ts
+  8a101c9a3d54608d 13,60,64,209-211,215
+  6a37a3ff225c8e62 10,104-105,107-114,213
+  b3bdc0c4ac046b7c 7-8,123,179-183
+  743d0e3476d75555 124,128-129,131-137,139-140,142,151,153-176,199,212,214
+  6f738f5a374cdc53 12,115-117,119-122,125,130,146-148,200-208
+  a48064b8094187b7 9,11,36,39,44,54-56,63
+test/cases/service/core/agentSkill/import.test.ts
+  6a37a3ff225c8e62 1-80,84,89,92-93,95-98,104-125,136-433
+  6f738f5a374cdc53 81-83,85-88,90-91,94,99-103,126-135
+packages/global/core/agentSkill/api.d.ts
+  6a37a3ff225c8e62 2
+packages/global/core/agentSkill/type.d.ts
+  6a37a3ff225c8e62 120-136
+packages/service/core/agentSkill/controller.ts
+  8a101c9a3d54608d 8,185-186,193,198-203,215,219,221,223-247,250
+packages/service/core/agentSkill/utils.ts
+  b3bdc0c4ac046b7c 5-194
+packages/service/core/agentSkill/schema.ts
+  743d0e3476d75555 89-93
+test/cases/service/core/agentSkill/controller.test.ts
+  8a101c9a3d54608d 522-523,525-531,553-554,556,560
+  b3bdc0c4ac046b7c 14-16,564-803
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.36",
+  "base_commit_sha": "e479ce7fbe9893cddd16d2fdabd4cf61c1b2f3cc",
+  "prompts": {
+    "6a37a3ff225c8e62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd142cd4-7c62-420b-97fe-3b1d64e48896",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 481,
+      "total_deletions": 15,
+      "accepted_lines": 446,
+      "overriden_lines": 0
+    },
+    "6f738f5a374cdc53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a2cf8b2-d484-47c5-a502-9fcfbd2c2e10",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 38,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    },
+    "743d0e3476d75555": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "650fb068-af95-4ab4-b834-93223fca507f",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 49,
+      "total_deletions": 21,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    },
+    "8a101c9a3d54608d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5744768f-5d9d-40a2-a898-30dccd5b9104",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 93,
+      "total_deletions": 39,
+      "accepted_lines": 66,
+      "overriden_lines": 0
+    },
+    "a48064b8094187b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b71dd940-3b02-4324-85fb-6306bb7f45b6",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 53,
+      "accepted_lines": 24,
+      "overriden_lines": 0
+    },
+    "b3bdc0c4ac046b7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "264077d1-6a7d-45f8-b471-b9cb82966709",
+        "model": "glm-4-7"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 459,
+      "total_deletions": 24,
+      "accepted_lines": 449,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,27 @@
+projects/app/src/pages/api/core/agentSkills/debugSession/records.ts
+  134e577dc23bdcff 1-57
+projects/app/test/api/core/agentSkills/debugSession/records.test.ts
+  134e577dc23bdcff 1-330
+packages/global/core/agentSkills/api.d.ts
+  134e577dc23bdcff 261-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "768cdbc28a286d37e437a73aa87c9ef9ecf712d2",
+  "prompts": {
+    "134e577dc23bdcff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b199f995-7a61-4971-9ec3-7d7a251b2be4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 398,
+      "total_deletions": 1,
+      "accepted_lines": 397,
+      "overriden_lines": 0
+    }
+  }
+}

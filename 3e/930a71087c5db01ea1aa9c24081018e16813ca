@@ -1,0 +1,35 @@
+packages/service/core/agentSkills/utils.ts
+  cba2fde9d71420c1 142,290
+packages/service/core/workflow/dispatch/ai/agent/master/call.ts
+  cba2fde9d71420c1 196
+projects/app/src/pages/api/core/agentSkills/import.ts
+  cba2fde9d71420c1 13,106
+packages/global/core/agentSkills/type.ts
+  cba2fde9d71420c1 1-197
+packages/global/core/agentSkills/api.ts
+  cba2fde9d71420c1 1-270
+projects/app/src/pageComponents/app/detail/Edit/ChatAgent/utils.ts
+  cba2fde9d71420c1 245
+test/cases/service/core/agentSkills/import.test.ts
+  cba2fde9d71420c1 6,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "3e930a71087c5db01ea1aa9c24081018e16813ca",
+  "prompts": {
+    "cba2fde9d71420c1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cfb44-7bb9-78f2-a8ab-e5dd77312071",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 475,
+      "total_deletions": 468,
+      "accepted_lines": 475,
+      "overriden_lines": 0
+    }
+  }
+}

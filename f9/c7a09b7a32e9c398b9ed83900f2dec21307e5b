@@ -1,0 +1,62 @@
+packages/service/core/workflow/dispatch/ai/agent/capability/sandboxSkills.ts
+  e7a167ff3bc5bd6f 27-29,37,43,57-62,67-68,90-114
+projects/app/src/pages/api/core/app/agent/skills/edit.ts
+  e7a167ff3bc5bd6f 2-3,6-8,13-14,19-20,22-27,29,42-44,48-51,55-57,60-67,69,75-76,79,82-83
+packages/web/i18n/zh-CN/chat.json
+  e7a167ff3bc5bd6f 213-225
+packages/service/core/agentSkill/sandboxController.ts
+  e7a167ff3bc5bd6f 30,40,81,154,181,226,235,304-311
+packages/global/core/workflow/runtime/constants.ts
+  e7a167ff3bc5bd6f 24-27
+projects/app/src/components/core/chat/ChatContainer/type.ts
+  e7a167ff3bc5bd6f 6-8,37-39
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  e7a167ff3bc5bd6f 39,46,109-111,115-119,164,171,184,194,214,235,282-284,311
+packages/web/i18n/zh-Hant/chat.json
+  e7a167ff3bc5bd6f 206-218
+packages/service/core/agentSkill/sandboxCleanup.ts
+  670b3cd2c8502e76 42
+packages/global/core/chat/type.ts
+  e7a167ff3bc5bd6f 36-76
+projects/app/src/web/common/api/fetch.ts
+  e7a167ff3bc5bd6f 17-18,72-75,267-268,311-315
+packages/service/core/workflow/dispatch/ai/agent/index.ts
+  e7a167ff3bc5bd6f 177-178
+packages/web/i18n/en/chat.json
+  e7a167ff3bc5bd6f 213-225
+projects/app/src/components/core/chat/ChatContainer/ChatBox/index.tsx
+  e7a167ff3bc5bd6f 301-308,322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "f9c7a09b7a32e9c398b9ed83900f2dec21307e5b",
+  "prompts": {
+    "670b3cd2c8502e76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fea9117a-6f96-440a-9075-d14451e4631e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "e7a167ff3bc5bd6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d18fb11-22a0-4c1a-b5e4-a707bc439639",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 399,
+      "total_deletions": 111,
+      "accepted_lines": 383,
+      "overriden_lines": 0
+    }
+  }
+}

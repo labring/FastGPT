@@ -1,0 +1,62 @@
+packages/sandbox-adapter/package.json
+  ff3b21b0454d3fec 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.36",
+  "base_commit_sha": "77e25574f05afc749cf5dbc0f3c8fa80ad78c140",
+  "prompts": {
+    "16fcf67c54ccff30": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "71d8f4b7-67be-4058-8e82-b6ac261d0fe6",
+        "model": "gemini-2.5-flash"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "20c6649cfeabf9fc": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "14d29239-02d2-4d3c-81a1-20b2185e18d3",
+        "model": "gemini-2.5-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 42,
+      "total_deletions": 19,
+      "accepted_lines": 36,
+      "overriden_lines": 0
+    },
+    "b69e5de37d7f80f8": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "f2b5f08a-e8f4-46e8-8e4c-83c2bf422716",
+        "model": "gemini-2.5-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 83,
+      "total_deletions": 18,
+      "accepted_lines": 61,
+      "overriden_lines": 0
+    },
+    "ff3b21b0454d3fec": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "81e91d59-31f4-4f56-8353-c4e73aa5b769",
+        "model": "gemini-2.5-pro"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

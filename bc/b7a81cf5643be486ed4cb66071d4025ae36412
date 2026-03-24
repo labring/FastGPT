@@ -1,0 +1,238 @@
+projects/app/src/pages/api/core/app/agent/skills/edit.ts
+  2c0955c921054aa3 37
+projects/app/src/pages/api/core/app/agent/skills/save-deploy.ts
+  efbd59cc54e65d48 23,25,99-102,105
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  30f103ae54d22a0f 153,155,160,166,169
+  dd81e2e506b0ec3f 257,264-266,268-270,272,276-279,283,331-332,341-344,381-382
+  51cdcf381039fa6a 221-227
+  dae9f6ac8e697a6b 7,163-164
+  efbd59cc54e65d48 21,31,206-208,211,214,219,230,232,347-354,358,363
+test/cases/service/core/agentSkills/sandboxSchema.test.ts
+  597606d27c6c5052 5
+  efbd59cc54e65d48 2,6,8-16,25,28,32-39,43-49,55-56,60-63,66-74,76-77,79-80,86,89-100,102-103,109-144,147-155,158,160-162,166-168
+packages/service/core/workflow/dispatch/ai/agent/capability/sandboxSkills.ts
+  7f4a455f0b348802 1,38,51,54-56,64,66-68,75-76,78-79,84-86,99-101,171,173
+  96336988e398c96b 37,39,59,61-63,65,69-74,77,80-83,87-98,102
+  2bbd9223eda52808 10-11,26-27,48,125
+  ae808b1c264a73bb 35,151,158-167,248-252
+  dd81e2e506b0ec3f 19,33-34,36,52-53,57-58,60,103-121,127-128,130,135,139-150,152-157,168-170,172,174,177-180,185-188,191-244,254-255,262-264,266-272,274-278,280-282,302,308,310,314,316,318-333,335-339,341-369,372-375,377-383,385-403,406-409
+packages/service/core/agentSkills/controller.ts
+  f90d8359302c4464 127-140,186-190,251-256,352-480
+test/cases/service/core/agentSkills/utils.test.ts
+  ff7ee9ded324e6e2 68-69,73-74,77-78,81,83-84
+packages/global/core/agentSkills/constants.ts
+  c359de5ed61eb8bb 74-81
+test/mocks/common/s3.ts
+  f90d8359302c4464 122-125
+test/mocks/common/mongo.ts
+  f90d8359302c4464 15
+packages/service/package.json
+  51cdcf381039fa6a 6
+packages/global/core/agentSkills/type.d.ts
+  c359de5ed61eb8bb 4-5,11-14,156-191
+test/cases/service/core/agentSkills/controller.test.ts
+  f90d8359302c4464 2-3,29-31,36,41,63,82,152,157,174,190,198,221,228,239,260,310,422,442,513,565
+test/cases/service/core/agentSkills/version.test.ts
+  f90d8359302c4464 2-4,24-26,31-32,35,56-57,81,113-114,137,139-142,154,168,183,205,227,243,258,260,269,283,303-304,316,339,358,368,393,407,421,452,466,499,513,527,552,580-581,585,595,606,629,648,658
+test/cases/service/core/agentSkills/storage.test.ts
+  ff7ee9ded324e6e2 1,18-19,129-140,147-148,183-189,191-192
+packages/service/core/agentSkills/sandboxSchema.ts
+  c359de5ed61eb8bb 9-10,15-26,28,32,34,37-38,41,43-44,46-48,50-72,79-80,82-83,87,91-99,101-111,116-117,119-120,122-123,125,128-130
+packages/service/core/agentSkills/utils.ts
+  f90d8359302c4464 120-121,135-136,141
+packages/service/core/agentSkills/sandboxController.ts
+  dae9f6ac8e697a6b 518,535-536
+  51cdcf381039fa6a 177-178
+  c359de5ed61eb8bb 11,27,117-123,126-131,133-156,158-173,176,179-187,189-197,203,207-208,210,212-218,333,336-343,347,350,355,367
+  efbd59cc54e65d48 23,421,424,426,442,444,447,451-454,457,461,463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "bcb7a81cf5643be486ed4cb66071d4025ae36412",
+  "prompts": {
+    "2bbd9223eda52808": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2817d8be-5804-47e2-a0cf-a3e75ffa5e3a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "2c0955c921054aa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3dbf45c3-94a6-48cc-96cb-f0791c76e433",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 103,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "30f103ae54d22a0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38bf49fd-9e1e-47dd-a7f8-6a2aff5273cb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 29,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "51cdcf381039fa6a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1dac10f7-6f8e-4f2a-ac72-0ae980f2c6aa",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 2,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    },
+    "597606d27c6c5052": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6edc78ac-e8c7-45ac-99a4-0c4578e12b0c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 15,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "7f4a455f0b348802": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0e215ae1-aa01-4192-9c20-652034cc1b1c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 55,
+      "total_deletions": 89,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    },
+    "96336988e398c96b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd6ccee8-4066-41f1-ae9a-af503b6ae0d1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 68,
+      "total_deletions": 9,
+      "accepted_lines": 31,
+      "overriden_lines": 0
+    },
+    "ae808b1c264a73bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c0e9702-ce48-4f55-bd47-baf25395e325",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 1,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    },
+    "c359de5ed61eb8bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c4f411a-6667-4a2d-9f8b-fa7e1c66a8d4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 301,
+      "total_deletions": 71,
+      "accepted_lines": 231,
+      "overriden_lines": 0
+    },
+    "dae9f6ac8e697a6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dad2f3a8-3242-4ed9-abf5-9856b5ef24fd",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 17,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "dd81e2e506b0ec3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4cedc222-c58c-4e45-92d7-2ca672a2612d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 427,
+      "total_deletions": 153,
+      "accepted_lines": 247,
+      "overriden_lines": 0
+    },
+    "efbd59cc54e65d48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb362566-d9f5-4896-8b6c-34a186fdbd99",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 203,
+      "total_deletions": 344,
+      "accepted_lines": 155,
+      "overriden_lines": 0
+    },
+    "f90d8359302c4464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5336c47c-f2c1-4870-98e4-9e9f85b1c0b7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 97,
+      "total_deletions": 153,
+      "accepted_lines": 239,
+      "overriden_lines": 0
+    },
+    "ff7ee9ded324e6e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f0f0ef9-0ea6-4fa5-b613-2f0aee0513ec",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 22,
+      "accepted_lines": 35,
+      "overriden_lines": 0
+    }
+  }
+}

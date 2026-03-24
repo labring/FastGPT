@@ -1,0 +1,23 @@
+packages/global/core/agentSkills/constants.ts
+  cba2fde9d71420c1 1-2,20,23-27,31-35,39-43,47-51,55-59,63-67,71-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0112b98695270c92c97c8dac958da784c7a44d57",
+  "prompts": {
+    "cba2fde9d71420c1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019cfb44-7bb9-78f2-a8ab-e5dd77312071",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 38,
+      "total_deletions": 8,
+      "accepted_lines": 38,
+      "overriden_lines": 0
+    }
+  }
+}
