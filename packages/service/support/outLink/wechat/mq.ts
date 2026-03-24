@@ -126,13 +126,12 @@ async function processUserGroup(
       query: [{ text: { content: group.text } }],
       messageId: group.msgIds[group.msgIds.length - 1],
       chatUserId: group.userId,
-      replyCallback: async (replyContent: string) => {
+      onReply: async (replyContent: string) => {
         await client.sendMessage({
           to_user_id: group.userId,
           text: replyContent,
           context_token: group.contextToken
         });
-        return { errcode: 0 };
       }
     });
   } catch (error) {
