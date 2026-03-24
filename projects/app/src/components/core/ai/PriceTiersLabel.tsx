@@ -30,7 +30,7 @@ const formatPriceSummary = ({
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
   const { t } = useTranslation();
   const tiers = useMemo(() => config.priceTiers || [], [config]);
-  console.log(tiers, 22);
+
   if (tiers.length === 0) {
     return <Box>-</Box>;
   }

@@ -30,7 +30,7 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
 
     const hasMaxInputTokens = isValidNumber(tier?.maxInputTokens);
     const last = result[result.length - 1];
-    const minInputTokens = last?.maxInputTokens || 0;
+    const minInputTokens = last.maxInputTokens ?? 0;
 
     if (!hasMaxInputTokens) {
       // 无上限梯度（开放末端）：有价格才算有效
@@ -76,7 +76,7 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
   if (hasLegacyIOPrice) {
     return [
       {
-        minInputTokens: 1,
+        minInputTokens: 0,
         inputPrice: getSafePrice(config?.inputPrice),
         outputPrice: getSafePrice(config?.outputPrice)
       }
@@ -92,7 +92,7 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
 
     return [
       {
-        minInputTokens: 1,
+        minInputTokens: 0,
         inputPrice: comprehensivePrice,
         outputPrice: comprehensivePrice
       }

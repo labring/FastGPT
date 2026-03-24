@@ -18,8 +18,6 @@ export type listResponse = {
   inputPrice?: number;
   outputPrice?: number;
   priceTiers?: ModelPriceTierType[];
-  // testMode?: boolean;
-  // datasetProcess?: boolean;
 
   isActive: boolean;
   isCustom: boolean;
