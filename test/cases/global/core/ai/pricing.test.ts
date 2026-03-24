@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateModelPrice,
-  getModelPriceTiersForForm,
   getRuntimeResolvedPriceTiers,
-  preprocessModelPriceConfig,
   sanitizeModelPriceTiers
 } from '@fastgpt/global/core/ai/pricing';
 
@@ -100,58 +98,6 @@ describe('core/ai/pricing', () => {
     expect(totalPoints).toBeCloseTo(0.55);
   });
 
-  it('should reuse preprocessed resolved tiers when calculating price', () => {
-    const config = preprocessModelPriceConfig({
-      priceTiers: [
-        {
-          maxInputTokens: 30,
-          inputPrice: 1,
-          outputPrice: 2
-        },
-        {
-          maxInputTokens: 60,
-          inputPrice: 3,
-          outputPrice: 4
-        },
-        {
-          inputPrice: 5,
-          outputPrice: 6
-        }
-      ]
-    });
-
-    expect(config.priceTiers).toEqual([
-      {
-        minInputTokens: 1,
-        maxInputTokens: 30,
-        inputPrice: 1,
-        outputPrice: 2
-      },
-      {
-        minInputTokens: 31,
-        maxInputTokens: 60,
-        inputPrice: 3,
-        outputPrice: 4
-      },
-      {
-        minInputTokens: 61,
-        maxInputTokens: undefined,
-        inputPrice: 5,
-        outputPrice: 6
-      }
-    ]);
-
-    const { matchedTier, tiers, totalPoints } = calculateModelPrice({
-      config,
-      inputTokens: 35,
-      outputTokens: 100
-    });
-
-    expect(tiers).toBe(config.priceTiers);
-    expect(matchedTier).toBe(config.priceTiers?.[1]);
-    expect(totalPoints).toBeCloseTo(0.505);
-  });
-
   it('should resolve ranges from configured tiers', () => {
     expect(
       getRuntimeResolvedPriceTiers({
@@ -190,20 +136,6 @@ describe('core/ai/pricing', () => {
         maxInputTokens: undefined,
         inputPrice: 3,
         outputPrice: 3
-      }
-    ]);
-  });
-
-  it('should return a single empty row for default zero-price form data', () => {
-    expect(
-      getModelPriceTiersForForm({
-        charsPointsPrice: 0
-      })
-    ).toEqual([
-      {
-        maxInputTokens: undefined,
-        inputPrice: undefined,
-        outputPrice: undefined
       }
     ]);
   });
@@ -361,35 +293,6 @@ describe('core/ai/pricing', () => {
       },
       {
         minInputTokens: 11,
-        maxInputTokens: undefined,
-        inputPrice: 3,
-        outputPrice: 3
-      }
-    ]);
-  });
-
-  it('should convert legacy input/output price to a single editable tier', () => {
-    expect(
-      getModelPriceTiersForForm({
-        inputPrice: 1.5,
-        outputPrice: 2.5
-      })
-    ).toEqual([
-      {
-        maxInputTokens: undefined,
-        inputPrice: 1.5,
-        outputPrice: 2.5
-      }
-    ]);
-  });
-
-  it('should convert legacy comprehensive price to a single editable tier', () => {
-    expect(
-      getModelPriceTiersForForm({
-        charsPointsPrice: 3
-      })
-    ).toEqual([
-      {
         maxInputTokens: undefined,
         inputPrice: 3,
         outputPrice: 3

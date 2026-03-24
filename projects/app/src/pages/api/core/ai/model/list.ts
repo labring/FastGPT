@@ -18,8 +18,8 @@ export type listResponse = {
   inputPrice?: number;
   outputPrice?: number;
   priceTiers?: ModelPriceTierType[];
-  testMode?: boolean;
-  datasetProcess?: boolean;
+  // testMode?: boolean;
+  // datasetProcess?: boolean;
 
   isActive: boolean;
   isCustom: boolean;
@@ -47,8 +47,6 @@ async function handler(
     inputPrice: model.inputPrice,
     outputPrice: model.outputPrice,
     priceTiers: model.priceTiers,
-    testMode: 'testMode' in model ? model.testMode : undefined,
-    datasetProcess: 'datasetProcess' in model ? model.datasetProcess : undefined,
     isActive: model.isActive ?? false,
     isCustom: model.isCustom ?? false,
 

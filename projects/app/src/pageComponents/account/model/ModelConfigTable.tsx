@@ -50,7 +50,6 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { AddModelButton } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
-import { getModelPriceTiersForForm } from '@fastgpt/global/core/ai/pricing';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -255,14 +254,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     (modelId: string) => getSystemModelDetail(modelId),
     {
       onSuccess: (data: SystemModelItemType) => {
-        setEditModelData(
-          data.type === ModelTypeEnum.llm
-            ? {
-                ...data,
-                priceTiers: getModelPriceTiersForForm(data)
-              }
-            : data
-        );
+        setEditModelData(data);
       }
     }
   );
@@ -277,16 +269,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       charsPointsPrice: 0,
       inputPrice: undefined,
       outputPrice: undefined,
-      priceTiers:
-        type === ModelTypeEnum.llm
-          ? [
-              {
-                maxInputTokens: undefined,
-                inputPrice: undefined,
-                outputPrice: undefined
-              }
-            ]
-          : undefined,
+      priceTiers: undefined,
 
       isCustom: true,
       isActive: true,

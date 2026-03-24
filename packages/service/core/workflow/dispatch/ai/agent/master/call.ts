@@ -606,7 +606,7 @@ export const masterCall = async ({
         response,
         assistantMessages: [], // TODO
         usages,
-        stop: stop || checkIsStopping()
+        stop
       };
     },
     onToolCompress: ({ call, response, usage }) => {

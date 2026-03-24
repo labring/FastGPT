@@ -31,7 +31,6 @@ export const defaultQAModels: LLMModelItemType[] = [
     charsPointsPrice: 0,
     censor: false,
     vision: true,
-    datasetProcess: true,
     toolChoice: true,
     functionCall: false,
     defaultSystemChatPrompt: '',

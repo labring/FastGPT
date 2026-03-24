@@ -3,10 +3,13 @@ import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z.object({
-  minInputTokens: z.number().int().positive().optional(),
-  maxInputTokens: z.number().int().positive().optional(),
-  inputPrice: z.number().optional(),
-  outputPrice: z.number().optional()
+  minInputTokens: z.int().min(0),
+  maxInputTokens: z.int().nullish().meta({
+    description:
+      'The maximum number of input tokens for this tier. If not provided, the tier is open-ended.'
+  }),
+  inputPrice: z.number(),
+  outputPrice: z.number()
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
@@ -53,9 +56,6 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   vision: z.boolean().optional(),
   reasoning: z.boolean().optional(),
 
-  // diff function model
-  datasetProcess: z.boolean().optional(), // dataset
-
   // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
   testMode: z.boolean().optional(), // test mode flag
 
@@ -69,7 +69,18 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   // LLM
   isDefaultDatasetTextModel: z.boolean().optional(),
   isDefaultDatasetImageModel: z.boolean().optional(),
-  isDefaultHelperBotModel: z.boolean().optional()
+  isDefaultHelperBotModel: z.boolean().optional(),
+
+  /** @deprecated */
+  datasetProcess: z.boolean().optional(), // dataset
+  /** @deprecated */
+  usedInClassify: z.boolean().optional(),
+  /** @deprecated */
+  usedInExtractFields: z.boolean().optional(),
+  /** @deprecated */
+  usedInToolCall: z.boolean().optional(),
+  /** @deprecated */
+  useInEvaluation: z.boolean().optional()
 });
 export type LLMModelItemType = z.infer<typeof LLMModelItemSchema>;
 

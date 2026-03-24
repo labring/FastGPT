@@ -35,21 +35,24 @@ async function handler(
   };
   delete metadataConcat.avatar;
   delete metadataConcat.isCustom;
+
+  // delete deprecated fields
+  delete metadataConcat.datasetProcess;
   delete metadataConcat.usedInClassify;
   delete metadataConcat.usedInExtractFields;
   delete metadataConcat.usedInToolCall;
   delete metadataConcat.useInEvaluation;
-
-  // 强制赋值 model，避免脏的 metadata 覆盖真实 model
-  metadataConcat.model = model;
-  metadataConcat.name = metadataConcat?.name?.trim();
-
   // TODO: 这里应该是所有模型，而不是仅LLM，我再看看
   if (metadataConcat.type === ModelTypeEnum.llm && Array.isArray(metadataConcat.priceTiers)) {
     delete metadataConcat.charsPointsPrice;
     delete metadataConcat.inputPrice;
     delete metadataConcat.outputPrice;
   }
+
+  // 强制赋值 model，避免脏的 metadata 覆盖真实 model
+  metadataConcat.model = model;
+  metadataConcat.name = metadataConcat?.name?.trim();
+
   // Delete null value
   Object.keys(metadataConcat).forEach((key) => {
     if (metadataConcat[key] === null || metadataConcat[key] === undefined) {

@@ -22,7 +22,7 @@ import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { preprocessModelPriceConfig } from '@fastgpt/global/core/ai/pricing';
+import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -57,41 +57,14 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   }
 
   const pushModel = (model: SystemModelItemType) => {
-    preprocessModelPriceConfig(model);
     _systemModelList.push(model);
-
-    // Add default value
-    if (model.type === ModelTypeEnum.llm) {
-      const legacyModel = model as typeof model & {
-        usedInClassify?: boolean;
-        usedInExtractFields?: boolean;
-        usedInToolCall?: boolean;
-        useInEvaluation?: boolean;
-      };
-
-      model.testMode =
-        model.testMode ??
-        (legacyModel.usedInClassify === false &&
-        legacyModel.usedInExtractFields === false &&
-        legacyModel.usedInToolCall === false &&
-        legacyModel.useInEvaluation === false
-          ? true
-          : false);
-
-      // Determine default value based on testMode
-      const defaultFuncValue = model.testMode === true ? false : true;
-      model.datasetProcess = model.datasetProcess ?? defaultFuncValue;
-
-      delete legacyModel.usedInClassify;
-      delete legacyModel.usedInExtractFields;
-      delete legacyModel.usedInToolCall;
-      delete legacyModel.useInEvaluation;
-    }
 
     if (model.isActive) {
       _systemActiveModelList.push(model);
 
       if (model.type === ModelTypeEnum.llm) {
+        model.priceTiers = getRuntimeResolvedPriceTiers(model);
+
         _llmModelMap.set(model.model, model);
         _llmModelMap.set(model.name, model);
         if (model.isDefault) {
@@ -204,7 +177,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       }
       if (!_systemDefaultModel.datasetTextLLM) {
         _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values()).find(
-          (item) => item.datasetProcess
+          (item) => !item.testMode
         );
       }
       if (!_systemDefaultModel.datasetImageLLM) {

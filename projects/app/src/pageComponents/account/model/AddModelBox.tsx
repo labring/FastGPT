@@ -41,11 +41,7 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import {
-  getModelPriceTiersForForm,
-  sanitizeModelPriceTiers
-} from '@fastgpt/global/core/ai/pricing';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import { sanitizeModelPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 
 export const AddModelButton = ({
@@ -143,16 +139,11 @@ const InvalidPriceInputStyles = {
 };
 
 const emptyPriceTier = {
+  minInputTokens: 0,
   maxInputTokens: undefined,
   inputPrice: undefined,
   outputPrice: undefined
 };
-
-const isEmptyTier = (tier?: ModelPriceTierType) =>
-  !tier ||
-  (typeof tier.maxInputTokens !== 'number' &&
-    typeof tier.inputPrice !== 'number' &&
-    typeof tier.outputPrice !== 'number');
 
 const getOptionalNumber = (value: unknown) => {
   if (value === '' || value === null || value === undefined) return undefined;
@@ -179,56 +170,21 @@ const getOptionalInteger = (value: unknown) => {
 
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
 
-const getEditablePriceTiers = (modelData: SystemModelItemType) => {
-  if (modelData.type !== ModelTypeEnum.llm) return undefined;
-
-  const tiers = getModelPriceTiersForForm(modelData);
-
-  if (tiers.length === 0) {
-    return [emptyPriceTier];
-  }
-
-  const lastTier = tiers[tiers.length - 1];
-
-  const isOpenEndedTier =
-    typeof lastTier?.maxInputTokens !== 'number' &&
-    (typeof lastTier?.inputPrice === 'number' || typeof lastTier?.outputPrice === 'number');
-
-  if (isOpenEndedTier) {
-    return tiers;
-  }
-
-  return isEmptyTier(lastTier) ? tiers : [...tiers, emptyPriceTier];
-};
-
-const getInitialTestMode = (modelData: SystemModelItemType) => {
-  if (modelData.type !== ModelTypeEnum.llm) return undefined;
-  const legacyModelData = modelData as SystemModelItemType & {
-    usedInClassify?: boolean;
-    usedInExtractFields?: boolean;
-    usedInToolCall?: boolean;
-    useInEvaluation?: boolean;
-  };
-
-  if (typeof modelData.testMode === 'boolean') {
-    return modelData.testMode;
-  }
-
-  return (
-    legacyModelData.usedInClassify === false &&
-    legacyModelData.usedInExtractFields === false &&
-    legacyModelData.usedInToolCall === false &&
-    legacyModelData.useInEvaluation === false
-  );
-};
-
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const Section = ({
+  title,
+  children,
+  showBorder = true
+}: {
+  title: string;
+  children: React.ReactNode;
+  showBorder?: boolean;
+}) => (
   <Grid
     templateColumns={['1fr', '140px minmax(0, 1fr)']}
     rowGap={[3, 4]}
     columnGap={8}
     py={[4, 5]}
-    borderBottom={'1px solid'}
+    borderBottom={showBorder ? '1px solid' : 'none'}
     borderColor={'myGray.200'}
   >
     <Box fontSize={['sm', 'md']} fontWeight={'600'} color={'myGray.900'} lineHeight={1.2}>
@@ -613,7 +569,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                         type={'number'}
                         step={1}
                         min={minAllowedMax}
-                        placeholder={isLastTier ? t('account:model.price_tier_open_ended') : ''}
+                        placeholder={isLastTier ? t('account_model:price_tier_open_ended') : ''}
                         fontSize={'12px'}
                         {...maxInputTokensRegister}
                         {...PriceInputStyles}
@@ -624,7 +580,6 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                             ...state,
                             [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
                           }));
-                          ensureNextEmptyPriceTier(index, nextValue, e.currentTarget, lowerBound);
                         }}
                         onBlur={(e) => {
                           maxInputTokensRegister.onBlur(e);
@@ -633,6 +588,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                             ...state,
                             [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
                           }));
+                          ensureNextEmptyPriceTier(index, nextValue, e.currentTarget, lowerBound);
                         }}
                         isInvalid={isInvalidMaxInput}
                         {...(isInvalidMaxInput ? InvalidPriceInputStyles : {})}
@@ -696,7 +652,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       isDisabled={priceTierFields.length === 1 && isEmptyAction}
                       _hover={{ bg: 'transparent' }}
                     >
-                      {t('account:model.clear_action')}
+                      {t('account_model:clear')}
                     </Button>
                   </Td>
                 </Tr>
@@ -790,21 +746,28 @@ export const ModelEditModal = ({
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs, getModelProviders } = useSystemStore();
-  const initialModelData = useMemo(
-    () =>
-      modelData.type === ModelTypeEnum.llm
-        ? {
-            ...modelData,
-            testMode: getInitialTestMode(modelData),
-            priceTiers: getEditablePriceTiers(modelData)
-          }
-        : modelData,
-    [modelData]
-  );
 
   const { control, register, getValues, setValue, handleSubmit, reset } =
     useForm<SystemModelItemType>({
-      defaultValues: initialModelData
+      defaultValues: {
+        ...modelData,
+        priceTiers: (() => {
+          if (modelData.type !== ModelTypeEnum.llm) return undefined;
+          const tiers = modelData.priceTiers || [];
+          if (tiers.length === 0) return [emptyPriceTier];
+
+          const last = tiers[tiers.length - 1];
+          if (!last.maxInputTokens) return tiers;
+
+          return [
+            ...tiers,
+            {
+              ...emptyPriceTier,
+              minInputTokens: last.maxInputTokens
+            }
+          ];
+        })()
+      }
     });
 
   const isCustom = !!modelData.isCustom;
@@ -836,15 +799,6 @@ export const ModelEditModal = ({
   const { runAsync: updateModel, loading: updatingModel } = useRequest(
     async (data: SystemModelItemType) => {
       if (data.type === ModelTypeEnum.llm) {
-        const testModeEnabled = data.testMode === true;
-        data.datasetProcess = !testModeEnabled;
-
-        delete (data as SystemModelItemType & { usedInClassify?: boolean }).usedInClassify;
-        delete (data as SystemModelItemType & { usedInExtractFields?: boolean })
-          .usedInExtractFields;
-        delete (data as SystemModelItemType & { usedInToolCall?: boolean }).usedInToolCall;
-        delete (data as SystemModelItemType & { useInEvaluation?: boolean }).useInEvaluation;
-
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
         let currentLowerExclusiveBound = 1;
@@ -902,19 +856,10 @@ export const ModelEditModal = ({
     getSystemModelDefaultConfig,
     {
       onSuccess(res) {
-        reset(
-          res.type === ModelTypeEnum.llm
-            ? {
-                ...getValues(),
-                ...res,
-                testMode: getInitialTestMode(res),
-                priceTiers: getEditablePriceTiers(res)
-              }
-            : {
-                ...getValues(),
-                ...res
-              }
-        );
+        reset({
+          ...getValues(),
+          ...res
+        });
         setTimeout(() => {
           setKey((prev) => prev + 1);
         }, 0);
@@ -957,248 +902,236 @@ export const ModelEditModal = ({
       w="800px"
       h={'100%'}
     >
-      <ModalBody px={0} pr={2} py={[3, 4]}>
-        <Box key={key}>
-          <Section title={t('account:model.basic_config_section')}>
-            <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
-              <Grid
-                flex={'1 0 0'}
-                templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']}
-                gap={[5, 5]}
+      <ModalBody py={0}>
+        <Section title={t('account:model.basic_config_section')}>
+          <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
+            <Grid
+              flex={'1 0 0'}
+              templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']}
+              gap={[5, 5]}
+            >
+              <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
+                <Input
+                  {...register('model', { required: true })}
+                  {...InputStyles}
+                  isReadOnly={!isCustom}
+                />
+              </Field>
+              <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>
+                <Input {...register('name', { required: true })} {...InputStyles} />
+              </Field>
+              <ProviderField
+                control={control}
+                setValue={setValue}
+                providerList={providerList}
+                t={t}
+              />
+            </Grid>
+          </Flex>
+        </Section>
+
+        {isLLMModel && (
+          <Section title={t('account:model.params_config_section')}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+              <Field label={t('common:core.ai.Max context')}>
+                <MyNumberInput register={register} isRequired name="maxContext" {...InputStyles} />
+              </Field>
+
+              <Field
+                label={t('common:core.chat.response.module maxToken')}
+                tip={t('account_model:maxToken_tip')}
               >
-                <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
-                  <Input
-                    {...register('model', { required: true })}
-                    {...InputStyles}
-                    isReadOnly={!isCustom}
-                  />
-                </Field>
-                <Field label={t('account:model.alias')} tip={t('account:model.alias_tip')}>
-                  <Input {...register('name', { required: true })} {...InputStyles} />
-                </Field>
-                <ProviderField
-                  control={control}
-                  setValue={setValue}
-                  providerList={providerList}
-                  t={t}
-                />
-              </Grid>
-            </Flex>
-          </Section>
+                <MyNumberInput min={2000} register={register} name="maxResponse" {...InputStyles} />
+              </Field>
 
-          {isLLMModel && (
-            <Section title={t('account:model.params_config_section')}>
-              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
-                <Field label={t('common:core.ai.Max context')}>
-                  <MyNumberInput
-                    register={register}
-                    isRequired
-                    name="maxContext"
-                    {...InputStyles}
-                  />
-                </Field>
-
-                <Field
-                  label={t('common:core.chat.response.module maxToken')}
-                  tip={t('account_model:maxToken_tip')}
-                >
-                  <MyNumberInput
-                    min={2000}
-                    register={register}
-                    name="maxResponse"
-                    {...InputStyles}
-                  />
-                </Field>
-
-                <Field label={t('account:model.max_quote')}>
-                  <MyNumberInput
-                    register={register}
-                    isRequired
-                    name="quoteMaxToken"
-                    {...InputStyles}
-                  />
-                </Field>
-
-                <Field
-                  label={t('account:model.max_temperature')}
-                  tip={t('account_model:max_temperature_tip')}
-                >
-                  <MyNumberInput
-                    register={register}
-                    name="maxTemperature"
-                    min={0}
-                    step={0.1}
-                    {...InputStyles}
-                  />
-                </Field>
-
-                <SwitchField
-                  label={t('account:model.show_top_p')}
-                  field={'showTopP'}
+              <Field label={t('account:model.max_quote')}>
+                <MyNumberInput
                   register={register}
+                  isRequired
+                  name="quoteMaxToken"
+                  {...InputStyles}
                 />
+              </Field>
 
-                <SwitchField
-                  label={t('account:model.show_stop_sign')}
-                  field={'showStopSign'}
+              <Field
+                label={t('account:model.max_temperature')}
+                tip={t('account_model:max_temperature_tip')}
+              >
+                <MyNumberInput
                   register={register}
+                  name="maxTemperature"
+                  min={0}
+                  step={0.1}
+                  {...InputStyles}
                 />
+              </Field>
 
+              <SwitchField
+                label={t('account:model.show_top_p')}
+                field={'showTopP'}
+                register={register}
+              />
+
+              <SwitchField
+                label={t('account:model.show_stop_sign')}
+                field={'showStopSign'}
+                register={register}
+              />
+
+              <Box gridColumn={['1 / -1']}>
                 <ResponseFormatField
                   control={control}
                   setValue={setValue}
                   getValues={getValues}
                   t={t}
                 />
-              </Grid>
-            </Section>
-          )}
+              </Box>
+            </Grid>
+          </Section>
+        )}
 
-          {isEmbeddingModel && (
-            <Section title={t('account:model.params_config_section')}>
-              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
-                <SwitchField
-                  label={t('account:model.normalization')}
-                  tip={t('account:model.normalization_tip')}
-                  field={'normalization'}
-                  register={register}
-                />
-                <Field label={t('account_model:batch_size')}>
-                  <MyNumberInput
-                    defaultValue={1}
-                    register={register}
-                    name="batchSize"
-                    min={1}
-                    step={1}
-                    isRequired
-                    {...InputStyles}
-                  />
-                </Field>
-                <Field
-                  label={t('account:model.default_token')}
-                  tip={t('account:model.default_token_tip')}
-                >
-                  <MyNumberInput
-                    register={register}
-                    isRequired
-                    name="defaultToken"
-                    {...InputStyles}
-                  />
-                </Field>
-                <Field label={t('common:core.ai.Max context')}>
-                  <MyNumberInput register={register} isRequired name="maxToken" {...InputStyles} />
-                </Field>
-              </Grid>
-            </Section>
-          )}
-
-          {isLLMModel && (
-            <Section title={t('account:model.feature_config_section')}>
-              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
-                <SwitchField
-                  label={t('account:model.tool_choice')}
-                  tip={t('account:model.tool_choice_tip')}
-                  field={'toolChoice'}
-                  register={register}
-                />
-                <SwitchField
-                  label={t('account:model.vision')}
-                  tip={t('account:model.vision_tip')}
-                  field={'vision'}
-                  register={register}
-                />
-                <SwitchField
-                  label={t('account:model.reasoning')}
-                  tip={t('account:model.reasoning_tip')}
-                  field={'reasoning'}
-                  register={register}
-                />
-                {feConfigs?.isPlus && (
-                  <SwitchField
-                    label={t('account:model.censor')}
-                    tip={t('account:model.censor_tip')}
-                    field={'censor'}
-                    register={register}
-                  />
-                )}
-              </Grid>
-            </Section>
-          )}
-
-          {priceUnit && feConfigs?.isPlus && (
-            <Section title={t('account:model.price_config_section')}>
-              {isLLMModel ? (
-                <PriceTiersTable
-                  control={control}
-                  register={register}
-                  getValues={getValues}
-                  setValue={setValue}
-                  t={t}
-                />
-              ) : (
-                <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={5}>
-                  <Field
-                    label={t('account:model.charsPointsPrice')}
-                    tip={t('account:model.charsPointsPrice_tip')}
-                  >
-                    <MyNumberInput
-                      register={register}
-                      name={'charsPointsPrice'}
-                      step={0.01}
-                      {...InputStyles}
-                    />
-                  </Field>
-                </Grid>
-              )}
-            </Section>
-          )}
-
-          <Section title={t('common:Other')}>
+        {isEmbeddingModel && (
+          <Section title={t('account:model.params_config_section')}>
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
-              {isLLMModel && (
-                <Field
-                  label={t('account:model.default_system_chat_prompt')}
-                  tip={t('account:model.default_system_chat_prompt_tip')}
-                  colSpan={[1, 2]}
-                >
-                  <MyTextarea
-                    {...register('defaultSystemChatPrompt')}
-                    {...InputStyles}
-                    minH={'110px'}
-                  />
-                </Field>
-              )}
-              {(isLLMModel || isEmbeddingModel) && (
-                <DefaultConfigField
-                  control={control}
-                  setValue={setValue}
-                  label={
-                    isLLMModel
-                      ? t('account:model.default_config')
-                      : t('account:model.defaultConfig')
-                  }
-                  tip={
-                    isLLMModel
-                      ? t('account:model.default_config_tip')
-                      : t('account:model.defaultConfig_tip')
-                  }
+              <SwitchField
+                label={t('account:model.normalization')}
+                tip={t('account:model.normalization_tip')}
+                field={'normalization'}
+                register={register}
+              />
+              <Field label={t('account_model:batch_size')}>
+                <MyNumberInput
+                  defaultValue={1}
+                  register={register}
+                  name="batchSize"
+                  min={1}
+                  step={1}
+                  isRequired
+                  {...InputStyles}
                 />
-              )}
-              {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
-              {CustomApi}
-              {isLLMModel && (
+              </Field>
+              <Field
+                label={t('account:model.default_token')}
+                tip={t('account:model.default_token_tip')}
+              >
+                <MyNumberInput
+                  register={register}
+                  isRequired
+                  name="defaultToken"
+                  {...InputStyles}
+                />
+              </Field>
+              <Field label={t('common:core.ai.Max context')}>
+                <MyNumberInput register={register} isRequired name="maxToken" {...InputStyles} />
+              </Field>
+            </Grid>
+          </Section>
+        )}
+
+        {isLLMModel && (
+          <Section title={t('account:model.feature_config_section')}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+              <SwitchField
+                label={t('account:model.tool_choice')}
+                tip={t('account:model.tool_choice_tip')}
+                field={'toolChoice'}
+                register={register}
+              />
+              <SwitchField
+                label={t('account:model.vision')}
+                tip={t('account:model.vision_tip')}
+                field={'vision'}
+                register={register}
+              />
+              <SwitchField
+                label={t('account:model.reasoning')}
+                tip={t('account:model.reasoning_tip')}
+                field={'reasoning'}
+                register={register}
+              />
+              {feConfigs?.isPlus && (
                 <SwitchField
-                  label={t('account:model.test_mode')}
-                  tip={t('account:model.test_mode_tip')}
-                  field={'testMode'}
+                  label={t('account:model.censor')}
+                  tip={t('account:model.censor_tip')}
+                  field={'censor'}
                   register={register}
                 />
               )}
             </Grid>
           </Section>
-        </Box>
+        )}
+
+        {priceUnit && feConfigs?.isPlus && (
+          <Section title={t('account:model.price_config_section')}>
+            {isLLMModel ? (
+              <PriceTiersTable
+                control={control}
+                register={register}
+                getValues={getValues}
+                setValue={setValue}
+                t={t}
+              />
+            ) : (
+              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={5}>
+                <Field
+                  label={`${t('account:model.charsPointsPrice')}`}
+                  tip={t('account:model.charsPointsPrice_tip')}
+                >
+                  <MyNumberInput
+                    register={register}
+                    name={'charsPointsPrice'}
+                    step={0.01}
+                    {...InputStyles}
+                  />
+                </Field>
+              </Grid>
+            )}
+          </Section>
+        )}
+
+        <Section title={t('common:Other')} showBorder={false}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+            {isLLMModel && (
+              <Field
+                label={t('account:model.default_system_chat_prompt')}
+                tip={t('account:model.default_system_chat_prompt_tip')}
+                colSpan={[1, 2]}
+              >
+                <MyTextarea
+                  {...register('defaultSystemChatPrompt')}
+                  {...InputStyles}
+                  minH={'110px'}
+                />
+              </Field>
+            )}
+            {(isLLMModel || isEmbeddingModel) && (
+              <DefaultConfigField
+                control={control}
+                setValue={setValue}
+                label={
+                  isLLMModel ? t('account:model.default_config') : t('account:model.defaultConfig')
+                }
+                tip={
+                  isLLMModel
+                    ? t('account:model.default_config_tip')
+                    : t('account:model.defaultConfig_tip')
+                }
+              />
+            )}
+            {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
+            {CustomApi}
+            {isLLMModel && (
+              <SwitchField
+                label={t('account:model.test_mode')}
+                tip={t('account:model.test_mode_tip')}
+                field={'testMode'}
+                register={register}
+              />
+            )}
+          </Grid>
+        </Section>
       </ModalBody>
-      <ModalFooter pt={4} px={[4, 6]} pb={[4, 5]}>
+      <ModalFooter p={0} mt={4}>
         {!modelData.isCustom && (
           <Button
             isLoading={loadingDefaultConfig}
