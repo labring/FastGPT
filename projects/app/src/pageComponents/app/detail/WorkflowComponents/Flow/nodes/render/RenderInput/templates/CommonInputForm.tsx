@@ -9,7 +9,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
-import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
+import { isLLMModelTypeMatched } from '@fastgpt/global/core/ai/constants';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -29,13 +29,9 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
   const modelList = useMemo(
     () =>
-      llmModelList.filter((model) => {
-        if (!item.llmModelType) return true;
-        const filterField = llmModelTypeFilterMap[item.llmModelType];
-        if (!filterField) return true;
-        //@ts-ignore
-        return !!model[filterField];
-      }),
+      llmModelList.filter((model) =>
+        isLLMModelTypeMatched({ llmModelType: item.llmModelType, model })
+      ),
     [llmModelList, item.llmModelType]
   );
 

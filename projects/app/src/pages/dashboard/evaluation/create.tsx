@@ -44,7 +44,7 @@ const EvaluationCreating = () => {
   const { llmModelList, feConfigs } = useSystemStore();
 
   const evalModelList = useMemo(() => {
-    return llmModelList.filter((item) => item.useInEvaluation);
+    return llmModelList.filter((item) => item.testMode !== true);
   }, [llmModelList]);
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {

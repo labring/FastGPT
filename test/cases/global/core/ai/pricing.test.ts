@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateModelPrice,
   getModelPriceTiersForForm,
-  getMatchingModelPriceTier,
   getResolvedModelPriceTiers,
+  preprocessModelPriceConfig,
   sanitizeModelPriceTiers
 } from '@fastgpt/global/core/ai/pricing';
 
@@ -58,19 +58,19 @@ describe('core/ai/pricing', () => {
       ]
     };
 
-    expect(getMatchingModelPriceTier({ config, inputTokens: 20 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 20 }).matchedTier).toMatchObject({
       startInputTokens: 1,
       maxInputTokens: 30,
       inputPrice: 1,
       outputPrice: 2
     });
-    expect(getMatchingModelPriceTier({ config, inputTokens: 35 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 35 }).matchedTier).toMatchObject({
       startInputTokens: 31,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
     });
-    expect(getMatchingModelPriceTier({ config, inputTokens: 90 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 90 }).matchedTier).toMatchObject({
       startInputTokens: 61,
       inputPrice: 5,
       outputPrice: 6
@@ -98,6 +98,58 @@ describe('core/ai/pricing', () => {
     });
 
     expect(totalPoints).toBeCloseTo(0.55);
+  });
+
+  it('should reuse preprocessed resolved tiers when calculating price', () => {
+    const config = preprocessModelPriceConfig({
+      priceTiers: [
+        {
+          maxInputTokens: 30,
+          inputPrice: 1,
+          outputPrice: 2
+        },
+        {
+          maxInputTokens: 60,
+          inputPrice: 3,
+          outputPrice: 4
+        },
+        {
+          inputPrice: 5,
+          outputPrice: 6
+        }
+      ]
+    });
+
+    expect(config.resolvedPriceTiers).toEqual([
+      {
+        startInputTokens: 1,
+        maxInputTokens: 30,
+        inputPrice: 1,
+        outputPrice: 2
+      },
+      {
+        startInputTokens: 31,
+        maxInputTokens: 60,
+        inputPrice: 3,
+        outputPrice: 4
+      },
+      {
+        startInputTokens: 61,
+        maxInputTokens: undefined,
+        inputPrice: 5,
+        outputPrice: 6
+      }
+    ]);
+
+    const { matchedTier, tiers, totalPoints } = calculateModelPrice({
+      config,
+      inputTokens: 35,
+      outputTokens: 100
+    });
+
+    expect(tiers).toBe(config.resolvedPriceTiers);
+    expect(matchedTier).toBe(config.resolvedPriceTiers?.[1]);
+    expect(totalPoints).toBeCloseTo(0.505);
   });
 
   it('should resolve ranges from configured tiers', () => {
@@ -199,28 +251,61 @@ describe('core/ai/pricing', () => {
       ]
     };
 
-    expect(getMatchingModelPriceTier({ config, inputTokens: 30 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 30 }).matchedTier).toMatchObject({
       startInputTokens: 1,
       maxInputTokens: 30,
       inputPrice: 1,
       outputPrice: 2
     });
-    expect(getMatchingModelPriceTier({ config, inputTokens: 31 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 31 }).matchedTier).toMatchObject({
       startInputTokens: 31,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
     });
-    expect(getMatchingModelPriceTier({ config, inputTokens: 60 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 60 }).matchedTier).toMatchObject({
       startInputTokens: 31,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
     });
-    expect(getMatchingModelPriceTier({ config, inputTokens: 61 })).toMatchObject({
+    expect(calculateModelPrice({ config, inputTokens: 61 }).matchedTier).toMatchObject({
       startInputTokens: 61,
       inputPrice: 5,
       outputPrice: 6
+    });
+    expect(calculateModelPrice({ config, inputTokens: 201 }).matchedTier).toMatchObject({
+      startInputTokens: 61,
+      inputPrice: 5,
+      outputPrice: 6
+    });
+    expect(calculateModelPrice({ config, inputTokens: 10000 }).matchedTier).toMatchObject({
+      startInputTokens: 61,
+      inputPrice: 5,
+      outputPrice: 6
+    });
+  });
+
+  it('should use the first tier when input tokens are 0', () => {
+    const config = {
+      priceTiers: [
+        {
+          maxInputTokens: 30,
+          inputPrice: 1,
+          outputPrice: 2
+        },
+        {
+          inputPrice: 5,
+          outputPrice: 6
+        }
+      ]
+    };
+
+    expect(calculateModelPrice({ config, inputTokens: 0 }).matchedTier).toMatchObject({
+      startInputTokens: 1,
+      maxInputTokens: 30,
+      inputPrice: 1,
+      outputPrice: 2
     });
   });
 

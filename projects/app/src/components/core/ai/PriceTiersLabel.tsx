@@ -1,15 +1,14 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { ResolvedModelPriceTierType } from '@fastgpt/global/core/ai/pricing';
 import { getResolvedModelPriceTiers } from '@fastgpt/global/core/ai/pricing';
-import type { PriceType } from '@fastgpt/global/core/ai/model.schema';
+import type { PriceType, ResolvedModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const getTierLowerBoundLabel = (tier: ResolvedModelPriceTierType, index: number) =>
   String(index === 0 ? 1 : tier.startInputTokens - 1);
 
-const formatPriceRange = ({
+const formatPriceSummary = ({
   tiers,
   priceKey,
   unitLabel
@@ -22,6 +21,10 @@ const formatPriceRange = ({
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();
+
+  if (tiers.length === 1) {
+    return `${prices[0]}${compactUnitLabel}`;
+  }
 
   return `${minPrice}~${maxPrice}${compactUnitLabel}`;
 };
@@ -170,14 +173,14 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
     >
       <Box cursor={'default'}>
         <Flex fontSize={'sm'} color={'myGray.700'} lineHeight={1.5}>
-          {`${t('common:Input')}: ${formatPriceRange({
+          {`${t('common:Input')}: ${formatPriceSummary({
             tiers,
             priceKey: 'inputPrice',
             unitLabel
           })}`}
         </Flex>
         <Flex fontSize={'sm'} color={'myGray.700'} lineHeight={1.5}>
-          {`${t('common:Output')}: ${formatPriceRange({
+          {`${t('common:Output')}: ${formatPriceSummary({
             tiers,
             priceKey: 'outputPrice',
             unitLabel

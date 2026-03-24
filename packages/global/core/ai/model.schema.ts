@@ -9,6 +9,14 @@ export const ModelPriceTierSchema = z.object({
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
+export const ResolvedModelPriceTierSchema = z.object({
+  startInputTokens: z.number().int().positive(),
+  maxInputTokens: z.number().int().positive().optional(),
+  inputPrice: z.number(),
+  outputPrice: z.number()
+});
+export type ResolvedModelPriceTierType = z.infer<typeof ResolvedModelPriceTierSchema>;
+
 const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
   // 旧版的价格计费字段
@@ -16,7 +24,8 @@ const PriceTypeSchema = z.object({
   outputPrice: z.number().optional(), // 1k tokens=n points
 
   // 新版的梯度价格计算字段
-  priceTiers: z.array(ModelPriceTierSchema).optional()
+  priceTiers: z.array(ModelPriceTierSchema).optional(),
+  resolvedPriceTiers: z.array(ResolvedModelPriceTierSchema).optional()
 });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 
@@ -54,12 +63,8 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
 
   // diff function model
   datasetProcess: z.boolean().optional(), // dataset
-  usedInClassify: z.boolean().optional(), // classify
-  usedInExtractFields: z.boolean().optional(), // extract fields
-  usedInToolCall: z.boolean().optional(), // tool call
-  useInEvaluation: z.boolean().optional(), // evaluation
 
-  // Test mode: when enabled, all above functions are disabled
+  // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
   testMode: z.boolean().optional(), // test mode flag
 
   functionCall: z.boolean(),

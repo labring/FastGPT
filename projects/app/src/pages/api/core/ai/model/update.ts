@@ -35,6 +35,11 @@ async function handler(
   };
   delete metadataConcat.avatar;
   delete metadataConcat.isCustom;
+  delete metadataConcat.resolvedPriceTiers;
+  delete metadataConcat.usedInClassify;
+  delete metadataConcat.usedInExtractFields;
+  delete metadataConcat.usedInToolCall;
+  delete metadataConcat.useInEvaluation;
 
   // 强制赋值 model，避免脏的 metadata 覆盖真实 model
   metadataConcat.model = model;

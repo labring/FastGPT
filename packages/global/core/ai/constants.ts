@@ -90,11 +90,18 @@ export enum LLMModelTypeEnum {
   extractFields = 'extractFields',
   toolCall = 'toolCall'
 }
-export const llmModelTypeFilterMap = {
-  [LLMModelTypeEnum.all]: 'model',
-  [LLMModelTypeEnum.classify]: 'usedInClassify',
-  [LLMModelTypeEnum.extractFields]: 'usedInExtractFields',
-  [LLMModelTypeEnum.toolCall]: 'usedInToolCall'
+export const isLLMModelTypeMatched = ({
+  llmModelType,
+  model
+}: {
+  llmModelType?: `${LLMModelTypeEnum}` | LLMModelTypeEnum;
+  model: Pick<LLMModelItemType, 'testMode'>;
+}) => {
+  if (!llmModelType || llmModelType === LLMModelTypeEnum.all) {
+    return true;
+  }
+
+  return model.testMode !== true;
 };
 
 export enum EmbeddingTypeEnm {

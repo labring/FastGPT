@@ -20,10 +20,6 @@ export type listResponse = {
   priceTiers?: ModelPriceTierType[];
   testMode?: boolean;
   datasetProcess?: boolean;
-  usedInClassify?: boolean;
-  usedInExtractFields?: boolean;
-  usedInToolCall?: boolean;
-  useInEvaluation?: boolean;
 
   isActive: boolean;
   isCustom: boolean;
@@ -53,10 +49,6 @@ async function handler(
     priceTiers: model.priceTiers,
     testMode: 'testMode' in model ? model.testMode : undefined,
     datasetProcess: 'datasetProcess' in model ? model.datasetProcess : undefined,
-    usedInClassify: 'usedInClassify' in model ? model.usedInClassify : undefined,
-    usedInExtractFields: 'usedInExtractFields' in model ? model.usedInExtractFields : undefined,
-    usedInToolCall: 'usedInToolCall' in model ? model.usedInToolCall : undefined,
-    useInEvaluation: 'useInEvaluation' in model ? model.useInEvaluation : undefined,
     isActive: model.isActive ?? false,
     isCustom: model.isCustom ?? false,
 

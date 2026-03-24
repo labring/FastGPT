@@ -190,22 +190,35 @@ const getEditablePriceTiers = (modelData: SystemModelItemType) => {
 
   const lastTier = tiers[tiers.length - 1];
 
+  const isOpenEndedTier =
+    typeof lastTier?.maxInputTokens !== 'number' &&
+    (typeof lastTier?.inputPrice === 'number' || typeof lastTier?.outputPrice === 'number');
+
+  if (isOpenEndedTier) {
+    return tiers;
+  }
+
   return isEmptyTier(lastTier) ? tiers : [...tiers, emptyPriceTier];
 };
 
 const getInitialTestMode = (modelData: SystemModelItemType) => {
   if (modelData.type !== ModelTypeEnum.llm) return undefined;
+  const legacyModelData = modelData as SystemModelItemType & {
+    usedInClassify?: boolean;
+    usedInExtractFields?: boolean;
+    usedInToolCall?: boolean;
+    useInEvaluation?: boolean;
+  };
 
   if (typeof modelData.testMode === 'boolean') {
     return modelData.testMode;
   }
 
   return (
-    modelData.datasetProcess === false &&
-    modelData.usedInClassify === false &&
-    modelData.usedInExtractFields === false &&
-    modelData.usedInToolCall === false &&
-    modelData.useInEvaluation === false
+    legacyModelData.usedInClassify === false &&
+    legacyModelData.usedInExtractFields === false &&
+    legacyModelData.usedInToolCall === false &&
+    legacyModelData.useInEvaluation === false
   );
 };
 
@@ -825,10 +838,12 @@ export const ModelEditModal = ({
       if (data.type === ModelTypeEnum.llm) {
         const testModeEnabled = data.testMode === true;
         data.datasetProcess = !testModeEnabled;
-        data.usedInClassify = !testModeEnabled;
-        data.usedInExtractFields = !testModeEnabled;
-        data.usedInToolCall = !testModeEnabled;
-        data.useInEvaluation = !testModeEnabled;
+
+        delete (data as SystemModelItemType & { usedInClassify?: boolean }).usedInClassify;
+        delete (data as SystemModelItemType & { usedInExtractFields?: boolean })
+          .usedInExtractFields;
+        delete (data as SystemModelItemType & { usedInToolCall?: boolean }).usedInToolCall;
+        delete (data as SystemModelItemType & { useInEvaluation?: boolean }).useInEvaluation;
 
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 

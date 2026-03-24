@@ -1,11 +1,4 @@
-import type { ModelPriceTierType, PriceType } from './model.schema';
-
-export type ResolvedModelPriceTierType = {
-  startInputTokens: number;
-  maxInputTokens?: number;
-  inputPrice: number;
-  outputPrice: number;
-};
+import type { ModelPriceTierType, PriceType, ResolvedModelPriceTierType } from './model.schema';
 
 const isValidNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
@@ -43,14 +36,7 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
   return result;
 };
 
-/**
- * 有梯度就优先按梯度的计费规则算
- * 没有梯度的就优先按旧版的输入输出计费规则计算
- * 最后按综合价格去计算
- *
- * @returns 无论是哪种计费规则都规整成 tiers 的形式来返回
- */
-export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
+const resolveRawModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
   const tiers = sanitizeModelPriceTiers(config?.priceTiers);
 
   if (tiers.length > 0) {
@@ -72,7 +58,6 @@ export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPri
       });
 
       if (typeof maxInputTokens === 'number') {
-        // 下一个梯度的下限是上一个梯度的上限+1就行
         startInputTokens = maxInputTokens + 1;
       }
 
@@ -80,7 +65,6 @@ export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPri
     }, []);
   }
 
-  // 旧版输入/输出价格
   const hasLegacyIOPrice = isValidNumber(config?.inputPrice) && config.inputPrice > 0;
 
   if (hasLegacyIOPrice) {
@@ -98,7 +82,6 @@ export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPri
     config?.charsPointsPrice === 0 ||
     config?.charsPointsPrice === undefined
   ) {
-    // 综合价格
     const comprehensivePrice = getSafePrice(config?.charsPointsPrice);
 
     return [
@@ -111,6 +94,34 @@ export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPri
   }
 
   return [];
+};
+
+const getRuntimeResolvedPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
+  if (Array.isArray(config?.resolvedPriceTiers)) {
+    return config.resolvedPriceTiers;
+  }
+
+  return resolveRawModelPriceTiers(config);
+};
+
+export const preprocessModelPriceConfig = <T extends PriceType | undefined>(config: T): T => {
+  if (!config) return config;
+
+  config.priceTiers = sanitizeModelPriceTiers(config.priceTiers);
+  config.resolvedPriceTiers = resolveRawModelPriceTiers(config);
+
+  return config;
+};
+
+/**
+ * 有梯度就优先按梯度的计费规则算
+ * 没有梯度的就优先按旧版的输入输出计费规则计算
+ * 最后按综合价格去计算
+ *
+ * @returns 无论是哪种计费规则都规整成 tiers 的形式来返回
+ */
+export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
+  return getRuntimeResolvedPriceTiers(config);
 };
 
 export const getModelPriceTiersForForm = (config?: PriceType): ModelPriceTierType[] => {
@@ -158,30 +169,6 @@ export const getModelPriceTiersForForm = (config?: PriceType): ModelPriceTierTyp
   ];
 };
 
-/**
- * 根据输入的 Token 数量，返回对应的梯度
- */
-export const getMatchingModelPriceTier = ({
-  config,
-  inputTokens = 0
-}: {
-  config?: PriceType;
-  inputTokens?: number;
-}): ResolvedModelPriceTierType | undefined => {
-  const tiers = getResolvedModelPriceTiers(config);
-
-  if (tiers.length === 0) return undefined;
-
-  const safeInputTokens = Math.max(0, inputTokens);
-  const matchedTier = tiers.find(
-    (tier) =>
-      safeInputTokens >= tier.startInputTokens &&
-      (typeof tier.maxInputTokens !== 'number' || safeInputTokens <= tier.maxInputTokens)
-  );
-
-  return matchedTier || tiers[tiers.length - 1];
-};
-
 export const calculateModelPrice = ({
   config,
   inputTokens = 0,
@@ -193,18 +180,32 @@ export const calculateModelPrice = ({
   outputTokens?: number;
   multiple?: number;
 }) => {
-  const matchedTier = getMatchingModelPriceTier({
-    config,
-    inputTokens
-  });
+  const tiers = getRuntimeResolvedPriceTiers(config);
+  const getMatchingResolvedTier = (
+    resolvedTiers: ResolvedModelPriceTierType[],
+    currentInputTokens = 0
+  ): ResolvedModelPriceTierType | undefined => {
+    if (resolvedTiers.length === 0) return undefined;
+
+    const safeInputTokens = Math.max(0, currentInputTokens);
+    for (let i = resolvedTiers.length - 1; i >= 0; i--) {
+      const tier = resolvedTiers[i];
+      if (safeInputTokens >= tier.startInputTokens) {
+        return tier;
+      }
+    }
+
+    return resolvedTiers[0];
+  };
+  const matchedTier = getMatchingResolvedTier(tiers, inputTokens);
 
   const totalPoints =
-    getSafePrice(matchedTier?.inputPrice) * (inputTokens / multiple) +
-    getSafePrice(matchedTier?.outputPrice) * (outputTokens / multiple);
+    (matchedTier?.inputPrice ?? 0) * (inputTokens / multiple) +
+    (matchedTier?.outputPrice ?? 0) * (outputTokens / multiple);
 
   return {
     totalPoints,
     matchedTier,
-    tiers: getResolvedModelPriceTiers(config)
+    tiers
   };
 };
