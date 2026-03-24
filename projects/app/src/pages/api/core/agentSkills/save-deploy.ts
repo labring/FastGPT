@@ -18,7 +18,8 @@ import {
 import { extractSkillFromMarkdown } from '@fastgpt/service/core/agentSkills/utils';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/agentSkills/schema';
-import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type {
   SaveDeploySkillBody,
   SaveDeploySkillResponse

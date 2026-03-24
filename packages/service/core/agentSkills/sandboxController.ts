@@ -5,7 +5,7 @@
  *
  */
 
-import type { ISandbox, Volume } from '@fastgpt-sdk/sandbox-adapter';
+import type { ISandbox, OpenSandboxVolume } from '@fastgpt-sdk/sandbox-adapter';
 import mongoose from 'mongoose';
 import { MongoSandboxInstance } from '../ai/sandbox/schema';
 import { MongoAgentSkills } from './schema';
@@ -30,7 +30,8 @@ import type {
   SandboxImageConfigType,
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
-import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { env } from '../../env';
@@ -257,7 +258,7 @@ export async function createEditDebugSandbox(
 
     const createEntrypoint = defaults.entrypoint;
 
-    let volumes: Volume[] | undefined;
+    let volumes: OpenSandboxVolume[] | undefined;
     if (providerConfig.provider === 'opensandbox' && env.AGENT_SANDBOX_ENABLE_VOLUME) {
       const vmConfig = getVolumeManagerConfig();
       const claimName = await ensureSessionVolume(sessionId, vmConfig);

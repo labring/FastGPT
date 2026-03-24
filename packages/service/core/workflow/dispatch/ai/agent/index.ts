@@ -1,5 +1,4 @@
-import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -601,7 +600,15 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // 任务结束
+    const answerText = assistantResponses
+      .filter((item) => item.text?.content)
+      .map((item) => item.text!.content)
+      .join('');
+
     return {
+      data: {
+        [NodeOutputKeyEnum.answerText]: answerText
+      },
       [DispatchNodeResponseKeyEnum.memories]: {
         [masterMessagesKey]: undefined,
         [agentPlanKey]: undefined,
