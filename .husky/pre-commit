@@ -1,6 +1,21 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+echo "Running TypeScript type check..."
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm typecheck
+  if [ $? -ne 0 ]; then
+    echo "TypeScript type check failed. Please fix the errors before committing."
+    exit 1
+  fi
+elif command -v npx >/dev/null 2>&1; then
+  npx tsc --noEmit -p projects/app/tsconfig.json
+  if [ $? -ne 0 ]; then
+    echo "TypeScript type check failed. Please fix the errors before committing."
+    exit 1
+  fi
+fi
+
 if command -v pnpm >/dev/null 2>&1; then
   pnpm lint-staged
 elif command -v npx >/dev/null 2>&1; then
