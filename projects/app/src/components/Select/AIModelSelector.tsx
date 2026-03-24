@@ -1,13 +1,16 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
+import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import React, { useCallback, useMemo, useState } from 'react';
 
 type Props = SelectProps & {
@@ -15,6 +18,59 @@ type Props = SelectProps & {
   noOfLines?: ResponsiveValue<number>;
   cacheModel?: boolean;
 };
+
+const isTestModeModel = (model?: SystemModelItemType) => {
+  return !!(model && 'testMode' in model && model.testMode);
+};
+
+const ModelTestModeTip = React.memo(function ModelTestModeTip() {
+  const { t } = useTranslation(['common', 'account']);
+
+  return (
+    <QuestionTip
+      label={t('account:model.test_mode_selector_tip')}
+      ml={1}
+      flexShrink={0}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    />
+  );
+});
+
+const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip() {
+  return (
+    <Box
+      position={'absolute'}
+      top={'50%'}
+      right={'40px'}
+      transform={'translateY(-50%)'}
+      zIndex={3}
+      display={'flex'}
+      alignItems={'center'}
+    >
+      <ModelTestModeTip />
+    </Box>
+  );
+});
+
+const ModelOptionLabel = React.memo(function ModelOptionLabel({
+  name,
+  showTestModeTip,
+  noOfLines
+}: {
+  name: string;
+  showTestModeTip: boolean;
+  noOfLines?: ResponsiveValue<number>;
+}) {
+  return (
+    <Flex alignItems={'center'} minW={0}>
+      <Box noOfLines={noOfLines} minW={0}>
+        {name}
+      </Box>
+      {showTestModeTip && <ModelTestModeTip />}
+    </Flex>
+  );
+});
 
 const OneRowSelector = ({
   list,
@@ -24,7 +80,8 @@ const OneRowSelector = ({
   cacheModel = true,
   ...props
 }: Props) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['common', 'account']);
+  const router = useRouter();
   const {
     llmModelList,
     embeddingModelList,
@@ -47,6 +104,7 @@ const OneRowSelector = ({
       manual: false
     }
   );
+  const shouldShowTestModeTip = router.pathname === '/app/detail';
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -57,15 +115,22 @@ const OneRowSelector = ({
     //@ts-ignore
     return props.size ? size[props.size] : size['md'];
   }, [props.size]);
-
-  const avatarList = useMemo(() => {
-    const allModels = [
+  const allModels = useMemo(
+    () => [
       ...llmModelList,
       ...embeddingModelList,
       ...ttsModelList,
       ...sttModelList,
       ...reRankModelList
-    ];
+    ],
+    [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]
+  );
+  const selectedModelData = useMemo(
+    () => allModels.find((model) => model.model === props.value),
+    [allModels, props.value]
+  );
+
+  const avatarList = useMemo(() => {
     return list
       .map((item) => {
         const modelData = allModels.find((model) => model.model === item.value);
@@ -86,8 +151,11 @@ const OneRowSelector = ({
                 w={avatarSize}
                 fallbackSrc={HUGGING_FACE_ICON}
               />
-
-              <Box noOfLines={noOfLines}>{modelData.name}</Box>
+              <ModelOptionLabel
+                name={modelData.name}
+                noOfLines={noOfLines}
+                showTestModeTip={shouldShowTestModeTip && isTestModeModel(modelData)}
+              />
             </Flex>
           )
         };
@@ -96,21 +164,11 @@ const OneRowSelector = ({
       value: any;
       label: React.JSX.Element;
     }[];
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    list,
-    getModelProvider,
-    avatarSize,
-    noOfLines,
-    myModels
-  ]);
+  }, [allModels, list, getModelProvider, avatarSize, noOfLines, myModels, shouldShowTestModeTip]);
 
   return (
     <Box
+      position={'relative'}
       css={{
         span: {
           display: 'block'
@@ -122,6 +180,20 @@ const OneRowSelector = ({
           className="nowheel"
           isDisabled={!!disableTip}
           list={avatarList}
+          valueLabel={
+            selectedModelData ? (
+              <Flex alignItems={'center'} py={1}>
+                <Avatar
+                  borderRadius={'0'}
+                  mr={2}
+                  src={getModelProvider(selectedModelData.provider)?.avatar || HUGGING_FACE_ICON}
+                  w={avatarSize}
+                  fallbackSrc={HUGGING_FACE_ICON}
+                />
+                <Box noOfLines={noOfLines}>{selectedModelData.name}</Box>
+              </Flex>
+            ) : undefined
+          }
           placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
           h={'40px'}
           {...props}
@@ -130,6 +202,7 @@ const OneRowSelector = ({
           }}
         />
       </MyTooltip>
+      {shouldShowTestModeTip && isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
     </Box>
   );
 };
@@ -142,7 +215,8 @@ const MultipleRowSelector = ({
   noOfLines,
   ...props
 }: Props) => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useTranslation(['common', 'account']);
+  const router = useRouter();
   const {
     llmModelList,
     embeddingModelList,
@@ -157,6 +231,7 @@ const MultipleRowSelector = ({
   const { data: myModels, loading } = useRequest(getMyModelList, {
     manual: false
   });
+  const shouldShowTestModeTip = router.pathname === '/app/detail';
 
   const modelList = useMemo(() => {
     const allModels = [
@@ -191,6 +266,10 @@ const MultipleRowSelector = ({
     //@ts-ignore
     return props.size ? size[props.size] : size['md'];
   }, [props.size]);
+  const selectedModelData = useMemo(
+    () => modelList.find((model) => model?.model === props.value),
+    [modelList, props.value]
+  );
 
   const selectorList = useMemo(() => {
     const renderList = getModelProviders(i18n.language).map<{
@@ -222,13 +301,18 @@ const MultipleRowSelector = ({
         renderList[renderList.length - 1];
 
       provider?.children.push({
-        label: modelData.name,
+        label: (
+          <ModelOptionLabel
+            name={modelData.name}
+            showTestModeTip={shouldShowTestModeTip && isTestModeModel(modelData)}
+          />
+        ),
         value: modelData.model
       });
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [getModelProviders, i18n.language, avatarSize, list, modelList]);
+  }, [getModelProviders, i18n.language, avatarSize, list, modelList, shouldShowTestModeTip]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -257,13 +341,14 @@ const MultipleRowSelector = ({
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <Box noOfLines={noOfLines}>{modelData?.name}</Box>
+        <ModelOptionLabel name={modelData.name} noOfLines={noOfLines} showTestModeTip={false} />
       </Flex>
     );
   }, [loading, props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
 
   return (
     <Box
+      position={'relative'}
       css={{
         span: {
           display: 'block'
@@ -285,6 +370,7 @@ const MultipleRowSelector = ({
           }}
         />
       </MyTooltip>
+      {shouldShowTestModeTip && isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
     </Box>
   );
 };

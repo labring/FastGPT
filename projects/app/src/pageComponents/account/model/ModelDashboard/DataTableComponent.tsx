@@ -7,6 +7,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { DashboardDataItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 
 export type DashboardDataEntry = {
   timestamp: number;
@@ -29,6 +31,7 @@ export type DataTableComponentProps = {
       inputPrice?: number;
       outputPrice?: number;
       charsPointsPrice?: number;
+      priceTiers?: ModelPriceTierType[];
     }
   >;
   onViewDetail: (model: string) => void;
@@ -128,13 +131,11 @@ const DataTableComponent = ({
           if (modelPricing) {
             const inputTokens = item.input_tokens || 0;
             const outputTokens = item.output_tokens || 0;
-            const isIOPriceType =
-              typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
-
-            const totalPoints = isIOPriceType
-              ? (modelPricing.inputPrice || 0) * (inputTokens / 1000) +
-                (modelPricing.outputPrice || 0) * (outputTokens / 1000)
-              : ((modelPricing.charsPointsPrice || 0) * (inputTokens + outputTokens)) / 1000;
+            const { totalPoints } = calculateModelPrice({
+              config: modelPricing,
+              inputTokens,
+              outputTokens
+            });
 
             existing.totalCost += totalPoints;
           }
@@ -202,13 +203,11 @@ const DataTableComponent = ({
           if (modelPricing) {
             const inputTokens = item.input_tokens || 0;
             const outputTokens = item.output_tokens || 0;
-            const isIOPriceType =
-              typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
-
-            const totalPoints = isIOPriceType
-              ? (modelPricing.inputPrice || 0) * (inputTokens / 1000) +
-                (modelPricing.outputPrice || 0) * (outputTokens / 1000)
-              : ((modelPricing.charsPointsPrice || 0) * (inputTokens + outputTokens)) / 1000;
+            const { totalPoints } = calculateModelPrice({
+              config: modelPricing,
+              inputTokens,
+              outputTokens
+            });
 
             existing.totalCost += totalPoints;
           }

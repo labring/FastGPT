@@ -30,6 +30,7 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
+import PriceTiersLabel from '../PriceTiersLabel';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -67,32 +68,12 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
     const formatLLMModelList = llmModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.chat'),
-      priceLabel:
-        typeof item.inputPrice === 'number' ? (
-          <Box>
-            <Flex>
-              {`${t('common:Input')}:`}
-              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-                {item.inputPrice || 0}
-              </Box>
-              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-            </Flex>
-            <Flex>
-              {`${t('common:Output')}:`}
-              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-                {item.outputPrice || 0}
-              </Box>
-              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-            </Flex>
-          </Box>
-        ) : (
-          <Flex color={'myGray.700'}>
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice || 0}
-            </Box>
-            {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          </Flex>
-        ),
+      priceLabel: (
+        <PriceTiersLabel
+          config={item}
+          unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+        />
+      ),
       tagColor: 'blue'
     }));
     const formatVectorModelList = embeddingModelList.map((item) => ({

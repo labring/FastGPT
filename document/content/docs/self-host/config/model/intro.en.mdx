@@ -152,10 +152,6 @@ If you find it tedious to configure models through the UI, you can use a configu
     "charsPointsPrice": 0, // Credits per 1k tokens (commercial edition)
     "censor": false, // Enable content moderation (commercial edition)
     "vision": true, // Supports image input
-    "datasetProcess": true, // Used as a text comprehension model (QA). At least one model must have this set to true, or Knowledge Base will error
-    "usedInClassify": true, // Used for question classification (at least one must be true)
-    "usedInExtractFields": true, // Used for content extraction (at least one must be true)
-    "usedInToolCall": true, // Used for tool calls (at least one must be true)
     "toolChoice": true, // Supports tool selection (used in classification, extraction, and tool calls)
     "functionCall": false, // Supports function calling (used in classification, extraction, and tool calls). toolChoice takes priority; if false, functionCall is used; if also false, prompt mode is used
     "customCQPrompt": "", // Custom text classification prompt (for models without tool/function call support)

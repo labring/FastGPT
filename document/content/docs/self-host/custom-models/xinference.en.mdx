@@ -136,10 +136,6 @@ Add the qwen-chat model to the `llmModels` section of FastGPT's `config.json`:
       "charsPointsPrice": 0, // n points/1k tokens (Commercial Edition)
       "censor": false, // Enable content moderation (Commercial Edition)
       "vision": true, // Supports image input
-      "datasetProcess": true, // Use as Knowledge Base processing model (QA). At least one model must be true, or Knowledge Base will error
-      "usedInClassify": true, // Use for question classification (at least one must be true)
-      "usedInExtractFields": true, // Use for content extraction (at least one must be true)
-      "usedInToolCall": true, // Use for tool calling (at least one must be true)
       "toolChoice": true, // Supports tool choice (used in classification, extraction, tool calling)
       "functionCall": false, // Supports function calling (used in classification, extraction, tool calling. toolChoice takes priority; if false, falls back to functionCall; if still false, uses prompt mode)
       "customCQPrompt": "", // Custom classification prompt (for models without tool/function calling support)
