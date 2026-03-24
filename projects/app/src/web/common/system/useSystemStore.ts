@@ -238,7 +238,7 @@ export const useSystemStore = create<State>()(
             state.llmModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
               state.llmModelList;
-            state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
+            state.datasetModelList = state.llmModelList.filter((item) => !item.testMode);
             state.embeddingModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.embedding) ??
               state.embeddingModelList;

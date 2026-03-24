@@ -22,6 +22,7 @@ import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -58,19 +59,12 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
     _systemModelList.push(model);
 
-    // Add default value
-    if (model.type === ModelTypeEnum.llm) {
-      model.datasetProcess = model.datasetProcess ?? true;
-      model.usedInClassify = model.usedInClassify ?? true;
-      model.usedInExtractFields = model.usedInExtractFields ?? true;
-      model.usedInToolCall = model.usedInToolCall ?? true;
-      model.useInEvaluation = model.useInEvaluation ?? true;
-    }
-
     if (model.isActive) {
       _systemActiveModelList.push(model);
 
       if (model.type === ModelTypeEnum.llm) {
+        model.priceTiers = getRuntimeResolvedPriceTiers(model);
+
         _llmModelMap.set(model.model, model);
         _llmModelMap.set(model.name, model);
         if (model.isDefault) {
@@ -183,7 +177,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       }
       if (!_systemDefaultModel.datasetTextLLM) {
         _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values()).find(
-          (item) => item.datasetProcess
+          (item) => !item.testMode
         );
       }
       if (!_systemDefaultModel.datasetImageLLM) {

@@ -62,6 +62,7 @@ export type SelectProps<T = any> = {
   onOpenFunc?: () => void;
 
   tagStyle?: FlexProps;
+  menuBottomSlot?: React.ReactNode;
 } & Omit<ButtonProps, 'onSelect'>;
 
 type SelectedItemType<T> = {
@@ -91,6 +92,7 @@ const MultipleSelect = <T = any,>({
   onOpenFunc,
 
   tagStyle,
+  menuBottomSlot,
   isLoading,
   ...props
 }: SelectProps<T>) => {
@@ -135,7 +137,7 @@ const MultipleSelect = <T = any,>({
     if (!isOpen) {
       setInputValue?.('');
     }
-  }, [isOpen]);
+  }, [isOpen, setInputValue]);
 
   const onclickItem = useCallback(
     (val: T) => {
@@ -479,6 +481,15 @@ const MultipleSelect = <T = any,>({
           )}
 
           {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
+
+          {menuBottomSlot && (
+            <>
+              <MyDivider my={1} />
+              <Box px={1} py={1}>
+                {menuBottomSlot}
+              </Box>
+            </>
+          )}
 
           {isLoading && <MyLoading fixed={false} />}
         </MenuList>

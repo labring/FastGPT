@@ -1,0 +1,144 @@
+import type { ModelPriceTierType, PriceType } from './model.schema';
+
+const isValidNumber = (value: unknown): value is number => {
+  return typeof value === 'number' && Number.isFinite(value);
+};
+
+const getSafePrice = (value: unknown) => (isValidNumber(value) ? value : 0);
+
+/* 
+  格式化 tiers：浮点数取整、跳过降序梯度、支持末尾开放梯度
+  1. 只有一个梯度，不管有没有价格，都推送进去
+  2. 多个梯度，遇到没有 maxToken 就认为是最后的梯度。
+    2.1 如果有价格，则推送，认为是无限大梯度
+    2.2 如果没有价格，认为是空行，跳过
+*/
+export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPriceTierType[] => {
+  if (!Array.isArray(tiers)) return [];
+
+  const result: ModelPriceTierType[] = [];
+
+  for (const tier of tiers) {
+    if (result.length === 0) {
+      result.push({
+        minInputTokens: 0,
+        inputPrice: getSafePrice(tier?.inputPrice),
+        outputPrice: getSafePrice(tier?.outputPrice)
+      });
+      continue;
+    }
+
+    const hasMaxInputTokens = isValidNumber(tier?.maxInputTokens);
+    const last = result[result.length - 1];
+    const minInputTokens = last.maxInputTokens ?? 0;
+
+    if (!hasMaxInputTokens) {
+      // 无上限梯度（开放末端）：有价格才算有效
+      const hasPrice = isValidNumber(tier?.inputPrice) || isValidNumber(tier?.outputPrice);
+      if (hasPrice) {
+        result.push({
+          minInputTokens,
+          inputPrice: getSafePrice(tier?.inputPrice),
+          outputPrice: getSafePrice(tier?.outputPrice)
+        });
+      }
+      break;
+    }
+
+    const maxInputTokens = Math.floor(tier.maxInputTokens!);
+
+    // 跳过降序梯度（maxInputTokens 必须严格递增）
+    if (last?.maxInputTokens != null && maxInputTokens <= last.maxInputTokens) {
+      continue;
+    }
+
+    result.push({
+      minInputTokens,
+      maxInputTokens,
+      inputPrice: getSafePrice(tier?.inputPrice),
+      outputPrice: getSafePrice(tier?.outputPrice)
+    });
+  }
+
+  return result;
+};
+
+// 计算模型价格梯度
+export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] => {
+  // 格式化梯度
+  if (Array.isArray(config?.priceTiers)) {
+    return sanitizeModelPriceTiers(config.priceTiers);
+  }
+
+  // 旧版的价格计费字段
+  const hasLegacyIOPrice = isValidNumber(config?.inputPrice) && config.inputPrice > 0;
+
+  if (hasLegacyIOPrice) {
+    return [
+      {
+        minInputTokens: 0,
+        inputPrice: getSafePrice(config?.inputPrice),
+        outputPrice: getSafePrice(config?.outputPrice)
+      }
+    ];
+  }
+
+  if (
+    isValidNumber(config?.charsPointsPrice) ||
+    config?.charsPointsPrice === 0 ||
+    config?.charsPointsPrice === undefined
+  ) {
+    const comprehensivePrice = getSafePrice(config?.charsPointsPrice);
+
+    return [
+      {
+        minInputTokens: 0,
+        inputPrice: comprehensivePrice,
+        outputPrice: comprehensivePrice
+      }
+    ];
+  }
+
+  return [];
+};
+
+export const calculateModelPrice = ({
+  config,
+  inputTokens = 0,
+  outputTokens = 0,
+  multiple = 1000
+}: {
+  config?: PriceType;
+  inputTokens?: number;
+  outputTokens?: number;
+  multiple?: number;
+}) => {
+  const tiers = getRuntimeResolvedPriceTiers(config);
+  const getMatchingResolvedTier = (
+    resolvedTiers: ModelPriceTierType[],
+    currentInputTokens = 0
+  ): ModelPriceTierType | undefined => {
+    if (resolvedTiers.length === 0) return undefined;
+
+    const safeInputTokens = Math.max(0, currentInputTokens);
+    for (let i = resolvedTiers.length - 1; i >= 0; i--) {
+      const tier = resolvedTiers[i];
+      if (safeInputTokens >= (tier.minInputTokens ?? 1)) {
+        return tier;
+      }
+    }
+
+    return resolvedTiers[0];
+  };
+  const matchedTier = getMatchingResolvedTier(tiers, inputTokens);
+
+  const totalPoints =
+    (matchedTier?.inputPrice ?? 0) * (inputTokens / multiple) +
+    (matchedTier?.outputPrice ?? 0) * (outputTokens / multiple);
+
+  return {
+    totalPoints,
+    matchedTier,
+    tiers
+  };
+};
