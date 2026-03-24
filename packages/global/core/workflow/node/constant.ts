@@ -148,6 +148,7 @@ export enum FlowNodeTypeEnum {
   readFiles = 'readFiles',
   userSelect = 'userSelect',
   loop = 'loop',
+  batch = 'batch',
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
   formInput = 'formInput',

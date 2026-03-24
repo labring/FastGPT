@@ -78,10 +78,13 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
+  const intro = data.intro && String(data.intro).trim() ? data.intro : 'workflow:loop_end_intro';
+
   return (
     <NodeCard
       selected={selected}
       {...data}
+      intro={intro}
       w={'420px'}
       menuForbid={{
         copy: true,

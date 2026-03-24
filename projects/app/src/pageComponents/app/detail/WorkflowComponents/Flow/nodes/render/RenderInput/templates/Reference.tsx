@@ -152,7 +152,9 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const popDirection = useMemo(() => {
     const node = getNodeById(nodeId);
     if (!node) return 'bottom';
-    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+    return [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(node.flowNodeType)
+      ? 'top'
+      : 'bottom';
   }, [nodeId, getNodeById]);
 
   return (

@@ -218,7 +218,9 @@ const NodeCard = (props: Props) => {
   }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
-  const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
+  const isLoopNode = [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(
+    node?.flowNodeType as FlowNodeTypeEnum
+  );
   const showVersion = useMemo(() => {
     // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (
