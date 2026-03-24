@@ -269,7 +269,8 @@ export async function createAgentSandbox(
   }
 
   // Check active session-runtime sandbox count limit
-  const maxSessionRuntime = env.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
+  const maxSessionRuntime =
+    global.feConfigs?.limit?.agentSandboxMaxSessionRuntime ?? env.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
   if (maxSessionRuntime !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
       status: SandboxStatusEnum.running,
