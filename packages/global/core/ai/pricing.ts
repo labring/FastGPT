@@ -6,28 +6,58 @@ const isValidNumber = (value: unknown): value is number => {
 
 const getSafePrice = (value: unknown) => (isValidNumber(value) ? value : 0);
 
-// 格式化 tiers，过滤无效的数组, 并且确保最小值等于上一个的最大值
+/* 
+  格式化 tiers：浮点数取整、跳过降序梯度、支持末尾开放梯度
+  1. 只有一个梯度，不管有没有价格，都推送进去
+  2. 多个梯度，遇到没有 maxToken 就认为是最后的梯度。
+    2.1 如果有价格，则推送，认为是无限大梯度
+    2.2 如果没有价格，认为是空行，跳过
+*/
 export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPriceTierType[] => {
   if (!Array.isArray(tiers)) return [];
 
   const result: ModelPriceTierType[] = [];
 
   for (const tier of tiers) {
+    if (result.length === 0) {
+      result.push({
+        minInputTokens: 0,
+        inputPrice: getSafePrice(tier?.inputPrice),
+        outputPrice: getSafePrice(tier?.outputPrice)
+      });
+      continue;
+    }
+
     const hasMaxInputTokens = isValidNumber(tier?.maxInputTokens);
-    // 这个梯度没有填 Token 的上限值 而且 没有填输入/输出价格，就算不合法
-    if (!hasMaxInputTokens && result.length > 0) {
+    const last = result[result.length - 1];
+    const minInputTokens = last?.maxInputTokens || 0;
+
+    if (!hasMaxInputTokens) {
+      // 无上限梯度（开放末端）：有价格才算有效
+      const hasPrice = isValidNumber(tier?.inputPrice) || isValidNumber(tier?.outputPrice);
+      if (hasPrice) {
+        result.push({
+          minInputTokens,
+          inputPrice: getSafePrice(tier?.inputPrice),
+          outputPrice: getSafePrice(tier?.outputPrice)
+        });
+      }
       break;
     }
 
-    const last = result[result.length - 1];
-    const normalizedTier = {
-      minInputTokens: last?.maxInputTokens || 0,
-      maxInputTokens: tier.maxInputTokens,
+    const maxInputTokens = Math.floor(tier.maxInputTokens!);
+
+    // 跳过降序梯度（maxInputTokens 必须严格递增）
+    if (last?.maxInputTokens != null && maxInputTokens <= last.maxInputTokens) {
+      continue;
+    }
+
+    result.push({
+      minInputTokens,
+      maxInputTokens,
       inputPrice: getSafePrice(tier?.inputPrice),
       outputPrice: getSafePrice(tier?.outputPrice)
-    };
-
-    result.push(normalizedTier);
+    });
   }
 
   return result;

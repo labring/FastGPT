@@ -3,7 +3,7 @@ import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z.object({
-  minInputTokens: z.int().min(0),
+  minInputTokens: z.int().min(0).optional(),
   maxInputTokens: z.int().nullish().meta({
     description:
       'The maximum number of input tokens for this tier. If not provided, the tier is open-ended.'
