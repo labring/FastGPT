@@ -35,7 +35,6 @@ async function handler(
   };
   delete metadataConcat.avatar;
   delete metadataConcat.isCustom;
-  delete metadataConcat.resolvedPriceTiers;
   delete metadataConcat.usedInClassify;
   delete metadataConcat.usedInExtractFields;
   delete metadataConcat.usedInToolCall;

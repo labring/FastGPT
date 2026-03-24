@@ -3,19 +3,12 @@ import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z.object({
+  minInputTokens: z.number().int().positive().optional(),
   maxInputTokens: z.number().int().positive().optional(),
   inputPrice: z.number().optional(),
   outputPrice: z.number().optional()
 });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
-
-export const ResolvedModelPriceTierSchema = z.object({
-  startInputTokens: z.number().int().positive(),
-  maxInputTokens: z.number().int().positive().optional(),
-  inputPrice: z.number(),
-  outputPrice: z.number()
-});
-export type ResolvedModelPriceTierType = z.infer<typeof ResolvedModelPriceTierSchema>;
 
 const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
@@ -24,8 +17,7 @@ const PriceTypeSchema = z.object({
   outputPrice: z.number().optional(), // 1k tokens=n points
 
   // 新版的梯度价格计算字段
-  priceTiers: z.array(ModelPriceTierSchema).optional(),
-  resolvedPriceTiers: z.array(ResolvedModelPriceTierSchema).optional()
+  priceTiers: z.array(ModelPriceTierSchema).optional()
 });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 

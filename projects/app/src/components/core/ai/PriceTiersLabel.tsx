@@ -1,23 +1,22 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { getResolvedModelPriceTiers } from '@fastgpt/global/core/ai/pricing';
-import type { PriceType, ResolvedModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model.schema';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const getTierLowerBoundLabel = (tier: ResolvedModelPriceTierType, index: number) =>
-  String(index === 0 ? 1 : tier.startInputTokens - 1);
+const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 1);
 
 const formatPriceSummary = ({
   tiers,
   priceKey,
   unitLabel
 }: {
-  tiers: ResolvedModelPriceTierType[];
+  tiers: ModelPriceTierType[];
   priceKey: 'inputPrice' | 'outputPrice';
   unitLabel: string;
 }) => {
-  const prices = tiers.map((tier) => tier[priceKey]);
+  const prices = tiers.map((tier) => tier[priceKey] ?? 0);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();
@@ -31,7 +30,7 @@ const formatPriceSummary = ({
 
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
   const { t } = useTranslation();
-  const tiers = useMemo(() => getResolvedModelPriceTiers(config), [config]);
+  const tiers = useMemo(() => getRuntimeResolvedPriceTiers(config), [config]);
   const compactUnitLabel = useMemo(() => unitLabel.replace(/\s*\/\s*/g, '/').trim(), [unitLabel]);
 
   if (tiers.length === 0) {
@@ -114,7 +113,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
             </Thead>
             <Tbody>
               {tiers.map((tier, index) => (
-                <Tr key={`${tier.startInputTokens}-${tier.maxInputTokens ?? 'open'}-${index}`}>
+                <Tr key={`${tier.minInputTokens ?? 1}-${tier.maxInputTokens ?? 'open'}-${index}`}>
                   <Td
                     px={3}
                     py={2}
@@ -125,7 +124,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                     whiteSpace={'nowrap'}
                   >
                     <Flex gap={1} alignItems={'center'} color={'myGray.700'} whiteSpace={'nowrap'}>
-                      <Box>{`${getTierLowerBoundLabel(tier, index)} < `}</Box>
+                      <Box>{`${getTierLowerBoundLabel(tier)} < `}</Box>
                       <Box>{t('account:model.price_tier_input_tokens')}</Box>
                       {typeof tier.maxInputTokens === 'number' ? (
                         <Box>{` <= ${tier.maxInputTokens}`}</Box>

@@ -1,4 +1,4 @@
-import type { ModelPriceTierType, PriceType, ResolvedModelPriceTierType } from './model.schema';
+import type { ModelPriceTierType, PriceType } from './model.schema';
 
 const isValidNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
@@ -36,29 +36,40 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
   return result;
 };
 
-const resolveRawModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
+const isResolvedPriceTier = (
+  tier?: ModelPriceTierType
+): tier is ModelPriceTierType &
+  Required<Pick<ModelPriceTierType, 'minInputTokens' | 'inputPrice' | 'outputPrice'>> => {
+  return (
+    isValidNumber(tier?.minInputTokens) &&
+    isValidNumber(tier?.inputPrice) &&
+    isValidNumber(tier?.outputPrice)
+  );
+};
+
+const resolveRawModelPriceTiers = (config?: PriceType): ModelPriceTierType[] => {
   const tiers = sanitizeModelPriceTiers(config?.priceTiers);
 
   if (tiers.length > 0) {
-    let startInputTokens = 1;
+    let minInputTokens = 1;
 
-    return tiers.reduce<ResolvedModelPriceTierType[]>((acc, tier) => {
+    return tiers.reduce<ModelPriceTierType[]>((acc, tier) => {
       const maxInputTokens = tier.maxInputTokens;
-      const isInvalidTier = typeof maxInputTokens === 'number' && maxInputTokens < startInputTokens;
+      const isInvalidTier = typeof maxInputTokens === 'number' && maxInputTokens < minInputTokens;
 
       if (isInvalidTier) {
         return acc;
       }
 
       acc.push({
-        startInputTokens,
+        minInputTokens,
         maxInputTokens,
         inputPrice: getSafePrice(tier.inputPrice),
         outputPrice: getSafePrice(tier.outputPrice)
       });
 
       if (typeof maxInputTokens === 'number') {
-        startInputTokens = maxInputTokens + 1;
+        minInputTokens = maxInputTokens + 1;
       }
 
       return acc;
@@ -70,7 +81,7 @@ const resolveRawModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierTy
   if (hasLegacyIOPrice) {
     return [
       {
-        startInputTokens: 1,
+        minInputTokens: 1,
         inputPrice: getSafePrice(config?.inputPrice),
         outputPrice: getSafePrice(config?.outputPrice)
       }
@@ -86,7 +97,7 @@ const resolveRawModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierTy
 
     return [
       {
-        startInputTokens: 1,
+        minInputTokens: 1,
         inputPrice: comprehensivePrice,
         outputPrice: comprehensivePrice
       }
@@ -96,9 +107,9 @@ const resolveRawModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierTy
   return [];
 };
 
-const getRuntimeResolvedPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
-  if (Array.isArray(config?.resolvedPriceTiers)) {
-    return config.resolvedPriceTiers;
+export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] => {
+  if (Array.isArray(config?.priceTiers) && config.priceTiers.every(isResolvedPriceTier)) {
+    return config.priceTiers;
   }
 
   return resolveRawModelPriceTiers(config);
@@ -107,21 +118,9 @@ const getRuntimeResolvedPriceTiers = (config?: PriceType): ResolvedModelPriceTie
 export const preprocessModelPriceConfig = <T extends PriceType | undefined>(config: T): T => {
   if (!config) return config;
 
-  config.priceTiers = sanitizeModelPriceTiers(config.priceTiers);
-  config.resolvedPriceTiers = resolveRawModelPriceTiers(config);
+  config.priceTiers = getRuntimeResolvedPriceTiers(config);
 
   return config;
-};
-
-/**
- * 有梯度就优先按梯度的计费规则算
- * 没有梯度的就优先按旧版的输入输出计费规则计算
- * 最后按综合价格去计算
- *
- * @returns 无论是哪种计费规则都规整成 tiers 的形式来返回
- */
-export const getResolvedModelPriceTiers = (config?: PriceType): ResolvedModelPriceTierType[] => {
-  return getRuntimeResolvedPriceTiers(config);
 };
 
 export const getModelPriceTiersForForm = (config?: PriceType): ModelPriceTierType[] => {
@@ -147,7 +146,7 @@ export const getModelPriceTiersForForm = (config?: PriceType): ModelPriceTierTyp
   }
 
   // 不然就把配置转换成梯度
-  const resolvedTiers = getResolvedModelPriceTiers(config);
+  const resolvedTiers = getRuntimeResolvedPriceTiers(config);
   const firstTier = resolvedTiers[0];
 
   if (!firstTier) {
@@ -182,15 +181,15 @@ export const calculateModelPrice = ({
 }) => {
   const tiers = getRuntimeResolvedPriceTiers(config);
   const getMatchingResolvedTier = (
-    resolvedTiers: ResolvedModelPriceTierType[],
+    resolvedTiers: ModelPriceTierType[],
     currentInputTokens = 0
-  ): ResolvedModelPriceTierType | undefined => {
+  ): ModelPriceTierType | undefined => {
     if (resolvedTiers.length === 0) return undefined;
 
     const safeInputTokens = Math.max(0, currentInputTokens);
     for (let i = resolvedTiers.length - 1; i >= 0; i--) {
       const tier = resolvedTiers[i];
-      if (safeInputTokens >= tier.startInputTokens) {
+      if (safeInputTokens >= (tier.minInputTokens ?? 1)) {
         return tier;
       }
     }

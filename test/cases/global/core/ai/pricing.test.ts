@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateModelPrice,
   getModelPriceTiersForForm,
-  getResolvedModelPriceTiers,
+  getRuntimeResolvedPriceTiers,
   preprocessModelPriceConfig,
   sanitizeModelPriceTiers
 } from '@fastgpt/global/core/ai/pricing';
@@ -59,19 +59,19 @@ describe('core/ai/pricing', () => {
     };
 
     expect(calculateModelPrice({ config, inputTokens: 20 }).matchedTier).toMatchObject({
-      startInputTokens: 1,
+      minInputTokens: 1,
       maxInputTokens: 30,
       inputPrice: 1,
       outputPrice: 2
     });
     expect(calculateModelPrice({ config, inputTokens: 35 }).matchedTier).toMatchObject({
-      startInputTokens: 31,
+      minInputTokens: 31,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
     });
     expect(calculateModelPrice({ config, inputTokens: 90 }).matchedTier).toMatchObject({
-      startInputTokens: 61,
+      minInputTokens: 61,
       inputPrice: 5,
       outputPrice: 6
     });
@@ -120,21 +120,21 @@ describe('core/ai/pricing', () => {
       ]
     });
 
-    expect(config.resolvedPriceTiers).toEqual([
+    expect(config.priceTiers).toEqual([
       {
-        startInputTokens: 1,
+        minInputTokens: 1,
         maxInputTokens: 30,
         inputPrice: 1,
         outputPrice: 2
       },
       {
-        startInputTokens: 31,
+        minInputTokens: 31,
         maxInputTokens: 60,
         inputPrice: 3,
         outputPrice: 4
       },
       {
-        startInputTokens: 61,
+        minInputTokens: 61,
         maxInputTokens: undefined,
         inputPrice: 5,
         outputPrice: 6
@@ -147,14 +147,14 @@ describe('core/ai/pricing', () => {
       outputTokens: 100
     });
 
-    expect(tiers).toBe(config.resolvedPriceTiers);
-    expect(matchedTier).toBe(config.resolvedPriceTiers?.[1]);
+    expect(tiers).toBe(config.priceTiers);
+    expect(matchedTier).toBe(config.priceTiers?.[1]);
     expect(totalPoints).toBeCloseTo(0.505);
   });
 
   it('should resolve ranges from configured tiers', () => {
     expect(
-      getResolvedModelPriceTiers({
+      getRuntimeResolvedPriceTiers({
         priceTiers: [
           {
             maxInputTokens: 10,
@@ -174,19 +174,19 @@ describe('core/ai/pricing', () => {
       })
     ).toEqual([
       {
-        startInputTokens: 1,
+        minInputTokens: 1,
         maxInputTokens: 10,
         inputPrice: 1,
         outputPrice: 1
       },
       {
-        startInputTokens: 11,
+        minInputTokens: 11,
         maxInputTokens: 20,
         inputPrice: 2,
         outputPrice: 2
       },
       {
-        startInputTokens: 21,
+        minInputTokens: 21,
         maxInputTokens: undefined,
         inputPrice: 3,
         outputPrice: 3
@@ -252,35 +252,35 @@ describe('core/ai/pricing', () => {
     };
 
     expect(calculateModelPrice({ config, inputTokens: 30 }).matchedTier).toMatchObject({
-      startInputTokens: 1,
+      minInputTokens: 1,
       maxInputTokens: 30,
       inputPrice: 1,
       outputPrice: 2
     });
     expect(calculateModelPrice({ config, inputTokens: 31 }).matchedTier).toMatchObject({
-      startInputTokens: 31,
+      minInputTokens: 31,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
     });
     expect(calculateModelPrice({ config, inputTokens: 60 }).matchedTier).toMatchObject({
-      startInputTokens: 31,
+      minInputTokens: 31,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
     });
     expect(calculateModelPrice({ config, inputTokens: 61 }).matchedTier).toMatchObject({
-      startInputTokens: 61,
+      minInputTokens: 61,
       inputPrice: 5,
       outputPrice: 6
     });
     expect(calculateModelPrice({ config, inputTokens: 201 }).matchedTier).toMatchObject({
-      startInputTokens: 61,
+      minInputTokens: 61,
       inputPrice: 5,
       outputPrice: 6
     });
     expect(calculateModelPrice({ config, inputTokens: 10000 }).matchedTier).toMatchObject({
-      startInputTokens: 61,
+      minInputTokens: 61,
       inputPrice: 5,
       outputPrice: 6
     });
@@ -302,7 +302,7 @@ describe('core/ai/pricing', () => {
     };
 
     expect(calculateModelPrice({ config, inputTokens: 0 }).matchedTier).toMatchObject({
-      startInputTokens: 1,
+      minInputTokens: 1,
       maxInputTokens: 30,
       inputPrice: 1,
       outputPrice: 2
@@ -334,7 +334,7 @@ describe('core/ai/pricing', () => {
 
   it('should skip invalid descending tiers when resolving ranges', () => {
     expect(
-      getResolvedModelPriceTiers({
+      getRuntimeResolvedPriceTiers({
         priceTiers: [
           {
             maxInputTokens: 10,
@@ -354,13 +354,13 @@ describe('core/ai/pricing', () => {
       })
     ).toEqual([
       {
-        startInputTokens: 1,
+        minInputTokens: 1,
         maxInputTokens: 10,
         inputPrice: 1,
         outputPrice: 1
       },
       {
-        startInputTokens: 11,
+        minInputTokens: 11,
         maxInputTokens: undefined,
         inputPrice: 3,
         outputPrice: 3

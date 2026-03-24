@@ -41,7 +41,6 @@ async function handler(
     if (!item.metadata.name) {
       item.metadata.name = item.model;
     }
-    delete item.metadata.resolvedPriceTiers;
     delete (item.metadata as SystemModelSchemaType['metadata'] & { usedInClassify?: boolean })
       .usedInClassify;
     delete (item.metadata as SystemModelSchemaType['metadata'] & { usedInExtractFields?: boolean })
