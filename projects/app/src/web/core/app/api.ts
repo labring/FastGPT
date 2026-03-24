@@ -8,10 +8,21 @@ import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
 import type { GetAppPermissionResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 
 /**
- * 获取应用列表
+ * 获取应用列表（不分页，向后兼容）
  */
-export const getMyApps = (data?: ListAppBody) =>
+export const getMyApps = (data?: Omit<ListAppBody, 'pageNum' | 'pageSize'>) =>
   POST<AppListItemType[]>('/core/app/list', data, {
+    maxQuantity: 1
+  });
+
+/**
+ * 获取应用列表（分页模式），返回 { list, total }
+ */
+export const getMyAppsPaginated = (
+  data: Required<Pick<ListAppBody, 'pageNum' | 'pageSize'>> &
+    Omit<ListAppBody, 'pageNum' | 'pageSize'>
+) =>
+  POST<{ list: AppListItemType[]; total: number }>('/core/app/list', data, {
     maxQuantity: 1
   });
 

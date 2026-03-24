@@ -317,7 +317,7 @@ export type DatasetListItemType = {
   intro: string;
   type: `${DatasetTypeEnum}`;
   permission: DatasetPermission;
-  vectorModel: EmbeddingModelItemType;
+  vectorModel?: EmbeddingModelItemType;
   inheritPermission: boolean;
   private?: boolean;
   sourceMember?: SourceMemberType;

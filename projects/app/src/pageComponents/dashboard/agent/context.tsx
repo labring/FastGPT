@@ -1,9 +1,10 @@
-import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
+import { getAppDetailById, getMyApps, getMyAppsPaginated, putAppById } from '@/web/core/app/api';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
+import { useInfiniteScroll } from '@fastgpt/web/hooks/useInfiniteScroll';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
   type GetResourceFolderListProps,
@@ -15,14 +16,20 @@ import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { useDebounce } from 'ahooks';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
   parentId?: string | null;
   appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
-  loadMyApps: () => Promise<AppListItemType[]>;
+  /** 重置并重新从第 1 页加载 */
+  loadMyApps: () => Promise<void>;
   isFetchingApps: boolean;
+  /** 是否还有更多数据可加载 */
+  hasMore: boolean;
+  /** 提供给哨兵元素的 callback ref（由 useInfiniteScroll 内部驱动 Observer） */
+  sentinelCallbackRef: (el: HTMLDivElement | null) => void;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
   onUpdateApp: (id: string, data: AppUpdateParams) => Promise<any>;
@@ -35,10 +42,14 @@ type AppListContextType = {
 export const AppListContext = createContext<AppListContextType>({
   parentId: undefined,
   myApps: [],
-  loadMyApps: async function (): Promise<AppListItemType[]> {
+  loadMyApps: async function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   isFetchingApps: false,
+  hasMore: false,
+  sentinelCallbackRef: function (): void {
+    throw new Error('Function not implemented.');
+  },
   folderDetail: undefined,
   paths: [],
   onUpdateApp: function (id: string, data: AppUpdateParams): Promise<any> {
@@ -65,53 +76,57 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     type: AppTypeEnum;
   };
   const [searchKey, setSearchKey] = useState('');
+  // 对搜索词防抖，避免输入时频繁请求
+  const debouncedSearchKey = useDebounce(searchKey, { wait: 500 });
+
+  // 计算当前路由对应的 App 类型过滤
+  const formatType = useMemo(() => {
+    if (router.pathname.includes('/chat')) {
+      return [
+        AppTypeEnum.folder,
+        AppTypeEnum.toolFolder,
+        AppTypeEnum.simple,
+        AppTypeEnum.workflow,
+        AppTypeEnum.workflowTool,
+        AppTypeEnum.assistant
+      ];
+    }
+    if (router.pathname.includes('/agent')) {
+      return !type || type === 'all'
+        ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant]
+        : [AppTypeEnum.folder, type];
+    }
+    return !type || type === 'all'
+      ? [
+          AppTypeEnum.toolFolder,
+          AppTypeEnum.workflowTool,
+          AppTypeEnum.mcpToolSet,
+          AppTypeEnum.httpToolSet
+        ]
+      : [AppTypeEnum.toolFolder, type];
+  }, [router.pathname, type]);
+
+  // ---------- 无限滚动分页（useInfiniteScroll hook） ----------
+  const fetcher = useCallback(
+    (params: { pageNum: number; pageSize: number }) =>
+      getMyAppsPaginated({
+        ...params,
+        parentId,
+        type: formatType,
+        searchKey: debouncedSearchKey
+      }),
+    [parentId, formatType, debouncedSearchKey]
+  );
 
   const {
-    data = [],
-    runAsync: loadMyApps,
-    loading: isFetchingApps
-  } = useRequest(
-    () => {
-      const formatType = (() => {
-        // chat page show all apps
-        if (router.pathname.includes('/chat')) {
-          return [
-            AppTypeEnum.folder,
-            AppTypeEnum.toolFolder,
-            AppTypeEnum.simple,
-            AppTypeEnum.assistant,
-            AppTypeEnum.workflow,
-            AppTypeEnum.workflowTool
-          ];
-        }
+    list: myApps,
+    isLoading: isFetchingApps,
+    hasMore,
+    refresh: loadMyApps,
+    sentinelCallbackRef
+  } = useInfiniteScroll<AppListItemType>(fetcher);
 
-        // agent page
-        if (router.pathname.includes('/agent')) {
-          return !type || type === 'all'
-            ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant]
-            : [AppTypeEnum.folder, type];
-        }
-
-        // tool page
-        return !type || type === 'all'
-          ? [
-              AppTypeEnum.toolFolder,
-              AppTypeEnum.workflowTool,
-              AppTypeEnum.mcpToolSet,
-              AppTypeEnum.httpToolSet
-            ]
-          : [AppTypeEnum.toolFolder, type];
-      })();
-
-      return getMyApps({ parentId, type: formatType, searchKey });
-    },
-    {
-      manual: false,
-      refreshDeps: [searchKey, parentId, type],
-      throttleWait: 500,
-      refreshOnWindowFocus: true
-    }
-  );
+  // ---------- 其余原有逻辑保持不变 ----------
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
@@ -176,10 +191,12 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: AppListContextType = {
     parentId,
     appType: type,
-    myApps: data,
+    myApps,
     loadMyApps,
     refetchFolderDetail,
     isFetchingApps,
+    hasMore,
+    sentinelCallbackRef,
     folderDetail,
     paths,
     onUpdateApp,

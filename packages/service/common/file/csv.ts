@@ -43,7 +43,7 @@ export const generateCsv = (headers: string[], data: string[][]) => {
  */
 export function excelBufferToCSV(buffer: Buffer): string {
   const sheets = xlsx.parse(buffer, {
-    skipHidden: false,
+    // skipHidden: false,
     defval: ''
   });
 

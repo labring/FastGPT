@@ -119,6 +119,11 @@ import type {
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<DatasetListItemType[]>(`/core/dataset/list`, data);
 
+export const getDatasetsPaginated = (
+  data: Required<Pick<GetDatasetListBody, 'pageNum' | 'pageSize'>> &
+    Omit<GetDatasetListBody, 'pageNum' | 'pageSize'>
+) => POST<{ list: DatasetListItemType[]; total: number }>(`/core/dataset/list`, data);
+
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
 /**

@@ -24,6 +24,10 @@ export type ListAppBody = {
   parentId?: ParentIdType;
   type?: AppTypeEnum | AppTypeEnum[];
   searchKey?: string;
+  /** 分页页码（从 1 开始）。与 pageSize 同时传入时启用分页模式，返回 { list, total }；否则返回原数组结构 */
+  pageNum?: number;
+  /** 分页每页数量。与 pageNum 同时传入时启用分页模式 */
+  pageSize?: number;
 };
 
 /*
@@ -36,8 +40,25 @@ export type ListAppBody = {
   6. 再根据 read 权限进行一次过滤。
 */
 
-async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemType[]> {
-  const { parentId, type, searchKey } = req.body;
+type ListAppResponse = AppListItemType[] | { list: AppListItemType[]; total: number };
+
+async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppResponse> {
+  const { parentId, type, searchKey, pageNum, pageSize } = req.body;
+  const isPaginated = pageNum !== undefined && pageSize !== undefined;
+
+  // 分页参数边界验证
+  if (isPaginated) {
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+      throw new Error('pageNum must be a positive integer');
+    }
+    if (pageSize < 1 || !Number.isInteger(pageSize)) {
+      throw new Error('pageSize must be a positive integer');
+    }
+  }
+
+  // 分页参数最大值限制
+  const MAX_PAGE_SIZE = 100;
+  const safePageSize = isPaginated ? Math.min(pageSize, MAX_PAGE_SIZE) : undefined;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -93,7 +114,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   );
 
   const findAppsQuery = (() => {
-
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner
@@ -144,22 +164,35 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       ...parseParentIdInMongo(parentId)
     };
   })();
-  const limit = (() => {
-    if (searchKey) return 50;
-    return;
-  })();
+  // 分页模式：使用数据库级分页 + countDocuments 获取准确的 total
+  // 非分页模式：保留 limit 限制避免全量加载
+  const limit = isPaginated ? undefined : searchKey ? 50 : undefined;
+  const baseQuery = { ...findAppsQuery, deleteTime: null };
 
-  const myApps = await MongoApp.find(
-    { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
-    {
-      limit: limit
-    }
-  )
-    .sort({
-      updateTime: -1
-    })
-    .lean();
+  // 分页模式下并行执行 count 和分页查询
+  // 非分页模式下直接查询
+  const [total, myApps] = isPaginated
+    ? await Promise.all([
+        MongoApp.countDocuments(baseQuery),
+        MongoApp.find(
+          baseQuery,
+          '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules'
+        )
+          .sort({ updateTime: -1 })
+          .skip((pageNum! - 1) * safePageSize!)
+          .limit(safePageSize!)
+          .lean()
+      ])
+    : [
+        0,
+        await MongoApp.find(
+          baseQuery,
+          '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
+          { limit }
+        )
+          .sort({ updateTime: -1 })
+          .lean()
+      ];
 
   // Add app permission and filter apps by read permission
   const formatApps = myApps
@@ -216,9 +249,14 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({
+  const formatList = await addSourceMember({
     list: formatApps
   });
+
+  if (isPaginated) {
+    return { list: formatList, total };
+  }
+  return formatList;
 }
 
 export default NextAPI(handler);

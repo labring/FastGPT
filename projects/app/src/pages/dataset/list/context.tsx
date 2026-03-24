@@ -2,6 +2,7 @@ import {
   getDatasetPaths,
   putDatasetById,
   getDatasets,
+  getDatasetsPaginated,
   getDatasetById,
   delDatasetById
 } from '@/web/core/dataset/api';
@@ -20,15 +21,19 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'next-i18next';
+import { useInfiniteScroll } from '@fastgpt/web/hooks/useInfiniteScroll';
+import { useDebounce } from 'ahooks';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
   myDatasets: DatasetListItemType[];
-  loadMyDatasets: () => Promise<DatasetListItemType[]>;
+  loadMyDatasets: () => Promise<void>;
   refetchPaths: () => void;
   refetchFolderDetail: () => Promise<DatasetItemType | undefined>;
   isFetchingDatasets: boolean;
+  hasMore: boolean;
+  sentinelCallbackRef: (el: HTMLDivElement | null) => void;
   setMoveDatasetId: (id: string) => void;
   paths: ParentTreePathItemType[];
   folderDetail?: DatasetItemType;
@@ -42,6 +47,10 @@ export type DatasetContextType = {
 
 export const DatasetsContext = createContext<DatasetContextType>({
   isFetchingDatasets: false,
+  hasMore: false,
+  sentinelCallbackRef: function (): void {
+    throw new Error('Function not implemented.');
+  },
   setMoveDatasetId: () => {},
   refetchPaths: () => {},
   paths: [],
@@ -49,7 +58,7 @@ export const DatasetsContext = createContext<DatasetContextType>({
   editedDataset: {} as any,
   setEditedDataset: () => {},
   onDelDataset: () => Promise.resolve(),
-  loadMyDatasets: function (): Promise<DatasetListItemType[]> {
+  loadMyDatasets: function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   refetchFolderDetail: function (): Promise<DatasetItemType | undefined> {
@@ -71,22 +80,21 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
   const { parentId = null } = router.query as { parentId?: string | null };
+  const debouncedSearchKey = useDebounce(searchKey, { wait: 500 });
+
+  const fetcher = useCallback(
+    (params: { pageNum: number; pageSize: number }) =>
+      getDatasetsPaginated({ ...params, parentId, searchKey: debouncedSearchKey }),
+    [parentId, debouncedSearchKey]
+  );
 
   const {
-    data: myDatasets = [],
-    runAsync: loadMyDatasets,
-    loading: isFetchingDatasets
-  } = useRequest(
-    () =>
-      getDatasets({
-        searchKey,
-        parentId
-      }),
-    {
-      manual: false,
-      refreshDeps: [parentId, searchKey]
-    }
-  );
+    list: myDatasets,
+    isLoading: isFetchingDatasets,
+    hasMore,
+    refresh: loadMyDatasets,
+    sentinelCallbackRef
+  } = useInfiniteScroll<DatasetListItemType>(fetcher);
 
   const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest(
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
@@ -142,6 +150,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = {
     isFetchingDatasets,
+    hasMore,
+    sentinelCallbackRef,
     setMoveDatasetId,
     paths,
     refetchPaths,
