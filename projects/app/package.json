@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "build:workers": "npx tsx scripts/build-workers.ts",
-    "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
+    "build:workers:watch": "npx tsx scripts/build-workers.ts --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "2.2.1",

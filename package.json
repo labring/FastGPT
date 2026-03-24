@@ -14,6 +14,7 @@
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
     "create:i18n": "node ./scripts/i18n/index.js",
+    "typecheck": "cd projects/app && tsc --noEmit",
     "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "test": "vitest run",
     "test:vector": "vitest run --config test/integrationTest/vectorDB/vitest.config.mts"
