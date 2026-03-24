@@ -20,6 +20,7 @@ const FeiShu = dynamic(() => import('./FeiShu'));
 const DingTalk = dynamic(() => import('./DingTalk'));
 const Wecom = dynamic(() => import('./Wecom'));
 const OffiAccount = dynamic(() => import('./OffiAccount'));
+const Wechat = dynamic(() => import('./Wechat'));
 const Playground = dynamic(() => import('./Playground'));
 
 const OutLink = () => {
@@ -43,6 +44,13 @@ const OutLink = () => {
       title: t('common:core.app.Api request'),
       desc: t('common:core.app.Api request desc'),
       value: PublishChannelEnum.apikey,
+      isProFn: false
+    },
+    {
+      icon: 'core/app/publish/wechat',
+      title: t('publish:wechat.bot'),
+      desc: t('publish:wechat.bot_desc'),
+      value: PublishChannelEnum.wechat,
       isProFn: false
     },
     ...(feConfigs?.show_publish_feishu !== false &&
@@ -91,6 +99,7 @@ const OutLink = () => {
           }
         ]
       : []),
+
     {
       icon: 'core/chat/sidebar/home',
       title: t('common:navbar.Chat'),
@@ -145,6 +154,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.dingtalk && <DingTalk appId={appId} />}
         {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
+        {linkType === PublishChannelEnum.wechat && <Wechat appId={appId} />}
         {linkType === PublishChannelEnum.playground && <Playground appId={appId} />}
       </Flex>
     </Box>

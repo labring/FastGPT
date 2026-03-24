@@ -5,7 +5,7 @@ WORKDIR /app
 ARG proxy
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@10
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -37,7 +37,7 @@ COPY --from=maindeps /app/projects/marketplace/node_modules ./projects/marketpla
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@10
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url

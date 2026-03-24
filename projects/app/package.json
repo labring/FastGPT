@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.14.8.4",
+  "version": "4.14.9",
   "private": false,
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=8192' npm run build:workers && next dev",
@@ -12,7 +12,7 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": "10.x"
+    "pnpm": "9.x"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
@@ -61,7 +61,6 @@
     "p-limit": "^7.2.0",
     "qrcode": "^1.5.4",
     "react": "catalog:",
-    "react-day-picker": "^8.7.1",
     "react-dom": "catalog:",
     "react-hook-form": "7.43.1",
     "react-i18next": "catalog:",

@@ -1,7 +1,8 @@
 'use client';
 
 import { Check, Link as LinkIcon } from 'lucide-react';
-import { ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
+import type { ComponentProps} from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '../lib/cn';
 import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
 import { buttonVariants } from './ui/button';

@@ -60,11 +60,13 @@ const accordionButtonStyle = {
 const RenderResoningContent = React.memo(function RenderResoningContent({
   content,
   isChatting,
-  isLastResponseValue
+  isLastResponseValue,
+  isDisabled
 }: {
   content: string;
   isChatting: boolean;
   isLastResponseValue: boolean;
+  isDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
@@ -90,7 +92,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
           borderColor={'myGray.300'}
           color={'myGray.500'}
         >
-          <Markdown source={content} showAnimation={showAnimation} />
+          <Markdown source={content} showAnimation={showAnimation} isDisabled={isDisabled} />
         </AccordionPanel>
       </AccordionItem>
     </Accordion>
@@ -100,12 +102,14 @@ const RenderText = React.memo(function RenderText({
   showAnimation,
   text,
   chatItemDataId,
-  onOpenCiteModal
+  onOpenCiteModal,
+  isDisabled
 }: {
   showAnimation: boolean;
   text: string;
   chatItemDataId: string;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  isDisabled?: boolean;
 }) {
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -131,6 +135,7 @@ const RenderText = React.memo(function RenderText({
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
       onOpenCiteModal={onOpenCiteModal}
+      isDisabled={isDisabled}
     />
   );
 });
@@ -424,6 +429,7 @@ const AIResponseBox = ({
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const tools = value.tool ? [value.tool] : value.tools;
+  const disableStreamingInteraction = isChatting && isLastChild;
 
   if ('text' in value && value.text) {
     return (
@@ -432,6 +438,7 @@ const AIResponseBox = ({
         showAnimation={isChatting && isLastResponseValue}
         text={value.text.content}
         onOpenCiteModal={onOpenCiteModal}
+        isDisabled={disableStreamingInteraction}
       />
     );
   }
@@ -441,6 +448,7 @@ const AIResponseBox = ({
         isChatting={isChatting}
         isLastResponseValue={isLastResponseValue}
         content={value.reasoning.content}
+        isDisabled={disableStreamingInteraction}
       />
     );
   }

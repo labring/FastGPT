@@ -4,17 +4,18 @@
   "type": "module",
   "engines": {
     "node": ">=20",
-    "pnpm": "10.x"
+    "pnpm": "9.x"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.2",
-    "@fastgpt-sdk/sandbox-adapter": "^0.0.21",
+    "@fastgpt-sdk/sandbox-adapter": "^0.0.28",
+    "@fastgpt-sdk/otel": "catalog:",
     "@fastgpt-sdk/storage": "catalog:",
-    "@fastgpt-sdk/logger": "catalog:",
     "@fastgpt/global": "workspace:*",
     "@maxmind/geoip2-node": "^6.3.4",
     "@modelcontextprotocol/sdk": "catalog:",
     "@node-rs/jieba": "2.0.1",
+    "@opentelemetry/api": "^1.9.0",
     "@t3-oss/env-core": "0.13.10",
     "@xmldom/xmldom": "^0.8.10",
     "@zilliz/milvus2-sdk-node": "2.4.10",
@@ -37,6 +38,7 @@
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "json5": "catalog:",
     "jsonpath-plus": "^10.3.0",
+    "jsonrepair": "^3.0.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "catalog:",
     "mammoth": "^1.11.0",

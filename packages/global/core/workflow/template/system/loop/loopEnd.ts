@@ -19,13 +19,14 @@ export const LoopEndNode: FlowNodeTemplateType = {
   avatarLinear: 'core/workflow/template/loopEndLinear',
   colorSchema: 'violetDeep',
   name: i18nT('workflow:loop_end'),
+  intro: i18nT('workflow:loop_end_intro'),
   showStatus: false,
   inputs: [
     {
       key: NodeInputKeyEnum.loopEndInput,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.any,
-      label: '',
+      label: i18nT('workflow:loop_end_intro'),
       required: true,
       value: []
     }

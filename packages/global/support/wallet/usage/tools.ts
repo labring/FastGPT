@@ -35,6 +35,8 @@ export const getUsageSourceByPublishChannel = (publishchannel: PublishChannelEnu
       return UsageSourceEnum.feishu;
     case PublishChannelEnum.wecom:
       return UsageSourceEnum.wecom;
+    case PublishChannelEnum.wechat:
+      return UsageSourceEnum.wechat;
     case PublishChannelEnum.officialAccount:
       return UsageSourceEnum.official_account;
     case PublishChannelEnum.dingtalk:

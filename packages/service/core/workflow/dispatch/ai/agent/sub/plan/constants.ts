@@ -1,6 +1,7 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import z from 'zod';
 
 export const PlanCheckInteractive: InteractiveNodeResponseType = {
@@ -13,7 +14,8 @@ export const PlanCheckInteractive: InteractiveNodeResponseType = {
 export const PlanAgentParamsSchema = z.object({
   task: z.string(),
   description: z.string(),
-  background: z.string().nullish()
+  background: z.string().nullish(),
+  planId: z.string().default(() => getNanoid(6))
 });
 export type PlanAgentParamsType = z.infer<typeof PlanAgentParamsSchema>;
 export const PlanAgentTool: ChatCompletionTool = {

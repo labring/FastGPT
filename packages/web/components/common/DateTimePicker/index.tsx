@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
-import { Box, Card, Flex, Portal, useOutsideClick } from '@chakra-ui/react';
+import { Box, Card, Flex, Portal } from '@chakra-ui/react';
 import { format } from 'date-fns';
-import type { Matcher } from 'react-day-picker';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, type Matcher } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { zhCN } from 'date-fns/locale/zh-CN';
 import MyIcon from '../Icon';

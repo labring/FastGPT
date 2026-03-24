@@ -2,7 +2,6 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import type {
   AuthOutLinkChatProps,
   AuthOutLinkLimitProps,
-  AuthOutLinkInitProps,
   AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api';
 import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -10,11 +9,8 @@ import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/au
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
 
-export function authOutLinkInit(data: AuthOutLinkInitProps): Promise<AuthOutLinkResponse> {
-  if (!global.feConfigs?.isPlus) return Promise.resolve({ uid: data.outLinkUid });
-  return POST<AuthOutLinkResponse>('/support/outLink/authInit', data);
-}
 export function authOutLinkChatLimit(data: AuthOutLinkLimitProps): Promise<AuthOutLinkResponse> {
   if (!global.feConfigs?.isPlus) return Promise.resolve({ uid: data.outLinkUid });
   return POST<AuthOutLinkResponse>('/support/outLink/authChatStart', data);

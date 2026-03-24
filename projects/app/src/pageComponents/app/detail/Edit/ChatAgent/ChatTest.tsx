@@ -78,6 +78,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       selectedTools: appForm.selectedTools.map((tool) => tool.id),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
+      enableSandbox: appForm.aiSettings.useAgentSandbox || false,
       modelConfig: {
         model: appForm.aiSettings.model,
         temperature: appForm.aiSettings.temperature,
@@ -153,6 +154,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
               metadata={topAgentMetadata}
               onApply={async (formData) => {
                 const fileUploadEnabled = !!formData.fileUploadEnabled;
+                const enableSandboxEnabled = !!formData.enableSandboxEnabled;
 
                 // Filter internal tools
                 const filteredToolIds = (formData.tools || []).filter(
@@ -178,7 +180,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                         : prev.dataset,
                     aiSettings: {
                       ...prev.aiSettings,
-                      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt
+                      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
+                      useAgentSandbox: enableSandboxEnabled
                     },
                     chatConfig: {
                       ...prev.chatConfig,

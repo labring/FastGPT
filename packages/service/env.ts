@@ -22,7 +22,17 @@ export const env = createEnv({
     LOG_ENABLE_OTEL: BoolSchema.default(false),
     LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
     LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
-    LOG_OTEL_URL: z.string().url().optional()
+    LOG_OTEL_URL: z.url().optional(),
+
+    METRICS_ENABLE_OTEL: BoolSchema.default(false),
+    METRICS_EXPORT_INTERVAL: z.coerce.number().int().positive().default(15000),
+    METRICS_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
+    METRICS_OTEL_URL: z.url().optional(),
+
+    TRACING_ENABLE_OTEL: BoolSchema.default(false),
+    TRACING_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
+    TRACING_OTEL_URL: z.url().optional(),
+    TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

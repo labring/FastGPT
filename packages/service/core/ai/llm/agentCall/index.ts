@@ -401,8 +401,7 @@ export const runAgentCall = async ({
         toolCallStep = true;
       }
     }
-
-    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep) {
+    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep || isAborted?.()) {
       break;
     }
   }

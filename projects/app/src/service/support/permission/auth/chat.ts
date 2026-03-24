@@ -55,8 +55,8 @@ export async function authChatCrud({
     chatId?: string;
   }): Promise<{
   teamId: string;
-  tmbId: string;
-  uid: string;
+  tmbId: string; // 本轮鉴权的 uid
+  uid: string; // chat 里的实际的 uid（outlinkUid??tmbId)
   chat?: ChatSchemaType;
   showCite: boolean;
   showRunningStatus: boolean;
@@ -68,7 +68,7 @@ export async function authChatCrud({
 
   if (spaceTeamId && teamToken) {
     const { uid, tmbId } = await authTeamSpaceToken({ teamId: spaceTeamId, teamToken });
-    if (!chatId)
+    if (!chatId) {
       return {
         teamId: spaceTeamId,
         tmbId,
@@ -76,6 +76,7 @@ export async function authChatCrud({
         ...defaultResponseShow,
         authType: AuthUserTypeEnum.teamDomain
       };
+    }
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     if (!chat) {
@@ -188,7 +189,7 @@ export async function authChatCrud({
       teamId,
       tmbId,
       chat,
-      uid: tmbId,
+      uid: chat.outLinkUid ?? chat.tmbId,
       ...defaultResponseShow,
       authType
     };
@@ -199,7 +200,7 @@ export async function authChatCrud({
       teamId,
       tmbId,
       chat,
-      uid: tmbId,
+      uid: chat.outLinkUid ?? chat.tmbId,
       ...defaultResponseShow,
       authType
     };

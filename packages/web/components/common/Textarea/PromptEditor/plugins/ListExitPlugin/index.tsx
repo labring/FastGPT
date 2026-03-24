@@ -64,52 +64,60 @@ export default function ListExitPlugin(): JSX.Element | null {
     };
 
     const handleBackspaceKey = (event: KeyboardEvent) => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) {
+      let shouldHandle = false;
+
+      editor.getEditorState().read(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) {
+          return;
+        }
+
+        const anchorNode = selection.anchor.getNode();
+        const listItemNode = $isListItemNode(anchorNode) ? anchorNode : anchorNode.getParent();
+
+        if ($isListItemNode(listItemNode)) {
+          const textContent = listItemNode.getTextContent().trim();
+          const cursorOffset = selection.anchor.offset;
+
+          if (textContent === '' && cursorOffset === 0) {
+            shouldHandle = true;
+          }
+        }
+      });
+
+      if (!shouldHandle) {
         return false;
       }
 
-      const anchorNode = selection.anchor.getNode();
-      const listItemNode = $isListItemNode(anchorNode) ? anchorNode : anchorNode.getParent();
+      event.preventDefault();
+      event.stopPropagation();
 
-      if ($isListItemNode(listItemNode)) {
-        // Check if cursor is at the beginning of an empty list item
-        const textContent = listItemNode.getTextContent().trim();
-        const cursorOffset = selection.anchor.offset;
+      editor.update(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
 
-        // Only handle empty list items with cursor at the beginning
-        if (textContent === '' && cursorOffset === 0) {
-          // Prevent default backspace behavior
-          event.preventDefault();
-          event.stopPropagation();
+        const anchorNode = selection.anchor.getNode();
+        const listItemNode = $isListItemNode(anchorNode) ? anchorNode : anchorNode.getParent();
 
-          editor.update(() => {
-            const listNode = listItemNode.getParent();
+        if (!$isListItemNode(listItemNode)) return;
 
-            if ($isListNode(listNode)) {
-              // Create a new paragraph
-              const paragraph = $createParagraphNode();
+        const listNode = listItemNode.getParent();
 
-              // Always insert after the current list item and remove it
-              // This ensures the paragraph appears at the current position
-              listItemNode.insertAfter(paragraph);
-              listItemNode.remove();
+        if ($isListNode(listNode)) {
+          const paragraph = $createParagraphNode();
 
-              // If the list is now empty, remove it
-              if (listNode.getChildrenSize() === 0) {
-                listNode.remove();
-              }
+          listItemNode.insertAfter(paragraph);
+          listItemNode.remove();
 
-              // Focus the new paragraph
-              paragraph.select();
-            }
-          });
+          if (listNode.getChildrenSize() === 0) {
+            listNode.remove();
+          }
 
-          return true;
+          paragraph.select();
         }
-      }
+      });
 
-      return false;
+      return true;
     };
 
     // Register the keyboard event handlers

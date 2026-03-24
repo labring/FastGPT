@@ -3,16 +3,20 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Only one build per PR branch at a time
+concurrency:
+  group: 'test-fastgpt-${{ github.head_ref }}'
+  cancel-in-progress: true
+
+permissions:
+  # Required to checkout the code
+  contents: read
+  # Required to put a comment into the pull-request
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    permissions:
-      # Required to checkout the code
-      contents: read
-      # Required to put a comment into the pull-request
-      pull-requests: write
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,7 +24,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 9
       - name: 'Install Deps'
         run: pnpm install
       - name: 'Test'

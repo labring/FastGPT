@@ -92,7 +92,8 @@ export const masterCall = async ({
       // Dataset search configuration
       agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
-      useAgentSandbox = false
+      useAgentSandbox = false,
+      aiChatVision
     }
   } = props;
 
@@ -187,7 +188,7 @@ export const masterCall = async ({
         content: getMasterSystemPrompt({
           systemPrompt,
           hasUserTools,
-          useAgentSandbox
+          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox
         })
       },
       ...masterMessages
@@ -215,6 +216,7 @@ export const masterCall = async ({
       messages: requestMessages,
       model: getLLMModel(model),
       stream: true,
+      useVision: aiChatVision,
       tools: isStepCall
         ? completionTools.filter((item) => item.function.name !== SubAppIds.plan)
         : completionTools
@@ -425,9 +427,8 @@ export const masterCall = async ({
                 model,
                 stream,
                 mode: 'initial',
-                task: toolArgs.data.task,
-                description: toolArgs.data.description,
-                background: toolArgs.data.background
+                ...toolArgs.data,
+                planId: call.id
               });
 
               return {

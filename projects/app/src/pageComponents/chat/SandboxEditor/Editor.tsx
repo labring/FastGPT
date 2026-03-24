@@ -147,16 +147,8 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
     async () => {
       if (!activeFile) return;
 
-      // 直接下载文件内容,不压缩
-      const blob = new Blob([activeFile.content], { type: 'text/plain;charset=utf-8' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = activeFile.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // 通过服务端下载接口获取原始文件,支持二进制文件(图片等)
+      await downloadSandbox({ appId, chatId, outLinkAuthData, path: activeFile.path });
     },
     { manual: true }
   );
@@ -470,7 +462,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
                   <MyIcon name="common/searchLight" w="16px" color="myGray.500" />
                 </InputLeftElement>
                 <Input
-                  placeholder={t('app:sandbox.search_files')}
+                  placeholder={t('chat:sandbox_search_files')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   bg="white"
@@ -725,7 +717,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
             ) : filteredTree.length > 0 ? (
               <Center h="full">
                 <VStack spacing={3}>
-                  <EmptyTip text={t('app:sandbox.select_file')} mt={0} />
+                  <EmptyTip text={t('chat:sandbox_select_file_edit')} mt={0} />
                 </VStack>
               </Center>
             ) : null}
@@ -734,7 +726,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
       ) : !loadingRoot ? (
         <Center h="full" w={'full'}>
           <VStack spacing={3}>
-            <EmptyTip text={t('app:sandbox.no_file')} mt={0} />
+            <EmptyTip text={t('chat:sandbox_no_file')} mt={0} />
           </VStack>
         </Center>
       ) : null}

@@ -23,7 +23,7 @@ async function handler(
   const { appId, chatId, outLinkAuthData } = body;
 
   // 统一鉴权
-  await authChatCrud({
+  const { uid } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
@@ -33,10 +33,14 @@ async function handler(
   });
 
   // 检查沙盒是否存在
-  const sandboxInstance = await MongoSandboxInstance.findOne({
-    appId,
-    chatId
-  }).lean();
+  const sandboxInstance = await MongoSandboxInstance.findOne(
+    {
+      appId,
+      userId: uid,
+      chatId
+    },
+    '_id'
+  ).lean();
 
   return {
     exists: !!sandboxInstance

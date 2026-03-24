@@ -5,7 +5,7 @@ WORKDIR /app
 ARG proxy
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@10
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -39,11 +39,20 @@ COPY --from=maindeps /app/projects/app/node_modules ./projects/app/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@10
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
 RUN pnpm --filter=app build
+
+# Remove build-time-only packages from standalone output before copying to runner.
+# These are traced into standalone by mistake (rspack bindings, gnu platform binaries, etc.)
+RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding-*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/@rspack+binding-*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/next-rspack*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/typescript@*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/*-linux-x64-gnu@*/ \
+    projects/app/.next/standalone/node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/
 
 # --------- runner -----------
 FROM node:20.14.0-alpine AS runner
@@ -74,18 +83,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
 RUN rm -rf ./node_modules/tiktoken/encoders
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
+
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
-# copy config
-COPY ./projects/app/data/config.json /app/data/config.json
-# copy test.mp3
-COPY ./projects/app/data/test.mp3 /app/data/test.mp3
-# copy GeoLite2-City.mmdb
-COPY ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
-
-RUN chown -R nextjs:nodejs /app/data
-
-# Add tmp directory permission control
+# copy config and data files (use --chown to avoid extra layer from chown)
+COPY --chown=nextjs:nodejs ./projects/app/data/config.json /app/data/config.json
+COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
+COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

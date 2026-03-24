@@ -63,5 +63,6 @@
   "total_usage": "總消耗",
   "usage_detail": "使用詳細資訊",
   "user_type": "類型",
-  "wecom": "企業微信"
+  "wecom": "企業微信",
+  "wechat": "微信個人號"
 }

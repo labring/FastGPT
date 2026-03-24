@@ -3,8 +3,14 @@
 # - FastGPT-mcp-server 端口映射 3005:3000
 # - 建议修改账密后再运行
 
+# root 默认密码（重启后会强制重置该密码成环境变量值）
+x-default-root-psw: &x-default-root-psw '1234'
+# 系统最高密钥凭证
+x-system-key: &x-system-key 'fastgpt-xxx'
 # plugin auth token
 x-plugin-auth-token: &x-plugin-auth-token 'token'
+# code sandbox token
+x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
@@ -162,65 +168,118 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.8 # git
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.9.3 # git
     ports:
       - 3000:3000
     networks:
       - fastgpt
     depends_on:
       - mongo
-      - sandbox
+      - code-sandbox
       - vectorDB
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
+      # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
-      FE_DOMAIN:
+      FE_DOMAIN: http://localhost:3000
+      # root key（最高权限）
+      ROOT_KEY: *x-system-key
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
-      DEFAULT_ROOT_PSW: 1234
-      # 登录凭证密钥
-      TOKEN_KEY: any
-      # root的密钥，常用于升级时候的初始化请求
-      ROOT_KEY: root_key
-      # 文件阅读加密
-      FILE_TOKEN_KEY: filetoken
-      # 密钥加密key
-      AES256_SECRET_KEY: fastgptkey
+      DEFAULT_ROOT_PSW: *x-default-root-psw
+      # 数据库最大连接数
+      DB_MAX_LINK: 5
+      # 自动同步索引（0 表示不同步）
+      SYNC_INDEX: 1
+      TOKEN_KEY: fastgpt
+      # 文件阅读时的密钥
+      FILE_TOKEN_KEY: filetokenkey
+      # 密钥加密 key
+      AES256_SECRET_KEY: fastgptsecret
+      # 强制将图片转成 base64 传递给模型
+      MULTIPLE_DATA_TO_BASE64: true
 
+      # ==================== 服务地址与集成 ====================
       # plugin 地址
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
-      # sandbox 地址
-      CODE_SANDBOX_URL: http://sandbox:3000
+      # code-sandbox 地址
+      SANDBOX_URL: http://code-sandbox:3000
+      SANDBOX_TOKEN: *x-code-sandbox-token
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       AIPROXY_API_TOKEN: *x-aiproxy-token
 
+      # ==================== 日志与监控 ====================
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-client
 
-      # 工作流最大运行次数
+      # ==================== 安全与运行限制 ====================
+      # 启动 IP 限流（true）；部分接口启用 IP 限流策略以防止异常请求
+      USE_IP_LIMIT: false
+      # 工作流最大运行次数，避免极端死循环
       WORKFLOW_MAX_RUN_TIMES: 1000
-      # 批量执行节点，最大输入长度
+      # 循环最大运行次数，避免极端死循环
       WORKFLOW_MAX_LOOP_TIMES: 100
-      # 对话文件过期天数
-      CHAT_FILE_EXPIRE_TIME: 7
-      # 服务器接收请求，最大大小，单位 MB
+      # 服务器接收请求的最大大小（MB）
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
-      # HTML 转换最大字符数
+      # 启用内网 IP 检查
+      CHECK_INTERNAL_IP: false
+      # ==================== 上传与账号策略 ====================
+      # 最大上传文件大小（MB）
+      UPLOAD_FILE_MAX_SIZE: 1000
+      # 最大上传文件数量
+      UPLOAD_FILE_MAX_AMOUNT: 1000
+      # LLM 请求追踪保留时长（小时）
+      LLM_REQUEST_TRACKING_RETENTION_HOURS: 6
+      # ==================== 功能开关与特殊配置 ====================
+      # 自定义跨域；不配置时默认允许所有跨域（逗号分割）
+      ALLOWED_ORIGINS: 
+      # HTML 转 Markdown 最大字符数（超过后不执行转换）
       MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
       - ./config.json:/app/data/config.json
-  sandbox:
-    container_name: sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.8
+  code-sandbox:
+    container_name: code-sandbox
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.9.3
     networks:
       - fastgpt
     restart: always
     environment:
       <<: [*x-log-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
+      SANDBOX_TOKEN: *x-code-sandbox-token
+      # ===== Resource Limits =====
+      # Execution timeout per request (ms)
+      SANDBOX_MAX_TIMEOUT: 60000
+      # Maximum allowed memory per user code execution (MB)
+      # Note: System automatically adds 50MB for runtime overhead
+      # Actual process limit = SANDBOX_MAX_MEMORY_MB + 50MB
+      SANDBOX_MAX_MEMORY_MB: 256
+
+      # ===== Process Pool =====
+      # Number of pre-warmed worker processes (JS + Python)
+      SANDBOX_POOL_SIZE: 20
+
+      # ===== Network Request Limits =====
+      # Whether to check if the request is to a private network
+      CHECK_INTERNAL_IP: false
+      # Maximum number of HTTP requests per execution
+      SANDBOX_REQUEST_MAX_COUNT: 30
+      # Timeout for each outbound HTTP request (ms)
+      SANDBOX_REQUEST_TIMEOUT: 60000
+      # Maximum response body size for outbound requests
+      SANDBOX_REQUEST_MAX_RESPONSE_MB: 10
+      # Maximum request body size for outbound requests (MB)
+      SANDBOX_REQUEST_MAX_BODY_MB: 5
+
+      # ===== Module Control =====
+      # JS allowed modules whitelist (comma-separated)
+      SANDBOX_JS_ALLOWED_MODULES: lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring
+      # Python allowed modules whitelist (comma-separated)
+      SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
+
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -228,7 +287,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.8
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.9
     networks:
       - fastgpt
     ports:
@@ -238,7 +297,7 @@ services:
       <<: [*x-log-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.4
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.5
     container_name: fastgpt-plugin
     restart: always
     networks:

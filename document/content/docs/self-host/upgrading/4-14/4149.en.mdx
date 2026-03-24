@@ -1,0 +1,73 @@
+---
+title: 'V4.14.9'
+description: 'FastGPT V4.14.9 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Environment Variable Updates
+
+1. Rename the following FastGPT environment variables — `SANDBOX_URL` and `SANDBOX_TOKEN` are now `CODE_SANDBOX_URL` and `CODE_SANDBOX_TOKEN`:
+
+```bash
+# Old
+SANDBOX_URL=<code sandbox address>
+SANDBOX_TOKEN=<code sandbox credential (can be empty; auth was added in 4.14.8)>
+# New
+CODE_SANDBOX_URL=<code sandbox address>
+CODE_SANDBOX_TOKEN=<code sandbox credential>
+```
+
+2. Internal-network security checks are now disabled by default. To re-enable them, set the environment variable `CHECK_INTERNAL_IP=true` (applies to fastgpt, fastgpt-pro, and fastgpt-sandbox).
+
+### 2. Update Images
+
+- FastGPT image tag: v4.14.9.1
+- FastGPT Commercial Edition image tag: v4.14.9.1
+- fastgpt-plugin image tag: v0.5.5
+- mcp_server — no update required
+- sandbox image tag: v4.14.9.1
+- AIProxy — no update required
+
+## API Changes
+
+The `/api/core/chat/getPaginationRecords` endpoint now returns a `useAgentSandbox: boolean` field indicating whether the AI sandbox tool was used in the current conversation turn. The `llmModuleAccount` and `historyPreviewLength` fields will be removed soon — please migrate away from them as soon as possible.
+
+## New Features
+
+1. Added AI Sandbox — attach a sandbox tool to the AI for richer operations. (Currently available on the cloud service only; a lightweight self-hosted deployment will ship in the next release.)
+2. Publish channels now support WeChat personal accounts.
+3. AgentV2 context now adapts to the paused state.
+4. Introduced a logger SDK with Metrics tracking.
+5. Updating a single Knowledge Base entry now also refreshes the collection's update timestamp.
+6. Form file inputs now support opening files for preview.
+
+## Improvements
+
+1. API-based Knowledge Base sync now has additional fallback methods for retrieving file names.
+2. Added SSRF protection to the HTTP tool.
+3. Improved compatibility with more MCP JsonSchema fields — older versions could not handle mixed-type fields.
+4. Optimized parts of the workflow runtime pool logic to reduce computational complexity.
+5. Replaced DFS with Tarjan's SCC algorithm for edge grouping in the workflow runtime, resolving issues where complex cyclic workflows failed to run.
+6. System toolsets no longer display a version number (since they have no selectable versions).
+
+## Bug Fixes
+
+1. When a workflow nested a plugin, plugin execution details were not properly preserved. Also cleaned up all tool-type prefixes.
+2. Updating and saving an MCP toolset could prevent it from being called correctly (due to an incorrect toolId lookup).
+3. The search box was missing from the API Knowledge Base file list.
+4. Workflow variable values containing special characters (`$.`) caused incorrect value substitution.
+5. Referencing an agent tool in a workflow caused a version retrieval error.
+6. When switching from a model that supports certain parameters to one that does not, the unsupported parameters were not removed, causing model invocation failures.
+7. Closing a shared link's display status caused AI responses in the chat history to render incorrectly.
+8. Re-opening the preview dialog in workflow preview mode lost form input content.
+9. Custom fields in subscription plans were not applied.
+10. The login endpoint had an async session issue that produced error logs.
+12. The condition evaluator was missing selectable conditions for the `arrayAny` type.
+13. Video/audio custom file type workflows were missing file link variables at the start node.
+14. User input messages were not escaped to Markdown format.
+15. Fixed partial context concatenation errors in AgentV2.
+
+## Code Improvements
+
+1. Fixed a monorepo issue in Commercial Edition development where different React references required a full package reinstall.

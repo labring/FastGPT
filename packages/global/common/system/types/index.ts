@@ -71,6 +71,7 @@ export type FastGPTFeConfigsType = {
   show_publish_dingtalk?: boolean;
   show_publish_wecom?: boolean;
   show_publish_offiaccount?: boolean;
+  show_publish_wechat?: boolean;
   show_agent_sandbox?: boolean;
 
   show_dataset_enhance?: boolean;

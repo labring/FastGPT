@@ -31,3 +31,15 @@ export const createEdge = (
   sourceHandle: sourceHandle || `${source}-source-right`,
   targetHandle: targetHandle || `${target}-target-left`
 });
+
+export const setEdgeStatus = (
+  edges: RuntimeEdgeItemType[],
+  source: string,
+  target: string,
+  status: 'active' | 'waiting' | 'skipped'
+) => {
+  const edge = edges.find((e) => e.source === source && e.target === target);
+  if (edge) {
+    edge.status = status;
+  }
+};

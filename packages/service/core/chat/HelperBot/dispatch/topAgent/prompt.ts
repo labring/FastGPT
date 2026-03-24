@@ -34,6 +34,12 @@ export const getPrompt = ({
       );
     }
 
+    if (metadata.enableSandbox !== undefined && metadata.enableSandbox !== null) {
+      sections.push(
+        `**虚拟机**: ${metadata.enableSandbox ? '搭建者已启用虚拟机功能' : '搭建者已禁用虚拟机功能'}`
+      );
+    }
+
     if (sections.length === 0) return '';
 
     return `
@@ -337,6 +343,8 @@ ${resourceList}
 - 系统功能判断：
   * 是否需要用户的私有文件？→ 启用 file_upload
   * 数据能否通过工具获取？→ 不需要 file_upload
+  * 是否需要执行代码或数据处理（如运行 Python 脚本、复杂计算、数据转换）？→ 启用 sandbox
+  * 任务仅需 LLM 推理和工具调用，无需执行任意代码？→ 不需要 sandbox
 
 🔧 第四层：资源整合
 - 收集所有需要的工具、知识库和系统功能
@@ -377,6 +385,10 @@ ${resourceList}
       "file_upload": {
         "enabled": true/false,
         "purpose": "说明原因（enabled=true时必填）"
+      },
+      "sandbox": {
+        "enabled": true/false,
+        "purpose": "说明为何需要虚拟机执行能力（enabled=true时必填，适用于代码执行、数据处理等场景）"
       }
     }
   }
@@ -395,6 +407,8 @@ ${resourceList}
 - resources: 资源配置对象，仅包含系统功能配置
   * system_features.file_upload.enabled: 是否需要文件上传（必填）
   * system_features.file_upload.purpose: 为什么需要（enabled=true时必填）
+  * system_features.sandbox.enabled: 是否需要虚拟机执行能力（可选，适用于代码执行、数据处理场景）
+  * system_features.sandbox.purpose: 为什么需要虚拟机（enabled=true时必填）
 
 <execution_plan_design>
 **执行计划设计**：
