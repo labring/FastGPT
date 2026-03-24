@@ -392,7 +392,7 @@ const useRAF = () => {
 export const popoverWidth = 400;
 export const popoverHeight = 600;
 // Loop 类型的父节点类型集合
-const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop]);
+const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -432,10 +432,17 @@ export const useWorkflow = () => {
     const unSupportedTypes = [
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
+      FlowNodeTypeEnum.batch,
       FlowNodeTypeEnum.pluginInput,
       FlowNodeTypeEnum.pluginOutput,
       FlowNodeTypeEnum.systemConfig
     ];
+    const batchOnlyUnSupportedTypes = [
+      FlowNodeTypeEnum.userSelect,
+      FlowNodeTypeEnum.formInput,
+      FlowNodeTypeEnum.variableUpdate
+    ];
+    const batchInteractiveNodeTypes = [FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput];
 
     if (!node || node.data.parentNodeId) return;
 
@@ -443,14 +450,28 @@ export const useWorkflow = () => {
     const intersections = getIntersectingNodes(node);
     // 获取所有与当前节点相交的节点中，类型为 loop 的节点且它不能是折叠状态
     const parentNode = intersections.find(
-      (item) => !item.data.isFolded && item.type === FlowNodeTypeEnum.loop
+      (item) =>
+        !item.data.isFolded &&
+        [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(item.type as FlowNodeTypeEnum)
     );
 
     if (parentNode) {
-      if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
+      const parentType = parentNode.type as FlowNodeTypeEnum;
+      const currentNodeType = node.type as FlowNodeTypeEnum;
+      const isUnsupportedForCommonParent = unSupportedTypes.includes(currentNodeType);
+      const isUnsupportedForBatchParent =
+        parentType === FlowNodeTypeEnum.batch &&
+        batchOnlyUnSupportedTypes.includes(currentNodeType);
+      const isInteractiveInBatch =
+        parentType === FlowNodeTypeEnum.batch &&
+        batchInteractiveNodeTypes.includes(currentNodeType);
+
+      if (isUnsupportedForCommonParent || isUnsupportedForBatchParent) {
         return toast({
           status: 'warning',
-          title: t('workflow:can_not_loop')
+          title: isInteractiveInBatch
+            ? t('workflow:batch_no_interactive_node')
+            : t('workflow:can_not_loop')
         });
       }
 
