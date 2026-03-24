@@ -1,0 +1,139 @@
+---
+title: Batch Run (Parallel)
+description: FastGPT Batch Run (Parallel) node overview and usage
+---
+
+## Node Overview
+
+The **Batch Run (Parallel)** node processes array inputs concurrently: FastGPT creates an isolated task for each element, runs tasks in parallel, and then aggregates outputs in input-index order.
+
+It is ideal for workloads where each element is independent. Compared with serial batch execution, it usually provides higher throughput.
+
+## Core Features
+
+1. **Parallel Execution**
+   - Runs multiple elements concurrently
+   - Configurable runtime concurrency limit
+   - Per-item retry on failure
+
+2. **Traceable Outputs**
+   - Success-only result array
+   - Raw per-item result array (success/failure details)
+   - Overall status (`success`/`failed`/`partial_success`)
+
+3. **Task Isolation**
+   - Each element runs in an isolated runtime context
+   - Failure of one item does not stop others
+   - Final outputs are stably ordered by input index
+
+## Best-fit Use Cases
+
+The **Batch Run (Parallel)** node is especially suitable for:
+
+1. **High-throughput batch jobs**
+   - Batch translation
+   - Batch summarization
+   - Batch structured extraction
+
+2. **Independent concurrent tasks**
+   - Parallel analysis of search results
+   - Parallel processing of API response items
+   - Parallel rewriting of text chunks
+
+3. **Fault-tolerant pipelines**
+   - Allow partial failures
+   - Continue processing remaining items
+   - Diagnose failures from raw results
+
+## How to Use
+
+### Input Parameters
+
+The node has three key inputs:
+
+1. **Array (Required)**
+   - Accepts array input (`Array<string>`, `Array<number>`, `Array<boolean>`, `Array<object>`, etc.)
+
+2. **Concurrency Limit (Required)**
+   - Maximum number of items processed at the same time
+   - Tune this value based on model/tool rate limits and resource budget
+
+3. **Retry Times Per Item (Required)**
+   - Retry count when an item fails
+   - After retries are exhausted, the item is marked failed with a `message`
+
+### Child Flow Configuration
+
+Inside the node, child flow is still defined by **Start** and **End** nodes:
+
+- **Start** exposes current item value and index
+- **End** chooses which variable should be collected as item output
+
+> For best parallel performance, design child flow as stateless and independent across items.
+
+## Output Definition
+
+The node provides three major outputs:
+
+1. **Batch Result (Success)**
+   - Contains successful item outputs only
+   - Ordered by input index
+
+2. **Batch Result (Raw)**
+   - One record per input item, e.g.:
+
+```json
+[
+  {
+    "success": true,
+    "message": "",
+    "data": {}
+  },
+  {
+    "success": false,
+    "message": "error message",
+    "data": null
+  }
+]
+```
+
+3. **Overall Status**
+   - `success`: all items succeeded
+   - `failed`: all items failed
+   - `partial_success`: mixed success and failure
+
+## Constraints and Notes
+
+To avoid state conflicts in concurrent execution, the following node types are not allowed inside batch child flow:
+
+- Batch Run (Serial)
+- Batch Run (Parallel)
+- User Selection
+- Form Input
+- Variable Update
+
+Recommendations:
+
+- Avoid shared mutable state between items
+- Avoid strict order dependencies between items
+- If strict order is required, use serial batch execution instead
+
+## Example
+
+### Parallel translation for a text array
+
+Given an input array `textArray`, you can run parallel translation like this:
+
+1. Prepare `textArray` in an upstream node
+2. Configure Batch Run (Parallel):
+   - Array: `textArray`
+   - Concurrency Limit: e.g. `5`
+   - Retry Times Per Item: e.g. `2`
+3. Add an AI Chat node in child flow for translation
+4. Select translation output in the **End** node
+
+You will get:
+
+- A success-only result array for downstream logic
+- A raw result array for debugging failed items
+

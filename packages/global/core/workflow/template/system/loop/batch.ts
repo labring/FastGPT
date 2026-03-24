@@ -30,6 +30,7 @@ export const BatchNode: FlowNodeTemplateType = {
   name: i18nT('workflow:batch'),
   intro: i18nT('workflow:intro_batch'),
   showStatus: true,
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/batch/',
   inputs: [
     {
       key: NodeInputKeyEnum.loopInputArray,
