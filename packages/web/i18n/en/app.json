@@ -675,7 +675,7 @@
   "knowledge_search_input_tip": "Please enter keywords first",
   "knowledge_search_no_results": "No relevant knowledge found",
   "knowledge_faq_limit_tip": "FAQ data: maximum 1 selection",
-  "chat_item_citation_source": "Citation source",
+  "chat_item_citation_source": "Citing {{count}} references",
   "chat_item_cost_time": "Time taken",
   "chat_item_rewrite": "Rewrite",
   "chat_item_correct_error": "Correct error",
