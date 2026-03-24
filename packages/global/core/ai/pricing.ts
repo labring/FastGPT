@@ -15,7 +15,7 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
   for (const tier of tiers) {
     const hasMaxInputTokens = isValidNumber(tier?.maxInputTokens);
     // 这个梯度没有填 Token 的上限值 而且 没有填输入/输出价格，就算不合法
-    if (!hasMaxInputTokens) {
+    if (!hasMaxInputTokens && result.length > 0) {
       break;
     }
 
