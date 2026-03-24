@@ -1,5 +1,4 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { SpanStatusCode } from '@opentelemetry/api';
 import type {
   AIChatItemValueItemType,
@@ -12,7 +11,7 @@ import type {
   NodeOutputItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -24,8 +23,7 @@ import {
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
-  ModuleDispatchProps,
-  SystemVariablesType
+  ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
@@ -46,17 +44,21 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { getLogger, LogCategories } from '../../../common/logger';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import { rewriteRuntimeWorkFlow, runtimeSystemVar2StoreType, filterOrphanEdges } from './utils';
+import {
+  rewriteRuntimeWorkFlow,
+  runtimeSystemVar2StoreType,
+  filterOrphanEdges,
+  getSystemVariables
+} from './utils';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
-import { anyValueDecrypt } from '../../../common/secret/utils';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
-import { addPreviewUrlToChatItems, presignVariablesFileUrls } from '../../chat/utils';
+import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
 import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator';
@@ -192,10 +194,14 @@ export async function dispatchWorkFlow({
   const defaultVariables = {
     ...externalProvider.externalWorkflowVariables,
     ...(await getSystemVariables({
-      ...data,
-      query,
-      histories,
-      timezone
+      runningAppInfo: runningAppInfo,
+      chatId: chatId,
+      responseChatItemId: data.responseChatItemId,
+      histories: histories,
+      uid: data.uid,
+      chatConfig: data.chatConfig,
+      variables: data.variables,
+      timezone: timezone
     }))
   };
 
@@ -1536,63 +1542,6 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       };
     }
   );
-};
-
-/* get system variable */
-const getSystemVariables = async ({
-  timezone,
-  runningAppInfo,
-  chatId,
-  responseChatItemId,
-  histories = [],
-  uid,
-  chatConfig,
-  variables
-}: Props & {
-  timezone: string;
-}): Promise<SystemVariablesType> => {
-  // Get global variables(Label -> key; Key -> key)
-  const variablesConfig = chatConfig?.variables || [];
-
-  const variablesMap: Record<string, any> = {};
-  for await (const item of variablesConfig) {
-    // For internal variables, ignore external input and use default value
-    if (item.type === VariableInputEnum.password) {
-      const val = variables[item.label] || variables[item.key] || item.defaultValue;
-      const actualValue = anyValueDecrypt(val);
-      variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
-    }
-    //  文件类型全局变量，签发成 string[] 格式
-    else if (item.type === VariableInputEnum.file) {
-      const vars = await presignVariablesFileUrls({
-        variables,
-        variableConfig: [item]
-      });
-
-      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
-    }
-    // API
-    else if (variables[item.label] !== undefined) {
-      variablesMap[item.key] = valueTypeFormat(variables[item.label], item.valueType);
-    }
-    // Web
-    else if (variables[item.key] !== undefined) {
-      variablesMap[item.key] = valueTypeFormat(variables[item.key], item.valueType);
-    } else {
-      variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
-    }
-  }
-
-  return {
-    ...variablesMap,
-    // System var:
-    userId: uid,
-    appId: String(runningAppInfo.id),
-    chatId,
-    responseChatItemId,
-    histories,
-    cTime: getSystemTime(timezone)
-  };
 };
 
 /* Merge consecutive text messages into one */
