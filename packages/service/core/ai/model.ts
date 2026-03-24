@@ -12,7 +12,7 @@ export const getLLMModel = (model?: string | LLMModelItemType) => {
 export const getDatasetModel = (model?: string) => {
   return (
     Array.from(global.llmModelMap.values())
-      ?.filter((item) => item.datasetProcess)
+      ?.filter((item) => !item.testMode)
       ?.find((item) => item.model === model || item.name === model) ?? getDefaultLLMModel()
   );
 };

@@ -77,7 +77,7 @@ const MyModal = ({
         position={'relative'}
         maxH={'80vh'}
         boxShadow={'3.5'}
-        padding={'8'}
+        p={'8'}
         containerProps={{
           zIndex: props.zIndex
         }}
@@ -86,15 +86,7 @@ const MyModal = ({
         {onClose && <ModalCloseButton position={'absolute'} fontSize={'xs'} top={3} right={3} />}
 
         {!!title && (
-          <Flex
-            alignItems={'center'}
-            fontSize={'lg'}
-            fontWeight={'500'}
-            mb={6}
-            py={0}
-            px={0}
-            gap={3}
-          >
+          <Flex alignItems={'center'} fontSize={'lg'} fontWeight={'500'} mb={6} py={0} gap={3}>
             {iconSrc && (
               <>
                 <Avatar

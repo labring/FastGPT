@@ -1,4 +1,5 @@
 import { findAIModel } from '../../../core/ai/model';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 
 export const formatModelChars2Points = ({
   model,
@@ -19,12 +20,12 @@ export const formatModelChars2Points = ({
     };
   }
 
-  const isIOPriceType = typeof modelData.inputPrice === 'number' && modelData.inputPrice > 0;
-
-  const totalPoints = isIOPriceType
-    ? (modelData.inputPrice || 0) * (inputTokens / multiple) +
-      (modelData.outputPrice || 0) * (outputTokens / multiple)
-    : (modelData.charsPointsPrice || 0) * ((inputTokens + outputTokens) / multiple);
+  const { totalPoints } = calculateModelPrice({
+    config: modelData,
+    inputTokens,
+    outputTokens,
+    multiple
+  });
 
   return {
     modelName: modelData.name,

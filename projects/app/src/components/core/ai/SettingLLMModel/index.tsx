@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
+import { LLMModelTypeEnum, isLLMModelTypeMatched } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
@@ -35,17 +35,7 @@ const SettingLLMModel = ({
   const { modelSet, modelList } = useMemoEnhance(() => {
     const modelSet = new Set<string>();
     const modelList = llmModelList.filter((modelData) => {
-      if (!llmModelType) {
-        modelSet.add(modelData.model);
-        return true;
-      }
-      const filterField = llmModelTypeFilterMap[llmModelType];
-      if (!filterField) {
-        modelSet.add(modelData.model);
-        return true;
-      }
-      // @ts-ignore
-      if (!!modelData[filterField]) {
+      if (isLLMModelTypeMatched({ llmModelType, model: modelData })) {
         modelSet.add(modelData.model);
         return true;
       }
