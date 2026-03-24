@@ -27,14 +27,6 @@ const envSchema = z.object({
         'SANDBOX_TOKEN contains invalid characters. Only ASCII printable characters (no spaces) are allowed.'
     }),
 
-  // Logger
-  LOG_ENABLE_CONSOLE: z.boolean().default(true),
-  LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
-  LOG_ENABLE_OTEL: z.boolean().default(false),
-  LOG_OTEL_LEVEL: LogLevelSchema.default('info'),
-  LOG_OTEL_SERVICE_NAME: z.string().default('fastgpt-code-sandbox'),
-  LOG_OTEL_URL: z.url().optional(),
-
   // ===== 进程池 =====
   /** 进程池大小（预热 worker 数量） */
   SANDBOX_POOL_SIZE: int(20).pipe(z.number().min(1).max(100)),
