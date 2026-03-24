@@ -8,7 +8,7 @@ import type {
   SandboxImageConfigType,
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
-import { createSandbox, type ISandbox, type Volume } from '@fastgpt-sdk/sandbox-adapter';
+import { createSandbox, type ISandbox, type OpenSandboxVolume } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 import { env } from '../../env';
@@ -322,7 +322,7 @@ export function buildVolumeConfig(
   sessionId: string,
   claimName: string,
   mountPath: string
-): Volume {
+): OpenSandboxVolume {
   // Volume name must match DNS label format: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
   const name = sessionId
     .toLowerCase()

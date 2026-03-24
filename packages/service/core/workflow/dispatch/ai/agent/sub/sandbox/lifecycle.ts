@@ -8,7 +8,7 @@
  * - releaseAgentSandbox：断开 SDK 连接，不销毁容器
  */
 
-import type { ISandbox, Volume } from '@fastgpt-sdk/sandbox-adapter';
+import type { ISandbox, OpenSandboxVolume } from '@fastgpt-sdk/sandbox-adapter';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../../ai/sandbox/schema';
@@ -27,7 +27,8 @@ import {
   buildVolumeConfig,
   buildBaseContainerEnv
 } from '../../../../../../agentSkills/sandboxConfig';
-import { SandboxTypeEnum, SandboxStatusEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { env } from '../../../../../../../env';
 import type {
   AgentSkillSchemaType,
@@ -289,7 +290,7 @@ export async function createAgentSandbox(
   try {
     const createEntrypoint = defaults.entrypoint;
 
-    let volumes: Volume[] | undefined;
+    let volumes: OpenSandboxVolume[] | undefined;
     if (providerConfig.provider === 'opensandbox' && env.AGENT_SANDBOX_ENABLE_VOLUME) {
       const vmConfig = getVolumeManagerConfig();
       const claimName = await ensureSessionVolume(sessionId, vmConfig);

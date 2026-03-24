@@ -112,10 +112,4 @@ export enum SandboxProtocolEnum {
   https = 'https'
 }
 
-// Sandbox instance lifecycle status (running/stopped)
-export enum SandboxStatusEnum {
-  running = 'running',
-  stopped = 'stopped'
-}
-
 export const sandboxInstanceCollectionName = 'agent_sandbox_instances';

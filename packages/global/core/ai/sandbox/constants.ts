@@ -6,7 +6,7 @@ import { z } from 'zod';
 // ---- 沙盒状态 ----
 export const SandboxStatusEnum = {
   running: 'running',
-  stoped: 'stoped'
+  stopped: 'stopped'
 } as const;
 export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
 
