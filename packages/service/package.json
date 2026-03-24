@@ -37,7 +37,6 @@
     "ioredis": "^5.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "json5": "catalog:",
-    "jsonrepair": "^3.0.0",
     "jsonpath-plus": "^10.3.0",
     "jsonrepair": "^3.0.0",
     "jsonwebtoken": "^9.0.2",
