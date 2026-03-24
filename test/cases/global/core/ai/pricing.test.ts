@@ -92,14 +92,14 @@ describe('getRuntimeResolvedPriceTiers', () => {
       inputPrice: 1.5,
       outputPrice: 3
     });
-    expect(result).toEqual([{ minInputTokens: 1, inputPrice: 1.5, outputPrice: 3 }]);
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1.5, outputPrice: 3 }]);
   });
 
   it('should return comprehensive price as same input/output price', () => {
     const result = getRuntimeResolvedPriceTiers({
       charsPointsPrice: 2
     });
-    expect(result).toEqual([{ minInputTokens: 1, inputPrice: 2, outputPrice: 2 }]);
+    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 2, outputPrice: 2 }]);
   });
 
   it('should prioritize priceTiers over legacy fields', () => {
