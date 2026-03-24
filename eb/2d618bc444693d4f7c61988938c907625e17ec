@@ -1,0 +1,67 @@
+projects/app/src/pages/api/core/agentSkills/save-deploy.ts
+  378cbd3a06dcc13e 21-22
+packages/global/core/agentSkills/type.ts
+  378cbd3a06dcc13e 9,22
+packages/service/core/ai/sandbox/controller.ts
+  378cbd3a06dcc13e 169
+packages/service/core/ai/sandbox/type.ts
+  378cbd3a06dcc13e 9
+packages/global/core/ai/sandbox/constants.ts
+  378cbd3a06dcc13e 9
+packages/service/core/workflow/dispatch/ai/agent/index.ts
+  3c829793bc83e16d 1,604-608,610-612
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  378cbd3a06dcc13e 30-31
+test/cases/service/core/ai/sandbox/sandbox.integration.test.ts
+  378cbd3a06dcc13e 120
+test/cases/service/core/ai/sandbox/controller.test.ts
+  378cbd3a06dcc13e 141,206
+packages/service/core/agentSkills/sandboxController.ts
+  378cbd3a06dcc13e 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "eb2d618bc444693d4f7c61988938c907625e17ec",
+  "prompts": {
+    "378cbd3a06dcc13e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c4a535b-c8ce-44ae-b2db-f1b31ba6fa81",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 17,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    },
+    "3c829793bc83e16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8edc04aa-e849-4cfd-a96a-cb9074f5df69",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 2,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "8d4b27d6b70b13d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c73fe16f-75bd-4e62-ae3f-dfa6d6b74ac8",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 7,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}
