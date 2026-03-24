@@ -67,12 +67,27 @@ export const UpdateSkillBodySchema = z.object({
   description: z.string().optional(),
   category: z.array(AgentSkillCategorySchema).optional(),
   config: AgentSkillConfigSchema.optional(),
-  avatar: z.string().optional()
+  avatar: z.string().optional(),
+  parentId: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('移动到指定文件夹，null 表示根目录，undefined 表示不移动')
 });
 export type UpdateSkillBody = z.infer<typeof UpdateSkillBodySchema>;
 
 export const UpdateSkillResponseSchema = z.void();
 export type UpdateSkillResponse = z.infer<typeof UpdateSkillResponseSchema>;
+
+export const CopySkillBodySchema = z.object({
+  skillId: IdSchema
+});
+export type CopySkillBody = z.infer<typeof CopySkillBodySchema>;
+
+export const CopySkillResponseSchema = z.object({
+  skillId: z.string()
+});
+export type CopySkillResponse = z.infer<typeof CopySkillResponseSchema>;
 
 export const DeleteSkillQuerySchema = z.object({
   skillId: IdSchema
@@ -90,6 +105,9 @@ export type GetSkillDetailQuery = z.infer<typeof GetSkillDetailQuerySchema>;
 export const GetSkillDetailResponseSchema = z.object({
   _id: z.string(),
   source: AgentSkillSourceSchema,
+  type: AgentSkillTypeSchema.optional(),
+  parentId: z.string().nullable().optional(),
+  inheritPermission: z.boolean().optional(),
   name: z.string(),
   description: z.string(),
   author: z.string(),
@@ -99,15 +117,16 @@ export const GetSkillDetailResponseSchema = z.object({
   teamId: z.string().optional(),
   tmbId: z.string().optional(),
   createTime: z.string(),
-  updateTime: z.string()
+  updateTime: z.string(),
+  permission: z.any().optional()
 });
 export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema>;
 
 export const ImportSkillBodySchema = z.object({
+  parentId: z.string().nullable().optional().describe('导入的目标目录 ID'),
   name: z.string().optional().describe('导入后的技能名称'),
   description: z.string().optional().describe('导入后的技能描述'),
-  avatar: z.string().optional().describe('导入后的技能头像'),
-  parentId: NullableParentIdSchema
+  avatar: z.string().optional().describe('导入后的技能头像')
 });
 export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
 

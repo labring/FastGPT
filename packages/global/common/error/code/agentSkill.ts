@@ -3,7 +3,8 @@ import { i18nT } from '../../../../web/i18n/utils';
 /* agentSkill: 509000 */
 export enum SkillErrEnum {
   unExist = 'skillUnExist',
-  unAuthSkill = 'unAuthSkill'
+  unAuthSkill = 'unAuthSkill',
+  canNotEditAdminPermission = 'canNotEditAdminPermission'
 }
 const skillErrList = [
   {
@@ -13,6 +14,10 @@ const skillErrList = [
   {
     statusText: SkillErrEnum.unAuthSkill,
     message: i18nT('common:code_error.skill_error.un_auth_skill')
+  },
+  {
+    statusText: SkillErrEnum.canNotEditAdminPermission,
+    message: i18nT('common:code_error.skill_error.can_not_edit_admin_permission')
   }
 ];
 export default skillErrList.reduce((acc, cur, index) => {

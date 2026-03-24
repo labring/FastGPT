@@ -1,11 +1,31 @@
-import { NullRoleVal, CommonPerList, CommonRoleList, CommonRolePerMap } from '../constant';
-import type { PermissionListType, RolePerMapType } from '../type';
+import { i18nT } from '../../../../web/i18n/utils';
+import {
+  NullRoleVal,
+  CommonPerKeyEnum,
+  CommonRoleList,
+  CommonRolePerMap,
+  CommonPerList
+} from '../constant';
+import type { RolePerMapType } from '../type';
 import type { RoleListType } from '../type';
 
-export const SkillDefaultRoleVal = NullRoleVal;
+export const SkillRoleList: RoleListType = {
+  [CommonPerKeyEnum.read]: {
+    ...CommonRoleList[CommonPerKeyEnum.read],
+    description: i18nT('skill:permission.des.read')
+  },
+  [CommonPerKeyEnum.write]: {
+    ...CommonRoleList[CommonPerKeyEnum.write],
+    description: i18nT('skill:permission.des.write')
+  },
+  [CommonPerKeyEnum.manage]: {
+    ...CommonRoleList[CommonPerKeyEnum.manage],
+    description: i18nT('skill:permission.des.manage')
+  }
+};
 
-// Skill permissions currently mirror the common read/write/manage set.
-// Extend here when skill-specific permission bits are needed.
-export const SkillPerList: PermissionListType = { ...CommonPerList };
-export const SkillRoleList: RoleListType = { ...CommonRoleList };
-export const SkillRolePerMap: RolePerMapType = new Map([...CommonRolePerMap]);
+export const SkillRolePerMap: RolePerMapType = CommonRolePerMap;
+
+export const SkillPerList = CommonPerList;
+
+export const SkillDefaultRoleVal = NullRoleVal;

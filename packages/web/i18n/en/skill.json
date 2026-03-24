@@ -62,5 +62,8 @@
   "sandbox_ready_warm": "Sandbox is ready (warm start)",
   "sandbox_failed": "Sandbox creation failed: {{message}}",
   "sandbox_retry": "Retry",
-  "sandbox_error_title": "Sandbox Creation Failed"
+  "sandbox_error_title": "Sandbox Creation Failed",
+  "permission.des.read": "Can view Agent Skill",
+  "permission.des.write": "Can edit Agent Skill",
+  "permission.des.manage": "Can manage Agent Skill and collaborators"
 }

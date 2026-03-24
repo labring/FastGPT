@@ -1,13 +1,22 @@
 import { MongoAgentSkills } from '../../../core/agentSkills/schema';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillSourceEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/agentSkills/constants';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
-import { ReadPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import {
+  NullRoleVal,
+  PerResourceTypeEnum,
+  ReadRoleVal
+} from '@fastgpt/global/support/permission/constant';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { AuthModeType, AuthResponseType } from '../type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { parseHeaderCert } from '../auth/common';
+import { getTmbPermission } from '../controller';
+import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type AuthSkillResponse = AuthResponseType<SkillPermission> & {
   skill: AgentSkillSchemaType & { permission: SkillPermission };
@@ -16,16 +25,16 @@ export type AuthSkillResponse = AuthResponseType<SkillPermission> & {
 /**
  * Verify skill access permission by tmbId (no request dependency, for internal use).
  *
- * Permission rules (mirrors authAppByTmbId):
+ * Permission rules:
  * - System skills: read-only for all team members; write/manage are rejected
- * - Team owner or skill creator: owner-level access (read + write + manage)
- * - Other team members: no default access (NullRoleVal)
+ * - Team owner or skill creator: owner-level access
+ * - Other team members: permission from ResourcePermission table (supports inheritance)
  */
 export const authSkillByTmbId = async ({
   tmbId,
   skillId,
   per,
-  isRoot
+  isRoot = false
 }: {
   tmbId: string;
   skillId: string;
@@ -34,10 +43,11 @@ export const authSkillByTmbId = async ({
 }): Promise<{
   skill: AgentSkillSchemaType & { permission: SkillPermission };
 }> => {
-  const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
-
   const skill = await (async () => {
-    const skill = await MongoAgentSkills.findOne({ _id: skillId, deleteTime: null }).lean();
+    const [{ teamId, permission: tmbPer }, skill] = await Promise.all([
+      getTmbInfoByTmbId({ tmbId }),
+      MongoAgentSkills.findOne({ _id: skillId, deleteTime: null }).lean()
+    ]);
 
     if (!skill) {
       return Promise.reject(SkillErrEnum.unExist);
@@ -54,20 +64,45 @@ export const authSkillByTmbId = async ({
       return Promise.reject(SkillErrEnum.unAuthSkill);
     }
 
-    // System skills are read-only for all team members (equivalent to AppTypeEnum.hidden)
+    // System skills are read-only for all team members
     if (skill.source === AgentSkillSourceEnum.system) {
-      if (per !== ReadPermissionVal) {
+      const sysPer = new SkillPermission({ role: ReadRoleVal, isOwner: false });
+      if (!sysPer.checkPer(per)) {
         return Promise.reject(SkillErrEnum.unAuthSkill);
       }
       return {
         ...skill,
-        permission: new SkillPermission({ isOwner: false, role: ReadRoleVal })
+        permission: sysPer
       };
     }
 
-    // Team owner or skill creator gets full (owner-level) permission; others get NullRoleVal
+    // Check if should inherit permission from parent folder
     const isOwner = tmbPer.isOwner || String(skill.tmbId) === String(tmbId);
-    const Per = new SkillPermission({ isOwner });
+    const isGetParentClb =
+      skill.inheritPermission !== false &&
+      skill.type !== AgentSkillTypeEnum.folder &&
+      !!skill.parentId;
+
+    // Get parent folder permission and self permission in parallel
+    const [folderPer = NullRoleVal, myPer = NullRoleVal] = await Promise.all([
+      isGetParentClb
+        ? getTmbPermission({
+            teamId,
+            tmbId,
+            resourceId: skill.parentId!,
+            resourceType: PerResourceTypeEnum.agentSkill
+          })
+        : NullRoleVal,
+      getTmbPermission({
+        teamId,
+        tmbId,
+        resourceId: skillId,
+        resourceType: PerResourceTypeEnum.agentSkill
+      })
+    ]);
+
+    // Merge folder permission and self permission
+    const Per = new SkillPermission({ role: sumPer(folderPer, myPer), isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(SkillErrEnum.unAuthSkill);
