@@ -136,10 +136,6 @@ curl --location --request POST 'https://[oneapi_url]/v1/chat/completions' \
       "charsPointsPrice": 0, // n积分/1k token（商业版）
       "censor": false, // 是否开启敏感校验（商业版）
       "vision": true, // 是否支持图片输入
-      "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
-      "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
-      "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
-      "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
       "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）
       "functionCall": false, // 是否支持函数调用（分类，内容提取，工具调用会用到。会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型

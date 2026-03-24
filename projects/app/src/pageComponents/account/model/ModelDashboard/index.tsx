@@ -16,8 +16,10 @@ import { getSystemModelList } from '@/web/core/ai/config';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 
 export type ModelDashboardData = {
   x: string;
@@ -115,7 +117,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       new Set(
         systemModelList.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
       ),
-    [systemModelList?.length]
+    [systemModelList]
   );
   const isLLMModel = useCallback(
     (model: string) => {
@@ -152,13 +154,15 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         inputPrice?: number;
         outputPrice?: number;
         charsPointsPrice?: number;
+        priceTiers?: ModelPriceTierType[];
       }
     >();
     systemModelList.forEach((model) => {
       map.set(model.model, {
         inputPrice: model.inputPrice,
         outputPrice: model.outputPrice,
-        charsPointsPrice: model.charsPointsPrice
+        charsPointsPrice: model.charsPointsPrice,
+        priceTiers: model.priceTiers
       });
     });
     return map;
@@ -340,13 +344,11 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         if (modelPricing) {
           const inputTokens = model.input_tokens || 0;
           const outputTokens = model.output_tokens || 0;
-          const isIOPriceType =
-            typeof modelPricing.inputPrice === 'number' && modelPricing.inputPrice > 0;
-
-          const totalPoints = isIOPriceType
-            ? (modelPricing.inputPrice || 0) * (inputTokens / 1000) +
-              (modelPricing.outputPrice || 0) * (outputTokens / 1000)
-            : ((modelPricing.charsPointsPrice || 0) * (inputTokens + outputTokens)) / 1000;
+          const { totalPoints } = calculateModelPrice({
+            config: modelPricing,
+            inputTokens,
+            outputTokens
+          });
 
           return acc + totalPoints;
         }

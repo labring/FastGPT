@@ -2,13 +2,27 @@
 import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
+export const ModelPriceTierSchema = z.object({
+  minInputTokens: z.int().min(0).optional(),
+  maxInputTokens: z.int().nullish().meta({
+    description:
+      'The maximum number of input tokens for this tier. If not provided, the tier is open-ended.'
+  }),
+  inputPrice: z.number(),
+  outputPrice: z.number()
+});
+export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
+
 const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
-  // If inputPrice is set, the input-output charging scheme is adopted
+  // 旧版的价格计费字段
   inputPrice: z.number().optional(), // 1k tokens=n points
-  outputPrice: z.number().optional() // 1k tokens=n points
+  outputPrice: z.number().optional(), // 1k tokens=n points
+
+  // 新版的梯度价格计算字段
+  priceTiers: z.array(ModelPriceTierSchema).optional()
 });
-type PriceType = z.infer<typeof PriceTypeSchema>;
+export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 const BaseModelItemSchema = z.object({
   provider: z.string(),
@@ -42,12 +56,8 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   vision: z.boolean().optional(),
   reasoning: z.boolean().optional(),
 
-  // diff function model
-  datasetProcess: z.boolean().optional(), // dataset
-  usedInClassify: z.boolean().optional(), // classify
-  usedInExtractFields: z.boolean().optional(), // extract fields
-  usedInToolCall: z.boolean().optional(), // tool call
-  useInEvaluation: z.boolean().optional(), // evaluation
+  // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
+  testMode: z.boolean().optional(), // test mode flag
 
   functionCall: z.boolean(),
   toolChoice: z.boolean(),
@@ -59,7 +69,18 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   // LLM
   isDefaultDatasetTextModel: z.boolean().optional(),
   isDefaultDatasetImageModel: z.boolean().optional(),
-  isDefaultHelperBotModel: z.boolean().optional()
+  isDefaultHelperBotModel: z.boolean().optional(),
+
+  /** @deprecated */
+  datasetProcess: z.boolean().optional(), // dataset
+  /** @deprecated */
+  usedInClassify: z.boolean().optional(),
+  /** @deprecated */
+  usedInExtractFields: z.boolean().optional(),
+  /** @deprecated */
+  usedInToolCall: z.boolean().optional(),
+  /** @deprecated */
+  useInEvaluation: z.boolean().optional()
 });
 export type LLMModelItemType = z.infer<typeof LLMModelItemSchema>;
 
