@@ -212,7 +212,6 @@ services:
       - fastgpt
     restart: always
     environment:
-      <<: [*x-log-config]
       LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
       SANDBOX_TOKEN: *x-code-sandbox-token
       # ===== Resource Limits =====
