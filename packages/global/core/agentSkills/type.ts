@@ -4,9 +4,9 @@ import {
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum,
   SandboxProtocolEnum,
-  SandboxTypeEnum,
-  SandboxStatusEnum
+  SandboxTypeEnum
 } from './constants';
+import { SandboxStatusEnum } from '../ai/sandbox/constants';
 
 const LooseObjectSchema = z.object({}).catchall(z.any());
 const BufferSchema = z.custom<Buffer>(
@@ -19,7 +19,10 @@ export const AgentSkillCategorySchema = z.enum(AgentSkillCategoryEnum);
 export const AgentSkillTypeSchema = z.enum(AgentSkillTypeEnum);
 export const SandboxProtocolSchema = z.enum(SandboxProtocolEnum);
 export const SandboxTypeSchema = z.enum(SandboxTypeEnum);
-export const SandboxStatusSchema = z.enum(SandboxStatusEnum);
+export const SandboxStatusSchema = z.enum([
+  SandboxStatusEnum.running,
+  SandboxStatusEnum.stopped
+] as const);
 
 export const AgentSkillConfigParameterSchema = z.object({
   name: z.string(),

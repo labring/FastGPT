@@ -6,8 +6,7 @@ import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agent
 export const SandboxProviderValues = ['sealosdevbox', 'opensandbox'] as const;
 export const SharedSandboxStatusValues = [
   SandboxStatusEnum.running,
-  SandboxStatusEnum.stoped,
-  'stopped'
+  SandboxStatusEnum.stopped
 ] as const;
 
 export const SandboxProviderSchema = z.enum(SandboxProviderValues);

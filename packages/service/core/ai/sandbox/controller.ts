@@ -11,6 +11,7 @@ import {
   type ISandbox,
   type ResourceLimits
 } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { subMinutes } from 'date-fns';
@@ -146,10 +147,26 @@ export class SandboxClient {
   }
 
   async stop() {
-    await this.provider.stop();
+    if (this.provider.provider === 'opensandbox') {
+      try {
+        await (this.provider as OpenSandboxAdapter).connect(this.sandboxId);
+      } catch (err) {
+        logger.warn('Failed to connect to sandbox, skipping stop', {
+          sandboxId: this.sandboxId,
+          error: err
+        });
+        return;
+      }
+      const info = await this.provider.getInfo();
+      if (info !== null) {
+        await this.provider.stop();
+      }
+    } else {
+      await this.provider.stop();
+    }
     await MongoSandboxInstance.updateOne(
       { sandboxId: this.sandboxId },
-      { $set: { status: SandboxStatusEnum.stoped } }
+      { $set: { status: SandboxStatusEnum.stopped } }
     );
   }
 }
