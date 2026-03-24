@@ -273,7 +273,10 @@ const NodeTemplateList = ({
         });
 
         const currentNode = getNodeById(handleParams?.nodeId);
-        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop && !!currentNode?.parentNodeId) {
+        if (
+          [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(templateNode.flowNodeType) &&
+          !!currentNode?.parentNodeId
+        ) {
           toast({
             status: 'warning',
             title: t('workflow:can_not_loop')
@@ -319,7 +322,7 @@ const NodeTemplateList = ({
 
         const newNodes = [newNode];
 
-        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop) {
+        if ([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(templateNode.flowNodeType)) {
           const startNode = nodeTemplate2FlowNode({
             template: LoopStartNode,
             position: { x: position.x + 60, y: position.y + 280 },

@@ -14,6 +14,7 @@ import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchUserSelect } from './interactive/userSelect';
 import { dispatchLoop } from './loop/runLoop';
+import { dispatchBatch } from './batch/runBatch';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchRunPlugin } from './plugin/run';
@@ -65,6 +66,7 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
   [FlowNodeTypeEnum.loop]: dispatchLoop,
+  [FlowNodeTypeEnum.batch]: dispatchBatch,
   [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
   [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
   [FlowNodeTypeEnum.formInput]: dispatchFormInput,

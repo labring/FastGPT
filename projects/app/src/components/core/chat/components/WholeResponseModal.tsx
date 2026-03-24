@@ -152,14 +152,16 @@ export const WholeResponseContent = ({
         )}
         {(activeModule?.childrenResponses ||
           activeModule.toolDetail ||
-          activeModule.pluginDetail) && (
+          activeModule.pluginDetail ||
+          activeModule.batchDetail) && (
           <Row
             label={t('chat:response.child total points')}
             value={formatNumber(
               [
                 ...(activeModule.childrenResponses || []),
                 ...(activeModule.toolDetail || []),
-                ...(activeModule.pluginDetail || [])
+                ...(activeModule.pluginDetail || []),
+                ...(activeModule.batchDetail || [])
               ]?.reduce((sum, item) => sum + (item.totalPoints || 0), 0) || 0
             )}
           />
@@ -496,6 +498,10 @@ export const WholeResponseContent = ({
       {/* loop */}
       <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
       <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
+      <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.batchInput} />
+      <Row label={t('workflow:batch_result_success')} value={activeModule?.batchResult} />
+      <Row label={t('workflow:batch_result_raw')} value={activeModule?.batchRawResult} />
+      <Row label={t('workflow:batch_status')} value={activeModule?.batchStatus} />
 
       {/* loopStart */}
       <Row
@@ -724,6 +730,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
             }
+            if (Array.isArray(item.batchDetail)) {
+              helper(item.batchDetail);
+            }
             if (Array.isArray(item.childrenResponses)) {
               helper(item.childrenResponses);
             }
@@ -755,11 +764,18 @@ export const ResponseBox = React.memo(function ResponseBox({
       return res.map((item) => {
         let children: sideTabItemType[] = [];
         if (
-          !!(item?.toolDetail || item?.pluginDetail || item?.loopDetail || item?.childrenResponses)
+          !!(
+            item?.toolDetail ||
+            item?.pluginDetail ||
+            item?.loopDetail ||
+            item?.batchDetail ||
+            item?.childrenResponses
+          )
         ) {
           if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
           if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
           if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+          if (item?.batchDetail) children.push(...pretreatmentResponse(item?.batchDetail));
           if (item?.childrenResponses)
             children.push(...pretreatmentResponse(item?.childrenResponses));
         }
