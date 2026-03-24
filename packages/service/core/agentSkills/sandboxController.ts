@@ -230,7 +230,8 @@ export async function createEditDebugSandbox(
   const standardizedBuffer = packageBuffer;
 
   // Check active edit-debug sandbox count limit
-  const maxEditDebug = env.AGENT_SANDBOX_MAX_EDIT_DEBUG;
+  const maxEditDebug =
+    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? env.AGENT_SANDBOX_MAX_EDIT_DEBUG;
   if (maxEditDebug !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
       status: SandboxStatusEnum.running,
