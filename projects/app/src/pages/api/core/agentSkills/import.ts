@@ -13,11 +13,14 @@ import {
 } from '@fastgpt/service/core/agentSkills/archiveUtils';
 import type { ImportSkillBody, ImportSkillResponse } from '@fastgpt/global/core/agentSkills/api';
 import type { SkillPackageType } from '@fastgpt/global/core/agentSkills/type';
-import { AgentSkillCategoryEnum } from '@fastgpt/global/core/agentSkills/constants';
+import {
+  AgentSkillCategoryEnum,
+  AgentSkillTypeEnum
+} from '@fastgpt/global/core/agentSkills/constants';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getSkillSizeLimits } from '@fastgpt/service/core/agentSkills/sandboxConfig';
 import fs from 'fs/promises';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export const config = {
@@ -52,8 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       parentId: result.data.parentId ?? (req.body?.parentId as string | undefined),
       name: result.data.name ?? (req.body?.name as string | undefined),
       description: result.data.description ?? (req.body?.description as string | undefined),
-      avatar: result.data.avatar ?? (req.body?.avatar as string | undefined),
-      parentId: result.data.parentId ?? (req.body?.parentId as string | undefined)
+      avatar: result.data.avatar ?? (req.body?.avatar as string | undefined)
     };
 
     const format = getSupportedArchiveFormat(file.originalname ?? '');
@@ -158,7 +160,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         teamId,
         event: AuditEventEnum.IMPORT_SKILL,
         params: {
-          skillName: pkgName
+          skillName: pkgName,
+          skillType: getI18nSkillType(AgentSkillTypeEnum.skill)
         }
       });
     })();

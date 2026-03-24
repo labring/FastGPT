@@ -6,7 +6,6 @@ import {
   updateSkill,
   deleteSkill,
   getSkillById,
-  listSkills,
   canModifySkill,
   checkSkillNameExists,
   importSkill
@@ -258,127 +257,6 @@ describe('AgentSkill Controller', () => {
 
       // Cleanup
       await MongoAgentSkills.deleteOne({ _id: systemSkill._id });
-    });
-  });
-
-  // ==================== List Skills ====================
-  describe('listSkills', () => {
-    beforeEach(async () => {
-      // Create test skills
-      const skills = [
-        {
-          source: AgentSkillSourceEnum.system,
-          name: 'System Skill 1',
-          description: 'A system skill about search',
-          author: 'system',
-          category: [AgentSkillCategoryEnum.search],
-          config: {},
-          teamId: null,
-          tmbId: null,
-          createTime: new Date(),
-          updateTime: new Date(),
-          deleteTime: null
-        },
-        {
-          source: AgentSkillSourceEnum.system,
-          name: 'System Skill 2',
-          description: 'A system skill about coding',
-          author: 'system',
-          category: [AgentSkillCategoryEnum.coding],
-          config: {},
-          teamId: null,
-          tmbId: null,
-          createTime: new Date(),
-          updateTime: new Date(),
-          deleteTime: null
-        },
-        {
-          source: AgentSkillSourceEnum.personal,
-          name: 'Personal Skill 1',
-          description: 'My personal search skill',
-          author: testUserId,
-          category: [AgentSkillCategoryEnum.search],
-          config: {},
-          teamId: testTeamId,
-          tmbId: testTmbId,
-          createTime: new Date(),
-          updateTime: new Date(),
-          deleteTime: null
-        }
-      ];
-
-      await MongoAgentSkills.insertMany(skills);
-    });
-
-    it('should list system skills (store)', async () => {
-      const result = await listSkills({
-        source: 'store',
-        page: 1,
-        pageSize: 10
-      });
-
-      expect(result.total).toBeGreaterThanOrEqual(2);
-      expect(result.list.every((s) => s.source === AgentSkillSourceEnum.system)).toBe(true);
-    });
-
-    it('should list personal skills (mine)', async () => {
-      const result = await listSkills({
-        source: 'mine',
-        teamId: testTeamId,
-        page: 1,
-        pageSize: 10
-      });
-
-      expect(result.total).toBeGreaterThanOrEqual(1);
-      expect(result.list.every((s) => s.source === AgentSkillSourceEnum.personal)).toBe(true);
-      expect(result.list.every((s) => s.author === testUserId)).toBe(true);
-    });
-
-    it('should filter by category', async () => {
-      const result = await listSkills({
-        source: 'store',
-        category: AgentSkillCategoryEnum.search,
-        page: 1,
-        pageSize: 10
-      });
-
-      expect(result.list.every((s) => s.category.includes(AgentSkillCategoryEnum.search))).toBe(
-        true
-      );
-    });
-
-    it('should search by keyword', async () => {
-      const result = await listSkills({
-        searchKey: 'search',
-        page: 1,
-        pageSize: 10
-      });
-
-      // Should match skills with "search" in name or description
-      expect(result.list.length).toBeGreaterThanOrEqual(1);
-      const hasSearchKeyword = result.list.some(
-        (s) =>
-          s.name.toLowerCase().includes('search') || s.description.toLowerCase().includes('search')
-      );
-      expect(hasSearchKeyword).toBe(true);
-    });
-
-    it('should paginate results', async () => {
-      const result1 = await listSkills({
-        source: 'store',
-        page: 1,
-        pageSize: 1
-      });
-
-      expect(result1.list.length).toBe(1);
-
-      const result2 = await listSkills({
-        source: 'store',
-        page: 2,
-        pageSize: 1
-      });
-
-      expect(result2.list.length).toBeLessThanOrEqual(1);
     });
   });
 

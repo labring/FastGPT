@@ -24,7 +24,7 @@ import type {
   SaveDeploySkillResponse
 } from '@fastgpt/global/core/agentSkills/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 
@@ -177,7 +177,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tmbId,
         teamId,
         event: AuditEventEnum.DEPLOY_SKILL,
-        params: { skillName: skill.name }
+        params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
       });
     })();
 

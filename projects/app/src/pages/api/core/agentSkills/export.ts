@@ -5,7 +5,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { downloadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
 import type { ExportSkillQuery } from '@fastgpt/global/core/agentSkills/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
@@ -61,7 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         teamId,
         event: AuditEventEnum.EXPORT_SKILL,
         params: {
-          skillName: skill.name
+          skillName: skill.name,
+          skillType: getI18nSkillType(skill.type)
         }
       });
     })();
