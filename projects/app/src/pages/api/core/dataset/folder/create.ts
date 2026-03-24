@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -8,6 +9,7 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { env } from '@fastgpt/service/env';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
@@ -47,6 +49,14 @@ async function handler(
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+
+  const folderCount = await MongoDataset.countDocuments({
+    teamId,
+    type: DatasetTypeEnum.folder
+  });
+  if (folderCount + 1 > env.DATASET_FOLDER_MAX_AMOUNT) {
+    return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
+  }
 
   await mongoSessionRun(async (session) => {
     const dataset = await MongoDataset.create({
