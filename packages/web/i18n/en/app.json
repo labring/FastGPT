@@ -124,6 +124,7 @@
   "dataset_create_success": "The knowledge base was created successfully and files are being indexed in the background.",
   "dataset_empty_tips": "You don’t have a knowledge base yet, create one first.",
   "dataset_select": "Optional knowledge base",
+  "deleted": "App deleted",
   "document_quote": "Document Reference",
   "document_quote_tip": "Usually used to accept user-uploaded document content (requires document parsing), and can also be used to reference other string data.",
   "edit_app": "Application details",
