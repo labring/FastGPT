@@ -23,10 +23,10 @@ import { ChatPageContext, ChatPageContextProvider } from '@/web/core/chat/contex
 import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -121,7 +121,7 @@ const ChatContent = (props: ChatPageProps) => {
   }, [appId, chatId]);
 
   const loginSuccess = useCallback(
-    async (res: LoginSuccessResponse) => {
+    async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
     },
     [setUserInfo]

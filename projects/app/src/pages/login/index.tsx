@@ -5,12 +5,12 @@ import { clearToken } from '@/web/support/user/auth';
 import { useMount } from 'ahooks';
 import LoginModal from '@/pageComponents/login/LoginModal';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { subRoute } from '@fastgpt/web/common/system/utils';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 const Login = () => {
   const router = useRouter();
@@ -20,7 +20,7 @@ const Login = () => {
   const { setUserInfo } = useUserStore();
 
   const loginSuccess = useCallback(
-    async (res: LoginSuccessResponse) => {
+    async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
 
       const decodeLastRoute = validateRedirectUrl(lastRoute);

@@ -1,9 +1,9 @@
 import z from 'zod';
-import type { LangEnum } from '../../common/i18n/type';
-import type { TeamPermission } from '../permission/user/controller';
+import { LanguageSchema, type LangEnum } from '../../common/i18n/type';
+import { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
 import { TeamMemberStatusEnum } from './team/constant';
-import type { TeamTmbItemType } from './team/type';
+import { TeamTmbItemSchema } from './team/type';
 
 export const UserTagsEnum = z.enum(['wecom']);
 export type UserTagsEnum = z.infer<typeof UserTagsEnum>;
@@ -33,18 +33,19 @@ export type UserModelSchema = {
   meta?: UserMetaType;
 };
 
-export type UserType = {
-  _id: string;
-  username: string;
-  avatar: string; // it should be team member's avatar after 4.8.18
-  timezone: string;
-  language?: `${LangEnum}`;
-  promotionRate: UserModelSchema['promotionRate'];
-  team: TeamTmbItemType;
-  permission: TeamPermission;
-  contact?: string;
-  tags?: UserTagsEnum[];
-};
+export const UserSchema = z.object({
+  _id: z.string(),
+  username: z.string(),
+  avatar: z.string(),
+  timezone: z.string(),
+  language: LanguageSchema.optional(),
+  promotionRate: z.number(),
+  team: TeamTmbItemSchema,
+  permission: z.instanceof(TeamPermission),
+  contact: z.string().optional(),
+  tags: z.array(UserTagsEnum).optional()
+});
+export type UserType = z.infer<typeof UserSchema>;
 
 export const SourceMemberSchema = z.object({
   name: z.string().meta({ example: '张三', description: '成员名称' }),

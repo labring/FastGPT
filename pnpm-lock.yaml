@@ -4,120 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-catalogs:
-  default:
-    '@chakra-ui/anatomy':
-      specifier: ^2
-      version: 2.3.6
-    '@chakra-ui/icons':
-      specifier: ^2
-      version: 2.1.1
-    '@chakra-ui/next-js':
-      specifier: ^2
-      version: 2.4.2
-    '@chakra-ui/react':
-      specifier: ^2
-      version: 2.10.7
-    '@chakra-ui/styled-system':
-      specifier: ^2
-      version: 2.12.2
-    '@chakra-ui/system':
-      specifier: ^2
-      version: 2.6.1
-    '@emotion/react':
-      specifier: ^11
-      version: 11.11.1
-    '@emotion/styled':
-      specifier: ^11
-      version: 11.11.0
-    '@fastgpt-sdk/logger':
-      specifier: 0.1.2
-      version: 0.1.2
-    '@fastgpt-sdk/otel':
-      specifier: 0.1.0
-      version: 0.1.0
-    '@fastgpt-sdk/storage':
-      specifier: 0.6.15
-      version: 0.6.15
-    '@modelcontextprotocol/sdk':
-      specifier: ^1
-      version: 1.26.0
-    '@types/lodash':
-      specifier: ^4
-      version: 4.17.16
-    '@types/node':
-      specifier: ^20
-      version: 20.17.24
-    '@types/react':
-      specifier: ^18
-      version: 18.3.1
-    '@types/react-dom':
-      specifier: ^18
-      version: 18.3.0
-    axios:
-      specifier: 1.13.6
-      version: 1.13.6
-    date-fns:
-      specifier: ^3.6.0
-      version: 3.6.0
-    dayjs:
-      specifier: 1.11.19
-      version: 1.11.19
-    eslint:
-      specifier: ^8
-      version: 8.57.1
-    eslint-config-next:
-      specifier: 15.5.12
-      version: 15.5.12
-    express:
-      specifier: ^4
-      version: 4.22.1
-    i18next:
-      specifier: 23.16.8
-      version: 23.16.8
-    js-yaml:
-      specifier: ^4.1.1
-      version: 4.1.1
-    json5:
-      specifier: ^2.2.3
-      version: 2.2.3
-    lodash:
-      specifier: 4.17.23
-      version: 4.17.23
-    minio:
-      specifier: 8.0.7
-      version: 8.0.7
-    next:
-      specifier: 16.1.6
-      version: 16.1.6
-    next-i18next:
-      specifier: 15.4.2
-      version: 15.4.2
-    next-rspack:
-      specifier: 16.1.6
-      version: 16.1.6
-    proxy-agent:
-      specifier: ^6
-      version: 6.5.0
-    react:
-      specifier: ^18
-      version: 18.3.1
-    react-dom:
-      specifier: ^18
-      version: 18.3.1
-    react-i18next:
-      specifier: 14.1.2
-      version: 14.1.2
-    tsdown:
-      specifier: 0.21.4
-      version: 0.21.4
-    typescript:
-      specifier: ^5.9.3
-      version: 5.9.3
-    zod:
-      specifier: ^4
-      version: 4.1.12
-
 importers:
 
   .:
@@ -250,8 +136,8 @@ importers:
         specifier: 'catalog:'
         version: 0.1.0
       '@fastgpt-sdk/sandbox-adapter':
-        specifier: ^0.0.28
-        version: 0.0.28
+        specifier: ^0.0.31
+        version: 0.0.31
       '@fastgpt-sdk/storage':
         specifier: 'catalog:'
         version: 0.6.15(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
@@ -1184,10 +1070,6 @@ importers:
         version: 5.9.3
 
 packages:
-
-  '@alibaba-group/opensandbox@0.1.4':
-    resolution: {integrity: sha512-hTgzsBRYCoNM5A3cM0Rgsq4q996pWzHNk2MDClhXsPoeg7ArYXkqYJAylh2c2iM8dV6IB7PwCe7/y9eeYn9kOA==}
-    engines: {node: '>=20'}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -2723,8 +2605,8 @@ packages:
   '@fastgpt-sdk/plugin@0.3.8':
     resolution: {integrity: sha512-GjKrXMHxeF5UMkYGXawrUpzZjVRw3DICNYODeYwsUVOy+/ltu5zuwsqLkuuGQ7Arp/SBCmYRjG/MHmeNp4xxfw==}
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.28':
-    resolution: {integrity: sha512-sqOnv/4hnxbjE8HGNqauHnhuzHxsXTHvkNDIFz+XV/we/Jj7h25nt+hnEtO1zOYmXKcuhbGC0zmrYwBPoIE3tQ==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.31':
+    resolution: {integrity: sha512-Ex1nQNJo0BCFhy1FqsjOyTys1b+tDvzYexDHXUo+34rVF0AFYXhp7KRcoKlCyF2LFvFtHxPK2ggbUUP3Mr5lRQ==}
     engines: {node: '>=18'}
 
   '@fastgpt-sdk/storage@0.6.15':
@@ -11673,12 +11555,121 @@ packages:
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
-snapshots:
+catalogs:
+  default:
+    '@chakra-ui/anatomy':
+      specifier: ^2
+      version: 2.3.6
+    '@chakra-ui/icons':
+      specifier: ^2
+      version: 2.1.1
+    '@chakra-ui/next-js':
+      specifier: ^2
+      version: 2.4.2
+    '@chakra-ui/react':
+      specifier: ^2
+      version: 2.10.7
+    '@chakra-ui/styled-system':
+      specifier: ^2
+      version: 2.12.2
+    '@chakra-ui/system':
+      specifier: ^2
+      version: 2.6.1
+    '@emotion/react':
+      specifier: ^11
+      version: 11.11.1
+    '@emotion/styled':
+      specifier: ^11
+      version: 11.11.0
+    '@fastgpt-sdk/logger':
+      specifier: 0.1.2
+      version: 0.1.2
+    '@fastgpt-sdk/otel':
+      specifier: 0.1.0
+      version: 0.1.0
+    '@fastgpt-sdk/storage':
+      specifier: 0.6.15
+      version: 0.6.15
+    '@modelcontextprotocol/sdk':
+      specifier: ^1
+      version: 1.26.0
+    '@types/lodash':
+      specifier: ^4
+      version: 4.17.16
+    '@types/node':
+      specifier: ^20
+      version: 20.17.24
+    '@types/react':
+      specifier: ^18
+      version: 18.3.1
+    '@types/react-dom':
+      specifier: ^18
+      version: 18.3.0
+    axios:
+      specifier: 1.13.6
+      version: 1.13.6
+    date-fns:
+      specifier: ^3
+      version: 3.6.0
+    dayjs:
+      specifier: 1.11.19
+      version: 1.11.19
+    eslint:
+      specifier: ^8
+      version: 8.57.1
+    eslint-config-next:
+      specifier: 15.5.12
+      version: 15.5.12
+    express:
+      specifier: ^4
+      version: 4.22.1
+    i18next:
+      specifier: 23.16.8
+      version: 23.16.8
+    js-yaml:
+      specifier: ^4.1.1
+      version: 4.1.1
+    json5:
+      specifier: ^2.2.3
+      version: 2.2.3
+    lodash:
+      specifier: 4.17.23
+      version: 4.17.23
+    minio:
+      specifier: 8.0.7
+      version: 8.0.7
+    next:
+      specifier: 16.1.6
+      version: 16.1.6
+    next-i18next:
+      specifier: 15.4.2
+      version: 15.4.2
+    next-rspack:
+      specifier: 16.1.6
+      version: 16.1.6
+    proxy-agent:
+      specifier: ^6
+      version: 6.5.0
+    react:
+      specifier: ^18
+      version: 18.3.1
+    react-dom:
+      specifier: ^18
+      version: 18.3.1
+    react-i18next:
+      specifier: 14.1.2
+      version: 14.1.2
+    tsdown:
+      specifier: 0.21.4
+      version: 0.21.4
+    typescript:
+      specifier: ^5.9.3
+      version: 5.9.3
+    zod:
+      specifier: ^4
+      version: 4.1.12
 
-  '@alibaba-group/opensandbox@0.1.4':
-    dependencies:
-      openapi-fetch: 0.14.1
-      undici: 7.18.2
+snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -13675,9 +13666,8 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.28':
+  '@fastgpt-sdk/sandbox-adapter@0.0.31':
     dependencies:
-      '@alibaba-group/opensandbox': 0.1.4
       '@e2b/code-interpreter': 2.3.3
 
   '@fastgpt-sdk/storage@0.6.15(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
@@ -18557,7 +18547,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -18579,7 +18569,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1))(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3

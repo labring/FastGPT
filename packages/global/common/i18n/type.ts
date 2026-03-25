@@ -16,6 +16,8 @@ export enum LangEnum {
 export type localeType = `${LangEnum}`;
 export const LocaleList = ['en', 'zh-CN', 'zh-Hant'] as const;
 
+export const LanguageSchema = z.enum(LocaleList).meta({ description: '用户语言偏好' });
+
 export const langMap = {
   [LangEnum.en]: {
     label: 'English(US)',

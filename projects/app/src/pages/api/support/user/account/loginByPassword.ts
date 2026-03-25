@@ -1,12 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
-import type { PostLoginProps } from '@fastgpt/global/support/user/api';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -16,13 +13,18 @@ import { createUserSession } from '@fastgpt/service/support/user/session';
 import requestIp from 'request-ip';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import {
+  LoginByPasswordBodySchema,
+  type LoginByPasswordBodyType,
+  type LoginSuccessResponseType
+} from '@fastgpt/global/openapi/support/user/account/login/api';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { username, password, code, language = 'zh-CN' } = req.body as PostLoginProps;
-
-  if (!username || !password || !code) {
-    return Promise.reject(CommonErrEnum.invalidParams);
-  }
+async function handler(
+  req: ApiRequestProps<LoginByPasswordBodyType>,
+  res: ApiResponseType
+): Promise<LoginSuccessResponseType> {
+  const { username, password, code, language } = LoginByPasswordBodySchema.parse(req.body);
 
   // Auth prelogin code
   await authCode({

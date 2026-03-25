@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
@@ -10,6 +9,7 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 const FastLogin = ({
   code,
@@ -25,7 +25,7 @@ const FastLogin = ({
   const { toast } = useToast();
   const { t } = useTranslation();
   const loginSuccess = useCallback(
-    (res: LoginSuccessResponse) => {
+    (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
 
       setTimeout(() => {
