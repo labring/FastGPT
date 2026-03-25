@@ -374,7 +374,14 @@ export const ModelEditModal = ({
                     <Tr>
                       <Td>
                         <HStack spacing={1}>
-                          <Box>{t('common:core.chat.response.module maxToken')}</Box>
+                          <FormLabel
+                            required
+                            color={'myGray.600'}
+                            fontSize={'md'}
+                            fontWeight={'normal'}
+                          >
+                            {t('common:core.chat.response.module maxToken')}
+                          </FormLabel>
                           <QuestionTip label={t('account_model:maxToken_tip')} />
                         </HStack>
                       </Td>
@@ -383,6 +390,7 @@ export const ModelEditModal = ({
                           <MyNumberInput
                             min={2000}
                             register={register}
+                            isRequired
                             name="maxResponse"
                             {...InputStyles}
                           />
@@ -755,3 +763,4 @@ export const ModelEditModal = ({
 export default function Dom() {
   return <></>;
 }
+
