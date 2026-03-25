@@ -40,7 +40,7 @@ export async function handler(
     };
   }
 
-  const [app, { showCite, showRunningStatus, authType }] = await Promise.all([
+  const [app, { showCite, showRunningStatus, showSkillReferences, authType }] = await Promise.all([
     MongoApp.findById(appId, 'type').lean(),
     authChatCrud({
       req,
@@ -85,7 +85,9 @@ export async function handler(
         });
 
         if (showRunningStatus === false) {
-          item.value = item.value.filter((v) => !('tool' in v));
+          item.value = item.value.filter((v) => !('tool' in v) && !v.tools && !v.skills);
+        } else if (showSkillReferences === false) {
+          item.value = item.value.filter((v) => !v.skills);
         }
       }
     }

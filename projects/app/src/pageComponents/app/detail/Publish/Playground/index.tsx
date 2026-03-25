@@ -16,6 +16,7 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showRunningStatus: true,
+  showSkillReferences: false,
   showCite: true,
   showFullText: true,
   canDownloadSource: true,
@@ -34,6 +35,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
   const showRunningStatus = watch('showRunningStatus');
+  const showSkillReferences = watch('showSkillReferences');
   const showWholeResponse = watch('showWholeResponse');
 
   const playgroundLink = useMemo(() => {
@@ -47,6 +49,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     onSuccess: (data) => {
       reset({
         showRunningStatus: data.showRunningStatus,
+        showSkillReferences: data.showSkillReferences,
         showCite: data.showCite,
         showFullText: data.showFullText,
         canDownloadSource: data.canDownloadSource,
@@ -117,9 +120,30 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             </FormLabel>
             <Switch
               {...register('showRunningStatus', {
-                onChange: autoSave
+                onChange(e) {
+                  if (!e.target.checked) {
+                    setValue('showSkillReferences', false);
+                  }
+                  autoSave();
+                }
               })}
               isChecked={showRunningStatus}
+            />
+          </Flex>
+          <Flex alignItems={'center'}>
+            <FormLabel fontSize={'12px'} flex={'0 0 127px'}>
+              {t('publish:show_skill_reference')}
+            </FormLabel>
+            <Switch
+              {...register('showSkillReferences', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('showRunningStatus', true);
+                  }
+                  autoSave();
+                }
+              })}
+              isChecked={showSkillReferences}
             />
           </Flex>
           <Flex alignItems={'center'}>

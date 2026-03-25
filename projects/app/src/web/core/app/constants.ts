@@ -27,6 +27,7 @@ export const defaultApp: AppDetailType = {
 export const defaultOutLinkForm: OutLinkEditType = {
   name: '',
   showRunningStatus: true,
+  showSkillReferences: false,
   showCite: false,
   showFullText: false,
   canDownloadSource: false,

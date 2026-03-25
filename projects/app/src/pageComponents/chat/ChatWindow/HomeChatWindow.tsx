@@ -78,6 +78,7 @@ const HomeChatWindow = () => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
 
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
@@ -212,7 +213,8 @@ const HomeChatWindow = () => {
             responseChatItemId,
             appId,
             chatId,
-            retainDatasetCite: isShowCite
+            retainDatasetCite: isShowCite,
+            showSkillReferences
           },
           abortCtrl: controller,
           onMessage: generatingMessage
@@ -263,6 +265,7 @@ const HomeChatWindow = () => {
           appName: t('chat:home.chat_app'),
           chatId,
           retainDatasetCite: isShowCite,
+          showSkillReferences,
           ...form2AppWorkflow(formData, t)
         },
         onMessage: generatingMessage,

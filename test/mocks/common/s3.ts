@@ -119,6 +119,10 @@ const createMockBucketClass = (defaultName: string) => {
       this.externalClient = getMockStorage(this.name);
     }
 
+    get bucketName(): string {
+      return this.name;
+    }
+
     async exist() {
       return true;
     }
