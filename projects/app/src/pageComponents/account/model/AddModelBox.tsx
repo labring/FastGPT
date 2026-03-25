@@ -1083,12 +1083,17 @@ export const ModelEditModal = ({
                   label={`${t('account:model.charsPointsPrice')}`}
                   tip={t('account:model.charsPointsPrice_tip')}
                 >
-                  <MyNumberInput
-                    register={register}
-                    name={'charsPointsPrice'}
-                    step={0.01}
-                    {...NumberInputStyles}
-                  />
+                  <Flex alignItems={'center'} gap={2}>
+                    <MyNumberInput
+                      register={register}
+                      name={'charsPointsPrice'}
+                      step={0.01}
+                      {...NumberInputStyles}
+                    />
+                    <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
+                      / 1k Tokens
+                    </Box>
+                  </Flex>
                 </Field>
               </Grid>
             )}
