@@ -2,17 +2,13 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type UserType } from '@fastgpt/global/support/user/type';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-
-export type TokenLoginQuery = {};
-export type TokenLoginBody = {};
-export type TokenLoginResponse = UserType;
+import type { TokenLoginResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 async function handler(
-  req: ApiRequestProps<TokenLoginBody, TokenLoginQuery>,
-  _res: ApiResponseType<any>
-): Promise<TokenLoginResponse> {
+  req: ApiRequestProps,
+  _res: ApiResponseType
+): Promise<TokenLoginResponseType> {
   const { tmbId, userId, teamId } = await authCert({ req, authToken: true });
   const user = await getUserDetail({ tmbId });
 

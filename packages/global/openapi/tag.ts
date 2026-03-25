@@ -42,6 +42,7 @@ export const TagsMap = {
   customDomain: '自定义域名',
   // User
   userInform: '用户通知',
+  userLogin: '用户账号',
 
   /* Common */
   // APIKey

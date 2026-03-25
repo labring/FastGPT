@@ -10,7 +10,6 @@ import {
 } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import dynamic from 'next/dynamic';
 import Script from 'next/script';
@@ -20,6 +19,7 @@ import { useTranslation } from 'next-i18next';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
@@ -184,7 +184,7 @@ export const LoginContainer = ({
   onSuccess
 }: {
   children?: React.ReactNode;
-  onSuccess: (res: LoginSuccessResponse) => void;
+  onSuccess: (res: LoginSuccessResponseType) => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -195,7 +195,7 @@ export const LoginContainer = ({
 
   // login success handler
   const loginSuccess = useCallback(
-    (res: LoginSuccessResponse) => {
+    (res: LoginSuccessResponseType) => {
       onSuccess?.(res);
     },
     [onSuccess]

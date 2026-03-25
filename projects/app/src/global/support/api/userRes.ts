@@ -1,9 +1,5 @@
 import type { UserType } from '@fastgpt/global/support/user/type';
 import type { PromotionRecordSchema } from '@fastgpt/global/support/activity/type';
-export interface LoginSuccessResponse {
-  user: UserType;
-  token: string;
-}
 
 export interface PromotionRecordType {
   _id: PromotionRecordSchema['_id'];

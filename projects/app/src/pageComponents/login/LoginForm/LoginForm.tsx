@@ -3,7 +3,6 @@ import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin, getPreLogin } from '@/web/support/user/api';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -15,10 +14,11 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { useRouter } from 'next/router';
 import { useMount } from 'ahooks';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
-  loginSuccess: (e: LoginSuccessResponse) => void;
+  loginSuccess: (e: LoginSuccessResponseType) => void;
 }
 
 interface LoginFormType {

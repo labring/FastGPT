@@ -4,25 +4,17 @@ import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addSeconds } from 'date-fns';
 import { addAuthCode } from '@fastgpt/service/support/user/auth/controller';
-import { UserError } from '@fastgpt/global/common/error/utils';
-
-export type preLoginQuery = {
-  username: string;
-};
-
-export type preLoginBody = {};
-
-export type preLoginResponse = { code: string };
+import {
+  PreLoginQuerySchema,
+  type PreLoginQueryType,
+  type PreLoginResponseType
+} from '@fastgpt/global/openapi/support/user/account/login/api';
 
 async function handler(
-  req: ApiRequestProps<preLoginBody, preLoginQuery>,
+  req: ApiRequestProps<{}, PreLoginQueryType>,
   res: ApiResponseType<any>
-): Promise<preLoginResponse> {
-  const { username } = req.query;
-
-  if (!username) {
-    return Promise.reject(new UserError('username is required'));
-  }
+): Promise<PreLoginResponseType> {
+  const { username } = PreLoginQuerySchema.parse(req.query);
 
   const code = getNanoid(6);
 
