@@ -8,13 +8,17 @@ import {
 describe('sanitizeModelPriceTiers', () => {
   it('should always push first tier with minInputTokens: 0 and prices', () => {
     const result = sanitizeModelPriceTiers([{ maxInputTokens: 30, inputPrice: 1, outputPrice: 2 }]);
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: 30, inputPrice: 1, outputPrice: 2 }
+    ]);
   });
 
   it('should push first tier even without prices', () => {
     // @ts-ignore
     const result = sanitizeModelPriceTiers([{ maxInputTokens: 10 }]);
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 0, outputPrice: 0 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 0, outputPrice: 0 }
+    ]);
   });
 
   it('should drop incomplete trailing rows without prices', () => {
@@ -28,7 +32,9 @@ describe('sanitizeModelPriceTiers', () => {
         outputPrice: undefined
       }
     ]);
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: 30.8, inputPrice: 1, outputPrice: 2 }
+    ]);
   });
 
   it('should include open-ended tier with valid prices', () => {
@@ -38,20 +44,20 @@ describe('sanitizeModelPriceTiers', () => {
       { inputPrice: 3, outputPrice: 3 }
     ]);
     expect(result).toEqual([
-      { minInputTokens: 0, inputPrice: 1, outputPrice: 1 },
-      { minInputTokens: 0, maxInputTokens: 20, inputPrice: 2, outputPrice: 2 },
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
+      { minInputTokens: 10, maxInputTokens: 20, inputPrice: 2, outputPrice: 2 },
       { minInputTokens: 20, inputPrice: 3, outputPrice: 3 }
     ]);
   });
 
-  it('should floor maxInputTokens for subsequent tiers', () => {
+  it('should preserve decimal maxInputTokens for subsequent tiers', () => {
     const result = sanitizeModelPriceTiers([
       { maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
       { maxInputTokens: 20.9, inputPrice: 2, outputPrice: 2 }
     ]);
     expect(result).toEqual([
-      { minInputTokens: 0, inputPrice: 1, outputPrice: 1 },
-      { minInputTokens: 0, maxInputTokens: 20, inputPrice: 2, outputPrice: 2 }
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
+      { minInputTokens: 10, maxInputTokens: 20.9, inputPrice: 2, outputPrice: 2 }
     ]);
   });
 
@@ -64,8 +70,8 @@ describe('sanitizeModelPriceTiers', () => {
     ]);
     // 第三个梯度 maxInputTokens:15 <= 上一个有效梯度 30，被跳过
     expect(result).toEqual([
-      { minInputTokens: 0, inputPrice: 1, outputPrice: 1 },
-      { minInputTokens: 0, maxInputTokens: 30, inputPrice: 2, outputPrice: 2 },
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
+      { minInputTokens: 10, maxInputTokens: 30, inputPrice: 2, outputPrice: 2 },
       { minInputTokens: 30, inputPrice: 4, outputPrice: 4 }
     ]);
   });
@@ -81,8 +87,8 @@ describe('getRuntimeResolvedPriceTiers', () => {
       ]
     });
     expect(result).toEqual([
-      { minInputTokens: 0, inputPrice: 1, outputPrice: 1 },
-      { minInputTokens: 0, maxInputTokens: 20, inputPrice: 2, outputPrice: 2 },
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
+      { minInputTokens: 10, maxInputTokens: 20, inputPrice: 2, outputPrice: 2 },
       { minInputTokens: 20, inputPrice: 3, outputPrice: 3 }
     ]);
   });
@@ -109,7 +115,9 @@ describe('getRuntimeResolvedPriceTiers', () => {
       outputPrice: 6,
       priceTiers: [{ maxInputTokens: 100, inputPrice: 1, outputPrice: 2 }]
     });
-    expect(result).toEqual([{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }]);
+    expect(result).toEqual([
+      { minInputTokens: 0, maxInputTokens: 100, inputPrice: 1, outputPrice: 2 }
+    ]);
   });
 
   it('should skip invalid descending tiers when resolving ranges', () => {
@@ -122,8 +130,8 @@ describe('getRuntimeResolvedPriceTiers', () => {
       ]
     });
     expect(result).toEqual([
-      { minInputTokens: 0, inputPrice: 1, outputPrice: 1 },
-      { minInputTokens: 0, maxInputTokens: 30, inputPrice: 2, outputPrice: 2 },
+      { minInputTokens: 0, maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
+      { minInputTokens: 10, maxInputTokens: 30, inputPrice: 2, outputPrice: 2 },
       { minInputTokens: 30, inputPrice: 3, outputPrice: 3 }
     ]);
   });
@@ -161,15 +169,16 @@ describe('calculateModelPrice', () => {
       ]
     };
 
-    // [0, 60) → 第二梯度
+    // [0, 30) → 第一梯度
     expect(calculateModelPrice({ config, inputTokens: 20 }).matchedTier).toMatchObject({
       minInputTokens: 0,
-      maxInputTokens: 60,
-      inputPrice: 3,
-      outputPrice: 4
+      maxInputTokens: 30,
+      inputPrice: 1,
+      outputPrice: 2
     });
+    // [30, 60) → 第二梯度
     expect(calculateModelPrice({ config, inputTokens: 35 }).matchedTier).toMatchObject({
-      minInputTokens: 0,
+      minInputTokens: 30,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
@@ -205,9 +214,9 @@ describe('calculateModelPrice', () => {
       ]
     };
 
-    // 59 → [0, 60)
+    // 59 → [30, 60)
     expect(calculateModelPrice({ config, inputTokens: 59 }).matchedTier).toMatchObject({
-      minInputTokens: 0,
+      minInputTokens: 30,
       maxInputTokens: 60,
       inputPrice: 3,
       outputPrice: 4
@@ -232,6 +241,7 @@ describe('calculateModelPrice', () => {
     // 单梯度时，0 tokens → 第一梯度
     expect(calculateModelPrice({ config, inputTokens: 0 }).matchedTier).toMatchObject({
       minInputTokens: 0,
+      maxInputTokens: 30,
       inputPrice: 1,
       outputPrice: 2
     });

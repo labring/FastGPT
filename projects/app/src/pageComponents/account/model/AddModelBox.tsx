@@ -85,7 +85,29 @@ export const AddModelButton = ({
   );
 };
 
+const ControlHeight = '32px';
+
 const InputStyles = {
+  maxW: '100%',
+  bg: 'white',
+  w: '100%',
+  h: ControlHeight,
+  minH: ControlHeight,
+  fontSize: 'sm'
+};
+
+const NumberInputStyles = {
+  ...InputStyles,
+  inputFieldProps: {
+    bg: 'transparent',
+    h: ControlHeight,
+    minH: ControlHeight,
+    px: 3,
+    fontSize: 'sm'
+  }
+};
+
+const MultilineInputStyles = {
   maxW: '100%',
   bg: 'white',
   w: '100%',
@@ -93,10 +115,14 @@ const InputStyles = {
 };
 
 const PriceInputStyles = {
-  bg: 'white',
+  bg: 'transparent',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
+  h: '24px',
+  minH: '24px',
+  py: '4px',
+  lineHeight: '16px'
 };
 
 const BorderlessPriceInputStyles = {
@@ -163,11 +189,6 @@ const getOptionalNumber = (value: unknown) => {
   return undefined;
 };
 
-const getOptionalInteger = (value: unknown) => {
-  const parsedValue = getOptionalNumber(value);
-  return typeof parsedValue === 'number' ? Math.floor(parsedValue) : undefined;
-};
-
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
 
 const Section = ({
@@ -180,14 +201,14 @@ const Section = ({
   showBorder?: boolean;
 }) => (
   <Grid
-    templateColumns={['1fr', '140px minmax(0, 1fr)']}
+    templateColumns={['1fr', '160px minmax(0, 1fr)']}
     rowGap={[3, 4]}
-    columnGap={8}
-    py={[4, 5]}
+    columnGap={'32px'}
+    py={6}
     borderBottom={showBorder ? '1px solid' : 'none'}
     borderColor={'myGray.200'}
   >
-    <Box fontSize={['sm', 'md']} fontWeight={'600'} color={'myGray.900'} lineHeight={1.2}>
+    <Box fontSize={'14px'} w={'160px'} fontWeight={'600'} color={'myGray.900'} lineHeight={1.2}>
       {title}
     </Box>
     <Box>{children}</Box>
@@ -207,7 +228,7 @@ const Field = ({
 }) => (
   <GridItem colSpan={colSpan}>
     <Flex alignItems={'center'} gap={1} mb={2}>
-      <Box fontSize={'sm'} fontWeight={'500'} color={'myGray.900'}>
+      <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
         {label}
       </Box>
       {tip && <QuestionTip label={tip} />}
@@ -229,7 +250,7 @@ const SwitchField = ({
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
-      <Box fontSize={'sm'} fontWeight={'500'} color={'myGray.900'}>
+      <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
         {label}
       </Box>
       {tip && <QuestionTip label={tip} />}
@@ -260,7 +281,7 @@ const ProviderField = React.memo(function ProviderField({
         value={provider}
         onChange={(value) => setValue('provider', value)}
         list={providerList.current}
-        bg={'white'}
+        {...InputStyles}
         maxW={['100%', '360px']}
       />
     </Field>
@@ -270,20 +291,16 @@ const ProviderField = React.memo(function ProviderField({
 const ResponseFormatField = React.memo(function ResponseFormatField({
   control,
   setValue,
-  getValues,
   t
 }: {
   control: Control<SystemModelItemType>;
   setValue: UseFormSetValue<SystemModelItemType>;
-  getValues: UseFormGetValues<SystemModelItemType>;
   t: any;
 }) {
-  const [customResponseFormat, setCustomResponseFormat] = useState('');
   const responseFormatList = useWatch({
     control,
     name: 'responseFormatList'
   });
-
   const responseFormatOptions = useMemo(() => {
     const valueSet = new Set([
       ...defaultResponseFormatOptions,
@@ -296,20 +313,6 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
     }));
   }, [responseFormatList]);
 
-  const addCustomResponseFormat = useCallback(() => {
-    const value = customResponseFormat.trim();
-    if (!value) return;
-
-    const currentResponseFormatList = getValues('responseFormatList');
-    const currentValue = Array.isArray(currentResponseFormatList) ? currentResponseFormatList : [];
-
-    if (!currentValue.includes(value)) {
-      setValue('responseFormatList', [...currentValue, value]);
-    }
-
-    setCustomResponseFormat('');
-  }, [customResponseFormat, getValues, setValue]);
-
   return (
     <Field label={t('account:model.response_format')}>
       <MultipleSelect<string>
@@ -317,36 +320,17 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
         value={Array.isArray(responseFormatList) ? responseFormatList : []}
         onSelect={(value) => setValue('responseFormatList', value)}
         placeholder={t('account:model.response_format')}
-        bg={'white'}
+        {...InputStyles}
         borderRadius={'md'}
-        menuBottomSlot={
-          <HStack
-            spacing={2}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <Input
-              value={customResponseFormat}
-              onChange={(e) => setCustomResponseFormat(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  addCustomResponseFormat();
-                }
-              }}
-              placeholder={t('account:model.response_format_placeholder')}
-              bg={'white'}
-              h={'36px'}
-              fontSize={'sm'}
-            />
-          </HStack>
-        }
         tagStyle={{
-          borderRadius: 'md',
+          bg: 'transparent',
+          color: 'myGray.700',
+          borderColor: 'myGray.200',
+          borderWidth: '1px',
+          borderRadius: '6px',
           px: 2,
           py: 1,
-          fontSize: 'xs'
+          fontSize: '10px'
         }}
       />
     </Field>
@@ -426,12 +410,6 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
 
   return (
     <Box>
-      <Flex alignItems={'center'} gap={1} mb={3}>
-        <Box fontSize={'sm'} fontWeight={'500'} color={'myGray.900'}>
-          {t('account:model.price_tiers')}
-        </Box>
-        <QuestionTip label={t('account:model.price_tiers_tip')} />
-      </Flex>
       <Box
         bg={'white'}
         border={'1px solid'}
@@ -462,11 +440,13 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
             }
           }}
         >
-          <Thead bg={'#F8FAFC'}>
+          <Thead bg={'#FBFBFC'} h={'32px'}>
             <Tr>
               <Th
                 textTransform={'none'}
-                py={3}
+                px={3}
+                py={'4px'}
+                h={'32px'}
                 fontSize={'12px'}
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
@@ -474,7 +454,9 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 {t('account:model.price_tier_range')}
               </Th>
               <Th
-                p={3}
+                px={3}
+                py={'4px'}
+                h={'32px'}
                 w={'100px'}
                 fontSize={'12px'}
                 borderRight={'1px solid'}
@@ -483,7 +465,9 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 {t('account:model.input_price')}
               </Th>
               <Th
-                p={3}
+                px={3}
+                py={'4px'}
+                h={'32px'}
                 w={'100px'}
                 fontSize={'12px'}
                 borderRight={'1px solid'}
@@ -491,7 +475,15 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
               >
                 {t('account:model.output_price')}
               </Th>
-              <Th py={3} textAlign={'center'} fontSize={'12px'}>
+              <Th
+                px={3}
+                py={'4px'}
+                h={'32px'}
+                w={'50px'}
+                maxW={'50px'}
+                textAlign={'center'}
+                fontSize={'12px'}
+              >
                 {t('account:model.action')}
               </Th>
             </Tr>
@@ -508,7 +500,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                     ? previousTier.maxInputTokens
                     : 0;
               const lowerBound = index === 0 ? 1 : previousTierMax;
-              const minAllowedMax = lowerBound + 1;
+              const minAllowedMax = lowerBound;
               const lowerBoundLabel = String(lowerBound);
               const isLastTier = index === priceTierFields.length - 1;
               const isInvalidMaxInput =
@@ -521,7 +513,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 !currentTier?.outputPrice;
               const maxInputTokensRegister = register(`priceTiers.${index}.maxInputTokens`, {
                 min: minAllowedMax,
-                setValueAs: getOptionalInteger
+                setValueAs: getOptionalNumber
               });
               const inputPriceRegister = register(`priceTiers.${index}.inputPrice`, {
                 setValueAs: getOptionalNumber
@@ -534,7 +526,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 <Tr key={field.id}>
                   <Td
                     px={3}
-                    py={2}
+                    py={'2.5px'}
                     borderTop={'1px solid'}
                     borderRight={'1px solid'}
                     borderColor={'myGray.200'}
@@ -548,7 +540,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                     >
                       <Input
                         type={'number'}
-                        step={1}
+                        step={'any'}
                         min={minAllowedMax}
                         fontSize={'12px'}
                         value={lowerBoundLabel}
@@ -567,7 +559,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       </Box>
                       <Input
                         type={'number'}
-                        step={1}
+                        step={'any'}
                         min={minAllowedMax}
                         placeholder={isLastTier ? t('account_model:price_tier_open_ended') : ''}
                         fontSize={'12px'}
@@ -575,7 +567,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                         {...PriceInputStyles}
                         onChange={(e) => {
                           maxInputTokensRegister.onChange(e);
-                          const nextValue = getOptionalInteger(e.target.value);
+                          const nextValue = getOptionalNumber(e.target.value);
                           setInvalidMaxInputMap((state) => ({
                             ...state,
                             [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
@@ -583,7 +575,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                         }}
                         onBlur={(e) => {
                           maxInputTokensRegister.onBlur(e);
-                          const nextValue = getOptionalInteger(e.target.value);
+                          const nextValue = getOptionalNumber(e.target.value);
                           setInvalidMaxInputMap((state) => ({
                             ...state,
                             [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
@@ -598,7 +590,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
 
                   <Td
                     px={0}
-                    py={2}
+                    py={'2.5px'}
                     borderTop={'1px solid'}
                     borderRight={'1px solid'}
                     borderColor={'myGray.200'}
@@ -621,7 +613,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
 
                   <Td
                     px={0}
-                    py={2}
+                    py={'2.5px'}
                     borderTop={'1px solid'}
                     borderRight={'1px solid'}
                     borderColor={'myGray.200'}
@@ -641,7 +633,14 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       </Box>
                     </Flex>
                   </Td>
-                  <Td px={3} py={2} borderTop={'1px solid'} borderColor={'myGray.200'}>
+                  <Td
+                    w={'50px'}
+                    maxW={'50px'}
+                    px={0}
+                    py={'2.5px'}
+                    borderTop={'1px solid'}
+                    borderColor={'myGray.200'}
+                  >
                     <Button
                       variant={'ghost'}
                       size={'sm'}
@@ -697,8 +696,8 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
             console.error(error);
           }
         }}
-        {...InputStyles}
-        paddingRight={2.5}
+        {...MultilineInputStyles}
+        pr={2.5}
       />
     </Field>
   );
@@ -729,7 +728,7 @@ const VoicesField = React.memo(function VoicesField({
             console.error(error);
           }
         }}
-        {...InputStyles}
+        {...MultilineInputStyles}
       />
     </Field>
   );
@@ -872,7 +871,7 @@ export const ModelEditModal = ({
       <>
         <GridItem colSpan={[1, 2]}>
           <Flex alignItems={'center'} gap={1} mb={3}>
-            <Box fontSize={'sm'} fontWeight={'600'} color={'myGray.900'}>
+            <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'}>
               {t('account:model.request_url')}
             </Box>
             <QuestionTip label={t('account:model.request_url_tip')} />
@@ -881,7 +880,7 @@ export const ModelEditModal = ({
         </GridItem>
         <GridItem colSpan={[1, 2]}>
           <Flex alignItems={'center'} gap={1} mb={3}>
-            <Box fontSize={'sm'} fontWeight={'600'} color={'myGray.900'}>
+            <Box fontSize={'12px'} fontWeight={'600'} color={'myGray.900'}>
               {t('account:model.request_auth')}
             </Box>
             <QuestionTip label={t('account:model.request_auth_tip')} />
@@ -901,15 +900,14 @@ export const ModelEditModal = ({
       maxW={['80vw', '70vw']}
       w="800px"
       h={'100%'}
+      px={0}
+      py={8}
+      headerPx={'32px'}
     >
-      <ModalBody py={0}>
+      <ModalBody px={'32px'} py={0}>
         <Section title={t('account:model.basic_config_section')}>
           <Flex direction={['column', 'row']} gap={[6, 8]} alignItems={['stretch', 'flex-start']}>
-            <Grid
-              flex={'1 0 0'}
-              templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']}
-              gap={[5, 5]}
-            >
+            <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')}>
                 <Input
                   {...register('model', { required: true })}
@@ -932,16 +930,26 @@ export const ModelEditModal = ({
 
         {isLLMModel && (
           <Section title={t('account:model.params_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
               <Field label={t('common:core.ai.Max context')}>
-                <MyNumberInput register={register} isRequired name="maxContext" {...InputStyles} />
+                <MyNumberInput
+                  register={register}
+                  isRequired
+                  name="maxContext"
+                  {...NumberInputStyles}
+                />
               </Field>
 
               <Field
                 label={t('common:core.chat.response.module maxToken')}
                 tip={t('account_model:maxToken_tip')}
               >
-                <MyNumberInput min={2000} register={register} name="maxResponse" {...InputStyles} />
+                <MyNumberInput
+                  min={2000}
+                  register={register}
+                  name="maxResponse"
+                  {...NumberInputStyles}
+                />
               </Field>
 
               <Field label={t('account:model.max_quote')}>
@@ -949,7 +957,7 @@ export const ModelEditModal = ({
                   register={register}
                   isRequired
                   name="quoteMaxToken"
-                  {...InputStyles}
+                  {...NumberInputStyles}
                 />
               </Field>
 
@@ -962,7 +970,7 @@ export const ModelEditModal = ({
                   name="maxTemperature"
                   min={0}
                   step={0.1}
-                  {...InputStyles}
+                  {...NumberInputStyles}
                 />
               </Field>
 
@@ -978,21 +986,14 @@ export const ModelEditModal = ({
                 register={register}
               />
 
-              <Box gridColumn={['1 / -1']}>
-                <ResponseFormatField
-                  control={control}
-                  setValue={setValue}
-                  getValues={getValues}
-                  t={t}
-                />
-              </Box>
+              <ResponseFormatField control={control} setValue={setValue} t={t} />
             </Grid>
           </Section>
         )}
 
         {isEmbeddingModel && (
           <Section title={t('account:model.params_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               <SwitchField
                 label={t('account:model.normalization')}
                 tip={t('account:model.normalization_tip')}
@@ -1007,7 +1008,7 @@ export const ModelEditModal = ({
                   min={1}
                   step={1}
                   isRequired
-                  {...InputStyles}
+                  {...NumberInputStyles}
                 />
               </Field>
               <Field
@@ -1018,11 +1019,16 @@ export const ModelEditModal = ({
                   register={register}
                   isRequired
                   name="defaultToken"
-                  {...InputStyles}
+                  {...NumberInputStyles}
                 />
               </Field>
               <Field label={t('common:core.ai.Max context')}>
-                <MyNumberInput register={register} isRequired name="maxToken" {...InputStyles} />
+                <MyNumberInput
+                  register={register}
+                  isRequired
+                  name="maxToken"
+                  {...NumberInputStyles}
+                />
               </Field>
             </Grid>
           </Section>
@@ -1030,7 +1036,7 @@ export const ModelEditModal = ({
 
         {isLLMModel && (
           <Section title={t('account:model.feature_config_section')}>
-            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
               <SwitchField
                 label={t('account:model.tool_choice')}
                 tip={t('account:model.tool_choice_tip')}
@@ -1072,17 +1078,22 @@ export const ModelEditModal = ({
                 t={t}
               />
             ) : (
-              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={5}>
+              <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
                 <Field
                   label={`${t('account:model.charsPointsPrice')}`}
                   tip={t('account:model.charsPointsPrice_tip')}
                 >
-                  <MyNumberInput
-                    register={register}
-                    name={'charsPointsPrice'}
-                    step={0.01}
-                    {...InputStyles}
-                  />
+                  <Flex alignItems={'center'} gap={2}>
+                    <MyNumberInput
+                      register={register}
+                      name={'charsPointsPrice'}
+                      step={0.01}
+                      {...NumberInputStyles}
+                    />
+                    <Box flexShrink={0} fontSize={'12px'} color={'myGray.900'}>
+                      / 1k Tokens
+                    </Box>
+                  </Flex>
                 </Field>
               </Grid>
             )}
@@ -1090,7 +1101,7 @@ export const ModelEditModal = ({
         )}
 
         <Section title={t('common:Other')} showBorder={false}>
-          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={[5, 5]}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
             {isLLMModel && (
               <Field
                 label={t('account:model.default_system_chat_prompt')}
@@ -1099,7 +1110,7 @@ export const ModelEditModal = ({
               >
                 <MyTextarea
                   {...register('defaultSystemChatPrompt')}
-                  {...InputStyles}
+                  {...MultilineInputStyles}
                   minH={'110px'}
                 />
               </Field>
@@ -1131,7 +1142,7 @@ export const ModelEditModal = ({
           </Grid>
         </Section>
       </ModalBody>
-      <ModalFooter p={0} mt={4}>
+      <ModalFooter display={'flex'} w="full" px={'32px'} py={0} mt={4}>
         {!modelData.isCustom && (
           <Button
             isLoading={loadingDefaultConfig}
@@ -1143,12 +1154,15 @@ export const ModelEditModal = ({
             {t('account:reset_default')}
           </Button>
         )}
-        <Button variant={'whiteBase'} mr={3} size={'md'} onClick={onClose}>
-          {t('common:Cancel')}
-        </Button>
-        <Button size={'md'} isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
-          {t('common:Confirm')}
-        </Button>
+
+        <Box ml="auto">
+          <Button variant={'whiteBase'} mr={3} size={'md'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button size={'md'} isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
+            {t('common:Confirm')}
+          </Button>
+        </Box>
       </ModalFooter>
     </MyModal>
   );
