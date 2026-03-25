@@ -662,6 +662,8 @@
   "eval_detail_rank_after_column": "学习后召回的排名",
   "eval_detail_improvement_column": "排名提升",
   "optimize_records": "优化记录",
+  "export_optimize_records_tip": "导出包含答案的优化记录",
+  "optimize_records_col_indexes": "索引",
   "knowledge_select_search_placeholder": "搜索选择知识",
   "knowledge_search_input_tip": "请先输入关键词",
   "knowledge_search_no_results": "未搜索到相关知识",

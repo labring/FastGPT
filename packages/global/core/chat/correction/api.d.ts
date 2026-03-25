@@ -41,6 +41,13 @@ export type DeleteChatCorrectionParams = {
 
 export type DeleteChatCorrectionResponse = {};
 
+export type ExportChatCorrectionParams = {
+  appId: string;
+  startTime?: Date;
+  endTime?: Date;
+  colHeaders: [string, string, string];
+};
+
 // Quote Search API Types
 export type GetKeywordQuoteParams = PaginationProps<{
   chatId: string;
