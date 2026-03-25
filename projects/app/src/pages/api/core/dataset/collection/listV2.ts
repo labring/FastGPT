@@ -821,7 +821,7 @@ async function handleStatusFilterWithMemoryPagination({
     ...readFromSecondary
   }).lean();
 
-  const allCollectionIds = allCollections.map((item) => item._id);
+  const allCollectionIds = allCollections.map((item) => new Types.ObjectId(String(item._id)));
 
   // 聚合数据量
   const [trainingAmount, dataAmount] = await Promise.all([
@@ -1015,3 +1015,4 @@ async function handleStatusFilterWithMemoryPagination({
 }
 
 export default NextAPI(handler);
+
