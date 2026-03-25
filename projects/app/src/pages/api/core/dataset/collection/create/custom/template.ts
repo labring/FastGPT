@@ -56,23 +56,21 @@ async function parseFileToCSV(buffer: Buffer, extension: string): Promise<string
 function validateTemplateFormat(csvText: string): void {
   const lines = csvText.trim().split('\n');
 
-  const headerLine = lines[0];
-  const headers = headerLine.split(',').map((h) => h.trim());
-
-  // 1.1 检查是否以 q,a 开头
-  if (headers.length < 3 || headers[0] !== 'q' || headers[1] !== 'a') {
+  if (!lines[0]) {
     throw new Error(i18nT('dataset:template_file_invalid'));
   }
 
-  // 1.2 检查是否包含 indexes
-  if (!headers.includes('indexes')) {
+  const headers = lines[0].split(',').map((h) => h.trim());
+
+  // 至少需要2列（问题+答案）
+  if (headers.length < 2) {
     throw new Error(i18nT('dataset:template_file_invalid'));
   }
 
-  // 1.3 检查其他表头不能以 . 或 & 开头
-  const customHeaders = headers.slice(2); // 跳过 q 和 a
+  // 检查其他表头不能以 . 或 & 开头
+  const customHeaders = headers.slice(2); // 跳过前两列
   for (const header of customHeaders) {
-    if (header.startsWith('.') || header.startsWith('&')) {
+    if (header && (header.startsWith('.') || header.startsWith('&'))) {
       throw new Error(i18nT('dataset:template_file_invalid'));
     }
   }
@@ -93,7 +91,7 @@ async function handler(
     const data = result.data;
     filePaths.push(file.path);
 
-    const extension = file.originalname.split('.').pop()?.toLowerCase();
+    const extension = decodeURIComponent(file.originalname).split('.').pop()?.toLowerCase();
     if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
       throw new Error(
         i18nT('dataset:template_unsupported_file_type').replace(
@@ -119,7 +117,7 @@ async function handler(
     validateTemplateFormat(rawText);
 
     // 3. Handle duplicate file name (within transaction to avoid TOCTOU)
-    let fileName = file.originalname;
+    let fileName = decodeURIComponent(file.originalname);
     let deletedCollectionId: string | undefined;
     let overwritten = false;
 
@@ -323,3 +321,4 @@ export const config = {
     bodyParser: false
   }
 };
+

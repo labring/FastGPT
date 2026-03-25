@@ -426,7 +426,14 @@ const SynonymTab = () => {
       ];
 
       // 添加表头（第一行）
-      const headerRow = worksheet.addRow(['standardizedTerm', 'synonymTerms', '', '', '', '']);
+      const headerRow = worksheet.addRow([
+        t('dataset:synonym_template_col_standard'),
+        t('dataset:synonym_template_col_synonyms'),
+        '',
+        '',
+        '',
+        ''
+      ]);
 
       // 设置表头样式
       headerRow.font = { bold: true };
@@ -450,7 +457,7 @@ const SynonymTab = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'synonym_template.xlsx';
+      link.download = `${t('dataset:synonym_template_filename')}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -458,7 +465,7 @@ const SynonymTab = () => {
     } catch (error) {
       console.error('Failed to download template:', error);
     }
-  }, []);
+  }, [t]);
 
   // 组件初始化时获取文件列表
   useEffect(() => {
@@ -597,3 +604,4 @@ const SynonymTab = () => {
 };
 
 export default SynonymTab;
+

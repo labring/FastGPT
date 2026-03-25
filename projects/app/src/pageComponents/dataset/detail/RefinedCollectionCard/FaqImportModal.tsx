@@ -158,7 +158,11 @@ const FaqImportModal = ({
       ];
 
       // 添加表头（第一行）
-      const headerRow = worksheet.addRow(['q', 'a', 'indexes']);
+      const headerRow = worksheet.addRow([
+        t('dataset:faq_template_col_question'),
+        t('dataset:faq_template_col_answer'),
+        t('dataset:faq_template_col_indexes')
+      ]);
 
       // 设置表头样式
       headerRow.font = { bold: true };
@@ -191,7 +195,7 @@ const FaqImportModal = ({
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'template.xlsx';
+      link.download = `${t('dataset:faq_template_filename')}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -337,3 +341,4 @@ const FaqImportModal = ({
 };
 
 export default FaqImportModal;
+
