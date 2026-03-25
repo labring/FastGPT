@@ -248,6 +248,12 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       searchText,
       setFilterTags,
       setSearchText,
+      statusFilter,
+      setStatusFilter,
+      sortBy,
+      setSortBy,
+      sortOrder,
+      setSortOrder,
       syncDataset,
       total
     ]
@@ -267,3 +273,4 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   );
 };
 export default CollectionPageContextProvider;
+
