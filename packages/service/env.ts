@@ -32,7 +32,10 @@ export const env = createEnv({
     TRACING_ENABLE_OTEL: BoolSchema.default(false),
     TRACING_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     TRACING_OTEL_URL: z.url().optional(),
-    TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional()
+    TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional(),
+
+    APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
+    DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

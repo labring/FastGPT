@@ -13,6 +13,7 @@ export enum TeamErrEnum {
   appAmountNotEnough = 'appAmountNotEnough',
   pluginAmountNotEnough = 'pluginAmountNotEnough',
   appFolderAmountNotEnough = 'appFolderAmountNotEnough',
+  datasetFolderAmountNotEnough = 'datasetFolderAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
   ticketNotAvailable = 'ticketNotAvailable',
@@ -145,6 +146,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.tooManyInvitations,
     message: i18nT('common:code_error.team_error.too_many_invitations')
+  },
+  {
+    statusText: TeamErrEnum.datasetFolderAmountNotEnough,
+    message: i18nT('common:code_error.team_error.dataset_folder_amount_not_enough')
   }
 ];
 

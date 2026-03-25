@@ -12,6 +12,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { checkTeamDatasetFolderLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -47,6 +48,8 @@ async function handler(
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+
+  await checkTeamDatasetFolderLimit({ teamId });
 
   await mongoSessionRun(async (session) => {
     const dataset = await MongoDataset.create({
