@@ -124,6 +124,7 @@
   "dataset_create_success": "知识库创建成功，正在后台索引文件",
   "dataset_empty_tips": "你还没有知识库，先创建一个吧",
   "dataset_select": "可选知识库",
+  "deleted": "应用已删除",
   "document_quote": "文档引用",
   "document_quote_tip": "通常用于接受用户上传的文档内容(这需要文档解析)，也可以用于引用其他字符串数据。",
   "edit_app": "应用详情",
