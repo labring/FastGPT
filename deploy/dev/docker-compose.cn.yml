@@ -264,7 +264,7 @@ services:
       timeout: 5s
       retries: 10
   opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.1.7
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.1.9
     container_name: opensandbox-server
     restart: always
     networks:
