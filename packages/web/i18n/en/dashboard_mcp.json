@@ -1,5 +1,4 @@
 {
-  "app_alias_name": "Tool name",
   "app_description": "Application Description",
   "app_name": "Application name",
   "apps": "Exposed applications",
@@ -12,7 +11,6 @@
   "mcp_apps": "Number of associated applications",
   "mcp_endpoints": "Access address",
   "mcp_json_config": "Access script",
-  "mcp_link_way": "Access method",
   "mcp_name": "MCP service name",
   "mcp_server": "MCP Services",
   "mcp_server_description": "Allows you to select some applications to provide external use with the MCP protocol. \nDue to the immaturity of the MCP protocol, this feature is still in the beta stage.",
