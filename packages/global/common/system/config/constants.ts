@@ -4,7 +4,8 @@ export enum SystemConfigsTypeEnum {
   systemMsgModal = 'systemMsgModal',
   license = 'license',
   operationalAd = 'operationalAd',
-  activityAd = 'activityAd'
+  activityAd = 'activityAd',
+  sf_lic = 'sf_lic'
 }
 
 export const SystemConfigsTypeMap = {
@@ -25,5 +26,8 @@ export const SystemConfigsTypeMap = {
   },
   [SystemConfigsTypeEnum.activityAd]: {
     label: 'activityAd'
+  },
+  [SystemConfigsTypeEnum.sf_lic]: {
+    label: 'sf_lic'
   }
 };
