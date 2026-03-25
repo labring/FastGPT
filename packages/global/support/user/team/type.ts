@@ -1,13 +1,28 @@
 import type { TeamMetaType, UserModelSchema } from '../type';
-import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
+import { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import type { GroupMemberRole } from '../../permission/memberGroup/constant';
-import type { TeamPermission } from '../../permission/user/controller';
+import { TeamPermission } from '../../permission/user/controller';
+import { z } from 'zod';
 
-export type ThirdPartyAccountType = {
-  lafAccount?: LafAccountType;
-  openaiAccount?: OpenaiAccountType;
-  externalWorkflowVariables?: Record<string, string>;
-};
+export const LafAccountSchema = z.object({
+  appid: z.string(),
+  token: z.string(),
+  pat: z.string()
+});
+export type LafAccountType = z.infer<typeof LafAccountSchema>;
+
+export const OpenaiAccountSchema = z.object({
+  key: z.string(),
+  baseUrl: z.string()
+});
+export type OpenaiAccountType = z.infer<typeof OpenaiAccountSchema>;
+
+export const ThidPartyAccountSchema = z.object({
+  lafAccount: LafAccountSchema.optional(),
+  openaiAccount: OpenaiAccountSchema.optional(),
+  externalWorkflowVariables: z.record(z.string(), z.string()).optional()
+});
+export type ThirdPartyAccountType = z.infer<typeof ThidPartyAccountSchema>;
 
 export type TeamSchema = {
   _id: string;
@@ -45,7 +60,7 @@ export type TeamMemberSchema = {
   createTime: Date;
   updateTime?: Date;
   name: string;
-  role: `${TeamMemberRoleEnum}`;
+  role: TeamMemberRoleEnum;
   status: TeamMemberStatusEnum;
   avatar: string;
 };
@@ -55,22 +70,23 @@ export type TeamMemberWithTeamAndUserSchema = TeamMemberSchema & {
   user: UserModelSchema;
 };
 
-export type TeamTmbItemType = {
-  userId: string;
-  teamId: string;
-  teamAvatar?: string;
-  teamName: string;
-  memberName: string;
-  avatar: string;
-  balance?: number;
-  tmbId: string;
-  teamDomain: string;
-  role: `${TeamMemberRoleEnum}`;
-  status: `${TeamMemberStatusEnum}`;
-  notificationAccount?: string;
-  permission: TeamPermission;
-  isWecomTeam?: boolean;
-} & ThirdPartyAccountType;
+export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
+  userId: z.string(),
+  teamId: z.string(),
+  teamAvatar: z.string(),
+  teamName: z.string(),
+  memberName: z.string(),
+  avatar: z.string(),
+  balance: z.number().optional(),
+  tmbId: z.string(),
+  teamDomain: z.string(),
+  role: z.enum(TeamMemberRoleEnum),
+  status: z.enum(TeamMemberStatusEnum),
+  notificationAccount: z.string().optional(),
+  permission: z.instanceof(TeamPermission),
+  isWecomTeam: z.boolean().optional()
+});
+export type TeamTmbItemType = z.infer<typeof TeamTmbItemSchema>;
 
 export type TeamMemberItemType<
   Options extends {
@@ -108,17 +124,6 @@ export type TeamMemberItemType<
 export type TeamTagItemType = {
   label: string;
   key: string;
-};
-
-export type LafAccountType = {
-  appid: string;
-  token: string;
-  pat: string;
-};
-
-export type OpenaiAccountType = {
-  key: string;
-  baseUrl: string;
 };
 
 export type TeamInvoiceHeaderType = {

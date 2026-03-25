@@ -3,12 +3,9 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import type { TokenLoginResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type { UserType } from '@fastgpt/global/support/user/type';
 
-async function handler(
-  req: ApiRequestProps,
-  _res: ApiResponseType
-): Promise<TokenLoginResponseType> {
+async function handler(req: ApiRequestProps, _res: ApiResponseType): Promise<UserType> {
   const { tmbId, userId, teamId } = await authCert({ req, authToken: true });
   const user = await getUserDetail({ tmbId });
 

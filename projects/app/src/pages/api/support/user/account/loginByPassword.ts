@@ -16,14 +16,14 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   LoginByPasswordBodySchema,
   type LoginByPasswordBodyType,
-  type LoginByPasswordResponseType
+  type LoginSuccessResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
-): Promise<LoginByPasswordResponseType> {
+): Promise<LoginSuccessResponseType> {
   const { username, password, code, language } = LoginByPasswordBodySchema.parse(req.body);
 
   // Auth prelogin code

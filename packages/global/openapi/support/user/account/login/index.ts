@@ -1,16 +1,16 @@
 import type { OpenAPIPath } from '../../../../type';
 import { TagsMap } from '../../../../tag';
 import {
-  TokenLoginResponseSchema,
   LoginByPasswordBodySchema,
-  LoginByPasswordResponseSchema,
   PreLoginQuerySchema,
   PreLoginResponseSchema,
   OauthLoginBodySchema,
   FastLoginBodySchema,
   WxLoginBodySchema,
-  GetWXLoginQRResponseSchema
+  GetWXLoginQRResponseSchema,
+  LoginSuccessResponseSchema
 } from './api';
+import { UserSchema } from '../../../../../support/user/type';
 
 export const LoginPath: OpenAPIPath = {
   '/support/user/account/tokenLogin': {
@@ -23,7 +23,7 @@ export const LoginPath: OpenAPIPath = {
           description: '成功获取用户信息',
           content: {
             'application/json': {
-              schema: TokenLoginResponseSchema
+              schema: UserSchema
             }
           }
         }
@@ -67,7 +67,7 @@ export const LoginPath: OpenAPIPath = {
           description: '登录成功，返回用户信息和令牌',
           content: {
             'application/json': {
-              schema: LoginByPasswordResponseSchema
+              schema: LoginSuccessResponseSchema
             }
           }
         }
@@ -91,7 +91,7 @@ export const LoginPath: OpenAPIPath = {
           description: '登录成功',
           content: {
             'application/json': {
-              schema: {}
+              schema: LoginSuccessResponseSchema
             }
           }
         }
@@ -115,7 +115,7 @@ export const LoginPath: OpenAPIPath = {
           description: '登录成功',
           content: {
             'application/json': {
-              schema: {}
+              schema: LoginSuccessResponseSchema
             }
           }
         }
@@ -156,7 +156,7 @@ export const LoginPath: OpenAPIPath = {
           description: '登录成功',
           content: {
             'application/json': {
-              schema: {}
+              schema: LoginSuccessResponseSchema
             }
           }
         }

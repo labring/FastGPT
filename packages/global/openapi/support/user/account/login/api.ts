@@ -14,12 +14,6 @@ export const LoginSuccessResponseSchema = z.object({
 });
 export type LoginSuccessResponseType = z.infer<typeof LoginSuccessResponseSchema>;
 
-// ===== Token login =====
-export const TokenLoginResponseSchema = z.any().meta({
-  description: '用户详情信息'
-});
-export type TokenLoginResponseType = z.infer<typeof TokenLoginResponseSchema>;
-
 // ===== Pre login - get login verification code =====
 export const PreLoginQuerySchema = z.object({
   username: z.string().meta({
@@ -72,24 +66,6 @@ export const LoginByPasswordBodySchema = z
     }
   });
 export type LoginByPasswordBodyType = z.infer<typeof LoginByPasswordBodySchema>;
-
-export const LoginByPasswordResponseSchema = z
-  .object({
-    user: z.any().meta({
-      description: '用户详情'
-    }),
-    token: z.string().meta({
-      example: 'eyJhbGciOiJIUzI1NiIs...',
-      description: '登录令牌'
-    })
-  })
-  .meta({
-    example: {
-      user: {},
-      token: 'eyJhbGciOiJIUzI1NiIs...'
-    }
-  });
-export type LoginByPasswordResponseType = z.infer<typeof LoginByPasswordResponseSchema>;
 
 /* ===== Wecom Login ===== */
 export const WecomGetRedirectURLBodySchema = z.object({

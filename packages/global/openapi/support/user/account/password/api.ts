@@ -3,11 +3,11 @@ import { z } from 'zod';
 // ===== Update password by old password =====
 export const UpdatePasswordByOldBodySchema = z
   .object({
-    oldPsw: z.string().meta({
+    oldPsw: z.string().trim().min(1).meta({
       example: 'hashed_old_password',
       description: '旧密码（已加密）'
     }),
-    newPsw: z.string().meta({
+    newPsw: z.string().trim().min(1).meta({
       example: 'hashed_new_password',
       description: '新密码（已加密）'
     })
@@ -34,7 +34,7 @@ export type CheckPswExpiredResponseType = z.infer<typeof CheckPswExpiredResponse
 // ===== Reset expired password =====
 export const ResetExpiredPswBodySchema = z
   .object({
-    newPsw: z.string().meta({
+    newPsw: z.string().trim().min(1).meta({
       example: 'hashed_new_password',
       description: '新密码（已加密）'
     })
@@ -53,9 +53,9 @@ export type ResetExpiredPswResponseType = z.infer<typeof ResetExpiredPswResponse
 
 // ===== Find Password (update by code) =====
 export const UpdatePasswordByCodeBodySchema = z.object({
-  username: z.string().meta({ description: '用户名' }),
+  username: z.string().trim().min(1).meta({ description: '用户名' }),
   code: z.string().meta({ description: '验证码' }),
-  password: z.string().meta({ description: '新密码' }),
+  password: z.string().trim().min(1).meta({ description: '新密码' }),
   tmbId: z.string().optional().meta({ description: '团队成员 ID（可选）' })
 });
 
