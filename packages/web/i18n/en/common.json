@@ -190,6 +190,7 @@
   "code_error.team_error.cannot_modify_root_org": "Cannot modify root organization",
   "code_error.team_error.cannot_move_to_sub_path": "Cannot move to same or subdirectory",
   "code_error.team_error.dataset_amount_not_enough": "Dataset Limit Reached",
+  "code_error.team_error.dataset_folder_amount_not_enough": "Knowledge base folder limit reached",
   "code_error.team_error.dataset_size_not_enough": "Insufficient Dataset Capacity, Please Expand",
   "code_error.team_error.group_name_duplicate": "Duplicate group name",
   "code_error.team_error.group_name_empty": "Group name cannot be empty",

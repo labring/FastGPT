@@ -41,13 +41,29 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
   }
 };
 
+export const checkTeamDatasetFolderLimit = async ({
+  teamId,
+  amount = 1
+}: {
+  teamId: string;
+  amount?: number;
+}) => {
+  const folderCount = await MongoDataset.countDocuments({
+    teamId,
+    type: DatasetTypeEnum.folder
+  });
+  if (folderCount + amount > env.DATASET_FOLDER_MAX_AMOUNT) {
+    return Promise.reject(TeamErrEnum.datasetFolderAmountNotEnough);
+  }
+};
+
 export const checkTeamAppTypeLimit = async ({
   teamId,
   appCheckType,
   amount = 1
 }: {
   teamId: string;
-  appCheckType: 'app' | 'tool' | 'folder' | 'datasetFolder';
+  appCheckType: 'app' | 'tool' | 'folder';
   amount?: number;
 }) => {
   if (appCheckType === 'app') {
@@ -97,14 +113,6 @@ export const checkTeamAppTypeLimit = async ({
     const maxAppFolderAmount = env.APP_FOLDER_MAX_AMOUNT;
     if (folderCount + amount > maxAppFolderAmount) {
       return Promise.reject(TeamErrEnum.appFolderAmountNotEnough);
-    }
-  } else if (appCheckType === 'datasetFolder') {
-    const folderCount = await MongoDataset.countDocuments({
-      teamId,
-      type: DatasetTypeEnum.folder
-    });
-    if (folderCount + amount > env.DATASET_FOLDER_MAX_AMOUNT) {
-      return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
     }
   }
 };

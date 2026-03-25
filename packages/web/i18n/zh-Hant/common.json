@@ -189,6 +189,7 @@
   "code_error.team_error.cannot_modify_root_org": "無法修改根組織",
   "code_error.team_error.cannot_move_to_sub_path": "無法移動到相同或子目錄",
   "code_error.team_error.dataset_amount_not_enough": "已達知識庫數量上限",
+  "code_error.team_error.dataset_folder_amount_not_enough": "已達知識庫資料夾數量上限",
   "code_error.team_error.dataset_size_not_enough": "知識庫容量不足，請先擴充容量",
   "code_error.team_error.group_name_duplicate": "群組名稱重複",
   "code_error.team_error.group_name_empty": "群組名稱不能為空",

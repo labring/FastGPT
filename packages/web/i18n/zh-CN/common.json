@@ -190,6 +190,7 @@
   "code_error.team_error.cannot_modify_root_org": "不能修改根部门",
   "code_error.team_error.cannot_move_to_sub_path": "不能移动到相同或子目录",
   "code_error.team_error.dataset_amount_not_enough": "知识库数量已达上限~",
+  "code_error.team_error.dataset_folder_amount_not_enough": "知识库文件夹数量已达上限~",
   "code_error.team_error.dataset_size_not_enough": "知识库容量不足，请先扩容~",
   "code_error.team_error.group_name_duplicate": "群组名称重复",
   "code_error.team_error.group_name_empty": "群组名称不能为空",
