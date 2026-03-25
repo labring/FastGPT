@@ -1,4 +1,5 @@
 {
+  "app_alias_name": "工具名",
   "app_description": "应用描述",
   "app_name": "应用名",
   "apps": "暴露的应用",
@@ -11,6 +12,7 @@
   "mcp_apps": "关联应用数量",
   "mcp_endpoints": "接入地址",
   "mcp_json_config": "接入脚本",
+  "mcp_link_way": "接入方式",
   "mcp_name": "MCP 服务名",
   "mcp_server": "MCP 服务",
   "mcp_server_description": "允许你选择部分应用，以 MCP 的协议对外提供使用。由于 MCP 协议的不成熟，该功能仍处于测试阶段。",
