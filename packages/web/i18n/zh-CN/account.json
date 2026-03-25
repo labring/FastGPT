@@ -85,7 +85,7 @@
   "model.price_tier_open_ended": "默认正无穷",
   "model.price_tier_prev_range_required": "请先补全上一梯度的区间上限",
   "model.price_tier_price_required": "每个价格梯度都需要至少配置一个输入价或输出价",
-  "model.price_tier_range": "输入区间: k/tokens",
+  "model.price_tier_range": "输入区间：k/tokens",
   "model.price_tier_range_invalid": "价格梯度区间设置有误，请检查区间上限是否递增",
   "model.price_tiers": "模型价格梯度",
   "model.price_tiers_tip": "按输入 Token 所在区间匹配一个梯度，再使用该梯度的输入价格和输出价格分别计费。区间起点自动按上一梯度递增，最后一个梯度上限留空表示及以上。",

@@ -6,8 +6,8 @@ const isValidNumber = (value: unknown): value is number => {
 
 const getSafePrice = (value: unknown) => (isValidNumber(value) ? value : 0);
 
-/* 
-  格式化 tiers：浮点数取整、跳过降序梯度、支持末尾开放梯度
+/*
+  格式化 tiers：跳过降序梯度、支持末尾开放梯度
   1. 只有一个梯度，不管有没有价格，都推送进去
   2. 多个梯度，遇到没有 maxToken 就认为是最后的梯度。
     2.1 如果有价格，则推送，认为是无限大梯度
@@ -45,7 +45,7 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
       break;
     }
 
-    const maxInputTokens = Math.floor(tier.maxInputTokens!);
+    const maxInputTokens = Math.max(0, tier.maxInputTokens!);
 
     // 跳过降序梯度（maxInputTokens 必须严格递增）
     if (last?.maxInputTokens != null && maxInputTokens <= last.maxInputTokens) {

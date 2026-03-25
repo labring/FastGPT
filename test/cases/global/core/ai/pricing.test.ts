@@ -44,14 +44,14 @@ describe('sanitizeModelPriceTiers', () => {
     ]);
   });
 
-  it('should floor maxInputTokens for subsequent tiers', () => {
+  it('should preserve decimal maxInputTokens for subsequent tiers', () => {
     const result = sanitizeModelPriceTiers([
       { maxInputTokens: 10, inputPrice: 1, outputPrice: 1 },
       { maxInputTokens: 20.9, inputPrice: 2, outputPrice: 2 }
     ]);
     expect(result).toEqual([
       { minInputTokens: 0, inputPrice: 1, outputPrice: 1 },
-      { minInputTokens: 0, maxInputTokens: 20, inputPrice: 2, outputPrice: 2 }
+      { minInputTokens: 0, maxInputTokens: 20.9, inputPrice: 2, outputPrice: 2 }
     ]);
   });
 
