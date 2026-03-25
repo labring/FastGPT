@@ -202,6 +202,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
           alignItems={'center'}
           justifyContent={'center'}
           bg={[`url(${getWebReqUrl('/icon/login-bg-phone2.svg')}) no-repeat`, 'white']}
+          backgroundSize={'cover'}
           minH={'100vh'}
         >
           <Flex flexDirection={'column'} w={'60%'} minWidth={'320px'} bg={'white'}>

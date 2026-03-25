@@ -44,14 +44,7 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
         backgroundSize={'cover'}
         minH={'100%'}
       >
-        <Flex
-          flexDirection={'column'}
-          w={isPc ? '60%' : '100%'}
-          minWidth={isPc ? '320px' : undefined}
-          h={isPc ? 'auto' : '100%'}
-          px={isPc ? 0 : '8'}
-          py={isPc ? 0 : '38px'}
-        >
+        <Flex flexDirection={'column'} w={'60%'} minWidth={'320px'}>
           <LoginContainer onSuccess={onSuccess} />
         </Flex>
       </Flex>
