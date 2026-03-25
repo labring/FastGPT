@@ -32,6 +32,7 @@ import type {
 } from '@fastgpt/global/core/agentSkills/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxClient } from '../ai/sandbox/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { env } from '../../env';
@@ -442,22 +443,45 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
     throw new Error('Sandbox not found or access denied');
   }
 
-  // Mark as stopped
-  await MongoSandboxInstance.updateOne(
-    { _id: instanceDoc._id },
-    { status: SandboxStatusEnum.stopped }
-  );
+  addLog.info('[Sandbox] Deleting sandbox', { sandboxId });
 
-  addLog.info('[Sandbox] Sandbox stopped', { sandboxId });
-
-  // Async cleanup of provider sandbox
-  const providerConfig = getSandboxProviderConfig();
-  cleanupProviderSandbox(instanceDoc.sandboxId, providerConfig).catch((err) => {
-    addLog.error('[Sandbox] Failed to cleanup provider sandbox', {
+  new SandboxClient({ sandboxId: instanceDoc.sandboxId }).delete().catch((err) => {
+    addLog.error('[Sandbox] Failed to delete sandbox', {
       sandboxId: instanceDoc.sandboxId,
       error: err
     });
   });
+}
+
+/**
+ * Force delete all sandbox instances related to the given skill IDs
+ * Called when a skill is deleted to clean up provider resources
+ */
+export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<void> {
+  if (skillIds.length === 0) return;
+
+  // Find all sandbox instances related to these skills
+  const instances = await MongoSandboxInstance.find({
+    $or: [{ appId: { $in: skillIds } }, { 'detail.skillId': { $in: skillIds } }]
+  }).lean();
+
+  if (instances.length === 0) return;
+
+  addLog.info('[Sandbox] Force deleting skill-related sandboxes', {
+    skillIds,
+    count: instances.length
+  });
+
+  await Promise.allSettled(
+    instances.map((doc) =>
+      new SandboxClient({ sandboxId: doc.sandboxId }).delete().catch((err) => {
+        addLog.error('[Sandbox] Failed to delete sandbox', {
+          sandboxId: doc.sandboxId,
+          error: err
+        });
+      })
+    )
+  );
 }
 
 /**
@@ -559,24 +583,5 @@ export async function packageSkillInSandbox(params: {
     if (sandbox) {
       await disconnectFromProviderSandbox(sandbox);
     }
-  }
-}
-
-/**
- * Cleanup provider sandbox (async helper)
- */
-async function cleanupProviderSandbox(
-  providerSandboxId: string,
-  config: ReturnType<typeof getSandboxProviderConfig>
-): Promise<void> {
-  const sandbox = await connectToProviderSandbox(config, providerSandboxId);
-  try {
-    await sandbox.delete();
-    addLog.info('[Sandbox] Provider sandbox cleaned up', { providerSandboxId });
-  } catch (error) {
-    addLog.error('[Sandbox] Error during provider sandbox cleanup', { error });
-    throw error;
-  } finally {
-    await disconnectFromProviderSandbox(sandbox);
   }
 }
