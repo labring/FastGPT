@@ -22,6 +22,9 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
     if (result.length === 0) {
       result.push({
         minInputTokens: 0,
+        maxInputTokens: isValidNumber(tier?.maxInputTokens)
+          ? Math.max(0, tier.maxInputTokens)
+          : undefined,
         inputPrice: getSafePrice(tier?.inputPrice),
         outputPrice: getSafePrice(tier?.outputPrice)
       });
