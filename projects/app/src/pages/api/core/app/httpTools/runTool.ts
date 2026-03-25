@@ -4,6 +4,7 @@ import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { RunHTTPToolResult } from '@fastgpt/service/core/app/http';
 import { runHTTPTool } from '@fastgpt/service/core/app/http';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export type RunHTTPToolQuery = {};
 
@@ -25,6 +26,8 @@ async function handler(
   req: ApiRequestProps<RunHTTPToolBody, RunHTTPToolQuery>,
   res: ApiResponseType<RunHTTPToolResponse>
 ): Promise<RunHTTPToolResponse> {
+  await authCert({ req, authToken: true });
+
   const {
     params,
     baseUrl,
