@@ -116,7 +116,8 @@
             "autoIndexes": true,
             "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "hypeIndexes": false,
-            "imageIndex": false
+            "imageIndex": false,
+            "syntheticIndex": true
           },
           "promptConfig": {
             "autoIndexesPrompt": "",
