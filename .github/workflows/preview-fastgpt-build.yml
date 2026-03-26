@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        image: [fastgpt, sandbox, mcp_server]
+        image: [fastgpt, code-sandbox, mcp_server]
       fail-fast: false
 
     steps:
@@ -35,10 +35,10 @@ jobs:
             echo "DOCKERFILE=projects/app/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
             echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
-            echo "DOCKERFILE=projects/sandbox/Dockerfile" >> $GITHUB_OUTPUT
-            echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
-            echo "IMAGE_NAME=fastgpt-sandbox" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "code-sandbox" ]]; then
+            echo "DOCKERFILE=projects/code-sandbox/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-code-sandbox-pr image" >> $GITHUB_OUTPUT
+            echo "IMAGE_NAME=fastgpt-code-sandbox" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
             echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT

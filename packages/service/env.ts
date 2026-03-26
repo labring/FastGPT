@@ -10,11 +10,22 @@ const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fa
 
 export const env = createEnv({
   server: {
+    // ===== Agent sandbox =====
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
     AGENT_SANDBOX_SEALOS_BASEURL: z.string().url().optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
+
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: z.string().url().optional(),
-    AGENT_SANDBOX_OPENSANDBOX_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_RUNTIME: z.enum(['docker', 'kubernetes']).default('docker'),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
+    AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
+    AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
+    AGENT_SANDBOX_VOLUME_MANAGER_URL: z.string().url().optional(),
+    AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/home/sandbox'),
+
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
 
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),

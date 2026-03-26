@@ -25,7 +25,7 @@ import {
   SANDBOX_NAME,
   SANDBOX_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxClient } from '../../../../ai/sandbox/controller';
+import { getSandboxClient } from '../../../../ai/sandbox/controller';
 import { getSandboxToolWorkflowResponse } from './constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -251,12 +251,11 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           try {
             const params = SandboxShellToolSchema.parse(parseJsonArgs(call.function.arguments));
 
-            const instance = new SandboxClient({
+            const instance = await getSandboxClient({
               appId: String(workflowProps.runningAppInfo.id),
               userId: String(workflowProps.uid),
               chatId: workflowProps.chatId
             });
-
             const result = await instance.exec(params.command, params.timeout);
 
             const stringToolResponse = JSON.stringify({
