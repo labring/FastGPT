@@ -129,8 +129,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         };
         setSandboxLogs((prev) => [...prev, entry]);
 
-        if (status.phase === 'ready' && status.endpoint?.url) {
-          setSandboxEndpointUrl(status.endpoint.url);
+        if (status.phase === 'ready' && status.providerSandboxId && status.endpoint?.port) {
+          setSandboxEndpointUrl(`/proxy/${status.providerSandboxId}/${status.endpoint.port}/`);
           setSandboxState('ready');
         } else if (status.phase === 'failed') {
           setSandboxError(status.message || t('skill:sandbox_error_title'));
