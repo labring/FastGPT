@@ -12,7 +12,7 @@ const SandboxIframe = () => {
     <Box w={'100%'} h={'100%'}>
       <iframe
         src={sandboxEndpointUrl}
-        sandbox="allow-scripts allow-forms allow-popups allow-downloads allow-presentation"
+        sandbox="allow-scripts allow-forms allow-popups allow-downloads allow-presentation allow-same-origin"
         referrerPolicy="no-referrer"
         style={{
           width: '100%',

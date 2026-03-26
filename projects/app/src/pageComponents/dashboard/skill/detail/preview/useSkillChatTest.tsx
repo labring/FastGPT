@@ -9,6 +9,7 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import React from 'react';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 
 export const useSkillChatTest = ({
   skillId,
@@ -23,18 +24,30 @@ export const useSkillChatTest = ({
 }) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
 
+  const fileSelectConfig: AppFileSelectConfigType = {
+    maxFiles: 10,
+    canSelectFile: true,
+    canSelectImg: true,
+    customPdfParse: false,
+    canSelectVideo: false,
+    canSelectAudio: false,
+    canSelectCustomFileExtension: false,
+    customFileExtensionList: []
+  };
+
   // Set chat box data
   useEffect(() => {
     setChatBoxData({
       appId: skillId,
       app: {
-        chatConfig: {},
+        chatConfig: { fileSelectConfig },
         name: 'Skill Preview',
         avatar: '',
         type: AppTypeEnum.simple,
         pluginInputs: []
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skillId, setChatBoxData]);
 
   const startChat = useMemoizedFn(

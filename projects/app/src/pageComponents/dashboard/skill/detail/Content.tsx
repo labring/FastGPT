@@ -36,15 +36,15 @@ const Content = () => {
       border={'1px solid #EBEDF0'}
       overflow={'hidden'}
     >
-      {currentTab === TabEnum.config && (
-        <>
-          {sandboxState === 'idle' && <SkillBuilding />}
-          {sandboxState === 'loading' && <SandboxTerminal />}
-          {sandboxState === 'ready' && <SandboxIframe />}
-          {sandboxState === 'failed' && <SandboxError />}
-        </>
-      )}
-      {currentTab === TabEnum.preview && <SkillPreview />}
+      <Box h={'100%'} display={currentTab === TabEnum.config ? 'block' : 'none'}>
+        {sandboxState === 'idle' && <SkillBuilding />}
+        {sandboxState === 'loading' && <SandboxTerminal />}
+        {sandboxState === 'ready' && <SandboxIframe />}
+        {sandboxState === 'failed' && <SandboxError />}
+      </Box>
+      <Box h={'100%'} display={currentTab === TabEnum.preview ? 'block' : 'none'}>
+        <SkillPreview />
+      </Box>
     </Box>
   );
 };

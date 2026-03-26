@@ -11,6 +11,8 @@ import type {
   GetSkillDetailQuery,
   GetSkillDetailResponse,
   UpdateSkillBody,
+  CopySkillBody,
+  CopySkillResponse,
   SaveDeploySkillBody,
   SaveDeploySkillResponse,
   GetSkillFolderPathQuery,
@@ -19,13 +21,25 @@ import type {
   CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugRecordsBody,
-  ListAppsBySkillIdResponse
+  ListAppsBySkillIdResponse,
+  ListSkillVersionsBody,
+  ListSkillVersionsResponse
 } from '@fastgpt/global/core/agentSkills/api';
 import type { getChatRecordsResponse } from '@/pages/api/core/chat/record/getRecords_v2';
+import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
-  GET<ListSkillsResponse>('/core/agentSkills/list', data);
+  POST<ListSkillsResponse>('/core/agentSkills/list', data);
+
+/** 获取 Skill 文件夹列表（用于移动弹窗） */
+export const getSkillFolderList = ({ parentId }: GetResourceFolderListProps) =>
+  getSkillList({
+    source: 'mine',
+    type: AgentSkillTypeEnum.folder,
+    parentId: parentId ?? null
+  }).then((res) => res.list.map((item) => ({ id: item._id, name: item.name })));
 
 /** 获取 Skill 详情 */
 export const getSkillDetail = (data: GetSkillDetailQuery) =>
@@ -37,6 +51,10 @@ export const postCreateSkill = (data: CreateSkillBody) =>
 
 /** 更新 Skill 基本信息（名称、描述、分类、配置、头像） */
 export const postUpdateSkill = (data: UpdateSkillBody) => POST('/core/agentSkills/update', data);
+
+/** 创建 Skill 副本 */
+export const postCopySkill = (data: CopySkillBody) =>
+  POST<CopySkillResponse>('/core/agentSkills/copy', data);
 
 /** 删除 Skill */
 export const deleteSkill = (skillId: string) => DELETE('/core/agentSkills/delete', { skillId });
@@ -138,3 +156,7 @@ export const getAppsBySkillId = (skillId: string) =>
 /** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
 export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>
   POST<getChatRecordsResponse>('/core/agentSkills/debugSession/records', data);
+
+/** 获取 Skill 历史版本列表（支持分页滚动加载） */
+export const getSkillVersionList = (data: ListSkillVersionsBody) =>
+  POST<ListSkillVersionsResponse>('/core/agentSkills/version/list', data);

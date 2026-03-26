@@ -24,6 +24,7 @@ export const ListSkillsQuerySchema = z.object({
   source: z.enum(['store', 'mine']).optional().describe('技能来源: store=系统技能, mine=我的技能'),
   searchKey: z.string().optional().describe('搜索关键词'),
   category: AgentSkillCategorySchema.optional().describe('技能分类'),
+  type: AgentSkillTypeSchema.optional().describe('技能类型过滤'),
   parentId: NullableParentIdSchema,
   page: z.coerce.number().int().positive().optional().describe('页码'),
   pageSize: z.coerce.number().int().positive().optional().describe('每页数量')
@@ -37,7 +38,14 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   source: AgentSkillSourceSchema,
   type: AgentSkillTypeSchema,
   createTime: z.string(),
-  updateTime: z.string()
+  updateTime: z.string(),
+  sourceMember: z
+    .object({
+      name: z.string(),
+      avatar: z.string().nullable().optional(),
+      status: z.string()
+    })
+    .optional()
 });
 
 export const ListSkillsResponseSchema = z.object({
@@ -118,7 +126,8 @@ export const GetSkillDetailResponseSchema = z.object({
   tmbId: z.string().optional(),
   createTime: z.string(),
   updateTime: z.string(),
-  permission: z.any().optional()
+  permission: z.any().optional(),
+  appCount: z.number().optional()
 });
 export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema>;
 

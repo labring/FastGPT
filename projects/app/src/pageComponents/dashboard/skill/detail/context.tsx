@@ -25,9 +25,9 @@ type SkillDetailContextType = {
   skillId: string;
   skillDetail: AgentSkillDetailType | undefined;
   isFetchingSkillDetail: boolean;
+  refreshSkillDetail: () => void;
   currentTab: TabEnum;
   setCurrentTab: (tab: TabEnum) => void;
-  isSaved: boolean;
   showHistories: boolean;
   setShowHistories: (v: boolean) => void;
   sandboxState: SandboxState;
@@ -41,9 +41,9 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   skillId: '',
   skillDetail: undefined,
   isFetchingSkillDetail: false,
+  refreshSkillDetail: () => {},
   currentTab: TabEnum.config,
   setCurrentTab: () => {},
-  isSaved: false,
   showHistories: false,
   setShowHistories: () => {},
   sandboxState: 'idle',
@@ -150,7 +150,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   }, [skillId, phaseToMessage, t]);
 
   // Skill detail fetch
-  const { data: skillDetail, loading: isFetchingSkillDetail } = useRequest(
+  const {
+    data: skillDetail,
+    loading: isFetchingSkillDetail,
+    run: refreshSkillDetail
+  } = useRequest(
     () => {
       if (!skillId) return Promise.resolve(undefined);
       return getSkillDetail({ skillId }).then((res) => {
@@ -163,7 +167,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
           currentVersion: 0,
           versionCount: 0,
           createTime: new Date(res.createTime),
-          updateTime: new Date(res.updateTime)
+          updateTime: new Date(res.updateTime),
+          appCount: res.appCount ?? 0
         };
         return detail;
       });
@@ -194,9 +199,9 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       skillId,
       skillDetail,
       isFetchingSkillDetail,
+      refreshSkillDetail,
       currentTab,
       setCurrentTab,
-      isSaved: false,
       showHistories,
       setShowHistories,
       sandboxState,
@@ -209,6 +214,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       skillId,
       skillDetail,
       isFetchingSkillDetail,
+      refreshSkillDetail,
       currentTab,
       showHistories,
       sandboxState,
