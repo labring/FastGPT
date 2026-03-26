@@ -40,12 +40,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Ali Hub
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
       - name: Build for ${{ matrix.arch }}
         id: build
@@ -57,7 +51,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=fastgpt-marketplace image
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace,${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-marketplace",push-by-digest=true,push=true
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -138,7 +132,7 @@ jobs:
           # Create manifest for Ali Cloud
           echo "Creating manifest for Ali Cloud: ${Ali_Tag}"
           docker buildx imagetools create -t ${Ali_Tag} \
-            $(printf '${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-marketplace@sha256:%s ' *)
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-marketplace@sha256:%s ' *)
           echo "✅ Ali Cloud manifest created"
 
           echo ""
