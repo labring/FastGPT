@@ -17,6 +17,8 @@ import {
   ImportSkillMultipartRequestSchema,
   ImportSkillResponseSchema,
   ListAppsBySkillIdQuerySchema,
+  ListSkillVersionsBodySchema,
+  ListSkillVersionsResponseSchema,
   ListSkillsQuerySchema,
   ListSkillsResponseSchema,
   SaveDeploySkillBodySchema,
@@ -32,12 +34,16 @@ import {
 
 export const AgentSkillsPath: OpenAPIPath = {
   '/core/agentSkills/list': {
-    get: {
+    post: {
       summary: '获取技能列表',
       description: '分页获取当前团队可见的系统技能或个人技能',
       tags: [TagsMap.aiSkill],
-      requestParams: {
-        query: ListSkillsQuerySchema
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListSkillsQuerySchema
+          }
+        }
       },
       responses: {
         200: {
@@ -371,6 +377,30 @@ export const AgentSkillsPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SkillDebugRecordsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/agentSkills/version/list': {
+    post: {
+      summary: '获取技能版本列表',
+      description: '分页获取指定技能的版本列表，按版本号倒序排列',
+      tags: [TagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListSkillVersionsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回版本列表',
+          content: {
+            'application/json': {
+              schema: ListSkillVersionsResponseSchema
             }
           }
         }

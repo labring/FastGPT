@@ -308,6 +308,31 @@ export const SkillDebugRecordsResponseSchema = z.object({
 });
 export type SkillDebugRecordsResponse = z.infer<typeof SkillDebugRecordsResponseSchema>;
 
+export const ListSkillVersionsBodySchema = z.object({
+  skillId: IdSchema,
+  pageNum: z.number().int().positive().optional().describe('页码，从 1 开始'),
+  pageSize: z.number().int().positive().describe('每页数量'),
+  isActive: z.boolean().optional().describe('筛选是否为活跃版本')
+});
+export type ListSkillVersionsBody = z.infer<typeof ListSkillVersionsBodySchema>;
+
+export const SkillVersionListItemSchema = z.object({
+  _id: z.string(),
+  skillId: z.string(),
+  tmbId: z.string(),
+  version: z.number(),
+  versionName: z.string().optional(),
+  isActive: z.boolean(),
+  createdAt: z.string()
+});
+export type SkillVersionListItemType = z.infer<typeof SkillVersionListItemSchema>;
+
+export const ListSkillVersionsResponseSchema = z.object({
+  list: z.array(SkillVersionListItemSchema),
+  total: z.number()
+});
+export type ListSkillVersionsResponse = z.infer<typeof ListSkillVersionsResponseSchema>;
+
 export const ImportSkillMultipartRequestSchema = {
   type: 'object' as const,
   properties: {
