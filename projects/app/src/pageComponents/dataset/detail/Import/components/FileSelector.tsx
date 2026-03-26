@@ -33,12 +33,12 @@ const FileSelector = ({
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
-  // 文件数量限制：团队套餐 || 系统配置 || 默认值
+  // 文件数量限制：系统配置 || 团队套餐 || 默认值
   const maxCount =
-    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 1000;
-  // 文件大小限制（bytes）：优先级为 套餐限制 > 系统配置 > 默认值(500MB)
+    feConfigs?.uploadFileMaxAmount || teamPlanStatus?.standardConstants?.maxUploadFileCount || 1000;
+  // 文件大小限制（bytes）：优先级为 系统配置 > 套餐限制 > 默认值(500MB)
   const maxSize =
-    (teamPlanStatus?.standardConstants?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+    (feConfigs?.uploadFileMaxSize ?? teamPlanStatus?.standardConstants?.maxUploadFileSize ?? 500) *
     1024 *
     1024;
 
@@ -319,3 +319,4 @@ const FileSelector = ({
 };
 
 export default React.memo(FileSelector);
+
