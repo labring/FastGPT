@@ -479,8 +479,18 @@
   "faq_template_col_question": "问题",
   "faq_template_col_answer": "答案",
   "faq_template_col_indexes": "索引",
+  "faq_example_q1": "你是谁？",
+  "faq_example_a1": "我是一个AI助手，在这里帮助解答您的问题并提供支持。我可以协助学习、日常生活查询和创意想法。",
+  "faq_example_i1": "1. 你是什么？\n2. 你能做什么？\n3. 你能帮助哪些主题？\n4. 你如何协助用户？\n5. 你的目标是什么？",
+  "faq_example_q2": "你是什么？",
+  "faq_example_a2": "我是一个AI助手，旨在帮助用户解答问题并提供各种主题的支持。",
+  "faq_example_i2": "你是什么？",
   "synonym_template_filename": "同义词模板",
   "synonym_template_col_standard": "标准术语",
-  "synonym_template_col_synonyms": "同义词"
+  "synonym_template_col_synonyms": "同义词",
+  "synonym_example_standard1": "退款",
+  "synonym_example_synonyms1": "退货,退单,退钱,还款",
+  "synonym_example_standard2": "订单",
+  "synonym_example_synonyms2": "购买订单,订单号,交易,发票"
 }
 

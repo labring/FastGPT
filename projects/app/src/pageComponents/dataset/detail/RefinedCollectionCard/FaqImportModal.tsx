@@ -174,15 +174,15 @@ const FaqImportModal = ({
 
       // 添加示例数据
       worksheet.addRow([
-        'Who are you?',
-        'I am an AI assistant, here to help with your questions and provide support. I can assist with learning, daily life queries, and creative ideas.',
-        "1. What are you?\n2. What can you do?\n3. What topics can you help with?\n4. How do you assist users?\n5. What's your goal?"
+        t('dataset:faq_example_q1'),
+        t('dataset:faq_example_a1'),
+        t('dataset:faq_example_i1')
       ]);
 
       worksheet.addRow([
-        'What are you?',
-        'I am an AI assistant designed to help users with their questions and provide support across various topics.',
-        'What are you?'
+        t('dataset:faq_example_q2'),
+        t('dataset:faq_example_a2'),
+        t('dataset:faq_example_i2')
       ]);
 
       // 生成 Buffer（UTF-8编码）
@@ -246,7 +246,7 @@ const FaqImportModal = ({
                       fileType: '.xlsx, .xls, .csv'
                     }}
                     components={{
-                      highlight: <Box as="span" color="primary.600" fontWeight="medium" />
+                      highlight: <Box as="span" color="myGray.900" fontWeight="bold" />
                     }}
                   />
                 </Box>

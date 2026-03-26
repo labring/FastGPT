@@ -476,8 +476,19 @@
   "faq_template_col_question": "問題",
   "faq_template_col_answer": "答案",
   "faq_template_col_indexes": "索引",
+  "faq_example_q1": "你是誰？",
+  "faq_example_a1": "我是一個AI助手，在這裡幫助解答您的問題並提供支援。我可以協助學習、日常生活查詢和創意想法。",
+  "faq_example_i1": "1. 你是什麼？\n2. 你能做什麼？\n3. 你能幫助哪些主題？\n4. 你如何協助使用者？\n5. 你的目標是什麼？",
+  "faq_example_q2": "你是什麼？",
+  "faq_example_a2": "我是一個AI助手，旨在幫助使用者解答問題並提供各種主題的支援。",
+  "faq_example_i2": "你是什麼？",
   "synonym_template_filename": "同義詞模板",
   "synonym_template_col_standard": "標準術語",
-  "synonym_template_col_synonyms": "同義詞"
+  "synonym_template_col_synonyms": "同義詞",
+  "synonym_example_standard1": "退款",
+  "synonym_example_synonyms1": "退貨,退單,退錢,還款",
+  "synonym_example_standard2": "訂單",
+  "synonym_example_synonyms2": "購買訂單,訂單號,交易,發票"
 }
+
 
