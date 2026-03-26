@@ -178,8 +178,8 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=fastgpt-agnet-volumn-manager image
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-agnet-volumn-manager",push-by-digest=true,push=true
+            org.opencontainers.image.description=fastgpt-agent-volume-manager image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-volume-manager",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -192,7 +192,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-fastgpt-agnet-volumn-manager-${{ github.sha }}-${{ matrix.arch }}
+          name: digests-fastgpt-agent-volume-manager-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -228,7 +228,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-fastgpt-agnet-volumn-manager-${{ github.sha }}-*
+          pattern: digests-fastgpt-agent-volume-manager-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -237,12 +237,12 @@ jobs:
       - name: Set image name and tag
         run: |
           VERSION="${{ github.event.inputs.version }}"
-          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-agnet-volumn-manager:${VERSION}" >> $GITHUB_ENV
-          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-agnet-volumn-manager:latest" >> $GITHUB_ENV
-          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agnet-volumn-manager:${VERSION}" >> $GITHUB_ENV
-          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agnet-volumn-manager:latest" >> $GITHUB_ENV
-          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agnet-volumn-manager:${VERSION}" >> $GITHUB_ENV
-          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agnet-volumn-manager:latest" >> $GITHUB_ENV
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-volume-manager:${VERSION}" >> $GITHUB_ENV
+          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
+          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-volume-manager:${VERSION}" >> $GITHUB_ENV
+          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
+          echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-volume-manager:${VERSION}" >> $GITHUB_ENV
+          echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-agent-volume-manager:latest" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
@@ -250,6 +250,6 @@ jobs:
           TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
-              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-agnet-volumn-manager@sha256:%s ' *)
+              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-agent-volume-manager@sha256:%s ' *)
             sleep 5
           done

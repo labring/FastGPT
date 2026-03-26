@@ -95,12 +95,6 @@ jobs:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_NAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
@@ -118,21 +112,17 @@ jobs:
             echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
             echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
             echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
-            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
-            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
           else
             echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
             echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
             echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
             echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
-            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-code-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
           fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
               $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox@sha256:%s ' *)
