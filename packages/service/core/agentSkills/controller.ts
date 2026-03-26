@@ -11,6 +11,7 @@ import { removeImageByPath } from '../../common/file/image/controller';
 import { createVersion } from './version/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
+import { deleteSkillRelatedSandboxes } from './sandboxController';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -148,6 +149,19 @@ export async function deleteSkill(skillId: string, session?: ClientSession): Pro
         removeImageByPath(item.avatar);
       }
     }
+  }
+
+  // Async force delete all related sandbox resources (fire-and-forget)
+  const nonFolderIds = deleteList
+    .filter((s) => s.type !== AgentSkillTypeEnum.folder)
+    .map((s) => s._id.toString());
+  if (nonFolderIds.length > 0) {
+    deleteSkillRelatedSandboxes(nonFolderIds).catch((err) => {
+      logger.error('[Skill] Failed to cleanup skill sandboxes', {
+        skillIds: nonFolderIds,
+        error: err
+      });
+    });
   }
 }
 

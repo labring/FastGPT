@@ -142,7 +142,25 @@ export class SandboxClient {
   }
 
   async delete() {
-    await this.provider.delete();
+    if (this.provider.provider === 'opensandbox') {
+      try {
+        await (this.provider as OpenSandboxAdapter).connect(this.sandboxId);
+      } catch (err) {
+        logger.warn('Failed to connect to sandbox, skipping provider delete', {
+          sandboxId: this.sandboxId,
+          error: err
+        });
+        // 连接失败说明 Provider 侧沙箱可能已不存在，仍清理 MongoDB 记录
+        await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId });
+        return;
+      }
+      const info = await this.provider.getInfo();
+      if (info !== null) {
+        await this.provider.delete();
+      }
+    } else {
+      await this.provider.delete();
+    }
     await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId });
   }
 
@@ -203,6 +221,29 @@ export const deleteSandboxesByAppId = async (appId: string) => {
       new SandboxClient({
         sandboxId: doc.sandboxId
       }).delete()
+    )
+  );
+};
+
+/**
+ * Delete sandbox instances by a list of chat IDs.
+ * Used for cleaning up session-runtime sandboxes when apps are deleted.
+ * Session-runtime sandboxes use teamId as appId, so they cannot be found by appId.
+ */
+export const deleteSandboxesByChatIdList = async (chatIds: string[]): Promise<void> => {
+  if (!chatIds.length) return;
+
+  const instances = await MongoSandboxInstance.find({
+    chatId: { $in: chatIds }
+  }).lean();
+
+  if (!instances.length) return;
+
+  await Promise.allSettled(
+    instances.map((doc) =>
+      new SandboxClient({ sandboxId: doc.sandboxId }).delete().catch((err) => {
+        logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
+      })
     )
   );
 };
