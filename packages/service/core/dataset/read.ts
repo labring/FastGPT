@@ -12,10 +12,11 @@ import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { getFileMaxSize } from '../../common/file/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
-import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
+import { getFileS3Key, isS3ObjectKey, uploadMdImagesToS3 } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -167,7 +168,8 @@ export const readDatasetSourceRawText = async ({
   customPdfParse,
   getFormatText,
   usageId,
-  datasetId
+  datasetId,
+  isPreview
 }: {
   teamId: string;
   tmbId: string;
@@ -181,6 +183,7 @@ export const readDatasetSourceRawText = async ({
   apiDatasetServer?: ApiDatasetServerType; // api dataset
   usageId?: string;
   datasetId: string; // For S3 image upload
+  isPreview?: boolean; // Preview mode: skip S3 image upload, return base64 directly
 }): Promise<{
   title?: string;
   rawText: string;
@@ -233,7 +236,7 @@ export const readDatasetSourceRawText = async ({
       rawText
     };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
-    const { title, rawText } = await readApiServerFileContent({
+    const { title, rawText: rawMarkdown } = await readApiServerFileContent({
       apiDatasetServer,
       apiFileId: sourceId,
       teamId,
@@ -241,6 +244,39 @@ export const readDatasetSourceRawText = async ({
       customPdfParse,
       datasetId
     });
+
+    // Preview mode: return raw markdown with base64 images directly.
+    // The frontend can render base64 inline. This avoids duplicate S3 uploads
+    // since the actual parse will upload images later.
+    if (isPreview) {
+      return { title, rawText: rawMarkdown || '' };
+    }
+
+    const { text, imageList } = matchMdImg(rawMarkdown || '');
+    let rawText = text;
+
+    if (imageList.length > 0) {
+      const { fileParsedPrefix } = getFileS3Key.dataset({
+        datasetId,
+        filename: sourceId
+      });
+
+      const replacements = await uploadMdImagesToS3({
+        imageList,
+        prefix: fileParsedPrefix,
+        onError: (item, error) => {
+          logger.warn('Failed to upload parsed image to S3', {
+            imageUuid: item.uuid,
+            error
+          });
+        }
+      });
+
+      for (const [uuid, src] of replacements) {
+        rawText = rawText.replace(uuid, src);
+      }
+    }
+
     return {
       title,
       rawText

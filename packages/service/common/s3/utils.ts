@@ -3,7 +3,7 @@ import { isAfter, differenceInSeconds } from 'date-fns';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { ClientSession } from 'mongoose';
 import { MongoS3TTL } from './schema';
-import { S3Buckets } from './constants';
+import { Mimes, S3Buckets } from './constants';
 import { S3PrivateBucket } from './buckets/private';
 import { S3Sources, type UploadImage2S3BucketParams } from './type';
 import { S3PublicBucket } from './buckets/public';
@@ -12,6 +12,8 @@ import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
+import type { ImageType } from '../../worker/readFile/type';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -285,6 +287,43 @@ export function isS3ObjectKey<T extends keyof typeof S3Sources>(
   source: T
 ): key is `${T}/${string}` {
   return typeof key === 'string' && key.startsWith(`${S3Sources[source]}/`);
+}
+
+/**
+ * Upload base64 images (extracted by matchMdImg) to S3 and replace UUID placeholders in text.
+ * Shared by file parsing (readFileContentByBuffer) and API dataset content (read.ts).
+ */
+export async function uploadMdImagesToS3({
+  imageList,
+  prefix,
+  expiredTime,
+  onError
+}: {
+  imageList: ImageType[];
+  prefix: string;
+  expiredTime?: Date;
+  onError?: (item: ImageType, error: unknown) => void;
+}): Promise<Map<string, string>> {
+  const replacements = new Map<string, string>();
+
+  await batchRun(imageList, async (item) => {
+    try {
+      const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
+      const src = await uploadImage2S3Bucket('private', {
+        base64Img: `data:${item.mime};base64,${item.base64}`,
+        uploadKey: `${prefix}/${item.uuid}${ext}`,
+        mimetype: Mimes[ext as keyof typeof Mimes],
+        filename: `${item.uuid}${ext}`,
+        expiredTime
+      });
+      replacements.set(item.uuid, src);
+    } catch (error) {
+      onError?.(item, error);
+      replacements.set(item.uuid, `[Image Upload Failed: ${item.uuid}]`);
+    }
+  });
+
+  return replacements;
 }
 
 export function sanitizeS3ObjectKey(key: string) {

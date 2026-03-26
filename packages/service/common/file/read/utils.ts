@@ -2,14 +2,12 @@ import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { axios } from '../../api/axios';
-import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { readRawContentFromBuffer } from '../../../worker/function';
-import { uploadImage2S3Bucket } from '../../s3/utils';
-import { Mimes } from '../../s3/constants';
+import { uploadMdImagesToS3 } from '../../s3/utils';
 import { getLogger, LogCategories } from '../../logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -198,41 +196,31 @@ export const readFileContentByBuffer = async ({
   logger.debug('File parsing completed', { extension, durationMs: Date.now() - start });
 
   // markdown data format
-  if (imageList && imageList.length > 0) {
+  if (imageList && imageList.length > 0 && imageKeyOptions) {
     logger.debug('Processing parsed document images', {
       extension,
       imageCount: imageList.length
     });
 
-    await batchRun(imageList, async (item) => {
-      const src = await (async () => {
-        if (!imageKeyOptions) return '';
-        try {
-          const { prefix, expiredTime } = imageKeyOptions;
-          const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
-
-          return await uploadImage2S3Bucket('private', {
-            base64Img: `data:${item.mime};base64,${item.base64}`,
-            uploadKey: `${prefix}/${item.uuid}${ext}`,
-            mimetype: Mimes[ext as keyof typeof Mimes],
-            filename: `${item.uuid}${ext}`,
-            expiredTime
-          });
-        } catch (error) {
-          logger.warn('Failed to upload parsed image to S3', {
-            extension,
-            imageUuid: item.uuid,
-            error
-          });
-          return `[Image Upload Failed: ${item.uuid}]`;
-        }
-      })();
-      rawText = rawText.replace(item.uuid, src);
-      // rawText = rawText.replace(item.uuid, jwtSignS3ObjectKey(src, addDays(new Date(), 90)));
-      if (formatText) {
-        formatText = formatText.replace(item.uuid, src);
+    const replacements = await uploadMdImagesToS3({
+      imageList,
+      prefix: imageKeyOptions.prefix,
+      expiredTime: imageKeyOptions.expiredTime,
+      onError: (item, error) => {
+        logger.warn('Failed to upload parsed image to S3', {
+          extension,
+          imageUuid: item.uuid,
+          error
+        });
       }
     });
+
+    for (const [uuid, src] of replacements) {
+      rawText = rawText.replace(uuid, src);
+      if (formatText) {
+        formatText = formatText.replace(uuid, src);
+      }
+    }
   }
 
   return {
