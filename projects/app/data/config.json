@@ -147,7 +147,9 @@
             "autoIndexes": true, // AI自动索引（会根据Agent模型配置自动调整）
             "autoIndexesConfig": { "questionIndex": true, "summaryIndex": true }, // 自动索引细粒度配置
             "hypeIndexes": false, // 超参数索引
-            "imageIndex": false // 图片索引（会根据VLM模型配置自动调整）
+            "imageIndex": false, // 图片索引（会根据VLM模型配置自动调整）
+            "syntheticIndex": true // 合成索引（会根据Agent模型配置自动调整）
+
           },
           "promptConfig": {
             "autoIndexesPrompt": "", // 自动索引prompt

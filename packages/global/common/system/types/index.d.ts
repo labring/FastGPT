@@ -346,6 +346,7 @@ export type DatasetIndexConfigType = {
     questionIndex?: boolean; // 问题索引（细粒度）
     summaryIndex?: boolean; // 摘要索引（细粒度）
     imageIndex?: boolean; // 图片索引
+    syntheticIndex?: boolean; // 合成索引
   };
 };
 
