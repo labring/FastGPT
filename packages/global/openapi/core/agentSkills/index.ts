@@ -29,7 +29,9 @@ import {
   SkillDebugSessionDeleteBodySchema,
   SkillDebugSessionListQuerySchema,
   SkillDebugSessionListResponseSchema,
-  UpdateSkillBodySchema
+  SwitchSkillVersionBodySchema,
+  UpdateSkillBodySchema,
+  UpdateSkillVersionBodySchema
 } from './api';
 
 export const AgentSkillsPath: OpenAPIPath = {
@@ -403,6 +405,44 @@ export const AgentSkillsPath: OpenAPIPath = {
               schema: ListSkillVersionsResponseSchema
             }
           }
+        }
+      }
+    }
+  },
+  '/core/agentSkills/version/update': {
+    post: {
+      summary: '更新技能版本名称',
+      description: '更新指定技能版本的名称',
+      tags: [TagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateSkillVersionBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新版本名称'
+        }
+      }
+    }
+  },
+  '/core/agentSkills/version/switch': {
+    post: {
+      summary: '切换技能活跃版本',
+      description: '将指定版本设置为活跃版本，同时取消其他版本的活跃状态',
+      tags: [TagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SwitchSkillVersionBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功切换活跃版本'
         }
       }
     }
