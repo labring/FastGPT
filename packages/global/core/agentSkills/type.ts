@@ -93,11 +93,20 @@ export const AgentSkillListItemSchema = z.object({
   avatar: z.string().optional(),
   createTime: z.date(),
   updateTime: z.date(),
-  appCount: z.number().optional()
+  appCount: z.number().optional(),
+  sourceMember: z
+    .object({
+      name: z.string(),
+      avatar: z.string().nullable().optional(),
+      status: z.string()
+    })
+    .optional()
 });
 export type AgentSkillListItemType = z.infer<typeof AgentSkillListItemSchema>;
 
-export const AgentSkillDetailSchema = AgentSkillSchema;
+export const AgentSkillDetailSchema = AgentSkillSchema.extend({
+  appCount: z.number().optional()
+});
 export type AgentSkillDetailType = z.infer<typeof AgentSkillDetailSchema>;
 
 export const AgentSkillsVersionImportSourceSchema = z.object({

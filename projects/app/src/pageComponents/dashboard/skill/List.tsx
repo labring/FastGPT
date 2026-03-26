@@ -16,7 +16,14 @@ import {
   AgentSkillSourceEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/agentSkills/constants';
-import { deleteSkill, exportSkill, postUpdateSkill, getAppsBySkillId } from '@/web/core/skill/api';
+import {
+  deleteSkill,
+  exportSkill,
+  postUpdateSkill,
+  postCopySkill,
+  getAppsBySkillId,
+  getSkillFolderList
+} from '@/web/core/skill/api';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { AppsBySkillIdItem } from '@fastgpt/global/core/agentSkills/api';
@@ -25,7 +32,6 @@ import type { EditResourceInfoFormType } from '@/components/common/Modal/EditRes
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type {
   GetResourceFolderListProps,
-  GetResourceFolderListItemResponse,
   ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 
@@ -155,10 +161,7 @@ const List = () => {
   });
 
   const { runAsync: onclickCopySkill } = useRequest(
-    (skillId: string) => {
-      // TODO: 调用复制技能接口
-      return Promise.resolve(skillId);
-    },
+    (skillId: string) => postCopySkill({ skillId }),
     {
       onSuccess() {
         loadSkills();
@@ -189,29 +192,25 @@ const List = () => {
   const { runAsync: onMoveSkill } = useRequest(
     async (targetId: ParentIdType) => {
       if (!moveSkillId) return;
-      // TODO: 调用移动技能接口 putSkillById(moveSkillId, { parentId: targetId === 'root' ? null : targetId })
-      return Promise.resolve({ skillId: moveSkillId, targetId });
+      return postUpdateSkill({
+        skillId: moveSkillId,
+        parentId: targetId === 'root' ? null : (targetId as string)
+      });
     },
     {
       onSuccess() {
         loadSkills();
         setMoveSkillId(undefined);
       },
-      successToast: t('skill:move_success'),
       errorToast: t('skill:move_failed')
     }
   );
 
-  // TODO: 获取技能文件夹列表接口
-  const getSkillFolderList = useMemo(
+  // 获取技能文件夹列表
+  const getSkillFolderListForMove = useMemo(
     () =>
-      async ({
-        parentId
-      }: GetResourceFolderListProps): Promise<GetResourceFolderListItemResponse[]> => {
-        // TODO: 替换为真实 API
-        // return getSkillFolderListApi({ parentId });
-        return Promise.resolve([]);
-      },
+      ({ parentId }: GetResourceFolderListProps) =>
+        getSkillFolderList({ parentId }),
     []
   );
 
@@ -380,7 +379,8 @@ const List = () => {
                               onClick: () =>
                                 openConfirmDel({
                                   onConfirm: () => onClickDeleteSkill(skill._id),
-                                  inputConfirmText: skill.name
+                                  inputConfirmText: skill.name,
+                                  customContent: t('skill:confirm_delete_tip')
                                 })()
                             }
                           ]
@@ -424,8 +424,10 @@ const List = () => {
 
                 {/* 创建人 + 更新时间 */}
                 <HStack spacing={'12px'}>
-                  {skill.author && (
-                    <MyTooltip label={t('skill:creator_tooltip', { creator: skill.author })}>
+                  {skill.sourceMember?.name && (
+                    <MyTooltip
+                      label={t('skill:creator_tooltip', { creator: skill.sourceMember.name })}
+                    >
                       <HStack spacing={'4px'}>
                         <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                         <Box
@@ -435,7 +437,7 @@ const List = () => {
                           textOverflow={'ellipsis'}
                           whiteSpace={'nowrap'}
                         >
-                          {skill.author}
+                          {skill.sourceMember.name}
                         </Box>
                       </HStack>
                     </MyTooltip>
@@ -473,7 +475,7 @@ const List = () => {
       {!!moveSkillId && (
         <MoveModal
           moveResourceId={moveSkillId}
-          server={getSkillFolderList}
+          server={getSkillFolderListForMove}
           title={t('skill:move_skill')}
           onClose={() => setMoveSkillId(undefined)}
           onConfirm={onMoveSkill}

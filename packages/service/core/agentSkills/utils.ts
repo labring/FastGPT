@@ -117,9 +117,12 @@ export function extractSkillFromMarkdown(markdown: string): { skill: any; error?
     return { skill: null, error: 'Frontmatter field "description" is required' };
   }
 
+  // Ensure name is always treated as a string (YAML parser may convert numeric names to number)
+  const skillName = String(frontmatter.name);
+
   // Validate name format (lowercase, numbers, hyphens only; no consecutive hyphens; no leading/trailing hyphens)
   const nameRegex = /^[a-z0-9]([a-z0-9]|-(?!-))*[a-z0-9]$|^[a-z0-9]$/;
-  if (!nameRegex.test(frontmatter.name)) {
+  if (!nameRegex.test(skillName)) {
     return {
       skill: null,
       error:
@@ -128,7 +131,7 @@ export function extractSkillFromMarkdown(markdown: string): { skill: any; error?
   }
 
   // Validate name length (max 64 per spec, but FastGPT uses 50)
-  if (frontmatter.name.length > 50) {
+  if (skillName.length > 50) {
     return { skill: null, error: 'Name must be less than 50 characters' };
   }
 
@@ -137,7 +140,7 @@ export function extractSkillFromMarkdown(markdown: string): { skill: any; error?
 
   // Build FastGPT skill object
   const skill: any = {
-    name: frontmatter.name,
+    name: skillName,
     description,
     category: [AgentSkillCategoryEnum.other], // default
     config: {}

@@ -28,12 +28,13 @@ export type GetSkillListBody = {
   source?: 'store' | 'mine';
   searchKey?: string;
   category?: string;
+  type?: string;
   page?: number;
   pageSize?: number;
 };
 
 async function handler(req: ApiRequestProps<GetSkillListBody>) {
-  const { parentId, source, searchKey, category, page, pageSize } = req.body;
+  const { parentId, source, searchKey, category, type, page, pageSize } = req.body;
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
@@ -125,7 +126,8 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
         deleteTime: null,
         ...searchMatch,
         ...sourceQuery,
-        ...(category ? { category: { $in: [category] } } : {})
+        ...(category ? { category: { $in: [category] } } : {}),
+        ...(type ? { type } : {})
       };
       // @ts-ignore
       delete data.parentId;
@@ -138,6 +140,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       deleteTime: null,
       ...sourceQuery,
       ...(category ? { category: { $in: [category] } } : {}),
+      ...(type ? { type } : {}),
       ...parseParentIdInMongo(parentId)
     };
   })();

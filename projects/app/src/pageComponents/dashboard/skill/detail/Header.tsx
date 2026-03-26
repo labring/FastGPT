@@ -1,28 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  IconButton,
-  ModalBody,
-  ModalFooter,
-  useDisclosure
-} from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { SkillDetailContext, TabEnum } from './context';
-import { publishStatusStyle } from '@/pageComponents/app/detail/constants';
 import SkillHistoriesSlider from './config/SkillHistoriesSlider';
-import { deleteSkill } from '@/web/core/skill/api';
+import {
+  deleteSkill,
+  postUpdateSkill,
+  exportSkill,
+  postSaveDeploySkill
+} from '@/web/core/skill/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 
@@ -72,17 +65,11 @@ const RouteTab = () => {
 const Header = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { skillDetail, isSaved, showHistories, setShowHistories } = useContextSelector(
+
+  const { skillDetail, refreshSkillDetail, showHistories, setShowHistories } = useContextSelector(
     SkillDetailContext,
     (v) => v
   );
-
-  // ── 所有 hooks 必须在 early return 之前无条件调用 ──
-  const {
-    isOpen: isOpenBackConfirm,
-    onOpen: onOpenBackConfirm,
-    onClose: onCloseBackConfirm
-  } = useDisclosure();
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
@@ -100,12 +87,16 @@ const Header = () => {
   });
 
   const { runAsync: onUpdateSkill } = useRequest(
-    (id: string, data: { avatar?: string; name?: string; intro?: string }) => {
-      // TODO: 调用更新技能接口
-      return Promise.resolve({ id, ...data });
-    },
+    (id: string, data: { avatar?: string; name?: string; intro?: string }) =>
+      postUpdateSkill({
+        skillId: id,
+        name: data.name,
+        avatar: data.avatar,
+        description: data.intro
+      }),
     {
       onSuccess() {
+        refreshSkillDetail();
         setEditedSkill(undefined);
       },
       successToast: t('skill:edit_success'),
@@ -114,17 +105,21 @@ const Header = () => {
   );
 
   const { runAsync: onExportSkill } = useRequest(
-    (skillId: string) => {
-      // TODO: 调用导出技能接口
-      return Promise.resolve(skillId);
-    },
+    (skillId: string, skillName: string) => exportSkill(skillId, skillName),
     {
       successToast: t('skill:export_success'),
       errorToast: t('skill:export_failed')
     }
   );
 
-  // skillDetail 整体作为依赖，避免 undefined 时访问属性
+  const { runAsync: onSaveDeploy, loading: isSaving } = useRequest(
+    (skillId: string) => postSaveDeploySkill({ skillId }),
+    {
+      successToast: t('skill:deploy_success'),
+      errorToast: t('skill:deploy_failed')
+    }
+  );
+
   const menuList = useMemo(
     () => [
       {
@@ -155,7 +150,7 @@ const Header = () => {
             label: t('skill:export_config'),
             onClick: () => {
               if (!skillDetail) return;
-              onExportSkill(skillDetail._id);
+              onExportSkill(skillDetail._id, skillDetail.name);
             }
           }
         ]
@@ -166,6 +161,9 @@ const Header = () => {
             type: 'danger' as const,
             icon: 'delete' as const,
             label: t('common:Delete'),
+            disabled: (skillDetail?.appCount ?? 0) > 0,
+            disabledTip:
+              (skillDetail?.appCount ?? 0) > 0 ? t('skill:delete_disabled_tip') : undefined,
             onClick: () => {
               if (!skillDetail) return;
               openConfirmDel({
@@ -180,24 +178,7 @@ const Header = () => {
     [t, skillDetail, onExportSkill, onClickDeleteSkill, openConfirmDel]
   );
 
-  // 刷新/关闭页面时，如果未保存则弹出浏览器原生二次确认
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!isSaved) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isSaved]);
-
-  // 数据未就绪时不渲染（所有 hooks 已在上方完成调用）
   if (!skillDetail) return null;
-
-  const onBack = () => {
-    router.push('/dashboard/skill');
-  };
 
   return (
     <Flex flexShrink={0} h={'64px'} alignItems={'center'} position={'relative'} userSelect={'none'}>
@@ -209,47 +190,30 @@ const Header = () => {
           size={'xs'}
           w={'24px'}
           variant={'ghost'}
-          onClick={isSaved ? onBack : onOpenBackConfirm}
+          onClick={() => router.push('/dashboard/skill')}
         />
       </Box>
 
       {/* Skill 信息 */}
       <HStack ml={1.5} spacing={2}>
         <Avatar src={skillDetail.avatar} w={'30px'} borderRadius={'md'} />
-        <Box>
-          <MyMenu
-            Button={
-              <Flex
-                alignItems={'center'}
-                px={'4px'}
-                borderRadius={'4px'}
-                cursor={'pointer'}
-                _hover={{ bg: 'rgba(18, 22, 26, 0.05)' }}
-              >
-                <Box color={'myGray.600'} fontWeight={'bold'} fontSize={'md'}>
-                  {skillDetail.name}
-                </Box>
-                <MyIcon name={'core/skill/help'} w={'20px'} color={'#CCD2D9'} ml={'4px'} />
-              </Flex>
-            }
-            menuList={menuList}
-          />
-          <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
-            <MyTag
-              py={0}
-              px={1}
-              showDot
-              bg={'transparent'}
-              colorSchema={
-                isSaved
-                  ? publishStatusStyle.published.colorSchema
-                  : publishStatusStyle.unPublish.colorSchema
-              }
+        <MyMenu
+          Button={
+            <Flex
+              alignItems={'center'}
+              px={'4px'}
+              borderRadius={'4px'}
+              cursor={'pointer'}
+              _hover={{ bg: 'rgba(18, 22, 26, 0.05)' }}
             >
-              {t(isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text)}
-            </MyTag>
-          </Flex>
-        </Box>
+              <Box color={'myGray.600'} fontWeight={'bold'} fontSize={'md'}>
+                {skillDetail.name}
+              </Box>
+              <MyIcon name={'core/skill/help'} w={'20px'} color={'#CCD2D9'} ml={'4px'} />
+            </Flex>
+          }
+          menuList={menuList}
+        />
       </HStack>
 
       {/* 居中 Tab */}
@@ -276,9 +240,8 @@ const Header = () => {
             h={'34px'}
             px={'14px'}
             variant={'primary'}
-            onClick={() => {
-              // TODO: 保存功能待实现
-            }}
+            isLoading={isSaving}
+            onClick={() => onSaveDeploy(skillDetail._id)}
           >
             {t('common:Save')}
           </Button>
@@ -287,33 +250,6 @@ const Header = () => {
 
       {/* 历史版本抽屉 */}
       {showHistories && <SkillHistoriesSlider onClose={() => setShowHistories(false)} />}
-
-      {/* 未保存退出二次确认弹窗 */}
-      <MyModal
-        isOpen={isOpenBackConfirm}
-        onClose={onCloseBackConfirm}
-        iconSrc="common/warn"
-        title={t('common:Exit')}
-        w={'400px'}
-      >
-        <ModalBody>
-          <Box>{t('skill:exit_tips')}</Box>
-        </ModalBody>
-        <ModalFooter gap={3}>
-          <Button variant={'whiteDanger'} onClick={onBack}>
-            {t('common:exit_directly')}
-          </Button>
-          <Button
-            onClick={() => {
-              // TODO: 保存并退出，待接入真实保存接口
-              onCloseBackConfirm();
-              onBack();
-            }}
-          >
-            {t('common:Save_and_exit')}
-          </Button>
-        </ModalFooter>
-      </MyModal>
 
       {/* 删除确认弹窗 */}
       <DelConfirmModal />

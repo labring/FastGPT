@@ -74,9 +74,17 @@ const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: ()
   );
 };
 
+const CHAT_ID_STORAGE_KEY = (skillId: string) => `skill_debug_chatId_${skillId}`;
+
 const Render = () => {
   const { skillId } = useContextSelector(SkillDetailContext, (v) => v);
-  const [chatId, setChatId] = useState(() => getNanoid(24));
+  const [chatId, setChatId] = useState(() => {
+    const stored = localStorage.getItem(CHAT_ID_STORAGE_KEY(skillId));
+    if (stored) return stored;
+    const newId = getNanoid(24);
+    localStorage.setItem(CHAT_ID_STORAGE_KEY(skillId), newId);
+    return newId;
+  });
 
   const chatRecordProviderParams = useMemo(
     () => ({
@@ -87,8 +95,10 @@ const Render = () => {
   );
 
   const restartChat = useCallback(() => {
-    setChatId(getNanoid(24));
-  }, []);
+    const newId = getNanoid(24);
+    localStorage.setItem(CHAT_ID_STORAGE_KEY(skillId), newId);
+    setChatId(newId);
+  }, [skillId]);
 
   const skillFetchFn = useCallback(
     (data: LinkedPaginationProps<GetChatRecordsProps>) =>

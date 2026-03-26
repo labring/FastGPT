@@ -7,6 +7,8 @@ import type {
 } from '@fastgpt/global/core/agentSkills/api';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 async function handler(
   req: ApiRequestProps<{}, GetSkillDetailQuery>
@@ -25,6 +27,20 @@ async function handler(
     per: ReadPermissionVal
   });
 
+  const appCount = await MongoApp.countDocuments({
+    deleteTime: null,
+    modules: {
+      $elemMatch: {
+        inputs: {
+          $elemMatch: {
+            key: NodeInputKeyEnum.skills,
+            'value.skillId': skill._id.toString()
+          }
+        }
+      }
+    }
+  });
+
   return {
     _id: skill._id,
     source: skill.source,
@@ -41,7 +57,8 @@ async function handler(
     tmbId: skill.tmbId,
     createTime: skill.createTime?.toISOString() || new Date().toISOString(),
     updateTime: skill.updateTime?.toISOString() || new Date().toISOString(),
-    permission
+    permission,
+    appCount
   };
 }
 
