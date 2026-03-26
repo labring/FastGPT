@@ -40,7 +40,7 @@ const LoginModal = ({ onSuccess }: LoginModalProps) => {
         flexDirection={'column'}
         alignItems={'center'}
         justifyContent={'center'}
-        bg={[`url(${getWebReqUrl('/icon/login-bg-phone2.svg')}) no-repeat`, 'white']}
+        bg={[`url(${getWebReqUrl('/icon/login-bg-phone2.svg')}) no-repeat, white`, 'white']}
         backgroundSize={'cover'}
         minH={'100%'}
       >
