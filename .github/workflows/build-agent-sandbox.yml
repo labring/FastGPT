@@ -50,7 +50,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: projects/agent-sandbox
           file: projects/agent-sandbox/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
@@ -173,7 +173,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: projects/volume-manager
           file: projects/volume-manager/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
