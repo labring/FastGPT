@@ -63,6 +63,10 @@ export const useNodeTemplates = () => {
             ) {
               return false;
             }
+            // 循环终止仅在循环体画布内通过快捷入口添加，不在全局节点列表展示
+            if (item.flowNodeType === FlowNodeTypeEnum.loopEnd) {
+              return false;
+            }
             return true;
           })
           .map<NodeTemplateListItemType>((item) => ({

@@ -17,7 +17,7 @@ const SaveAndPublishModal = ({
 }: {
   onClose: () => void;
   isLoading: boolean;
-  onClickSave: (data: { isPublish: boolean; versionName: string }) => Promise<void>;
+  onClickSave: (data: { isPublish: boolean; versionName: string }) => Promise<boolean | void>;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast({
@@ -69,7 +69,8 @@ const SaveAndPublishModal = ({
         <Button
           isLoading={isLoading}
           onClick={handleSubmit(async (data) => {
-            await onClickSave({ ...data, isPublish: true });
+            const ok = await onClickSave({ ...data, isPublish: true });
+            if (ok === false) return;
             toast({
               status: 'success',
               title: t('app:publish_success'),

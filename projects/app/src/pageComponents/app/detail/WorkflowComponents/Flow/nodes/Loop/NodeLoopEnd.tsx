@@ -16,6 +16,7 @@ import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
@@ -24,6 +25,12 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.object]: WorkflowIOValueTypeEnum.arrayObject,
   [WorkflowIOValueTypeEnum.any]: WorkflowIOValueTypeEnum.arrayAny
 };
+
+const menuForbid = {
+  copy: true,
+  delete: true,
+  debug: true
+} as const;
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
@@ -37,9 +44,8 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs]
   );
 
-  // Get loopEnd input value type
   const valueType = useMemo(() => {
-    if (!inputItem) return;
+    if (!inputItem?.value?.length) return;
 
     const targetId = inputItem.value[0];
 
@@ -61,11 +67,20 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     if (!valueType) return;
 
     const parentNode = getNodeById(parentNodeId);
-    const parentNodeOutput = parentNode?.outputs.find(
+    if (
+      !parentNode ||
+      parentNode.flowNodeType === FlowNodeTypeEnum.loopPro ||
+      (parentNode.flowNodeType !== FlowNodeTypeEnum.loop &&
+        parentNode.flowNodeType !== FlowNodeTypeEnum.batch)
+    ) {
+      return;
+    }
+
+    const parentNodeOutput = parentNode.outputs.find(
       (output) => output.key === NodeOutputKeyEnum.loopArray
     );
 
-    if (parentNode && parentNodeOutput) {
+    if (parentNodeOutput) {
       onChangeNode({
         nodeId: parentNode.nodeId,
         type: 'updateOutput',
@@ -78,23 +93,41 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
-  const intro = data.intro && String(data.intro).trim() ? data.intro : 'workflow:loop_end_intro';
+  const parentForStyle = getNodeById(parentNodeId);
+  const isUnderLoopPro = parentForStyle?.flowNodeType === FlowNodeTypeEnum.loopPro;
+  const isUnderBatchOrLoop =
+    parentForStyle?.flowNodeType === FlowNodeTypeEnum.loop ||
+    parentForStyle?.flowNodeType === FlowNodeTypeEnum.batch;
+
+  const displayName = isUnderBatchOrLoop ? t('workflow:loop_graph_end') : t('workflow:loop_end');
+  const intro =
+    data.intro && String(data.intro).trim()
+      ? data.intro
+      : isUnderBatchOrLoop
+        ? 'workflow:loop_graph_end_intro'
+        : 'workflow:loop_end_intro';
+
+  const avatar = isUnderLoopPro ? 'core/workflow/template/loopProEnd' : data.avatar;
+  const avatarLinear = data.avatarLinear;
+  const colorSchema = isUnderLoopPro ? 'workflowLoop' : data.colorSchema;
 
   return (
     <NodeCard
       selected={selected}
       {...data}
+      name={displayName}
       intro={intro}
       w={'420px'}
-      menuForbid={{
-        copy: true,
-        delete: true,
-        debug: true
-      }}
+      avatar={avatar}
+      avatarLinear={avatarLinear}
+      colorSchema={colorSchema}
+      menuForbid={menuForbid}
     >
-      <Box px={4} pb={4} pt={2}>
-        {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
-      </Box>
+      {isUnderBatchOrLoop && inputItem ? (
+        <Box px={4} pb={4} pt={2}>
+          <Reference item={inputItem} nodeId={nodeId} />
+        </Box>
+      ) : null}
     </NodeCard>
   );
 };

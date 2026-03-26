@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getNodeAllSource, filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
+import {
+  getNodeAllSource,
+  filterWorkflowNodeOutputsByType,
+  resolveReferenceListNodeAvatar
+} from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -61,26 +65,34 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 
 export const useReference = ({
   nodeId,
-  valueType = WorkflowIOValueTypeEnum.any
+  valueType = WorkflowIOValueTypeEnum.any,
+  /** 仅列出该父节点下子画布内的节点（如 loop_pro 自定义输出引用） */
+  restrictToWorkflowParentId
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
+  restrictToWorkflowParentId?: string;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById, systemConfigNode, getNodeList } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   // 获取可选的变量列表
   const referenceList = useMemoEnhance(() => {
-    const sourceNodes = getNodeAllSource({
-      nodeId,
-      systemConfigNode,
-      getNodeById,
-      edges: edges,
-      chatConfig: appDetail.chatConfig,
-      t
-    });
+    const sourceNodes = restrictToWorkflowParentId
+      ? getNodeList().filter((n) => n.parentNodeId === restrictToWorkflowParentId)
+      : getNodeAllSource({
+          nodeId,
+          systemConfigNode,
+          getNodeById,
+          edges: edges,
+          chatConfig: appDetail.chatConfig,
+          t
+        });
 
     const isArray = valueType?.includes('array');
 
@@ -90,7 +102,11 @@ export const useReference = ({
         return {
           label: (
             <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
+              <Avatar
+                src={resolveReferenceListNodeAvatar(node, getNodeById)}
+                w={isArray ? '1rem' : '1.05rem'}
+                borderRadius={'xs'}
+              />
               <Box ml={1}>{t(node.name as any)}</Box>
             </Flex>
           ),
@@ -114,7 +130,17 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail.chatConfig, t, valueType]);
+  }, [
+    restrictToWorkflowParentId,
+    getNodeList,
+    nodeId,
+    systemConfigNode,
+    getNodeById,
+    edges,
+    appDetail.chatConfig,
+    t,
+    valueType
+  ]);
 
   return {
     referenceList
@@ -152,7 +178,9 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const popDirection = useMemo(() => {
     const node = getNodeById(nodeId);
     if (!node) return 'bottom';
-    return [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(node.flowNodeType)
+    return [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loopPro].includes(
+      node.flowNodeType
+    )
       ? 'top'
       : 'bottom';
   }, [nodeId, getNodeById]);

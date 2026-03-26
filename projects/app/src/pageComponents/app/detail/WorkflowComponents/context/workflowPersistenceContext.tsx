@@ -89,12 +89,15 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
    * 1. 手动调用
    * 2. 离开页面前
    */
-  const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
+  const flowData2StoreDataAndCheck = useContextSelector(
+    WorkflowUtilsContext,
+    (v) => v.flowData2StoreDataAndCheck
+  );
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const autoSaveFn = useCallback(async () => {
     if (isSaved || !leaveSaveSign.current) return;
     console.log('Leave auto save');
-    const data = flowData2StoreData();
+    const data = flowData2StoreDataAndCheck(true, { strictLoopProCondition: true });
     if (!data || data.nodes.length === 0) return;
     await onSaveApp({
       ...data,
@@ -102,7 +105,7 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
       chatConfig: appDetail.chatConfig,
       autoSave: true
     });
-  }, [appDetail.chatConfig, flowData2StoreData, isSaved, onSaveApp]);
+  }, [appDetail.chatConfig, flowData2StoreDataAndCheck, isSaved, onSaveApp]);
 
   // 页面关闭前自动保存
   useUnmount(() => {

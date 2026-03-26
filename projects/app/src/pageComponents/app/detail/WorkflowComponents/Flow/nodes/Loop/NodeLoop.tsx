@@ -1,22 +1,32 @@
 /*
-  The loop node has controllable width and height properties, which serve as the parent node of loopFlow.
-  When the childNodes of loopFlow change, it automatically calculates the rectangular width, height, and position of the childNodes, 
-  thereby further updating the width and height properties of the loop node.
+  loop / batch / loopPro 父节点：共用本组件；子画布尺寸与输入区逻辑按 flowNodeType 分支。
 */
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Background, type NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
 import { useTranslation } from 'next-i18next';
 import RenderInput from '../render/RenderInput';
-import { Box } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  Text,
+  VStack
+} from '@chakra-ui/react';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
 import {
   ArrayTypeMap,
   NodeInputKeyEnum,
+  NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -38,10 +48,16 @@ import { useSize } from 'ahooks';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowLayoutContext } from '../../../context/workflowComputeContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import CatchError from '../render/RenderOutput/CatchError';
+import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+
+const loopProBodyBg = 'radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px)';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, isFolded, flowNodeType } = data;
+  const { nodeId, inputs, outputs, isFolded, flowNodeType, catchError } = data;
+  const isLoopPro = flowNodeType === FlowNodeTypeEnum.loopPro;
+
   const { getNodeById, nodeIds, nodeAmount, getNodeList, systemConfigNode } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
@@ -52,6 +68,23 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     WorkflowLayoutContext,
     (v) => v.resetParentNodeSizeAndPosition
   );
+  const { splitOutput } = useContextSelector(WorkflowUtilsContext, (v) => v);
+  const { successOutputs, errorOutputs } = useMemoEnhance(
+    () => splitOutput(outputs),
+    [splitOutput, outputs]
+  );
+
+  const displayOutputs = useMemo(
+    () =>
+      successOutputs.filter(
+        (o) => o.key !== NodeOutputKeyEnum.rawResponse && o.key !== NodeOutputKeyEnum.loopArray
+      ),
+    [successOutputs]
+  );
+
+  const loopProMode =
+    (inputs.find((i) => i.key === NodeInputKeyEnum.loopProMode)?.value as string) ?? 'array';
+
   const computedResult = useMemoEnhance(() => {
     return {
       nodeWidth: Math.round(
@@ -74,9 +107,8 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
   const loopNodeInputHeight = computedResult.loopNodeInputHeight ?? Input_Template_LOOP_NODE_OFFSET;
 
-  // Update array input type
-  // Computed the reference value type
   const newValueType = useMemo(() => {
+    if (isLoopPro && loopProMode !== 'array') return WorkflowIOValueTypeEnum.arrayAny;
     if (!loopInputArray) return WorkflowIOValueTypeEnum.arrayAny;
     const value = loopInputArray.value as ReferenceArrayValueType;
 
@@ -88,19 +120,29 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       chatConfig: appDetail.chatConfig
     });
 
-    const valueType = ((value) => {
-      if (value?.[0] === VARIABLE_NODE_ID) {
-        return globalVariables.find((item) => item.key === value[1])?.valueType;
+    const valueType = ((v) => {
+      if (v?.[0] === VARIABLE_NODE_ID) {
+        return globalVariables.find((item) => item.key === v[1])?.valueType;
       } else {
-        const node = getNodeById(value?.[0]);
-        const output = node?.outputs.find((output) => output.id === value?.[1]);
+        const node = getNodeById(v?.[0]);
+        const output = node?.outputs.find((output) => output.id === v?.[1]);
         return output?.valueType;
       }
     })(value[0]);
     return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
-  }, [appDetail.chatConfig, getNodeById, loopInputArray, nodeIds, systemConfigNode]);
+  }, [
+    appDetail.chatConfig,
+    getNodeById,
+    isLoopPro,
+    loopInputArray,
+    loopProMode,
+    nodeIds,
+    systemConfigNode
+  ]);
+
   useEffect(() => {
     if (!loopInputArray) return;
+    if (isLoopPro && loopProMode !== 'array') return;
     onChangeNode({
       nodeId,
       type: 'updateInput',
@@ -110,9 +152,8 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         valueType: newValueType
       }
     });
-  }, [loopInputArray, newValueType, nodeId, onChangeNode]);
+  }, [isLoopPro, loopInputArray, loopProMode, newValueType, nodeId, onChangeNode]);
 
-  // Normalize batch numeric inputs to keep UI and backend behavior consistent.
   useEffect(() => {
     if (flowNodeType !== FlowNodeTypeEnum.batch) return;
 
@@ -174,7 +215,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       const list = concurrencyInput.renderTypeList || [];
       const matches =
         list.length === expectedConcurrency.length &&
-        list.every((t, i) => t === expectedConcurrency[i]);
+        list.every((ty, i) => ty === expectedConcurrency[i]);
       if (!matches) {
         onChangeNode({
           nodeId,
@@ -212,12 +253,46 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [flowNodeType, inputs, nodeId, onChangeNode]);
 
-  // Update childrenNodeIdList
+  const loopProModeInput = useMemoEnhance(
+    () => inputs.find((i) => i.key === NodeInputKeyEnum.loopProMode),
+    [inputs]
+  );
+
+  const modeOptions = useMemo(
+    () =>
+      [
+        {
+          value: 'array' as const,
+          title: t('workflow:loop_pro_mode_array'),
+          desc: t('workflow:loop_pro_mode_array_desc'),
+          icon: 'core/workflow/inputType/array' as const
+        },
+        {
+          value: 'condition' as const,
+          title: t('workflow:loop_pro_mode_condition'),
+          desc: t('workflow:loop_pro_mode_condition_desc'),
+          icon: 'core/workflow/inputType/ifloop' as const
+        }
+      ] as const,
+    [t]
+  );
+
+  const visibleInputs = useMemo(() => {
+    if (!isLoopPro) return inputs;
+    return inputs.filter((input) => {
+      if (input.key === NodeInputKeyEnum.loopProMode) return false;
+      if (loopProMode === 'condition' && input.key === NodeInputKeyEnum.loopInputArray)
+        return false;
+      return true;
+    });
+  }, [inputs, isLoopPro, loopProMode]);
+
   const childrenNodeIdList = useMemoEnhance(() => {
     return getNodeList()
       .filter((node) => node.parentNodeId === nodeId)
       .map((node) => node.nodeId);
   }, [nodeId, getNodeList, nodeAmount]);
+
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -231,7 +306,6 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     resetParentNodeSizeAndPosition(nodeId);
   }, [childrenNodeIdList, nodeId, onChangeNode, resetParentNodeSizeAndPosition]);
 
-  // Update loop node offset value
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const size = useSize(inputBoxRef);
   useEffect(() => {
@@ -254,13 +328,201 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size?.height]);
 
+  if (isLoopPro) {
+    const outputCardProps = {
+      bg: '#FBFBFC',
+      borderWidth: '1px',
+      borderColor: '#F0F1F6',
+      borderRadius: '8px',
+      p: 4,
+      gap: 4
+    } as const;
+
+    return (
+      <NodeCard
+        selected={selected}
+        maxW="full"
+        menuForbid={{ copy: true }}
+        {...data}
+        avatar="core/workflow/template/loopPro"
+        avatarLinear="core/workflow/template/loopProLinear"
+        colorSchema="workflowLoop"
+      >
+        <Container position={'relative'} flex={1}>
+          <IOTitle text={t('common:Input')} />
+
+          <Box mb={6} maxW={'460px'} ref={inputBoxRef}>
+            <Box mb={4}>
+              <FormLabel required fontWeight={'medium'} color={'myGray.600'}>
+                {t('workflow:loop_pro_mode')}
+              </FormLabel>
+              <Box mt={2} className="nodrag">
+                <Menu closeOnSelect strategy="fixed" placement="bottom-start" autoSelect={false}>
+                  <MenuButton
+                    as={Button}
+                    type="button"
+                    variant="whitePrimaryOutline"
+                    size="lg"
+                    fontSize="sm"
+                    fontWeight="normal"
+                    px={3}
+                    w="100%"
+                    h="auto"
+                    rightIcon={
+                      <MyIcon
+                        name="core/chat/chevronDown"
+                        w="1rem"
+                        color="myGray.500"
+                        flexShrink={0}
+                      />
+                    }
+                    iconSpacing={2}
+                    _active={{ transform: 'none' }}
+                    _hover={{ borderColor: 'primary.500' }}
+                    _expanded={{
+                      borderColor: 'primary.600',
+                      color: 'primary.700',
+                      boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                      bg: 'white !important'
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <Box w="100%" textAlign="left">
+                      <Flex alignItems="center" gap={3} minW={0}>
+                        <MyIcon
+                          name={
+                            (modeOptions.find((o) => o.value === loopProMode) ?? modeOptions[0])
+                              .icon
+                          }
+                          w={'16px'}
+                          h={'16px'}
+                          flexShrink={0}
+                        />
+                        <Text
+                          fontSize="sm"
+                          fontWeight="normal"
+                          color="myGray.900"
+                          noOfLines={1}
+                          flex={1}
+                          minW={0}
+                        >
+                          {
+                            (modeOptions.find((o) => o.value === loopProMode) ?? modeOptions[0])
+                              .title
+                          }
+                        </Text>
+                      </Flex>
+                    </Box>
+                  </MenuButton>
+                  <MenuList
+                    minW="280px"
+                    maxW="460px"
+                    px="6px"
+                    py="6px"
+                    borderRadius="md"
+                    border="1px solid #fff"
+                    boxShadow={
+                      '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+                    }
+                    zIndex={1500}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {modeOptions.map((opt) => {
+                      const modeSelected = loopProMode === opt.value;
+                      return (
+                        <MenuItem
+                          key={opt.value}
+                          alignItems="flex-start"
+                          borderRadius="4px"
+                          py={2}
+                          px={3}
+                          mb={0}
+                          bg={modeSelected ? 'rgba(17, 24, 36, 0.05)' : 'transparent'}
+                          _hover={{ bg: modeSelected ? 'rgba(17, 24, 36, 0.08)' : 'myGray.50' }}
+                          _focus={{ bg: modeSelected ? 'rgba(17, 24, 36, 0.08)' : 'myGray.50' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!loopProModeInput || opt.value === loopProMode) return;
+                            onChangeNode({
+                              nodeId,
+                              type: 'updateInput',
+                              key: NodeInputKeyEnum.loopProMode,
+                              value: {
+                                ...loopProModeInput,
+                                value: opt.value
+                              }
+                            });
+                          }}
+                        >
+                          <Flex alignItems="flex-start" gap={3} w="100%">
+                            <Box pt="2px">
+                              <MyIcon name={opt.icon} w="16px" h="16px" />
+                            </Box>
+                            <VStack align="stretch" spacing={0} flex={1} minW={0}>
+                              <Text
+                                fontSize="sm"
+                                fontWeight="medium"
+                                color={modeSelected ? 'primary.600' : 'myGray.900'}
+                                lineHeight="20px"
+                              >
+                                {opt.title}
+                              </Text>
+                              <Text fontSize="xs" color="#485264" lineHeight="18px">
+                                {opt.desc}
+                              </Text>
+                            </VStack>
+                          </Flex>
+                        </MenuItem>
+                      );
+                    })}
+                  </MenuList>
+                </Menu>
+              </Box>
+            </Box>
+
+            <RenderInput nodeId={nodeId} flowInputList={visibleInputs} />
+          </Box>
+
+          <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
+            {t('workflow:loop_body')}
+          </FormLabel>
+          <Box
+            flex={1}
+            position={'relative'}
+            border={'base'}
+            borderColor="rgba(13, 148, 136, 0.2)"
+            bg={'myGray.50'}
+            backgroundImage={loopProBodyBg}
+            backgroundSize="12px 12px"
+            rounded={'8px'}
+            {...(!isFolded && {
+              minW: nodeWidth,
+              minH: nodeHeight
+            })}
+          />
+        </Container>
+        <Container>
+          <Box {...outputCardProps}>
+            <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} mb={3} />
+            <RenderOutput
+              nodeId={nodeId}
+              flowOutputList={displayOutputs}
+              dynamicOutputReferenceScopeParentId={nodeId}
+            />
+          </Box>
+        </Container>
+        {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
+      </NodeCard>
+    );
+  }
+
   return (
     <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
         <IOTitle text={t('common:Input')} />
 
         <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
-          <RenderInput nodeId={nodeId} flowInputList={inputs} />
+          <RenderInput nodeId={nodeId} flowInputList={visibleInputs} />
         </Box>
 
         <>
@@ -279,9 +541,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               minW: nodeWidth,
               minH: nodeHeight
             })}
-          >
-            {/* <Background color="#A4A4A4" gap={60} size={3} /> */}
-          </Box>
+          />
         </>
       </Container>
       <Container>

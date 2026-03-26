@@ -40,7 +40,11 @@ import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loo
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -219,7 +223,10 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeList, getNodeById, nodeAmount } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
 
   const handleAddNode = useCallback(
@@ -274,12 +281,18 @@ const NodeTemplateList = ({
 
         const currentNode = getNodeById(handleParams?.nodeId);
         if (
-          [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(templateNode.flowNodeType) &&
+          [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loopPro].includes(
+            templateNode.flowNodeType
+          ) &&
           !!currentNode?.parentNodeId
         ) {
           toast({
             status: 'warning',
-            title: t('workflow:can_not_loop')
+            title: t(
+              templateNode.flowNodeType === FlowNodeTypeEnum.batch
+                ? 'workflow:can_not_nest'
+                : 'workflow:can_not_loop'
+            )
           });
           return;
         }
@@ -322,20 +335,38 @@ const NodeTemplateList = ({
 
         const newNodes = [newNode];
 
-        if ([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(templateNode.flowNodeType)) {
+        if (
+          [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loopPro].includes(
+            templateNode.flowNodeType
+          )
+        ) {
+          const isLoopPro = templateNode.flowNodeType === FlowNodeTypeEnum.loopPro;
+          const startTemplate = isLoopPro
+            ? LoopStartNode
+            : { ...LoopStartNode, name: 'workflow:loop_graph_start' as any };
+          // 子节点与父节点同属画布绝对坐标。loop/batch 与参考 Desktop/11/FastGPT 一致：开始偏左上，结束偏右下（纵向错开避免与宽约 420px 的开始重叠）
           const startNode = nodeTemplate2FlowNode({
-            template: LoopStartNode,
-            position: { x: position.x + 60, y: position.y + 280 },
+            template: startTemplate as any,
+            position: isLoopPro
+              ? { x: position.x + 60, y: position.y + 400 }
+              : { x: position.x + 60, y: position.y + 280 },
             parentNodeId: newNode.id,
             t
           });
+          const endTemplate = isLoopPro
+            ? LoopEndNode
+            : { ...LoopEndNode, name: 'workflow:loop_graph_end' as any };
           const endNode = nodeTemplate2FlowNode({
-            template: LoopEndNode,
-            position: { x: position.x + 420, y: position.y + 680 },
+            template: endTemplate as any,
+            position: isLoopPro
+              ? { x: position.x + 420, y: position.y + 800 }
+              : { x: position.x + 420, y: position.y + 680 },
             parentNodeId: newNode.id,
             t
           });
-
+          if (!isLoopPro) {
+            endNode.data.intro = t('workflow:loop_graph_end_intro');
+          }
           newNodes.push(startNode, endNode);
         }
 
@@ -370,7 +401,24 @@ const NodeTemplateList = ({
           return acc;
         }, {});
 
+        const hideInteractiveInBatchPopover = (() => {
+          if (!isPopover) return false;
+          const anchorId = handleParams?.nodeId;
+          if (!anchorId) return false;
+          const anchor = getNodeById(anchorId);
+          const parentId = anchor?.parentNodeId;
+          if (!parentId) return false;
+          const parent = getNodeById(parentId);
+          return parent?.flowNodeType === FlowNodeTypeEnum.batch;
+        })();
+
         templates.forEach((item) => {
+          if (
+            hideInteractiveInBatchPopover &&
+            item.templateType === FlowNodeTemplateTypeEnum.interactive
+          ) {
+            return;
+          }
           if (item.templateType && map[item.templateType]) {
             map[item.templateType].list.push({
               ...item,
@@ -380,16 +428,60 @@ const NodeTemplateList = ({
           }
         });
 
+        const loopEndInjectParentType = (() => {
+          if (!isPopover) return undefined;
+          const anchorId = handleParams?.nodeId;
+          if (!anchorId) return undefined;
+          const anchor = getNodeById(anchorId);
+          const parentId = anchor?.parentNodeId;
+          if (!parentId) return undefined;
+          const parent = getNodeById(parentId);
+          if (!parent || parent.flowNodeType !== FlowNodeTypeEnum.loopPro) {
+            return undefined;
+          }
+          return FlowNodeTypeEnum.loopPro;
+        })();
+
+        const groups = Object.entries(map)
+          .map(([type, { list, label }]) => ({
+            type,
+            label,
+            list
+          }))
+          .filter((item) => item.list.length > 0);
+
+        if (loopEndInjectParentType) {
+          const loopEndListAvatar = 'core/workflow/template/loopProEnd';
+          const loopEndItem: NodeTemplateListItemType = {
+            id: FlowNodeTypeEnum.loopEnd,
+            flowNodeType: FlowNodeTypeEnum.loopEnd,
+            templateType: LoopEndNode.templateType,
+            avatar: loopEndListAvatar,
+            name: t(LoopEndNode.name as any),
+            intro: t(LoopEndNode.intro as any)
+          };
+          const toolsGroup = groups.find((g) => g.type === FlowNodeTemplateTypeEnum.tools);
+          if (toolsGroup) {
+            const loopProIdx = toolsGroup.list.findIndex(
+              (item) => item.flowNodeType === FlowNodeTypeEnum.loopPro
+            );
+            const batchIdx = toolsGroup.list.findIndex(
+              (item) => item.flowNodeType === FlowNodeTypeEnum.batch
+            );
+            const insertAt =
+              loopProIdx >= 0
+                ? loopProIdx + 1
+                : batchIdx >= 0
+                  ? batchIdx + 1
+                  : toolsGroup.list.length;
+            toolsGroup.list.splice(insertAt, 0, loopEndItem);
+          }
+        }
+
         return [
           {
             label: '',
-            list: Object.entries(map)
-              .map(([type, { list, label }]) => ({
-                type,
-                label,
-                list
-              }))
-              .filter((item) => item.list.length > 0)
+            list: groups
           }
         ];
       }
@@ -412,7 +504,16 @@ const NodeTemplateList = ({
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
-  }, [templateType, templates, t, i18n.language]);
+  }, [
+    templateType,
+    templates,
+    t,
+    i18n.language,
+    isPopover,
+    handleParams?.nodeId,
+    getNodeById,
+    nodeAmount
+  ]);
 
   const NodeListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
     return (
