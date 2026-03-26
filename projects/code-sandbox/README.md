@@ -54,13 +54,13 @@ bun run test
 
 ```bash
 # 构建
-docker build -f projects/sandbox/Dockerfile -t fastgpt-sandbox .
+docker build -f projects/code-sandbox/Dockerfile -t fastgpt-code-sandbox .
 
 # 运行
 docker run -p 3000:3000 \
   -e SANDBOX_TOKEN=your-secret-token \
   -e SANDBOX_POOL_SIZE=20 \
-  fastgpt-sandbox
+  fastgpt-code-sandbox
 ```
 
 ## API
@@ -193,7 +193,7 @@ test/
 1. **安装包**：
 
 ```bash
-cd projects/sandbox
+cd projects/code-sandbox
 bun add <package-name>
 ```
 

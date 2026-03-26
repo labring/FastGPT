@@ -1,5 +1,5 @@
 {
-  "name": "sandbox",
+  "name": "code-sandbox",
   "version": "5.0.0",
   "description": "FastGPT Code Sandbox - Bun + Hono + 统一子进程模型",
   "author": "",

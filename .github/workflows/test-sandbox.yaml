@@ -2,7 +2,7 @@ name: 'Sandbox-Test'
 on:
   pull_request:
     paths:
-      - 'projects/sandbox/**'
+      - 'projects/code-sandbox/**'
   workflow_dispatch:
 
 permissions:
@@ -31,4 +31,4 @@ jobs:
         run: pnpm install
 
       - name: Run Unit Tests
-        run: pnpm --filter=sandbox test
+        run: pnpm --filter=code-sandbox test

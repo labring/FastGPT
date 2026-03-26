@@ -11,6 +11,14 @@ import {
   type ISandbox,
   type ResourceLimits
 } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  getOpenSandboxConnectionConfig,
+  getSealosConnectionConfig,
+  buildOpenSandboxCreateConfig,
+  getVolumeManagerConfig,
+  deleteSessionVolume,
+  type VolumeManagerResult
+} from './config';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { setCron } from '../../../common/system/cron';
 import { subMinutes } from 'date-fns';
@@ -32,66 +40,52 @@ export class SandboxClient {
   readonly provider: ISandbox;
 
   constructor(
-    props:
-      | {
-          sandboxId: string;
-        }
-      | UnionIdType,
-    opts: {
+    private readonly props: {
+      sandboxId: string;
+      appId?: string;
+      userId?: string;
+      chatId?: string;
+    },
+    private readonly opts: {
       resourceLimits?: ResourceLimits;
-    } = {}
-  ) {
-    if ('sandboxId' in props) {
-      this.sandboxId = props.sandboxId;
-    } else {
-      this.appId = props.appId;
-      this.userId = props.userId;
-      this.chatId = props.chatId;
-      this.sandboxId = generateSandboxId(this.appId, this.userId, this.chatId);
+      vmConfig?: VolumeManagerResult | undefined;
     }
+  ) {
+    this.sandboxId = props.sandboxId;
+    this.appId = props.appId;
+    this.userId = props.userId;
+    this.chatId = props.chatId;
 
     const providerName = env.AGENT_SANDBOX_PROVIDER;
 
-    const params = (() => {
-      if (providerName === 'sealosdevbox') {
-        if (!env.AGENT_SANDBOX_SEALOS_BASEURL || !env.AGENT_SANDBOX_SEALOS_TOKEN) {
-          throw new Error('AGENT_SANDBOX_SEALOS_BASEURL / AGENT_SANDBOX_SEALOS_TOKEN required');
-        }
-        return {
-          provider: 'sealosdevbox' as const,
-          config: {
-            baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL,
-            token: env.AGENT_SANDBOX_SEALOS_TOKEN,
-            sandboxId: this.sandboxId
-          },
-          createConfig: undefined
-        };
-      } else if (providerName === 'opensandbox') {
-        return {
-          provider: 'opensandbox' as const,
-          config: {
-            baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
-            token: env.AGENT_SANDBOX_OPENSANDBOX_TOKEN,
-            sandboxId: this.sandboxId
-          }
-        };
-      } else if (providerName === 'e2b') {
-        return {
-          provider: 'e2b' as const,
-          config: {
-            apiKey: env.AGENT_SANDBOX_E2B_API_KEY,
-            sandboxId: this.sandboxId
-          }
-        };
-      } else if (!providerName) {
-        throw new Error(
-          'AGENT_SANDBOX_PROVIDER is not configured. Please set it in your environment variables.'
-        );
-      } else {
-        throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
+    if (providerName === 'sealosdevbox') {
+      const config = getSealosConnectionConfig(this.sandboxId);
+      this.provider = createSandbox('sealosdevbox', config, undefined);
+    } else if (providerName === 'opensandbox') {
+      // volumes 在 ensureAvailable 中异步获取后重建 provider，此处用基础 createConfig
+      this.provider = createSandbox(
+        'opensandbox',
+        getOpenSandboxConnectionConfig({ sessionId: this.sandboxId }),
+        buildOpenSandboxCreateConfig({
+          resourceLimits: opts?.resourceLimits,
+          volumes: opts?.vmConfig?.volumes
+        })
+      );
+    } else if (providerName === 'e2b') {
+      if (!env.AGENT_SANDBOX_E2B_API_KEY) {
+        throw new Error('AGENT_SANDBOX_E2B_API_KEY required');
       }
-    })();
-    this.provider = createSandbox(params.provider, params.config, params.createConfig);
+      this.provider = createSandbox('e2b', {
+        apiKey: env.AGENT_SANDBOX_E2B_API_KEY,
+        sandboxId: this.sandboxId
+      });
+    } else if (!providerName) {
+      throw new Error(
+        'AGENT_SANDBOX_PROVIDER is not configured. Please set it in your environment variables.'
+      );
+    } else {
+      throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
+    }
   }
 
   async ensureAvailable() {
@@ -106,6 +100,18 @@ export class SandboxClient {
           ...(this.appId ? { appId: this.appId } : {}),
           ...(this.userId ? { userId: this.userId } : {}),
           ...(this.chatId ? { chatId: this.chatId } : {}),
+          storage: this.opts?.vmConfig?.storage,
+          ...(this.opts?.resourceLimits && {
+            limit: {
+              cpuCount: this.opts?.resourceLimits?.cpuCount,
+              memoryMiB: this.opts?.resourceLimits?.memoryMiB,
+              diskGiB: this.opts?.resourceLimits?.diskGiB
+            }
+          }),
+          metadata: {
+            sessionKey: this.sandboxId,
+            volumeEnabled: !!this.opts?.vmConfig
+          },
           createdAt: new Date()
         }
       },
@@ -142,6 +148,9 @@ export class SandboxClient {
 
   async delete() {
     await this.provider.delete();
+    await deleteSessionVolume(this.sandboxId).catch((err) => {
+      logger.error('Failed to delete sandbox volume', { sandboxId: this.sandboxId, error: err });
+    });
     await MongoSandboxInstance.deleteOne({ sandboxId: this.sandboxId });
   }
 
@@ -153,6 +162,30 @@ export class SandboxClient {
     );
   }
 }
+
+export const getSandboxClient = async (
+  props:
+    | {
+        sandboxId: string;
+      }
+    | UnionIdType,
+  opts: {
+    resourceLimits?: ResourceLimits;
+  } = {}
+) => {
+  const sandboxId = (() => {
+    if ('sandboxId' in props) {
+      return props.sandboxId;
+    } else {
+      return generateSandboxId(props.appId, props.userId, props.chatId);
+    }
+  })();
+  const vmConfig = await getVolumeManagerConfig(sandboxId);
+
+  const sandbox = new SandboxClient({ ...props, sandboxId }, { ...opts, vmConfig });
+  await sandbox.ensureAvailable();
+  return sandbox;
+};
 
 // ==== Delete Sandboxes ====
 export const deleteSandboxesByChatIds = async ({
@@ -166,15 +199,13 @@ export const deleteSandboxesByChatIds = async ({
   if (!instances.length) return;
 
   await Promise.allSettled(
-    instances.map((doc) =>
-      new SandboxClient({
-        sandboxId: doc.sandboxId
-      })
-        .delete()
-        .catch((err) => {
-          logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
-        })
-    )
+    instances.map(async (doc) => {
+      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
+      await client.delete().catch((err) => {
+        logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
+        return Promise.reject(err);
+      });
+    })
   );
 };
 export const deleteSandboxesByAppId = async (appId: string) => {
@@ -182,11 +213,12 @@ export const deleteSandboxesByAppId = async (appId: string) => {
   if (!instances.length) return;
 
   await Promise.allSettled(
-    instances.map((doc) =>
-      new SandboxClient({
-        sandboxId: doc.sandboxId
-      }).delete()
-    )
+    instances.map(async (doc) => {
+      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
+      await client.delete().catch((err) => {
+        logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
+      });
+    })
   );
 };
 
@@ -201,14 +233,11 @@ export const cronJob = async () => {
 
     logger.info('Found running sandboxes inactive > 5 min', { count: instances.length });
 
-    await batchRun(instances, (doc) =>
-      new SandboxClient({
-        sandboxId: doc.sandboxId
-      })
-        .stop()
-        .catch((error) => {
-          logger.error('Failed to stop sandbox', { sandboxId: doc.sandboxId, error });
-        })
-    );
+    await batchRun(instances, async (doc) => {
+      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
+      await client.stop().catch((err) => {
+        logger.error('Failed to stop sandbox', { sandboxId: doc.sandboxId, error: err });
+      });
+    });
   });
 };

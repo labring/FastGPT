@@ -1,13 +1,13 @@
-name: Build fastgpt-sandbox images
+name: Build fastgpt-code-sandbox images
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'projects/sandbox/**'
+      - 'projects/code-sandbox/**'
     tags:
       - 'v*'
 jobs:
-  build-fastgpt-sandbox-images:
+  build-fastgpt-code-sandbox-images:
     permissions:
       packages: write
       contents: read
@@ -45,23 +45,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_NAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build for ${{ matrix.arch }}
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: projects/sandbox/Dockerfile
+          file: projects/code-sandbox/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=fastgpt-sandbox image
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox",push-by-digest=true,push=true
+            org.opencontainers.image.description=fastgpt-code-sandbox image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -74,18 +69,18 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-fastgpt-sandbox-${{ github.sha }}-${{ matrix.arch }}
+          name: digests-fastgpt-code-sandbox-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  release-fastgpt-sandbox-images:
+  release-fastgpt-code-sandbox-images:
     permissions:
       packages: write
       contents: read
       attestations: write
       id-token: write
-    needs: build-fastgpt-sandbox-images
+    needs: build-fastgpt-code-sandbox-images
     runs-on: ubuntu-24.04
     steps:
       - name: Login to GitHub Container Registry
@@ -100,17 +95,11 @@ jobs:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_NAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-fastgpt-sandbox-${{ github.sha }}-*
+          pattern: digests-fastgpt-code-sandbox-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -119,27 +108,23 @@ jobs:
       - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
           else
-            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
-            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-code-sandbox:latest" >> $GITHUB_ENV
           fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
-              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox@sha256:%s ' *)
+              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox@sha256:%s ' *)
             sleep 5
           done

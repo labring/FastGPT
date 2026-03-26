@@ -44,6 +44,12 @@ const SandboxInstanceSchema = new Schema({
   },
   limit: {
     type: SandboxLimitSchema.shape
+  },
+  storage: {
+    type: Schema.Types.Mixed
+  },
+  metadata: {
+    type: Schema.Types.Mixed
   }
 });
 
