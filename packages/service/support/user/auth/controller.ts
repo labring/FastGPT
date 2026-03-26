@@ -1,8 +1,9 @@
-import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { MongoUserAuth } from './schema';
 import { i18nT } from '../../../../web/i18n/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { z } from 'zod';
 
 export const addAuthCode = async ({
   key,
@@ -33,15 +34,13 @@ export const addAuthCode = async ({
   );
 };
 
-export const authCode = async ({
-  key,
-  type,
-  code
-}: {
-  key: string;
-  type: `${UserAuthTypeEnum}`;
-  code: string;
-}) => {
+const authCodeSchema = z.object({
+  key: z.string(),
+  type: z.enum(UserAuthTypeEnum),
+  code: z.string()
+});
+export const authCode = async (props: z.infer<typeof authCodeSchema>) => {
+  const { key, type, code } = authCodeSchema.parse(props);
   return mongoSessionRun(async (session) => {
     const result = await MongoUserAuth.findOne(
       {
