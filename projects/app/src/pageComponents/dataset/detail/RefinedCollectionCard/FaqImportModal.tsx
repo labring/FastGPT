@@ -24,6 +24,8 @@ import { Trans } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
 import ExcelJS from 'exceljs';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const FaqImportModal = ({
   onFinish,
@@ -37,6 +39,15 @@ const FaqImportModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+
+  const maxCount =
+    feConfigs?.uploadFileMaxAmount || teamPlanStatus?.standardConstants?.maxUploadFileCount || 1000;
+  const maxSize =
+    (feConfigs?.uploadFileMaxSize ?? teamPlanStatus?.standardConstants?.maxUploadFileSize ?? 500) *
+    1024 *
+    1024;
 
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{
@@ -232,8 +243,8 @@ const FaqImportModal = ({
 
             <FileSelector
               showFaqTip={true}
-              maxCount={15}
-              maxSize={50 * 1024 * 1024}
+              maxCount={maxCount}
+              maxSize={maxSize}
               fileType=".csv,.xlsx,.xls"
               selectFiles={selectFiles}
               setSelectFiles={setSelectFiles}
