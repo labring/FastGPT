@@ -22,8 +22,17 @@ import {
   postUpdateSkill,
   postCopySkill,
   getAppsBySkillId,
-  getSkillFolderList
+  getSkillFolderList,
+  resumeInheritPer,
+  postChangeSkillOwner
 } from '@/web/core/skill/api';
+import {
+  getSkillCollaboratorList,
+  postUpdateSkillCollaborators,
+  deleteSkillCollaborator
+} from '@/web/core/skill/collaborator';
+import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/constant';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { AppsBySkillIdItem } from '@fastgpt/global/core/agentSkills/api';
@@ -484,31 +493,37 @@ const List = () => {
       )}
       {!!selectedSkill && (
         <ConfigPerModal
-          // TODO: 技能权限相关配置
+          onChangeOwner={(tmbId: string) =>
+            postChangeSkillOwner({
+              skillId: selectedSkill._id,
+              ownerId: tmbId
+            }).then(() => loadSkills())
+          }
+          hasParent={!!selectedSkill.parentId}
           refetchResource={loadSkills}
+          isInheritPermission={selectedSkill.inheritPermission}
+          resumeInheritPermission={() =>
+            resumeInheritPer(selectedSkill._id).then(() => loadSkills())
+          }
           avatar={selectedSkill.avatar}
           name={selectedSkill.name}
-          managePer={
-            {
-              // TODO: 从技能数据中获取权限信息，使用正确的类型
-              defaultRole: 0,
-              permission: {} as any,
-              onGetCollaboratorList: () => {
-                // TODO: 获取协作者列表
-                return Promise.resolve({ clbs: [], parentClbs: [] } as any);
-              },
-              roleList: [] as any,
-              onUpdateCollaborators: () => {
-                // TODO: 更新协作者
-                return Promise.resolve();
-              },
-              onDelOneCollaborator: () => {
-                // TODO: 删除协作者
-                return Promise.resolve();
-              },
-              refreshDeps: []
-            } as any
-          }
+          managePer={{
+            defaultRole: ReadRoleVal,
+            permission: selectedSkill.permission,
+            onGetCollaboratorList: () => getSkillCollaboratorList(selectedSkill._id),
+            roleList: SkillRoleList,
+            onUpdateCollaborators: (props) =>
+              postUpdateSkillCollaborators({
+                ...props,
+                skillId: selectedSkill._id
+              }),
+            onDelOneCollaborator: (props) =>
+              deleteSkillCollaborator({
+                ...props,
+                skillId: selectedSkill._id
+              }),
+            refreshDeps: [selectedSkill._id, selectedSkill.inheritPermission]
+          }}
           onClose={() => setEditPerSkillId(undefined)}
         />
       )}

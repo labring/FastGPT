@@ -238,7 +238,7 @@
   "permission_appCreate_tip": "Can create applications in the root directory (creation permissions in folders are controlled by the folder)",
   "permission_datasetCreate": "Create Knowledge Base",
   "permission_datasetCreate_Tip": "Can create knowledge bases in the root directory (creation permissions in folders are controlled by the folder)",
-  "permission_skillCreate": "Create Skills",
+  "permission_skillCreate": "Create Skill",
   "permission_skillCreate_Tip": "Can create skills in the root directory (creation permissions in folders are controlled by the folder)",
   "permission_manage": "Admin",
   "permission_manage_tip": "Can manage members, create groups, manage all groups, and assign permissions to groups and members",

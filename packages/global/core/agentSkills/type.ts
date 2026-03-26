@@ -105,7 +105,8 @@ export const AgentSkillListItemSchema = z.object({
 export type AgentSkillListItemType = z.infer<typeof AgentSkillListItemSchema>;
 
 export const AgentSkillDetailSchema = AgentSkillSchema.extend({
-  appCount: z.number().optional()
+  appCount: z.number().optional(),
+  permission: z.any().optional()
 });
 export type AgentSkillDetailType = z.infer<typeof AgentSkillDetailSchema>;
 

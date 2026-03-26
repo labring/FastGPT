@@ -55,8 +55,7 @@ const SkillPageContent = () => {
     });
   };
 
-  // TODO: 待修改为 skill 权限
-  const hasCreatePer = userInfo?.team.permission.hasAppCreatePer;
+  const hasCreatePer = userInfo?.team.permission.hasSkillCreatePer;
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

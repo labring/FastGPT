@@ -14,8 +14,17 @@ import {
   deleteSkill,
   postUpdateSkill,
   exportSkill,
-  postSaveDeploySkill
+  postSaveDeploySkill,
+  resumeInheritPer,
+  postChangeSkillOwner
 } from '@/web/core/skill/api';
+import {
+  getSkillCollaboratorList,
+  postUpdateSkillCollaborators,
+  deleteSkillCollaborator
+} from '@/web/core/skill/collaborator';
+import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/constant';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 
@@ -267,20 +276,37 @@ const Header = () => {
       {/* 权限弹窗 */}
       {showPermModal && (
         <ConfigPerModal
-          refetchResource={() => {}}
+          onChangeOwner={(tmbId: string) =>
+            postChangeSkillOwner({
+              skillId: skillDetail._id,
+              ownerId: tmbId
+            }).then(() => refreshSkillDetail())
+          }
+          hasParent={!!skillDetail.parentId}
+          refetchResource={refreshSkillDetail}
+          isInheritPermission={skillDetail.inheritPermission}
+          resumeInheritPermission={() =>
+            resumeInheritPer(skillDetail._id).then(() => refreshSkillDetail())
+          }
           avatar={skillDetail.avatar}
           name={skillDetail.name}
-          managePer={
-            {
-              defaultRole: 0,
-              permission: {} as any,
-              onGetCollaboratorList: () => Promise.resolve({ clbs: [], parentClbs: [] } as any),
-              roleList: [] as any,
-              onUpdateCollaborators: () => Promise.resolve(),
-              onDelOneCollaborator: () => Promise.resolve(),
-              refreshDeps: []
-            } as any
-          }
+          managePer={{
+            defaultRole: ReadRoleVal,
+            permission: skillDetail.permission,
+            onGetCollaboratorList: () => getSkillCollaboratorList(skillDetail._id),
+            roleList: SkillRoleList,
+            onUpdateCollaborators: (props) =>
+              postUpdateSkillCollaborators({
+                ...props,
+                skillId: skillDetail._id
+              }),
+            onDelOneCollaborator: (props) =>
+              deleteSkillCollaborator({
+                ...props,
+                skillId: skillDetail._id
+              }),
+            refreshDeps: [skillDetail._id, skillDetail.inheritPermission]
+          }}
           onClose={() => setShowPermModal(false)}
         />
       )}

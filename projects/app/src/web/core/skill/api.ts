@@ -23,7 +23,9 @@ import type {
   SkillDebugRecordsBody,
   ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
-  ListSkillVersionsResponse
+  ListSkillVersionsResponse,
+  SwitchSkillVersionBody,
+  UpdateSkillVersionBody
 } from '@fastgpt/global/core/agentSkills/api';
 import type { getChatRecordsResponse } from '@/pages/api/core/chat/record/getRecords_v2';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
@@ -160,3 +162,19 @@ export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>
   POST<ListSkillVersionsResponse>('/core/agentSkills/version/list', data);
+
+/** 切换 Skill 当前激活版本 */
+export const postSwitchSkillVersion = (data: SwitchSkillVersionBody) =>
+  POST('/core/agentSkills/version/switch', data);
+
+/** 更新 Skill 版本名称 */
+export const postUpdateSkillVersion = (data: UpdateSkillVersionBody) =>
+  POST('/core/agentSkills/version/update', data);
+
+/** 恢复 Skill 权限继承 */
+export const resumeInheritPer = (skillId: string) =>
+  GET('/core/agentSkills/resumeInheritPermission', { skillId });
+
+/** 转让 Skill 所有者 */
+export const postChangeSkillOwner = (data: { skillId: string; ownerId: string }) =>
+  POST('/proApi/core/agentSkills/changeOwner', data);
