@@ -8,12 +8,17 @@ import {
   type GetMcpToolsBodyType,
   type GetMcpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 
 async function handler(
   req: ApiRequestProps<GetMcpToolsBodyType>,
   _res: ApiResponseType<any>
 ): Promise<GetMcpToolsResponseType> {
   const { url, headerSecret } = GetMcpToolsBodySchema.parse(req.body);
+
+  if (await isInternalAddress(url)) {
+    return Promise.reject(PRIVATE_URL_TEXT);
+  }
 
   const mcpClient = new MCPClient({
     url,

@@ -3,6 +3,7 @@ import {
   checkTeamAIPoints,
   checkTeamMemberLimit,
   checkTeamAppTypeLimit,
+  checkTeamDatasetFolderLimit,
   checkDatasetIndexLimit,
   checkTeamDatasetLimit,
   checkTeamDatasetSyncPermission
@@ -408,6 +409,58 @@ describe('checkTeamAppTypeLimit', () => {
           amount: 1
         })
       ).resolves.toBeUndefined();
+    });
+  });
+});
+
+describe('checkTeamDatasetFolderLimit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('当知识库文件夹数量未超限时正常通过', async () => {
+    vi.spyOn(MongoDataset, 'countDocuments').mockResolvedValue(500);
+
+    await expect(
+      checkTeamDatasetFolderLimit({
+        teamId: mockTeamId,
+        amount: 100
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('当知识库文件夹数量超过上限时抛出错误', async () => {
+    vi.spyOn(MongoDataset, 'countDocuments').mockResolvedValue(950);
+
+    await expect(
+      checkTeamDatasetFolderLimit({
+        teamId: mockTeamId,
+        amount: 100
+      })
+    ).rejects.toBe(TeamErrEnum.datasetFolderAmountNotEnough);
+  });
+
+  it('当知识库文件夹数量刚好达到上限时正常通过', async () => {
+    vi.spyOn(MongoDataset, 'countDocuments').mockResolvedValue(999);
+
+    await expect(
+      checkTeamDatasetFolderLimit({
+        teamId: mockTeamId,
+        amount: 1
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('查询时只统计知识库 folder 类型', async () => {
+    const countSpy = vi.spyOn(MongoDataset, 'countDocuments').mockResolvedValue(0);
+
+    await checkTeamDatasetFolderLimit({
+      teamId: mockTeamId
+    });
+
+    expect(countSpy).toHaveBeenCalledWith({
+      teamId: mockTeamId,
+      type: DatasetTypeEnum.folder
     });
   });
 });

@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/global/core/ai/provider';
 import { getMyModels, getOperationalAd } from './api';
 
-type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
+type LoginStoreType = { provider: OAuthEnum; lastRoute: string; state: string };
 
 export type NotSufficientModalType =
   | TeamErrEnum.datasetSizeNotEnough

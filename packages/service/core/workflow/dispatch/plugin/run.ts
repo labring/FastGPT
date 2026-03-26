@@ -229,7 +229,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
               acc[key] = output.pluginOutput![key];
               return acc;
             }, {})
-        : null,
+        : undefined,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };
   } catch (error) {

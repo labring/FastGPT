@@ -731,7 +731,6 @@ export class WorkflowQueue {
               await this.processSkipNodes();
               continue;
             } else {
-              this.resolve(this);
               break;
             }
           }
@@ -741,7 +740,6 @@ export class WorkflowQueue {
             await this.processSkipNodes();
             continue;
           } else {
-            this.resolve(this);
             break;
           }
         }
@@ -750,7 +748,9 @@ export class WorkflowQueue {
         if (this.activeRunQueue.size === 0 || runningNodePromises.size >= this.maxConcurrency) {
           if (runningNodePromises.size > 0) {
             // 当上一个节点运行结束时，立即运行下一轮
-            await Promise.race(runningNodePromises);
+            await Promise.race(runningNodePromises).catch((error) => {
+              logger.error('Workflow race error', { error });
+            });
           } else {
             // 理论上不应出现此情况，防御性退回到让出进程
             await surrenderProcess();
@@ -775,6 +775,7 @@ export class WorkflowQueue {
         }
       }
     } finally {
+      this.resolve(this);
       this.processingActive = false;
     }
   }
@@ -1200,6 +1201,7 @@ export class WorkflowQueue {
         (Array.isArray(toolResponses) && toolResponses.length > 0) ||
         (!Array.isArray(toolResponses) &&
           typeof toolResponses === 'object' &&
+          toolResponses !== null &&
           Object.keys(toolResponses).length > 0)
       ) {
         this.toolRunResponse = toolResponses;

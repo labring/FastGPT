@@ -17,6 +17,7 @@
   "feishu_api": "Feishu API",
   "feishu_bot": "Feishu Bot",
   "feishu_bot_desc": "Connect to Feishu Bot directly via API",
+  "ip_whitelist": "IP Whitelist",
   "key_alias": "Key alias, for display only",
   "link_name": "Share Link Name",
   "new_feishu_bot": "add_new Feishu Bot",

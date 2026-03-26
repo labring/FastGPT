@@ -54,7 +54,12 @@ export const openAPIDocument = createDocument({
     },
     {
       name: '用户体系',
-      tags: [TagsMap.userInform, TagsMap.walletBill, TagsMap.walletDiscountCoupon]
+      tags: [
+        TagsMap.userInform,
+        TagsMap.walletBill,
+        TagsMap.walletDiscountCoupon,
+        TagsMap.userLogin
+      ]
     },
     {
       name: '通用-核心功能',
