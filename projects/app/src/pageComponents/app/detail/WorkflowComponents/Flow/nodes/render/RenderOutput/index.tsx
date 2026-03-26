@@ -9,10 +9,13 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const RenderOutput = ({
   nodeId,
-  flowOutputList
+  flowOutputList,
+  dynamicOutputReferenceScopeParentId
 }: {
   nodeId: string;
   flowOutputList: FlowNodeOutputItemType[];
+  /** 自定义输出使用「变量名 + 引用 + 类型」且引用仅来自该父节点子画布 */
+  dynamicOutputReferenceScopeParentId?: string;
 }) => {
   const dynamicOutputs = useMemoEnhance(
     () => flowOutputList.filter((item) => item.type === FlowNodeOutputTypeEnum.dynamic),
@@ -30,7 +33,12 @@ const RenderOutput = ({
   return (
     <>
       {addOutput && (
-        <DynamicOutputs nodeId={nodeId} outputs={filterAddOutput} addOutput={addOutput} />
+        <DynamicOutputs
+          nodeId={nodeId}
+          outputs={filterAddOutput}
+          addOutput={addOutput}
+          referenceScopeParentId={dynamicOutputReferenceScopeParentId}
+        />
       )}
       <>
         {flowOutputList.map((output, i) => {

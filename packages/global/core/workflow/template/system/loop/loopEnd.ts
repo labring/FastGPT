@@ -13,7 +13,7 @@ export const LoopEndNode: FlowNodeTemplateType = {
   flowNodeType: FlowNodeTypeEnum.loopEnd,
   showSourceHandle: false,
   showTargetHandle: true,
-  unique: true,
+  unique: false,
   forbidDelete: true,
   avatar: 'core/workflow/template/loopEnd',
   avatarLinear: 'core/workflow/template/loopEndLinear',
@@ -24,11 +24,11 @@ export const LoopEndNode: FlowNodeTemplateType = {
   inputs: [
     {
       key: NodeInputKeyEnum.loopEndInput,
-      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
-      label: i18nT('workflow:loop_end_intro'),
-      required: true,
-      value: []
+      label: '',
+      required: false,
+      value: undefined
     }
   ],
   outputs: []
