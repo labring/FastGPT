@@ -746,7 +746,7 @@ export const ModelEditModal = ({
   const { t, i18n } = useTranslation();
   const { feConfigs, getModelProviders } = useSystemStore();
 
-  const { control, register, getValues, setValue, handleSubmit, reset } =
+  const { control, register, getValues, setValue, handleSubmit, reset, watch } =
     useForm<SystemModelItemType>({
       defaultValues: {
         ...modelData,
@@ -933,9 +933,8 @@ export const ModelEditModal = ({
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
               <Field label={t('common:core.ai.Max context')}>
                 <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="maxContext"
+                  value={watch('maxContext' as any)}
+                  onChange={(val) => setValue('maxContext' as any, val)}
                   {...NumberInputStyles}
                 />
               </Field>
@@ -945,18 +944,17 @@ export const ModelEditModal = ({
                 tip={t('account_model:maxToken_tip')}
               >
                 <MyNumberInput
+                  value={watch('maxResponse' as any)}
+                  onChange={(val) => setValue('maxResponse' as any, val)}
                   min={2000}
-                  register={register}
-                  name="maxResponse"
                   {...NumberInputStyles}
                 />
               </Field>
 
               <Field label={t('account:model.max_quote')}>
                 <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="quoteMaxToken"
+                  value={watch('quoteMaxToken' as any)}
+                  onChange={(val) => setValue('quoteMaxToken' as any, val)}
                   {...NumberInputStyles}
                 />
               </Field>
@@ -966,8 +964,8 @@ export const ModelEditModal = ({
                 tip={t('account_model:max_temperature_tip')}
               >
                 <MyNumberInput
-                  register={register}
-                  name="maxTemperature"
+                  value={watch('maxTemperature' as any)}
+                  onChange={(val) => setValue('maxTemperature' as any, val)}
                   min={0}
                   step={0.1}
                   {...NumberInputStyles}
@@ -1002,12 +1000,10 @@ export const ModelEditModal = ({
               />
               <Field label={t('account_model:batch_size')}>
                 <MyNumberInput
-                  defaultValue={1}
-                  register={register}
-                  name="batchSize"
+                  value={watch('batchSize' as any)}
+                  onChange={(val) => setValue('batchSize' as any, val)}
                   min={1}
                   step={1}
-                  isRequired
                   {...NumberInputStyles}
                 />
               </Field>
@@ -1016,17 +1012,33 @@ export const ModelEditModal = ({
                 tip={t('account:model.default_token_tip')}
               >
                 <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="defaultToken"
+                  value={watch('defaultToken' as any)}
+                  onChange={(val) => setValue('defaultToken' as any, val)}
                   {...NumberInputStyles}
                 />
               </Field>
               <Field label={t('common:core.ai.Max context')}>
                 <MyNumberInput
-                  register={register}
-                  isRequired
-                  name="maxToken"
+                  value={watch('maxToken' as any)}
+                  onChange={(val) => setValue('maxToken' as any, val)}
+                  {...NumberInputStyles}
+                />
+              </Field>
+            </Grid>
+          </Section>
+        )}
+
+        {isRerankModel && (
+          <Section title={t('account:model.params_config_section')}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+              <Field
+                label={t('account_model:rerank_max_token')}
+                tip={t('account_model:rerank_max_token_tip')}
+              >
+                <MyNumberInput
+                  value={watch('maxToken' as any)}
+                  onChange={(val) => setValue('maxToken' as any, val)}
+                  min={1}
                   {...NumberInputStyles}
                 />
               </Field>
@@ -1085,8 +1097,8 @@ export const ModelEditModal = ({
                 >
                   <Flex alignItems={'center'} gap={2}>
                     <MyNumberInput
-                      register={register}
-                      name={'charsPointsPrice'}
+                      value={watch('charsPointsPrice' as any)}
+                      onChange={(val) => setValue('charsPointsPrice' as any, val)}
                       step={0.01}
                       {...NumberInputStyles}
                     />
