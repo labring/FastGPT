@@ -25,7 +25,7 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
-import { computeFilterIntersection } from './utils';
+import { computeFilterIntersection, splitTextByRerankBudget } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -35,7 +35,7 @@ import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { formatDatasetDataValue } from '../data/controller';
 import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
-import { addDays, addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
@@ -107,12 +107,43 @@ export const datasetDataReRank = async ({
   results: SearchDataResponseItemType[];
   inputTokens: number;
 }> => {
+  const queryTokens = await countPromptTokens(query);
+  const rerankMaxToken = rerankModel?.maxToken ?? 8000;
+
+  const docBudget = rerankMaxToken - queryTokens;
+  if (docBudget <= 0) {
+    return Promise.reject('Rerank query too long');
+  }
+
+  const expandedDocuments: {
+    id: string;
+    parentId: string;
+    text: string;
+  }[] = [];
+
+  for (const item of data) {
+    const parentText = [item.q, item.a].filter(Boolean).join('\n').trim();
+    const subChunks = await splitTextByRerankBudget({
+      text: parentText,
+      docBudget
+    });
+
+    const chunks = subChunks.length > 0 ? subChunks : [parentText];
+    chunks.forEach((text, subIndex) => {
+      expandedDocuments.push({
+        id: `${item.id}__chunk_${subIndex}`,
+        parentId: item.id,
+        text
+      });
+    });
+  }
+
   const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
     query,
-    documents: data.map((item) => ({
+    documents: expandedDocuments.map((item) => ({
       id: item.id,
-      text: `${item.q}\n${item.a}`
+      text: item.text
     }))
   });
 
@@ -120,19 +151,47 @@ export const datasetDataReRank = async ({
     return Promise.reject('Rerank error');
   }
 
-  // add new score to data
-  const mergeResult = results
-    .map((item, index) => {
-      const target = data.find((dataItem) => dataItem.id === item.id);
-      if (!target) return null;
-      const score = item.score || 0;
+  const parentScoreMap = new Map<string, number>();
+  const chunkMap = new Map(expandedDocuments.map((item) => [item.id, { parentId: item.parentId }]));
 
+  results.forEach((item) => {
+    const chunk = chunkMap.get(item.id);
+    if (!chunk) return;
+
+    const score = item.score || 0;
+    const oldScore = parentScoreMap.get(chunk.parentId);
+    if (oldScore === undefined || score > oldScore) {
+      parentScoreMap.set(chunk.parentId, score);
+    }
+  });
+
+  const mergeResult = data
+    .map((item, originIndex) => {
+      const score = parentScoreMap.get(item.id);
+      if (score === undefined) return null;
       return {
-        ...target,
-        score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
+        item,
+        score,
+        originIndex
       };
     })
-    .filter(Boolean) as SearchDataResponseItemType[];
+    .filter(
+      (
+        item
+      ): item is {
+        item: SearchDataResponseItemType;
+        score: number;
+        originIndex: number;
+      } => Boolean(item)
+    )
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.originIndex - b.originIndex;
+    })
+    .map(({ item, score }, index) => ({
+      ...item,
+      score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
+    }));
 
   return {
     results: mergeResult,

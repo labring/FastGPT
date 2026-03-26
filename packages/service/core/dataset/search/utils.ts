@@ -2,8 +2,36 @@ import { queryExtension } from '../../ai/functions/queryExtension';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { countPromptTokens } from '../../../common/string/tiktoken/index';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
+
+export const splitTextByRerankBudget = async ({
+  text,
+  docBudget
+}: {
+  text: string;
+  docBudget: number;
+}): Promise<string[]> => {
+  const formatText = text.trim();
+  if (!formatText) return [];
+
+  const tokens = await countPromptTokens(formatText);
+  if (tokens <= docBudget) {
+    return [formatText];
+  }
+  // token 2 char
+  const approxChunkSize = docBudget * 2;
+  const { chunks } = splitText2Chunks({
+    text: formatText,
+    chunkSize: approxChunkSize,
+    overlapRatio: 0
+  });
+
+  const splitChunks = chunks.map((item) => item.trim()).filter(Boolean);
+  return splitChunks.length > 0 ? splitChunks : [formatText];
+};
 
 export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
   const validLists = lists.filter((list): list is string[] => list !== undefined);
