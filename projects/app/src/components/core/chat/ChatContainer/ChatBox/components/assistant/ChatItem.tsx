@@ -63,6 +63,7 @@ type Props = BasicProps & {
 const SimpleCitationDisplay = React.memo(
   function SimpleCitationDisplay({ historyItem }: { historyItem: ChatSiteItemType }) {
     const { t } = useTranslation();
+    const [isExpanded, setIsExpanded] = React.useState(true);
     const { totalQuoteList: quoteList = [], toolCiteLinks = [] } = useMemo(
       () => addStatisticalDataToHistoryItem(historyItem),
       [historyItem]
@@ -86,7 +87,8 @@ const SimpleCitationDisplay = React.memo(
           icon: item.imageId
             ? 'core/dataset/imageFill'
             : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-          index: index + 1
+          index: index + 1,
+          url: `/dataset/detail?datasetId=${item.datasetId}&collectionId=${item.collectionId}&currentTab=dataCard`
         }));
 
       // 链接引用
@@ -94,7 +96,8 @@ const SimpleCitationDisplay = React.memo(
         id: `${r.url}-${index}`,
         displayText: r.name,
         icon: 'common/link',
-        index: datasetItems.length + index + 1
+        index: datasetItems.length + index + 1,
+        url: r.url
       }));
 
       return [...datasetItems, ...linkItems].filter((v) => !isCorrectionRecord(v.id));
@@ -104,47 +107,76 @@ const SimpleCitationDisplay = React.memo(
 
     return (
       <>
+        {/* 引用头部 */}
         <Flex
-          py={2}
-          px={3}
           mt={3}
-          bg={'rgba(245, 249, 255, 0.6)'}
-          w={'100%'}
-          borderRadius={'4px'}
-          position={'relative'}
+          height={'24px'}
+          alignItems={'center'}
+          cursor={'pointer'}
+          onClick={() => setIsExpanded(!isExpanded)}
         >
-          <Box mr={2.5}>
-            <MyIcon mt={1} name="core/chat/quoteFill" w={'14px'} color={'#C9CBFFCC'} />
+          <MyIcon name="core/chat/quoteBg" w={'14px'} h={'14px'} mr={2} />
+          <Box fontSize={'12px'} lineHeight={'12px'} color={'#485164'} mr={2}>
+            {t('app:chat_item_citation_source', { count: citationList.length })}
           </Box>
-          <Box>
-            <Box
-              lineHeight={6}
-              height={6}
-              fontSize={'12px'}
-              color="#333333"
-              fontWeight={500}
-              mb={2}
-            >
-              {t('app:chat_item_citation_source')} {citationList.length}
-            </Box>
-            <Box pb={1} borderRadius={'md'} fontSize={'11px'} color={'myGray.500'}>
-              {citationList.map((item) => (
-                <Box key={item.id} _notLast={{ mb: 1 }} height={'16px'}>
-                  {item.index}.{' ' + item.displayText}
-                </Box>
-              ))}
-            </Box>
-          </Box>
-          <Box
-            position={'absolute'}
-            right={'20px'}
-            top={'50%'}
-            transform={'translateY(-50%)'}
-            h={'calc(100% - 40px)'}
-          >
-            <MyIcon name="core/chat/quoteBg" h={'100%'} />
-          </Box>
+          <MyIcon
+            name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+            w={'12px'}
+            h={'12px'}
+            color={'#485164'}
+          />
         </Flex>
+
+        {/* 引用文件列表 */}
+        {isExpanded && (
+          <Box
+            mt={2}
+            background={'#FAFBFC'}
+            borderRadius={'4px'}
+            p={3}
+            gap={2}
+            display="flex"
+            flexDirection="column"
+          >
+            {citationList.map((item) => (
+              <Flex
+                key={item.id}
+                height={'16px'}
+                alignItems={'center'}
+                pl={'12px'}
+                cursor={'pointer'}
+                onClick={() => item.url && window.open(item.url, '_blank')}
+                _hover={{ '& .citation-file-name': { textDecoration: 'underline' } }}
+              >
+                <Box
+                  w={'14px'}
+                  h={'14px'}
+                  display={'flex'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                  fontSize={'10px'}
+                  color={'#909499'}
+                  background={'#F0F2F5'}
+                  borderRadius={'10px'}
+                  mr={'5px'}
+                  flexShrink={0}
+                >
+                  {item.index}
+                </Box>
+                <Box
+                  className="citation-file-name"
+                  fontSize={'12px'}
+                  lineHeight={'14px'}
+                  color={'#1A7EFF'}
+                  _hover={{ textDecoration: 'underline' }}
+                  ml={1}
+                >
+                  {item.displayText}
+                </Box>
+              </Flex>
+            ))}
+          </Box>
+        )}
       </>
     );
   },
