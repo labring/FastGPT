@@ -2,30 +2,28 @@ import { getMeter } from '../../common/metrics';
 
 type MetricAttributeValue = string | number | boolean;
 type MetricAttributes = Record<string, MetricAttributeValue>;
+type ObservationStatus = 'ok' | 'error';
+
+type ObservationState = {
+  startedAt: bigint;
+};
+
+type ObserveMetricOptions<T> = {
+  getStatus?: (result: T) => ObservationStatus;
+};
+
+export type WorkflowRunMetricAttributes = {
+  mode?: string;
+  isRoot?: boolean;
+};
 
 export type WorkflowStepMetricAttributes = {
-  workflowId?: string;
-  workflowName?: string;
-  nodeId: string;
-  nodeName?: string;
   nodeType: string;
   mode?: string;
 };
 
-type ProcessSnapshot = {
-  rss: number;
-  heapUsed: number;
-  external: number;
-  arrayBuffers: number;
-  cpuUser: number;
-  cpuSystem: number;
-};
-
-type StepObservationState = {
-  startedAt: bigint;
-  startSnapshot: ProcessSnapshot;
-  hadOverlapAtStart: boolean;
-  overlapVersionAtStart: number;
+type ObserveWorkflowRunOptions<T> = ObserveMetricOptions<T> & {
+  getRunTimes?: (result: T) => number | undefined;
 };
 
 function normalizeAttributes(attributes: Record<string, unknown>): MetricAttributes {
@@ -42,200 +40,129 @@ function normalizeAttributes(attributes: Record<string, unknown>): MetricAttribu
   return normalized;
 }
 
-function toMetricAttributes(
+function toRunMetricAttributes(
+  attributes: WorkflowRunMetricAttributes,
+  extras?: Record<string, unknown>
+) {
+  return normalizeAttributes({
+    mode: attributes.mode,
+    is_root: attributes.isRoot,
+    ...extras
+  });
+}
+
+function toStepMetricAttributes(
   attributes: WorkflowStepMetricAttributes,
   extras?: Record<string, unknown>
 ) {
   return normalizeAttributes({
-    workflow_id: attributes.workflowId,
-    workflow_name: attributes.workflowName,
-    node_id: attributes.nodeId,
-    node_name: attributes.nodeName,
     node_type: attributes.nodeType,
     mode: attributes.mode,
     ...extras
   });
 }
 
-function takeProcessSnapshot(): ProcessSnapshot {
-  const memory = process.memoryUsage();
-  const cpu = process.cpuUsage();
-
+function beginObservation(): ObservationState {
   return {
-    rss: memory.rss,
-    heapUsed: memory.heapUsed,
-    external: memory.external,
-    arrayBuffers: memory.arrayBuffers,
-    cpuUser: cpu.user,
-    cpuSystem: cpu.system
+    startedAt: process.hrtime.bigint()
   };
 }
 
-let activeWorkflowStepCount = 0;
-let overlapVersion = 0;
+function getObservationDurationMs(state: ObservationState) {
+  return Number(process.hrtime.bigint() - state.startedAt) / 1_000_000;
+}
 
-function beginStepObservation(): StepObservationState {
-  const state: StepObservationState = {
-    startedAt: process.hrtime.bigint(),
-    startSnapshot: takeProcessSnapshot(),
-    hadOverlapAtStart: activeWorkflowStepCount > 0,
-    overlapVersionAtStart: overlapVersion
-  };
+async function observeOperation<T>({
+  fn,
+  onStart,
+  onFinish,
+  options
+}: {
+  fn: () => Promise<T> | T;
+  onStart?: () => void;
+  onFinish: (status: ObservationStatus, result: T | undefined, state: ObservationState) => void;
+  options?: ObserveMetricOptions<T>;
+}): Promise<T> {
+  const observationState = beginObservation();
+  onStart?.();
 
-  activeWorkflowStepCount += 1;
-
-  if (activeWorkflowStepCount > 1) {
-    overlapVersion += 1;
+  try {
+    const result = await fn();
+    const status = options?.getStatus?.(result) ?? 'ok';
+    onFinish(status, result, observationState);
+    return result;
+  } catch (error) {
+    onFinish('error', undefined, observationState);
+    throw error;
   }
-
-  return state;
 }
 
 const meter = getMeter('fastgpt.workflow');
 const prefix = 'fastgpt.workflow';
 
+const runDuration = meter.createHistogram(`${prefix}.run.duration`, {
+  description: 'Workflow run duration',
+  unit: 'ms'
+});
+const runExecutions = meter.createCounter(`${prefix}.run.count`, {
+  description: 'Workflow run count'
+});
+const runActive = meter.createUpDownCounter(`${prefix}.run.active`, {
+  description: 'Workflow runs currently executing'
+});
+const runTimes = meter.createHistogram(`${prefix}.run.run_times`, {
+  description: 'Workflow total run times before completion'
+});
 const stepDuration = meter.createHistogram(`${prefix}.step.duration`, {
   description: 'Workflow step execution duration',
   unit: 'ms'
 });
-const stepExecutions = meter.createCounter(`${prefix}.step.executions`, {
+const stepExecutions = meter.createCounter(`${prefix}.step.count`, {
   description: 'Workflow step execution count'
 });
-const stepActive = meter.createUpDownCounter(`${prefix}.step.active`, {
-  description: 'Workflow steps currently executing'
-});
-const stepCpuUserTime = meter.createHistogram(`${prefix}.step.cpu.user_time`, {
-  description: 'Workflow step user CPU time',
-  unit: 'us'
-});
-const stepCpuSystemTime = meter.createHistogram(`${prefix}.step.cpu.system_time`, {
-  description: 'Workflow step system CPU time',
-  unit: 'us'
-});
-const stepMemoryRssStart = meter.createHistogram(`${prefix}.step.memory.rss_start`, {
-  description: 'Workflow process RSS memory snapshot at step start',
-  unit: 'By'
-});
-const stepMemoryHeapUsedStart = meter.createHistogram(`${prefix}.step.memory.heap_used_start`, {
-  description: 'Workflow process heap used memory snapshot at step start',
-  unit: 'By'
-});
-const stepMemoryExternalStart = meter.createHistogram(`${prefix}.step.memory.external_start`, {
-  description: 'Workflow process external memory snapshot at step start',
-  unit: 'By'
-});
-const stepMemoryArrayBuffersStart = meter.createHistogram(
-  `${prefix}.step.memory.array_buffers_start`,
-  {
-    description: 'Workflow process array buffer memory snapshot at step start',
-    unit: 'By'
-  }
-);
-const stepMemoryRss = meter.createHistogram(`${prefix}.step.memory.rss`, {
-  description: 'Workflow process RSS memory snapshot at step end',
-  unit: 'By'
-});
-const stepMemoryHeapUsed = meter.createHistogram(`${prefix}.step.memory.heap_used`, {
-  description: 'Workflow process heap used memory snapshot at step end',
-  unit: 'By'
-});
-const stepMemoryExternal = meter.createHistogram(`${prefix}.step.memory.external`, {
-  description: 'Workflow process external memory snapshot at step end',
-  unit: 'By'
-});
-const stepMemoryArrayBuffers = meter.createHistogram(`${prefix}.step.memory.array_buffers`, {
-  description: 'Workflow process array buffer memory snapshot at step end',
-  unit: 'By'
-});
-const stepMemoryRssGrowth = meter.createHistogram(`${prefix}.step.memory.rss_growth`, {
-  description: 'Workflow process RSS memory growth during non-overlapping step execution',
-  unit: 'By'
-});
-const stepMemoryHeapUsedGrowth = meter.createHistogram(`${prefix}.step.memory.heap_used_growth`, {
-  description: 'Workflow process heap used memory growth during non-overlapping step execution',
-  unit: 'By'
-});
-const stepMemoryExternalGrowth = meter.createHistogram(`${prefix}.step.memory.external_growth`, {
-  description: 'Workflow process external memory growth during non-overlapping step execution',
-  unit: 'By'
-});
+
+export async function observeWorkflowRun<T>(
+  attributes: WorkflowRunMetricAttributes,
+  fn: () => Promise<T> | T,
+  options?: ObserveWorkflowRunOptions<T>
+): Promise<T> {
+  const baseAttributes = toRunMetricAttributes(attributes);
+
+  return observeOperation({
+    fn,
+    options,
+    onStart: () => {
+      runActive.add(1, baseAttributes);
+    },
+    onFinish: (status, result, state) => {
+      const metricAttributes = toRunMetricAttributes(attributes, { status });
+
+      runDuration.record(getObservationDurationMs(state), metricAttributes);
+      runExecutions.add(1, metricAttributes);
+
+      const workflowRunTimes = result ? options?.getRunTimes?.(result) : undefined;
+      if (typeof workflowRunTimes === 'number' && Number.isFinite(workflowRunTimes)) {
+        runTimes.record(workflowRunTimes, metricAttributes);
+      }
+
+      runActive.add(-1, baseAttributes);
+    }
+  });
+}
 
 export async function observeWorkflowStep<T>(
   attributes: WorkflowStepMetricAttributes,
-  fn: () => Promise<T> | T
+  fn: () => Promise<T> | T,
+  options?: ObserveMetricOptions<T>
 ): Promise<T> {
-  const observationState = beginStepObservation();
-  const baseAttributes = toMetricAttributes(attributes);
+  return observeOperation({
+    fn,
+    options,
+    onFinish: (status, _result, state) => {
+      const metricAttributes = toStepMetricAttributes(attributes, { status });
 
-  stepActive.add(1, baseAttributes);
-
-  try {
-    const result = await fn();
-    recordWorkflowStepEnd(attributes, observationState, 'ok', baseAttributes);
-    return result;
-  } catch (error) {
-    recordWorkflowStepEnd(attributes, observationState, 'error', baseAttributes);
-    throw error;
-  }
-}
-
-function recordWorkflowStepEnd(
-  attributes: WorkflowStepMetricAttributes,
-  observationState: StepObservationState,
-  status: 'ok' | 'error',
-  baseAttributes: MetricAttributes
-) {
-  const endSnapshot = takeProcessSnapshot();
-  const metricAttributes = toMetricAttributes(attributes, { status });
-  const stepOverlap =
-    observationState.hadOverlapAtStart || observationState.overlapVersionAtStart !== overlapVersion;
-  const memoryAttributes = toMetricAttributes(attributes, {
-    status,
-    memory_scope: 'process',
-    memory_attribution: stepOverlap ? 'best_effort' : 'exclusive',
-    step_overlap: stepOverlap
+      stepDuration.record(getObservationDurationMs(state), metricAttributes);
+      stepExecutions.add(1, metricAttributes);
+    }
   });
-  const durationMs = Number(process.hrtime.bigint() - observationState.startedAt) / 1_000_000;
-
-  stepDuration.record(durationMs, metricAttributes);
-  stepExecutions.add(1, metricAttributes);
-  stepCpuUserTime.record(
-    Math.max(0, endSnapshot.cpuUser - observationState.startSnapshot.cpuUser),
-    metricAttributes
-  );
-  stepCpuSystemTime.record(
-    Math.max(0, endSnapshot.cpuSystem - observationState.startSnapshot.cpuSystem),
-    metricAttributes
-  );
-
-  stepMemoryRssStart.record(observationState.startSnapshot.rss, memoryAttributes);
-  stepMemoryHeapUsedStart.record(observationState.startSnapshot.heapUsed, memoryAttributes);
-  stepMemoryExternalStart.record(observationState.startSnapshot.external, memoryAttributes);
-  stepMemoryArrayBuffersStart.record(observationState.startSnapshot.arrayBuffers, memoryAttributes);
-  stepMemoryRss.record(endSnapshot.rss, memoryAttributes);
-  stepMemoryHeapUsed.record(endSnapshot.heapUsed, memoryAttributes);
-  stepMemoryExternal.record(endSnapshot.external, memoryAttributes);
-  stepMemoryArrayBuffers.record(endSnapshot.arrayBuffers, memoryAttributes);
-
-  if (!stepOverlap && endSnapshot.rss > observationState.startSnapshot.rss) {
-    stepMemoryRssGrowth.record(
-      endSnapshot.rss - observationState.startSnapshot.rss,
-      memoryAttributes
-    );
-  }
-  if (!stepOverlap && endSnapshot.heapUsed > observationState.startSnapshot.heapUsed) {
-    stepMemoryHeapUsedGrowth.record(
-      endSnapshot.heapUsed - observationState.startSnapshot.heapUsed,
-      memoryAttributes
-    );
-  }
-  if (!stepOverlap && endSnapshot.external > observationState.startSnapshot.external) {
-    stepMemoryExternalGrowth.record(
-      endSnapshot.external - observationState.startSnapshot.external,
-      memoryAttributes
-    );
-  }
-
-  activeWorkflowStepCount = Math.max(0, activeWorkflowStepCount - 1);
-  stepActive.add(-1, baseAttributes);
 }
