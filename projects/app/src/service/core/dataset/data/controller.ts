@@ -304,7 +304,7 @@ export async function insertData2Dataset({
   q,
   a,
   imageId,
-  chunkIndex = 0,
+  chunkIndex,
   indexSize = 512,
   indexes,
   indexPrefix,
@@ -323,6 +323,17 @@ export async function insertData2Dataset({
   }
   if (String(teamId) === String(tmbId)) {
     return Promise.reject("teamId and tmbId can't be the same");
+  }
+
+  // 若未传 chunkIndex，自动追加到末尾（max + 1）
+  // 使用 session 保证与后续写入的事务一致性，避免并发竞态导致 chunkIndex 重复
+  if (chunkIndex === undefined) {
+    const lastData = await MongoDatasetData.findOne({ collectionId })
+      .sort({ chunkIndex: -1 })
+      .select('chunkIndex')
+      .session(session ?? null)
+      .lean();
+    chunkIndex = (lastData?.chunkIndex ?? -1) + 1;
   }
 
   const embModel = getEmbeddingModel(embeddingModel);
@@ -415,41 +426,44 @@ export async function insertData2Dataset({
     return result;
   });
 
-  // 2. Create mongo data (store normalized q and a)
-  const [{ _id }] = await MongoDatasetData.create(
-    [
-      {
-        ...(id && { _id: new Types.ObjectId(id) }),
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        q: q, // 保持原文不变
-        a: a, // 保持原文不变
-        imageId,
-        imageDescMap,
-        chunkIndex,
-        indexes: results,
-        metadata
-        // 注意：对于实时处理的数据，不需要设置 synonymFileIds 和 synonymProcessing
-        // 因为 synonymMetadata 已经记录在每个 index 中了
-      }
-    ],
-    { session, ordered: true }
-  );
+  // 2. Create or update mongo data (store normalized q and a)
+  // 当 id 对应的占位记录已存在时（手动插入预写入场景），执行 upsert 而非分支 create/update
+  const dataFields = {
+    q,
+    a,
+    imageId,
+    imageDescMap,
+    chunkIndex,
+    indexes: results,
+    metadata
+  };
 
-  // 3. Create mongo data text (use standardized text for full-text search)
-  await MongoDatasetDataText.create(
-    [
+  let _id: Types.ObjectId;
+  if (id) {
+    const objectId = new Types.ObjectId(id);
+    await MongoDatasetData.findOneAndUpdate(
+      { _id: objectId },
       {
-        teamId,
-        datasetId,
-        collectionId,
-        dataId: _id,
-        fullTextToken: await jiebaSplit({ text: `${normalizedQ}\n${normalizedA || ''}`.trim() })
-      }
-    ],
-    { session, ordered: true }
+        $set: dataFields,
+        $setOnInsert: { teamId, tmbId, datasetId, collectionId }
+      },
+      { upsert: true, session }
+    );
+    _id = objectId;
+  } else {
+    const [created] = await MongoDatasetData.create(
+      [{ teamId, tmbId, datasetId, collectionId, ...dataFields }],
+      { session, ordered: true }
+    );
+    _id = created._id as unknown as Types.ObjectId;
+  }
+
+  // 3. Create or update mongo data text (use standardized text for full-text search)
+  const fullTextToken = await jiebaSplit({ text: `${normalizedQ}\n${normalizedA || ''}`.trim() });
+  await MongoDatasetDataText.findOneAndUpdate(
+    { dataId: _id },
+    { teamId, datasetId, collectionId, dataId: _id, fullTextToken },
+    { upsert: true, session }
   );
 
   // 只移除图片数据集的图片的 TTL
@@ -459,7 +473,8 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens
+    tokens,
+    chunkIndex
   };
 }
 

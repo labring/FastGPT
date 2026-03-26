@@ -7,6 +7,11 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type DatasetDataListItemType } from '@/global/core/dataset/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import {
+  DatasetTrainingStatusEnum,
+  type DatasetTrainingStatusType
+} from '@fastgpt/global/core/dataset/constants';
 
 export type GetDatasetDataListProps = {
   searchText?: string;
@@ -51,8 +56,27 @@ async function handler(
     MongoDatasetData.countDocuments(match)
   ]);
 
+  // 只查当前页数据 ID 对应的训练记录，避免全量 distinct
+  const dataIds = list.map((item) => item._id);
+  const trainingRecords = await MongoDatasetTraining.find(
+    { dataId: { $in: dataIds } },
+    'dataId retryCount'
+  ).lean();
+
+  const trainingStatusMap = new Map<string, DatasetTrainingStatusType>();
+  for (const record of trainingRecords) {
+    trainingStatusMap.set(
+      String(record.dataId),
+      record.retryCount > 0 ? DatasetTrainingStatusEnum.training : DatasetTrainingStatusEnum.error
+    );
+  }
+
   return {
-    list,
+    list: list.map((item) => {
+      const trainingStatus =
+        trainingStatusMap.get(String(item._id)) ?? DatasetTrainingStatusEnum.ready;
+      return { ...item, trainingStatus };
+    }),
     total
   };
 }

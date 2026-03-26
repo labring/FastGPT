@@ -376,7 +376,7 @@ export const getDatasetDataItemById = (id: string) =>
  * insert one data to dataset (immediately insert)
  */
 export const postInsertData2Dataset = (data: InsertOneDatasetDataProps) =>
-  POST<string>(`/core/dataset/data/insertData`, data);
+  POST<{ insertId: string; chunkIndex: number }>(`/core/dataset/data/insertData`, data);
 
 /**
  * update one datasetData by id

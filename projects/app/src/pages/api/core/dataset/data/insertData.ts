@@ -3,13 +3,8 @@
   manual input or mark data
 */
 import type { NextApiRequest } from 'next';
-import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
-import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -21,6 +16,10 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 async function handler(req: NextApiRequest) {
   const { collectionId, q, a, indexes, metadata, id } = req.body as InsertOneDatasetDataProps;
@@ -37,7 +36,7 @@ async function handler(req: NextApiRequest) {
   if (id !== undefined) {
     if (!Types.ObjectId.isValid(id)) {
       throw new Error(
-        `Invalid ID format: ${id}. Must be a valid MongoDB ObjectID (24-character hexadecimal string)`
+        `Invalid ID format: ${id}. Must be a valid MongoDB ObjectID (24-character hex string)`
       );
     }
 
@@ -57,18 +56,13 @@ async function handler(req: NextApiRequest) {
     per: WritePermissionVal
   });
 
+  const { dataset } = collection;
+  const { _id: datasetId, vectorModel, agentModel } = dataset;
+
   await checkDatasetIndexLimit({
     teamId,
     insertLen: 1 + (indexes?.length || 0)
   });
-
-  const [
-    {
-      dataset: { _id: datasetId, vectorModel, agentModel },
-      indexPrefixTitle,
-      name
-    }
-  ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
   const formatQ = simpleText(q);
   const formatA = simpleText(a);
@@ -76,8 +70,6 @@ async function handler(req: NextApiRequest) {
     ...item,
     text: simpleText(item.text)
   }));
-
-  const vectorModelData = getEmbeddingModel(vectorModel);
 
   await hasSameValue({
     teamId,
@@ -87,26 +79,84 @@ async function handler(req: NextApiRequest) {
     a: formatA
   });
 
-  const { insertId, tokens } = await insertData2Dataset({
-    id,
-    teamId,
-    tmbId,
-    datasetId,
-    collectionId,
-    q: formatQ,
-    a: formatA,
-    chunkIndex: 0,
-    indexPrefix: indexPrefixTitle ? `# ${name}` : undefined,
-    embeddingModel: vectorModelData.model,
-    indexes: formatIndexes,
-    metadata
+  // 预生成 insertId（worker 使用此 ID 写入 MongoDB）
+  const insertId = id ? new Types.ObjectId(id) : new Types.ObjectId();
+
+  // 手动插入时，qa/imageParse/databaseSchema/backup 不适用于已结构化的 q/a，降级为 chunk 基础类型
+  // chunk/template 则保留原始 trainingType，配合集合增强标志走完整训练链路
+  const SKIP_TYPES = [
+    DatasetCollectionDataProcessModeEnum.qa,
+    DatasetCollectionDataProcessModeEnum.imageParse,
+    DatasetCollectionDataProcessModeEnum.databaseSchema,
+    DatasetCollectionDataProcessModeEnum.backup
+  ];
+  const effectiveTrainingType = SKIP_TYPES.includes(
+    collection.trainingType as DatasetCollectionDataProcessModeEnum
+  )
+    ? DatasetCollectionDataProcessModeEnum.chunk
+    : (collection.trainingType as DatasetCollectionDataProcessModeEnum) ||
+      DatasetCollectionDataProcessModeEnum.chunk;
+
+  // 与文档解析保持一致：根据集合的增强配置决定训练 mode
+  // imageIndex 强制 false —— 手动插入无图片
+  const trainingMode = getTrainingModeByCollection({
+    trainingType: effectiveTrainingType,
+    autoIndexes: collection.autoIndexes,
+    small2bigIndexes: collection.small2bigIndexes,
+    syntheticIndex: collection.syntheticIndex,
+    imageIndex: false
   });
 
-  pushGenerateVectorUsage({
-    teamId,
-    tmbId,
-    inputTokens: tokens,
-    model: vectorModelData.model
+  // 使用事务保证"占位记录写入 + 推入训练队列"的原子性
+  // 推队列失败时自动回滚占位记录，避免孤儿数据
+  const chunkIndex = await mongoSessionRun(async (session) => {
+    const lastData = await MongoDatasetData.findOne({ collectionId })
+      .sort({ chunkIndex: -1 })
+      .select('chunkIndex')
+      .session(session)
+      .lean();
+    const nextChunkIndex = (lastData?.chunkIndex ?? -1) + 1;
+
+    await MongoDatasetData.create(
+      [
+        {
+          _id: insertId,
+          teamId,
+          tmbId,
+          datasetId,
+          collectionId,
+          q: formatQ,
+          a: formatA,
+          chunkIndex: nextChunkIndex,
+          indexes: [],
+          metadata
+        }
+      ],
+      { session }
+    );
+
+    await pushDataListToTrainingQueue({
+      teamId,
+      tmbId,
+      datasetId: String(datasetId),
+      collectionId,
+      agentModel,
+      vectorModel,
+      mode: trainingMode,
+      session,
+      data: [
+        {
+          id: insertId.toString(),
+          q: formatQ,
+          a: formatA,
+          chunkIndex: nextChunkIndex,
+          indexes: formatIndexes,
+          metadata
+        }
+      ]
+    });
+
+    return nextChunkIndex;
   });
 
   (() => {
@@ -121,7 +171,8 @@ async function handler(req: NextApiRequest) {
       }
     });
   })();
-  return insertId;
+
+  return { insertId, chunkIndex };
 }
 
 export default NextAPI(handler);
