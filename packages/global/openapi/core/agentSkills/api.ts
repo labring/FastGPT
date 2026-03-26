@@ -333,6 +333,25 @@ export const ListSkillVersionsResponseSchema = z.object({
 });
 export type ListSkillVersionsResponse = z.infer<typeof ListSkillVersionsResponseSchema>;
 
+export const UpdateSkillVersionBodySchema = z.object({
+  skillId: IdSchema,
+  versionId: IdSchema,
+  versionName: z.string().describe('版本名称')
+});
+export type UpdateSkillVersionBody = z.infer<typeof UpdateSkillVersionBodySchema>;
+
+export const UpdateSkillVersionResponseSchema = z.void();
+export type UpdateSkillVersionResponse = z.infer<typeof UpdateSkillVersionResponseSchema>;
+
+export const SwitchSkillVersionBodySchema = z.object({
+  skillId: IdSchema,
+  versionId: IdSchema
+});
+export type SwitchSkillVersionBody = z.infer<typeof SwitchSkillVersionBodySchema>;
+
+export const SwitchSkillVersionResponseSchema = z.void();
+export type SwitchSkillVersionResponse = z.infer<typeof SwitchSkillVersionResponseSchema>;
+
 export const ImportSkillMultipartRequestSchema = {
   type: 'object' as const,
   properties: {
