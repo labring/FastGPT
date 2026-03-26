@@ -24,7 +24,7 @@ export const env = createEnv({
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: z.string().url().optional(),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/home/sandbox'),
+    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/workspace'),
 
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
 
