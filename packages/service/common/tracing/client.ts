@@ -29,6 +29,19 @@ export type ActiveSpanOptions = {
   attributes?: Record<string, unknown>;
 };
 
+const DEFAULT_PRODUCTION_TRACING_SAMPLE_RATIO = 0.05;
+const DEFAULT_NON_PRODUCTION_TRACING_SAMPLE_RATIO = 1;
+
+function getDefaultTracingSampleRatio() {
+  if (typeof env.TRACING_OTEL_SAMPLE_RATIO === 'number') {
+    return env.TRACING_OTEL_SAMPLE_RATIO;
+  }
+
+  return process.env.NODE_ENV === 'production'
+    ? DEFAULT_PRODUCTION_TRACING_SAMPLE_RATIO
+    : DEFAULT_NON_PRODUCTION_TRACING_SAMPLE_RATIO;
+}
+
 function normalizeAttributes(attributes?: Record<string, unknown>) {
   if (!attributes) return;
 
@@ -51,7 +64,7 @@ export async function configureTracing() {
     env,
     defaultServiceName: 'fastgpt-client',
     defaultTracerName: 'fastgpt-client',
-    defaultSampleRatio: env.TRACING_OTEL_SAMPLE_RATIO
+    defaultSampleRatio: getDefaultTracingSampleRatio()
   });
 }
 

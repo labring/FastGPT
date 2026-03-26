@@ -6,6 +6,8 @@ import withRspack from 'next-rspack';
 const withBundleAnalyzer = withBundleAnalyzerInit({ enabled: process.env.ANALYZE === 'true' });
 
 const isDev = process.env.NODE_ENV === 'development';
+const isWebpack = process.env.WEBPACK === '1';
+const isRspack = isDev && !isWebpack;
 
 const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_URL,
@@ -218,8 +220,5 @@ const nextConfig: NextConfig = {
   }
 };
 
-const configWithPluginsExceptWithRspack = withBundleAnalyzer(nextConfig);
-
-export default isDev
-  ? withRspack(configWithPluginsExceptWithRspack)
-  : configWithPluginsExceptWithRspack;
+const config = withBundleAnalyzer(nextConfig);
+export default isRspack ? withRspack(config) : config;

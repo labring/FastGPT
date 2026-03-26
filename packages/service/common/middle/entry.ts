@@ -13,6 +13,37 @@ export type NextApiHandler<T = any> = (
   res: NextApiResponse<T>
 ) => unknown | Promise<unknown>;
 
+function isIdLikeRouteSegment(segment: string) {
+  return (
+    /^\d{4,}$/.test(segment) ||
+    /^[0-9a-f]{24}$/i.test(segment) ||
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(segment) ||
+    /^[A-Za-z0-9_-]{16,}$/.test(segment)
+  );
+}
+
+function normalizeRouteSegment(segment: string) {
+  return isIdLikeRouteSegment(segment) ? ':id' : segment;
+}
+
+function parseHeaderNumber(value: string | string[] | undefined) {
+  const normalized = Array.isArray(value) ? value[0] : value;
+  if (!normalized) return undefined;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function getRequestRoute(url: string) {
+  const [route = '/'] = url.split('?');
+  if (!route || route === '/') return '/';
+
+  return route
+    .split('/')
+    .map((segment) => normalizeRouteSegment(segment))
+    .join('/');
+}
+
 export const NextEntry = ({
   beforeCallback = []
 }: {
@@ -28,23 +59,22 @@ export const NextEntry = ({
       const responseLogger = getLogger(LogCategories.HTTP.RESPONSE);
 
       const url = req.url || '';
+      const route = getRequestRoute(url);
       const method = req.method?.toUpperCase() || '';
       const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
       const userAgent = req.headers['user-agent'];
       const contentLength = req.headers['content-length'];
+      const requestBodySize = parseHeaderNumber(contentLength);
 
       return withContext({ requestId }, async () =>
         withActiveSpan(
           {
-            name: `http.request ${method || 'UNKNOWN'} ${url || '/'}`,
+            name: 'http.request',
             tracerName: 'fastgpt.http',
             attributes: {
-              'fastgpt.request.id': requestId,
               'http.request.method': method,
-              'url.full': url,
-              'client.address': Array.isArray(ip) ? ip.join(',') : ip,
-              'user_agent.original': userAgent,
-              'http.request.body.size': contentLength
+              'http.route': route,
+              'http.request.body.size': requestBodySize
             }
           },
           async (span) => {
