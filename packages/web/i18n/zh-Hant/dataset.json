@@ -471,5 +471,13 @@
   "summary_generation_desc": "基於內容生成文本摘要，提升檢索召回率",
   "image_index_desc": "在具備 Vision-Language Model 時，開啟後將自動解析並生成文檔中圖片內容的索引",
   "synthetic_index_desc": "基於文檔內容抽樣，生成假設問，同時可用於知識重排模型調優（耗時較長）",
-  "small2big_desc": "開啟後，當答案部分內容較多時將進行拆分，生成小塊內容的索引"
+  "small2big_desc": "開啟後，當答案部分內容較多時將進行拆分，生成小塊內容的索引",
+  "faq_template_filename": "FAQ模板",
+  "faq_template_col_question": "問題",
+  "faq_template_col_answer": "答案",
+  "faq_template_col_indexes": "索引",
+  "synonym_template_filename": "同義詞模板",
+  "synonym_template_col_standard": "標準術語",
+  "synonym_template_col_synonyms": "同義詞"
 }
+

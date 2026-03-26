@@ -54,7 +54,7 @@ async function handler(
     const { datasetId } = data;
 
     // 3. 验证文件格式（支持csv、xlsx、xls）
-    const fileName = file.originalname.toLowerCase();
+    const fileName = decodeURIComponent(file.originalname).toLowerCase();
     const isValidFormat =
       fileName.endsWith('.csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
 
@@ -78,7 +78,7 @@ async function handler(
       datasetId: String(datasetId),
       uploaderId: String(tmbId),
       filePath: file.path,
-      fileName: file.originalname,
+      fileName: decodeURIComponent(file.originalname),
       fileSize: file.size
     });
 
@@ -107,3 +107,4 @@ export const config = {
 };
 
 export default NextAPI(handler);
+
