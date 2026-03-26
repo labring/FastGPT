@@ -16,7 +16,7 @@ const SaveButton = ({
 }: {
   colorSchema: 'primary' | 'black';
   isLoading: boolean;
-  onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<void>;
+  onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<boolean | void>;
   checkData?: () => boolean | undefined;
 }) => {
   const { t } = useTranslation();
@@ -89,13 +89,15 @@ const SaveButton = ({
               cursor={'pointer'}
               isLoading={isLoading}
               onClick={async () => {
-                await onClickSave({});
-                toast({
-                  status: 'success',
-                  title: t('app:saved_success'),
-                  position: 'top-right',
-                  isClosable: true
-                });
+                const ok = await onClickSave({});
+                if (ok !== false) {
+                  toast({
+                    status: 'success',
+                    title: t('app:saved_success'),
+                    position: 'top-right',
+                    isClosable: true
+                  });
+                }
                 onClose();
                 setIsSave(false);
               }}

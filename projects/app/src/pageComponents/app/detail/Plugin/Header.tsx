@@ -52,10 +52,7 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const { flowData2StoreData, flowData2StoreDataAndCheck } = useContextSelector(
-    WorkflowUtilsContext,
-    (v) => v
-  );
+  const { flowData2StoreDataAndCheck } = useContextSelector(WorkflowUtilsContext, (v) => v);
 
   const setWorkflowTestData = useContextSelector(
     WorkflowModalContext,
@@ -83,32 +80,33 @@ const Header = () => {
       isPublish?: boolean;
       versionName?: string;
     }) => {
-      const data = flowData2StoreData();
-      if (data) {
-        await onSaveApp({
-          ...data,
-          isPublish,
-          versionName,
-          chatConfig: appDetail.chatConfig,
-          //@ts-ignore
-          version: 'v2'
-        });
-        // Mark the current snapshot as saved
-        setPast((prevPast) =>
-          prevPast.map((item, index) =>
-            index === 0
-              ? {
-                  ...item,
-                  isSaved: true
-                }
-              : item
-          )
-        );
+      const data = flowData2StoreDataAndCheck(false, { strictLoopProCondition: true });
+      if (!data) {
+        return false;
       }
+      await onSaveApp({
+        ...data,
+        isPublish,
+        versionName,
+        chatConfig: appDetail.chatConfig,
+        //@ts-ignore
+        version: 'v2'
+      });
+      setPast((prevPast) =>
+        prevPast.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                isSaved: true
+              }
+            : item
+        )
+      );
+      return true;
     },
     {
       manual: true,
-      refreshDeps: [onSaveApp, setPast, flowData2StoreData, appDetail.chatConfig]
+      refreshDeps: [onSaveApp, setPast, flowData2StoreDataAndCheck, appDetail.chatConfig]
     }
   );
 
@@ -206,7 +204,9 @@ const Header = () => {
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={() => {
-                  const data = flowData2StoreDataAndCheck();
+                  const data = flowData2StoreDataAndCheck(false, {
+                    strictLoopProCondition: true
+                  });
                   if (data) {
                     setWorkflowTestData(data);
                   }
@@ -219,7 +219,9 @@ const Header = () => {
                   colorSchema={'black'}
                   isLoading={loading}
                   onClickSave={onClickSave}
-                  checkData={() => !!flowData2StoreDataAndCheck()}
+                  checkData={() =>
+                    !!flowData2StoreDataAndCheck(false, { strictLoopProCondition: true })
+                  }
                 />
               )}
             </HStack>
@@ -275,7 +277,8 @@ const Header = () => {
             isLoading={loading}
             onClick={async () => {
               try {
-                await onClickSave({});
+                const ok = await onClickSave({});
+                if (ok === false) return;
                 onCloseBackConfirm();
                 onBack();
                 backSaveToast({

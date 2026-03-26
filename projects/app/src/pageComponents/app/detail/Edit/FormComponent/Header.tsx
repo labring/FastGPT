@@ -30,6 +30,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowNodeAndConnection,
+  isBatchGlobalWriteViolation,
   storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -254,11 +255,17 @@ const Header = ({
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
                     const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
-                    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+                    const checkResults = checkWorkflowNodeAndConnection({
+                      nodes,
+                      edges,
+                      options: { strictLoopProCondition: true }
+                    });
 
                     if (checkResults) {
                       toast({
-                        title: t('app:app.error.publish_unExist_app'),
+                        title: isBatchGlobalWriteViolation(nodes, checkResults)
+                          ? t('workflow:batch_no_global_variable_write')
+                          : t('app:app.error.publish_unExist_app'),
                         status: 'warning'
                       });
                     }

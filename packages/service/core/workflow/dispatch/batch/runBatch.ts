@@ -1,4 +1,8 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WORKFLOW_LOOP_MAX_REACHED_MESSAGE
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   type DispatchNodeResultType,
@@ -57,6 +61,7 @@ const assertBatchChildNodes = ({
   const forbiddenTypes = new Set<FlowNodeTypeEnum>([
     FlowNodeTypeEnum.loop,
     FlowNodeTypeEnum.batch,
+    FlowNodeTypeEnum.loopPro,
     FlowNodeTypeEnum.userSelect,
     FlowNodeTypeEnum.formInput,
     FlowNodeTypeEnum.variableUpdate
@@ -66,8 +71,8 @@ const assertBatchChildNodes = ({
     (node) => childrenNodeIdList.includes(node.nodeId) && forbiddenTypes.has(node.flowNodeType)
   );
   if (hasForbidden) {
-    return Promise.reject(
-      'Batch child workflow does not allow loop/batch/interactive/variable-update nodes'
+    throw new Error(
+      'Batch child workflow does not allow loop/batch/loop_pro/interactive/variable-update nodes'
     );
   }
 };
@@ -95,11 +100,12 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
     runtimeNodes
   });
 
-  const maxLength = process.env.WORKFLOW_MAX_LOOP_TIMES
-    ? Number(process.env.WORKFLOW_MAX_LOOP_TIMES)
-    : 50;
+  const maxLength = (() => {
+    const n = Number(process.env.WORKFLOW_MAX_LOOP_TIMES);
+    return Number.isInteger(n) && n > 0 ? n : 100;
+  })();
   if (loopInputArray.length > maxLength) {
-    return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
+    return Promise.reject(WORKFLOW_LOOP_MAX_REACHED_MESSAGE);
   }
 
   if (loopInputArray.length === 0) {
@@ -161,9 +167,10 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
           throw new Error('Batch child workflow does not allow interactive nodes');
         }
 
-        const loopOutputValue = response.flowResponses.find(
+        const loopEndList = response.flowResponses.filter(
           (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
-        )?.loopOutputValue;
+        );
+        const loopOutputValue = loopEndList[loopEndList.length - 1]?.loopOutputValue;
 
         orderedRawResult[index] = {
           success: true,

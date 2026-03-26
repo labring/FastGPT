@@ -249,6 +249,7 @@ export const iconPaths = {
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
   'core/workflow/inputType/external': () => import('./icons/core/workflow/inputType/external.svg'),
   'core/workflow/inputType/file': () => import('./icons/core/workflow/inputType/file.svg'),
+  'core/workflow/inputType/ifloop': () => import('./icons/core/workflow/inputType/ifloop.svg'),
   'core/workflow/inputType/input': () => import('./icons/core/workflow/inputType/input.svg'),
   'core/workflow/inputType/internal': () => import('./icons/core/workflow/inputType/internal.svg'),
   'core/workflow/inputType/jsonEditor': () =>
@@ -322,6 +323,11 @@ export const iconPaths = {
     import('./icons/core/workflow/template/loopEndLinear.tsx'),
   'core/workflow/template/loopLinear': () =>
     import('./icons/core/workflow/template/loopLinear.tsx'),
+  'core/workflow/template/loopPro': () => import('./icons/core/workflow/template/loopPro.svg'),
+  'core/workflow/template/loopProEnd': () =>
+    import('./icons/core/workflow/template/loopProEnd.svg'),
+  'core/workflow/template/loopProStart': () =>
+    import('./icons/core/workflow/template/loopProStart.svg'),
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/loopStartLinear': () =>
     import('./icons/core/workflow/template/loopStartLinear.tsx'),

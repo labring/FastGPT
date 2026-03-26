@@ -392,7 +392,11 @@ const useRAF = () => {
 export const popoverWidth = 400;
 export const popoverHeight = 600;
 // Loop 类型的父节点类型集合
-const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch]);
+const PARENT_NODE_TYPES = new Set([
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.batch,
+  FlowNodeTypeEnum.loopPro
+]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -433,6 +437,7 @@ export const useWorkflow = () => {
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
       FlowNodeTypeEnum.batch,
+      FlowNodeTypeEnum.loopPro,
       FlowNodeTypeEnum.pluginInput,
       FlowNodeTypeEnum.pluginOutput,
       FlowNodeTypeEnum.systemConfig
@@ -452,26 +457,30 @@ export const useWorkflow = () => {
     const parentNode = intersections.find(
       (item) =>
         !item.data.isFolded &&
-        [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(item.type as FlowNodeTypeEnum)
+        [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loopPro].includes(
+          item.type as FlowNodeTypeEnum
+        )
     );
 
     if (parentNode) {
       const parentType = parentNode.type as FlowNodeTypeEnum;
       const currentNodeType = node.type as FlowNodeTypeEnum;
       const isUnsupportedForCommonParent = unSupportedTypes.includes(currentNodeType);
-      const isUnsupportedForBatchParent =
-        parentType === FlowNodeTypeEnum.batch &&
-        batchOnlyUnSupportedTypes.includes(currentNodeType);
-      const isInteractiveInBatch =
-        parentType === FlowNodeTypeEnum.batch &&
-        batchInteractiveNodeTypes.includes(currentNodeType);
+      const isBatchLikeParent =
+        parentType === FlowNodeTypeEnum.batch || parentType === FlowNodeTypeEnum.loopPro;
+      const isUnsupportedForBatchLikeParent =
+        isBatchLikeParent && batchOnlyUnSupportedTypes.includes(currentNodeType);
+      const isInteractiveInBatchLike =
+        isBatchLikeParent && batchInteractiveNodeTypes.includes(currentNodeType);
 
-      if (isUnsupportedForCommonParent || isUnsupportedForBatchParent) {
+      if (isUnsupportedForCommonParent || isUnsupportedForBatchLikeParent) {
         return toast({
           status: 'warning',
-          title: isInteractiveInBatch
+          title: isInteractiveInBatchLike
             ? t('workflow:batch_no_interactive_node')
-            : t('workflow:can_not_loop')
+            : currentNodeType === FlowNodeTypeEnum.batch
+              ? t('workflow:can_not_nest')
+              : t('workflow:can_not_loop')
         });
       }
 

@@ -7,6 +7,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowNodeAndConnection,
   adaptCatchError,
+  isBatchGlobalWriteViolation,
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
@@ -40,7 +41,10 @@ type WorkflowUtilsContextValue = {
         edges: StoreEdgeItemType[];
       }
     | undefined;
-  flowData2StoreDataAndCheck: (hideTip?: boolean) =>
+  flowData2StoreDataAndCheck: (
+    hideTip?: boolean,
+    options?: { strictLoopProCondition?: boolean }
+  ) =>
     | {
         nodes: StoreNodeItemType[];
         edges: StoreEdgeItemType[];
@@ -79,7 +83,10 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
     | undefined {
     throw new Error('Function not implemented.');
   },
-  flowData2StoreDataAndCheck: function (hideTip?: boolean):
+  flowData2StoreDataAndCheck: function (
+    hideTip?: boolean,
+    _options?: { strictLoopProCondition?: boolean }
+  ):
     | {
         nodes: StoreNodeItemType[];
         edges: StoreEdgeItemType[];
@@ -181,9 +188,9 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
   // 转换并验证工作流数据
   const flowData2StoreDataAndCheck = useCallback(
-    (hideTip = false) => {
+    (hideTip = false, options?: { strictLoopProCondition?: boolean }) => {
       const nodes = getNodes();
-      const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+      const checkResults = checkWorkflowNodeAndConnection({ nodes, edges, options });
 
       if (!checkResults) {
         onRemoveError();
@@ -201,7 +208,9 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
         toast({
           status: 'warning',
-          title: t('common:core.workflow.Check Failed')
+          title: isBatchGlobalWriteViolation(nodes, checkResults)
+            ? t('workflow:batch_no_global_variable_write')
+            : t('common:core.workflow.Check Failed')
         });
       }
     },

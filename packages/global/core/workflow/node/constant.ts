@@ -149,6 +149,7 @@ export enum FlowNodeTypeEnum {
   userSelect = 'userSelect',
   loop = 'loop',
   batch = 'batch',
+  loopPro = 'loopPro',
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
   formInput = 'formInput',
@@ -291,6 +292,9 @@ export const NodeGradients = {
   yellowGreen:
     'linear-gradient(180deg, rgba(166, 218, 114, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   lafTeal: 'linear-gradient(180deg, rgba(72, 213, 186, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  /** 循环节点（loopPro）及子节点专用，与批量/旧 loop 紫系区分 */
+  workflowLoop:
+    'linear-gradient(180deg, rgba(45, 212, 191, 0.22) 0%, rgba(255, 255, 255, 0.00) 100%)',
   skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
@@ -312,6 +316,7 @@ export const NodeBorderColors = {
   violetDeep: 'rgba(212, 117, 255, 0.6)',
   yellowGreen: 'rgba(166, 218, 114, 0.6)',
   lafTeal: 'rgba(72, 213, 186, 0.6)',
+  workflowLoop: 'rgba(13, 148, 136, 0.55)',
   skyBlue: 'rgba(137, 229, 255, 0.6)',
   salmon: 'rgba(255, 160, 160, 0.6)',
   gray: 'rgba(136, 136, 136, 0.6)'
@@ -333,6 +338,7 @@ export const NodeColorSchemaEnum = [
   'violetDeep',
   'yellowGreen',
   'lafTeal',
+  'workflowLoop',
   'skyBlue',
   'salmon',
   'gray'

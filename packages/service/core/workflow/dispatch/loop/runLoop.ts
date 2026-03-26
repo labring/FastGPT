@@ -1,4 +1,8 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WORKFLOW_LOOP_MAX_REACHED_MESSAGE
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   type DispatchNodeResultType,
@@ -37,11 +41,12 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   }
 
   // Max loop times
-  const maxLength = process.env.WORKFLOW_MAX_LOOP_TIMES
-    ? Number(process.env.WORKFLOW_MAX_LOOP_TIMES)
-    : 50;
+  const maxLength = (() => {
+    const n = Number(process.env.WORKFLOW_MAX_LOOP_TIMES);
+    return Number.isInteger(n) && n > 0 ? n : 100;
+  })();
   if (loopInputArray.length > maxLength) {
-    return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
+    return Promise.reject(WORKFLOW_LOOP_MAX_REACHED_MESSAGE);
   }
 
   let interactiveData =
@@ -104,9 +109,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       )
     });
 
-    const loopOutputValue = response.flowResponses.find(
+    const loopEndList = response.flowResponses.filter(
       (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
-    )?.loopOutputValue;
+    );
+    const loopOutputValue = loopEndList[loopEndList.length - 1]?.loopOutputValue;
 
     // Concat runtime response
     if (!response.workflowInteractiveResponse) {
