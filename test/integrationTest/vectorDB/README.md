@@ -18,6 +18,7 @@ cp test/.env.test.template test/.env.test.local
 | `PG_URL` | PostgreSQL + pgvector 连接串 | PgVectorCtrl |
 | `OCEANBASE_URL` | Oceanbase 连接串（后续） | ObVectorCtrl |
 | `MILVUS_ADDRESS` | Milvus 地址（后续） | MilvusCtrl |
+| `OPENGAUSS_URL` | openGauss DataVec 连接串 | OpenGaussVectorCtrl |
 
 未设置对应环境变量时，该驱动的集成测试会**整体跳过**，不会报错。
 
