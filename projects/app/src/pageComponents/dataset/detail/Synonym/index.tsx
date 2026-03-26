@@ -444,8 +444,16 @@ const SynonymTab = () => {
       };
 
       // 添加示例数据
-      worksheet.addRow(['refund', 'return', 'chargeback', 'reimbursement', 'money back', '']);
-      worksheet.addRow(['order', 'purchase order', 'order number', 'transaction', 'invoice', '']);
+      worksheet.addRow([
+        t('dataset:synonym_example_standard1'),
+        ...t('dataset:synonym_example_synonyms1').split(','),
+        ''
+      ]);
+      worksheet.addRow([
+        t('dataset:synonym_example_standard2'),
+        ...t('dataset:synonym_example_synonyms2').split(','),
+        ''
+      ]);
 
       // 生成 Buffer（UTF-8编码）
       const buffer = await workbook.xlsx.writeBuffer();
@@ -545,7 +553,7 @@ const SynonymTab = () => {
                       fileType: ACCEPTED_FILE_TYPES.join(t('common:comma_symbol'))
                     }}
                     components={{
-                      highlight: <Box as="span" color="primary.600" fontWeight="medium" />
+                      highlight: <Box as="span" color="myGray.900" fontWeight="bold" />
                     }}
                   />
                 </Box>

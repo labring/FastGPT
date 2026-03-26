@@ -479,8 +479,18 @@
   "faq_template_col_question": "Question",
   "faq_template_col_answer": "Answer",
   "faq_template_col_indexes": "Indexes",
+  "faq_example_q1": "Who are you?",
+  "faq_example_a1": "I am an AI assistant, here to help with your questions and provide support. I can assist with learning, daily life queries, and creative ideas.",
+  "faq_example_i1": "1. What are you?\n2. What can you do?\n3. What topics can you help with?\n4. How do you assist users?\n5. What's your goal?",
+  "faq_example_q2": "What are you?",
+  "faq_example_a2": "I am an AI assistant designed to help users with their questions and provide support across various topics.",
+  "faq_example_i2": "What are you?",
   "synonym_template_filename": "Synonym Template",
   "synonym_template_col_standard": "Standard Term",
-  "synonym_template_col_synonyms": "Synonyms"
+  "synonym_template_col_synonyms": "Synonyms",
+  "synonym_example_standard1": "refund",
+  "synonym_example_synonyms1": "return,chargeback,reimbursement,money back",
+  "synonym_example_standard2": "order",
+  "synonym_example_synonyms2": "purchase order,order number,transaction,invoice"
 }
 
