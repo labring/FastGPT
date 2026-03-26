@@ -90,7 +90,12 @@ const MarkdownRender = ({
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }], RehypeRaw]}
+        rehypePlugins={[
+          RehypeKatex,
+          [RehypeExternalLinks, { target: '_blank' }],
+          RehypeRaw,
+          rehypeStripDangerousTags
+        ]}
         components={components}
         urlTransform={urlTransform}
       >
@@ -165,4 +170,18 @@ function RewritePre({ children }: any) {
   });
 
   return <>{modifiedChildren}</>;
+}
+
+// Strip <style> and <script> tags injected via rehype-raw to prevent global style pollution
+function rehypeStripDangerousTags() {
+  return (tree: any) => {
+    const strip = (node: any) => {
+      if (!node.children) return;
+      node.children = node.children.filter(
+        (child: any) => child.tagName !== 'style' && child.tagName !== 'script'
+      );
+      node.children.forEach(strip);
+    };
+    strip(tree);
+  };
 }
