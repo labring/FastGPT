@@ -37,6 +37,7 @@ import {
   storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
+import { updateDatasetSearchNodesLimit } from '@/web/core/app/utils';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -95,8 +96,13 @@ const Header = ({
       autoSave?: boolean;
     }) => {
       const { nodes, edges } = form2AppWorkflow(appForm, t, appDetail.type);
+
+      // 只有智能客服（assistant）类型才自动用默认模型的 quoteMaxToken 覆盖 limit
+      const updatedNodes =
+        appDetail.type === AppTypeEnum.assistant ? updateDatasetSearchNodesLimit(nodes) : nodes;
+
       await onSaveApp({
-        nodes,
+        nodes: updatedNodes,
         edges,
         chatConfig: appForm.chatConfig,
         isPublish,
