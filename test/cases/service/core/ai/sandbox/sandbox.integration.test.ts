@@ -1,7 +1,8 @@
 import { describe, it, expect, afterAll, beforeAll, vi } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import {
-  SandboxClient,
+  getSandboxClient,
+  type SandboxClient,
   deleteSandboxesByChatIds,
   deleteSandboxesByAppId
 } from '@fastgpt/service/core/ai/sandbox/controller';
@@ -11,16 +12,26 @@ import { delay } from '@fastgpt/global/common/system/utils';
 
 const { Types } = connectionMongo;
 
-const hasSandboxEnv = !!(
-  process.env.AGENT_SANDBOX_PROVIDER &&
-  process.env.AGENT_SANDBOX_SEALOS_BASEURL &&
-  process.env.AGENT_SANDBOX_SEALOS_TOKEN
-);
+const hasSandboxEnv = !!process.env.AGENT_SANDBOX_PROVIDER;
 vi.mock('@fastgpt/service/env', () => ({
   env: {
     AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
     AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
-    AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN
+    AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
+
+    AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+    AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
+    AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+    AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY:
+      process.env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
+    AGENT_SANDBOX_ENABLE_VOLUME: process.env.AGENT_SANDBOX_ENABLE_VOLUME,
+    AGENT_SANDBOX_VOLUME_MANAGER_URL: process.env.AGENT_SANDBOX_VOLUME_MANAGER_URL,
+    AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: process.env.AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
+    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: '/home/sandbox',
+
+    AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY
   }
 }));
 
@@ -35,7 +46,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
 
   // 测试开始前，确认 workspace 存在
   beforeAll(async () => {
-    sandbox = new SandboxClient(testParams);
+    sandbox = await getSandboxClient(testParams);
     const result = await sandbox.exec(`mkdir -p ${testDir} && cd ${testDir}`);
     expect(result.exitCode).toBe(0);
     await delay(2000);
@@ -152,8 +163,8 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       const chatId1 = `${testParams.chatId}-1`;
       const chatId2 = `${testParams.chatId}-2`;
 
-      const sandbox1 = new SandboxClient({ ...testParams, chatId: chatId1 });
-      const sandbox2 = new SandboxClient({ ...testParams, chatId: chatId2 });
+      const sandbox1 = await getSandboxClient({ ...testParams, chatId: chatId1 });
+      const sandbox2 = await getSandboxClient({ ...testParams, chatId: chatId2 });
 
       await sandbox1.exec('echo test1');
       await sandbox2.exec('echo test2');
@@ -173,8 +184,8 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       const chatId1 = `${testParams.chatId}-app-1`;
       const chatId2 = `${testParams.chatId}-app-2`;
 
-      const sandbox1 = new SandboxClient({ ...testParams, chatId: chatId1 });
-      const sandbox2 = new SandboxClient({ ...testParams, chatId: chatId2 });
+      const sandbox1 = await getSandboxClient({ ...testParams, chatId: chatId1 });
+      const sandbox2 = await getSandboxClient({ ...testParams, chatId: chatId2 });
 
       await sandbox1.exec('echo test1');
       await sandbox2.exec('echo test2');
@@ -219,8 +230,8 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     });
 
     it('should handle concurrent sandbox creation with same chatId', async () => {
-      const sandbox1 = new SandboxClient(testParams);
-      const sandbox2 = new SandboxClient(testParams);
+      const sandbox1 = await getSandboxClient(testParams);
+      const sandbox2 = await getSandboxClient(testParams);
 
       const results = await Promise.all([sandbox1.exec('echo test1'), sandbox2.exec('echo test2')]);
 

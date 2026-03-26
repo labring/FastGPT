@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import {
   SandboxFileOperationBodySchema,
   type SandboxFileOperationResponse
@@ -27,7 +27,7 @@ async function handler(
   });
 
   // 创建沙盒实例
-  const sandbox = new SandboxClient({
+  const sandbox = await getSandboxClient({
     appId,
     userId: uid,
     chatId
@@ -47,6 +47,7 @@ async function handler(
           type: entry.isDirectory ? ('directory' as const) : ('file' as const),
           size: entry.isFile ? entry.size : undefined
         }));
+
         return { action: 'list', files };
       }
 
