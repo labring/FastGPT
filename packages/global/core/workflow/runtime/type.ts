@@ -99,6 +99,7 @@ export type ChatDispatchProps = {
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
   node: RuntimeNodeItemType;
   runtimeNodes: RuntimeNodeItemType[];
+  runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
 

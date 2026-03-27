@@ -598,6 +598,31 @@ describe('valueTypeFormat', () => {
       expect(valueTypeFormat(item.value, item.type)).toEqual(item.result);
     });
   });
+
+  it('should return default value when json5.parse throws for object type', () => {
+    // '{a: }' passes isObjectString but fails json5.parse
+    expect(valueTypeFormat('{a: }', WorkflowIOValueTypeEnum.object)).toEqual({});
+  });
+
+  it('should return [value] when json5.parse throws for array type', () => {
+    // '[a]' passes isObjectString but fails json5.parse (bare identifier is not a valid json5 value)
+    expect(valueTypeFormat('[a]', WorkflowIOValueTypeEnum.arrayString)).toEqual(['[a]']);
+  });
+
+  it('should return [] when json5.parse throws for special types', () => {
+    expect(valueTypeFormat('[a]', WorkflowIOValueTypeEnum.datasetQuote)).toEqual([]);
+    expect(valueTypeFormat('[a]', WorkflowIOValueTypeEnum.selectDataset)).toEqual([]);
+    expect(valueTypeFormat('[a]', WorkflowIOValueTypeEnum.selectApp)).toEqual([]);
+  });
+
+  it('should return [] when json5.parse throws for chatHistory type', () => {
+    expect(valueTypeFormat('[a]', WorkflowIOValueTypeEnum.chatHistory)).toEqual([]);
+  });
+
+  it('should return value as-is for unhandled valueType (dynamic)', () => {
+    expect(valueTypeFormat('hello', WorkflowIOValueTypeEnum.dynamic)).toBe('hello');
+    expect(valueTypeFormat(42, WorkflowIOValueTypeEnum.dynamic)).toBe(42);
+  });
 });
 
 describe('getLastInteractiveValue', () => {
@@ -933,6 +958,24 @@ describe('storeEdges2RuntimeEdges', () => {
     const result = storeEdges2RuntimeEdges(undefined as any);
     expect(result).toEqual([]);
   });
+
+  it('should use fallback [] when lastInteractive.memoryEdges is undefined', () => {
+    const edges: StoreEdgeItemType[] = [
+      { source: 'n1', sourceHandle: 'out1', target: 'n2', targetHandle: 'in1' }
+    ];
+    const lastInteractive = {
+      type: 'userSelect',
+      entryNodeIds: [],
+      memoryEdges: undefined,
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    } as any as WorkflowInteractiveResponseType;
+
+    const result = storeEdges2RuntimeEdges(edges, lastInteractive);
+    expect(result).toEqual([
+      { source: 'n1', sourceHandle: 'out1', target: 'n2', targetHandle: 'in1', status: 'waiting' }
+    ]);
+  });
 });
 
 describe('getWorkflowEntryNodeIds', () => {
@@ -1062,6 +1105,28 @@ describe('getWorkflowEntryNodeIds', () => {
     const result = getWorkflowEntryNodeIds(nodes);
     expect(result).toEqual(['start1']);
   });
+
+  it('should fall through to node scan when lastInteractive.entryNodeIds is undefined', () => {
+    const nodes: RuntimeNodeItemType[] = [
+      {
+        nodeId: 'start1',
+        name: 'start',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        inputs: [],
+        outputs: []
+      }
+    ];
+    const lastInteractive = {
+      type: 'userSelect',
+      entryNodeIds: undefined,
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: { description: '', userSelectOptions: [] }
+    } as any as WorkflowInteractiveResponseType;
+
+    const result = getWorkflowEntryNodeIds(nodes, lastInteractive);
+    expect(result).toEqual(['start1']);
+  });
 });
 
 describe('storeNodes2RuntimeNodes', () => {
@@ -1165,14 +1230,14 @@ describe('filterWorkflowEdges', () => {
 describe('getReferenceVariableValue', () => {
   it('should return undefined for undefined value', () => {
     expect(
-      getReferenceVariableValue({ value: undefined, nodes: [], variables: {} })
+      getReferenceVariableValue({ value: undefined, nodesMap: {}, variables: {} })
     ).toBeUndefined();
   });
 
   it('should return variable value for VARIABLE_NODE_ID reference', () => {
     const result = getReferenceVariableValue({
       value: [VARIABLE_NODE_ID, 'myVar'],
-      nodes: [],
+      nodesMap: {},
       variables: { myVar: 'hello' }
     });
     expect(result).toBe('hello');
@@ -1181,15 +1246,15 @@ describe('getReferenceVariableValue', () => {
   it('should return undefined for VARIABLE_NODE_ID with empty outputId', () => {
     const result = getReferenceVariableValue({
       value: [VARIABLE_NODE_ID, ''],
-      nodes: [],
+      nodesMap: {},
       variables: { myVar: 'hello' }
     });
     expect(result).toBeUndefined();
   });
 
   it('should return node output value', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1198,27 +1263,74 @@ describe('getReferenceVariableValue', () => {
           { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'outputValue' }
         ]
       }
-    ];
+    };
     const result = getReferenceVariableValue({
       value: ['node1', 'out1'],
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toBe('outputValue');
   });
 
+  it('should return undefined when output id not found in node', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'outputValue' }
+        ]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: ['node1', 'nonexistent'],
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toBeUndefined();
+  });
+
   it('should return original value when node not found', () => {
     const result = getReferenceVariableValue({
       value: ['nonexistent', 'out1'],
-      nodes: [],
+      nodesMap: {},
       variables: {}
     });
     expect(result).toEqual(['nonexistent', 'out1']);
   });
 
+  it('should return non-reference value as-is', () => {
+    const result = getReferenceVariableValue({
+      value: 'plain string' as any,
+      nodesMap: {},
+      variables: {}
+    });
+    expect(result).toBe('plain string');
+  });
+
+  it('should handle array with single reference', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [{ id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'v1' }]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: [['node1', 'out1']],
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toEqual(['v1']);
+  });
+
   it('should handle array of references', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1227,7 +1339,7 @@ describe('getReferenceVariableValue', () => {
           { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'value1' }
         ]
       },
-      {
+      node2: {
         nodeId: 'node2',
         name: 'test2',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1236,21 +1348,33 @@ describe('getReferenceVariableValue', () => {
           { id: 'out2', key: 'output2', type: FlowNodeOutputTypeEnum.static, value: 'value2' }
         ]
       }
-    ];
+    };
     const result = getReferenceVariableValue({
       value: [
         ['node1', 'out1'],
         ['node2', 'out2']
       ],
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toEqual(['value1', 'value2']);
   });
 
+  it('should handle array with VARIABLE_NODE_ID references', () => {
+    const result = getReferenceVariableValue({
+      value: [
+        [VARIABLE_NODE_ID, 'var1'],
+        [VARIABLE_NODE_ID, 'var2']
+      ],
+      nodesMap: {},
+      variables: { var1: 'hello', var2: 'world' }
+    });
+    expect(result).toEqual(['hello', 'world']);
+  });
+
   it('should filter undefined values from array result', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1259,16 +1383,101 @@ describe('getReferenceVariableValue', () => {
           { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: 'value1' }
         ]
       }
-    ];
+    };
     const result = getReferenceVariableValue({
       value: [
         ['node1', 'out1'],
         ['node1', 'nonexistent']
       ],
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toEqual(['value1']);
+  });
+
+  it('should flatten array output values in reference array', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          { id: 'out1', key: 'output1', type: FlowNodeOutputTypeEnum.static, value: ['a', 'b'] }
+        ]
+      },
+      node2: {
+        nodeId: 'node2',
+        name: 'test2',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          { id: 'out2', key: 'output2', type: FlowNodeOutputTypeEnum.static, value: ['c', 'd'] }
+        ]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: [
+        ['node1', 'out1'],
+        ['node2', 'out2']
+      ],
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('should handle array with 3+ references', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      n1: {
+        nodeId: 'n1',
+        name: 'n1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [{ id: 'o1', key: 'o1', type: FlowNodeOutputTypeEnum.static, value: 'r1' }]
+      },
+      n2: {
+        nodeId: 'n2',
+        name: 'n2',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [{ id: 'o2', key: 'o2', type: FlowNodeOutputTypeEnum.static, value: 'r2' }]
+      },
+      n3: {
+        nodeId: 'n3',
+        name: 'n3',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [{ id: 'o3', key: 'o3', type: FlowNodeOutputTypeEnum.static, value: 'r3' }]
+      }
+    };
+    const result = getReferenceVariableValue({
+      value: [
+        ['n1', 'o1'],
+        ['n2', 'o2'],
+        ['n3', 'o3']
+      ],
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toEqual(['r1', 'r2', 'r3']);
+  });
+
+  it('should support Map as nodesMap', () => {
+    const nodesMap = new Map<string, RuntimeNodeItemType>([
+      [
+        'node1',
+        {
+          nodeId: 'node1',
+          name: 'test',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [{ id: 'out1', key: 'o1', type: FlowNodeOutputTypeEnum.static, value: 'mapVal' }]
+        }
+      ]
+    ]);
+    const result = getReferenceVariableValue({ value: ['node1', 'out1'], nodesMap, variables: {} });
+    expect(result).toBe('mapVal');
   });
 });
 
@@ -1322,26 +1531,26 @@ describe('formatVariableValByType', () => {
 
 describe('replaceEditorVariable', () => {
   it('should return non-string values as is', () => {
-    expect(replaceEditorVariable({ text: 123, nodes: [], variables: {} })).toBe(123);
-    expect(replaceEditorVariable({ text: null, nodes: [], variables: {} })).toBe(null);
+    expect(replaceEditorVariable({ text: 123, nodesMap: {}, variables: {} })).toBe(123);
+    expect(replaceEditorVariable({ text: null, nodesMap: {}, variables: {} })).toBe(null);
   });
 
   it('should return empty string as is', () => {
-    expect(replaceEditorVariable({ text: '', nodes: [], variables: {} })).toBe('');
+    expect(replaceEditorVariable({ text: '', nodesMap: {}, variables: {} })).toBe('');
   });
 
   it('should replace global variables', () => {
     const result = replaceEditorVariable({
       text: 'Hello {{name}}',
-      nodes: [],
+      nodesMap: {},
       variables: { name: 'World' }
     });
     expect(result).toBe('Hello World');
   });
 
   it('should replace node output variables', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1356,10 +1565,10 @@ describe('replaceEditorVariable', () => {
           }
         ]
       }
-    ];
+    };
     const result = replaceEditorVariable({
       text: 'Result: {{$node1.out1$}}',
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toBe('Result: outputValue');
@@ -1368,15 +1577,15 @@ describe('replaceEditorVariable', () => {
   it('should replace VARIABLE_NODE_ID variables', () => {
     const result = replaceEditorVariable({
       text: `Value: {{$${VARIABLE_NODE_ID}.myVar$}}`,
-      nodes: [],
+      nodesMap: {},
       variables: { myVar: 'varValue' }
     });
     expect(result).toBe('Value: varValue');
   });
 
   it('should handle nested variable replacement', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1391,7 +1600,7 @@ describe('replaceEditorVariable', () => {
           }
         ]
       },
-      {
+      node2: {
         nodeId: 'node2',
         name: 'test2',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1406,18 +1615,18 @@ describe('replaceEditorVariable', () => {
           }
         ]
       }
-    ];
+    };
     const result = replaceEditorVariable({
       text: 'Result: {{$node1.out1$}}',
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toBe('Result: finalValue');
   });
 
   it('should handle circular reference protection', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1432,10 +1641,10 @@ describe('replaceEditorVariable', () => {
           }
         ]
       }
-    ];
+    };
     const result = replaceEditorVariable({
       text: 'Result: {{$node1.out1$}}',
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toBe('Result: {{$node1.out1$}}');
@@ -1444,7 +1653,7 @@ describe('replaceEditorVariable', () => {
   it('should handle max depth protection', () => {
     const result = replaceEditorVariable({
       text: 'test',
-      nodes: [],
+      nodesMap: {},
       variables: {},
       depth: 15
     });
@@ -1452,26 +1661,26 @@ describe('replaceEditorVariable', () => {
   });
 
   it('should handle node input as variable source', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
         inputs: [{ key: 'myInput', label: '', renderTypeList: [], value: 'inputValue' }],
         outputs: []
       }
-    ];
+    };
     const result = replaceEditorVariable({
       text: 'Input: {{$node1.myInput$}}',
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toBe('Input: inputValue');
   });
 
   it('should convert object values to string', () => {
-    const nodes: RuntimeNodeItemType[] = [
-      {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
         nodeId: 'node1',
         name: 'test',
         flowNodeType: FlowNodeTypeEnum.chatNode,
@@ -1486,10 +1695,10 @@ describe('replaceEditorVariable', () => {
           }
         ]
       }
-    ];
+    };
     const result = replaceEditorVariable({
       text: 'Object: {{$node1.out1$}}',
-      nodes,
+      nodesMap,
       variables: {}
     });
     expect(result).toBe('Object: {"a":1}');
@@ -1498,11 +1707,67 @@ describe('replaceEditorVariable', () => {
   it('should keep original pattern when node not found', () => {
     const result = replaceEditorVariable({
       text: '{{$nonexistent.out$}}',
-      nodes: [],
+      nodesMap: {},
       variables: {}
     });
     // When node is not found, the pattern is not replaced
     expect(result).toBe('');
+  });
+
+  it('should skip duplicate variable pattern in the same text', () => {
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          {
+            id: 'out1',
+            key: 'output1',
+            type: FlowNodeOutputTypeEnum.static,
+            value: 'val',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      }
+    };
+    // Same pattern appears twice — second occurrence reuses first replacement
+    const result = replaceEditorVariable({
+      text: '{{$node1.out1$}} and {{$node1.out1$}}',
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toBe('val and val');
+  });
+
+  it('should support Map as nodesMap', () => {
+    const nodesMap = new Map<string, RuntimeNodeItemType>([
+      [
+        'node1',
+        {
+          nodeId: 'node1',
+          name: 'test',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [
+            {
+              id: 'out1',
+              key: 'output1',
+              type: FlowNodeOutputTypeEnum.static,
+              value: 'mapValue',
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        }
+      ]
+    ]);
+    const result = replaceEditorVariable({
+      text: 'Result: {{$node1.out1$}}',
+      nodesMap,
+      variables: {}
+    });
+    expect(result).toBe('Result: mapValue');
   });
 });
 

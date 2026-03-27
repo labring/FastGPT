@@ -296,17 +296,16 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 */
 export const getReferenceVariableValue = ({
   value,
-  nodes,
+  nodesMap,
   variables
 }: {
   value?: ReferenceValueType;
-  nodes: RuntimeNodeItemType[];
+  nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, any>;
 }) => {
   if (!value) return value;
 
-  // handle single reference value
-  if (isValidReferenceValueFormat(value)) {
+  const resoleValue = (value: [string, string | undefined]) => {
     const sourceNodeId = value[0];
     const outputId = value[1];
 
@@ -316,12 +315,17 @@ export const getReferenceVariableValue = ({
     }
 
     // 避免 value 刚好就是二个元素的字符串数组
-    const node = nodes.find((node) => node.nodeId === sourceNodeId);
+    const node = nodesMap instanceof Map ? nodesMap.get(sourceNodeId) : nodesMap[sourceNodeId];
     if (!node) {
       return value;
     }
 
     return node.outputs.find((output) => output.id === outputId)?.value;
+  };
+
+  // handle single reference value
+  if (isValidReferenceValueFormat(value)) {
+    return resoleValue(value as [string, string | undefined]);
   }
 
   // handle reference array
@@ -330,15 +334,12 @@ export const getReferenceVariableValue = ({
     value.length > 0 &&
     value.every((item) => isValidReferenceValueFormat(item))
   ) {
-    const result = value.map<any>((val) => {
-      return getReferenceVariableValue({
-        value: val,
-        nodes,
-        variables
-      });
-    });
-
-    return result.flat().filter((item) => item !== undefined);
+    return value
+      .map<any>((val) => {
+        return resoleValue(val as [string, string | undefined]);
+      })
+      .flat()
+      .filter((item) => item !== undefined);
   }
 
   return value;
@@ -368,18 +369,37 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
   return val;
 };
 
+// 模块级 RegExp 缓存，避免每次变量替换都重新编译正则
+const _replaceRegexCache = new Map<string, RegExp>();
+const _MAX_REGEX_CACHE_SIZE = 5000;
+
+const _getCachedRegex = (pattern: string): RegExp => {
+  let re = _replaceRegexCache.get(pattern);
+  if (!re) {
+    if (_replaceRegexCache.size >= _MAX_REGEX_CACHE_SIZE) {
+      _replaceRegexCache.clear();
+    }
+    re = new RegExp(pattern, 'g');
+    _replaceRegexCache.set(pattern, re);
+  }
+  return re;
+};
+
 // replace {{$xx.xx$}} variables for text
 export function replaceEditorVariable({
   text,
-  nodes,
+  nodesMap,
   variables,
   depth = 0
 }: {
   text: any;
-  nodes: RuntimeNodeItemType[];
+  nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, any>; // global variables
   depth?: number;
 }) {
+  const getNode = (nodeId: string) => {
+    return nodesMap instanceof Map ? nodesMap.get(nodeId) : nodesMap[nodeId];
+  };
   if (typeof text !== 'string') return text;
   if (text === '') return text;
 
@@ -398,10 +418,10 @@ export function replaceEditorVariable({
     if (typeof value !== 'string') return false;
 
     // Check if the value contains the target variable pattern (direct self-reference)
-    const selfRefPattern = new RegExp(
-      `\\{\\{\\$${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\$\\}\\}`,
-      'g'
+    const selfRefPattern = _getCachedRegex(
+      `\\{\\{\\$${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\$\\}\\}`
     );
+    selfRefPattern.lastIndex = 0;
     return selfRefPattern.test(value);
   };
 
@@ -431,7 +451,7 @@ export function replaceEditorVariable({
         return variables[id];
       }
       // Find upstream node input/output
-      const node = nodes.find((node) => node.nodeId === nodeId);
+      const node = getNode(nodeId);
       if (!node) return;
 
       const output = node.outputs.find((output) => output.id === id);
@@ -439,7 +459,12 @@ export function replaceEditorVariable({
 
       // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
       const input = node.inputs.find((input) => input.key === id);
-      if (input) return getReferenceVariableValue({ value: input.value, nodes, variables });
+      if (input)
+        return getReferenceVariableValue({
+          value: input.value,
+          nodesMap,
+          variables
+        });
     })();
 
     // Check for direct circular reference
@@ -462,12 +487,14 @@ export function replaceEditorVariable({
 
   // Apply all replacements
   replacements.forEach(({ pattern, replacement }) => {
-    result = result.replace(new RegExp(pattern, 'g'), replacement);
+    const re = _getCachedRegex(pattern);
+    re.lastIndex = 0;
+    result = result.replace(re, replacement);
   });
 
   // If we made replacements and there might be nested variables, recursively process
   if (hasReplacements && /\{\{\$[^.]+\.[^$]+\$\}\}/.test(result)) {
-    result = replaceEditorVariable({ text: result, nodes, variables, depth: depth + 1 });
+    result = replaceEditorVariable({ text: result, nodesMap, variables, depth: depth + 1 });
   }
 
   return result || '';

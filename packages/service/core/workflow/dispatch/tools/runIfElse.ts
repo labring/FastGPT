@@ -105,7 +105,7 @@ function getResult(
   condition: IfElseConditionType,
   list: ConditionListItemType[],
   variables: Record<string, any>,
-  runtimeNodes: RuntimeNodeItemType[]
+  runtimeNodesMap: Map<string, RuntimeNodeItemType>
 ) {
   const listResult = list.map((item) => {
     const { variable, condition: variableCondition, value, valueType } = item;
@@ -114,7 +114,7 @@ function getResult(
     const conditionLeftValue = getReferenceVariableValue({
       value: variable,
       variables,
-      nodes: runtimeNodes
+      nodesMap: runtimeNodesMap
     });
 
     const conditionRightValue =
@@ -122,7 +122,7 @@ function getResult(
         ? getReferenceVariableValue({
             value: value as ReferenceItemValueType,
             variables,
-            nodes: runtimeNodes
+            nodesMap: runtimeNodesMap
           })
         : value;
 
@@ -135,7 +135,7 @@ function getResult(
 export const dispatchIfElse = async (props: Props): Promise<Response> => {
   const {
     params,
-    runtimeNodes,
+    runtimeNodesMap,
     variables,
     node: { nodeId }
   } = props;
@@ -144,7 +144,7 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   let res = IfElseResultEnum.ELSE as string;
   for (let i = 0; i < ifElseList.length; i++) {
     const item = ifElseList[i];
-    const result = getResult(item.condition, item.list, variables, runtimeNodes);
+    const result = getResult(item.condition, item.list, variables, runtimeNodesMap);
     if (result) {
       res = getElseIFLabel(i);
       break;

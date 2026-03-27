@@ -69,7 +69,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     responseChatItemId,
     variables,
     node,
-    runtimeNodes,
+    runtimeNodesMap,
     histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
@@ -110,7 +110,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   const replaceStringVariables = (text: string) => {
     return replaceEditorVariable({
       text,
-      nodes: runtimeNodes,
+      nodesMap: runtimeNodesMap,
       variables: allVariables
     });
   };
@@ -178,7 +178,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       if (httpContentType === ContentTypes.json) {
         httpJsonBody = replaceJsonBodyString(
           { text: httpJsonBody },
-          { variables, allVariables, runtimeNodes }
+          { variables, allVariables, runtimeNodesMap }
         );
         return json5.parse(httpJsonBody);
       }
@@ -306,10 +306,10 @@ export const replaceJsonBodyString = (
   props: {
     variables: Record<string, any>;
     allVariables: Record<string, any>;
-    runtimeNodes: RuntimeNodeItemType[];
+    runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   }
 ) => {
-  const { variables, allVariables, runtimeNodes } = props;
+  const { variables, allVariables, runtimeNodesMap } = props;
 
   const MAX_REPLACEMENT_DEPTH = 10;
   const processedVariables = new Set<string>();
@@ -405,7 +405,7 @@ export const replaceJsonBodyString = (
         return variables[id];
       }
       // Find upstream node input/output
-      const node = runtimeNodes.find((node) => node.nodeId === nodeId);
+      const node = runtimeNodesMap.get(nodeId);
       if (!node) return;
 
       const output = node.outputs.find((output) => output.id === id);
@@ -413,7 +413,11 @@ export const replaceJsonBodyString = (
 
       const input = node.inputs.find((input) => input.key === id);
       if (input)
-        return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
+        return getReferenceVariableValue({
+          value: input.value,
+          nodesMap: runtimeNodesMap,
+          variables
+        });
     })();
 
     const formatVal = valToStr(variableVal, isInQuotes);

@@ -852,14 +852,14 @@ export class WorkflowQueue {
           // replace {{$xx.xx$}} and {{xx}} variables
           let value = replaceEditorVariable({
             text: input.value,
-            nodes: this.data.runtimeNodes,
+            nodesMap: this.runtimeNodesMap,
             variables: this.data.variables
           });
 
           // replace reference variables
           value = getReferenceVariableValue({
             value,
-            nodes: this.data.runtimeNodes,
+            nodesMap: this.runtimeNodesMap,
             variables: this.data.variables
           });
 
@@ -899,6 +899,7 @@ export class WorkflowQueue {
         retainDatasetCite: this.data.retainDatasetCite,
         node,
         runtimeNodes: this.data.runtimeNodes,
+        runtimeNodesMap: this.runtimeNodesMap,
         runtimeEdges: this.data.runtimeEdges,
         params,
         mode
