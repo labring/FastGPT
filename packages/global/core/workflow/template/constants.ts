@@ -58,7 +58,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
-  LoopNode,
   BatchNode,
   LoopProNode
 ];
@@ -90,6 +89,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunPluginModule,
   RunAppNode,
   RunAppModule,
+  LoopNode,
   LoopStartNode,
   LoopEndNode,
   LoopProEndNode,

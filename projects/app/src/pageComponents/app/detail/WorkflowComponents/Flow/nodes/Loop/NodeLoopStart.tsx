@@ -65,7 +65,6 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
   }, [parentLive]);
 
-  // 条件循环(Pro) 下不展示「数组元素」，仅「当前循环次数」；父级仍有 array 类型输入，不能单靠 loopItemInputType 判断
   const effectiveLoopItemType = isLoopProConditionMode ? undefined : loopItemInputType;
 
   // Auth update loopStartInput output

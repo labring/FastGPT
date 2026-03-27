@@ -32,7 +32,7 @@ const menuForbid = {
   debug: true
 } as const;
 
-/** 批量 / 串行循环子图中的「结束」节点 */
+/** batch & loopEnd */
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
   const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
