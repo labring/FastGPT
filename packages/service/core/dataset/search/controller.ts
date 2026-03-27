@@ -25,7 +25,7 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
-import { computeFilterIntersection, splitTextByRerankBudget } from './utils';
+import { computeFilterIntersection } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { type ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -107,43 +107,12 @@ export const datasetDataReRank = async ({
   results: SearchDataResponseItemType[];
   inputTokens: number;
 }> => {
-  const queryTokens = await countPromptTokens(query);
-  const rerankMaxToken = rerankModel?.maxToken ?? 8000;
-
-  const docBudget = rerankMaxToken - queryTokens;
-  if (docBudget <= 0) {
-    return Promise.reject('Rerank query too long');
-  }
-
-  const expandedDocuments: {
-    id: string;
-    parentId: string;
-    text: string;
-  }[] = [];
-
-  for (const item of data) {
-    const parentText = [item.q, item.a].filter(Boolean).join('\n').trim();
-    const subChunks = await splitTextByRerankBudget({
-      text: parentText,
-      docBudget
-    });
-
-    const chunks = subChunks.length > 0 ? subChunks : [parentText];
-    chunks.forEach((text, subIndex) => {
-      expandedDocuments.push({
-        id: `${item.id}__chunk_${subIndex}`,
-        parentId: item.id,
-        text
-      });
-    });
-  }
-
   const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
     query,
-    documents: expandedDocuments.map((item) => ({
+    documents: data.map((item) => ({
       id: item.id,
-      text: item.text
+      text: [item.q, item.a].filter(Boolean).join('\n').trim()
     }))
   });
 
@@ -151,38 +120,17 @@ export const datasetDataReRank = async ({
     return Promise.reject('Rerank error');
   }
 
-  const parentScoreMap = new Map<string, number>();
-  const chunkMap = new Map(expandedDocuments.map((item) => [item.id, { parentId: item.parentId }]));
-
-  results.forEach((item) => {
-    const chunk = chunkMap.get(item.id);
-    if (!chunk) return;
-
-    const score = item.score || 0;
-    const oldScore = parentScoreMap.get(chunk.parentId);
-    if (oldScore === undefined || score > oldScore) {
-      parentScoreMap.set(chunk.parentId, score);
-    }
-  });
+  const scoreMap = new Map(results.map((r) => [r.id, r.score ?? 0]));
 
   const mergeResult = data
     .map((item, originIndex) => {
-      const score = parentScoreMap.get(item.id);
+      const score = scoreMap.get(item.id);
       if (score === undefined) return null;
-      return {
-        item,
-        score,
-        originIndex
-      };
+      return { item, score, originIndex };
     })
     .filter(
-      (
-        item
-      ): item is {
-        item: SearchDataResponseItemType;
-        score: number;
-        originIndex: number;
-      } => Boolean(item)
+      (item): item is { item: SearchDataResponseItemType; score: number; originIndex: number } =>
+        Boolean(item)
     )
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;

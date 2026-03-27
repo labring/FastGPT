@@ -91,23 +91,23 @@ const MyNumberInput = (props: Props) => {
       {...(typeof value !== 'undefined' ? { value: safeControlledValue } : {})}
       onBlur={(e) => {
         const numE = getSafeNumberValue(e.target.value);
-        if (onBlur) {
-          onBlur(numE);
-        }
-        if (onChange) {
-          onChange(numE);
-        }
+        onBlur?.(numE);
+        onChange?.(numE);
+
         if (registeredField && name) {
           const registeredValue = getRegisteredValue(e.target.value);
-          const event = {
-            target: {
-              name,
-              value: registeredValue
-            },
-            type: 'blur'
+          const target = {
+            name,
+            value: registeredValue
           };
-          registeredField.onChange(event);
-          registeredField.onBlur(event);
+          registeredField.onChange({
+            target,
+            type: 'change'
+          });
+          registeredField.onBlur({
+            target,
+            type: 'blur'
+          });
         }
       }}
     >
