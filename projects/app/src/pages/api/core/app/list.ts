@@ -56,10 +56,6 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
     }
   }
 
-  // 分页参数最大值限制
-  const MAX_PAGE_SIZE = 100;
-  const safePageSize = isPaginated ? Math.min(pageSize, MAX_PAGE_SIZE) : undefined;
-
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
     authUserPer({
@@ -164,35 +160,23 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
       ...parseParentIdInMongo(parentId)
     };
   })();
-  // 分页模式：使用数据库级分页 + countDocuments 获取准确的 total
-  // 非分页模式：保留 limit 限制避免全量加载
-  const limit = isPaginated ? undefined : searchKey ? 50 : undefined;
   const baseQuery = { ...findAppsQuery, deleteTime: null };
+  const limit = (() => {
+    if (searchKey) return 50;
+    return;
+  })();
 
-  // 分页模式下并行执行 count 和分页查询
-  // 非分页模式下直接查询
-  const [total, myApps] = isPaginated
-    ? await Promise.all([
-        MongoApp.countDocuments(baseQuery),
-        MongoApp.find(
-          baseQuery,
-          '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules'
-        )
-          .sort({ updateTime: -1 })
-          .skip((pageNum! - 1) * safePageSize!)
-          .limit(safePageSize!)
-          .lean()
-      ])
-    : [
-        0,
-        await MongoApp.find(
-          baseQuery,
-          '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
-          { limit }
-        )
-          .sort({ updateTime: -1 })
-          .lean()
-      ];
+  const myApps = await MongoApp.find(
+    { ...findAppsQuery, deleteTime: null },
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission modules',
+    {
+      limit: limit
+    }
+  )
+    .sort({
+      updateTime: -1
+    })
+    .lean();
 
   // Add app permission and filter apps by read permission
   const formatApps = myApps
@@ -254,7 +238,10 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
   });
 
   if (isPaginated) {
-    return { list: formatList, total };
+    const total = formatList.length;
+    const start = (pageNum! - 1) * pageSize!;
+    const list = formatList.slice(start, start + pageSize!);
+    return { list, total };
   }
   return formatList;
 }
