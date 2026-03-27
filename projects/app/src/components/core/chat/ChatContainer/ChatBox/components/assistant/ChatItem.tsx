@@ -116,7 +116,7 @@ const SimpleCitationDisplay = React.memo(
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <MyIcon name="core/chat/quoteBg" w={'14px'} h={'14px'} mr={2} />
-          <Box fontSize={'12px'} lineHeight={'12px'} color={'#485164'} mr={2}>
+          <Box fontSize={'12px'} lineHeight={'12px'} color={'#333'} fontWeight={500} mr={2}>
             {t('app:chat_item_citation_source', { count: citationList.length })}
           </Box>
           <MyIcon
