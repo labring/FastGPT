@@ -945,9 +945,9 @@ export const ModelEditModal = ({
                 tip={t('account_model:maxToken_tip')}
               >
                 <MyNumberInput
-                  min={2000}
                   register={register}
                   name="maxResponse"
+                  min={2000}
                   {...NumberInputStyles}
                 />
               </Field>
@@ -1002,12 +1002,11 @@ export const ModelEditModal = ({
               />
               <Field label={t('account_model:batch_size')}>
                 <MyNumberInput
-                  defaultValue={1}
                   register={register}
+                  isRequired
                   name="batchSize"
                   min={1}
                   step={1}
-                  isRequired
                   {...NumberInputStyles}
                 />
               </Field>
@@ -1027,6 +1026,24 @@ export const ModelEditModal = ({
                   register={register}
                   isRequired
                   name="maxToken"
+                  {...NumberInputStyles}
+                />
+              </Field>
+            </Grid>
+          </Section>
+        )}
+
+        {isRerankModel && (
+          <Section title={t('account:model.params_config_section')}>
+            <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+              <Field
+                label={t('account_model:rerank_max_token')}
+                tip={t('account_model:rerank_max_token_tip')}
+              >
+                <MyNumberInput
+                  register={register}
+                  name="maxToken"
+                  min={1000}
                   {...NumberInputStyles}
                 />
               </Field>
@@ -1086,7 +1103,7 @@ export const ModelEditModal = ({
                   <Flex alignItems={'center'} gap={2}>
                     <MyNumberInput
                       register={register}
-                      name={'charsPointsPrice'}
+                      name="charsPointsPrice"
                       step={0.01}
                       {...NumberInputStyles}
                     />

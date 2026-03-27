@@ -100,7 +100,6 @@
   "model.show_stop_sign": "展示停止序列参数",
   "model.show_top_p": "展示 Top-p 参数",
   "model.test_mode": "标记为测试模型",
-  "model.test_mode_selector_tip": "该模型已标记为测试模型，仅用于 AI 对话，不用于知识库文件处理、文本提取、应用评测、问题分类、工具调用节点等其他模型处理场景。",
   "model.test_mode_tip": "开启后，该模型仅用于 AI 对话，不用于知识库文件处理、文本提取、应用评测、问题分类、工具调用节点等其他模型处理场景。",
   "model.test_model": "模型测试",
   "model.tool_choice": "支持工具调用",

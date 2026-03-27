@@ -128,7 +128,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
       const dbModel = dbModels.find((item) => item.model === model.model);
       const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
-
+      const dbRerankMaxToken =
+        dbModel?.metadata?.type === ModelTypeEnum.rerank ? dbModel.metadata.maxToken : undefined;
       const modelData: any = {
         ...model,
         ...dbModel?.metadata,
@@ -148,7 +149,11 @@ export const loadSystemModels = async (init = false, language = 'en') => {
               fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
               maxTokens: undefined
             }
-          : {})
+          : {}),
+
+        ...(model.type === ModelTypeEnum.rerank && {
+          maxToken: dbRerankMaxToken ?? (model as RerankModelItemType).maxToken ?? 8000
+        })
       };
       pushModel(modelData);
     });
@@ -157,10 +162,14 @@ export const loadSystemModels = async (init = false, language = 'en') => {
     dbModels.forEach((dbModel) => {
       if (_systemModelList.find((item) => item.model === dbModel.model)) return;
 
-      pushModel({
+      const modelData = {
         ...dbModel.metadata,
         isCustom: true
-      });
+      };
+      if (modelData.type === ModelTypeEnum.rerank) {
+        modelData.maxToken = modelData.maxToken ?? 8000;
+      }
+      pushModel(modelData);
     });
 
     // Sort model list

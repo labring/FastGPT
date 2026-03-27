@@ -1072,6 +1072,7 @@
   "templateTags.Web_search": "Search online",
   "templateTags.Writing": "Writing",
   "template_market": "Template Market",
+  "test_model_tip": "This model is a test model and does not support high concurrency use.",
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
   "to_dataset": "To dataset",
   "tool_invalid": "Tool has expired",

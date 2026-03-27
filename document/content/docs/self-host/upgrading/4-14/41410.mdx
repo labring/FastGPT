@@ -13,6 +13,7 @@ description: 'FastGPT V4.14.10 更新说明'
 1. 增加 OpenSandbox docker 部署方案及适配，并支持通过挂载 volumn 进行数据持久化。
 2. 飞书发布渠道，支持流输出。
 3. 目录最大上限，可通过环境变量配置。
+4. rerank 模型上限配置，避免超出单条 document 上限导致 rerank 失败。
 
 ## ⚙️ 优化
 
@@ -22,3 +23,5 @@ description: 'FastGPT V4.14.10 更新说明'
 ## 🐛 修复
 
 1. 子工作流的全局变量默认值未生效。
+2. agent 模式下已配的 rerank 模型不显示。
+3. bge-m3 embedding 向量模型输出都为 0 的问题。

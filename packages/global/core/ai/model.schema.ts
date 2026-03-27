@@ -99,7 +99,8 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
 export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
 
 export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.rerank)
+  type: z.literal(ModelTypeEnum.rerank),
+  maxToken: z.number().optional() // max input token for rerank query + one document
 });
 export type RerankModelItemType = z.infer<typeof RerankModelItemSchema>;
 

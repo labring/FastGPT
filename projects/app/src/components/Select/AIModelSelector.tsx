@@ -27,16 +27,14 @@ const ModelTestModeTip = React.memo(function ModelTestModeTip() {
   const { t } = useTranslation(['common', 'account']);
 
   return (
-    <MyTooltip label={t('account:model.test_mode_selector_tip')} hasArrow>
-      <Box
-        ml={1}
-        flexShrink={0}
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <TestModeBetaTag />
-      </Box>
-    </MyTooltip>
+    <Box
+      ml={1}
+      flexShrink={0}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <TestModeBetaTag />
+    </Box>
   );
 });
 
