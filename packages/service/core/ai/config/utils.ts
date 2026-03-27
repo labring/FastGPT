@@ -165,12 +165,10 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       const modelData = {
         ...dbModel.metadata,
         isCustom: true
-      } as any;
-
+      };
       if (modelData.type === ModelTypeEnum.rerank) {
         modelData.maxToken = modelData.maxToken ?? 8000;
       }
-
       pushModel(modelData);
     });
 

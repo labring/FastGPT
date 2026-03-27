@@ -52,7 +52,7 @@ export async function reRankRecall({
   const queryTokens = await countPromptTokens(query);
   const rerankMaxToken = model.maxToken ?? 8000;
   const docBudget = rerankMaxToken - queryTokens;
-  if (docBudget <= 0) {
+  if (docBudget <= 500) {
     return Promise.reject(new Error('Rerank query too long'));
   }
 
@@ -72,7 +72,8 @@ export async function reRankRecall({
           chunkIdToDocIdMap.set(doc.id, doc.id);
           return [{ id: doc.id, text }];
         }
-        // Use the document's own char/token ratio with a 0.9 safety factor to
+        // Estimate chunkSize in chars using the doc's char/token ratio with a 0.9 safety factor
+        // to keep each chunk's token count within docBudget
         const chunkSize = Math.floor((text.length / docTokens) * docBudget * 0.9);
         const { chunks } = await text2Chunks({ text, chunkSize, overlapRatio: 0 });
         return chunks.map((chunkText, i) => {

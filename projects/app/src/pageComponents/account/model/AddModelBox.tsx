@@ -1040,7 +1040,12 @@ export const ModelEditModal = ({
                 label={t('account_model:rerank_max_token')}
                 tip={t('account_model:rerank_max_token_tip')}
               >
-                <MyNumberInput register={register} name="maxToken" min={1} {...NumberInputStyles} />
+                <MyNumberInput
+                  register={register}
+                  name="maxToken"
+                  min={1000}
+                  {...NumberInputStyles}
+                />
               </Field>
             </Grid>
           </Section>
