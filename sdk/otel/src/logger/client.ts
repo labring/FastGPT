@@ -61,47 +61,5 @@ export async function disposeLogger() {
 }
 
 export function getLogger(category: LogCategory = defaultCategory) {
-  const logger = getLogtapeLogger(category);
-
-  return new Proxy(logger, {
-    get(target, prop, receiver) {
-      const fn = Reflect.get(target, prop, receiver);
-
-      if (typeof fn !== 'function') return fn;
-
-      return (...args: unknown[]) => {
-        if (args.length === 0) return fn.call(target);
-
-        const [firstArg, secondArg] = args;
-
-        if (args.length === 1) {
-          return fn.call(target, firstArg);
-        }
-
-        if (typeof firstArg === 'string') {
-          if (
-            typeof secondArg === 'object' &&
-            secondArg &&
-            'verbose' in secondArg &&
-            typeof secondArg.verbose === 'boolean' &&
-            !secondArg.verbose
-          ) {
-            const { verbose: _verbose, ...properties } = secondArg as Record<string, unknown> & {
-              verbose?: boolean;
-            };
-
-            return fn.call(target, firstArg, properties);
-          }
-
-          return fn.call(target, `${firstArg}: {*}`, secondArg);
-        }
-
-        if (typeof firstArg === 'object') {
-          return fn.call(target, firstArg);
-        }
-
-        return fn.apply(target, args);
-      };
-    }
-  });
+  return getLogtapeLogger(category);
 }

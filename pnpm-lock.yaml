@@ -34,8 +34,8 @@ catalogs:
       specifier: 0.1.2
       version: 0.1.2
     '@fastgpt-sdk/otel':
-      specifier: 0.1.0
-      version: 0.1.0
+      specifier: 0.1.1
+      version: 0.1.1
     '@fastgpt-sdk/storage':
       specifier: 0.6.15
       version: 0.6.15
@@ -248,7 +248,7 @@ importers:
         version: 11.7.2
       '@fastgpt-sdk/otel':
         specifier: 'catalog:'
-        version: 0.1.0
+        version: 0.1.1
       '@fastgpt-sdk/sandbox-adapter':
         specifier: ^0.0.33
         version: 0.0.33
@@ -2728,8 +2728,8 @@ packages:
     resolution: {integrity: sha512-nt1qCq7frcRiR+406vEERWC1vEPVIKPUGH/ZRP/mlBxvNJp1RycWQT8RhK7/tHmW6xPNZoRL/q2WfhM4Q+L7eg==}
     engines: {node: '>=20', pnpm: '>=9'}
 
-  '@fastgpt-sdk/otel@0.1.0':
-    resolution: {integrity: sha512-wpZUcpoU4u1/UxC8R0KU7spZ1Ku2FbGerp4eBeOCgCDaiJGUbm3P7d1D97wzrPIK3QUgWj2g8N6dS0vrlryp2Q==}
+  '@fastgpt-sdk/otel@0.1.1':
+    resolution: {integrity: sha512-AUvnQBwy+EzkeAdohs/qhIH3LRArOy912kL/KCZWQQJ7p42GXRuoCIIH6BRXd42M8y1upUJYMZX3Xbm/QDphDg==}
     engines: {node: '>=20', pnpm: '>=9'}
 
   '@fastgpt-sdk/plugin@0.3.8':
@@ -13724,7 +13724,7 @@ snapshots:
       '@opentelemetry/sdk-logs': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.39.0
 
-  '@fastgpt-sdk/otel@0.1.0':
+  '@fastgpt-sdk/otel@0.1.1':
     dependencies:
       '@logtape/logtape': 2.0.2
       '@logtape/pretty': 2.0.2(@logtape/logtape@2.0.2)

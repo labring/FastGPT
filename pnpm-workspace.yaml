@@ -22,7 +22,7 @@ catalog:
   '@modelcontextprotocol/sdk': ^1
   '@fastgpt-sdk/storage': 0.6.15
   '@fastgpt-sdk/logger': 0.1.2
-  '@fastgpt-sdk/otel': 0.1.0
+  '@fastgpt-sdk/otel': 0.1.1
   '@types/lodash': ^4
   '@types/react': ^18
   '@types/react-dom': ^18

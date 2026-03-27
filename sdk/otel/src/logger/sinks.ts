@@ -1,5 +1,10 @@
 import type { LogLevel, LogRecord } from '@logtape/logtape';
-import { getConsoleSink, withFilter } from '@logtape/logtape';
+import {
+  getConsoleSink,
+  withFilter,
+  ansiColorFormatter,
+  getAnsiColorFormatter
+} from '@logtape/logtape';
 import { getPrettyFormatter } from '@logtape/pretty';
 import { mapLevelToSeverityNumber } from './helpers';
 import { getOpenTelemetrySink } from './otel';
@@ -113,7 +118,13 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
           timestampStyle: 'reset',
           categorySeparator: ':',
           timestamp: formatTimestamp,
-          inspectOptions: { depth: 5 }
+          inspectOptions: {
+            depth: 5,
+            showProxy: true,
+            getters: true,
+            compact: true
+          },
+          properties: true
         })
       }),
       (record) => levelFilter(record, consoleOptions.level)
