@@ -23,6 +23,7 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
+import { LOOP_PRO_DYNAMIC_OUTPUT_ROW_W } from '../render/RenderOutput/DynamicOutputs';
 import {
   ArrayTypeMap,
   NodeInputKeyEnum,
@@ -501,17 +502,21 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             })}
           />
         </Container>
-        <Container>
-          <Box {...outputCardProps}>
-            <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} mb={3} />
-            <RenderOutput
-              nodeId={nodeId}
-              flowOutputList={displayOutputs}
-              dynamicOutputReferenceScopeParentId={nodeId}
-            />
-          </Box>
-        </Container>
-        {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
+        <VStack alignItems="stretch" spacing={2} w="100%">
+          <Container>
+            <Box {...outputCardProps} w="100%">
+              <Box w={LOOP_PRO_DYNAMIC_OUTPUT_ROW_W} maxW="100%">
+                <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} mb={3} />
+              </Box>
+              <RenderOutput
+                nodeId={nodeId}
+                flowOutputList={displayOutputs}
+                dynamicOutputReferenceScopeParentId={nodeId}
+              />
+            </Box>
+          </Container>
+          {catchError && <CatchError nodeId={nodeId} errorOutputs={errorOutputs} />}
+        </VStack>
       </NodeCard>
     );
   }

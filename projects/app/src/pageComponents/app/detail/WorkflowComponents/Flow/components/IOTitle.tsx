@@ -14,15 +14,12 @@ const IOTitle = ({
   inputs,
   nodeId,
   catchError,
-  accentBarColor,
   ...props
 }: {
   text?: 'Input' | 'Output' | string;
   inputs?: FlowNodeInputItemType[];
   nodeId?: string;
   catchError?: boolean;
-  /** 左侧竖条颜色，默认 primary.600 */
-  accentBarColor?: string;
 } & StackProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -52,7 +49,7 @@ const IOTitle = ({
 
   return (
     <HStack fontSize={'md'} alignItems={'center'} fontWeight={'medium'} mb={4} {...props}>
-      <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg={accentBarColor ?? 'primary.600'} />
+      <Box w={'3px'} h={'14px'} borderRadius={'13px'} bg="primary.600" />
       <Box color={'myGray.900'}>{text}</Box>
       <Box flex={1} />
 

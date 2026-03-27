@@ -229,7 +229,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     ) => {
       adaptCatchError(e.nodes, e.edges);
 
-      const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
+      const nodes = (e.nodes || []).map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // 有历史记录，直接用历史记录覆盖

@@ -1,9 +1,6 @@
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WORKFLOW_LOOP_MAX_REACHED_MESSAGE
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { i18nT } from '../../../../../web/i18n/utils';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -13,6 +10,8 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { cloneDeep } from 'lodash';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
+import { env } from '../../../../env';
 
 type BatchRawResultItem = {
   success: boolean;
@@ -32,23 +31,15 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.batchStatus]: 'success' | 'failed' | 'partial_success';
 }>;
 
-const getMaxConcurrency = () => {
-  const val = Number(process.env.WORKFLOW_BATCH_MAX_CONCURRENCY);
-  return Number.isInteger(val) && val > 0 ? val : 10;
-};
-const getMaxRetry = () => {
-  const val = Number(process.env.WORKFLOW_BATCH_MAX_RETRY);
-  return Number.isInteger(val) && val >= 0 ? val : 5;
-};
 const getRuntimeConcurrency = (raw: any) => {
   const num = Math.floor(Number(raw));
   if (!Number.isFinite(num)) return 5;
-  return Math.max(1, Math.min(getMaxConcurrency(), num));
+  return Math.max(1, Math.min(env.WORKFLOW_BATCH_MAX_CONCURRENCY, num));
 };
 const getRuntimeRetry = (raw: any) => {
   const num = Math.floor(Number(raw));
   if (!Number.isFinite(num)) return 3;
-  return Math.max(0, Math.min(getMaxRetry(), num));
+  return Math.max(0, Math.min(env.WORKFLOW_BATCH_MAX_RETRY, num));
 };
 
 const assertBatchChildNodes = ({
@@ -62,18 +53,16 @@ const assertBatchChildNodes = ({
     FlowNodeTypeEnum.loop,
     FlowNodeTypeEnum.batch,
     FlowNodeTypeEnum.loopPro,
+    FlowNodeTypeEnum.loopProEnd,
     FlowNodeTypeEnum.userSelect,
-    FlowNodeTypeEnum.formInput,
-    FlowNodeTypeEnum.variableUpdate
+    FlowNodeTypeEnum.formInput
   ]);
 
   const hasForbidden = runtimeNodes.some(
     (node) => childrenNodeIdList.includes(node.nodeId) && forbiddenTypes.has(node.flowNodeType)
   );
   if (hasForbidden) {
-    throw new Error(
-      'Batch child workflow does not allow loop/batch/loop_pro/interactive/variable-update nodes'
-    );
+    throw new Error('Batch child workflow does not allow loop/batch/loop_pro/interactive nodes');
   }
 };
 
@@ -100,12 +89,9 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
     runtimeNodes
   });
 
-  const maxLength = (() => {
-    const n = Number(process.env.WORKFLOW_MAX_LOOP_TIMES);
-    return Number.isInteger(n) && n > 0 ? n : 100;
-  })();
+  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
   if (loopInputArray.length > maxLength) {
-    return Promise.reject(WORKFLOW_LOOP_MAX_REACHED_MESSAGE);
+    return Promise.reject(i18nT('workflow:loop_max_reached'));
   }
 
   if (loopInputArray.length === 0) {
@@ -135,7 +121,6 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
   let totalPoints = 0;
   const customFeedbacks: string[] = [];
 
-  let cursor = 0;
   const runOne = async (item: any, index: number) => {
     let attempt = 0;
     while (attempt <= retryTimes) {
@@ -198,15 +183,7 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
     }
   };
 
-  const workers = Array.from({ length: Math.min(concurrency, loopInputArray.length) }).map(
-    async () => {
-      while (cursor < loopInputArray.length) {
-        const index = cursor++;
-        await runOne(loopInputArray[index], index);
-      }
-    }
-  );
-  await Promise.all(workers);
+  await batchRun(loopInputArray, runOne, concurrency);
 
   const successCount = orderedRawResult.filter((item) => item?.success).length;
   const failedCount = orderedRawResult.length - successCount;

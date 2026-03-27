@@ -1,9 +1,6 @@
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WORKFLOW_LOOP_MAX_REACHED_MESSAGE
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { i18nT } from '../../../../../web/i18n/utils';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps,
@@ -24,11 +21,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-
-const getMaxLoopTimes = () => {
-  const n = Number(process.env.WORKFLOW_MAX_LOOP_TIMES);
-  return Number.isInteger(n) && n > 0 ? n : 100;
-};
+import { env } from '../../../../env';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopProMode]?: 'array' | 'condition';
@@ -50,17 +43,14 @@ const assertLoopProChildNodes = ({
     FlowNodeTypeEnum.loop,
     FlowNodeTypeEnum.loopPro,
     FlowNodeTypeEnum.userSelect,
-    FlowNodeTypeEnum.formInput,
-    FlowNodeTypeEnum.variableUpdate
+    FlowNodeTypeEnum.formInput
   ]);
 
   const hasForbidden = runtimeNodes.some(
     (node) => childrenNodeIdList.includes(node.nodeId) && forbiddenTypes.has(node.flowNodeType)
   );
   if (hasForbidden) {
-    throw new Error(
-      'Loop child workflow does not allow batch/loop/loop_pro/interactive/variable-update nodes'
-    );
+    throw new Error('Loop child workflow does not allow batch/loop/loop_pro/interactive nodes');
   }
 };
 
@@ -107,7 +97,7 @@ export const dispatchLoopPro = async (props: Props): Promise<Response> => {
 
   await assertLoopProChildNodes({ childrenNodeIdList, runtimeNodes });
 
-  const maxTimes = getMaxLoopTimes();
+  const maxTimes = env.WORKFLOW_MAX_LOOP_TIMES;
   const { name, catchError } = node;
 
   const pushFailureOrThrow = (message: string): Response => {
@@ -131,7 +121,7 @@ export const dispatchLoopPro = async (props: Props): Promise<Response> => {
       return pushFailureOrThrow('Input value is not an array');
     }
     if (loopInputArray.length > maxTimes) {
-      return pushFailureOrThrow(WORKFLOW_LOOP_MAX_REACHED_MESSAGE);
+      return pushFailureOrThrow(i18nT('workflow:loop_max_reached'));
     }
     return runLoopProArrayMode(props);
   }
@@ -213,12 +203,14 @@ async function runLoopProArrayMode(props: Props): Promise<Response> {
     } catch (error) {
       const text = getErrText(error);
       if (catchError) {
+        const dataOnError = buildLoopProDataOutputs(props.node, runtimeNodes, newVariables);
         return {
           error: { [NodeOutputKeyEnum.error]: text },
-          data: buildLoopProDataOutputs(props.node, runtimeNodes, newVariables),
+          data: dataOnError,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             errorText: text,
-            mergeSignId: props.node.nodeId
+            mergeSignId: props.node.nodeId,
+            customOutputs: Object.keys(dataOnError).length > 0 ? dataOnError : undefined
           }
         };
       }
@@ -226,7 +218,9 @@ async function runLoopProArrayMode(props: Props): Promise<Response> {
     }
 
     const loopEndList = response.flowResponses.filter(
-      (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
+      (res) =>
+        res.moduleType === FlowNodeTypeEnum.loopProEnd ||
+        res.moduleType === FlowNodeTypeEnum.loopEnd
     );
     const loopOutputValue = loopEndList[loopEndList.length - 1]?.loopOutputValue;
 
@@ -275,7 +269,8 @@ async function runLoopProArrayMode(props: Props): Promise<Response> {
       loopInput: loopInputArray,
       loopResult: outputValueArr,
       loopDetail: loopResponseDetail,
-      mergeSignId: props.node.nodeId
+      mergeSignId: props.node.nodeId,
+      customOutputs: Object.keys(dataOutputs).length > 0 ? dataOutputs : undefined
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: totalPoints
       ? [
@@ -335,12 +330,14 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
     } catch (error) {
       const text = getErrText(error);
       if (catchError) {
+        const dataOnError = buildLoopProDataOutputs(props.node, runtimeNodes, newVariables);
         return {
           error: { [NodeOutputKeyEnum.error]: text },
-          data: buildLoopProDataOutputs(props.node, runtimeNodes, newVariables),
+          data: dataOnError,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             errorText: text,
-            mergeSignId: props.node.nodeId
+            mergeSignId: props.node.nodeId,
+            customOutputs: Object.keys(dataOnError).length > 0 ? dataOnError : undefined
           }
         };
       }
@@ -349,15 +346,17 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
 
     if (response.workflowInteractiveResponse) {
       if (catchError) {
+        const dataOnError = buildLoopProDataOutputs(props.node, runtimeNodes, newVariables);
         return {
           error: {
             [NodeOutputKeyEnum.error]:
               'Condition loop does not support interactive nodes in child workflow'
           },
-          data: buildLoopProDataOutputs(props.node, runtimeNodes, newVariables),
+          data: dataOnError,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             errorText: 'Condition loop does not support interactive nodes in child workflow',
-            mergeSignId: props.node.nodeId
+            mergeSignId: props.node.nodeId,
+            customOutputs: Object.keys(dataOnError).length > 0 ? dataOnError : undefined
           }
         };
       }
@@ -365,7 +364,9 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
     }
 
     const loopEndList = response.flowResponses.filter(
-      (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
+      (res) =>
+        res.moduleType === FlowNodeTypeEnum.loopProEnd ||
+        res.moduleType === FlowNodeTypeEnum.loopEnd
     );
     const loopEndRes = loopEndList[loopEndList.length - 1];
     const loopOutputValue = loopEndRes?.loopOutputValue;
@@ -391,7 +392,8 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
           totalPoints,
           loopResult: collectedLoopEndValues,
           loopDetail: loopResponseDetail,
-          mergeSignId: props.node.nodeId
+          mergeSignId: props.node.nodeId,
+          customOutputs: Object.keys(dataOutputs).length > 0 ? dataOutputs : undefined
         },
         [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: totalPoints
           ? [{ totalPoints, moduleName: name }]
@@ -404,14 +406,17 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
   }
 
   if (catchError) {
+    const msg = i18nT('workflow:loop_max_reached');
+    const dataOnError = buildLoopProDataOutputs(props.node, runtimeNodes, newVariables);
     return {
-      error: { [NodeOutputKeyEnum.error]: WORKFLOW_LOOP_MAX_REACHED_MESSAGE },
-      data: buildLoopProDataOutputs(props.node, runtimeNodes, newVariables),
+      error: { [NodeOutputKeyEnum.error]: msg },
+      data: dataOnError,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        errorText: WORKFLOW_LOOP_MAX_REACHED_MESSAGE,
-        mergeSignId: props.node.nodeId
+        errorText: msg,
+        mergeSignId: props.node.nodeId,
+        customOutputs: Object.keys(dataOnError).length > 0 ? dataOnError : undefined
       }
     };
   }
-  throw new Error(WORKFLOW_LOOP_MAX_REACHED_MESSAGE);
+  throw new Error(i18nT('workflow:loop_max_reached'));
 }

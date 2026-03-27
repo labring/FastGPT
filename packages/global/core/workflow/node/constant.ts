@@ -152,6 +152,7 @@ export enum FlowNodeTypeEnum {
   loopPro = 'loopPro',
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
+  loopProEnd = 'loopProEnd',
   formInput = 'formInput',
   tool = 'tool',
   toolSet = 'toolSet',
@@ -282,7 +283,6 @@ export const NodeGradients = {
   yellowGreen:
     'linear-gradient(180deg, rgba(166, 218, 114, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   lafTeal: 'linear-gradient(180deg, rgba(72, 213, 186, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
-  /** 循环节点（loopPro）及子节点专用，与批量/旧 loop 紫系区分 */
   workflowLoop:
     'linear-gradient(180deg, rgba(45, 212, 191, 0.22) 0%, rgba(255, 255, 255, 0.00) 100%)',
   skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',

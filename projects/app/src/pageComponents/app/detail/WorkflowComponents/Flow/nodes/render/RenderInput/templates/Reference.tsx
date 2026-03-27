@@ -66,7 +66,6 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 export const useReference = ({
   nodeId,
   valueType = WorkflowIOValueTypeEnum.any,
-  /** 仅列出该父节点下子画布内的节点（如 loop_pro 自定义输出引用） */
   restrictToWorkflowParentId
 }: {
   nodeId: string;

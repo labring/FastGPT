@@ -65,6 +65,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.loopPro]: dynamic(() => import('./nodes/Loop/NodeLoop')),
   [FlowNodeTypeEnum.loopStart]: dynamic(() => import('./nodes/Loop/NodeLoopStart')),
   [FlowNodeTypeEnum.loopEnd]: dynamic(() => import('./nodes/Loop/NodeLoopEnd')),
+  [FlowNodeTypeEnum.loopProEnd]: dynamic(() => import('./nodes/Loop/NodeLoopProEnd')),
   [FlowNodeTypeEnum.formInput]: dynamic(() => import('./nodes/NodeFormInput')),
   [FlowNodeTypeEnum.comment]: dynamic(() => import('./nodes/NodeComment'))
 };

@@ -38,6 +38,7 @@ import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
+import { LoopProEndNode } from '@fastgpt/global/core/workflow/template/system/loop/v2/loopProEnd';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
 import {
@@ -297,6 +298,18 @@ const NodeTemplateList = ({
           return;
         }
 
+        if (templateNode.flowNodeType === FlowNodeTypeEnum.loopProEnd) {
+          const parentId = currentNode?.parentNodeId;
+          const parent = parentId ? getNodeById(parentId) : undefined;
+          if (!parent || parent.flowNodeType !== FlowNodeTypeEnum.loopPro) {
+            toast({
+              status: 'warning',
+              title: t('workflow:loopPro_end_intro')
+            });
+            return;
+          }
+        }
+
         const newNode = nodeTemplate2FlowNode({
           template: {
             ...templateNode,
@@ -353,9 +366,7 @@ const NodeTemplateList = ({
             parentNodeId: newNode.id,
             t
           });
-          const endTemplate = isLoopPro
-            ? LoopEndNode
-            : { ...LoopEndNode, name: 'workflow:loop_graph_end' as any };
+          const endTemplate = isLoopPro ? LoopProEndNode : LoopEndNode;
           const endNode = nodeTemplate2FlowNode({
             template: endTemplate as any,
             position: isLoopPro
@@ -365,7 +376,7 @@ const NodeTemplateList = ({
             t
           });
           if (!isLoopPro) {
-            endNode.data.intro = t('workflow:loop_graph_end_intro');
+            endNode.data.intro = t('workflow:loop_end_intro');
           }
           newNodes.push(startNode, endNode);
         }
@@ -442,6 +453,12 @@ const NodeTemplateList = ({
           return FlowNodeTypeEnum.loopPro;
         })();
 
+        const hasLoopProOnCanvas = getNodeList().some(
+          (node) => node.flowNodeType === FlowNodeTypeEnum.loopPro
+        );
+        const shouldInjectLoopProEnd =
+          !!loopEndInjectParentType || (!isPopover && hasLoopProOnCanvas);
+
         const groups = Object.entries(map)
           .map(([type, { list, label }]) => ({
             type,
@@ -450,18 +467,21 @@ const NodeTemplateList = ({
           }))
           .filter((item) => item.list.length > 0);
 
-        if (loopEndInjectParentType) {
+        if (shouldInjectLoopProEnd) {
           const loopEndListAvatar = 'core/workflow/template/loopProEnd';
           const loopEndItem: NodeTemplateListItemType = {
-            id: FlowNodeTypeEnum.loopEnd,
-            flowNodeType: FlowNodeTypeEnum.loopEnd,
-            templateType: LoopEndNode.templateType,
+            id: FlowNodeTypeEnum.loopProEnd,
+            flowNodeType: FlowNodeTypeEnum.loopProEnd,
+            templateType: LoopProEndNode.templateType,
             avatar: loopEndListAvatar,
-            name: t(LoopEndNode.name as any),
-            intro: t(LoopEndNode.intro as any)
+            name: t(LoopProEndNode.name as any),
+            intro: t(LoopProEndNode.intro as any)
           };
           const toolsGroup = groups.find((g) => g.type === FlowNodeTemplateTypeEnum.tools);
-          if (toolsGroup) {
+          if (
+            toolsGroup &&
+            !toolsGroup.list.some((item) => item.flowNodeType === FlowNodeTypeEnum.loopProEnd)
+          ) {
             const loopProIdx = toolsGroup.list.findIndex(
               (item) => item.flowNodeType === FlowNodeTypeEnum.loopPro
             );
@@ -504,6 +524,8 @@ const NodeTemplateList = ({
       ];
     })();
     return data.filter(({ list }) => list.length > 0);
+    // getNodeList 为稳定引用，用 nodeAmount 在节点增删时触发重算（含是否展示 loopProEnd 注入）
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getNodeList() inside; ref stable
   }, [
     templateType,
     templates,

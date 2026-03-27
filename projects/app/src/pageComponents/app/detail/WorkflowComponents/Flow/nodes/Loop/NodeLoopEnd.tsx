@@ -32,6 +32,7 @@ const menuForbid = {
   debug: true
 } as const;
 
+/** 批量 / 串行循环子图中的「结束」节点 */
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
   const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
@@ -69,7 +70,6 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const parentNode = getNodeById(parentNodeId);
     if (
       !parentNode ||
-      parentNode.flowNodeType === FlowNodeTypeEnum.loopPro ||
       (parentNode.flowNodeType !== FlowNodeTypeEnum.loop &&
         parentNode.flowNodeType !== FlowNodeTypeEnum.batch)
     ) {
@@ -93,37 +93,19 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
-  const parentForStyle = getNodeById(parentNodeId);
-  const isUnderLoopPro = parentForStyle?.flowNodeType === FlowNodeTypeEnum.loopPro;
-  const isUnderBatchOrLoop =
-    parentForStyle?.flowNodeType === FlowNodeTypeEnum.loop ||
-    parentForStyle?.flowNodeType === FlowNodeTypeEnum.batch;
-
-  const displayName = isUnderBatchOrLoop ? t('workflow:loop_graph_end') : t('workflow:loop_end');
   const intro =
-    data.intro && String(data.intro).trim()
-      ? data.intro
-      : isUnderBatchOrLoop
-        ? 'workflow:loop_graph_end_intro'
-        : 'workflow:loop_end_intro';
-
-  const avatar = isUnderLoopPro ? 'core/workflow/template/loopProEnd' : data.avatar;
-  const avatarLinear = data.avatarLinear;
-  const colorSchema = isUnderLoopPro ? 'workflowLoop' : data.colorSchema;
+    data.intro && String(data.intro).trim() ? data.intro : ('workflow:loop_end_intro' as const);
 
   return (
     <NodeCard
       selected={selected}
       {...data}
-      name={displayName}
+      name={t('workflow:loop_end')}
       intro={intro}
       w={'420px'}
-      avatar={avatar}
-      avatarLinear={avatarLinear}
-      colorSchema={colorSchema}
       menuForbid={menuForbid}
     >
-      {isUnderBatchOrLoop && inputItem ? (
+      {inputItem ? (
         <Box px={4} pb={4} pt={2}>
           <Reference item={inputItem} nodeId={nodeId} />
         </Box>
