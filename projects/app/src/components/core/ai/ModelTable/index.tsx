@@ -31,6 +31,7 @@ import { getModelCollaborators, updateModelCollaborators } from '@/web/common/sy
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import PriceTiersLabel from '../PriceTiersLabel';
+import TestModeBetaTag from '../TestModeBetaTag';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -153,6 +154,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
       return {
         model: item.model,
         name: item.name,
+        testMode: 'testMode' in item ? item.testMode : undefined,
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: provider.name,
@@ -287,9 +289,12 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                       ></Checkbox>
                     )}
                     <Avatar src={item.avatar} w={'1.2rem'} />
-                    <CopyBox value={item.name} color={'myGray.900'}>
-                      {item.name}
-                    </CopyBox>
+                    <Flex alignItems={'center'} gap={1} minW={0}>
+                      <CopyBox value={item.name} color={'myGray.900'}>
+                        {item.name}
+                      </CopyBox>
+                      {item.testMode && <TestModeBetaTag />}
+                    </Flex>
                   </HStack>
                 </Td>
                 <Td>

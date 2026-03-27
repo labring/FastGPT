@@ -14,6 +14,7 @@ export type listResponse = {
   avatar: string | undefined;
   provider: string;
   model: string;
+  testMode?: boolean;
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
@@ -52,7 +53,10 @@ async function handler(
     contextToken:
       'maxContext' in model ? model.maxContext : 'maxToken' in model ? model.maxToken : undefined,
     vision: 'vision' in model ? model.vision : undefined,
-    toolChoice: 'toolChoice' in model ? model.toolChoice : undefined
+    toolChoice: 'toolChoice' in model ? model.toolChoice : undefined,
+
+    // LLM Model
+    testMode: 'testMode' in model ? model.testMode : undefined
   }));
 }
 
