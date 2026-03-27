@@ -43,7 +43,7 @@ export async function synthesizeRerankTrainDatas(
   const endpoint = getDiTingEndpoint();
   const url = `${endpoint}/api/v1/dataset-synthesis/build-fine-tune-data`;
 
-  addLog.info('DiTing synthesize rerank train datas', {
+  addLog.debug('DiTing synthesize rerank train datas', {
     url,
     sampleCount: request.samples.length,
     config: request.config
@@ -89,7 +89,7 @@ export async function synthesizeRerankTrainDatas(
       })
     );
 
-    addLog.info('DiTing synthesize rerank train datas completed', {
+    addLog.debug('DiTing synthesize rerank train datas completed', {
       totalItems: apiResponse.totalItems,
       totalSamples: apiResponse.totalSamples
     });
@@ -127,7 +127,7 @@ export async function synthesizeRerankEvalData(
   const endpoint = getDiTingEndpoint();
   const url = `${endpoint}/api/v1/dataset-synthesis/runs`;
 
-  addLog.info('DiTing synthesize eval data', {
+  addLog.debug('DiTing synthesize eval data', {
     url,
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
@@ -148,7 +148,7 @@ export async function synthesizeRerankEvalData(
       throw new Error('Invalid response from DiTing API');
     }
 
-    addLog.info('DiTing synthesize eval data completed', {
+    addLog.debug('DiTing synthesize eval data completed', {
       requestId: apiResponse.requestId,
       question: apiResponse.data.qaPair.question?.substring(0, 50)
     });
@@ -188,7 +188,7 @@ export async function evaluateRerankModel(
   const endpoint = getDiTingEndpoint();
   const url = `${endpoint}/api/v1/evaluations/rerank`;
 
-  addLog.info('DiTing evaluate rerank model', {
+  addLog.debug('DiTing evaluate rerank model', {
     url,
     datasetSize: request.dataset.length,
     rerankModel: request.reranker_config.name
@@ -208,7 +208,7 @@ export async function evaluateRerankModel(
       throw new Error('Invalid response from DiTing API');
     }
 
-    addLog.info('DiTing evaluate rerank model completed', {
+    addLog.debug('DiTing evaluate rerank model completed', {
       requestId: apiResponse.requestId,
       score: apiResponse.data.score,
       metricName: apiResponse.data.metricName

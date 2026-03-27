@@ -25,35 +25,22 @@ export type SortParams<T extends string> = {
 
 // Create Trainset
 export type CreateRerankTrainsetRequest = {
-  appId: string; // Required: Associated app (supports 1:N relationship)
-  name?: string; // Optional, default: `${appName} - Training Set`
+  name?: string;
   description?: string;
 };
 export type CreateRerankTrainsetResponse = RerankTrainsetSchemaType;
 
 // Get Trainset Detail
 export type RerankTrainsetDetailRequest = TrainsetIdQuery;
-export type RerankTrainsetDetailResponse = RerankTrainsetSchemaType & {
-  app: {
-    _id: string;
-    name: string;
-    avatar: string;
-  };
-};
+export type RerankTrainsetDetailResponse = RerankTrainsetSchemaType;
 
 // List Trainsets
 export type ListRerankTrainsetsRequest = PaginationProps<
   {
-    appId?: string;
     status?: string;
   } & SortParams<'createTime' | 'updateTime' | 'name'>
 >;
-export type ListRerankTrainsetsResponse = PaginationResponse<
-  RerankTrainsetSchemaType & {
-    appName: string;
-    appAvatar: string;
-  }
->;
+export type ListRerankTrainsetsResponse = PaginationResponse<RerankTrainsetSchemaType>;
 
 // Delete Trainset
 export type DeleteRerankTrainsetRequest = TrainsetIdQuery;
@@ -64,7 +51,7 @@ export type DeleteRerankTrainsetResponse = MessageResponse;
 // Generate Training Data (from dataset chunks)
 export type GenerateRerankTrainDataRequest = {
   trainsetId: string; // Required: Target trainset ID
-  datasetIds?: string[]; // Optional: Specific datasets, default uses all app-associated datasets
+  datasetIds: string[]; // Required: Knowledge base IDs to generate data from
   generateConfig?: {
     /** FastGPT internal parameters */
     sampleSize?: number; // Sample size per dataset, default uses 80% of all dataset chunks
@@ -115,16 +102,17 @@ export type DeleteRerankTrainDataResponse = MessageResponse;
 
 // ===== Training Task API =====
 
-// Create Training Task with new trainset
-export type CreateRerankTrainTaskWithTrainsetRequest = {
-  appId: string;
-  name?: string;
-};
-
-// Create Training Task
+// Create Training Task (supports exact mode and auto mode)
 export type CreateRerankTrainTaskRequest = {
-  appId: string;
-  trainsetId: string; // Required: Trainset ID to use for training
+  // Exact mode: pass trainsetId + evalDatasetId
+  // Auto mode: pass datasetIds (generate_trainset/generate_evaldataset stages auto-generate)
+  // Validation rule: (trainsetId && evalDatasetId) || datasetIds, otherwise missingParams
+  trainsetId?: string; // Exact mode: existing trainset ID (must be ready, teamId must match)
+  evalDatasetId?: string; // Exact mode: existing eval dataset ID
+  datasetIds?: string[]; // Auto mode: knowledge base ID list
+
+  baseModelId: string; // Base model ID (BaseModelItemType.model), replaces appId
+  newModelName?: string; // Optional name for the trained model
   name?: string;
 };
 export type CreateRerankTrainTaskResponse = {
@@ -135,8 +123,6 @@ export type CreateRerankTrainTaskResponse = {
 // Get Task Detail
 export type RerankTrainTaskDetailRequest = TaskIdQuery;
 export type RerankTrainTaskDetailResponse = RerankTrainTaskSchemaType & {
-  appName: string;
-  appAvatar: string;
   creatorName?: string;
   creatorAvatar?: string;
 };
@@ -144,14 +130,13 @@ export type RerankTrainTaskDetailResponse = RerankTrainTaskSchemaType & {
 // List Training Tasks
 export type ListRerankTrainTasksRequest = PaginationProps<
   {
-    appId?: string;
+    baseModelId?: string; // Filter by base model (replaces appId)
+    tunedModelId?: string; // Filter by produced tuned model (triggers chain traversal)
     status?: `${RerankTrainTaskStatusEnum}`;
   } & SortParams<'createTime' | 'updateTime' | 'finishTime'>
 >;
 
 export type RerankTrainTaskListItem = RerankTrainTaskSchemaType & {
-  appName: string;
-  appAvatar: string;
   creatorName?: string;
   creatorAvatar?: string;
 };
@@ -172,13 +157,12 @@ export type CancelRerankTrainTaskResponse = MessageResponse;
 export type DeleteRerankTrainTaskRequest = TaskIdQuery;
 export type DeleteRerankTrainTaskResponse = MessageResponse;
 
-// Delete All Training Tasks by AppId
-export type DeleteAllRerankTrainTasksByAppRequest = {
-  appId: string;
+// Apply Training Results to Apps (new independent interface)
+export type ApplyRerankTrainTaskToAppsRequest = {
+  taskId: string; // Training task ID (status must be completed and newModelKept === true)
+  appIds: string[]; // App IDs to replace rerank model in
 };
-export type DeleteAllRerankTrainTasksByAppResponse = {
-  success: true;
-  deletedCount: number;
-  skippedCount: number;
-  errors: Array<{ taskId: string; error: string }>;
+export type ApplyRerankTrainTaskToAppsResponse = {
+  updatedAppsCount: number; // Number of apps successfully updated
+  skippedAppIds: string[]; // App IDs that were skipped (not found or no rerank node)
 };

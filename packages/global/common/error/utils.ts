@@ -2,7 +2,7 @@ import { replaceSensitiveText } from '../string/tools';
 import { ERROR_RESPONSE } from './errorCode';
 
 export const getErrText = (err: any, def = ''): any => {
-  const msg: string =
+  const rawMsg =
     typeof err === 'string'
       ? err
       : err?.response?.data?.message ||
@@ -13,6 +13,8 @@ export const getErrText = (err: any, def = ''): any => {
         err?.msg ||
         err?.error ||
         def;
+
+  const msg = typeof rawMsg === 'string' ? rawMsg : String(rawMsg ?? '');
 
   if (ERROR_RESPONSE[msg]) {
     return ERROR_RESPONSE[msg].message;

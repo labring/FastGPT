@@ -788,21 +788,41 @@ export const auditLogMap = {
   [AuditEventEnum.CREATE_RERANK_TRAINSET]: {
     content: i18nT('account_team:log_create_rerank_trainset'),
     typeLabel: i18nT('account_team:create_rerank_trainset'),
-    params: {} as { name?: string; trainsetName: string; appName: string }
+    params: {} as { name?: string; trainsetName: string }
   },
   [AuditEventEnum.DELETE_RERANK_TRAINSET]: {
     content: i18nT('account_team:log_delete_rerank_trainset'),
     typeLabel: i18nT('account_team:delete_rerank_trainset'),
-    params: {} as { name?: string; trainsetName: string; appName: string }
+    params: {} as { name?: string; trainsetName: string }
+  },
+  [AuditEventEnum.GENERATE_RERANK_TRAINSET_DATA]: {
+    content: i18nT('account_team:log_generate_rerank_trainset_data'),
+    typeLabel: i18nT('account_team:generate_rerank_trainset_data'),
+    params: {} as { name?: string; trainsetName: string; datasetCount: number }
   },
   [AuditEventEnum.CREATE_RERANK_TRAIN_TASK]: {
     content: i18nT('account_team:log_create_rerank_train_task'),
     typeLabel: i18nT('account_team:create_rerank_train_task'),
-    params: {} as { name?: string; taskName: string; appName: string }
+    params: {} as { name?: string; taskName: string; baseModelId: string }
   },
   [AuditEventEnum.DELETE_RERANK_TRAIN_TASK]: {
     content: i18nT('account_team:log_delete_rerank_train_task'),
     typeLabel: i18nT('account_team:delete_rerank_train_task'),
-    params: {} as { name?: string; taskName: string; appName: string }
+    params: {} as { name?: string; taskName: string }
+  },
+  [AuditEventEnum.RETRY_RERANK_TRAIN_TASK]: {
+    content: i18nT('account_team:log_retry_rerank_train_task'),
+    typeLabel: i18nT('account_team:retry_rerank_train_task'),
+    params: {} as { name?: string; taskName: string }
+  },
+  [AuditEventEnum.CANCEL_RERANK_TRAIN_TASK]: {
+    content: i18nT('account_team:log_cancel_rerank_train_task'),
+    typeLabel: i18nT('account_team:cancel_rerank_train_task'),
+    params: {} as { name?: string; taskName: string }
+  },
+  [AuditEventEnum.APPLY_RERANK_TRAIN_TASK_TO_APPS]: {
+    content: i18nT('account_team:log_apply_rerank_train_task_to_apps'),
+    typeLabel: i18nT('account_team:apply_rerank_train_task_to_apps'),
+    params: {} as { name?: string; taskName: string; appCount: number; tunedModelId: string }
   }
 } as const;

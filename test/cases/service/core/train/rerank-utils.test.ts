@@ -48,7 +48,7 @@ describe('Rerank Utils', () => {
 
       await Promise.all(tasks);
 
-      // 所有任务都应该完成
+      // All tasks should complete
       expect(results).toHaveLength(4);
       expect(results.sort()).toEqual([0, 1, 2, 3]);
     });
@@ -99,7 +99,7 @@ describe('Rerank Utils', () => {
 
       await Promise.all(tasks);
 
-      // 并发数为1时，应该按顺序执行
+      // With concurrency=1, tasks should execute sequentially
       expect(executionOrder).toEqual([1, 2, 3]);
     });
 
@@ -174,7 +174,7 @@ describe('Rerank Utils', () => {
             nodeId: 'chat_node_1',
             flowNodeType: FlowNodeTypeEnum.chatNode,
             name: 'AI 对话',
-            inputs: [] as FlowNodeInputItemType[] // 没有配置模型
+            inputs: [] as FlowNodeInputItemType[] // No model configured
           } as StoreNodeItemType
         ] as StoreNodeItemType[],
         edges: [] as StoreEdgeItemType[],
@@ -273,7 +273,7 @@ describe('Rerank Utils', () => {
         getDefaultModel
       );
 
-      // 应该返回第一个节点的模型
+      // Should return the first node's model
       expect(modelId).toBe('gpt-4');
     });
 
@@ -295,7 +295,7 @@ describe('Rerank Utils', () => {
             inputs: [
               {
                 key: NodeInputKeyEnum.aiModel,
-                value: 12345 // 数字类型
+                value: 12345 // Numeric type
               } as any
             ],
             outputs: []
@@ -315,7 +315,7 @@ describe('Rerank Utils', () => {
         getDefaultModel
       );
 
-      // 应该转换为字符串
+      // Should be converted to string
       expect(modelId).toBe('12345');
     });
   });
@@ -414,7 +414,7 @@ describe('Rerank Utils', () => {
             name: '知识库搜索',
             inputs: [
               { key: 'similarity', value: 0.6 } as any
-              // 其他参数缺失
+              // Other params missing
             ],
             outputs: []
           } as StoreNodeItemType
@@ -428,8 +428,8 @@ describe('Rerank Utils', () => {
 
       expect(params).toEqual({
         similarity: 0.6,
-        limit: 5000, // 默认值
-        searchMode: 'embedding', // 默认值
+        limit: 5000, // Default value
+        searchMode: 'embedding', // Default value
         embeddingWeight: undefined,
         collectionFilterMatch: undefined,
         datasetSearchUsingExtensionQuery: undefined,
@@ -556,7 +556,7 @@ describe('Rerank Utils', () => {
 
       const endpoint = buildModelEndpoint(modelConfig);
 
-      // 空字符串是 falsy 值，requestUrl 和 requestAuth 不会被添加
+      // Empty string is falsy; requestUrl and requestAuth will not be added
       expect(endpoint).toEqual({
         model: ''
       });

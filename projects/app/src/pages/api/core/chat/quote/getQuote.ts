@@ -59,7 +59,10 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
       teamId,
       teamToken
     }),
-    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'responseData time').lean() as Promise<{ time: Date; responseData?: ChatHistoryItemResType[] } | null>,
+    MongoChatItem.findOne(
+      { appId, chatId, dataId: chatItemDataId },
+      'responseData time'
+    ).lean() as Promise<{ time: Date; responseData?: ChatHistoryItemResType[] } | null>,
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
   ]);
   if (!chat || !chatItem || !showCite) return Promise.reject(ChatErrEnum.unAuthChat);

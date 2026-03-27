@@ -28,13 +28,7 @@ import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { MongoRerankTrainTask } from '../train/rerank/task/schema';
-import { MongoRerankTrainsetData } from '../train/rerank/data/schema';
-import { MongoRerankTrainset } from '../train/rerank/trainset/schema';
-import { rerankTrainTaskQueue } from '../train/rerank/task/mq';
-import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../common/system/log';
-import { deleteRerankTrainTask } from '../train/rerank/task/controller';
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -146,76 +140,6 @@ export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; id
   }));
 };
 
-/**
- * Clean up training module data when deleting a single application
- *
- * Cleanup operations (executed in order):
- * 1. Cancel and remove running training task queue jobs
- * 2. Cascade delete all training tasks (including associated evaluation datasets, evaluation data, and temp files)
- * 3. Delete application training data
- * 4. Delete application training sets
- *
- * @param appId Application ID to be deleted
- */
-export async function cleanupTrainModuleOnAppDelete(appId: string): Promise<void> {
-  if (!appId) return;
-
-  addLog.info('Cleanup train module on app delete', { appId });
-
-  // 1. Cancel running training tasks and remove queue jobs
-  const runningTasks = await MongoRerankTrainTask.find(
-    {
-      appId,
-      status: {
-        $in: [RerankTrainTaskStatusEnum.pending, RerankTrainTaskStatusEnum.running]
-      }
-    },
-    null
-  ).lean();
-
-  for (const task of runningTasks) {
-    if (task.jobId) {
-      try {
-        const job = await rerankTrainTaskQueue.getJob(task.jobId);
-        if (job) {
-          await job.remove();
-          addLog.info('Removed train task job', {
-            taskId: String(task._id),
-            jobId: task.jobId
-          });
-        }
-      } catch (error) {
-        addLog.error('Failed to remove train task job', error);
-      }
-    }
-  }
-
-  // 2. Cascade delete all training tasks (including evaluation datasets, evaluation data, and temp files)
-  // Query all tasks
-  const allTasks = await MongoRerankTrainTask.find({ appId }, { _id: 1 }).lean();
-
-  // Execute cascade delete for each task
-  for (const task of allTasks) {
-    try {
-      await deleteRerankTrainTask(String(task._id));
-    } catch (error) {
-      // Deletion failure should not block the process, just log the error
-      addLog.warn('Failed to delete train task', {
-        taskId: String(task._id),
-        error: (error as Error).message
-      });
-    }
-  }
-
-  // 3. Delete application training data
-  await MongoRerankTrainsetData.deleteMany({ appId });
-
-  // 4. Delete application training sets
-  await MongoRerankTrainset.deleteMany({ appId });
-
-  addLog.info('Cleanup train module completed', { appId });
-}
-
 export const deleteAppDataProcessor = async ({
   app,
   teamId
@@ -261,9 +185,6 @@ export const deleteAppDataProcessor = async ({
     await MongoAppRegistration.deleteMany({ appId });
     // 删除应用从MCP key apps数组中移除
     await MongoMcpKey.updateMany({ teamId, 'apps.appId': appId }, { $pull: { apps: { appId } } });
-
-    // Clean up training module data
-    await cleanupTrainModuleOnAppDelete(appId);
 
     // 删除应用本身
     await MongoApp.deleteOne({ _id: appId });

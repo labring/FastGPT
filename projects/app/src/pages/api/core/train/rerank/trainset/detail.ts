@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type {
   RerankTrainsetDetailRequest,
   RerankTrainsetDetailResponse
@@ -20,21 +19,15 @@ async function handler(
   }
 
   // Authenticate and get trainset by trainsetId
-  const { trainset, app } = await authRerankTrainset({
+  const { trainset } = await authRerankTrainset({
     req,
     authToken: true,
+    authApiKey: true,
     trainsetId,
     per: ReadPermissionVal
   });
 
-  return {
-    ...trainset,
-    app: {
-      _id: String(app._id),
-      name: app.name,
-      avatar: app.avatar
-    }
-  };
+  return trainset;
 }
 
 export default NextAPI(handler);

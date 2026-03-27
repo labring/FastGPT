@@ -25,6 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   await authRerankTrainset({
     req,
     authToken: true,
+    authApiKey: true,
     trainsetId: String(data.trainsetId),
     per: WritePermissionVal
   });

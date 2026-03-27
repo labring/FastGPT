@@ -40,9 +40,7 @@ async function handler(
       return [];
     }
   })();
-  const templateMarketItems = await getAppTemplatesAndLoadThem(
-    isRefreshTemplateData(req)
-  );
+  const templateMarketItems = await getAppTemplatesAndLoadThem(isRefreshTemplateData(req));
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;

@@ -12,204 +12,32 @@ import {
   RerankTaskCheckpointStageEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
-import type { RerankEvalResult } from '@fastgpt/global/core/train/rerank/type';
 
-import { runPrepareStage } from './stages/prepare';
+import { runGenerateTrainsetStage } from './stages/generate-trainset';
+import { runGenerateEvalDatasetStage } from './stages/generate-evaldataset';
+import { runEvalBaseModelStage } from './stages/eval-basemodel';
 import { runFinetuneStage } from './stages/finetune';
 import { runRegisterStage } from './stages/register';
+import { runEvalTunedModelStage } from './stages/eval-tunedmodel';
 import { runApplyingStage } from './stages/apply';
-import {
-  runGenerateEvalDataset,
-  runEvaluateBaseModel,
-  runEvaluateTunedModel
-} from './stages/evaluate';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { createEnhancedError } from '../utils';
-import { deleteRerankModelConfig } from '../model/controller';
-import { isTunedModel } from './helpers/model';
 import { TrainTaskUnrecoverableError } from './errors';
-
-/**
- * Compare evaluation performance between base model and tuned model
- * Both overall_mrr and overall_precision must be better for the tuned model
- * @param baseModelResult Base model (previous tuned model) evaluation result
- * @param tunedModelResult New tuned model evaluation result
- * @returns true if tuned model performs better than base model in BOTH overall_mrr and overall_precision
- */
-function compareEvalPerformance(
-  baseModelResult: RerankEvalResult | null | undefined,
-  tunedModelResult: RerankEvalResult | null | undefined
-): boolean {
-  if (!baseModelResult || !tunedModelResult) {
-    addLog.warn('Cannot compare evaluation performance: missing evaluation results', {
-      hasBaseResult: !!baseModelResult,
-      hasTunedResult: !!tunedModelResult
-    });
-    return false;
-  }
-
-  const baseDetails = baseModelResult.detailed_results;
-  const tunedDetails = tunedModelResult.detailed_results;
-
-  if (!baseDetails || !tunedDetails) {
-    addLog.warn('Cannot compare evaluation performance: missing detailed results', {
-      hasBaseDetails: !!baseDetails,
-      hasTunedDetails: !!tunedDetails
-    });
-    return false;
-  }
-
-  const baseMRR = baseDetails.overall_mrr;
-  const tunedMRR = tunedDetails.overall_mrr;
-  const basePrecision = baseDetails.overall_precision;
-  const tunedPrecision = tunedDetails.overall_precision;
-
-  // If any required metric is missing, conservatively keep the previous model
-  if (
-    baseMRR === undefined ||
-    tunedMRR === undefined ||
-    basePrecision === undefined ||
-    tunedPrecision === undefined
-  ) {
-    addLog.warn('Cannot compare evaluation performance: missing required metrics', {
-      hasBaseMRR: baseMRR !== undefined,
-      hasTunedMRR: tunedMRR !== undefined,
-      hasBasePrecision: basePrecision !== undefined,
-      hasTunedPrecision: tunedPrecision !== undefined
-    });
-    return false;
-  }
-
-  // Both overall_mrr and overall_precision must be better (higher is better for both metrics)
-  const mrrImproved = tunedMRR > baseMRR;
-  const precisionImproved = tunedPrecision > basePrecision;
-
-  addLog.info('Evaluation performance comparison', {
-    baseMRR,
-    tunedMRR,
-    mrrImproved,
-    basePrecision,
-    tunedPrecision,
-    precisionImproved,
-    bothImproved: mrrImproved && precisionImproved
-  });
-
-  return mrrImproved && precisionImproved;
-}
-
-/**
- * Auto-delete previous tuned model that is no longer in use
- * This runs after the new tuned model has been successfully deployed to the app
- *
- * Deletes the previous model if all conditions are met:
- * 1. It exists (app was using a model before)
- * 2. It's a fine-tuned model created by training module (not a base model or manually created custom model)
- * 3. Previous model is different from new tuned model (avoid self-deletion in in-place replacement scenarios)
- * 4. New model performs better than previous model (based on evaluation metrics)
- *
- * @param taskId - Training task ID
- * @param previousModelConfigId - Previous model config ID from applying stage
- * @param previousTaskId - Previous task ID from applying stage
- * @param tunedModelConfigId - New tuned model config ID from registering stage
- * @param baseModelEvalResult - Previous model evaluation result (base model in this context)
- * @param tunedModelEvalResult - New tuned model evaluation result
- */
-export async function handlePreviousModelDeletion(
-  taskId: string,
-  previousModelConfigId: string | undefined,
-  previousTaskId: string | undefined,
-  tunedModelConfigId: string | undefined,
-  baseModelEvalResult: RerankEvalResult | null | undefined,
-  tunedModelEvalResult: RerankEvalResult | null | undefined
-): Promise<void> {
-  if (
-    !previousModelConfigId ||
-    !isTunedModel(previousModelConfigId) ||
-    previousModelConfigId === tunedModelConfigId
-  ) {
-    addLog.info('No previous fine-tuned model to delete', {
-      taskId,
-      previousModelConfigId,
-      previousTaskId,
-      tunedModelConfigId,
-      isTunedModel: previousModelConfigId ? isTunedModel(previousModelConfigId) : false,
-      reason: !previousModelConfigId
-        ? 'No previous model recorded'
-        : !isTunedModel(previousModelConfigId)
-          ? 'Previous model is not a fine-tuned model created by training module'
-          : 'Previous model is the same as new tuned model (in-place replacement)'
-    });
-    return;
-  }
-
-  // Compare evaluation performance (baseModelEvalResult is the previous tuned model's result)
-  const shouldDelete = compareEvalPerformance(baseModelEvalResult, tunedModelEvalResult);
-
-  if (!shouldDelete) {
-    addLog.info('Keeping previous tuned model (new model does not perform better)', {
-      taskId,
-      previousModelConfigId,
-      previousTaskId,
-      baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
-      baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
-      tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
-      tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
-    });
-    return;
-  }
-
-  addLog.info('Deleting previous tuned model (new model performs better)', {
-    taskId,
-    previousModelConfigId,
-    previousTaskId,
-    baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
-    baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
-    tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
-    tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
-  });
-
-  try {
-    // Query previous task to get sftTaskId if previousTaskId is available
-    let previousSftTaskId: string | undefined;
-    if (previousTaskId) {
-      const previousTask = await MongoRerankTrainTask.findById(previousTaskId, 'checkpoint').lean();
-      previousSftTaskId = previousTask?.checkpoint?.data?.finetuning?.sftTaskId;
-      addLog.info('Found previous task sftTaskId', {
-        taskId,
-        previousTaskId,
-        previousSftTaskId
-      });
-    }
-
-    await deleteRerankModelConfig(previousModelConfigId, previousSftTaskId);
-    addLog.info('Successfully deleted previous tuned model', {
-      taskId,
-      previousModelConfigId,
-      previousTaskId,
-      previousSftTaskId
-    });
-  } catch (deleteError) {
-    addLog.warn('Failed to delete previous tuned model', {
-      taskId,
-      previousModelConfigId,
-      previousTaskId,
-      error: deleteError instanceof Error ? deleteError.message : String(deleteError)
-    });
-  }
-}
 
 /**
  * Rerank training task processor
  *
  * Executes complete rerank model training pipeline:
- * 1. Preparing - Data preparation (includes waiting for trainset to be ready)
- * 2. Finetuning - Model finetuning
- * 3. Registering - Model registration
- * 4. Evaluating - Performance evaluation
- * 5. Applying - Apply trained model to app workflow
+ * 1. generate_trainset  - Generate / wait for training set (includes JSONL export)
+ * 2. generate_evaldataset - Generate evaluation dataset (auto: DiTing; exact: skip)
+ * 3. eval_basemodel    - Evaluate base model to establish baseline
+ * 4. finetuning        - Model fine-tuning via SFT Bridge
+ * 5. registering       - Model registration in FastGPT
+ * 6. eval_tunedmodel   - Evaluate fine-tuned model
+ * 7. applying          - Decide to keep or roll back; integrated cleanup
  */
 export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async (job) => {
   const { taskId } = job.data;
@@ -239,27 +67,67 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.running);
     }
 
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.preparing)) {
-      const prepareResult = await runPrepareStage(task);
-      await updateCheckpointData(taskId, 'preparing', {
-        trainDatasetId: prepareResult.trainDatasetId,
-        trainDatasetFilePath: prepareResult.trainDatasetFilePath
+    // Stage 1: generate_trainset
+    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.generate_trainset)) {
+      const result = await runGenerateTrainsetStage(task);
+      await updateCheckpointData(taskId, 'generate_trainset', {
+        trainDatasetId: result.trainDatasetId,
+        trainDatasetFilePath: result.trainDatasetFilePath
       });
-      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.preparing);
+      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.generate_trainset);
     }
 
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.finetuning)) {
-      const taskAfterPrepare = await getRerankTrainTask(taskId);
-      if (!taskAfterPrepare) {
+    // Stage 2: generate_evaldataset
+    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.generate_evaldataset)) {
+      const taskAfterStage1 = await getRerankTrainTask(taskId);
+      if (!taskAfterStage1) {
         const enhancedError = createEnhancedError(
-          RerankTaskCheckpointStageEnum.finetuning,
+          RerankTaskCheckpointStageEnum.generate_evaldataset,
           RerankTrainErrEnum.processorTaskLostAfterPrepare,
           RerankTrainSuggestionEnum.processorTaskLostAfterPrepare
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
-      const finetuneResult = await runFinetuneStage(taskAfterPrepare);
+      const result = await runGenerateEvalDatasetStage(taskAfterStage1);
+      await updateCheckpointData(taskId, 'generate_evaldataset', {
+        evalDatasetId: result.evalDatasetId
+      });
+      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.generate_evaldataset);
+    }
+
+    // Stage 3: eval_basemodel
+    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.eval_basemodel)) {
+      const taskAfterStage2 = await getRerankTrainTask(taskId);
+      if (!taskAfterStage2) {
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.eval_basemodel,
+          RerankTrainErrEnum.processorTaskLostAfterEvalGen,
+          RerankTrainSuggestionEnum.processorTaskLostAfterEvalGen
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
+      }
+
+      const result = await runEvalBaseModelStage(taskAfterStage2);
+      await updateCheckpointData(taskId, 'eval_basemodel', {
+        baseModelEvalResult: result.baseModelEvalResult
+      });
+      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.eval_basemodel);
+    }
+
+    // Stage 4: finetuning
+    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.finetuning)) {
+      const taskAfterStage3 = await getRerankTrainTask(taskId);
+      if (!taskAfterStage3) {
+        const enhancedError = createEnhancedError(
+          RerankTaskCheckpointStageEnum.finetuning,
+          RerankTrainErrEnum.processorTaskLostAfterEval,
+          RerankTrainSuggestionEnum.processorTaskLostAfterEval
+        );
+        throw new TrainTaskUnrecoverableError(enhancedError);
+      }
+
+      const finetuneResult = await runFinetuneStage(taskAfterStage3);
       await updateCheckpointData(taskId, 'finetuning', {
         sftTaskId: finetuneResult.sftTaskId,
         tunedModelEndpoint: finetuneResult.tunedModelEndpoint
@@ -267,6 +135,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.finetuning);
     }
 
+    // Stage 5: registering
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.registering)) {
       const taskAfterFinetune = await getRerankTrainTask(taskId);
       if (!taskAfterFinetune) {
@@ -280,75 +149,34 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 
       const registerResult = await runRegisterStage(taskAfterFinetune);
       await updateCheckpointData(taskId, 'registering', {
-        tunedModelConfigId: registerResult.tunedModelConfigId
+        tunedModelId: registerResult.tunedModelId
       });
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.registering);
     }
 
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.evaluating)) {
-      const updatedTask = await getRerankTrainTask(taskId);
-      if (!updatedTask) {
+    // Stage 6: eval_tunedmodel
+    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.eval_tunedmodel)) {
+      const taskAfterRegister = await getRerankTrainTask(taskId);
+      if (!taskAfterRegister) {
         const enhancedError = createEnhancedError(
-          RerankTaskCheckpointStageEnum.evaluating,
+          RerankTaskCheckpointStageEnum.eval_tunedmodel,
           RerankTrainErrEnum.processorTaskLostAfterRegister,
           RerankTrainSuggestionEnum.processorTaskLostAfterRegister
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
-      const checkpointData = updatedTask.checkpoint.data || {};
-      const evaluatingData = checkpointData.evaluating || {};
-
-      if (!checkpointData.registering?.tunedModelConfigId) {
-        const enhancedError = createEnhancedError(
-          RerankTaskCheckpointStageEnum.evaluating,
-          RerankTrainErrEnum.processorModelConfigNotInCheckpoint,
-          RerankTrainSuggestionEnum.processorModelConfigNotInCheckpoint
-        );
-        throw new TrainTaskUnrecoverableError(enhancedError);
-      }
-
-      if (!evaluatingData.evalDatasetId) {
-        const evalDatasetId = await runGenerateEvalDataset(updatedTask);
-        await updateCheckpointData(taskId, 'evaluating', { evalDatasetId: evalDatasetId }, true);
-      }
-
-      const taskAfterEvalDataset = await getRerankTrainTask(taskId);
-      if (!taskAfterEvalDataset) {
-        const enhancedError = createEnhancedError(
-          RerankTaskCheckpointStageEnum.evaluating,
-          RerankTrainErrEnum.processorTaskLostAfterEvalGen,
-          RerankTrainSuggestionEnum.processorTaskLostAfterEvalGen
-        );
-        throw new TrainTaskUnrecoverableError(enhancedError);
-      }
-      const evalData = taskAfterEvalDataset.checkpoint.data?.evaluating || {};
-
-      if (!evalData.baseModelEvalResult) {
-        const baseModelEvalResult = await runEvaluateBaseModel(
-          taskId,
-          evalData.evalDatasetId!,
-          taskAfterEvalDataset.baseModelConfigId
-        );
-        await updateCheckpointData(taskId, 'evaluating', { baseModelEvalResult }, true);
-      }
-
-      if (!evalData.tunedModelEvalResult) {
-        const taskCheckpointData = taskAfterEvalDataset.checkpoint.data || {};
-        const tunedModelEvalResult = await runEvaluateTunedModel(
-          taskId,
-          evalData.evalDatasetId!,
-          taskCheckpointData.registering?.tunedModelConfigId!
-        );
-        await updateCheckpointData(taskId, 'evaluating', { tunedModelEvalResult }, true);
-      }
-
-      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.evaluating);
+      const result = await runEvalTunedModelStage(taskAfterRegister);
+      await updateCheckpointData(taskId, 'eval_tunedmodel', {
+        tunedModelEvalResult: result.tunedModelEvalResult
+      });
+      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.eval_tunedmodel);
     }
 
+    // Stage 7: applying
     if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.applying)) {
-      const updatedTask = await getRerankTrainTask(taskId);
-      if (!updatedTask) {
+      const taskBeforeApply = await getRerankTrainTask(taskId);
+      if (!taskBeforeApply) {
         const enhancedError = createEnhancedError(
           RerankTaskCheckpointStageEnum.applying,
           RerankTrainErrEnum.processorTaskLostAfterEval,
@@ -357,17 +185,14 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
 
-      const applyResult = await runApplyingStage(updatedTask);
+      const applyResult = await runApplyingStage(taskBeforeApply);
       await updateCheckpointData(taskId, 'applying', {
-        versionId: applyResult.versionId,
-        versionName: applyResult.versionName,
-        previousModelConfigId: applyResult.previousModelConfigId,
-        previousTaskId: applyResult.previousTaskId,
-        updatedNodesCount: applyResult.updatedNodesCount
+        newModelKept: applyResult.newModelKept
       });
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.applying);
     }
 
+    // Write final result
     const finalTask = await getRerankTrainTask(taskId);
     if (!finalTask) {
       const enhancedError = createEnhancedError(
@@ -382,32 +207,18 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       { _id: taskId },
       {
         result: {
-          trainDatasetId: finalCheckpoint.preparing?.trainDatasetId || '',
-          trainDatasetFilePath: finalCheckpoint.preparing?.trainDatasetFilePath || '',
-          tunedModelConfigId: finalCheckpoint.registering?.tunedModelConfigId || '',
-          evalDatasetId: finalCheckpoint.evaluating?.evalDatasetId!,
-          baseModelEvalResult: finalCheckpoint.evaluating?.baseModelEvalResult!,
-          tunedModelEvalResult: finalCheckpoint.evaluating?.tunedModelEvalResult!,
-          versionId: finalCheckpoint.applying?.versionId || '',
-          versionName: finalCheckpoint.applying?.versionName || '',
-          previousModelConfigId: finalCheckpoint.applying?.previousModelConfigId || '',
-          previousTaskId: finalCheckpoint.applying?.previousTaskId || '',
-          updatedNodesCount: finalCheckpoint.applying?.updatedNodesCount || 0
+          trainDatasetId: finalCheckpoint.generate_trainset?.trainDatasetId || '',
+          trainDatasetFilePath: finalCheckpoint.generate_trainset?.trainDatasetFilePath || '',
+          tunedModelId: finalCheckpoint.registering?.tunedModelId || '',
+          evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId || '',
+          baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
+          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
+          newModelKept: finalCheckpoint.applying?.newModelKept ?? false
         }
       }
     );
 
     await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.completed);
-
-    // Auto-delete previous tuned model that is no longer in use
-    await handlePreviousModelDeletion(
-      taskId,
-      finalCheckpoint.applying?.previousModelConfigId,
-      finalCheckpoint.applying?.previousTaskId,
-      finalCheckpoint.registering?.tunedModelConfigId,
-      finalCheckpoint.evaluating?.baseModelEvalResult,
-      finalCheckpoint.evaluating?.tunedModelEvalResult
-    );
 
     addLog.info('Rerank train task completed', { taskId });
   } catch (error) {
@@ -435,10 +246,12 @@ function shouldRunStage(
   if (currentStage === null) return true;
 
   const stageOrder: RerankTaskCheckpointStageEnum[] = [
-    RerankTaskCheckpointStageEnum.preparing,
+    RerankTaskCheckpointStageEnum.generate_trainset,
+    RerankTaskCheckpointStageEnum.generate_evaldataset,
+    RerankTaskCheckpointStageEnum.eval_basemodel,
     RerankTaskCheckpointStageEnum.finetuning,
     RerankTaskCheckpointStageEnum.registering,
-    RerankTaskCheckpointStageEnum.evaluating,
+    RerankTaskCheckpointStageEnum.eval_tunedmodel,
     RerankTaskCheckpointStageEnum.applying
   ];
 

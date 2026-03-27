@@ -99,7 +99,6 @@ export async function register() {
         initAppTemplateTypes()
       ]);
 
-
       // 动态导入评估模块并初始化（确保在系统配置加载后）
       const { initEvaluationWorkers } = await import('@fastgpt/service/core/evaluation');
       initEvaluationWorkers();

@@ -362,9 +362,11 @@ export const DatasetSelectModal = ({
                         isChecked={isAllSelected}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            const compatibleDatasets = compatibleDatasetsByModel.filter((dataset) => {
-                              return !isDatasetSelected(dataset._id);
-                            });
+                            const compatibleDatasets = compatibleDatasetsByModel.filter(
+                              (dataset) => {
+                                return !isDatasetSelected(dataset._id);
+                              }
+                            );
                             const newSelections = compatibleDatasets.map(
                               (item: DatasetListItemType) => ({
                                 datasetId: item._id,
@@ -381,7 +383,9 @@ export const DatasetSelectModal = ({
                               (item: DatasetListItemType) => item._id
                             );
                             setSelectedDatasets((prev) =>
-                              prev.filter((dataset) => !datasetIdsToRemove.includes(dataset.datasetId))
+                              prev.filter(
+                                (dataset) => !datasetIdsToRemove.includes(dataset.datasetId)
+                              )
                             );
                           }
                         }}

@@ -349,11 +349,19 @@
   "log_retry_evaluation_task_data_item": "【{{name}}】重试了评测任务【{{taskName}}】中的数据项【{{dataItemId}}】",
   "log_export_evaluation_task_data_items": "【{{name}}】导出了评测任务【{{taskName}}】的{{itemCount}}个数据项，格式为{{format}}",
   "create_rerank_trainset": "创建 Rerank 训练集",
-  "log_create_rerank_trainset": "【{{name}}】为应用【{{appName}}】创建了 Rerank 训练集",
+  "log_create_rerank_trainset": "【{{name}}】创建了 Rerank 训练集【{{trainsetName}}】",
   "delete_rerank_trainset": "删除 Rerank 训练集",
   "log_delete_rerank_trainset": "【{{name}}】删除了训练集【{{trainsetName}}】",
+  "generate_rerank_trainset_data": "生成训练集数据",
+  "log_generate_rerank_trainset_data": "【{{name}}】为训练集【{{trainsetName}}】生成了 {{datasetCount}} 个数据集的训练数据",
   "create_rerank_train_task": "创建 Rerank 训练任务",
-  "log_create_rerank_train_task": "【{{name}}】为应用【{{appName}}】创建了训练任务【{{taskName}}】",
+  "log_create_rerank_train_task": "【{{name}}】创建了训练任务【{{taskName}}】，基础模型：{{baseModelId}}",
   "delete_rerank_train_task": "删除 Rerank 训练任务",
-  "log_delete_rerank_train_task": "【{{name}}】删除了训练任务【{{taskName}}】"
+  "log_delete_rerank_train_task": "【{{name}}】删除了训练任务【{{taskName}}】",
+  "retry_rerank_train_task": "重试 Rerank 训练任务",
+  "log_retry_rerank_train_task": "【{{name}}】重试了训练任务【{{taskName}}】",
+  "cancel_rerank_train_task": "取消 Rerank 训练任务",
+  "log_cancel_rerank_train_task": "【{{name}}】取消了训练任务【{{taskName}}】",
+  "apply_rerank_train_task_to_apps": "应用训练结果到应用",
+  "log_apply_rerank_train_task_to_apps": "【{{name}}】将训练任务【{{taskName}}】的模型【{{tunedModelId}}】应用到了 {{appCount}} 个应用"
 }

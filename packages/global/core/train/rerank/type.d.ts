@@ -88,7 +88,6 @@ export interface TrainsetStatistics {
 /** Rerank trainset schema */
 export type RerankTrainsetSchemaType = {
   _id: string;
-  appId: string;
   teamId: string;
   tmbId: string;
 
@@ -110,7 +109,6 @@ export type RerankTrainsetSchemaType = {
 export type RerankTrainsetDataSchemaType = {
   _id: string;
   trainsetId: string;
-  appId: string;
   teamId: string;
 
   query: string;
@@ -153,27 +151,42 @@ export type RerankTrainsetDataSchemaType = {
 /** Rerank training task schema */
 export type RerankTrainTaskSchemaType = {
   _id: string;
-  appId: string;
-  trainsetId: string;
+  trainsetId?: string;
   teamId: string;
   tmbId: string;
 
   name: string;
-  baseModelConfigId: string;
+  /** Base model ID (BaseModelItemType.model) */
+  baseModelId: string;
   baseModelEndpoint: {
     base_url?: string;
     api_key?: string;
     model: string;
   };
 
+  /** Eval dataset ID (exact mode: passed at create; auto mode: written by generate_evaldataset stage) */
+  evalDatasetId?: string;
+  /** Knowledge base IDs (auto mode only: source for generate_trainset/generate_evaldataset) */
+  datasetIds?: string[];
+  /** Optional name for the trained model */
+  newModelName?: string;
+
   status: RerankTrainTaskStatusEnum;
 
   checkpoint: {
     stage: `${RerankTaskCheckpointStageEnum}` | null;
     data?: {
-      preparing?: {
+      generate_trainset?: {
         trainDatasetId: string;
         trainDatasetFilePath: string;
+      };
+
+      generate_evaldataset?: {
+        evalDatasetId: string;
+      };
+
+      eval_basemodel?: {
+        baseModelEvalResult: RerankEvalResult;
       };
 
       finetuning?: {
@@ -186,28 +199,24 @@ export type RerankTrainTaskSchemaType = {
       };
 
       registering?: {
-        tunedModelConfigId: string;
+        tunedModelId: string;
       };
 
-      evaluating?: {
-        evalDatasetId?: string;
-        baseModelEvalResult?: RerankEvalResult;
-        tunedModelEvalResult?: RerankEvalResult;
+      eval_tunedmodel?: {
+        tunedModelEvalResult: RerankEvalResult;
       };
 
       applying?: {
-        versionId?: string;
-        versionName?: string;
-        previousModelConfigId?: string;
-        previousTaskId?: string;
-        updatedNodesCount?: number;
+        newModelKept: boolean;
       };
     };
     stageEndTime?: {
-      preparing?: Date;
+      generate_trainset?: Date;
+      generate_evaldataset?: Date;
+      eval_basemodel?: Date;
       finetuning?: Date;
       registering?: Date;
-      evaluating?: Date;
+      eval_tunedmodel?: Date;
       applying?: Date;
     };
   };
@@ -215,15 +224,11 @@ export type RerankTrainTaskSchemaType = {
   result?: {
     trainDatasetId: string;
     trainDatasetFilePath: string;
-    tunedModelConfigId: string;
+    tunedModelId: string;
     evalDatasetId: string;
     baseModelEvalResult: RerankEvalResult;
     tunedModelEvalResult: RerankEvalResult;
-    versionId: string;
-    versionName: string;
-    previousModelConfigId: string;
-    previousTaskId: string;
-    updatedNodesCount: number;
+    newModelKept: boolean;
   };
 
   errorMsg?: EnhancedErrorMessage;

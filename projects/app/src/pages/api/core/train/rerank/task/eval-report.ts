@@ -71,21 +71,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { task } = await authRerankTrainTask({
     req,
     authToken: true,
+    authApiKey: true,
     taskId,
     per: ReadPermissionVal
   });
 
   // 2. Get evaluation dataset ID
   const evalDatasetId =
-    task.result?.evalDatasetId || task.checkpoint?.data?.evaluating?.evalDatasetId;
+    task.result?.evalDatasetId || task.checkpoint?.data?.generate_evaldataset?.evalDatasetId;
 
   if (!evalDatasetId) {
     return Promise.reject(RerankTrainErrEnum.evalDatasetNotGenerated);
   }
 
   // 3. Get evaluation results from checkpoint
-  const baseModelEvalResult = task.checkpoint?.data?.evaluating?.baseModelEvalResult;
-  const tunedModelEvalResult = task.checkpoint?.data?.evaluating?.tunedModelEvalResult;
+  const baseModelEvalResult = task.checkpoint?.data?.eval_basemodel?.baseModelEvalResult;
+  const tunedModelEvalResult = task.checkpoint?.data?.eval_tunedmodel?.tunedModelEvalResult;
 
   if (!baseModelEvalResult || !tunedModelEvalResult) {
     return Promise.reject(RerankTrainErrEnum.evalResultsNotFound);

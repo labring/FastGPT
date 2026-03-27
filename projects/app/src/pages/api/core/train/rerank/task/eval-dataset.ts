@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { task } = await authRerankTrainTask({
     req,
     authToken: true,
+    authApiKey: true,
     taskId,
     per: ReadPermissionVal
   });
@@ -34,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // 2. Get evaluation dataset ID
   // Priority: result field, fallback to checkpoint field
   const evalDatasetId =
-    task.result?.evalDatasetId || task.checkpoint?.data?.evaluating?.evalDatasetId;
+    task.result?.evalDatasetId || task.checkpoint?.data?.generate_evaldataset?.evalDatasetId;
 
   if (!evalDatasetId) {
     return Promise.reject(RerankTrainErrEnum.evalDatasetNotGenerated);

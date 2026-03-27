@@ -1,13 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { deleteRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/controller';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authRerankTrainTask } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { DeleteRerankTrainTaskRequest } from '@fastgpt/global/core/train/rerank/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> {
   const { taskId } = req.query as DeleteRerankTrainTaskRequest;
@@ -16,21 +17,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // Get task
-  const task = await MongoRerankTrainTask.findById(taskId).lean();
-  if (!task) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
-  }
-
-  // Verify user permission for the task's app
-  await authApp({
+  const { task, teamId, tmbId } = await authRerankTrainTask({
     req,
     authToken: true,
-    appId: String(task.appId),
+    authApiKey: true,
+    taskId,
     per: WritePermissionVal
   });
 
-  // Check task status - cannot delete running tasks
+  // Prevent deletion of in-progress tasks
   if (
     task.status === RerankTrainTaskStatusEnum.pending ||
     task.status === RerankTrainTaskStatusEnum.running
@@ -38,8 +33,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     return Promise.reject(RerankTrainErrEnum.taskCannotDelete);
   }
 
-  // Delete task
   await deleteRerankTrainTask(taskId);
+
+  // Audit log
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.DELETE_RERANK_TRAIN_TASK,
+      params: { taskName: task.name || taskId }
+    });
+  })();
 
   return { success: true };
 }

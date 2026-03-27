@@ -28,7 +28,7 @@ const mockTasks = new Map<string, MockTaskInfo>();
 export async function mockCreateSFTTask(
   request: CreateSFTTaskRequest
 ): Promise<CreateSFTTaskResponse> {
-  addLog.info('[MOCK] SFT Bridge create optimization task', {
+  addLog.debug('[MOCK] SFT Bridge create optimization task', {
     taskType: request.taskType,
     parameters: request.parameters
   });
@@ -112,19 +112,15 @@ export async function mockQuerySFTTaskStatus(
   };
 
   if (currentStatus === SFTTaskStatus.completed) {
-    // response.endpoint = {
-    //   base_url: 'http://10.57.1.91:28624/v1',
-    //   model: `bge-m3-test`,
-    //   api_key: `GGlmUiIHZ5c2PGLg1wv2ULmJj2YMjF7fEx8P5s7vTcIHkzFotg`
-    // };
-    response.endpoint = {
-      base_url: 'http://10.74.124.138:14766/v1',
-      model: `Qwen3-Rerank-0.6B-LoRA-20260106205301-dd598845`,
-      api_key: `GHnjr4iM4feHS7U7wZuWTtyW3Mx3c6K6iJvArPMqbJxJzBvqeQ`
-    };
+    const baseUrl = process.env.MOCK_SFT_ENDPOINT_BASE_URL;
+    const model = process.env.MOCK_SFT_ENDPOINT_MODEL;
+    const apiKey = process.env.MOCK_SFT_ENDPOINT_API_KEY;
+    if (baseUrl && model && apiKey) {
+      response.endpoint = { base_url: baseUrl, model, api_key: apiKey };
+    }
   }
 
-  addLog.info('[MOCK] SFT Bridge query task status', {
+  addLog.debug('[MOCK] SFT Bridge query task status', {
     taskId: request.taskId,
     status: currentStatus,
     progress,
@@ -144,7 +140,7 @@ export async function mockQuerySFTTaskStatus(
 export async function mockDeleteSFTTask(
   request: DeleteSFTTaskRequest
 ): Promise<DeleteSFTTaskResponse> {
-  addLog.info('[MOCK] SFT Bridge delete task', {
+  addLog.debug('[MOCK] SFT Bridge delete task', {
     taskId: request.taskId
   });
 

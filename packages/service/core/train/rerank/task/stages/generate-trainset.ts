@@ -17,6 +17,9 @@ import {
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
 import { calculateTrainsetStats } from '../../data/controller';
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
+import { createRerankTrainset } from '../../trainset/controller';
+import { MongoRerankTrainTask } from '../schema';
+import { rerankTrainDataGenerateQueue } from '../../data/mq';
 
 /**
  * Poll and wait for trainset to be ready
@@ -42,7 +45,7 @@ async function waitForTrainsetReady(
 
     if (!trainset) {
       const enhancedError = createEnhancedError(
-        RerankTaskCheckpointStageEnum.preparing,
+        RerankTaskCheckpointStageEnum.generate_trainset,
         RerankTrainErrEnum.prepareTrainsetDeleted,
         RerankTrainSuggestionEnum.prepareTrainsetDeleted
       );
@@ -55,7 +58,7 @@ async function waitForTrainsetReady(
       if (stats.dataCount === 0) {
         addLog.error('No train data available in trainset', { trainsetId });
         const enhancedError = createEnhancedError(
-          RerankTaskCheckpointStageEnum.preparing,
+          RerankTaskCheckpointStageEnum.generate_trainset,
           RerankTrainErrEnum.prepareDataEmpty,
           RerankTrainSuggestionEnum.prepareDataEmpty
         );
@@ -78,7 +81,7 @@ async function waitForTrainsetReady(
       // Reuse trainset's enhancedError, just add the stage field
       const taskError: EnhancedErrorMessage = {
         ...enhancedError,
-        stage: RerankTaskCheckpointStageEnum.preparing
+        stage: RerankTaskCheckpointStageEnum.generate_trainset
       };
       throw new TrainTaskUnrecoverableError(taskError);
     }
@@ -107,7 +110,7 @@ async function waitForTrainsetReady(
   // Timeout
   addLog.error('Trainset generation timeout', { trainsetId, maxAttempts });
   const enhancedError = createEnhancedError(
-    RerankTaskCheckpointStageEnum.preparing,
+    RerankTaskCheckpointStageEnum.generate_trainset,
     RerankTrainErrEnum.prepareTimeout,
     RerankTrainSuggestionEnum.prepareTimeout
   );
@@ -115,25 +118,19 @@ async function waitForTrainsetReady(
 }
 
 /**
- * Stage 1: Data Preparation
+ * Generate trainset JSONL file from trainset data
  *
  * Organizes training data into JSONL format for SFT Platform upload.
  * Uses streaming to avoid memory overflow.
- * Queries data for the specific trainset associated with this task.
  *
  * @param task - Training task data
  * @returns Train dataset ID and temporary file path
  * @throws {UnrecoverableError} When no train data available
  */
-export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<{
+async function generateTrainsetJsonl(task: RerankTrainTaskSchemaType): Promise<{
   trainDatasetId: string;
   trainDatasetFilePath: string;
 }> {
-  addLog.info('Run prepare stage', { taskId: String(task._id) });
-
-  // Wait for trainset to be ready
-  await waitForTrainsetReady(String(task.trainsetId));
-
   // Use configurable training data directory
   const trainDataDir = getRerankTrainDataDir();
 
@@ -175,7 +172,7 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
-      RerankTaskCheckpointStageEnum.preparing,
+      RerankTaskCheckpointStageEnum.generate_trainset,
       RerankTrainErrEnum.prepareFileSystemError,
       RerankTrainSuggestionEnum.prepareFileSystemError,
       errorMsg
@@ -184,11 +181,9 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
   }
 
   // Double-check data count after file writing
-  // This is necessary even though waitForTrainsetReady checked the trainset data count,
-  // because there could be issues between database query and file writing
   if (dataCount === 0) {
     const enhancedError = createEnhancedError(
-      RerankTaskCheckpointStageEnum.preparing,
+      RerankTaskCheckpointStageEnum.generate_trainset,
       RerankTrainErrEnum.prepareDataEmptyAfterWrite,
       RerankTrainSuggestionEnum.prepareDataEmptyAfterWrite
     );
@@ -206,4 +201,67 @@ export async function runPrepareStage(task: RerankTrainTaskSchemaType): Promise<
     trainDatasetId: String(task.trainsetId),
     trainDatasetFilePath: tmpFilePath
   };
+}
+
+/**
+ * Stage 1: Generate Training Set
+ *
+ * - Auto mode (task.trainsetId is empty): Creates a new trainset, writes trainsetId back to task,
+ *   triggers data generation queue, then waits for trainset to be ready.
+ * - Exact mode (task.trainsetId is non-empty): Directly waits for trainset to be ready.
+ *
+ * Both modes then generate the JSONL file.
+ *
+ * @param task - Training task data
+ * @returns Train dataset ID and temporary file path
+ */
+export async function runGenerateTrainsetStage(task: RerankTrainTaskSchemaType): Promise<{
+  trainDatasetId: string;
+  trainDatasetFilePath: string;
+}> {
+  addLog.info('Run generate trainset stage', { taskId: String(task._id) });
+
+  let trainsetId = task.trainsetId ? String(task.trainsetId) : undefined;
+
+  if (!trainsetId) {
+    // Auto mode: create new trainset and trigger data generation
+    addLog.info('Auto mode: creating new trainset', { taskId: String(task._id) });
+
+    trainsetId = await createRerankTrainset({
+      teamId: String(task.teamId),
+      tmbId: String(task.tmbId),
+      name: `Training Set - ${task.name}`,
+      description: `Auto-generated for training task ${task._id}`
+    });
+
+    // Write trainsetId back to task top-level field
+    await MongoRerankTrainTask.updateOne({ _id: task._id }, { trainsetId });
+
+    addLog.info('Auto mode: created trainset, triggering data generation', {
+      taskId: String(task._id),
+      trainsetId
+    });
+
+    // Trigger data generation queue
+    const job = await rerankTrainDataGenerateQueue.add(`generate-trainset-${trainsetId}`, {
+      trainsetId,
+      datasetIds: task.datasetIds!
+    });
+
+    // Write jobId back to trainset for retry support
+    if (job.id) {
+      await MongoRerankTrainset.updateOne({ _id: trainsetId }, { jobId: job.id });
+    }
+  } else {
+    addLog.info('Exact mode: using existing trainset', {
+      taskId: String(task._id),
+      trainsetId
+    });
+  }
+
+  // Wait for trainset to be ready (both modes)
+  await waitForTrainsetReady(trainsetId);
+
+  // Generate JSONL file from trainset data
+  return generateTrainsetJsonl({ ...task, trainsetId });
 }

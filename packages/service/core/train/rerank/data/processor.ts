@@ -2,8 +2,7 @@ import type { Processor } from 'bullmq';
 import type { RerankTrainDataGenerateJobData } from './mq';
 import { MongoRerankTrainsetData } from './schema';
 import { MongoRerankTrainset } from '../trainset/schema';
-import { MongoApp } from '../../../app/schema';
-import { extractDatasetIdsFromApp, sampleDataFromDataset } from '../utils';
+import { sampleDataFromDataset } from '../utils';
 import {
   TrainDataSourceEnum,
   RerankTrainsetStatusEnum
@@ -69,11 +68,11 @@ function formatSynthesisIndexesToPairs(indexes: DatasetDataIndexItemType[]): str
   return pairs;
 }
 
-/** Rerank train data generation processor */
+/** Rerank train data generation processor (decoupled from App) */
 export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerateJobData> = async (
   job
 ) => {
-  const { appId, trainsetId, datasetIds, generateConfig = {} } = job.data;
+  const { trainsetId, datasetIds, generateConfig = {} } = job.data;
 
   // 1. Check if trainset exists
   const trainset = await MongoRerankTrainset.findById(trainsetId);
@@ -96,21 +95,8 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
-  // 3. Check if app exists
-  const app = await MongoApp.findById(appId).lean();
-  if (!app) {
-    const error = createEnhancedError(
-      null,
-      RerankTrainErrEnum.trainsetGenAppDeleted,
-      RerankTrainSuggestionEnum.trainsetGenAppDeleted
-    );
-    throw new TrainsetGenerationUnrecoverableError(error);
-  }
-
-  // 4. Check if app has datasets configured
-  const targetDatasetIds = datasetIds?.length ? datasetIds : extractDatasetIdsFromApp(app);
-
-  if (!targetDatasetIds.length) {
+  // 3. datasetIds is now required (from job data directly, no App fallback)
+  if (!datasetIds?.length) {
     const error = createEnhancedError(
       null,
       RerankTrainErrEnum.trainsetGenNoDataset,
@@ -118,6 +104,8 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     );
     throw new TrainsetGenerationUnrecoverableError(error);
   }
+
+  const targetDatasetIds = datasetIds;
 
   // Update status to generating
   await MongoRerankTrainset.updateOne(
@@ -133,7 +121,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     });
   }
 
-  // 5. Sample data from datasets
+  // 4. Sample data from datasets
   const samples = await sampleDataFromDataset(targetDatasetIds, {
     datasetType: generateConfig.sampleSize ? 'random' : 'train',
     sampleSize: generateConfig.sampleSize
@@ -148,7 +136,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
-  // 6. Call DiTing service to generate training data
+  // 5. Call DiTing service to generate training data
   let ditingResponse;
   try {
     ditingResponse = await syntheticRerankTrainDatas({
@@ -171,7 +159,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 7. Check if DiTing returned valid data
+  // 6. Check if DiTing returned valid data
   if (!ditingResponse.success || !ditingResponse.data || ditingResponse.data.length === 0) {
     const error = createEnhancedError(
       null,
@@ -182,10 +170,9 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 8. Save training data to database
-  const appTrainData = ditingResponse.data.map((item) => ({
+  // 7. Save training data to database (no appId field)
+  const trainData = ditingResponse.data.map((item) => ({
     trainsetId,
-    appId,
     teamId: trainset.teamId,
     query: item.query,
     positiveDocs: item.positive,
@@ -204,7 +191,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   }));
 
   try {
-    await MongoRerankTrainsetData.insertMany(appTrainData);
+    await MongoRerankTrainsetData.insertMany(trainData);
   } catch (dbError) {
     const error = createEnhancedError(
       null,
@@ -215,7 +202,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 9. Update trainset status to ready
+  // 8. Update trainset status to ready
   await MongoRerankTrainset.updateOne(
     { _id: trainsetId },
     {
@@ -224,10 +211,9 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     }
   );
 
-  addLog.info('Generated app train data from datasets', {
-    appId,
+  addLog.info('Generated train data from datasets', {
     trainsetId,
     datasetCount: targetDatasetIds.length,
-    dataCount: appTrainData.length
+    dataCount: trainData.length
   });
 };

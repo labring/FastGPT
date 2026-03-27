@@ -5,7 +5,7 @@ import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset
 import { rerankTrainTaskQueue } from '@fastgpt/service/core/train/rerank/task/mq';
 import { rerankTrainDataGenerateQueue } from '@fastgpt/service/core/train/rerank/data/mq';
 import { updateTaskStatus } from '@fastgpt/service/core/train/rerank/task/controller';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authRerankTrainTask } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   RerankTrainTaskStatusEnum,
@@ -14,6 +14,8 @@ import {
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { RetryRerankTrainTaskRequest } from '@fastgpt/global/core/train/rerank/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> {
   const { taskId } = req.body as RetryRerankTrainTaskRequest;
@@ -22,26 +24,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // Get task
-  const task = await MongoRerankTrainTask.findById(taskId).lean();
-  if (!task) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
-  }
-
-  // Verify user permission for the task's app
-  await authApp({
+  const { task } = await authRerankTrainTask({
     req,
     authToken: true,
-    appId: String(task.appId),
+    authApiKey: true,
+    taskId,
     per: WritePermissionVal
   });
 
-  // Check task status
+  // Only failed tasks can be retried
   if (task.status !== RerankTrainTaskStatusEnum.failed) {
     return Promise.reject(RerankTrainErrEnum.taskCannotRetry);
   }
 
-  // Get failed job directly using jobId
+  // Retrieve the failed BullMQ job by its persisted jobId
   if (!task.jobId) {
     return Promise.reject(RerankTrainErrEnum.taskCannotRetry);
   }
@@ -51,42 +47,51 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     return Promise.reject(RerankTrainErrEnum.taskCannotRetry);
   }
 
-  // Check trainset status - if trainset generation failed, retry trainset generation first
-  const trainset = await MongoRerankTrainset.findById(task.trainsetId).lean();
-  if (!trainset) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
-  }
+  // If the trainset generation also failed, retry it first so the training task
+  // can resume waiting for a ready trainset on its next attempt
+  if (task.trainsetId) {
+    const trainset = await MongoRerankTrainset.findById(task.trainsetId).lean();
+    if (!trainset) {
+      return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
+    }
 
-  // If trainset generation failed, retry the trainset generation job first
-  // The training task will wait for trainset to be ready using waitForTrainsetReady()
-  if (trainset.status === RerankTrainsetStatusEnum.error && trainset.jobId) {
-    const trainsetJob = await rerankTrainDataGenerateQueue.getJob(trainset.jobId);
-    if (trainsetJob && (await trainsetJob.getState()) === 'failed') {
-      // Retry trainset generation job
-      await trainsetJob.retry();
+    // Retry the data generation job and reset trainset status to pending
+    if (trainset.status === RerankTrainsetStatusEnum.error && trainset.jobId) {
+      const trainsetJob = await rerankTrainDataGenerateQueue.getJob(trainset.jobId);
+      if (trainsetJob && (await trainsetJob.getState()) === 'failed') {
+        // Retry trainset data generation job
+        await trainsetJob.retry();
 
-      // Update trainset status to pending and clear error
-      await MongoRerankTrainset.updateOne(
-        { _id: trainset._id },
-        {
-          status: RerankTrainsetStatusEnum.pending,
-          $unset: { errorMsg: '' }
-        }
-      );
-
-      // Continue to retry the training task job below
-      // The training task will automatically wait for trainset generation to complete
+        // Reset trainset status and clear error
+        await MongoRerankTrainset.updateOne(
+          { _id: trainset._id },
+          {
+            status: RerankTrainsetStatusEnum.pending,
+            $unset: { errorMsg: '' }
+          }
+        );
+      }
     }
   }
 
-  // Retry failed job using BullMQ's retry method
+  // Retry the main training task job via BullMQ
   await job.retry();
 
-  // Update task status to pending and clear error message
+  // Reset task status to pending and clear error message
   await Promise.all([
     updateTaskStatus(taskId, RerankTrainTaskStatusEnum.pending),
     MongoRerankTrainTask.updateOne({ _id: taskId }, { $unset: { errorMsg: '' } })
   ]);
+
+  // Audit log
+  (async () => {
+    addAuditLog({
+      tmbId: task.tmbId,
+      teamId: task.teamId,
+      event: AuditEventEnum.RETRY_RERANK_TRAIN_TASK,
+      params: { taskName: task.name || taskId }
+    });
+  })();
 
   return { success: true, jobId: job.id as string };
 }

@@ -18,7 +18,7 @@ import { addLog } from '../../../../../common/system/log';
 export async function mockSynthesizeRerankTrainDatas(
   request: DiTingSyntheticRerankTrainDatasRequest
 ): Promise<DiTingSyntheticRerankTrainDatasResponse> {
-  addLog.info('[MOCK] DiTing synthesize rerank train datas', {
+  addLog.debug('[MOCK] DiTing synthesize rerank train datas', {
     sampleCount: request.samples.length,
     config: request.config
   });
@@ -158,7 +158,7 @@ export async function mockSynthesizeRerankTrainDatas(
 export async function mockSynthesizeRerankEvalData(
   request: DiTingSyntheticRerankEvalDataRequest
 ): Promise<DiTingSyntheticRerankEvalDataResponse> {
-  addLog.info('[MOCK] DiTing synthesize eval data', {
+  addLog.debug('[MOCK] DiTing synthesize eval data', {
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
     llmModel: request.llm_config.name
@@ -204,7 +204,7 @@ export async function mockSynthesizeRerankEvalData(
 export async function mockEvaluateRerankModel(
   request: DiTingEvaluateRerankRequest
 ): Promise<DiTingEvaluateRerankResponse> {
-  addLog.info('[MOCK] DiTing evaluate rerank model', {
+  addLog.debug('[MOCK] DiTing evaluate rerank model', {
     datasetSize: request.dataset.length,
     rerankModel: request.reranker_config.name
   });

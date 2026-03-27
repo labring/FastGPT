@@ -3,10 +3,9 @@ import { TrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants
 import { addLog } from '../../../../common/system/log';
 import type { TrainsetStatistics } from '@fastgpt/global/core/train/rerank/type';
 
-/** Create manual training data */
+/** Create manual training data (decoupled from App) */
 export async function createManualTrainData(params: {
   trainsetId: string;
-  appId: string;
   teamId: string;
   tmbId: string;
   query: string;
@@ -14,12 +13,11 @@ export async function createManualTrainData(params: {
   negativeDocs: string[];
   reason?: string;
 }): Promise<string> {
-  const { trainsetId, appId, teamId, tmbId, query, positiveDocs, negativeDocs, reason } = params;
+  const { trainsetId, teamId, tmbId, query, positiveDocs, negativeDocs, reason } = params;
 
   const [{ _id }] = await MongoRerankTrainsetData.create([
     {
       trainsetId,
-      appId,
       teamId,
       query,
       positiveDocs,

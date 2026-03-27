@@ -3,7 +3,7 @@ import { type ErrType } from '../errorCode';
 
 /* train: 502000 */
 export enum RerankTrainErrEnum {
-  // 应用训练集错误
+  // Trainset errors
   trainsetNotExist = 'trainsetNotExist',
   trainsetGenerating = 'trainsetGenerating',
   trainsetAlreadyReady = 'trainsetAlreadyReady',
@@ -11,36 +11,38 @@ export enum RerankTrainErrEnum {
   trainsetInUse = 'trainsetInUse',
   trainsetGenerationFailed = 'trainsetGenerationFailed',
 
-  // 训练数据错误
+  // Training data errors
   trainDataNotExist = 'trainDataNotExist',
   noTrainDataAvailable = 'noTrainDataAvailable',
   noDatasetAvailable = 'noDatasetAvailable',
 
-  // 训练任务错误
+  // Training task errors
   taskNotExist = 'taskNotExist',
   taskAlreadyRunning = 'taskAlreadyRunning',
   taskCannotRetry = 'taskCannotRetry',
   taskCannotCancel = 'taskCannotCancel',
   taskCannotDelete = 'taskCannotDelete',
-  taskAppNotFound = 'taskAppNotFound',
   taskModelNotFound = 'taskModelNotFound',
+  taskNotCompleted = 'taskNotCompleted',
+  tunedModelNotKept = 'tunedModelNotKept',
+  tunedModelNotFound = 'tunedModelNotFound',
 
-  // 评测数据集错误
+  // Eval dataset errors
   evalDatasetNotGenerated = 'evalDatasetNotGenerated',
   evalDatasetEmpty = 'evalDatasetEmpty',
   evalResultsNotFound = 'evalResultsNotFound',
 
-  // 外部服务错误
+  // External service errors
   ditingServiceError = 'ditingServiceError',
   sftBridgeServiceError = 'sftBridgeServiceError',
 
-  // 环境验证错误
+  // Environment validation errors
   validationSftBridgeUnaccessible = 'validationSftBridgeUnaccessible',
   validationDitingUnaccessible = 'validationDitingUnaccessible',
   validationDatasetNoSynthesisIndex = 'validationDatasetNoSynthesisIndex',
   validationNoDatasetConfigured = 'validationNoDatasetConfigured',
 
-  // === 准备阶段错误 (Preparing Stage) ===
+  // === Preparing Stage Errors ===
   prepareTrainsetDeleted = 'prepareTrainsetDeleted',
   prepareDataEmpty = 'prepareDataEmpty',
   prepareGenerationFailed = 'prepareGenerationFailed',
@@ -48,7 +50,7 @@ export enum RerankTrainErrEnum {
   prepareFileSystemError = 'prepareFileSystemError',
   prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
 
-  // === 微调阶段错误 (Finetuning Stage) ===
+  // === Finetuning Stage Errors ===
   finetuneDataPathNotFound = 'finetuneDataPathNotFound',
   finetuneModelConfigInvalid = 'finetuneModelConfigInvalid',
   finetuneDataFileNotFound = 'finetuneDataFileNotFound',
@@ -59,29 +61,27 @@ export enum RerankTrainErrEnum {
   finetuneTimeout = 'finetuneTimeout',
   finetuneDeploymentNoEndpoint = 'finetuneDeploymentNoEndpoint',
 
-  // === 注册阶段错误 (Registering Stage) ===
+  // === Registering Stage Errors ===
   registerEndpointNotFound = 'registerEndpointNotFound',
   registerBaseModelNotFound = 'registerBaseModelNotFound',
   registerAiProxyFailed = 'registerAiProxyFailed',
   registerChannelNotAvailable = 'registerChannelNotAvailable',
 
-  // === 评估阶段错误 (Evaluating Stage) ===
-  evalAppDeleted = 'evalAppDeleted',
+  // === Evaluating Stage Errors ===
   evalNoDatasetConfigured = 'evalNoDatasetConfigured',
   evalNoDataAvailable = 'evalNoDataAvailable',
   evalDitingGenerationFailed = 'evalDitingGenerationFailed',
   evalDatabaseSaveFailed = 'evalDatabaseSaveFailed',
   evalDatasetEmptyBeforeEval = 'evalDatasetEmptyBeforeEval',
+  evalDatasetSearchAllFailed = 'evalDatasetSearchAllFailed',
   evalModelNotFound = 'evalModelNotFound',
   evalDitingEvalFailed = 'evalDitingEvalFailed',
 
-  // === 应用阶段错误 (Applying Stage) ===
+  // === Applying Stage Errors ===
   applyModelConfigNotFound = 'applyModelConfigNotFound',
-  applyAppDeleted = 'applyAppDeleted',
-  applyNoNodesToUpdate = 'applyNoNodesToUpdate',
   applyDatabaseUpdateFailed = 'applyDatabaseUpdateFailed',
 
-  // === 处理器内部错误 (Processor Internal Errors) ===
+  // === Processor Internal Errors ===
   processorTaskNotFound = 'processorTaskNotFound',
   processorTaskLostAfterPrepare = 'processorTaskLostAfterPrepare',
   processorTaskLostAfterFinetune = 'processorTaskLostAfterFinetune',
@@ -91,8 +91,7 @@ export enum RerankTrainErrEnum {
   processorTaskLostAfterEval = 'processorTaskLostAfterEval',
   processorTaskLostAfterApply = 'processorTaskLostAfterApply',
 
-  // === 训练集生成错误 (Trainset Generation Errors) ===
-  trainsetGenAppDeleted = 'trainsetGenAppDeleted',
+  // === Trainset Generation Errors ===
   trainsetGenNoDataset = 'trainsetGenNoDataset',
   trainsetGenDatasetEmpty = 'trainsetGenDatasetEmpty',
   trainsetGenDitingFailed = 'trainsetGenDitingFailed',
@@ -102,7 +101,7 @@ export enum RerankTrainErrEnum {
   trainsetGenNotFound = 'trainsetGenNotFound',
   trainsetGenCancelled = 'trainsetGenCancelled',
 
-  // === 通用错误 (General Errors) ===
+  // === General Errors ===
   unknownError = 'unknownError'
 }
 
@@ -111,7 +110,7 @@ export enum RerankTrainErrEnum {
  * Uses same camelCase naming as RerankTrainErrEnum for consistency
  */
 export enum RerankTrainSuggestionEnum {
-  // 应用训练集错误
+  // Trainset errors
   trainsetNotExist = 'trainsetNotExist',
   trainsetGenerating = 'trainsetGenerating',
   trainsetAlreadyReady = 'trainsetAlreadyReady',
@@ -119,36 +118,38 @@ export enum RerankTrainSuggestionEnum {
   trainsetInUse = 'trainsetInUse',
   trainsetGenerationFailed = 'trainsetGenerationFailed',
 
-  // 训练数据错误
+  // Training data errors
   trainDataNotExist = 'trainDataNotExist',
   noTrainDataAvailable = 'noTrainDataAvailable',
   noDatasetAvailable = 'noDatasetAvailable',
 
-  // 训练任务错误
+  // Training task errors
   taskNotExist = 'taskNotExist',
   taskAlreadyRunning = 'taskAlreadyRunning',
   taskCannotRetry = 'taskCannotRetry',
   taskCannotCancel = 'taskCannotCancel',
   taskCannotDelete = 'taskCannotDelete',
-  taskAppNotFound = 'taskAppNotFound',
   taskModelNotFound = 'taskModelNotFound',
+  taskNotCompleted = 'taskNotCompleted',
+  tunedModelNotKept = 'tunedModelNotKept',
+  tunedModelNotFound = 'tunedModelNotFound',
 
-  // 评测数据集错误
+  // Eval dataset errors
   evalDatasetNotGenerated = 'evalDatasetNotGenerated',
   evalDatasetEmpty = 'evalDatasetEmpty',
   evalResultsNotFound = 'evalResultsNotFound',
 
-  // 外部服务错误
+  // External service errors
   ditingServiceError = 'ditingServiceError',
   sftBridgeServiceError = 'sftBridgeServiceError',
 
-  // 环境验证错误
+  // Environment validation errors
   validationSftBridgeUnaccessible = 'validationSftBridgeUnaccessible',
   validationDitingUnaccessible = 'validationDitingUnaccessible',
   validationDatasetNoSynthesisIndex = 'validationDatasetNoSynthesisIndex',
   validationNoDatasetConfigured = 'validationNoDatasetConfigured',
 
-  // === 准备阶段错误 ===
+  // === Preparing Stage Errors ===
   prepareTrainsetDeleted = 'prepareTrainsetDeleted',
   prepareDataEmpty = 'prepareDataEmpty',
   prepareGenerationFailed = 'prepareGenerationFailed',
@@ -156,7 +157,7 @@ export enum RerankTrainSuggestionEnum {
   prepareFileSystemError = 'prepareFileSystemError',
   prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
 
-  // === 微调阶段错误 ===
+  // === Finetuning Stage Errors ===
   finetuneDataPathNotFound = 'finetuneDataPathNotFound',
   finetuneModelConfigInvalid = 'finetuneModelConfigInvalid',
   finetuneDataFileNotFound = 'finetuneDataFileNotFound',
@@ -167,29 +168,27 @@ export enum RerankTrainSuggestionEnum {
   finetuneTimeout = 'finetuneTimeout',
   finetuneDeploymentNoEndpoint = 'finetuneDeploymentNoEndpoint',
 
-  // === 注册阶段错误 ===
+  // === Registering Stage Errors ===
   registerEndpointNotFound = 'registerEndpointNotFound',
   registerBaseModelNotFound = 'registerBaseModelNotFound',
   registerAiProxyFailed = 'registerAiProxyFailed',
   registerChannelNotAvailable = 'registerChannelNotAvailable',
 
-  // === 评估阶段错误 ===
-  evalAppDeleted = 'evalAppDeleted',
+  // === Evaluating Stage Errors ===
   evalNoDatasetConfigured = 'evalNoDatasetConfigured',
   evalNoDataAvailable = 'evalNoDataAvailable',
   evalDitingGenerationFailed = 'evalDitingGenerationFailed',
   evalDatabaseSaveFailed = 'evalDatabaseSaveFailed',
   evalDatasetEmptyBeforeEval = 'evalDatasetEmptyBeforeEval',
+  evalDatasetSearchAllFailed = 'evalDatasetSearchAllFailed',
   evalModelNotFound = 'evalModelNotFound',
   evalDitingEvalFailed = 'evalDitingEvalFailed',
 
-  // === 应用阶段错误 ===
+  // === Applying Stage Errors ===
   applyModelConfigNotFound = 'applyModelConfigNotFound',
-  applyAppDeleted = 'applyAppDeleted',
-  applyNoNodesToUpdate = 'applyNoNodesToUpdate',
   applyDatabaseUpdateFailed = 'applyDatabaseUpdateFailed',
 
-  // === 处理器内部错误 ===
+  // === Processor Internal Errors ===
   processorTaskNotFound = 'processorTaskNotFound',
   processorTaskLostAfterPrepare = 'processorTaskLostAfterPrepare',
   processorTaskLostAfterFinetune = 'processorTaskLostAfterFinetune',
@@ -199,8 +198,7 @@ export enum RerankTrainSuggestionEnum {
   processorTaskLostAfterEval = 'processorTaskLostAfterEval',
   processorTaskLostAfterApply = 'processorTaskLostAfterApply',
 
-  // === 训练集生成建议 ===
-  trainsetGenAppDeleted = 'trainsetGenAppDeleted',
+  // === Trainset Generation Suggestions ===
   trainsetGenNoDataset = 'trainsetGenNoDataset',
   trainsetGenDatasetEmpty = 'trainsetGenDatasetEmpty',
   trainsetGenDitingFailed = 'trainsetGenDitingFailed',
@@ -210,7 +208,7 @@ export enum RerankTrainSuggestionEnum {
   trainsetGenNotFound = 'trainsetGenNotFound',
   trainsetGenCancelled = 'trainsetGenCancelled',
 
-  // === 通用错误 ===
+  // === General Errors ===
   unknownError = 'unknownError'
 }
 

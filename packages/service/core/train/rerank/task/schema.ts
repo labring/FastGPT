@@ -7,15 +7,10 @@ import {
 
 /** Rerank training task schema */
 const RerankTrainTaskSchema = new connectionMongo.Schema({
-  appId: {
-    type: connectionMongo.Schema.Types.ObjectId,
-    ref: 'app',
-    required: true
-  },
   trainsetId: {
     type: connectionMongo.Schema.Types.ObjectId,
     ref: 'rerank_trainset',
-    required: true
+    required: false // optional: exact mode passes at create; auto mode written by generate_trainset stage
   },
   teamId: {
     type: connectionMongo.Schema.Types.ObjectId,
@@ -31,7 +26,7 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
     type: String,
     required: true
   },
-  baseModelConfigId: {
+  baseModelId: {
     type: String,
     required: true
   },
@@ -52,6 +47,18 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
     },
     required: true
   },
+  evalDatasetId: {
+    type: String,
+    required: false // exact mode: passed at create; auto mode: written by generate_evaldataset stage
+  },
+  datasetIds: {
+    type: [String],
+    required: false // auto mode only: source for generate_trainset/generate_evaldataset
+  },
+  newModelName: {
+    type: String,
+    required: false // optional name for the trained model
+  },
   status: {
     type: String,
     enum: Object.values(RerankTrainTaskStatusEnum),
@@ -65,9 +72,15 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
         default: null
       },
       data: {
-        preparing: {
+        generate_trainset: {
           trainDatasetId: String,
           trainDatasetFilePath: String
+        },
+        generate_evaldataset: {
+          evalDatasetId: String
+        },
+        eval_basemodel: {
+          baseModelEvalResult: connectionMongo.Schema.Types.Mixed
         },
         finetuning: {
           sftTaskId: String,
@@ -78,26 +91,22 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
           }
         },
         registering: {
-          tunedModelConfigId: String
+          tunedModelId: String
         },
-        evaluating: {
-          evalDatasetId: String,
-          baseModelEvalResult: connectionMongo.Schema.Types.Mixed,
+        eval_tunedmodel: {
           tunedModelEvalResult: connectionMongo.Schema.Types.Mixed
         },
         applying: {
-          versionId: String,
-          versionName: String,
-          previousModelConfigId: String,
-          previousTaskId: String,
-          updatedNodesCount: Number
+          newModelKept: Boolean
         }
       },
       stageEndTime: {
-        preparing: Date,
+        generate_trainset: Date,
+        generate_evaldataset: Date,
+        eval_basemodel: Date,
         finetuning: Date,
         registering: Date,
-        evaluating: Date,
+        eval_tunedmodel: Date,
         applying: Date
       }
     },
@@ -111,15 +120,11 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
     type: {
       trainDatasetId: String,
       trainDatasetFilePath: String,
-      tunedModelConfigId: String,
+      tunedModelId: String,
       evalDatasetId: String,
       baseModelEvalResult: connectionMongo.Schema.Types.Mixed,
       tunedModelEvalResult: connectionMongo.Schema.Types.Mixed,
-      versionId: String,
-      versionName: String,
-      previousModelConfigId: String,
-      previousTaskId: String,
-      updatedNodesCount: Number
+      newModelKept: Boolean
     }
   },
   errorMsg: {
@@ -142,14 +147,14 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
 });
 
 // Indexes
-RerankTrainTaskSchema.index({ appId: 1, createTime: -1 });
+RerankTrainTaskSchema.index({ baseModelId: 1, status: 1, createTime: -1 }); // Replaced appId indexes
 RerankTrainTaskSchema.index({ trainsetId: 1, createTime: -1 }); // Support querying tasks by trainset
 RerankTrainTaskSchema.index({ teamId: 1, status: 1 });
 RerankTrainTaskSchema.index({ status: 1, updateTime: 1 });
 RerankTrainTaskSchema.index({ jobId: 1 });
 RerankTrainTaskSchema.index({ 'checkpoint.stage': 1, status: 1 });
-RerankTrainTaskSchema.index({ appId: 1, status: 1, createTime: -1 });
 RerankTrainTaskSchema.index({ teamId: 1, status: 1, createTime: -1 });
+RerankTrainTaskSchema.index({ 'checkpoint.data.registering.tunedModelId': 1 }); // For chain traversal in list API
 
 export const MongoRerankTrainTask = getMongoModel<RerankTrainTaskSchemaType>(
   'rerank_train_task',

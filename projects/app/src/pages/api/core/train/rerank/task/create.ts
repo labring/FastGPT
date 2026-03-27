@@ -1,96 +1,92 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { WritePermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/controller';
 import {
   validateTrainingEnvironment,
   validateDatasetSynthesisIndexes
 } from '@fastgpt/service/core/train/rerank/validation';
-import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
+import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
+import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
 import { rerankTrainTaskQueue } from '@fastgpt/service/core/train/rerank/task/mq';
-import {
-  RerankTrainsetStatusEnum,
-  RerankTrainTaskStatusEnum
-} from '@fastgpt/global/core/train/rerank/constants';
-import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type {
   CreateRerankTrainTaskRequest,
   CreateRerankTrainTaskResponse
 } from '@fastgpt/global/core/train/rerank/api';
-import { calculateTrainsetStats } from '@fastgpt/service/core/train/rerank/data/controller';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateRerankTrainTaskResponse>
 ): Promise<CreateRerankTrainTaskResponse> {
-  const { appId, trainsetId, name } = req.body as CreateRerankTrainTaskRequest;
+  const { baseModelId, trainsetId, evalDatasetId, datasetIds, newModelName, name } =
+    req.body as CreateRerankTrainTaskRequest;
 
-  if (!appId) {
+  if (!baseModelId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  if (!trainsetId) {
+  // Validate parameters: exact mode (trainsetId && evalDatasetId) or auto mode (datasetIds)
+  if (!(trainsetId && evalDatasetId) && !datasetIds?.length) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // 1. Authenticate app write permission
-  const { app, teamId, tmbId } = await authApp({
+  // 1. Authenticate user permission (team-level)
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
-    appId,
+    authApiKey: true,
     per: WritePermissionVal
   });
 
-  // 2. Validate training environment (SFT Bridge and DiTing accessibility)
+  // 2. Validate training environment (SFT Bridge and DiTing availability)
   await validateTrainingEnvironment();
 
-  // 3. Validate dataset synthesis indexes
-  await validateDatasetSynthesisIndexes(app);
-
-  // 4. Validate trainset exists, is ready, and belongs to the app
-  const trainset = await MongoRerankTrainset.findOne({
-    _id: trainsetId,
-    appId: appId
-  }).lean();
-  if (!trainset) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
-  }
-  if (trainset.status !== RerankTrainsetStatusEnum.ready) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotReady);
+  // 3. Validate existence and team ownership of referenced resources
+  if (trainsetId) {
+    // Exact mode: verify trainset exists and belongs to the current team
+    await authRerankTrainset({
+      req,
+      authToken: true,
+      authApiKey: true,
+      trainsetId,
+      per: ReadPermissionVal
+    });
   }
 
-  // Calculate statistics dynamically
-  const stats = await calculateTrainsetStats(String(trainset._id));
-  if (stats.dataCount === 0) {
-    return Promise.reject(RerankTrainErrEnum.noTrainDataAvailable);
+  if (evalDatasetId) {
+    // Exact mode: verify eval dataset exists and belongs to the current team
+    await authEvalDataset({
+      req,
+      authToken: true,
+      datasetId: evalDatasetId,
+      per: ReadPermissionVal
+    });
   }
 
-  // 5. Check if there's a running task
-  const runningTask = await MongoRerankTrainTask.findOne({
-    appId,
-    status: {
-      $in: [RerankTrainTaskStatusEnum.pending, RerankTrainTaskStatusEnum.running]
-    }
-  }).lean();
-
-  if (runningTask) {
-    return Promise.reject(RerankTrainErrEnum.taskAlreadyRunning);
+  if (datasetIds?.length) {
+    // Auto mode: verify dataset synthesis indexes are ready
+    await validateDatasetSynthesisIndexes(datasetIds);
   }
 
-  // 6. Create task
+  // 4. Create task (controller checks for existing running tasks internally)
   const taskId = await createRerankTrainTask({
-    appId,
+    baseModelId,
     trainsetId,
+    evalDatasetId,
+    datasetIds,
+    newModelName,
     teamId,
     tmbId,
     name
   });
 
-  // 7. Add to task queue
+  // 6. Enqueue the task
   const job = await rerankTrainTaskQueue.add(
     `train-${taskId}`,
     { taskId },
@@ -100,8 +96,18 @@ async function handler(
     }
   );
 
-  // 8. Update jobId
+  // 7. Persist jobId for later retry/status tracking
   await MongoRerankTrainTask.updateOne({ _id: taskId }, { jobId: job.id as string });
+
+  // 8. Audit log
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_RERANK_TRAIN_TASK,
+      params: { taskName: name || taskId, baseModelId }
+    });
+  })();
 
   return {
     taskId,

@@ -3,19 +3,25 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
+import { resolveTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
   ListRerankTrainTasksRequest,
-  ListRerankTrainTasksResponse
+  ListRerankTrainTasksResponse,
+  RerankTrainTaskListItem
 } from '@fastgpt/global/core/train/rerank/api';
 import { parsePaginationRequest, parseSortParams } from '@fastgpt/service/common/api/pagination';
 import { buildTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/rerank/task/utils';
+import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
 
-async function handler(
+/**
+ * Chain traversal query by tunedModelId
+ * Traverses the training task chain upward from the given tuned model ID
+ */ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ListRerankTrainTasksResponse>
 ): Promise<ListRerankTrainTasksResponse> {
-  const { appId, status } = req.body as ListRerankTrainTasksRequest;
+  const { baseModelId, tunedModelId, status } = req.body as ListRerankTrainTasksRequest;
 
   const { offset, pageSize } = parsePaginationRequest(req);
   const sort = parseSortParams(req, 'createTime', 'desc', [
@@ -24,19 +30,26 @@ async function handler(
     'finishTime'
   ]);
 
-  // Authenticate user team permission
+  // Verify user team permission
   const { teamId } = await authUserPer({
     req,
     authToken: true,
+    authApiKey: true,
     per: ReadPermissionVal
   });
 
+  // If tunedModelId is provided, perform chain traversal query
+  if (tunedModelId) {
+    const tasks = await resolveTasksByTunedModelId(tunedModelId, teamId);
+    return { list: tasks as RerankTrainTaskListItem[], total: tasks.length };
+  }
+
   // Build query conditions
   const matchQuery: any = { teamId: new Types.ObjectId(teamId) };
-  if (appId) matchQuery.appId = new Types.ObjectId(appId);
+  if (baseModelId) matchQuery.baseModelId = baseModelId;
   if (status) matchQuery.status = status;
 
-  // Query task list using aggregation pipeline
+  // Query task list via aggregation pipeline
   const [tasks, total] = await Promise.all([
     MongoRerankTrainTask.aggregate([
       { $match: matchQuery },

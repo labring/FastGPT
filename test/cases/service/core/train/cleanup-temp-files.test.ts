@@ -23,18 +23,18 @@ vi.mock('@fastgpt/service/core/train/rerank/constants', () => ({
 
 describe('临时文件清理功能', () => {
   const testTaskId = 'test_task_123';
-  const tempDir = os.tmpdir(); // 使用 os.tmpdir() 而不是硬编码 /tmp
+  const tempDir = os.tmpdir(); // Use os.tmpdir() instead of hardcoded /tmp
   let testFilePath: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    // 创建测试文件
+    // Create test files
     testFilePath = path.join(tempDir, `rerank_train_${testTaskId}_${Date.now()}.jsonl`);
     await fs.writeFile(testFilePath, 'test content', 'utf-8');
   });
 
   afterAll(async () => {
-    // 清理测试文件
+    // Cleanup test files
     try {
       const files = await fs.readdir(tempDir);
       const testFilePattern = new RegExp(`^rerank_train_${testTaskId}_\\d+\\.jsonl$`);
@@ -45,25 +45,25 @@ describe('临时文件清理功能', () => {
         }
       }
     } catch (error) {
-      // 忽略清理错误
+      // Ignore cleanup errors
     }
   });
 
   test('应该清理指定的单个文件', async () => {
-    // 确认文件存在
+    // Confirm file exists
     await expect(fs.access(testFilePath)).resolves.toBeUndefined();
 
-    // 调用清理函数
+    // Call cleanup function
     await cleanupTempFiles(testFilePath);
 
-    // 验证文件被删除
+    // Verify file is deleted
     await expect(fs.access(testFilePath)).rejects.toThrow();
   });
 
   test('清理不存在的文件时不应该抛出错误', async () => {
     const nonExistentFile = path.join(tempDir, 'non_existent_file.jsonl');
 
-    // 应该正常执行，不抛出错误
+    // Should execute without throwing
     await expect(cleanupTempFiles(nonExistentFile)).resolves.toBeUndefined();
   });
 
@@ -77,11 +77,12 @@ describe('临时文件清理功能', () => {
   });
 
   test('根据 taskId 清理匹配的文件', async () => {
-    // 创建多个测试文件
+    // Create multiple test files
+    const uniqueSuffix = Date.now();
     const testFiles = [
       `rerank_train_${testTaskId}_1.jsonl`,
       `rerank_train_${testTaskId}_2.jsonl`,
-      `rerank_train_other_task_123.jsonl` // 不应该被删除
+      `rerank_train_other_task_${uniqueSuffix}.jsonl` // Should not be deleted
     ];
 
     for (const file of testFiles) {
@@ -89,11 +90,11 @@ describe('临时文件清理功能', () => {
       await fs.writeFile(filePath, 'test content', 'utf-8');
     }
 
-    // 调用清理函数
+    // Call cleanup function
     await cleanupTempFiles(undefined, testTaskId);
 
-    // 验证指定任务的文件被删除
-    // 使用正则表达式匹配，与 cleanupTempFiles 中的逻辑一致
+    // Verify files for the specified task are deleted
+    // Use regex matching consistent with cleanupTempFiles logic
     const tempFilePattern = new RegExp(`^rerank_train_${testTaskId}_\\d+\\.jsonl$`);
     const targetFiles = testFiles.filter((file) => tempFilePattern.test(file));
 
@@ -102,7 +103,7 @@ describe('临时文件清理功能', () => {
       await expect(fs.access(filePath)).rejects.toThrow();
     }
 
-    // 验证其他文件仍然存在
+    // Verify other files still exist
     const otherFile = path.join(tempDir, testFiles[2]);
     await expect(fs.access(otherFile)).resolves.toBeUndefined();
   });
@@ -110,21 +111,21 @@ describe('临时文件清理功能', () => {
 
 describe('训练任务删除时的文件清理', () => {
   test('删除任务时应该清理临时文件 - 集成测试', async () => {
-    // 这个测试验证完整的删除流程，但需要真实的数据库支持
-    // 在单元测试中，我们主要验证 cleanupTempFiles 函数本身的功能
-    // 集成测试可以在有真实数据库时进行
+    // This test validates the full deletion flow but requires a real database
+    // In unit tests we primarily verify the cleanupTempFiles function itself
+    // Integration tests can be run with a real database
 
-    // 创建一个临时文件用于测试
+    // Create a temporary file for testing
     const testFile = '/tmp/rerank_train_delete_test.jsonl';
     await fs.writeFile(testFile, 'test content', 'utf-8');
 
-    // 确认文件存在
+    // Confirm file exists
     await expect(fs.access(testFile)).resolves.toBeUndefined();
 
-    // 调用清理函数
+    // Call cleanup function
     await cleanupTempFiles(testFile);
 
-    // 验证文件被删除
+    // Verify file is deleted
     await expect(fs.access(testFile)).rejects.toThrow();
   });
 });

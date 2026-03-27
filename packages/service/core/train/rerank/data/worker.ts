@@ -36,11 +36,11 @@ export function initRerankTrainDataWorker() {
 
   worker.on('active', (job) => {
     if (job?.data) {
-      const { trainsetId, appId } = job.data;
+      const { trainsetId, datasetIds } = job.data;
       addLog.info('[RerankTrainData] Generation task started', {
         jobId: job.id,
         trainsetId,
-        appId
+        datasetIds
       });
     }
   });

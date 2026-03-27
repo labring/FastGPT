@@ -40,7 +40,7 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   addLog.info('Run finetune stage', { taskId: String(task._id) });
 
   const checkpointData = task.checkpoint.data || {};
-  if (!checkpointData.preparing?.trainDatasetFilePath) {
+  if (!checkpointData.generate_trainset?.trainDatasetFilePath) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
       RerankTrainErrEnum.finetuneDataPathNotFound,
@@ -60,7 +60,7 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
 
   let datasetFile: Buffer;
   try {
-    datasetFile = await fs.readFile(checkpointData.preparing.trainDatasetFilePath);
+    datasetFile = await fs.readFile(checkpointData.generate_trainset.trainDatasetFilePath);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     const enhancedError = createEnhancedError(
@@ -205,7 +205,7 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
 
   addLog.info('Finetune stage completed (tuned model auto-deployed to serving)', {
     taskId: String(task._id),
-    baseModelConfigId: task.baseModelConfigId,
+    baseModelId: task.baseModelId,
     baseModelEndpoint: task.baseModelEndpoint,
     tunedModelEndpoint: endpoint
   });

@@ -42,7 +42,7 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
   const endpoint = getSFTBridgeEndpoint();
   const url = `${endpoint}/api/v1/optimization/tasks`;
 
-  addLog.info('SFT Bridge create optimization task', {
+  addLog.debug('SFT Bridge create optimization task', {
     url,
     taskType: request.taskType,
     hasParameters: !!request.parameters
@@ -73,7 +73,7 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
       throw new Error('Invalid response from SFT Bridge API');
     }
 
-    addLog.info('SFT Bridge create optimization task completed', {
+    addLog.debug('SFT Bridge create optimization task completed', {
       taskId: apiResponse.task_id,
       status: apiResponse.status
     });
@@ -110,7 +110,7 @@ export async function querySFTTaskStatus(
   const endpoint = getSFTBridgeEndpoint();
   const url = `${endpoint}/api/v1/optimization/tasks/${request.taskId}`;
 
-  addLog.info('SFT Bridge query task status', {
+  addLog.debug('SFT Bridge query task status', {
     url,
     taskId: request.taskId
   });
@@ -126,7 +126,7 @@ export async function querySFTTaskStatus(
       throw new Error('Invalid response from SFT Bridge API');
     }
 
-    addLog.info('SFT Bridge query task status completed', {
+    addLog.debug('SFT Bridge query task status completed', {
       taskId: apiResponse.task_id,
       status: apiResponse.status,
       progress: apiResponse.progress
@@ -190,7 +190,7 @@ export async function deleteSFTTask(request: DeleteSFTTaskRequest): Promise<Dele
   const endpoint = getSFTBridgeEndpoint();
   const url = `${endpoint}/api/v1/optimization/tasks/${encodeURIComponent(request.taskId)}`;
 
-  addLog.info('SFT Bridge delete task', {
+  addLog.debug('SFT Bridge delete task', {
     url,
     taskId: request.taskId
   });
@@ -202,7 +202,7 @@ export async function deleteSFTTask(request: DeleteSFTTaskRequest): Promise<Dele
 
     const apiResponse = response.data;
 
-    addLog.info('SFT Bridge delete task completed', {
+    addLog.debug('SFT Bridge delete task completed', {
       taskId: request.taskId,
       response: apiResponse
     });

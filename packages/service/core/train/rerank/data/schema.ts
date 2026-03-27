@@ -9,11 +9,6 @@ const RerankTrainsetDataSchema = new connectionMongo.Schema({
     ref: 'rerank_trainset',
     required: true
   },
-  appId: {
-    type: connectionMongo.Schema.Types.ObjectId,
-    ref: 'app',
-    required: true
-  },
   teamId: {
     type: connectionMongo.Schema.Types.ObjectId,
     ref: 'team',
@@ -72,10 +67,9 @@ const RerankTrainsetDataSchema = new connectionMongo.Schema({
 // Indexes
 RerankTrainsetDataSchema.index({ trainsetId: 1 });
 RerankTrainsetDataSchema.index({ trainsetId: 1, createTime: -1 });
-RerankTrainsetDataSchema.index({ appId: 1, createTime: -1 });
+RerankTrainsetDataSchema.index({ teamId: 1, createTime: -1 }); // Replaced appId index: query by team dimension
 RerankTrainsetDataSchema.index({ teamId: 1 });
 RerankTrainsetDataSchema.index({ source: 1 });
-RerankTrainsetDataSchema.index({ appId: 1, source: 1 });
 RerankTrainsetDataSchema.index({ trainsetId: 1, source: 1, createTime: -1 });
 
 export const MongoRerankTrainsetData = getMongoModel<RerankTrainsetDataSchemaType>(

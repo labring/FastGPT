@@ -1,13 +1,9 @@
-import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import type {
+  RerankTrainTaskSchemaType,
+  RerankEvalResult
+} from '@fastgpt/global/core/train/rerank/type';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
-import { MongoApp } from '../../../../../core/app/schema';
-import { MongoAppVersion } from '../../../../../core/app/version/schema';
-import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getDefaultRerankModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
@@ -15,29 +11,99 @@ import {
 import { createEnhancedError } from '../../utils';
 import { MongoRerankTrainTask } from '../schema';
 import { isTunedModel } from '../helpers/model';
+import { deleteRerankModelConfig } from '../../model/controller';
 import { TrainTaskUnrecoverableError } from '../errors';
 
 /**
- * Stage 5: Apply update
- * Creates a new app version and replaces rerank model configurations in the new version
+ * Compare evaluation performance between base model and tuned model
+ * Both overall_mrr and overall_precision must be better for the tuned model
+ * @param baseModelResult Base model (previous tuned model) evaluation result
+ * @param tunedModelResult New tuned model evaluation result
+ * @returns true if tuned model performs better than base model in BOTH overall_mrr and overall_precision
+ */
+function compareEvalPerformance(
+  baseModelResult: RerankEvalResult | null | undefined,
+  tunedModelResult: RerankEvalResult | null | undefined
+): boolean {
+  if (!baseModelResult || !tunedModelResult) {
+    addLog.warn('Cannot compare evaluation performance: missing evaluation results', {
+      hasBaseResult: !!baseModelResult,
+      hasTunedResult: !!tunedModelResult
+    });
+    return false;
+  }
+
+  const baseDetails = baseModelResult.detailed_results;
+  const tunedDetails = tunedModelResult.detailed_results;
+
+  if (!baseDetails || !tunedDetails) {
+    addLog.warn('Cannot compare evaluation performance: missing detailed results', {
+      hasBaseDetails: !!baseDetails,
+      hasTunedDetails: !!tunedDetails
+    });
+    return false;
+  }
+
+  const baseMRR = baseDetails.overall_mrr;
+  const tunedMRR = tunedDetails.overall_mrr;
+  const basePrecision = baseDetails.overall_precision;
+  const tunedPrecision = tunedDetails.overall_precision;
+
+  // If any required metric is missing, conservatively keep the previous model
+  if (
+    baseMRR === undefined ||
+    tunedMRR === undefined ||
+    basePrecision === undefined ||
+    tunedPrecision === undefined
+  ) {
+    addLog.warn('Cannot compare evaluation performance: missing required metrics', {
+      hasBaseMRR: baseMRR !== undefined,
+      hasTunedMRR: tunedMRR !== undefined,
+      hasBasePrecision: basePrecision !== undefined,
+      hasTunedPrecision: tunedPrecision !== undefined
+    });
+    return false;
+  }
+
+  // Both overall_mrr and overall_precision must be better (higher is better for both metrics)
+  const mrrImproved = tunedMRR > baseMRR;
+  const precisionImproved = tunedPrecision > basePrecision;
+
+  addLog.info('Evaluation performance comparison', {
+    baseMRR,
+    tunedMRR,
+    mrrImproved,
+    basePrecision,
+    tunedPrecision,
+    precisionImproved,
+    bothImproved: mrrImproved && precisionImproved
+  });
+
+  return mrrImproved && precisionImproved;
+}
+
+/**
+ * Stage 7: Apply - Decision and Cleanup
+ *
+ * Compares base model and tuned model evaluation results to decide
+ * whether to keep the new tuned model or roll back.
+ *
+ * - New model better: Keep it. If baseModelId is itself a tuned model (continuous training),
+ *   find the previous task and delete the old model.
+ * - New model worse: Delete the newly trained model and its SFT task.
  *
  * @param task - Rerank training task instance
- * @returns Object containing versionId, versionName, previousModelConfigId, previousTaskId, and updatedNodesCount
- * @throws UnrecoverableError if tuned model config ID not found or no nodes to update
+ * @returns Object containing newModelKept flag
  */
 export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise<{
-  versionId: string;
-  versionName: string;
-  previousModelConfigId?: string;
-  previousTaskId?: string;
-  updatedNodesCount: number;
+  newModelKept: boolean;
 }> {
   addLog.info('Run applying stage', { taskId: String(task._id) });
 
   const checkpointData = task.checkpoint.data || {};
-  const tunedModelConfigId = checkpointData.registering?.tunedModelConfigId;
 
-  if (!tunedModelConfigId) {
+  const tunedModelId = checkpointData.registering?.tunedModelId;
+  if (!tunedModelId) {
     const enhancedError = createEnhancedError(
       RerankTaskCheckpointStageEnum.applying,
       RerankTrainErrEnum.applyModelConfigNotFound,
@@ -46,161 +112,88 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const app = await MongoApp.findById(task.appId).lean();
-  if (!app) {
-    const enhancedError = createEnhancedError(
-      RerankTaskCheckpointStageEnum.applying,
-      RerankTrainErrEnum.applyAppDeleted,
-      RerankTrainSuggestionEnum.applyAppDeleted
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
+  const tunedModelEvalResult = checkpointData.eval_tunedmodel?.tunedModelEvalResult;
+  const baseModelEvalResult = checkpointData.eval_basemodel?.baseModelEvalResult;
 
-  addLog.info('Apply stage: App data loaded', {
-    taskId: String(task._id),
-    appId: String(app._id),
-    modulesCount: app.modules?.length || 0,
-    baseModelConfigId: task.baseModelConfigId
-  });
+  const newModelIsBetter = compareEvalPerformance(baseModelEvalResult, tunedModelEvalResult);
 
-  let updatedNodes = 0;
-  let previousModelConfigId: string | undefined;
-
-  // Deep copy to avoid modifying original configuration
-  const updatedModules = JSON.parse(JSON.stringify(app.modules || [])) as StoreNodeItemType[];
-
-  // Replace rerank model configuration in the new version
-  // Replace ALL datasetSearchNode rerank models with the tuned model
-  // This handles cases where the app may have been updated by another task during training
-  updatedModules.forEach((node) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
-      return;
-    }
-
-    const rerankModelInput = node.inputs?.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSearchRerankModel
-    );
-
-    if (!rerankModelInput) {
-      return;
-    }
-
-    // Get current model config ID for logging and tracking previous model
-    const currentModelConfigId = rerankModelInput.value
-      ? String(rerankModelInput.value)
-      : getDefaultRerankModel()?.model;
-
-    // Record original model config ID (only once, for auto-delete logic)
-    if (!previousModelConfigId && currentModelConfigId) {
-      previousModelConfigId = currentModelConfigId;
-    }
-
-    // Replace with tuned model
-    addLog.info('Apply stage: Replacing rerank model', {
+  if (newModelIsBetter) {
+    addLog.info('New tuned model performs better, keeping it', {
       taskId: String(task._id),
-      nodeId: node.nodeId,
-      previousModel: currentModelConfigId || '(empty/default)',
-      newModel: tunedModelConfigId
+      tunedModelId,
+      baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
+      tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
+      baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
+      tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
     });
 
-    rerankModelInput.value = tunedModelConfigId;
-    updatedNodes++;
-  });
-
-  if (updatedNodes === 0) {
-    const enhancedError = createEnhancedError(
-      RerankTaskCheckpointStageEnum.applying,
-      RerankTrainErrEnum.applyNoNodesToUpdate,
-      RerankTrainSuggestionEnum.applyNoNodesToUpdate
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
-
-  // Query previous training task if previous model is a tuned model
-  let previousTaskId: string | undefined;
-  if (previousModelConfigId && isTunedModel(previousModelConfigId)) {
-    const previousTask = await MongoRerankTrainTask.findOne(
-      {
-        'result.tunedModelConfigId': previousModelConfigId
-      },
-      '_id'
-    ).lean();
-
-    if (previousTask) {
-      previousTaskId = String(previousTask._id);
-      addLog.info('Found previous training task for previous model', {
+    // Continuous training scenario: if the base model is itself a tuned model, delete it
+    if (isTunedModel(task.baseModelId)) {
+      addLog.info('Continuous training: base model is a tuned model, will delete it', {
         taskId: String(task._id),
-        previousModelConfigId,
-        previousTaskId
+        baseModelId: task.baseModelId
       });
-    } else {
-      addLog.warn('Previous model is tuned but no training task found', {
+
+      try {
+        // Find the previous task that created this base model to get its sftTaskId
+        const prevTask = await MongoRerankTrainTask.findOne(
+          { 'checkpoint.data.registering.tunedModelId': task.baseModelId },
+          'checkpoint.data.finetuning.sftTaskId'
+        ).lean();
+
+        const prevSftTaskId = prevTask?.checkpoint?.data?.finetuning?.sftTaskId;
+
+        addLog.info('Deleting previous tuned model', {
+          taskId: String(task._id),
+          baseModelId: task.baseModelId,
+          prevSftTaskId
+        });
+
+        await deleteRerankModelConfig(task.baseModelId, prevSftTaskId);
+
+        addLog.info('Successfully deleted previous tuned model', {
+          taskId: String(task._id),
+          baseModelId: task.baseModelId
+        });
+      } catch (deleteError) {
+        addLog.error('Failed to delete previous tuned model, continuing', {
+          taskId: String(task._id),
+          baseModelId: task.baseModelId,
+          error: deleteError instanceof Error ? deleteError.message : String(deleteError)
+        });
+      }
+    }
+
+    return { newModelKept: true };
+  } else {
+    // New model is not better: delete the newly trained model
+    addLog.info('New tuned model does not perform better, rolling back', {
+      taskId: String(task._id),
+      tunedModelId,
+      baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
+      tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
+      baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
+      tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+    });
+
+    try {
+      const sftTaskId = checkpointData.finetuning?.sftTaskId;
+
+      await deleteRerankModelConfig(tunedModelId, sftTaskId);
+
+      addLog.info('Successfully deleted underperforming tuned model', {
         taskId: String(task._id),
-        previousModelConfigId
+        tunedModelId,
+        sftTaskId
+      });
+    } catch (deleteError) {
+      addLog.error('Failed to delete underperforming tuned model', {
+        taskId: String(task._id),
+        tunedModelId,
+        error: deleteError instanceof Error ? deleteError.message : String(deleteError)
       });
     }
-  }
 
-  const versionName = `${task.name} - Fine-tuned (${new Date().toLocaleDateString()})`;
-
-  try {
-    const result = await mongoSessionRun(async (session) => {
-      const [{ _id: versionId }] = await MongoAppVersion.create(
-        [
-          {
-            appId: task.appId,
-            tmbId: task.tmbId,
-            nodes: updatedModules,
-            edges: app.edges || [],
-            chatConfig: app.chatConfig || {},
-            versionName,
-            isPublish: true,
-            time: new Date()
-          }
-        ],
-        { session, ordered: true }
-      );
-
-      await MongoApp.findByIdAndUpdate(
-        task.appId,
-        {
-          modules: updatedModules,
-          edges: app.edges || [],
-          chatConfig: app.chatConfig || {},
-          updateTime: new Date(),
-          version: 'v2',
-          'pluginData.nodeVersion': versionId
-        },
-        { session }
-      );
-
-      addLog.info('Created and applied new app version with tuned rerank model', {
-        taskId: String(task._id),
-        versionId: String(versionId),
-        versionName,
-        updatedNodes,
-        previousModelConfigId,
-        previousTaskId
-      });
-
-      return {
-        versionId: String(versionId),
-        versionName,
-        previousModelConfigId,
-        previousTaskId,
-        updatedNodesCount: updatedNodes
-      };
-    });
-
-    return result;
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createEnhancedError(
-      RerankTaskCheckpointStageEnum.applying,
-      RerankTrainErrEnum.applyDatabaseUpdateFailed,
-      RerankTrainSuggestionEnum.applyDatabaseUpdateFailed,
-      errorMsg
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
+    return { newModelKept: false };
   }
 }

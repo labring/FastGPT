@@ -458,7 +458,7 @@ export async function sampleDataFromDataset(
       // Fetch all IDs and apply a deterministic Fisher-Yates shuffle seeded by datasetId,
       // so train (first 80%) and eval (last 20%) always use the same permutation.
       const allDocs = await MongoDatasetData.find(match).select('_id').lean();
-      const shuffledIds = allDocs.map((doc: any) => new Types.ObjectId(doc._id as string));
+      const shuffledIds = allDocs.map((doc: any) => doc._id);
 
       const rng = seededRandom(hashString(datasetId));
       for (let i = shuffledIds.length - 1; i > 0; i--) {
@@ -467,6 +467,11 @@ export async function sampleDataFromDataset(
       }
 
       const trainCount = Math.floor(shuffledIds.length * TRAIN_DATA_SPLIT_RATIO);
+
+      // Use find() instead of aggregate() for _id-based queries.
+      // aggregate() has inconsistent _id type casting when documents use externally-assigned _ids,
+      // causing $match to fail. find() handles type casting correctly via Mongoose.
+      const selectFields = '_id q a indexes datasetId collectionId';
 
       if (datasetType === 'eval') {
         const evalIds = shuffledIds.slice(trainCount);
@@ -478,10 +483,9 @@ export async function sampleDataFromDataset(
           evalCount: evalIds.length
         });
 
-        sampleData = await MongoDatasetData.aggregate([
-          { $match: { _id: { $in: evalIds } } },
-          { $project: { _id: 1, q: 1, a: 1, indexes: 1, datasetId: 1, collectionId: 1 } }
-        ]);
+        sampleData = await MongoDatasetData.find({ _id: { $in: evalIds } })
+          .select(selectFields)
+          .lean();
       } else {
         const trainIds = shuffledIds.slice(0, trainCount);
 
@@ -491,10 +495,9 @@ export async function sampleDataFromDataset(
           trainCount
         });
 
-        sampleData = await MongoDatasetData.aggregate([
-          { $match: { _id: { $in: trainIds } } },
-          { $project: { _id: 1, q: 1, a: 1, indexes: 1, datasetId: 1, collectionId: 1 } }
-        ]);
+        sampleData = await MongoDatasetData.find({ _id: { $in: trainIds } })
+          .select(selectFields)
+          .lean();
       }
     }
 
@@ -640,11 +643,13 @@ export function buildModelEndpoint(modelConfig: {
  * Stage name mapping (English)
  */
 const STAGE_NAME_MAP: Record<RerankTaskCheckpointStageEnum, string> = {
-  [RerankTaskCheckpointStageEnum.preparing]: 'Data Preparation',
+  [RerankTaskCheckpointStageEnum.generate_trainset]: 'Generate Training Set',
+  [RerankTaskCheckpointStageEnum.generate_evaldataset]: 'Generate Eval Dataset',
+  [RerankTaskCheckpointStageEnum.eval_basemodel]: 'Evaluate Base Model',
   [RerankTaskCheckpointStageEnum.finetuning]: 'Model Finetuning',
   [RerankTaskCheckpointStageEnum.registering]: 'Model Registration',
-  [RerankTaskCheckpointStageEnum.evaluating]: 'Model Evaluation',
-  [RerankTaskCheckpointStageEnum.applying]: 'App Update'
+  [RerankTaskCheckpointStageEnum.eval_tunedmodel]: 'Evaluate Tuned Model',
+  [RerankTaskCheckpointStageEnum.applying]: 'Apply Decision'
 };
 
 /**

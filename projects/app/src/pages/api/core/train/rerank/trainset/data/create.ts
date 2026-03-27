@@ -17,13 +17,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   const { trainset, teamId, tmbId } = await authRerankTrainset({
     req,
     authToken: true,
+    authApiKey: true,
     trainsetId,
     per: WritePermissionVal
   });
 
   const dataId = await createManualTrainData({
     trainsetId: String(trainset._id),
-    appId: String(trainset.appId),
     teamId,
     tmbId,
     query,

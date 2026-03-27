@@ -1,9 +1,13 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 
-// 使用 vi.hoisted 确保在所有模块导入之前设置环境变量
+// Use vi.hoisted to set environment variables before all module imports
 vi.hoisted(() => {
   process.env.USE_DITING_MOCK = 'true';
   process.env.USE_SFT_BRIDGE_MOCK = 'true';
+  // Set mock SFT endpoint env vars so completed tasks return endpoint info
+  process.env.MOCK_SFT_ENDPOINT_BASE_URL = 'http://test-sft:8080';
+  process.env.MOCK_SFT_ENDPOINT_MODEL = 'test-rerank-model';
+  process.env.MOCK_SFT_ENDPOINT_API_KEY = 'test-api-key';
 });
 
 import {
@@ -39,7 +43,7 @@ describe('Rerank Train External Mocks', () => {
             dataId: 'data_001',
             q: '这是测试内容1',
             a: '这是答案1',
-            // 使用 synthesis 类型的 string[][] 格式（2对=4个训练样本）
+            // Using synthesis type string[][] format (2 pairs = 4 training samples)
             indexes: [
               ['索引问题1', '索引答案1'],
               ['索引问题2', '索引答案2']
@@ -50,7 +54,7 @@ describe('Rerank Train External Mocks', () => {
             dataId: 'data_002',
             q: '这是测试内容2',
             a: '这是答案2',
-            // 1对=2个训练样本
+            // 1 pair = 2 training samples
             indexes: [['索引问题3', '索引答案3']]
           }
         ],
@@ -64,14 +68,14 @@ describe('Rerank Train External Mocks', () => {
       expect(response.success).toBe(true);
       expect(response.data).toBeDefined();
       expect(Array.isArray(response.data)).toBe(true);
-      // 第一个sample有2对(4个文档)，第二个sample有1对(2个文档)，共6个训练样本
+      // First sample has 2 pairs (4 docs), second has 1 pair (2 docs), 6 training samples total
       expect(response.data!.length).toBe(6);
 
-      // 验证数据结构
+      // Verify data structure
       const firstItem = response.data![0];
-      expect(typeof firstItem.query).toBe('string'); // query 是字符串
+      expect(typeof firstItem.query).toBe('string'); // query is a string
       expect(firstItem.positive).toBeInstanceOf(Array);
-      expect(firstItem.positive.length).toBe(1); // positive 通常长度为1
+      expect(firstItem.positive.length).toBe(1); // positive is typically length 1
       expect(firstItem.negatives).toBeInstanceOf(Array);
       expect(firstItem.negatives.length).toBeGreaterThanOrEqual(1);
       expect(firstItem.negatives.length).toBeLessThanOrEqual(7);
@@ -82,7 +86,7 @@ describe('Rerank Train External Mocks', () => {
     });
 
     test('应该成功生成评测数据集', async () => {
-      // 直接导入底层 DiTing API mock 函数
+      // Directly import the underlying DiTing API mock function
       const { mockSynthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external/diting/mock'
       );
@@ -151,7 +155,7 @@ describe('Rerank Train External Mocks', () => {
       expect(typeof detailedResults.rerank_top10_precision).toBe('number');
       expect(typeof detailedResults.rerank_top10_recall).toBe('number');
 
-      // 验证指标范围
+      // Verify metric ranges
       expect(detailedResults.rerank_top10_ndcg).toBeGreaterThan(0);
       expect(detailedResults.rerank_top10_ndcg).toBeLessThanOrEqual(1);
       expect(detailedResults.rerank_top10_mrr).toBeGreaterThan(0);
@@ -174,7 +178,7 @@ describe('Rerank Train External Mocks', () => {
             dataId: 'test',
             q: 'test content',
             a: 'test answer',
-            // 使用 synthesis 格式：3对=6个文档
+            // Using synthesis format: 3 pairs = 6 docs
             indexes: [
               ['doc1_q', 'doc1_a'],
               ['doc2_q', 'doc2_a'],
@@ -186,7 +190,7 @@ describe('Rerank Train External Mocks', () => {
       });
 
       expect(response.success).toBe(true);
-      expect(response.data!.length).toBe(6); // 3对索引 = 6个文档
+      expect(response.data!.length).toBe(6); // 3 index pairs = 6 docs
       const firstItem = response.data![0];
       expect(firstItem.negatives.length).toBeGreaterThanOrEqual(config.minNegativeSamples);
       expect(firstItem.negatives.length).toBeLessThanOrEqual(config.maxNegativeSamples);
@@ -237,13 +241,13 @@ describe('Rerank Train External Mocks', () => {
         parameters: {}
       });
 
-      // 等待 4 秒后应该进入 running 状态
+      // Should enter running state after 4 seconds
       await new Promise((resolve) => setTimeout(resolve, 4000));
       const runningStatus = await querySFTTaskStatus({ taskId: createRes.task_id });
       expect(runningStatus.status).toBe(SFTTaskStatus.running);
       expect(runningStatus.progress).toBeGreaterThan(0);
       expect(runningStatus.progress).toBeLessThan(80);
-    }, 10000); // 增加测试超时时间
+    }, 10000); // Increase test timeout
 
     test('完成后应该返回 endpoint 信息', async () => {
       const createRes = await createSFTTask({
@@ -252,7 +256,7 @@ describe('Rerank Train External Mocks', () => {
         parameters: {}
       });
 
-      // 等待 13 秒确保任务完成
+      // Wait 13 seconds to ensure task completion
       await new Promise((resolve) => setTimeout(resolve, 13000));
       const completedStatus = await querySFTTaskStatus({ taskId: createRes.task_id });
 
@@ -262,7 +266,7 @@ describe('Rerank Train External Mocks', () => {
       expect(completedStatus.endpoint?.base_url).toBeDefined();
       expect(completedStatus.endpoint?.model).toBeDefined();
       expect(completedStatus.endpoint?.api_key).toBeDefined();
-    }, 15000); // 增加测试超时时间
+    }, 15000); // Increase test timeout
 
     test('查询不存在的任务应返回错误', async () => {
       const response = await querySFTTaskStatus({ taskId: 'non_existent_task_id' });
@@ -304,7 +308,7 @@ describe('Rerank Train External Mocks', () => {
           dataId: 'id_1',
           q: 'content 1',
           a: 'answer 1',
-          // 2对 synthesis indexes
+          // 2 synthesis index pairs
           indexes: [
             ['doc_a_q', 'doc_a_a'],
             ['doc_b_q', 'doc_b_a']
@@ -315,7 +319,7 @@ describe('Rerank Train External Mocks', () => {
           dataId: 'id_2',
           q: 'content 2',
           a: 'answer 2',
-          // 1对 synthesis indexes
+          // 1 synthesis index pair
           indexes: [['doc_c_q', 'doc_c_a']]
         }
       ];
@@ -329,11 +333,11 @@ describe('Rerank Train External Mocks', () => {
         }
       });
 
-      // 第一个sample有2对(4个文档)，第二个有1对(2个文档)，共6个训练样本
+      // First sample 2 pairs (4 docs), second 1 pair (2 docs), 6 training samples total
       expect(response.data!.length).toBe(6);
       response.data!.forEach((item) => {
         expect(item.sourceId).toBeDefined();
-        // sourceId 应该来自输入的 samples
+        // sourceId should come from the input samples
         const found = samples.some((s) => s.dataId === item.sourceId);
         expect(found).toBe(true);
       });
@@ -349,7 +353,7 @@ describe('Rerank Train External Mocks', () => {
       await new Promise((resolve) => setTimeout(resolve, 13000));
       const completedStatus = await querySFTTaskStatus({ taskId: createRes.task_id });
 
-      // 只验证 endpoint 存在且包含必要字段，不验证具体值（mock 返回值可能变化）
+      // Only verify endpoint exists with required fields; skip exact value checks (mock may vary)
       expect(completedStatus.endpoint).toBeDefined();
       expect(completedStatus.endpoint?.model).toBeDefined();
     }, 15000);

@@ -5,7 +5,6 @@ import { formatTrainTaskError } from '../utils';
  * Trainset generation unrecoverable error
  *
  * Used for permanent errors that require user action:
- * - Application deleted (trainsetGenAppDeleted)
  * - No dataset configured (trainsetGenNoDataset)
  * - Dataset empty (trainsetGenDatasetEmpty)
  * - Already generating (trainsetGenAlreadyGenerating)
