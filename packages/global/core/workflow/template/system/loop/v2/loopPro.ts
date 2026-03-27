@@ -32,7 +32,7 @@ export const LoopProNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_loop_pro'),
   showStatus: true,
   catchError: false,
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/batch/',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/looppro/',
   inputs: [
     {
       key: NodeInputKeyEnum.loopProMode,

@@ -46,7 +46,23 @@ export const env = createEnv({
     TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional(),
 
     APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
-    DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000)
+    DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
+
+    /** Loop/batch 输入数组最大长度；未设置或非法时按 100 */
+    WORKFLOW_MAX_LOOP_TIMES: z.preprocess((val) => {
+      const n = Number(val);
+      return Number.isInteger(n) && n > 0 ? n : 100;
+    }, z.number().int().positive()),
+    /** 批处理并行上限；未设置或非法时按 10 */
+    WORKFLOW_BATCH_MAX_CONCURRENCY: z.preprocess((val) => {
+      const n = Number(val);
+      return Number.isInteger(n) && n > 0 ? n : 10;
+    }, z.number().int().positive()),
+    /** 批处理重试次数上限；未设置或非法时按 5 */
+    WORKFLOW_BATCH_MAX_RETRY: z.preprocess((val) => {
+      const n = Number(val);
+      return Number.isInteger(n) && n >= 0 ? n : 5;
+    }, z.number().int().min(0))
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

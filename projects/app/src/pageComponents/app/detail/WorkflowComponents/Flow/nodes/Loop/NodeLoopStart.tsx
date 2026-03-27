@@ -110,6 +110,27 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [loopStartLive?.outputs, nodeId, onChangeNode, effectiveLoopItemType, t]);
 
+  useEffect(() => {
+    const idxOut = loopStartLive?.outputs.find((o) => o.key === NodeOutputKeyEnum.loopStartIndex);
+    if (!idxOut) return;
+
+    const desired =
+      isUnderLoopPro && isLoopProConditionMode
+        ? ('workflow:current_loop_round' as const)
+        : ('workflow:Array_element_index' as const);
+    if (idxOut.label === desired) return;
+
+    onChangeNode({
+      nodeId,
+      type: 'updateOutput',
+      key: NodeOutputKeyEnum.loopStartIndex,
+      value: {
+        ...idxOut,
+        label: desired
+      }
+    });
+  }, [isLoopProConditionMode, isUnderLoopPro, loopStartLive?.outputs, nodeId, onChangeNode]);
+
   const tableOutputs = useMemo(() => {
     const list = loopStartLive?.outputs ?? outputs;
     if (isLoopProConditionMode) {
