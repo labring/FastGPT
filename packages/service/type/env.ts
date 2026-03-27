@@ -31,8 +31,9 @@ declare global {
       FILE_DOMAIN: string;
       USE_IP_LIMIT?: string;
       WORKFLOW_MAX_RUN_TIMES?: string;
-      /** 未设置或非法时运行层默认按 100；约束 batch 数组长度与 loop_pro 数组长度/条件轮次 */
       WORKFLOW_MAX_LOOP_TIMES?: string;
+      WORKFLOW_BATCH_MAX_CONCURRENCY?: string;
+      WORKFLOW_BATCH_MAX_RETRY?: string;
       CHECK_INTERNAL_IP?: string;
       ALLOWED_ORIGINS?: string;
       SHOW_COUPON?: string;

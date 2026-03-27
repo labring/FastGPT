@@ -54,6 +54,7 @@ export const useKeyboard = () => {
         !node.data?.isError &&
         node.data?.unique !== true &&
         node.data?.flowNodeType !== FlowNodeTypeEnum.loopEnd &&
+        node.data?.flowNodeType !== FlowNodeTypeEnum.loopProEnd &&
         node.data?.flowNodeType !== FlowNodeTypeEnum.loopStart
     );
     if (selectedNodes.length === 0) return;
@@ -81,6 +82,7 @@ export const useKeyboard = () => {
             FlowNodeTypeEnum.batch,
             FlowNodeTypeEnum.loopPro,
             FlowNodeTypeEnum.loopEnd,
+            FlowNodeTypeEnum.loopProEnd,
             FlowNodeTypeEnum.loopStart
           ].includes(item.type as FlowNodeTypeEnum)
       );

@@ -71,6 +71,7 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.loopPro]: dispatchLoopPro,
   [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
   [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
+  [FlowNodeTypeEnum.loopProEnd]: dispatchLoopEnd,
   [FlowNodeTypeEnum.formInput]: dispatchFormInput,
   [FlowNodeTypeEnum.tool]: dispatchRunTool,
 

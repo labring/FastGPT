@@ -1,9 +1,6 @@
 import { i18nT } from '../../../web/i18n/utils';
 import type { JsonSchemaPropertiesItemType } from '../app/jsonschema';
 
-/** batch 数组长度、loop_pro 数组长度与条件循环轮次超过 WORKFLOW_MAX_LOOP_TIMES 时的服务端错误文案 */
-export const WORKFLOW_LOOP_MAX_REACHED_MESSAGE = '循环达最大上限';
-
 export enum FlowNodeTemplateTypeEnum {
   systemInput = 'systemInput',
   ai = 'ai',
@@ -240,12 +237,13 @@ export enum NodeInputKeyEnum {
   // user select
   userSelectOptions = 'userSelectOptions',
 
+  // batch
+  batchParallelConcurrency = 'batchParallelConcurrency',
+  batchParallelRetryTimes = 'batchParallelRetryTimes',
   // loop
   loopInputArray = 'loopInputArray',
   /** loop_pro: 'array' | 'condition' */
   loopProMode = 'loopProMode',
-  batchParallelConcurrency = 'batchParallelConcurrency',
-  batchParallelRetryTimes = 'batchParallelRetryTimes',
   childrenNodeIdList = 'childrenNodeIdList',
   nodeWidth = 'nodeWidth',
   nodeHeight = 'nodeHeight',
@@ -312,10 +310,11 @@ export enum NodeOutputKeyEnum {
   //user select
   selectResult = 'selectResult',
 
-  // loop
-  loopArray = 'loopArray',
+  // batch
   batchRawResult = 'batchRawResult',
   batchStatus = 'batchStatus',
+  // loop
+  loopArray = 'loopArray',
   // loop start
   loopStartInput = 'loopStartInput',
   loopStartIndex = 'loopStartIndex',

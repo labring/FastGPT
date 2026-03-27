@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { resolveLoopProSubflowAvatarOverride } from '@/web/core/workflow/utils';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
@@ -31,7 +31,7 @@ type sideTabItemType = {
   moduleName: string;
   runningTime?: number;
   moduleType: string;
-  /** 直接父节点（含 loop / batch / loopPro）的 moduleType，用于子项图标（如 loopPro 下 loopStart/loopEnd） */
+  // distinguish icons
   parentModuleType?: FlowNodeTypeEnum;
   // nodeId:string; // abandon
   id: string;
@@ -501,9 +501,11 @@ export const WholeResponseContent = ({
         value={activeModule?.updateVarResult}
       />
 
-      {/* loop / loopPro（子画布执行明细在左侧 loopDetail 树；此处展示聚合输入输出） */}
+      {/* loop & loopPro */}
       <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
-      <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
+      {activeModule?.moduleType !== FlowNodeTypeEnum.loopPro && (
+        <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
+      )}
       <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.batchInput} />
       <Row label={t('workflow:batch_result_success')} value={activeModule?.batchResult} />
       <Row label={t('workflow:batch_result_raw')} value={activeModule?.batchRawResult} />

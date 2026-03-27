@@ -391,7 +391,7 @@ const useRAF = () => {
 
 export const popoverWidth = 400;
 export const popoverHeight = 600;
-// Loop 类型的父节点类型集合
+// 父节点类型集合
 const PARENT_NODE_TYPES = new Set([
   FlowNodeTypeEnum.loop,
   FlowNodeTypeEnum.batch,
@@ -442,11 +442,7 @@ export const useWorkflow = () => {
       FlowNodeTypeEnum.pluginOutput,
       FlowNodeTypeEnum.systemConfig
     ];
-    const batchOnlyUnSupportedTypes = [
-      FlowNodeTypeEnum.userSelect,
-      FlowNodeTypeEnum.formInput,
-      FlowNodeTypeEnum.variableUpdate
-    ];
+    const batchOnlyUnSupportedTypes = [FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput];
     const batchInteractiveNodeTypes = [FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput];
 
     if (!node || node.data.parentNodeId) return;
@@ -677,8 +673,22 @@ export const useWorkflow = () => {
         const parentNodeDeleted = changes.find(
           (c) => c.type === 'remove' && c.id === node?.data.parentNodeId
         );
+        const allowDeleteExtraLoopProEnd =
+          node.data.flowNodeType === FlowNodeTypeEnum.loopProEnd &&
+          !!node.data.parentNodeId &&
+          !parentNodeDeleted &&
+          (() => {
+            const parent = getRawNodeById(node.data.parentNodeId);
+            if (parent?.data.flowNodeType !== FlowNodeTypeEnum.loopPro) return false;
+            const siblingEnds = nodes.filter(
+              (n) =>
+                n.data.parentNodeId === node.data.parentNodeId &&
+                n.data.flowNodeType === FlowNodeTypeEnum.loopProEnd
+            );
+            return siblingEnds.length > 1;
+          })();
         // Forbidden delete && Parents are not deleted together
-        if (node.data.forbidDelete && !parentNodeDeleted) {
+        if (node.data.forbidDelete && !parentNodeDeleted && !allowDeleteExtraLoopProEnd) {
           toast({
             status: 'warning',
             title: t('common:core.workflow.Can not delete node')

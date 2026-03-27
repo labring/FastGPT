@@ -19,7 +19,8 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId
+  getHandleId,
+  isValidReferenceValueFormat
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -362,7 +363,10 @@ export const resolveReferenceListNodeAvatar = (
   if (node.flowNodeType === FlowNodeTypeEnum.loopStart) {
     return 'core/workflow/template/loopProStart';
   }
-  if (node.flowNodeType === FlowNodeTypeEnum.loopEnd) {
+  if (
+    node.flowNodeType === FlowNodeTypeEnum.loopProEnd ||
+    node.flowNodeType === FlowNodeTypeEnum.loopEnd
+  ) {
     return 'core/workflow/template/loopProEnd';
   }
   return node.avatar || '';
@@ -377,12 +381,43 @@ export const resolveLoopProSubflowAvatarOverride = (
   if (moduleType === FlowNodeTypeEnum.loopStart) {
     return 'core/workflow/template/loopProStart';
   }
-  if (moduleType === FlowNodeTypeEnum.loopEnd) {
+  if (moduleType === FlowNodeTypeEnum.loopProEnd || moduleType === FlowNodeTypeEnum.loopEnd) {
     return 'core/workflow/template/loopProEnd';
   }
   return undefined;
 };
 
+/**
+ * loop / batch / loopPro：父容器输入里配置的「引用」往往只写在 input.value 中、图上没有边；
+ * 子画布内选引用时需把这些上游节点也纳入可选范围（再沿边继续反向展开）。
+ */
+const getContainerParentReferenceSeedNodeIds = (parent: FlowNodeItemType): string[] => {
+  const seeds = new Set<string>();
+  const tryAdd = (value: unknown) => {
+    if (!isValidReferenceValueFormat(value)) return;
+    const refNodeId = value[0];
+    if (refNodeId && refNodeId !== VARIABLE_NODE_ID) seeds.add(refNodeId);
+  };
+
+  for (const input of parent.inputs || []) {
+    const renderType = input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+    if (renderType === FlowNodeInputTypeEnum.reference) {
+      tryAdd(input.value);
+      continue;
+    }
+    if (Array.isArray(input.value) && input.value.length > 0) {
+      for (const item of input.value) {
+        tryAdd(item);
+      }
+    }
+  }
+  return [...seeds];
+};
+
+/**
+ * 引用下拉可选的上游节点：沿入边反向递归，并注入全局变量伪节点。
+ * 子画布内若只沿边，会选不到仅出现在父容器（batch/loop/loopPro）输入引用里的主画布节点，故额外用父输入中的引用作为种子再沿边展开。
+ */
 export const getNodeAllSource = ({
   nodeId,
   systemConfigNode,
@@ -422,6 +457,25 @@ export const getNodeAllSource = ({
     });
   };
   findSourceNode(nodeId);
+
+  if (parentId) {
+    const parent = getNodeById(parentId);
+    if (
+      parent &&
+      [FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loop, FlowNodeTypeEnum.loopPro].includes(
+        parent.flowNodeType
+      )
+    ) {
+      for (const seedId of getContainerParentReferenceSeedNodeIds(parent)) {
+        const seedNode = getNodeById(seedId);
+        if (!seedNode) continue;
+        if (!sourceNodes.has(seedNode.nodeId)) {
+          sourceNodes.set(seedNode.nodeId, seedNode);
+        }
+        findSourceNode(seedId);
+      }
+    }
+  }
 
   sourceNodes.set(
     'system_global_variable',
@@ -463,7 +517,7 @@ export const checkLoopBatchSingleLoopEnd = ({
   return undefined;
 };
 
-/** loop_pro：子图内须存在从「循环开始」到「循环终止」的有向路径（发布/调试 strict 时校验；数组与条件模式均适用） */
+/** loop_pro: There must be a directed path from "Loop Start" to "Loop End" within the subgraph (verified when strict is enabled for release/debug; applicable to both array and conditional patterns). */
 export const checkLoopProConditionTermination = ({
   nodes,
   edges
@@ -486,7 +540,9 @@ export const checkLoopProConditionTermination = ({
       nodes
         .filter(
           (n) =>
-            n.data.parentNodeId === parentId && n.data.flowNodeType === FlowNodeTypeEnum.loopEnd
+            n.data.parentNodeId === parentId &&
+            (n.data.flowNodeType === FlowNodeTypeEnum.loopProEnd ||
+              n.data.flowNodeType === FlowNodeTypeEnum.loopEnd)
         )
         .map((n) => n.data.nodeId)
     );
@@ -523,7 +579,7 @@ export const checkLoopProConditionTermination = ({
   return undefined;
 };
 
-/** 保存期：loopEnd 禁止出边；边的两端须在同一 parent 作用域（与 ConnectionHandle 规则一致） */
+/** 保存期：loopEnd / loopProEnd 禁止出边；边的两端须在同一 parent 作用域（与 ConnectionHandle 规则一致） */
 export const checkWorkflowEdgesStructure = (
   nodes: Node<FlowNodeItemType, string | undefined>[],
   edges: Edge<any>[]
@@ -531,7 +587,8 @@ export const checkWorkflowEdgesStructure = (
   const nodeById = new Map(nodes.map((n) => [n.data.nodeId, n]));
 
   for (const node of nodes) {
-    if (node.data.flowNodeType !== FlowNodeTypeEnum.loopEnd) continue;
+    const ft = node.data.flowNodeType;
+    if (ft !== FlowNodeTypeEnum.loopEnd && ft !== FlowNodeTypeEnum.loopProEnd) continue;
     if (edges.some((e) => e.source === node.data.nodeId)) {
       return [node.data.nodeId];
     }

@@ -1,9 +1,6 @@
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WORKFLOW_LOOP_MAX_REACHED_MESSAGE
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { i18nT } from '../../../../../web/i18n/utils';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -17,6 +14,7 @@ import {
 import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
+import { env } from '../../../../env';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopInputArray]: Array<any>;
@@ -40,13 +38,9 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  // Max loop times
-  const maxLength = (() => {
-    const n = Number(process.env.WORKFLOW_MAX_LOOP_TIMES);
-    return Number.isInteger(n) && n > 0 ? n : 100;
-  })();
+  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
   if (loopInputArray.length > maxLength) {
-    return Promise.reject(WORKFLOW_LOOP_MAX_REACHED_MESSAGE);
+    return Promise.reject(i18nT('workflow:loop_max_reached'));
   }
 
   let interactiveData =

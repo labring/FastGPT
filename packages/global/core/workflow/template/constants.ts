@@ -30,6 +30,7 @@ import { LoopNode } from './system/loop/v1/loop';
 import { BatchNode } from './system/batch';
 import { LoopProNode } from './system/loop/v2/loopPro';
 import { LoopEndNode } from './system/loop/loopEnd';
+import { LoopProEndNode } from './system/loop/v2/loopProEnd';
 import { LoopStartNode } from './system/loop/loopStart';
 import { ReadFilesNode } from './system/readFiles';
 import { RunToolNode } from './system/runTool';
@@ -91,6 +92,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunAppModule,
   LoopStartNode,
   LoopEndNode,
+  LoopProEndNode,
   RunToolNode,
   RunToolSetNode
 ];

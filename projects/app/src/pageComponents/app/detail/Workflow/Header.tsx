@@ -25,7 +25,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PublishHistories from '../PublishHistoriesSlider';
-import SaveButton from '../Workflow/components/SaveButton';
+import SaveButton, { WorkflowPublishCheckAbortedError } from '../Workflow/components/SaveButton';
 import {
   WorkflowSnapshotContext,
   type WorkflowSnapshotsType
@@ -52,7 +52,10 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const { flowData2StoreDataAndCheck } = useContextSelector(WorkflowUtilsContext, (v) => v);
+  const { flowData2StoreData, flowData2StoreDataAndCheck } = useContextSelector(
+    WorkflowUtilsContext,
+    (v) => v
+  );
 
   const setWorkflowTestData = useContextSelector(
     WorkflowModalContext,
@@ -80,10 +83,10 @@ const Header = () => {
       isPublish?: boolean;
       versionName?: string;
     }) => {
-      const data = flowData2StoreDataAndCheck(false, { strictLoopProCondition: true });
-      if (!data) {
-        return false;
-      }
+      const data = isPublish
+        ? flowData2StoreDataAndCheck(false, { strictLoopProCondition: true })
+        : flowData2StoreData();
+      if (!data) throw new WorkflowPublishCheckAbortedError();
       await onSaveApp({
         ...data,
         isPublish,
@@ -102,11 +105,16 @@ const Header = () => {
             : item
         )
       );
-      return true;
     },
     {
       manual: true,
-      refreshDeps: [onSaveApp, setPast, flowData2StoreDataAndCheck, appDetail.chatConfig]
+      refreshDeps: [
+        onSaveApp,
+        setPast,
+        flowData2StoreData,
+        flowData2StoreDataAndCheck,
+        appDetail.chatConfig
+      ]
     }
   );
 
@@ -219,9 +227,7 @@ const Header = () => {
                   colorSchema={'black'}
                   isLoading={loading}
                   onClickSave={onClickSave}
-                  checkData={() =>
-                    !!flowData2StoreDataAndCheck(false, { strictLoopProCondition: true })
-                  }
+                  checkData={() => !!flowData2StoreDataAndCheck()}
                 />
               )}
             </HStack>
@@ -277,8 +283,7 @@ const Header = () => {
             isLoading={loading}
             onClick={async () => {
               try {
-                const ok = await onClickSave({});
-                if (ok === false) return;
+                await onClickSave({});
                 onCloseBackConfirm();
                 onBack();
                 backSaveToast({

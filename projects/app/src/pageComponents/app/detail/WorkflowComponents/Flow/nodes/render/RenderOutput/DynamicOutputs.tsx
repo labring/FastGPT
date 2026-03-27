@@ -25,6 +25,12 @@ type DynamicOutputsProps = {
   referenceScopeParentId?: string;
 };
 
+/** Loop Pro 自定义输出表格行宽；与 NodeLoop 标题行宽度一致，便于「报错捕获」与表格右缘对齐 */
+export const LOOP_PRO_DYNAMIC_OUTPUT_ROW_W = '420px';
+const LOOP_PRO_COL_VAR_W = '80px';
+const LOOP_PRO_COL_REF_W = '196px';
+const LOOP_PRO_COL_TYPE_W = '112px';
+
 const defaultOutput: FlowNodeOutputItemType = {
   id: '',
   type: FlowNodeOutputTypeEnum.dynamic,
@@ -88,9 +94,26 @@ const DynamicOutputs = ({
           </HStack>
         </HStack>
         <Box mt={2}>
-          <Flex alignItems={'center'} mb={2} gap={2} px={1}>
-            <Flex flex={'1'}>
-              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
+          <Flex
+            alignItems={'center'}
+            mb={2}
+            gap={2}
+            px={1}
+            w={referenceScopeParentId ? LOOP_PRO_DYNAMIC_OUTPUT_ROW_W : undefined}
+            maxW={referenceScopeParentId ? LOOP_PRO_DYNAMIC_OUTPUT_ROW_W : undefined}
+          >
+            <Flex
+              flex={referenceScopeParentId ? 'none' : '1'}
+              w={referenceScopeParentId ? '388px' : undefined}
+            >
+              <Box
+                fontSize={'sm'}
+                color={'myGray.500'}
+                fontWeight={'medium'}
+                flex={referenceScopeParentId ? 'none' : 1}
+                w={referenceScopeParentId ? LOOP_PRO_COL_VAR_W : undefined}
+                px={3}
+              >
                 {t('workflow:Variable_name')}
               </Box>
               {referenceScopeParentId ? (
@@ -99,7 +122,8 @@ const DynamicOutputs = ({
                     fontSize={'sm'}
                     color={'myGray.500'}
                     fontWeight={'medium'}
-                    minW={'240px'}
+                    w={LOOP_PRO_COL_REF_W}
+                    flexShrink={0}
                     px={3}
                   >
                     {t('app:reference_variable')}
@@ -108,7 +132,8 @@ const DynamicOutputs = ({
                     fontSize={'sm'}
                     color={'myGray.500'}
                     fontWeight={'medium'}
-                    minW={'140px'}
+                    w={LOOP_PRO_COL_TYPE_W}
+                    flexShrink={0}
                     px={3}
                   >
                     {t('common:core.module.Data Type')}
@@ -126,7 +151,7 @@ const DynamicOutputs = ({
                 </Box>
               )}
             </Flex>
-            {outputs.length > 0 && <Box w={6} />}
+            {outputs.length > 0 && <Box w={6} flexShrink={0} />}
           </Flex>
           {[...outputs, defaultOutput].map((output, rowIndex) => (
             <Box key={output.key || `empty-row-${rowIndex}`} _notLast={{ mb: 1.5 }}>
@@ -251,8 +276,14 @@ const DynamicOutputItemWithReference = ({
   );
 
   return (
-    <Flex alignItems={'center'} mb={1} gap={2}>
-      <Flex flex={'1'} bg={'white'} rounded={'md'}>
+    <Flex
+      alignItems={'center'}
+      mb={1}
+      gap={2}
+      w={LOOP_PRO_DYNAMIC_OUTPUT_ROW_W}
+      maxW={LOOP_PRO_DYNAMIC_OUTPUT_ROW_W}
+    >
+      <Flex flex={'none'} w={'388px'} bg={'white'} rounded={'md'}>
         <Input
           placeholder={t('workflow:Variable_name')}
           value={isEditing ? tempLabel : output?.label || ''}
@@ -264,6 +295,10 @@ const DynamicOutputItemWithReference = ({
           onBlur={(e) => onLabelBlur(e.target.value.trim())}
           h={10}
           borderRightRadius={'none'}
+          w={LOOP_PRO_COL_VAR_W}
+          minW={LOOP_PRO_COL_VAR_W}
+          maxW={LOOP_PRO_COL_VAR_W}
+          flexShrink={0}
         />
         <ReferSelector
           placeholder={t('common:select_reference_variable')}
@@ -277,7 +312,10 @@ const DynamicOutputItemWithReference = ({
             borderLeftColor: 'transparent',
             borderRightColor: 'transparent',
             isDisabled: isEmptyItem,
-            w: '240px',
+            w: LOOP_PRO_COL_REF_W,
+            minW: LOOP_PRO_COL_REF_W,
+            maxW: LOOP_PRO_COL_REF_W,
+            flexShrink: 0,
             _hover: {
               borderColor: 'blue.300'
             }
@@ -288,7 +326,9 @@ const DynamicOutputItemWithReference = ({
           border={'1px solid'}
           borderRightRadius={'sm'}
           borderColor={'myGray.200'}
-          minW={'150px'}
+          w={LOOP_PRO_COL_TYPE_W}
+          minW={LOOP_PRO_COL_TYPE_W}
+          flexShrink={0}
           alignItems={'center'}
           pl={4}
           opacity={isEmptyItem ? 0.5 : 1}
@@ -299,7 +339,7 @@ const DynamicOutputItemWithReference = ({
         </Flex>
       </Flex>
       {!isEmptyItem && (
-        <Box w={6}>
+        <Box w={6} flexShrink={0}>
           <MyIconButton
             icon={'delete'}
             color={'myGray.600'}
@@ -310,7 +350,7 @@ const DynamicOutputItemWithReference = ({
           />
         </Box>
       )}
-      {isEmptyItem && outputs.length > 0 && <Box w={6} />}
+      {isEmptyItem && outputs.length > 0 && <Box w={6} flexShrink={0} />}
     </Flex>
   );
 };
