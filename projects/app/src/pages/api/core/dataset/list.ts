@@ -46,10 +46,6 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>): Promise<ListDa
     }
   }
 
-  // 分页参数最大值限制
-  const MAX_PAGE_SIZE = 100;
-  const safePageSize = isPaginated ? Math.min(pageSize, MAX_PAGE_SIZE) : undefined;
-
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
     authUserPer({
@@ -143,22 +139,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>): Promise<ListDa
     };
   })();
 
-  // 分页模式：使用数据库级分页 + countDocuments 获取准确的 total
-  // 非分页模式：保留全量查询（用于无限滚动等场景）
-
-  const baseQuery = findDatasetQuery;
-
-  // 分页模式下并行执行 count 和分页查询
-  const [total, myDatasets] = isPaginated
-    ? await Promise.all([
-        MongoDataset.countDocuments(baseQuery),
-        MongoDataset.find(baseQuery)
-          .sort({ updateTime: -1 })
-          .skip((pageNum! - 1) * safePageSize!)
-          .limit(safePageSize!)
-          .lean()
-      ])
-    : [0, await MongoDataset.find(baseQuery).sort({ updateTime: -1 }).lean()];
+  const myDatasets = await MongoDataset.find(findDatasetQuery).sort({ updateTime: -1 }).lean();
 
   let dataCountMap: Map<string, number> | undefined;
   if (scene !== undefined) {
@@ -245,7 +226,12 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>): Promise<ListDa
     list: formatDatasets
   });
 
-  if (isPaginated) return { list: result, total };
+  if (isPaginated) {
+    const total = result.length;
+    const start = (pageNum! - 1) * pageSize!;
+    const list = result.slice(start, start + pageSize!);
+    return { list, total };
+  }
   return result;
 }
 
