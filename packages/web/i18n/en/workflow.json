@@ -259,5 +259,7 @@
   "workflow.Team cloud": "Team Cloud",
   "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits.",
   "batch_end_output_label": "Select a variable as the batch execution output",
-  "batch_no_interactive_node": "Interactive nodes are not allowed inside batch execution nodes"
+  "batch_no_interactive_node": "Interactive nodes are not allowed inside batch execution nodes",
+  "batch_child_not_reach_loop_end": "Child workflow did not reach the loop end node",
+  "batch_child_loop_output_invalid": "Loop end output is missing or empty (no data)"
 }

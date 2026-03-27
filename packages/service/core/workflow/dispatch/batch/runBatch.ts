@@ -1,5 +1,6 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { i18nT } from '../../../../../web/i18n/utils';
 import {
   type DispatchNodeResultType,
@@ -12,6 +13,38 @@ import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/u
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { env } from '../../../../env';
+
+/** 节点响应里是否带有需关注的错误（开启 catch 的节点仅作记录，不参与批量成败） */
+const flowResponseHasError = (res: ChatHistoryItemResType) => {
+  if (res.errorText) return true;
+  if (res.error == null || res.error === '') return false;
+  if (typeof res.error === 'string') return true;
+  if (typeof res.error === 'object' && Object.keys(res.error).length > 0) return true;
+  return Boolean(res.error);
+};
+
+const formatFlowResponseError = (res: ChatHistoryItemResType) => {
+  if (res.errorText) return res.errorText;
+  if (typeof res.error === 'string') return res.error;
+  if (res.error && typeof res.error === 'object') return getErrText(res.error);
+  return res.moduleName || res.nodeId;
+};
+
+/** 子画布内未开启「错误时继续」的节点若带 error，则本批元素视为失败 */
+const collectBatchChildUncaughtErrors = (
+  flowResponses: ChatHistoryItemResType[],
+  childrenNodeIdList: string[],
+  catchErrorByNodeId: Map<string, boolean | undefined>
+) => {
+  const messages: string[] = [];
+  for (const res of flowResponses) {
+    if (!childrenNodeIdList.includes(res.nodeId)) continue;
+    if (catchErrorByNodeId.get(res.nodeId)) continue;
+    if (!flowResponseHasError(res)) continue;
+    messages.push(`${res.moduleName}: ${formatFlowResponseError(res)}`);
+  }
+  return messages;
+};
 
 type BatchRawResultItem = {
   success: boolean;
@@ -115,6 +148,13 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
   const concurrency = getRuntimeConcurrency(batchParallelConcurrency);
   const retryTimes = getRuntimeRetry(batchParallelRetryTimes);
 
+  const catchErrorByNodeId = new Map<string, boolean | undefined>();
+  runtimeNodes.forEach((n) => {
+    if (childrenNodeIdList.includes(n.nodeId)) {
+      catchErrorByNodeId.set(n.nodeId, n.catchError);
+    }
+  });
+
   const orderedRawResult: BatchRawResultItem[] = new Array(loopInputArray.length);
   const orderedSuccessResult: any[] = [];
   const detailResponses: any[] = [];
@@ -152,19 +192,43 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
           throw new Error('Batch child workflow does not allow interactive nodes');
         }
 
-        const loopEndList = response.flowResponses.filter(
+        const flowResponses = response.flowResponses as ChatHistoryItemResType[];
+        const loopEndList = flowResponses.filter(
           (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
         );
         const loopOutputValue = loopEndList[loopEndList.length - 1]?.loopOutputValue;
 
-        orderedRawResult[index] = {
-          success: true,
-          data: loopOutputValue
-        };
-        orderedSuccessResult.push({
-          index,
-          data: loopOutputValue
-        });
+        const uncaughtErrors = collectBatchChildUncaughtErrors(
+          flowResponses,
+          childrenNodeIdList,
+          catchErrorByNodeId
+        );
+        const reachedLoopEnd = loopEndList.length > 0;
+        const outputHasData = loopOutputValue !== undefined && loopOutputValue !== null;
+
+        const failMessages: string[] = [...uncaughtErrors];
+        if (!reachedLoopEnd) {
+          failMessages.push(i18nT('workflow:batch_child_not_reach_loop_end'));
+        } else if (!outputHasData) {
+          failMessages.push(i18nT('workflow:batch_child_loop_output_invalid'));
+        }
+
+        if (failMessages.length > 0) {
+          orderedRawResult[index] = {
+            success: false,
+            message: failMessages.join('\n')
+          };
+        } else {
+          orderedRawResult[index] = {
+            success: true,
+            data: loopOutputValue
+          };
+          orderedSuccessResult.push({
+            index,
+            data: loopOutputValue
+          });
+        }
+
         detailResponses.push(...response.flowResponses);
         totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
         if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
@@ -185,8 +249,17 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
 
   await batchRun(loopInputArray, runOne, concurrency);
 
-  const successCount = orderedRawResult.filter((item) => item?.success).length;
-  const failedCount = orderedRawResult.length - successCount;
+  let successCount = 0;
+  let failedCount = 0;
+  for (let i = 0; i < orderedRawResult.length; i++) {
+    const item = orderedRawResult[i];
+    if (!item) {
+      failedCount++;
+      continue;
+    }
+    if (item.success) successCount++;
+    else failedCount++;
+  }
   const status: 'success' | 'failed' | 'partial_success' =
     failedCount === 0 ? 'success' : successCount === 0 ? 'failed' : 'partial_success';
 

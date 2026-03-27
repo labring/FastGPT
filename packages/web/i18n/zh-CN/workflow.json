@@ -259,5 +259,7 @@
   "workflow.Team cloud": "团队云端",
   "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
   "batch_end_output_label": "选择变量，作为批量执行的结果输出",
-  "batch_no_interactive_node": "批量执行节点内不允许存在交互节点"
+  "batch_no_interactive_node": "批量执行节点内不允许存在交互节点",
+  "batch_child_not_reach_loop_end": "子工作流未执行到循环结束节点",
+  "batch_child_loop_output_invalid": "循环结束节点无有效输出（data 为空）"
 }
