@@ -9,6 +9,16 @@ import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronRefreshModels } from '@fastgpt/service/core/ai/config/utils';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/controller';
 import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/controller';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import {
+  cleanupExpiredAppChatLogs,
+  cleanupExpiredAuditLogs,
+  cleanupExpiredChatHistories,
+  hasAuditLogRetentionPolicy,
+  hasChatRetentionPolicy
+} from './dataRetention';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -49,6 +59,41 @@ const clearInvalidDataCron = () => {
   });
 };
 
+const dataRetentionCron = () => {
+  setCron('20 */1 * * *', async () => {
+    if (!hasChatRetentionPolicy()) return;
+
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.chatHistoryCleanup,
+        lockMinuted: 59
+      })
+    ) {
+      await cleanupExpiredChatHistories().catch((error) => {
+        logger.error('cleanupExpiredChatHistories error', { error });
+      });
+      await cleanupExpiredAppChatLogs().catch((error) => {
+        logger.error('cleanupExpiredAppChatLogs error', { error });
+      });
+    }
+  });
+
+  setCron('40 */1 * * *', async () => {
+    if (!hasAuditLogRetentionPolicy()) return;
+
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.auditLogCleanup,
+        lockMinuted: 59
+      })
+    ) {
+      await cleanupExpiredAuditLogs().catch((error) => {
+        logger.error('cleanupExpiredAuditLogs error', { error });
+      });
+    }
+  });
+};
+
 // Run app timer trigger every hour
 const scheduleTriggerAppCron = () => {
   setCron('0 */1 * * *', async () => {
@@ -68,6 +113,7 @@ export const startCron = () => {
   setTrainingQueueCron();
   setClearTmpUploadFilesCron();
   clearInvalidDataCron();
+  dataRetentionCron();
   scheduleTriggerAppCron();
   cronRefreshModels();
   clearExpiredS3FilesCron();

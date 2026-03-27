@@ -45,6 +45,9 @@ declare global {
       CHAT_LOG_URL?: string;
       CHAT_LOG_INTERVAL?: string;
       CHAT_LOG_SOURCE_ID_PREFIX?: string;
+      CHAT_HISTORY_RETENTION_DAYS?: string;
+      APP_CHAT_LOG_RETENTION_DAYS?: string;
+      AUDIT_LOG_RETENTION_DAYS?: string;
 
       NEXT_PUBLIC_BASE_URL: string;
 

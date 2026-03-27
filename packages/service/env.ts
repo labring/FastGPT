@@ -45,6 +45,10 @@ export const env = createEnv({
     TRACING_OTEL_URL: z.url().optional(),
     TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional(),
 
+    CHAT_HISTORY_RETENTION_DAYS: z.coerce.number().int().positive().optional(),
+    APP_CHAT_LOG_RETENTION_DAYS: z.coerce.number().int().positive().optional(),
+    AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().positive().optional(),
+
     APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
     DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000)
   },
