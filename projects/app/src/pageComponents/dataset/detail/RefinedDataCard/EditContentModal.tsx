@@ -137,20 +137,13 @@ const EditContentModal = ({
 
           {/* Answer Input - Only for FAQ */}
           {isFAQ && (
-            <Flex flexDir={'column'} flex={'4 0 0'} mt={3}>
+            <Flex flexDir={'column'} flex={'4 0 0'} mt={5}>
               <FormLabel required mb={1}>
                 {t('dataset:answer')}
+                <Text as="span" color={'myGray.500'} fontSize={'12px'} fontWeight={400} ml={2}>
+                  {t('dataset:markdown_tip')}
+                </Text>
               </FormLabel>
-              <Text
-                as="span"
-                display="inline"
-                color={'myGray.500'}
-                fontSize={'12px'}
-                fontWeight={400}
-                mb={1}
-              >
-                {t('dataset:markdown_tip')}
-              </Text>
               <Textarea
                 resize={'vertical'}
                 className={styles.scrollbar}

@@ -259,7 +259,14 @@ const CorrectionModal = ({
 
           {/* 答案类型选择 */}
           <Box>
-            <FormLabel mb={3} color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'} required>
+            <FormLabel
+              mb={2}
+              color={'myGray.900'}
+              fontSize={'14px'}
+              fontWeight={'medium'}
+              alignItems={'baseline'}
+              required
+            >
               {t('app:Correction_Answer_Label')}
               <Text
                 as="span"
