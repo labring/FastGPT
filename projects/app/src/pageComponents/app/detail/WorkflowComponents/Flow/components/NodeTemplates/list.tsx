@@ -26,7 +26,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
   FlowNodeTypeEnum,
-  AppNodeFlowNodeTypeMap
+  AppNodeFlowNodeTypeMap,
+  isParentChildContainerFlowNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
@@ -282,9 +283,7 @@ const NodeTemplateList = ({
 
         const currentNode = getNodeById(handleParams?.nodeId);
         if (
-          [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loopPro].includes(
-            templateNode.flowNodeType
-          ) &&
+          isParentChildContainerFlowNodeType(templateNode.flowNodeType) &&
           !!currentNode?.parentNodeId
         ) {
           toast({
@@ -348,11 +347,7 @@ const NodeTemplateList = ({
 
         const newNodes = [newNode];
 
-        if (
-          [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loopPro].includes(
-            templateNode.flowNodeType
-          )
-        ) {
+        if (isParentChildContainerFlowNodeType(templateNode.flowNodeType)) {
           const isLoopPro = templateNode.flowNodeType === FlowNodeTypeEnum.loopPro;
           const startTemplate = isLoopPro
             ? LoopStartNode

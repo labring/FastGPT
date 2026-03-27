@@ -333,3 +333,12 @@ export const NodeColorSchemaEnum = [
   'salmon',
   'gray'
 ] as const;
+
+/** 带子画布（parent / child）的父容器节点：loop / batch / loopPro */
+export function isParentChildContainerFlowNodeType(flowNodeType: FlowNodeTypeEnum): boolean {
+  return (
+    flowNodeType === FlowNodeTypeEnum.loop ||
+    flowNodeType === FlowNodeTypeEnum.batch ||
+    flowNodeType === FlowNodeTypeEnum.loopPro
+  );
+}
