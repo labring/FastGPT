@@ -412,12 +412,13 @@ export const replaceJsonBodyString = (
       if (output) return formatVariableValByType(output.value, output.valueType);
 
       const input = node.inputs.find((input) => input.key === id);
-      if (input)
+      if (input) {
         return getReferenceVariableValue({
           value: input.value,
           nodesMap: runtimeNodesMap,
           variables
         });
+      }
     })();
 
     const formatVal = valToStr(variableVal, isInQuotes);

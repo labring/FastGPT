@@ -1,6 +1,15 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
+import { getLogger, LogCategories } from '../../../service/common/logger';
+import { getErrText } from '../error/utils';
+
+export const checkStrOversize = (str: string, size = 1e8) => {
+  if (str.length > size) {
+    return true;
+  }
+  return false;
+};
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -30,7 +39,25 @@ export const valToStr = (val: any) => {
   if (val === undefined) return '';
   if (val === null) return 'null';
 
-  if (typeof val === 'object') return JSON.stringify(val);
+  if (typeof val === 'object') {
+    try {
+      const start = Date.now();
+      const res = JSON.stringify(val);
+
+      if (Date.now() - start > 1000) {
+        getLogger(LogCategories.SYSTEM).warn('Slow JSON.stringify', {
+          duration: Date.now() - start,
+          valLength: res.length
+        });
+      }
+
+      return res;
+    } catch (error) {
+      getLogger(LogCategories.SYSTEM).error('Failed to stringify value', { error, val });
+      return `Failed to stringify value: ${getErrText(error)}`;
+    }
+  }
+
   return String(val);
 };
 

@@ -1,5 +1,5 @@
 import json5 from 'json5';
-import { replaceVariable, valToStr } from '../../../common/string/tools';
+import { checkStrOversize, replaceVariable, valToStr } from '../../../common/string/tools';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemType } from '../../../core/chat/type';
 import type { NodeOutputItemType } from './type';
@@ -402,6 +402,9 @@ export function replaceEditorVariable({
   };
   if (typeof text !== 'string') return text;
   if (text === '') return text;
+  if (checkStrOversize(text)) {
+    throw new Error('Text length exceeds 100,000,000 characters.');
+  }
 
   const MAX_REPLACEMENT_DEPTH = 10;
   const processedVariables = new Set<string>();
@@ -459,12 +462,13 @@ export function replaceEditorVariable({
 
       // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
       const input = node.inputs.find((input) => input.key === id);
-      if (input)
+      if (input) {
         return getReferenceVariableValue({
           value: input.value,
           nodesMap,
           variables
         });
+      }
     })();
 
     // Check for direct circular reference
@@ -486,11 +490,15 @@ export function replaceEditorVariable({
   }
 
   // Apply all replacements
-  replacements.forEach(({ pattern, replacement }) => {
+  for (const { pattern, replacement } of replacements) {
+    if (checkStrOversize(result)) {
+      break;
+    }
+
     const re = _getCachedRegex(pattern);
     re.lastIndex = 0;
     result = result.replace(re, replacement);
-  });
+  }
 
   // If we made replacements and there might be nested variables, recursively process
   if (hasReplacements && /\{\{\$[^.]+\.[^$]+\$\}\}/.test(result)) {
