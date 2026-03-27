@@ -749,7 +749,7 @@ export class WorkflowQueue {
           if (runningNodePromises.size > 0) {
             // 当上一个节点运行结束时，立即运行下一轮
             await Promise.race(runningNodePromises).catch((error) => {
-              logger.error('Workflow race error', { error });
+              logger.error('Workflow race error', { chatId: this.data.chatId, error });
             });
           } else {
             // 理论上不应出现此情况，防御性退回到让出进程
@@ -852,14 +852,14 @@ export class WorkflowQueue {
           // replace {{$xx.xx$}} and {{xx}} variables
           let value = replaceEditorVariable({
             text: input.value,
-            nodes: this.data.runtimeNodes,
+            nodesMap: this.runtimeNodesMap,
             variables: this.data.variables
           });
 
           // replace reference variables
           value = getReferenceVariableValue({
             value,
-            nodes: this.data.runtimeNodes,
+            nodesMap: this.runtimeNodesMap,
             variables: this.data.variables
           });
 
@@ -899,6 +899,7 @@ export class WorkflowQueue {
         retainDatasetCite: this.data.retainDatasetCite,
         node,
         runtimeNodes: this.data.runtimeNodes,
+        runtimeNodesMap: this.runtimeNodesMap,
         runtimeEdges: this.data.runtimeEdges,
         params,
         mode

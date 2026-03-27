@@ -1,11 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type {
-  ApiKeyHealthResponseType
-} from '@fastgpt/global/openapi/support/openapi/api';
-import {
-  ApiKeyHealthParamsSchema
-} from '@fastgpt/global/openapi/support/openapi/api';
+import type { ApiKeyHealthResponseType } from '@fastgpt/global/openapi/support/openapi/api';
+import { ApiKeyHealthParamsSchema } from '@fastgpt/global/openapi/support/openapi/api';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { useIPFrequencyLimit } from '../../../../../../../packages/service/common/middle/reqFrequencyLimit';
 

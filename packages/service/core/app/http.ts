@@ -37,7 +37,7 @@ const buildHttpRequest = ({
   const replaceVariables = (text: string) => {
     return replaceEditorVariable({
       text,
-      nodes: [],
+      nodesMap: new Map(),
       variables: params
     });
   };

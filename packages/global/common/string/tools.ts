@@ -1,6 +1,14 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
+import { getErrText } from '../error/utils';
+
+export const checkStrOversize = (str: string, size = 1e8) => {
+  if (str.length > size) {
+    return true;
+  }
+  return false;
+};
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -30,7 +38,25 @@ export const valToStr = (val: any) => {
   if (val === undefined) return '';
   if (val === null) return 'null';
 
-  if (typeof val === 'object') return JSON.stringify(val);
+  if (typeof val === 'object') {
+    try {
+      const start = Date.now();
+      const res = JSON.stringify(val);
+
+      if (Date.now() - start > 1000) {
+        console.warn('Slow JSON.stringify', {
+          duration: Date.now() - start,
+          valLength: res.length
+        });
+      }
+
+      return res;
+    } catch (error) {
+      console.error('Failed to stringify value', { error });
+      return `Failed to stringify value: ${getErrText(error)}`;
+    }
+  }
+
   return String(val);
 };
 
@@ -41,6 +67,9 @@ export function replaceVariable(
   depth = 0
 ) {
   if (typeof text !== 'string') return text;
+  if (checkStrOversize(text)) {
+    throw new Error('Text length exceeds 100,000,000 characters.');
+  }
 
   const MAX_REPLACEMENT_DEPTH = 10;
   const processedVariables = new Set<string>();

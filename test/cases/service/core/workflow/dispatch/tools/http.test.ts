@@ -41,7 +41,7 @@ describe('replaceJsonBodyString', () => {
   const mockProps = {
     variables: mockVariables,
     allVariables: mockAllVariables,
-    runtimeNodes: mockRuntimeNodes
+    runtimeNodesMap: new Map(mockRuntimeNodes.map((node) => [node.nodeId, node]))
   };
 
   describe('Basic variable replacement functionality', () => {
