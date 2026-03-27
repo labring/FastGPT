@@ -112,7 +112,7 @@ export const datasetDataReRank = async ({
     query,
     documents: data.map((item) => ({
       id: item.id,
-      text: [item.q, item.a].filter(Boolean).join('\n').trim()
+      text: `${item.q}\n${item.a}`.trim()
     }))
   });
 
@@ -120,26 +120,19 @@ export const datasetDataReRank = async ({
     return Promise.reject('Rerank error');
   }
 
-  const scoreMap = new Map(results.map((r) => [r.id, r.score ?? 0]));
+  // add new score to data
+  const mergeResult = results
+    .map((item, index) => {
+      const target = data.find((dataItem) => dataItem.id === item.id);
+      if (!target) return null;
+      const score = item.score || 0;
 
-  const mergeResult = data
-    .map((item, originIndex) => {
-      const score = scoreMap.get(item.id);
-      if (score === undefined) return null;
-      return { item, score, originIndex };
+      return {
+        ...target,
+        score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
+      };
     })
-    .filter(
-      (item): item is { item: SearchDataResponseItemType; score: number; originIndex: number } =>
-        Boolean(item)
-    )
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return a.originIndex - b.originIndex;
-    })
-    .map(({ item, score }, index) => ({
-      ...item,
-      score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
-    }));
+    .filter(Boolean) as SearchDataResponseItemType[];
 
   return {
     results: mergeResult,

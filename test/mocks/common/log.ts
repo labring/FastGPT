@@ -1,20 +1,31 @@
 import { vi } from 'vitest';
 
 /**
- * Mock addLog for testing
- * 在测试中 mock 日志系统，避免测试输出中混入大量日志信息
+ * Mock @fastgpt/service/common/logger (otel logger) with console
  */
-vi.mock('@fastgpt/service/common/system/log', () => ({
-  addLog: {
-    log: vi.fn(),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  },
-  EventTypeEnum: {
-    outLinkBot: '[Outlink bot]',
-    feishuBot: '[Feishu bot]',
-    wxOffiaccount: '[Offiaccount bot]'
-  }
+const consoleLogger = {
+  log: console.log,
+  debug: console.debug,
+  info: console.info,
+  warn: console.warn,
+  error: console.error
+};
+
+vi.mock('@fastgpt/service/common/logger', () => ({
+  getLogger: () => consoleLogger,
+  configureLogger: vi.fn(),
+  disposeLogger: vi.fn(),
+  LogCategories: new Proxy(
+    {},
+    {
+      get: (_target, prop) =>
+        new Proxy(
+          {},
+          {
+            get: (_t, p) =>
+              new Proxy({}, { get: (_t2, p2) => `${String(prop)}.${String(p)}.${String(p2)}` })
+          }
+        )
+    }
+  )
 }));

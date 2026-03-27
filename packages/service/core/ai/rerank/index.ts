@@ -4,7 +4,7 @@ import { getAxiosConfig } from '../config';
 import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { text2Chunks } from '../../../worker/function';
 
 const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 
@@ -48,6 +48,7 @@ export async function reRankRecall({
   }
 
   // Token budget: calculate how many tokens each document can use
+  // Document max token = ModelMaxToken - QueryTokens
   const queryTokens = await countPromptTokens(query);
   const rerankMaxToken = model.maxToken ?? 8000;
   const docBudget = rerankMaxToken - queryTokens;
@@ -55,8 +56,11 @@ export async function reRankRecall({
     return Promise.reject(new Error('Rerank query too long'));
   }
 
+  let documentsTextArray: string[] = [];
+  let chunkIdToDocIdMap: Map<string, string> = new Map();
+
   // Expand documents: split docs that exceed the budget into chunks (parallel)
-  const expandedDocuments: { id: string; parentId: string; text: string }[] = (
+  const expandedDocuments: { id: string; text: string }[] = (
     await Promise.all(
       documents.map(async (doc) => {
         const text = doc.text.trim();
@@ -64,29 +68,29 @@ export async function reRankRecall({
 
         const docTokens = await countPromptTokens(text);
         if (docTokens <= docBudget) {
-          return [{ id: doc.id, parentId: doc.id, text }];
+          documentsTextArray.push(text);
+          chunkIdToDocIdMap.set(doc.id, doc.id);
+          return [{ id: doc.id, text }];
         }
         // Use the document's own char/token ratio with a 0.9 safety factor to
         const chunkSize = Math.floor((text.length / docTokens) * docBudget * 0.9);
-        const { chunks } = splitText2Chunks({ text, chunkSize, overlapRatio: 0 });
-        const finalChunks = chunks.map((c) => c.trim()).filter(Boolean);
-        return finalChunks.map((chunkText, i) => ({
-          id: `${doc.id}__chunk_${i}`,
-          parentId: doc.id,
-          text: chunkText
-        }));
+        const { chunks } = await text2Chunks({ text, chunkSize, overlapRatio: 0 });
+        return chunks.map((chunkText, i) => {
+          const chunkId = `${doc.id}__chunk_${i}`;
+          documentsTextArray.push(chunkText);
+          chunkIdToDocIdMap.set(chunkId, doc.id);
+          return { id: chunkId, text: chunkText };
+        });
       })
     )
   ).flat();
 
   if (expandedDocuments.length === 0) {
-    return Promise.resolve({ results: [], inputTokens: 0 });
+    return { results: [], inputTokens: 0 };
   }
 
   const { baseUrl, authorization } = getAxiosConfig();
   const start = Date.now();
-  const documentsTextArray = expandedDocuments.map((doc) => doc.text);
-  const chunkToParent = new Map(expandedDocuments.map((doc) => [doc.id, doc.parentId]));
 
   const apiResult = await POST<PostReRankResponse>(
     model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`,
@@ -104,17 +108,39 @@ export async function reRankRecall({
     }
   )
     .then(async (data) => {
-      logger.info('Rerank completed', { durationMs: Date.now() - start });
-
       if (!data?.results || data?.results?.length === 0) {
         logger.error('Rerank returned empty results', { data });
+        return {
+          results: [],
+          inputTokens: 0
+        };
       }
 
-      return {
-        results: data?.results?.map((item) => ({
-          id: expandedDocuments[item.index].id,
+      const time = Date.now() - start;
+      if (time > 2000) {
+        logger.info('Rerank completed', { durationMs: time });
+      }
+
+      const existsId = new Set<string>();
+      const results: {
+        id: string;
+        score: number;
+      }[] = [];
+
+      data.results.forEach((item) => {
+        const chunkId = expandedDocuments[item.index].id;
+        const docId = chunkIdToDocIdMap.get(chunkId);
+
+        if (!docId || existsId.has(docId)) return;
+        existsId.add(docId);
+        results.push({
+          id: docId,
           score: item.relevance_score
-        })),
+        });
+      });
+
+      return {
+        results,
         inputTokens:
           data?.meta?.tokens?.input_tokens ||
           (await countPromptTokens(documentsTextArray.join('\n') + query, ''))
@@ -122,23 +148,11 @@ export async function reRankRecall({
     })
     .catch((err) => {
       logger.error('Rerank request failed', { error: err });
-
       return Promise.reject(err);
     });
 
-  // Aggregate chunk scores back to original document IDs (keep max score per parent)
-  const parentScoreMap = new Map<string, number>();
-  apiResult.results.forEach((item) => {
-    const parentId = chunkToParent.get(item.id) ?? item.id;
-    const score = item.score ?? 0;
-    const oldScore = parentScoreMap.get(parentId);
-    if (oldScore === undefined || score > oldScore) {
-      parentScoreMap.set(parentId, score);
-    }
-  });
-
   return {
-    results: Array.from(parentScoreMap.entries()).map(([id, score]) => ({ id, score })),
+    results: apiResult.results,
     inputTokens: apiResult.inputTokens
   };
 }
