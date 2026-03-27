@@ -7,7 +7,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -27,13 +27,16 @@ const ModelTestModeTip = React.memo(function ModelTestModeTip() {
   const { t } = useTranslation(['common', 'account']);
 
   return (
-    <QuestionTip
-      label={t('account:model.test_mode_selector_tip')}
-      ml={1}
-      flexShrink={0}
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    />
+    <MyTooltip label={t('account:model.test_mode_selector_tip')} hasArrow>
+      <Box
+        ml={1}
+        flexShrink={0}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <TestModeBetaTag />
+      </Box>
+    </MyTooltip>
   );
 });
 
@@ -63,8 +66,8 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
   noOfLines?: ResponsiveValue<number>;
 }) {
   return (
-    <Flex alignItems={'center'} minW={0}>
-      <Box noOfLines={noOfLines} minW={0}>
+    <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+      <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>
       {showTestModeTip && <ModelTestModeTip />}
@@ -143,7 +146,7 @@ const OneRowSelector = ({
         return {
           value: item.value,
           label: (
-            <Flex alignItems={'center'} py={1}>
+            <Flex alignItems={'center'} py={1} minW={0}>
               <Avatar
                 borderRadius={'0'}
                 mr={2}
@@ -182,7 +185,7 @@ const OneRowSelector = ({
           list={avatarList}
           valueLabel={
             selectedModelData ? (
-              <Flex alignItems={'center'} py={1}>
+              <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
                 <Avatar
                   borderRadius={'0'}
                   mr={2}
@@ -190,12 +193,17 @@ const OneRowSelector = ({
                   w={avatarSize}
                   fallbackSrc={HUGGING_FACE_ICON}
                 />
-                <Box noOfLines={noOfLines}>{selectedModelData.name}</Box>
+                <ModelOptionLabel
+                  name={selectedModelData.name}
+                  noOfLines={noOfLines}
+                  showTestModeTip={false}
+                />
               </Flex>
             ) : undefined
           }
           placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
           h={'40px'}
+          whiteSpace={'nowrap'}
           {...props}
           onChange={(e) => {
             return onChange?.(e);
@@ -333,7 +341,7 @@ const MultipleRowSelector = ({
     const avatar = getModelProvider(modelData.provider)?.avatar;
 
     return (
-      <Flex alignItems={'center'} py={1}>
+      <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
         <Avatar
           borderRadius={'0'}
           mr={2}
@@ -366,6 +374,7 @@ const MultipleRowSelector = ({
           ButtonProps={{
             isDisabled: !!disableTip,
             h: '40px',
+            whiteSpace: 'nowrap',
             ...props
           }}
         />

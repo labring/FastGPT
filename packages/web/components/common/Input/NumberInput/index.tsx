@@ -75,6 +75,16 @@ const MyNumberInput = (props: Props) => {
   const safeControlledValue =
     value === '' ? '' : typeof value === 'undefined' ? undefined : getSafeNumberValue(value) ?? '';
 
+  const getRegisteredValue = (value: unknown) => {
+    const safeValue = getSafeNumberValue(value);
+
+    if (typeof safeValue === 'number') {
+      return safeValue;
+    }
+
+    return '';
+  };
+
   return (
     <NumberInput
       {...restProps}
@@ -88,30 +98,16 @@ const MyNumberInput = (props: Props) => {
           onChange(numE);
         }
         if (registeredField && name) {
-          const event = {
-            target: {
-              name
-            },
-            type: 'blur'
-          };
-          registeredField.onBlur(event);
-        }
-      }}
-      onChange={(e) => {
-        const numE =
-          e === '' ? '' : e.endsWith('.') || /^\d+\.0+$/.test(e) ? e : getSafeNumberValue(e) ?? '';
-        if (onChange) {
-          onChange(typeof numE === 'string' ? getSafeNumberValue(numE) : numE);
-        }
-        if (registeredField && name) {
+          const registeredValue = getRegisteredValue(e.target.value);
           const event = {
             target: {
               name,
-              value: numE
-            }
+              value: registeredValue
+            },
+            type: 'blur'
           };
-
           registeredField.onChange(event);
+          registeredField.onBlur(event);
         }
       }}
     >

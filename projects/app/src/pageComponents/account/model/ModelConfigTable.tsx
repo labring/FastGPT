@@ -50,6 +50,7 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { AddModelButton } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
+import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -385,13 +386,16 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td fontSize={'sm'}>
                       <HStack>
                         <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                        <CopyBox
-                          value={showModelId ? item.model : item.name}
-                          color={'myGray.900'}
-                          fontWeight={'500'}
-                        >
-                          {showModelId ? item.model : item.name}
-                        </CopyBox>
+                        <Flex alignItems={'center'} gap={1} minW={0}>
+                          <CopyBox
+                            value={showModelId ? item.model : item.name}
+                            color={'myGray.900'}
+                            fontWeight={'500'}
+                          >
+                            {showModelId ? item.model : item.name}
+                          </CopyBox>
+                          {Boolean('testMode' in item && item.testMode) && <TestModeBetaTag />}
+                        </Flex>
                       </HStack>
                       <HStack mt={2}>
                         {item.contextToken && (
