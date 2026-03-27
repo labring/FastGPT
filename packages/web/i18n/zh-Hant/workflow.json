@@ -259,5 +259,7 @@
   "workflow.Team cloud": "團隊雲端",
   "workflow.exit_tips": "您的變更尚未儲存，「直接結束」將不會儲存您的編輯紀錄。",
   "batch_end_output_label": "選擇變數，作為批量執行的結果輸出",
-  "batch_no_interactive_node": "大量執行節點內不允許存在互動節點"
+  "batch_no_interactive_node": "大量執行節點內不允許存在互動節點",
+  "batch_child_not_reach_loop_end": "子工作流未執行到迴圈結束節點",
+  "batch_child_loop_output_invalid": "迴圈結束節點無有效輸出（data 為空）"
 }
