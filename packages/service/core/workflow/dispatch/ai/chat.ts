@@ -42,6 +42,11 @@ import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { addLog } from '../../../../common/system/log';
+import {
+  extractQuerySynonyms,
+  mergeSynonymMappings,
+  buildSynonymMappingPrompt
+} from '../../../dataset/search/synonym';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -136,24 +141,26 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         })) || []
     });
 
-    const [{ datasetQuoteText }, { documentQuoteText, userFiles }] = await Promise.all([
-      filterDatasetQuote({
-        quoteQA,
-        model: modelConstantsData,
-        quoteTemplate: quoteTemplate || getQuoteTemplate(version)
-      }),
-      getMultiInput({
-        histories: chatHistories,
-        inputFiles,
-        fileLinks,
-        stringQuoteText,
-        requestOrigin,
-        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId,
-        runningUserInfo
-      })
-    ]);
+    const [{ datasetQuoteText, synonymMappingsText }, { documentQuoteText, userFiles }] =
+      await Promise.all([
+        filterDatasetQuote({
+          quoteQA,
+          model: modelConstantsData,
+          quoteTemplate: quoteTemplate || getQuoteTemplate(version),
+          userChatInput
+        }),
+        getMultiInput({
+          histories: chatHistories,
+          inputFiles,
+          fileLinks,
+          stringQuoteText,
+          requestOrigin,
+          maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+          customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+          usageId,
+          runningUserInfo
+        })
+      ]);
 
     if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
@@ -171,6 +178,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         histories: chatHistories,
         useDatasetQuote: quoteQA !== undefined,
         datasetQuoteText,
+        synonymMappingsText,
         aiChatQuoteRole,
         datasetQuotePrompt: quotePrompt,
         version,
@@ -325,12 +333,35 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 async function filterDatasetQuote({
   quoteQA = [],
   model,
-  quoteTemplate
+  quoteTemplate,
+  userChatInput
 }: {
   quoteQA: ChatProps['params']['quoteQA'];
   model: LLMModelItemType;
   quoteTemplate: string;
+  userChatInput: string;
 }) {
+  // slice filterSearch
+  const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
+
+  // 收集 chunk 来源的同义词映射（已挂在每个 item 上）
+  const chunkSynonymMappings = filterQuoteQA.flatMap((item) => item.synonymMappings ?? []);
+
+  // 收集去重的 datasetIds，用于查询 query 来源的同义词
+  const datasetIds = [...new Set(filterQuoteQA.map((item) => item.datasetId).filter(Boolean))];
+
+  // 查询 query 命中的同义词映射
+  const querySynonymMappings = await extractQuerySynonyms(userChatInput, datasetIds);
+
+  // 合并 chunk + query 两路同义词，去重
+  const mergedSynonymMappings = mergeSynonymMappings([
+    ...chunkSynonymMappings,
+    ...querySynonymMappings
+  ]);
+
+  // 格式化为可读的提示文本
+  const synonymMappingsText = buildSynonymMappingPrompt(mergedSynonymMappings);
+
   function getValue({ item, index }: { item: SearchDataResponseItemType; index: number }) {
     // Filter out SQL content for sql_quote items to prevent interference with LLM generation
     const isSqlQuote = item.id.startsWith('sql_quote_');
@@ -342,26 +373,25 @@ async function filterDatasetQuote({
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || ''),
-      index: index + 1
+      index: index + 1,
+      synonymMappings: item.synonymMappings ? buildSynonymMappingPrompt(item.synonymMappings) : ''
     });
   }
-
-  // slice filterSearch
-  const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
   const datasetQuoteText =
     filterQuoteQA.length > 0
       ? `${filterQuoteQA.map((item, index) => getValue({ item, index }).trim()).join('\n------\n')}`
       : '';
 
-  // Debug日志：记录最终生成的引用文本
   addLog.debug('AI Chat - Final Dataset Quote Text', {
     quoteTextLength: datasetQuoteText.length,
-    quoteTextPreview: datasetQuoteText
+    quoteTextPreview: datasetQuoteText,
+    synonymMappingsText
   });
 
   return {
-    datasetQuoteText
+    datasetQuoteText,
+    synonymMappingsText
   };
 }
 
@@ -439,6 +469,7 @@ async function getChatMessages({
   aiChatQuoteRole,
   datasetQuotePrompt = '',
   datasetQuoteText,
+  synonymMappingsText = '',
   useDatasetQuote,
   version,
   histories = [],
@@ -453,6 +484,7 @@ async function getChatMessages({
   aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
   datasetQuoteText: string;
+  synonymMappingsText?: string;
   version?: string;
 
   useDatasetQuote: boolean;
@@ -477,6 +509,7 @@ async function getChatMessages({
     useDatasetQuote && quoteRole === 'user'
       ? replaceVariable(datasetQuotePromptTemplate, {
           quote: datasetQuoteText,
+          synonymMappings: synonymMappingsText,
           question: userChatInput
         })
       : userChatInput;
@@ -488,7 +521,8 @@ async function getChatMessages({
     systemPrompt,
     useDatasetQuote && quoteRole === 'system'
       ? replaceVariable(datasetQuotePromptTemplate, {
-          quote: datasetQuoteText
+          quote: datasetQuoteText,
+          synonymMappings: synonymMappingsText
         })
       : '',
     documentQuoteText
@@ -500,14 +534,23 @@ async function getChatMessages({
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
 
+  // 兜底替换：确保所有占位符都被替换，即使未使用数据集引用
+  const finalSystemPrompt = replaceVariable(concatenateSystemPrompt, {
+    synonymMappings: synonymMappingsText || ''
+  });
+
+  const finalUserInput = replaceVariable(replaceInputValue, {
+    synonymMappings: synonymMappingsText || ''
+  });
+
   const messages: ChatItemType[] = [
-    ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
+    ...getSystemPrompt_ChatItemType(finalSystemPrompt),
     ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: runtimePrompt2ChatsValue({
         files: userFiles,
-        text: replaceInputValue
+        text: finalUserInput
       })
     }
   ];

@@ -5,12 +5,11 @@ import { getLLMModel } from '../model';
 import { addLog } from '../../../common/system/log';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
-import { searchSynonymMappings } from '../../dataset/synonym/controller';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { loadRequestMessages } from '../llm/utils';
-import { applySynonymTransform } from '../../dataset/indexTransform/utils';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
+import { getSynonymMappings, standardizeQuery } from '../../dataset/search/utils';
 
 /*
   Query Extension - Semantic Search Enhancement
@@ -390,12 +389,12 @@ async function mergedQueryOptimization({
       usage: { inputTokens, outputTokens }
     } = await createLLMResponse({
       body: {
-          model,
-          temperature: 0.1,
-          max_tokens: 500,
-          messages: requestMessages,
-          stream: true
-        },
+        model,
+        temperature: 0.1,
+        max_tokens: 500,
+        messages: requestMessages,
+        stream: true
+      }
     });
 
     // 尝试解析JSON
@@ -454,88 +453,6 @@ async function mergedQueryOptimization({
       outputTokens: 0
     };
   }
-}
-
-// 辅助函数：从多个知识库检索标准词映射并汇总
-async function getSynonymMappings({
-  teamId,
-  datasetIds,
-  query
-}: {
-  teamId: string;
-  datasetIds: string[];
-  query: string;
-}): Promise<{
-  synonymDict: Record<string, string[]>;
-  synonymFileIds: string[];
-}> {
-  try {
-    // 对每个知识库进行全文检索，获取 top10 同义词映射
-    const allMappingsPromises = datasetIds.map((datasetId) =>
-      searchSynonymMappings({
-        teamId,
-        datasetId,
-        query,
-        limit: 10
-      }).catch((error) => {
-        addLog.debug('Get synonym mappings error for dataset', { datasetId, error });
-        return [];
-      })
-    );
-
-    const allMappingsResults = await Promise.all(allMappingsPromises);
-
-    // 汇总所有知识库的同义词映射
-    const synonymDict: Record<string, string[]> = {};
-    const synonymFileIdSet = new Set<string>();
-
-    for (const mappings of allMappingsResults) {
-      for (const mapping of mappings) {
-        const { standardizedTerm, synonymTerms, synonymFileId } = mapping;
-        if (!synonymDict[standardizedTerm]) {
-          synonymDict[standardizedTerm] = [];
-        }
-        // 合并同义词，去重
-        const existingSet = new Set(synonymDict[standardizedTerm]);
-        for (const synonym of synonymTerms) {
-          existingSet.add(synonym);
-        }
-        synonymDict[standardizedTerm] = Array.from(existingSet);
-
-        // 收集文件ID
-        if (synonymFileId) {
-          synonymFileIdSet.add(String(synonymFileId));
-        }
-      }
-    }
-
-    return {
-      synonymDict,
-      synonymFileIds: Array.from(synonymFileIdSet)
-    };
-  } catch (error) {
-    addLog.debug('Get synonym mappings error', { error });
-    return {
-      synonymDict: {},
-      synonymFileIds: []
-    };
-  }
-}
-
-// 辅助函数：标准化(同义词替换)
-// 复用 applySynonymTransform 算法，确保 query 和 chunk 使用相同的替换策略
-function standardizeQuery(query: string, synonyms: Record<string, string[]>): string {
-  // 构建空的 synonymMappingMap，因为 query 替换不需要记录 mappingId
-  const synonymMappingMap: Record<string, string> = {};
-  for (const aliasList of Object.values(synonyms)) {
-    for (const alias of aliasList) {
-      synonymMappingMap[alias] = ''; // query 替换不需要 mappingId
-    }
-  }
-
-  // 使用与 chunk 相同的智能替换算法
-  const { transformedText } = applySynonymTransform(query, synonyms, synonymMappingMap);
-  return transformedText;
 }
 
 // 主函数：智能客服专用的查询扩展

@@ -399,6 +399,7 @@ export type SearchDataResponseItemType = Omit<
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
   retrievalRank?: number; // 检索排名（进入 reranker 前的排名，仅 assistant 场景有值）
   // score: number;
+  synonymMappings?: import('../ai/type').SynonymMappingForPrompt[]; // 该chunk对应的同义词映射
 };
 
 export type DatasetCiteItemType = {
