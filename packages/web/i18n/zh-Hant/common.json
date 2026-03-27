@@ -1061,6 +1061,7 @@
   "templateTags.Web_search": "聯網搜索",
   "templateTags.Writing": "文字創作",
   "template_market": "模板市場",
+  "test_model_tip": "此模型為測試模型，不支援高並發使用。",
   "textarea_variable_picker_tip": "輸入「/」以選擇變數",
   "to_dataset": "前往知識庫",
   "tool_invalid": "工具已失效",

@@ -38,7 +38,7 @@ export async function reRankRecall({
   headers?: Record<string, string>;
 }): Promise<ReRankCallResult> {
   if (!model) {
-    return Promise.reject('No rerank model');
+    return Promise.reject(new Error('No rerank model'));
   }
   if (documents.length === 0) {
     return Promise.resolve({
@@ -56,7 +56,6 @@ export async function reRankRecall({
     return Promise.reject(new Error('Rerank query too long'));
   }
 
-  let documentsTextArray: string[] = [];
   let chunkIdToDocIdMap: Map<string, string> = new Map();
 
   // Expand documents: split docs that exceed the budget into chunks (parallel)
@@ -68,7 +67,6 @@ export async function reRankRecall({
 
         const docTokens = await countPromptTokens(text);
         if (docTokens <= docBudget) {
-          documentsTextArray.push(text);
           chunkIdToDocIdMap.set(doc.id, doc.id);
           return [{ id: doc.id, text }];
         }
@@ -78,7 +76,6 @@ export async function reRankRecall({
         const { chunks } = await text2Chunks({ text, chunkSize, overlapRatio: 0 });
         return chunks.map((chunkText, i) => {
           const chunkId = `${doc.id}__chunk_${i}`;
-          documentsTextArray.push(chunkText);
           chunkIdToDocIdMap.set(chunkId, doc.id);
           return { id: chunkId, text: chunkText };
         });
@@ -89,6 +86,8 @@ export async function reRankRecall({
   if (expandedDocuments.length === 0) {
     return { results: [], inputTokens: 0 };
   }
+
+  const documentsTextArray = expandedDocuments.map((doc) => doc.text);
 
   const { baseUrl, authorization } = getAxiosConfig();
   const start = Date.now();

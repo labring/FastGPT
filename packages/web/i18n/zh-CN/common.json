@@ -1072,6 +1072,7 @@
   "templateTags.Web_search": "联网搜索",
   "templateTags.Writing": "文本创作",
   "template_market": "模板市场",
+  "test_model_tip": "该模型为测试模型，不支持高并发使用。",
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
   "to_dataset": "前往知识库",
   "tool_invalid": "工具已失效",

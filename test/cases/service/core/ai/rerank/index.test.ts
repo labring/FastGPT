@@ -35,7 +35,7 @@ const mockModel: RerankModelItemType = {
   model: 'rerank-test',
   name: 'Test Rerank',
   type: ModelTypeEnum.rerank,
-  maxToken: 100
+  maxToken: 8000
 };
 
 describe('reRankRecall', () => {
@@ -119,11 +119,11 @@ describe('reRankRecall', () => {
   // ── 复杂场景：文档切分 ────────────────────────────────────────────────────
 
   it('文档超过 token 预算时切分 chunks，取最高分聚合并返回原始 doc id', async () => {
-    // maxToken=10, query='q'(length=1), docBudget=9
-    // longText length=20 > 9 → 被切分
-    // chunkSize = floor((20/20)*9*0.9) = 8 → 3 chunks (indices 0,1,2)
-    // doc2 'short' length=5 <= 9 → 不切分 (index 3)
-    const longText = 'a'.repeat(20);
+    // maxToken=600, query='q'(length=1), docBudget=599
+    // longText length=1100 > 599 → 被切分
+    // chunkSize = floor((1100/1100)*599*0.9) = 539 → 3 chunks (indices 0,1,2)
+    // doc2 'short' length=5 <= 599 → 不切分 (index 3)
+    const longText = 'a'.repeat(1100);
 
     mockPOST.mockResolvedValueOnce({
       id: 'r1',
@@ -138,7 +138,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 10 },
+      model: { ...mockModel, maxToken: 600 },
       query: 'q',
       documents: [
         { id: 'doc1', text: longText },
@@ -155,7 +155,8 @@ describe('reRankRecall', () => {
 
   it('同一文档多个 chunk，非最高分 chunk 排在前面时，仍取第一个（最高分）', async () => {
     // doc1 3个 chunks (indices 0,1,2)；API 返回 chunk_1 分最高
-    const longText = 'b'.repeat(20);
+    // maxToken=600, query='q'(1), docBudget=599, chunkSize=539
+    const longText = 'b'.repeat(1100);
 
     mockPOST.mockResolvedValueOnce({
       id: 'r1',
@@ -168,7 +169,7 @@ describe('reRankRecall', () => {
     });
 
     const result = await reRankRecall({
-      model: { ...mockModel, maxToken: 10 },
+      model: { ...mockModel, maxToken: 600 },
       query: 'q',
       documents: [{ id: 'doc1', text: longText }]
     });
@@ -268,11 +269,11 @@ describe('reRankRecall', () => {
         query: 'q',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
-    ).rejects.toBe('No rerank model');
+    ).rejects.toThrow('No rerank model');
   });
 
   it('query 超过 maxToken 时 reject', async () => {
-    // maxToken=5, query length=20 > 5 → docBudget<=0
+    // maxToken=5, query length=26 → docBudget = 5-26 = -21 ≤ 500 → reject
     await expect(
       reRankRecall({
         model: { ...mockModel, maxToken: 5 },
@@ -280,6 +281,36 @@ describe('reRankRecall', () => {
         documents: [{ id: 'doc1', text: 'hello' }]
       })
     ).rejects.toThrow('Rerank query too long');
+  });
+
+  it('docBudget === 500 时 reject（边界值）', async () => {
+    // mockCountPromptTokens 按 text.length 计算
+    // maxToken=501, query='q'(length=1) → docBudget = 501-1 = 500 ≤ 500 → reject
+    await expect(
+      reRankRecall({
+        model: { ...mockModel, maxToken: 501 },
+        query: 'q',
+        documents: [{ id: 'doc1', text: 'hello' }]
+      })
+    ).rejects.toThrow('Rerank query too long');
+  });
+
+  it('docBudget === 501 时不因 query 过长 reject', async () => {
+    // maxToken=502, query='q'(length=1) → docBudget = 502-1 = 501 > 500 → 正常发请求
+    mockPOST.mockResolvedValueOnce({
+      id: 'r1',
+      results: [{ index: 0, relevance_score: 0.5 }],
+      meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
+    });
+
+    const result = await reRankRecall({
+      model: { ...mockModel, maxToken: 502 },
+      query: 'q',
+      documents: [{ id: 'doc1', text: 'hello' }]
+    });
+
+    expect(result.results).toHaveLength(1);
+    expect(mockPOST).toHaveBeenCalledOnce();
   });
 
   it('API 请求失败时，reject 并传递原始错误', async () => {
