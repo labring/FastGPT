@@ -119,8 +119,8 @@ const Render = () => {
       canDownloadSource={false}
       isShowCite={false}
       isShowFullText={false}
-      showRunningStatus={false}
-      showSkillReferences={false}
+      showRunningStatus={true}
+      showSkillReferences={true}
       showWholeResponse={false}
       showAvatar={false}
     >

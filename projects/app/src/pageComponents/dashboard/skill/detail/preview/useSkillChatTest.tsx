@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { useMemoizedFn } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { streamFetch } from '@/web/common/api/fetch';
-import { SKILL_DEBUG_CHAT_URL } from '@/web/core/skill/api';
+import { SKILL_DEBUG_CHAT_URL, delSkillDebugChatItem } from '@/web/core/skill/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -24,10 +24,11 @@ export const useSkillChatTest = ({
 }) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
 
+  // TODO: 暂时隐藏文件上传按钮，后续需要放开 canSelectFile 和 canSelectImg
   const fileSelectConfig: AppFileSelectConfigType = {
     maxFiles: 10,
-    canSelectFile: true,
-    canSelectImg: true,
+    canSelectFile: false,
+    canSelectImg: false,
     customPdfParse: false,
     canSelectVideo: false,
     canSelectAudio: false,
@@ -71,6 +72,11 @@ export const useSkillChatTest = ({
     }
   );
 
+  // 使用 skill 专属的删除接口，避免走 /api/core/chat/item/delete 时用 skillId 查 App 报错
+  const handleDeleteChatItem = useMemoizedFn((contentId: string) =>
+    delSkillDebugChatItem({ skillId, chatId, contentId })
+  );
+
   const ChatContainer = useCallback(
     () => (
       <ChatBox
@@ -79,9 +85,10 @@ export const useSkillChatTest = ({
         chatId={chatId}
         chatType={ChatTypeEnum.test}
         onStartChat={startChat}
+        onDeleteChatItem={handleDeleteChatItem}
       />
     ),
-    [skillId, chatId, isReady, startChat]
+    [skillId, chatId, isReady, startChat, handleDeleteChatItem]
   );
 
   return {

@@ -97,6 +97,8 @@ type Props = OutLinkChatAuthProps &
       }
     >;
     onTriggerRefresh?: () => void;
+    // 自定义删除消息的实现，不传则使用默认的 delChatRecordById
+    onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
   };
 
 const ChatBox = ({
@@ -108,7 +110,8 @@ const ChatBox = ({
   showWorkorder,
   onStartChat,
   chatType,
-  onTriggerRefresh
+  onTriggerRefresh,
+  onDeleteChatItem
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -806,6 +809,9 @@ const ChatBox = ({
   // retry input
   const onDelMessage = useCallback(
     (contentId: string, delFile = true) => {
+      if (onDeleteChatItem) {
+        return onDeleteChatItem(contentId, delFile);
+      }
       return delChatRecordById({
         appId,
         chatId,
@@ -814,7 +820,7 @@ const ChatBox = ({
         ...outLinkAuthData
       });
     },
-    [appId, chatId, outLinkAuthData]
+    [appId, chatId, outLinkAuthData, onDeleteChatItem]
   );
   const retryInput = useMemoizedFn((dataId?: string) => {
     if (!dataId || !onDelMessage) return;

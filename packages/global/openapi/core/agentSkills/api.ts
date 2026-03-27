@@ -300,6 +300,13 @@ export const ExportSkillQuerySchema = z.object({
 });
 export type ExportSkillQuery = z.infer<typeof ExportSkillQuerySchema>;
 
+export const SkillDebugDeleteChatItemBodySchema = z.object({
+  skillId: IdSchema,
+  chatId: z.string(),
+  contentId: z.string()
+});
+export type SkillDebugDeleteChatItemBody = z.infer<typeof SkillDebugDeleteChatItemBodySchema>;
+
 export const SkillDebugRecordsBodySchema = z.object({
   skillId: IdSchema,
   chatId: z.string(),
