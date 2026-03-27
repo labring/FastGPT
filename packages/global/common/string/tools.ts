@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
-import { getLogger, LogCategories } from '../../../service/common/logger';
 import { getErrText } from '../error/utils';
 
 export const checkStrOversize = (str: string, size = 1e8) => {
@@ -45,7 +44,7 @@ export const valToStr = (val: any) => {
       const res = JSON.stringify(val);
 
       if (Date.now() - start > 1000) {
-        getLogger(LogCategories.SYSTEM).warn('Slow JSON.stringify', {
+        console.warn('Slow JSON.stringify', {
           duration: Date.now() - start,
           valLength: res.length
         });
@@ -53,7 +52,7 @@ export const valToStr = (val: any) => {
 
       return res;
     } catch (error) {
-      getLogger(LogCategories.SYSTEM).error('Failed to stringify value', { error });
+      console.error('Failed to stringify value', { error });
       return `Failed to stringify value: ${getErrText(error)}`;
     }
   }

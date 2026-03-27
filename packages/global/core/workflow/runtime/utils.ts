@@ -497,7 +497,7 @@ export function replaceEditorVariable({
 
     const re = _getCachedRegex(pattern);
     re.lastIndex = 0;
-    result = result.replace(re, replacement);
+    result = result.replace(re, () => replacement);
   }
 
   // If we made replacements and there might be nested variables, recursively process
