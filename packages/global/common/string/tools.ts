@@ -53,7 +53,7 @@ export const valToStr = (val: any) => {
 
       return res;
     } catch (error) {
-      getLogger(LogCategories.SYSTEM).error('Failed to stringify value', { error, val });
+      getLogger(LogCategories.SYSTEM).error('Failed to stringify value', { error });
       return `Failed to stringify value: ${getErrText(error)}`;
     }
   }
