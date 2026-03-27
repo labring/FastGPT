@@ -7,6 +7,7 @@ import type { SandboxStatusItemType, SandboxStatusPhase } from '@fastgpt/global/
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
+import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
 
 export enum TabEnum {
   config = 'config',
@@ -168,7 +169,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
           versionCount: 0,
           createTime: new Date(res.createTime),
           updateTime: new Date(res.updateTime),
-          appCount: res.appCount ?? 0
+          appCount: res.appCount ?? 0,
+          permission: new SkillPermission({ role: res.permission ?? 0 })
         };
         return detail;
       });

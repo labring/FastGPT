@@ -11,7 +11,11 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
-import { getSkillVersionList } from '@/web/core/skill/api';
+import {
+  getSkillVersionList,
+  postSwitchSkillVersion,
+  postUpdateSkillVersion
+} from '@/web/core/skill/api';
 import type { SkillVersionListItemType } from '@fastgpt/global/core/agentSkills/api';
 
 const SkillHistoriesSlider = ({ onClose }: { onClose: () => void }) => {
@@ -53,17 +57,15 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
 
   const firstActiveIndex = versionList.findIndex((item) => item.isActive);
 
-  const onChangeVersion = (item: SkillVersionListItemType) => {
-    // TODO: 接入真实切换版本接口
-    console.log('switch to version:', item._id);
+  const onChangeVersion = async (item: SkillVersionListItemType) => {
+    await postSwitchSkillVersion({ skillId, versionId: item._id });
     onClose();
   };
 
   const onUpdateVersion = async (item: SkillVersionListItemType, name: string) => {
-    // TODO: 接入真实更新版本名称接口
     setIsEditing(true);
     try {
-      await new Promise((r) => setTimeout(r, 300));
+      await postUpdateSkillVersion({ skillId, versionId: item._id, versionName: name });
       setData((prev) => prev.map((v) => (v._id === item._id ? { ...v, versionName: name } : v)));
     } finally {
       setEditId(undefined);

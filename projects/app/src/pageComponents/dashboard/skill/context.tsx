@@ -2,11 +2,19 @@ import React, { type Dispatch, type ReactNode, type SetStateAction, useState } f
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillList, getSkillFolderPath } from '@/web/core/skill/api';
-import type { AgentSkillListItemType } from '@fastgpt/global/core/agentSkills/type';
+import type { ListSkillsResponse } from '@fastgpt/global/core/agentSkills/api';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRouter } from 'next/router';
+import { SkillPermission } from '@fastgpt/global/support/permission/agentSkill/controller';
 
-export type SkillListItemType = AgentSkillListItemType;
+export type SkillListItemType = Omit<
+  ListSkillsResponse['list'][number],
+  'createTime' | 'updateTime' | 'permission'
+> & {
+  createTime: Date;
+  updateTime: Date;
+  permission: SkillPermission;
+};
 
 type SkillListContextType = {
   skills: SkillListItemType[];
@@ -51,7 +59,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         res.list.map((item) => ({
           ...item,
           createTime: new Date(item.createTime),
-          updateTime: new Date(item.updateTime)
+          updateTime: new Date(item.updateTime),
+          permission: new SkillPermission({ role: item.permission ?? 0 })
         }))
       ),
     {

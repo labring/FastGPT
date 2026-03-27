@@ -39,6 +39,7 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   type: AgentSkillTypeSchema,
   createTime: z.string(),
   updateTime: z.string(),
+  permission: z.number().optional(),
   sourceMember: z
     .object({
       name: z.string(),
