@@ -1769,6 +1769,31 @@ describe('replaceEditorVariable', () => {
     });
     expect(result).toBe('Result: mapValue');
   });
+
+  it('should handle $ special characters in variable values literally', () => {
+    // $& in replacement string would be interpreted as "matched substring" by JS replace()
+    // Using () => replacement prevents this behavior
+    const result1 = replaceEditorVariable({
+      text: `Value: {{$${VARIABLE_NODE_ID}.myVar$}}`,
+      nodesMap: {},
+      variables: { myVar: '$& some text' }
+    });
+    expect(result1).toBe('Value: $& some text');
+
+    const result2 = replaceEditorVariable({
+      text: `Price: {{$${VARIABLE_NODE_ID}.price$}}`,
+      nodesMap: {},
+      variables: { price: '$100' }
+    });
+    expect(result2).toBe('Price: $100');
+
+    const result3 = replaceEditorVariable({
+      text: `Code: {{$${VARIABLE_NODE_ID}.code$}}`,
+      nodesMap: {},
+      variables: { code: '$$' }
+    });
+    expect(result3).toBe('Code: $$');
+  });
 });
 
 describe('textAdaptGptResponse', () => {
