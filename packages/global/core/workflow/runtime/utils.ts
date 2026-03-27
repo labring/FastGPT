@@ -492,6 +492,7 @@ export function replaceEditorVariable({
   // Apply all replacements
   for (const { pattern, replacement } of replacements) {
     if (checkStrOversize(result)) {
+      console.warn('Text length exceeds 100,000,000 characters.');
       break;
     }
 
