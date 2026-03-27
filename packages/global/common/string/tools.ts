@@ -68,6 +68,9 @@ export function replaceVariable(
   depth = 0
 ) {
   if (typeof text !== 'string') return text;
+  if (checkStrOversize(text)) {
+    throw new Error('Text length exceeds 100,000,000 characters.');
+  }
 
   const MAX_REPLACEMENT_DEPTH = 10;
   const processedVariables = new Set<string>();
