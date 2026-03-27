@@ -188,7 +188,7 @@ export default McpServer;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dashboard_mcp']))
+      ...(await serviceSideProps(content, ['dashboard_mcp', 'account']))
     }
   };
 }

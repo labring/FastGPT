@@ -1,6 +1,7 @@
+// @file 工具工作台页面，展示我的工具和系统工具列表
 'use client';
-import React, { useState } from 'react';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -95,8 +96,62 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     errorToast: 'Error'
   });
 
+  const toolTabList = useMemo(
+    () => [
+      { label: t('common:navbar.Tools'), value: 'my', path: '/dashboard/tool' },
+      { label: t('common:navbar.system_tool'), value: 'system', path: '/dashboard/systemTool' }
+    ],
+    [t]
+  );
+
+  const isSystemTool = router.pathname === '/dashboard/systemTool';
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
+      {/* 顶部类型 Tabs */}
+      {isPc && paths.length === 0 && (
+        <Flex
+          align="center"
+          justify="center"
+          py={3}
+          borderBottom="1px solid"
+          borderColor="myGray.100"
+          flexShrink={0}
+        >
+          <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} p={1}>
+            {toolTabList.map((tab) => {
+              const isActive = isSystemTool ? tab.value === 'system' : tab.value === 'my';
+              return (
+                <Box
+                  key={tab.value}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor={isActive ? 'default' : 'pointer'}
+                  px={6}
+                  h={8}
+                  fontSize={'13px'}
+                  fontWeight={'medium'}
+                  userSelect={'none'}
+                  {...(isActive
+                    ? {
+                        bg: 'white',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        color: 'myGray.900',
+                        borderRadius: '4px'
+                      }
+                    : {
+                        color: 'myGray.500',
+                        onClick: () => router.push(tab.path)
+                      })}
+                >
+                  {tab.label}
+                </Box>
+              );
+            })}
+          </HStack>
+        </Flex>
+      )}
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
@@ -242,7 +297,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   maxW={['auto', '250px']}
                   value={searchKey}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
+                  placeholder={t('app:search_tool')}
                   maxLength={30}
                 />
               }
@@ -335,7 +390,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user']))
+      ...(await serviceSideProps(content, ['app', 'user', 'account']))
     }
   };
 }

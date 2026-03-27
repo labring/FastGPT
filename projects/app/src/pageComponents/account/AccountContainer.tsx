@@ -1,14 +1,18 @@
-import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
-import SideTabs from '@/components/SideTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import {
+  DashboardNavbar,
+  SIDEBAR_EXPANDED_WIDTH,
+  SIDEBAR_COLLAPSED_WIDTH
+} from '@/pageComponents/dashboard/Container';
 
 export enum TabEnum {
   'info' = 'info',
@@ -34,11 +38,12 @@ const AccountContainer = ({
   isLoading?: boolean;
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { userInfo, setUserInfo } = useUserStore();
-  const { feConfigs, systemVersion } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const router = useRouter();
   const { isPc } = useSystem();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
 
   const currentTab = useMemo(() => {
     return router.pathname.split('/').pop() as TabEnum;
@@ -156,54 +161,39 @@ const AccountContainer = ({
   );
 
   return (
-    <PageContainer isLoading={isLoading}>
-      <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
-        {isPc ? (
-          <Flex
-            flexDirection={'column'}
-            p={4}
-            h={'100%'}
-            flex={'0 0 200px'}
-            borderRight={theme.borders.base}
-          >
-            <SideTabs<TabEnum>
-              flex={1}
-              mx={'auto'}
-              mt={2}
-              w={'100%'}
-              list={tabList}
-              value={currentTab}
-              onChange={setCurrentTab}
-            />
-            <Flex alignItems={'center'}>
-              <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-              <Box fontSize={'md'} ml={2}>
-                V{systemVersion}
+    <>
+      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+      <Box
+        h={'100%'}
+        pl={isPc ? sidebarWidth : 0}
+        position={'relative'}
+        transition="padding-left 0.2s ease"
+      >
+        <PageContainer isLoading={isLoading}>
+          <Flex flexDirection={'column'} h={'100%'} pt={[4, 0]}>
+            {!isPc && (
+              <Box mb={3}>
+                <LightRowTabs<TabEnum>
+                  m={'auto'}
+                  w={'100%'}
+                  size={'sm'}
+                  list={tabList.map((item) => ({
+                    value: item.value,
+                    label: item.label
+                  }))}
+                  value={currentTab}
+                  onChange={setCurrentTab}
+                />
               </Box>
-            </Flex>
+            )}
+            <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
+              {children}
+            </Box>
           </Flex>
-        ) : (
-          <Box mb={3}>
-            <LightRowTabs<TabEnum>
-              m={'auto'}
-              w={'100%'}
-              size={isPc ? 'md' : 'sm'}
-              list={tabList.map((item) => ({
-                value: item.value,
-                label: item.label
-              }))}
-              value={currentTab}
-              onChange={setCurrentTab}
-            />
-          </Box>
-        )}
-
-        <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
-          {children}
-        </Box>
-      </Flex>
-      <ConfirmModal />
-    </PageContainer>
+          <ConfirmModal />
+        </PageContainer>
+      </Box>
+    </>
   );
 };
 
