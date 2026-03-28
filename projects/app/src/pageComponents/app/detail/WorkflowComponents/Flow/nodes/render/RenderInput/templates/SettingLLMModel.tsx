@@ -70,7 +70,7 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
   return (
     <SettingLLMModel
       defaultModel={defaultModel}
-      llmModelType={item.llmModelType}
+      filterTestModel={item.filterTestModel}
       defaultData={llmModelData}
       onChange={onChangeModel}
     />

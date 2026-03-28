@@ -16,7 +16,6 @@ import {
   Input_Template_UserChatInput
 } from '../../input';
 import { Input_Template_System_Prompt } from '../../input';
-import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
 export const ClassifyQuestionModule: FlowNodeTemplateType = {
@@ -36,7 +35,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   inputs: [
     {
       ...Input_Template_SelectAIModel,
-      llmModelType: LLMModelTypeEnum.classify
+      filterTestModel: true
     },
     {
       ...Input_Template_System_Prompt,

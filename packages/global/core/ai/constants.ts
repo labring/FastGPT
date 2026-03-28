@@ -83,26 +83,6 @@ export enum ChatMessageTypeEnum {
   image_url = 'image_url'
 }
 
-export enum LLMModelTypeEnum {
-  all = 'all',
-  classify = 'classify',
-  extractFields = 'extractFields',
-  toolCall = 'toolCall'
-}
-export const isLLMModelTypeMatched = ({
-  llmModelType,
-  model
-}: {
-  llmModelType?: `${LLMModelTypeEnum}` | LLMModelTypeEnum;
-  model: Pick<LLMModelItemType, 'testMode'>;
-}) => {
-  if (!llmModelType || llmModelType === LLMModelTypeEnum.all) {
-    return true;
-  }
-
-  return model.testMode !== true;
-};
-
 export enum EmbeddingTypeEnm {
   query = 'query',
   db = 'db'

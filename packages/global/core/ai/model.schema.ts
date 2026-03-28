@@ -15,12 +15,16 @@ export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
 const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
-  // 旧版的价格计费字段
-  inputPrice: z.number().optional(), // 1k tokens=n points
-  outputPrice: z.number().optional(), // 1k tokens=n points
-
   // 新版的梯度价格计算字段
-  priceTiers: z.array(ModelPriceTierSchema).optional()
+  priceTiers: z.array(ModelPriceTierSchema).optional().meta({
+    description:
+      'The price tiers for this model. If not provided, the model will use the default price tiers.'
+  }),
+
+  /** @deprecated */
+  inputPrice: z.number().optional(), // 1k tokens=n points
+  /** @deprecated */
+  outputPrice: z.number().optional() // 1k tokens=n points
 });
 export type PriceType = z.infer<typeof PriceTypeSchema>;
 

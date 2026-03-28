@@ -9,7 +9,6 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
-import { isLLMModelTypeMatched } from '@fastgpt/global/core/ai/constants';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
@@ -28,11 +27,8 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { feConfigs, llmModelList } = useSystemStore();
 
   const modelList = useMemo(
-    () =>
-      llmModelList.filter((model) =>
-        isLLMModelTypeMatched({ llmModelType: item.llmModelType, model })
-      ),
-    [llmModelList, item.llmModelType]
+    () => llmModelList.filter((model) => !item.filterTestModel || !model.testMode),
+    [llmModelList, item.filterTestModel]
   );
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(

@@ -40,7 +40,6 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 /* format app nodes to edit form */
@@ -608,7 +607,7 @@ export function form2AppWorkflow(
               ],
               label: 'core.module.input.label.aiModel',
               valueType: WorkflowIOValueTypeEnum.string,
-              llmModelType: LLMModelTypeEnum.all,
+              filterTestModel: false,
               value: formData.aiSettings.model
             },
             {

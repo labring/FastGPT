@@ -235,7 +235,7 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
     max: input.max,
     min: input.min,
     defaultValue: input.defaultValue,
-    llmModelType: input.llmModelType,
+    filterTestModel: input.filterTestModel,
     customInputConfig: input.customInputConfig
   };
 };
