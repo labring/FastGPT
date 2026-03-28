@@ -23,21 +23,6 @@ const isTestModeModel = (model?: SystemModelItemType) => {
   return !!(model && 'testMode' in model && model.testMode);
 };
 
-const ModelTestModeTip = React.memo(function ModelTestModeTip() {
-  const { t } = useTranslation(['common', 'account']);
-
-  return (
-    <Box
-      ml={1}
-      flexShrink={0}
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <TestModeBetaTag />
-    </Box>
-  );
-});
-
 const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip() {
   return (
     <Box
@@ -46,10 +31,9 @@ const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip(
       right={'40px'}
       transform={'translateY(-50%)'}
       zIndex={3}
-      display={'flex'}
-      alignItems={'center'}
+      pointerEvents={'none'}
     >
-      <ModelTestModeTip />
+      <TestModeBetaTag />
     </Box>
   );
 });
@@ -68,7 +52,11 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
       <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>
-      {showTestModeTip && <ModelTestModeTip />}
+      {showTestModeTip && (
+        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
+          <TestModeBetaTag />
+        </Box>
+      )}
     </Flex>
   );
 });
