@@ -56,7 +56,7 @@ export async function reRankRecall({
     return Promise.reject(new Error('Rerank query too long'));
   }
 
-  let chunkIdToDocIdMap: Map<string, string> = new Map();
+  const chunkIdToDocIdMap: Map<string, string> = new Map();
 
   // Expand documents: split docs that exceed the budget into chunks (parallel)
   const expandedDocuments: { id: string; text: string }[] = (

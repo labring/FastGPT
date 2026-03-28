@@ -10,7 +10,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 import React, { useCallback, useMemo, useState } from 'react';
 
 type Props = SelectProps & {
@@ -63,7 +62,7 @@ const OneRowSelector = ({
   ...props
 }: Props) => {
   const { t } = useTranslation(['common', 'account']);
-  const router = useRouter();
+
   const {
     llmModelList,
     embeddingModelList,
@@ -202,7 +201,6 @@ const MultipleRowSelector = ({
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation(['common', 'account']);
-  const router = useRouter();
   const {
     llmModelList,
     embeddingModelList,

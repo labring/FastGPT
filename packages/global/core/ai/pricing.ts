@@ -86,11 +86,7 @@ export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTier
     ];
   }
 
-  if (
-    isValidNumber(config?.charsPointsPrice) ||
-    config?.charsPointsPrice === 0 ||
-    config?.charsPointsPrice === undefined
-  ) {
+  if (isValidNumber(config?.charsPointsPrice) || config?.charsPointsPrice === undefined) {
     const comprehensivePrice = getSafePrice(config?.charsPointsPrice);
 
     return [
@@ -126,7 +122,7 @@ export const calculateModelPrice = ({
     const safeInputTokens = Math.max(0, currentInputTokens);
     for (let i = resolvedTiers.length - 1; i >= 0; i--) {
       const tier = resolvedTiers[i];
-      if (safeInputTokens >= (tier.minInputTokens ?? 1)) {
+      if (safeInputTokens >= (tier.minInputTokens ?? 0)) {
         return tier;
       }
     }
