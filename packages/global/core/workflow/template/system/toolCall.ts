@@ -37,10 +37,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
   courseUrl: '/docs/introduction/guide/dashboard/workflow/tool/',
   version: '4.9.2',
   inputs: [
-    {
-      ...Input_Template_SettingAiModel,
-      filterTestModel: true
-    },
+    Input_Template_SettingAiModel,
     {
       key: NodeInputKeyEnum.aiChatTemperature,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
