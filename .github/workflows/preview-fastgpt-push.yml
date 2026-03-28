@@ -26,7 +26,7 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       matrix:
-        image: [fastgpt, sandbox, mcp_server]
+        image: [fastgpt, code-sandbox, mcp_server]
       fail-fast: false
 
     steps:
@@ -35,8 +35,8 @@ jobs:
         run: |
           if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
             echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
-            echo "IMAGE_NAME=fastgpt-sandbox" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "code-sandbox" ]]; then
+            echo "IMAGE_NAME=fastgpt-code-sandbox" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
             echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
           fi
