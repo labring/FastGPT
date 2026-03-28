@@ -15,12 +15,13 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
-const fileType = '.txt, .doc, .docx, .csv, .xlsx, .pdf, .md, .html, .ppt, .pptx';
+const fileType = documentFileType;
 
 const FileLocal = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
@@ -169,3 +170,4 @@ const SelectFile = React.memo(function SelectFile() {
     </Box>
   );
 });
+

@@ -2,6 +2,18 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 // @ts-ignore
 import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+
+// pdfjs-dist does not export PasswordException directly, detect by name
+const isPdfPasswordError = (error: unknown): boolean => {
+  return (
+    error instanceof Error &&
+    (error.name === 'PasswordException' ||
+      (error as any).code === 1 /* PasswordResponses.NEED_PASSWORD */ ||
+      (error as any).code === 2) /* PasswordResponses.INCORRECT_PASSWORD */
+  );
+};
 
 type TokenType = {
   str: string;
@@ -60,7 +72,12 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
   const uint8Array = new Uint8Array(buffer.byteLength);
   uint8Array.set(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
   const loadingTask = pdfjs.getDocument({ data: uint8Array });
-  const doc = await loadingTask.promise;
+  const doc = await loadingTask.promise.catch((error: unknown) => {
+    if (isPdfPasswordError(error)) {
+      return Promise.reject(new UserError(CommonErrEnum.pdfEncrypted));
+    }
+    return Promise.reject(error);
+  });
 
   const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
   const result = (

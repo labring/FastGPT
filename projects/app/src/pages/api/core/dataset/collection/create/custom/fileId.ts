@@ -23,6 +23,7 @@ import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 // Request body type
 export type CustomFileIdImportBody = {
@@ -51,7 +52,7 @@ export type CustomFileIdImportResponse = {
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['txt', 'md', 'html', 'pdf', 'docx', 'pptx', 'xlsx', 'csv'];
-const EXTERNAL_REQUIRED_EXTENSIONS = ['doc', 'ppt'];
+const EXTERNAL_REQUIRED_EXTENSIONS = ['doc', 'ppt', 'xls'];
 
 /**
  * Get import mode configuration (use default mode from config)
@@ -90,18 +91,19 @@ function validateFileExtension(extension: string): void {
   const ext = extension.toLowerCase();
 
   if (EXTERNAL_REQUIRED_EXTENSIONS.includes(ext)) {
-    if (!global.systemEnv?.customPdfParse?.url) {
-      throw new Error(
-        `File type .${ext} requires external parsing service. Please configure customPdfParse.url`
-      );
+    const customPdfParse = global.systemEnv?.customPdfParse;
+    // doc/ppt/xls 旧格式文件只能使用自定义服务（url+key），不支持 doc2xKey
+    // doc2xKey 仅支持 pdf 文件，参见 packages/service/common/file/read/utils.ts:173
+    const hasCustomService = !!(customPdfParse?.url && customPdfParse?.key);
+
+    if (!hasCustomService) {
+      throw new UserError(CommonErrEnum.fileTypeRequiresExternalParse);
     }
     return;
   }
 
   if (!SUPPORTED_EXTENSIONS.includes(ext)) {
-    throw new Error(
-      `Unsupported file type: .${ext}. Supported types: ${SUPPORTED_EXTENSIONS.join(', ')}`
-    );
+    throw new UserError(CommonErrEnum.unsupportedFileType);
   }
 }
 

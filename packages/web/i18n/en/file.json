@@ -45,7 +45,12 @@
   "template_strict_highlight": "Strictly consistent with the template",
   "total_files": "Total files: {{selectFiles.length}}",
   "upload_error_description": "Only multiple files or one folder can be uploaded at a time.",
+  "pdf_encrypted_error": "This PDF is encrypted and cannot be parsed. Please upload an unencrypted file.",
+  "pptx_parse_failed": "Failed to parse the PPT file. Please ensure the file is in .pptx format and is not corrupted.",
+  "file_type_requires_external_parse": ".ppt / .doc / .xls format requires an external parsing service (customPdfParse). Please contact your administrator.",
+  "unsupported_file_type": "Unsupported file type. Supported formats: txt, md, html, pdf, docx, pptx, xls, xlsx, csv",
   "upload_failed": "Error occurred during the upload.",
   "upload_file_error": "Please upload an image.",
   "uploading": "Uploading..."
 }
+

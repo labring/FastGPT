@@ -21,6 +21,7 @@ import path from 'node:path';
 import { S3Buckets } from '../../../../common/s3/constants';
 import { S3Sources } from '../../../../common/s3/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+import https from 'https';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -195,7 +196,8 @@ export const getFileContentFromLinks = async ({
           // Get file buffer data
           const response = await axios.get(url, {
             baseURL: serverRequestBaseUrl,
-            responseType: 'arraybuffer'
+            responseType: 'arraybuffer',
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
           });
 
           const buffer = Buffer.from(response.data, 'binary');
@@ -311,3 +313,4 @@ export const getFileContentFromLinks = async ({
     readFilesResult
   };
 };
+

@@ -66,8 +66,8 @@ function checkAgentModelAvailable(agentModel?: string): boolean {
 function checkPdfParseServiceAvailable(): boolean {
   const customPdfParse = global.systemEnv?.customPdfParse;
 
-  // Check if custom parsing service URL or doc2x key is configured
-  return !!(customPdfParse?.url || customPdfParse?.doc2xKey);
+  // 与 readRawContentByFileBuffer 保持一致：url 和 key 均须配置才视为自定义服务可用
+  return !!(customPdfParse?.url && customPdfParse?.key) || !!customPdfParse?.doc2xKey;
 }
 
 /**
@@ -139,7 +139,7 @@ export function adaptiveAdjustConfig(params: AdaptiveConfigParams): AdaptiveConf
         field: 'customPdfParse',
         originalValue: true,
         adjustedValue: false,
-        reason: 'PDF parsing service not configured (customPdfParse.url or doc2xKey required)'
+        reason: 'PDF parsing service not configured (customPdfParse.url and key, or doc2xKey required)'
       });
       adjustedParseConfig.customPdfParse = false;
     } else {

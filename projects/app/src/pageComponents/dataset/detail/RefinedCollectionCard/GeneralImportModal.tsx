@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -35,7 +36,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const MAX_LINKS_COUNT = 10;
 
-const fileType = '.txt, .doc, .docx, .csv, .xlsx, .pdf, .md, .ppt, .pptx';
+const fileType = documentFileType;
 
 interface GeneralImportModalProps {
   isOpen: boolean;

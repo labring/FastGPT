@@ -14,3 +14,4 @@ export function createProxyAxios(config?: AxiosRequestConfig) {
 
 /** @see https://github.com/axios/axios/issues/4531 */
 export const axios = createProxyAxios();
+
