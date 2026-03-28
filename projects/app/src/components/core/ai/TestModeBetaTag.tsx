@@ -25,6 +25,7 @@ const TestModeBetaTag = () => {
         fontWeight={'500'}
         boxSizing={'border-box'}
         whiteSpace={'nowrap'}
+        pointerEvents={'none'}
       >
         Beta
       </Box>

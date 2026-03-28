@@ -25,14 +25,7 @@ const isTestModeModel = (model?: SystemModelItemType) => {
 
 const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip() {
   return (
-    <Box
-      position={'absolute'}
-      top={'50%'}
-      right={'40px'}
-      transform={'translateY(-50%)'}
-      zIndex={3}
-      pointerEvents={'none'}
-    >
+    <Box position={'absolute'} top={'50%'} right={'40px'} transform={'translateY(-50%)'} zIndex={3}>
       <TestModeBetaTag />
     </Box>
   );
