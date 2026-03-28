@@ -105,7 +105,6 @@ const OneRowSelector = ({
       manual: false
     }
   );
-  const shouldShowTestModeTip = router.pathname === '/app/detail';
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -155,7 +154,7 @@ const OneRowSelector = ({
               <ModelOptionLabel
                 name={modelData.name}
                 noOfLines={noOfLines}
-                showTestModeTip={shouldShowTestModeTip && isTestModeModel(modelData)}
+                showTestModeTip={isTestModeModel(modelData)}
               />
             </Flex>
           )
@@ -165,7 +164,7 @@ const OneRowSelector = ({
       value: any;
       label: React.JSX.Element;
     }[];
-  }, [allModels, list, getModelProvider, avatarSize, noOfLines, myModels, shouldShowTestModeTip]);
+  }, [allModels, list, getModelProvider, avatarSize, noOfLines, myModels]);
 
   return (
     <Box
@@ -208,7 +207,7 @@ const OneRowSelector = ({
           }}
         />
       </MyTooltip>
-      {shouldShowTestModeTip && isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
+      {isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
     </Box>
   );
 };
@@ -237,7 +236,6 @@ const MultipleRowSelector = ({
   const { data: myModels, loading } = useRequest(getMyModelList, {
     manual: false
   });
-  const shouldShowTestModeTip = router.pathname === '/app/detail';
 
   const modelList = useMemo(() => {
     const allModels = [
@@ -308,17 +306,14 @@ const MultipleRowSelector = ({
 
       provider?.children.push({
         label: (
-          <ModelOptionLabel
-            name={modelData.name}
-            showTestModeTip={shouldShowTestModeTip && isTestModeModel(modelData)}
-          />
+          <ModelOptionLabel name={modelData.name} showTestModeTip={isTestModeModel(modelData)} />
         ),
         value: modelData.model
       });
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [getModelProviders, i18n.language, avatarSize, list, modelList, shouldShowTestModeTip]);
+  }, [getModelProviders, i18n.language, avatarSize, list, modelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -377,7 +372,7 @@ const MultipleRowSelector = ({
           }}
         />
       </MyTooltip>
-      {shouldShowTestModeTip && isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
+      {isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
     </Box>
   );
 };

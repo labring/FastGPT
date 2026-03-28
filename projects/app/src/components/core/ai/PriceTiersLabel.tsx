@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model.schema';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 1);
+const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 0);
 
 const formatPriceSummary = ({
   tiers,
