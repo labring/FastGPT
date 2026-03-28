@@ -87,7 +87,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {t('account:model.price_tier_range')}
+                      {t('common:model.price_tier_range')}
                     </Th>
                     <Th
                       textTransform={'none'}
@@ -98,7 +98,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {t('account:model.input_price')}
+                      {t('common:model.input_price')}
                     </Th>
                     <Th
                       textTransform={'none'}
@@ -108,7 +108,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {t('account:model.output_price')}
+                      {t('common:model.output_price')}
                     </Th>
                   </Tr>
                 </Thead>
@@ -134,7 +134,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                           whiteSpace={'nowrap'}
                         >
                           <Box>{`${getTierLowerBoundLabel(tier)} < `}</Box>
-                          <Box>{t('account:model.price_tier_input_tokens')}</Box>
+                          <Box>{t('common:Input')}</Box>
                           {typeof tier.maxInputTokens === 'number' ? (
                             <Box>{` <= ${tier.maxInputTokens}`}</Box>
                           ) : null}
@@ -149,7 +149,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                         borderColor={'myGray.200'}
                         whiteSpace={'nowrap'}
                       >
-                        {`${tier.inputPrice} ${t('account:model.price_tier_input_price_unit')}`}
+                        {`${tier.inputPrice} ${t('common:support.wallet.subscription.point')}`}
                       </Td>
                       <Td
                         px={3}
@@ -159,7 +159,7 @@ const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: 
                         borderColor={'myGray.200'}
                         whiteSpace={'nowrap'}
                       >
-                        {`${tier.outputPrice} ${t('account:model.price_tier_input_price_unit')}`}
+                        {`${tier.outputPrice} ${t('common:support.wallet.subscription.point')}`}
                       </Td>
                     </Tr>
                   ))}

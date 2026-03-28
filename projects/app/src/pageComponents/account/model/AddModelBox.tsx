@@ -451,7 +451,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
               >
-                {t('account:model.price_tier_range')}
+                {t('common:model.price_tier_range')}
               </Th>
               <Th
                 px={3}
@@ -462,7 +462,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
               >
-                {t('account:model.input_price')}
+                {t('common:model.input_price')}
               </Th>
               <Th
                 px={3}
@@ -473,7 +473,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                 borderRight={'1px solid'}
                 borderColor={'myGray.200'}
               >
-                {t('account:model.output_price')}
+                {t('common:model.output_price')}
               </Th>
               <Th
                 px={3}
@@ -554,7 +554,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       />
                       <Box>
                         {' < '}
-                        {t('account:model.price_tier_input_tokens')}
+                        {t('common:Input')}
                         {' <= '}
                       </Box>
                       <Input
@@ -606,7 +606,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                         {...FixedPriceValueInputStyles}
                       />
                       <Box flexShrink={0} color={'myGray.500'}>
-                        {t('account:model.price_tier_input_price_unit')}
+                        {t('common:support.wallet.subscription.point')}
                       </Box>
                     </Flex>
                   </Td>
@@ -629,7 +629,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                         {...FixedPriceValueInputStyles}
                       />
                       <Box flexShrink={0} color={'myGray.500'}>
-                        {t('account:model.price_tier_input_price_unit')}
+                        {t('common:support.wallet.subscription.point')}
                       </Box>
                     </Flex>
                   </Td>
