@@ -499,7 +499,7 @@ const PriceTiersTable = React.memo(function PriceTiersTable({
                       Number.isFinite(previousTier.maxInputTokens)
                     ? previousTier.maxInputTokens
                     : 0;
-              const lowerBound = index === 0 ? 1 : previousTierMax;
+              const lowerBound = index === 0 ? 0 : previousTierMax;
               const minAllowedMax = lowerBound;
               const lowerBoundLabel = String(lowerBound);
               const isLastTier = index === priceTierFields.length - 1;
