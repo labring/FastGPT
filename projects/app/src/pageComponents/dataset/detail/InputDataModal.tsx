@@ -146,7 +146,7 @@ const InputDataModal = ({
           indexes: e.indexes?.filter((item) => !!item.text?.trim()) || []
         };
 
-        dataId = await postInsertData2Dataset(postData);
+        dataId = (await postInsertData2Dataset(postData)).insertId;
       }
 
       return {

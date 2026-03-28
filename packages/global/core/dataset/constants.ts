@@ -1,5 +1,13 @@
 import { i18nT } from '../../../web/i18n/utils';
 
+/* ------------ training status -------------- */
+export enum DatasetTrainingStatusEnum {
+  ready = 'ready',
+  training = 'training',
+  error = 'error'
+}
+export type DatasetTrainingStatusType = `${DatasetTrainingStatusEnum}`;
+
 /* ------------ dataset -------------- */
 export enum DatasetTypeEnum {
   folder = 'folder',

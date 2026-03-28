@@ -134,10 +134,17 @@ export async function generateVector(): Promise<any> {
       try {
         const { tokens } = await (async () => {
           // Route to different processors based on mode
-          if (data.mode === TrainingModeEnum.chunk && data.dataId && data.data) {
+          // rebuildData: 已有数据向量重建（向量模型变更场景）
+          //   条件：data.dataId 存在 + data.data 已有非空的 indexes（旧向量引用）
+          // insertData: 其他所有情况（新增 / 手动插入占位 / synthesis 链路后的 chunk）
+          if (
+            data.mode === TrainingModeEnum.chunk &&
+            data.dataId &&
+            data.data &&
+            data.data.indexes.length > 0
+          ) {
             return rebuildData({ trainingData: data });
           } else if (data.mode === TrainingModeEnum.chunk) {
-            // Either no dataId (auto-generate) OR dataId without data.data (custom ID for new data)
             return insertData({ trainingData: data });
           } else if (data.mode === TrainingModeEnum.synonymStandardize) {
             // Import dynamically to avoid circular dependencies

@@ -14,6 +14,7 @@ import type {
   ParagraphChunkAIModeEnum,
   DatabaseTypeEnum
 } from './constants';
+import type { DatasetTrainingStatusType } from './constants';
 import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import type {
   ApiDatasetServerType,
@@ -371,6 +372,7 @@ export type DatasetDataItemType = DatasetDataFieldType & {
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
   metadata?: Record<string, any>;
+  trainingStatus?: DatasetTrainingStatusType;
 };
 
 /* --------------- file ---------------------- */

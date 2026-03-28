@@ -2,7 +2,10 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type.d';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
+import type {
+  CollectionStatusEnum,
+  DatasetTrainingStatusEnum
+} from '@fastgpt/global/core/dataset/constants';
 
 /* ================= dataset ===================== */
 
@@ -57,4 +60,5 @@ export type DatasetDataListItemType = {
   imagePreviewUrl?: string; //image preview url
   chunkIndex?: number;
   updated?: boolean;
+  trainingStatus?: `${DatasetTrainingStatusEnum}`;
 };
