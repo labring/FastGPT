@@ -104,8 +104,7 @@ const DatasetCollectionSchema = new Schema({
       description: { type: String, default: '' },
       exist: { type: Boolean, default: true },
       columns: {
-        type: Map,
-        of: ColumnSchema,
+        type: Schema.Types.Mixed,
         default: {}
       },
       foreignKeys: { type: [ForeignKeySchema], default: [] },
