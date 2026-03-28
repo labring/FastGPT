@@ -19,6 +19,21 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   // 优化编译性能
   swcMinify: true, // 使用 SWC 压缩（生产环境已默认）
+  async rewrites() {
+    const proxyTarget = process.env.PROXY_API_TARGET?.trim().replace(/\/$/, '');
+    if (isDev && proxyTarget) {
+      return {
+        beforeFiles: [
+          {
+            source: '/api/:path*',
+            destination: `${proxyTarget}/api/:path*`,
+          },
+        ],
+      };
+    }
+    return [];
+  },
+
   async headers() {
     return [
       {
