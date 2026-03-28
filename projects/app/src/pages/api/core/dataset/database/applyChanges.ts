@@ -32,13 +32,12 @@ import type { ColumnSchemaType, TableSchemaType } from '@fastgpt/global/core/dat
 
 // Check if column forbid status is inconsistent between database and collection
 function hasColumnForbidInconsistency(existingTable: any, newTable: DBTableChange): boolean {
-  const existingColumns = existingTable?.tableSchema?.columns || {};
+  const existingColumns: Record<string, ColumnSchemaType> =
+    existingTable?.tableSchema?.columns || {};
   const newColumns = newTable.columns;
 
   for (const [colName, newCol] of Object.entries(newColumns) as [string, DBTableColumn][]) {
-    const existingCol = existingColumns.get
-      ? existingColumns.get(colName)
-      : existingColumns[colName];
+    const existingCol = existingColumns[colName];
     if (existingCol && existingCol.forbid !== newCol.forbid) {
       return true;
     }
@@ -115,6 +114,11 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     forbid: table.forbid,
                     tableSchema: {
                       ...table,
+                      columns: Object.fromEntries(
+                        (Object.entries(table.columns) as [string, DBTableColumn][]).map(
+                          ([k, { status: _s, ...col }]) => [k, col]
+                        )
+                      ),
                       exist: true,
                       lastUpdated: new Date()
                     } as TableSchemaType,
@@ -171,14 +175,14 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                 }
 
                 // Check column description changes
-                const intersectColumns =
-                  (intersectCollection.tableSchema?.columns as Map<string, ColumnSchemaType>) || {};
+                const intersectColumns: Record<string, ColumnSchemaType> =
+                  intersectCollection.tableSchema?.columns || {};
                 console.debug('[applyChanges] intersectColumns', intersectColumns);
                 for (const [colName, newCol] of Object.entries(table.columns) as [
                   string,
                   DBTableColumn
                 ][]) {
-                  const intersectCol = intersectColumns.get(colName);
+                  const intersectCol = intersectColumns[colName];
                   if (
                     intersectCol &&
                     (intersectCol.description !== newCol.description ||
@@ -191,7 +195,7 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                 }
 
                 // Check for added/deleted columns
-                const intersectColNames = new Set(intersectColumns.keys());
+                const intersectColNames = new Set(Object.keys(intersectColumns));
                 const newColNames = new Set(Object.keys(table.columns));
                 if (
                   intersectColNames.size !== newColNames.size ||
@@ -221,6 +225,11 @@ async function handler(req: ApiRequestProps<ApplyChangesBody, {}>): Promise<Appl
                     trainingType: DatasetCollectionDataProcessModeEnum.databaseSchema,
                     tableSchema: {
                       ...table,
+                      columns: Object.fromEntries(
+                        (Object.entries(table.columns) as [string, DBTableColumn][]).map(
+                          ([k, { status: _s, ...col }]) => [k, col]
+                        )
+                      ),
                       exist: true,
                       lastUpdated: new Date()
                     } as TableSchemaType,
