@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Button, Textarea, ModalFooter, Text } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { putDatasetDataById, getDatasetDataItemById } from '@/web/core/dataset/api';
+import {
+  putDatasetDataById,
+  getDatasetDataItemById,
+  postInsertData2Dataset
+} from '@/web/core/dataset/api';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -17,40 +21,47 @@ type EditDataType = {
   a?: string;
 };
 
+type EditContentModalProps = {
+  mode: 'add' | 'edit';
+  dataId?: string;
+  collectionId?: string;
+  defaultValue: { q?: string; a?: string };
+  trainingType?: DatasetCollectionDataProcessModeEnum;
+  onClose: () => void;
+  onSuccess: (data: EditDataType & { chunkIndex?: number }) => void;
+};
+
 const EditContentModal = ({
+  mode,
   dataId,
+  collectionId,
   defaultValue,
   trainingType,
   onClose,
   onSuccess
-}: {
-  dataId: string;
-  defaultValue: { q?: string; a?: string };
-  trainingType?: DatasetCollectionDataProcessModeEnum;
-  onClose: () => void;
-  onSuccess: (data: EditDataType) => void;
-}) => {
+}: EditContentModalProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { register, handleSubmit } = useForm<EditDataType>({
+  const { register, handleSubmit, reset } = useForm<EditDataType>({
     defaultValues: defaultValue
   });
 
   const isFAQ = trainingType === DatasetCollectionDataProcessModeEnum.template;
 
-  // Fetch current data detail to get indexes
-  const { data: currentData, runAsync: fetchCurrentData } = useRequest(
+  // Fetch current data detail to get indexes (edit mode only)
+  const { data: currentData } = useRequest(
     async () => {
+      if (mode !== 'edit' || !dataId) return undefined;
       return await getDatasetDataItemById(dataId);
     },
     {
       manual: false,
-      refreshDeps: [dataId]
+      refreshDeps: [dataId, mode]
     }
   );
 
-  // Update data
+  // Update data (edit mode)
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest(
     async (e: EditDataType) => {
       if (!currentData) {
@@ -87,10 +98,42 @@ const EditContentModal = ({
     }
   );
 
-  const modalTitle = useMemo(
-    () => (isFAQ ? t('dataset:edit_faq') : t('dataset:edit_chunk')),
-    [isFAQ, t]
+  // Insert data (add mode)
+  const { runAsync: onInsertData, loading: isInserting } = useRequest(
+    async (e: EditDataType) => {
+      const res = (await postInsertData2Dataset({
+        collectionId: collectionId!,
+        q: e.q,
+        a: isFAQ ? e.a : ''
+      })) as unknown as { chunkIndex: number };
+      return { ...e, chunkIndex: res.chunkIndex };
+    },
+    {
+      onSuccess(data) {
+        toast({
+          title: t('dataset:add_success_toast', { index: data.chunkIndex }),
+          status: 'success'
+        });
+        reset();
+        onSuccess(data);
+        onClose();
+      },
+      onError(err) {
+        toast({ title: getErrText(err), status: 'error' });
+      }
+    }
   );
+
+  const isLoading = isUpdating || isInserting;
+
+  const modalTitle = useMemo(() => {
+    if (mode === 'add') {
+      return isFAQ ? t('dataset:add_faq_modal_title') : t('dataset:add_chunk_modal_title');
+    }
+    return isFAQ ? t('dataset:edit_faq') : t('dataset:edit_chunk');
+  }, [mode, isFAQ, t]);
+
+  const onSubmit = mode === 'add' ? onInsertData : onUpdateData;
 
   return (
     <MyModal
@@ -102,7 +145,6 @@ const EditContentModal = ({
       maxW={'800px'}
       h={'650px'}
       title={modalTitle}
-      iconSrc="modal/edit"
     >
       <MyBox display={'flex'} flexDir={'column'} h={'100%'} py={4}>
         <Flex flex={'1 0 0'} h={['auto', '0']} flexDir={'column'} px={7}>
@@ -167,7 +209,7 @@ const EditContentModal = ({
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isLoading={isUpdating} onClick={handleSubmit(onUpdateData)}>
+          <Button isLoading={isLoading} onClick={handleSubmit(onSubmit)}>
             {t('common:Confirm')}
           </Button>
         </ModalFooter>

@@ -61,6 +61,7 @@ const RefinedDataCard = () => {
   const [isAddingNewIndex, setIsAddingNewIndex] = useState(false);
   const [newIndexText, setNewIndexText] = useState('');
   const [editingDataId, setEditingDataId] = useState<string | null>(null);
+  const [isAddingData, setIsAddingData] = useState(false);
   const [foldedCards, setFoldedCards] = useState<Record<string, boolean>>({});
   const [initialPageNum, setInitialPageNum] = useState<number | undefined>(undefined);
   const [isCalculatingPage, setIsCalculatingPage] = useState(!!activeId);
@@ -133,11 +134,11 @@ const RefinedDataCard = () => {
       refreshDeps: [collectionId],
       manual: false,
       onError: () => {
-        router.replace({
-          query: {
-            datasetId
-          }
-        });
+        // router.replace({
+        //   query: {
+        //     datasetId
+        //   }
+        // });
       }
     }
   );
@@ -547,6 +548,16 @@ const RefinedDataCard = () => {
                   setSearchText(e.target.value);
                 }}
               />
+              {canWrite && (
+                <Button
+                  ml={2}
+                  variant={'whiteBase'}
+                  size={'md'}
+                  onClick={() => setIsAddingData(true)}
+                >
+                  {t('dataset:add_chunk_btn')}
+                </Button>
+              )}
             </Flex>
 
             {/* Data List - Scrollable */}
@@ -698,19 +709,28 @@ const RefinedDataCard = () => {
                             visibility={activeCardId === item._id ? 'visible' : 'hidden'}
                             gap={2}
                           >
-                            <IconButton
-                              display={'flex'}
-                              p={1}
-                              boxShadow={'1'}
-                              icon={<MyIcon name={'edit'} w={'14px'} />}
-                              variant={'whiteBase'}
-                              size={'xsSquare'}
-                              aria-label={'edit'}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingDataId(item._id);
-                              }}
-                            />
+                            <MyTooltip
+                              label={
+                                item.trainingStatus === 'training'
+                                  ? t('dataset:training_cannot_edit')
+                                  : ''
+                              }
+                            >
+                              <IconButton
+                                display={'flex'}
+                                p={1}
+                                boxShadow={'1'}
+                                icon={<MyIcon name={'edit'} w={'14px'} />}
+                                variant={'whiteBase'}
+                                size={'xsSquare'}
+                                aria-label={'edit'}
+                                isDisabled={item.trainingStatus === 'training'}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingDataId(item._id);
+                                }}
+                              />
+                            </MyTooltip>
                             <PopoverConfirm
                               Trigger={
                                 <IconButton
@@ -770,7 +790,12 @@ const RefinedDataCard = () => {
                     variant={'whiteBase'}
                     size={'md'}
                     onClick={handleAddNewIndex}
-                    isDisabled={!activeDataDetail || isAddingNewIndex || isSavingNewIndex}
+                    isDisabled={
+                      !activeDataDetail ||
+                      isAddingNewIndex ||
+                      isSavingNewIndex ||
+                      activeDataDetail?.trainingStatus === 'training'
+                    }
                     isLoading={isSavingNewIndex}
                   >
                     {t('dataset:add_index')}
@@ -779,7 +804,14 @@ const RefinedDataCard = () => {
               </Flex>
 
               {/* Index List */}
-              {activeDataDetail ? (
+              {activeDataDetail?.trainingStatus === 'training' ? (
+                <Flex direction={'column'} align={'center'} justify={'center'} flex={1} gap={2}>
+                  <MyIcon name={'core/dataset/loading'} w={'22px'} />
+                  <Box fontSize={'sm'} color={'myGray.500'}>
+                    {t('dataset:rebuilding_edit_tip')}
+                  </Box>
+                </Flex>
+              ) : activeDataDetail ? (
                 <VStack
                   spacing={3}
                   align={'stretch'}
@@ -830,9 +862,24 @@ const RefinedDataCard = () => {
         </Flex>
       </Flex>
 
+      {/* Add Content Modal */}
+      {isAddingData && (
+        <EditContentModal
+          mode="add"
+          collectionId={collectionId}
+          defaultValue={{}}
+          trainingType={collection?.trainingType}
+          onClose={() => setIsAddingData(false)}
+          onSuccess={() => {
+            fetchData();
+          }}
+        />
+      )}
+
       {/* Edit Content Modal */}
       {editingDataId && editingData && (
         <EditContentModal
+          mode="edit"
           dataId={editingDataId}
           defaultValue={{
             q: editingData.q,
