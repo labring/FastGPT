@@ -404,7 +404,9 @@ const DataBaseConfig = () => {
                     </Th>
                     <Th py={4}>
                       <HStack gap={0}>
-                        <Text>{t('dataset:column_description')}</Text>
+                        <FormLabel required color="myGray.900">
+                          <Text>{t('dataset:column_description')}</Text>
+                        </FormLabel>
                         <QuestionTip
                           label={
                             <UnorderedList>
