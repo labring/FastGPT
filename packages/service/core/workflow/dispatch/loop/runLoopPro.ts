@@ -60,6 +60,7 @@ function buildLoopProDataOutputs(
   variables: Record<string, any>
 ): Record<string, any> {
   const data: Record<string, any> = {};
+  const nodesMap = new Map(runtimeNodes.map((n) => [n.nodeId, n]));
   const dynamicKeys = node.outputs
     .filter(
       (o) =>
@@ -74,7 +75,7 @@ function buildLoopProDataOutputs(
     if (!output?.value) continue;
     const v = getReferenceVariableValue({
       value: output.value,
-      nodes: runtimeNodes,
+      nodesMap,
       variables
     });
     data[key] = valueTypeFormat(v, output.valueType);
