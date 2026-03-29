@@ -19,7 +19,7 @@ const mockModels: Record<string, any> = {
     name: 'Tiered',
     model: 'tiered-model',
     priceTiers: [
-      { maxInputTokens: 100, inputPrice: 1, outputPrice: 2 },
+      { maxInputTokens: 1, inputPrice: 1, outputPrice: 2 },
       { inputPrice: 5, outputPrice: 10 }
     ]
   }
@@ -84,12 +84,12 @@ describe('formatModelChars2Points', () => {
   it('should calculate points with price tiers', () => {
     const result = formatModelChars2Points({
       model: 'tiered-model',
-      inputTokens: 200,
+      inputTokens: 2000,
       outputTokens: 100
     });
     expect(result.modelName).toBe('Tiered');
     // inputTokens:200 匹配第二梯度 (inputPrice:5, outputPrice:10)
-    // 5 * (200/1000) + 10 * (100/1000) = 1 + 1 = 2
-    expect(result.totalPoints).toBe(2);
+    // 5 * (2000/1000) + 10 * (100/1000) = 10 + 1 = 11
+    expect(result.totalPoints).toBe(11);
   });
 });
