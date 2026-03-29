@@ -33,6 +33,7 @@ declare global {
       WORKFLOW_MAX_RUN_TIMES?: string;
       WORKFLOW_MAX_LOOP_TIMES?: string;
       WORKFLOW_BATCH_MAX_CONCURRENCY?: string;
+      NEXT_PUBLIC_WORKFLOW_BATCH_MAX_CONCURRENCY?: string;
       WORKFLOW_BATCH_MAX_RETRY?: string;
       CHECK_INTERNAL_IP?: string;
       ALLOWED_ORIGINS?: string;

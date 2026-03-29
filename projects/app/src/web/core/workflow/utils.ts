@@ -517,7 +517,19 @@ export const checkLoopBatchSingleLoopEnd = ({
   return undefined;
 };
 
-/** loop_pro: There must be a directed path from "Loop Start" to "Loop End" within the subgraph (verified when strict is enabled for release/debug; applicable to both array and conditional patterns). */
+/** loop_pro 子画布模式：与运行时 dispatch 一致，缺省为 array */
+export const getLoopProModeFromInputs = (
+  inputs: FlowNodeItemType['inputs'] | undefined
+): 'array' | 'condition' => {
+  const v = inputs?.find((i) => i.key === NodeInputKeyEnum.loopProMode)?.value;
+  return v === 'condition' ? 'condition' : 'array';
+};
+
+/**
+ * loop_pro（strict 保存/调试）：
+ * - array：仅需存在 Loop Start；可无 LoopProEnd（每轮子图跑完即下一项，遍历完数组即结束）。
+ * - condition：须存在从 Loop Start 到 LoopProEnd / loopEnd 的有向路径。
+ */
 export const checkLoopProConditionTermination = ({
   nodes,
   edges
@@ -536,6 +548,15 @@ export const checkLoopProConditionTermination = ({
     const loopStart = nodes.find(
       (n) => n.data.parentNodeId === parentId && n.data.flowNodeType === FlowNodeTypeEnum.loopStart
     );
+
+    if (!loopStart) {
+      return [wfNode.data.nodeId];
+    }
+
+    if (getLoopProModeFromInputs(wfNode.data.inputs) !== 'condition') {
+      continue;
+    }
+
     const loopEndIds = new Set(
       nodes
         .filter(
@@ -547,7 +568,7 @@ export const checkLoopProConditionTermination = ({
         .map((n) => n.data.nodeId)
     );
 
-    if (!loopStart || loopEndIds.size === 0) {
+    if (loopEndIds.size === 0) {
       return [wfNode.data.nodeId];
     }
 

@@ -685,7 +685,11 @@ export const useWorkflow = () => {
                 n.data.parentNodeId === node.data.parentNodeId &&
                 n.data.flowNodeType === FlowNodeTypeEnum.loopProEnd
             );
-            return siblingEnds.length > 1;
+            if (siblingEnds.length > 1) return true;
+            const mode = parent.data.inputs?.find(
+              (i) => i.key === NodeInputKeyEnum.loopProMode
+            )?.value;
+            return mode !== 'condition';
           })();
         // Forbidden delete && Parents are not deleted together
         if (node.data.forbidDelete && !parentNodeDeleted && !allowDeleteExtraLoopProEnd) {

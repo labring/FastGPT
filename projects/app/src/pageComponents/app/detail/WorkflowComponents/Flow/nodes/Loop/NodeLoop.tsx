@@ -51,8 +51,10 @@ import { WorkflowLayoutContext } from '../../../context/workflowComputeContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import CatchError from '../render/RenderOutput/CatchError';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { getWorkflowBatchMaxConcurrencyCap } from '@fastgpt/global/core/workflow/runtime/workflowBatchLimits';
 
 const loopProBodyBg = 'radial-gradient(rgba(148, 163, 184, 0.22) 1px, transparent 1px)';
+const batchParallelConcurrencyCap = getWorkflowBatchMaxConcurrencyCap();
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -191,7 +193,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     normalizeInput({
       key: NodeInputKeyEnum.batchParallelConcurrency,
       min: 1,
-      max: 10,
+      max: batchParallelConcurrencyCap,
       defaultValue: 5
     });
     normalizeInput({
@@ -202,13 +204,35 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     });
   }, [flowNodeType, inputs, nodeId, onChangeNode]);
 
+  /** 与 WORKFLOW_BATCH_MAX_CONCURRENCY 对齐：旧工作流里可能仍存 max=10 */
+  useEffect(() => {
+    if (flowNodeType !== FlowNodeTypeEnum.batch) return;
+    const cap = batchParallelConcurrencyCap;
+    const input = inputs.find((i) => i.key === NodeInputKeyEnum.batchParallelConcurrency);
+    if (!input) return;
+
+    const v = Math.floor(Number(input.value));
+    const nextVal = Number.isFinite(v) ? Math.max(1, Math.min(cap, v)) : 5;
+    const needsUpdate = input.max !== cap || (Number.isFinite(v) ? nextVal !== v : false);
+
+    if (!needsUpdate) return;
+
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.batchParallelConcurrency,
+      value: {
+        ...input,
+        max: cap,
+        value: nextVal
+      }
+    });
+  }, [flowNodeType, inputs, nodeId, onChangeNode]);
+
   useEffect(() => {
     if (flowNodeType !== FlowNodeTypeEnum.batch) return;
 
-    const expectedConcurrency = [
-      FlowNodeInputTypeEnum.numberInput,
-      FlowNodeInputTypeEnum.reference
-    ] as const;
+    const expectedConcurrency = [FlowNodeInputTypeEnum.numberInput] as const;
     const concurrencyInput = inputs.find(
       (i) => i.key === NodeInputKeyEnum.batchParallelConcurrency
     );
@@ -218,14 +242,20 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         list.length === expectedConcurrency.length &&
         list.every((ty, i) => ty === expectedConcurrency[i]);
       if (!matches) {
+        const num = Math.floor(Number(concurrencyInput.value));
+        const nextValue = Number.isFinite(num)
+          ? Math.max(1, Math.min(batchParallelConcurrencyCap, num))
+          : 5;
         onChangeNode({
           nodeId,
           type: 'updateInput',
           key: NodeInputKeyEnum.batchParallelConcurrency,
           value: {
             ...concurrencyInput,
+            max: batchParallelConcurrencyCap,
             renderTypeList: [...expectedConcurrency],
-            selectedTypeIndex: Math.min(Math.max(concurrencyInput.selectedTypeIndex ?? 0, 0), 1)
+            selectedTypeIndex: 0,
+            value: nextValue
           }
         });
       }
