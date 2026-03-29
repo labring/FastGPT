@@ -74,7 +74,13 @@ export const appWorkflow2AgentForm = ({
       // Dataset configuration
       const datasetParams = inputMap.get(NodeInputKeyEnum.datasetParams);
       if (datasetParams) {
-        defaultAppForm.dataset = datasetParams;
+        const parsedDatasetParams = datasetParams as AppFormEditFormType['dataset'];
+        defaultAppForm.dataset = {
+          ...defaultAppForm.dataset,
+          ...parsedDatasetParams,
+          searchMode: parsedDatasetParams.searchMode || DatasetSearchModeEnum.embedding,
+          usingReRank: !!parsedDatasetParams.usingReRank
+        };
       }
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -269,6 +275,8 @@ export function agentForm2AppWorkflow(
 }
 
 export const getEmptyAgentConfig = (t: any) => {
+  const defaultAppForm = getDefaultAppForm();
+
   return agentForm2AppWorkflow(
     {
       aiSettings: {
@@ -277,6 +285,7 @@ export const getEmptyAgentConfig = (t: any) => {
         isResponseAnswerText: true
       },
       dataset: {
+        ...defaultAppForm.dataset,
         datasets: [],
         searchMode: DatasetSearchModeEnum.embedding
       },
