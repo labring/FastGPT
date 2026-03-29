@@ -26,11 +26,6 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs, llmModelList } = useSystemStore();
 
-  const modelList = useMemo(
-    () => llmModelList.filter((model) => !item.filterTestModel || !model.testMode),
-    [llmModelList, item.filterTestModel]
-  );
-
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
     'workflow_default_llm_model',
     {
@@ -113,7 +108,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       onChange={handleChange}
       variables={[...(editorVariables || []), ...(externalVariables || [])]}
       variableLabels={editorVariables}
-      modelList={modelList}
+      modelList={llmModelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
       {...item}
     />

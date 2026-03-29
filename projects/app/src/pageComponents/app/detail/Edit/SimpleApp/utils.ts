@@ -605,9 +605,8 @@ export function form2AppWorkflow(
                 FlowNodeInputTypeEnum.settingLLMModel,
                 FlowNodeInputTypeEnum.reference
               ],
-              label: 'core.module.input.label.aiModel',
+              label: t('common:core.module.input.label.aiModel'),
               valueType: WorkflowIOValueTypeEnum.string,
-              filterTestModel: false,
               value: formData.aiSettings.model
             },
             {
@@ -649,7 +648,7 @@ export function form2AppWorkflow(
               renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
               max: 3000,
               valueType: WorkflowIOValueTypeEnum.string,
-              label: 'core.ai.Prompt',
+              label: t('common:core.ai.Prompt'),
               description: 'core.app.tip.systemPromptTip',
               placeholder: 'core.app.tip.chatNodeSystemPromptTip',
               value: formData.aiSettings.systemPrompt
@@ -658,7 +657,7 @@ export function form2AppWorkflow(
               key: NodeInputKeyEnum.history,
               renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
               valueType: WorkflowIOValueTypeEnum.chatHistory,
-              label: 'core.module.input.label.chat history',
+              label: t('common:core.module.input.label.chat history'),
               required: true,
               min: 0,
               max: 30,

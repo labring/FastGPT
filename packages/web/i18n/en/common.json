@@ -1067,6 +1067,7 @@
   "sync_success": "Synced Successfully",
   "system.Concat us": "Contact Us",
   "system_intro": "{{title}} is a comprehensive model application orchestration system that offers out-of-the-box data processing and model invocation capabilities. It allows for rapid Dataset construction and workflow orchestration through Flow visualization, enabling complex Dataset scenarios!",
+  "system_tools": "system tools",
   "tag_list": "Tag List",
   "team_tag": "Team Tag",
   "templateTags.Image_generation": "Image generation",

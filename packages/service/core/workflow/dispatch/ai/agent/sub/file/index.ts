@@ -15,6 +15,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -23,6 +24,7 @@ type FileReadParams = {
   tmbId: string;
   customPdfParse?: boolean;
   model: string;
+  userKey?: OpenaiAccountType;
 };
 
 export const dispatchFileRead = async ({
@@ -30,7 +32,8 @@ export const dispatchFileRead = async ({
   teamId,
   tmbId,
   customPdfParse,
-  model
+  model,
+  userKey
 }: FileReadParams): Promise<{
   response: string;
   usages: ChatNodeUsageType[];
@@ -145,7 +148,8 @@ export const dispatchFileRead = async ({
     const result = await compressLargeContent({
       content: responseText,
       model: llmModel,
-      maxTokens
+      maxTokens,
+      userKey
     });
 
     responseText = result.compressed;

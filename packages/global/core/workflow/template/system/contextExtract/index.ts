@@ -31,10 +31,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   courseUrl: '/docs/introduction/guide/dashboard/workflow/content_extract/',
   version: '4.9.2',
   inputs: [
-    {
-      ...Input_Template_SelectAIModel,
-      filterTestModel: true
-    },
+    Input_Template_SelectAIModel,
     {
       key: NodeInputKeyEnum.description,
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],

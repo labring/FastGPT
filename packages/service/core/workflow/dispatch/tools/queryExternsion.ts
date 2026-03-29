@@ -23,6 +23,7 @@ type Response = DispatchNodeResultType<{
 export const dispatchQueryExtension = async ({
   histories,
   node,
+  usagePush,
   params: { model, systemPrompt, history, userChatInput }
 }: Props): Promise<Response> => {
   if (!userChatInput) {
@@ -62,6 +63,22 @@ export const dispatchQueryExtension = async ({
   });
 
   const totalPoints = llmPoints + embeddingPoints;
+  usagePush([
+    {
+      moduleName: node.name,
+      totalPoints: llmPoints,
+      model: llmModelName,
+      inputTokens,
+      outputTokens
+    },
+    {
+      moduleName: `${node.name} - Embedding`,
+      totalPoints: embeddingPoints,
+      model: embeddingModelName,
+      inputTokens: embeddingTokens,
+      outputTokens: 0
+    }
+  ]);
 
   const set = new Set<string>();
   const filterSameQueries = extensionQueries.filter((item) => {
@@ -84,22 +101,6 @@ export const dispatchQueryExtension = async ({
       embeddingTokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: node.name,
-        totalPoints: llmPoints,
-        model: llmModelName,
-        inputTokens,
-        outputTokens
-      },
-      {
-        moduleName: `${node.name} - Embedding`,
-        totalPoints: embeddingPoints,
-        model: embeddingModelName,
-        inputTokens: embeddingTokens,
-        outputTokens: 0
-      }
-    ]
+    }
   };
 };

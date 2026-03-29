@@ -96,7 +96,6 @@ export async function dispatchDatasetSearch(
       limit,
       searchMode
     },
-    nodeDispatchUsages: [],
     [DispatchNodeResponseKeyEnum.toolResponses]: []
   };
 
@@ -163,7 +162,7 @@ export async function dispatchDatasetSearch(
         });
 
     // count bill results
-    const nodeDispatchUsages: ChatNodeUsageType[] = [];
+    const nodeUsages: ChatNodeUsageType[] = [];
     {
       // 1. Search vector
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
@@ -171,7 +170,7 @@ export async function dispatchDatasetSearch(
           model: vectorModel.model,
           inputTokens: embeddingTokens
         });
-      nodeDispatchUsages.push({
+      nodeUsages.push({
         totalPoints: embeddingTotalPoints,
         moduleName: node.name,
         model: embeddingModelName,
@@ -184,7 +183,7 @@ export async function dispatchDatasetSearch(
             model: rerankModelData?.model,
             inputTokens: reRankInputTokens
           });
-        nodeDispatchUsages.push({
+        nodeUsages.push({
           totalPoints: reRankTotalPoints,
           moduleName: i18nT('account_usage:rerank'),
           model: reRankModelName,
@@ -198,7 +197,7 @@ export async function dispatchDatasetSearch(
           inputTokens: queryExtensionResult.inputTokens,
           outputTokens: queryExtensionResult.outputTokens
         });
-        nodeDispatchUsages.push({
+        nodeUsages.push({
           totalPoints: llmPoints,
           moduleName: i18nT('common:core.module.template.Query extension'),
           model: llmModelName,
@@ -211,7 +210,7 @@ export async function dispatchDatasetSearch(
             model: queryExtensionResult.embeddingModel,
             inputTokens: queryExtensionResult.embeddingTokens
           });
-        nodeDispatchUsages.push({
+        nodeUsages.push({
           totalPoints: embeddingPoints,
           moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
           model: embeddingModelName,
@@ -226,7 +225,7 @@ export async function dispatchDatasetSearch(
           inputTokens: deepSearchResult.inputTokens,
           outputTokens: deepSearchResult.outputTokens
         });
-        nodeDispatchUsages.push({
+        nodeUsages.push({
           totalPoints,
           moduleName: i18nT('common:deep_rag_search'),
           model: modelName,
@@ -235,7 +234,8 @@ export async function dispatchDatasetSearch(
         });
       }
     }
-    const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
+    const totalPoints = nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0);
+    props.usagePush(nodeUsages);
 
     return {
       data: {
@@ -270,7 +270,6 @@ export async function dispatchDatasetSearch(
         // Results
         quoteList: searchRes
       },
-      nodeDispatchUsages,
       [DispatchNodeResponseKeyEnum.toolResponses]:
         searchRes.length > 0
           ? {

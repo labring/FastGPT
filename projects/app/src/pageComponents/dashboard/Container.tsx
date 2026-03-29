@@ -153,7 +153,7 @@ const DashboardContainer = ({
       {
         groupId: TabEnum.system_tool,
         groupAvatar: 'common/app',
-        groupName: t('app:core.module.template.System Tools'),
+        groupName: t('common:system_tools'),
         children: []
       },
       {

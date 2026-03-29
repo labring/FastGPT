@@ -41,15 +41,12 @@ const EvaluationCreating = () => {
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string>();
 
-  const { llmModelList, feConfigs } = useSystemStore();
+  const { llmModelList } = useSystemStore();
 
-  const evalModelList = useMemo(() => {
-    return llmModelList.filter((item) => !item.testMode);
-  }, [llmModelList]);
   const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
-      evalModel: evalModelList[0]?.model,
+      evalModel: llmModelList[0]?.model,
       appId: '',
       evaluationFiles: [] as SelectFileItemType[]
     }
@@ -182,7 +179,7 @@ const EvaluationCreating = () => {
                 w={'406px'}
                 bg={'myGray.50'}
                 value={evalModel}
-                list={evalModelList.map((item) => ({
+                list={llmModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}

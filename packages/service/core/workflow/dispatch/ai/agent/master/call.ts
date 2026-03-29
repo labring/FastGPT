@@ -26,7 +26,6 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
-import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { getMasterSystemPrompt } from './prompt';
 import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
@@ -206,6 +205,7 @@ export const masterCall = async ({
     completeMessages,
     inputTokens,
     outputTokens,
+    llmTotalPoints,
     childrenUsages,
     finish_reason,
     requestIds,
@@ -318,7 +318,8 @@ export const masterCall = async ({
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
               customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-              model
+              model,
+              userKey: externalProvider.openaiAccount
             });
 
             if (result.nodeResponse) {
@@ -433,7 +434,8 @@ export const masterCall = async ({
 
               return {
                 response: '',
-                stop: true
+                stop: true,
+                usages: [] // 外部会单独对 plan 计费
               };
             } catch (error) {
               getLogger(LogCategories.MODULE.AI.AGENT).error('dispatchPlanAgent error', { error });
@@ -629,11 +631,11 @@ export const masterCall = async ({
     }
   });
 
-  const llmUsage = formatModelChars2Points({
-    model: agentModel,
-    inputTokens,
-    outputTokens
-  });
+  // llmTotalPoints 是 runAgentCall 内每次 LLM 调用单独计价后的累计值，保证梯度计费正确
+  const llmUsage = {
+    modelName: getLLMModel(agentModel).name,
+    totalPoints: llmTotalPoints
+  };
   const childTotalPoints = childrenUsages.reduce((sum, item) => sum + item.totalPoints, 0);
   const nodeResponse: ChatHistoryItemResType = {
     nodeId: getNanoid(6),

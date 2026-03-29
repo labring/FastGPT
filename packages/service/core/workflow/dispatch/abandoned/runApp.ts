@@ -61,7 +61,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
     ...props,
-    usageId: undefined,
     runningAppInfo: {
       id: String(appData._id),
       name: appData.name,
@@ -107,12 +106,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       query: userChatInput,
       textOutput: text,
       totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: appData.name,
-        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
-      }
-    ]
+    }
   };
 };

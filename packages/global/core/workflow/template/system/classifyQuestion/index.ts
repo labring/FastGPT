@@ -33,10 +33,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   version: '4.9.2',
   courseUrl: '/docs/introduction/guide/dashboard/workflow/question_classify/',
   inputs: [
-    {
-      ...Input_Template_SelectAIModel,
-      filterTestModel: true
-    },
+    Input_Template_SelectAIModel,
     {
       ...Input_Template_System_Prompt,
       label: i18nT('common:core.module.input.label.Background'),

@@ -167,7 +167,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     } = await runWorkflow({
       ...props,
-      usageId: undefined,
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {
@@ -200,6 +199,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       childrenUsage: flowUsages,
       error: !!output?.pluginOutput?.error
     });
+    // Child run not push usage
+    props.usagePush([
+      {
+        moduleName: workflowTool.name,
+        totalPoints: usagePoints
+      }
+    ]);
+
     return {
       data: output ? output.pluginOutput : {},
       // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
@@ -216,12 +223,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           ? flowResponses
           : undefined
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: workflowTool.name,
-          totalPoints: usagePoints
-        }
-      ],
       [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput
         ? Object.keys(output.pluginOutput)
             .filter((key) => outputFilterMap[key])

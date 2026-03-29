@@ -177,9 +177,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         _systemDefaultModel.llm = Array.from(_llmModelMap.values())[0];
       }
       if (!_systemDefaultModel.datasetTextLLM) {
-        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values()).find(
-          (item) => !item.testMode
-        );
+        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values())[0];
       }
       if (!_systemDefaultModel.datasetImageLLM) {
         _systemDefaultModel.datasetImageLLM = Array.from(_llmModelMap.values()).find(

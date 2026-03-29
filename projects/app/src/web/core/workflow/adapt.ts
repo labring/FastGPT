@@ -187,8 +187,6 @@ type V1WorkflowType = {
     step?: number; // slider
     max?: number; // slider, number input
     min?: number; // slider, number input
-
-    filterTestModel?: boolean;
   }[];
   outputs: {
     type?: OutputTypeEnum;
@@ -313,8 +311,7 @@ export const v1Workflow2V2 = (
           markList: input.markList,
           step: input.step,
           max: input.max,
-          min: input.min,
-          filterTestModel: input.filterTestModel ?? false
+          min: input.min
         };
 
         if (input.key === 'userChatInput') {

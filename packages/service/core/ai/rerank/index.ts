@@ -87,6 +87,7 @@ export async function reRankRecall({
     return { results: [], inputTokens: 0 };
   }
 
+  // documentsTextArray 要跟 expandedDocuments 的顺序一致
   const documentsTextArray = expandedDocuments.map((doc) => doc.text);
 
   const { baseUrl, authorization } = getAxiosConfig();
@@ -130,7 +131,7 @@ export async function reRankRecall({
       data.results.forEach((item) => {
         const chunkId = expandedDocuments[item.index].id;
         const docId = chunkIdToDocIdMap.get(chunkId);
-
+        // 因为 data.results 是从高到低的，如果高分的同一个docId，则低分的不用处理
         if (!docId || existsId.has(docId)) return;
         existsId.add(docId);
         results.push({

@@ -681,7 +681,8 @@ export class WorkflowQueue {
   };
 
   private usagePush(usages: ChatNodeUsageType[]) {
-    if (this.data.usageId) {
+    // 暂时只有 root runtime 需要 push usage，child 的统一给到 root 去推送
+    if (this.isRootRuntime && this.data.usageId) {
       pushChatItemUsage({
         teamId: this.data.runningUserInfo.teamId,
         usageId: this.data.usageId,
@@ -1161,7 +1162,6 @@ export class WorkflowQueue {
       reasoningText,
       responseData,
       nodeResponses,
-      nodeDispatchUsages,
       toolResponses,
       assistantResponses,
       rewriteHistories,
@@ -1190,11 +1190,6 @@ export class WorkflowQueue {
       // Collect custom feedbacks
       if (customFeedbacks && Array.isArray(customFeedbacks)) {
         this.customFeedbackList = this.customFeedbackList.concat(customFeedbacks);
-      }
-
-      // Push usage in real time. Avoid a workflow usage a large number of points
-      if (nodeDispatchUsages) {
-        this.usagePush(nodeDispatchUsages);
       }
 
       if (

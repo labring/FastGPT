@@ -10,6 +10,7 @@
   "Start_end_time": "开始时间 / 结束时间",
   "Task_name": "任务名",
   "Task_name_placeholder": "请输入任务名",
+  "app_deleted": "应用已被删除",
   "app_required": "请选择评测应用",
   "app_response": "应用输出",
   "back": "退出",

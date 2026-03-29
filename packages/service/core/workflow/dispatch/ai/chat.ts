@@ -227,12 +227,22 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       return getNodeErrResponse({ error: responseEmptyTip });
     }
 
+    // Usage push
     const { totalPoints, modelName } = formatModelChars2Points({
       model: modelConstantsData.model,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
     const points = externalProvider.openaiAccount?.key ? 0 : totalPoints;
+    props.usagePush([
+      {
+        moduleName: name,
+        totalPoints: points,
+        model: modelName,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
+    ]);
 
     const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
 
@@ -251,18 +261,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           contextTotalLen: completeMessages.length,
           finishReason: finish_reason,
           llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
-        },
-        ...(points && {
-          [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-            {
-              moduleName: name,
-              totalPoints: points,
-              model: modelName,
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens
-            }
-          ]
-        })
+        }
       });
     }
 
@@ -288,15 +287,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         finishReason: finish_reason,
         llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: name,
-          totalPoints: points,
-          model: modelName,
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
-        }
-      ],
       [DispatchNodeResponseKeyEnum.toolResponses]: answerText
     };
   } catch (error) {

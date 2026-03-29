@@ -45,8 +45,6 @@ export const InputComponentPropsTypeSchema = z.object({
   min: z.number().optional(), // slider, number input
   precision: z.number().optional(), // number input
 
-  filterTestModel: z.boolean().optional(),
-
   canSelectFile: z.boolean().optional(), // file select
   canSelectImg: z.boolean().optional(), // file select
   canSelectVideo: z.boolean().optional(), // file select

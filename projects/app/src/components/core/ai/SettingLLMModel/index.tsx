@@ -13,7 +13,6 @@ import { useLatest } from 'ahooks';
 
 type Props = {
   defaultModel?: string;
-  filterTestModel?: boolean;
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
@@ -21,7 +20,6 @@ type Props = {
 
 const SettingLLMModel = ({
   defaultModel,
-  filterTestModel = false,
   defaultData,
   onChange,
   ...props
@@ -32,17 +30,9 @@ const SettingLLMModel = ({
   const model = defaultData.model;
 
   const { modelSet, modelList } = useMemoEnhance(() => {
-    const modelSet = new Set<string>();
-    const modelList = llmModelList.filter((modelData) => {
-      if (!filterTestModel || !modelData.testMode) {
-        modelSet.add(modelData.model);
-        return true;
-      }
-      return false;
-    });
-
+    const modelSet = new Set<string>(llmModelList.map((item) => item.model));
     return {
-      modelList,
+      modelList: llmModelList,
       modelSet
     };
   }, [llmModelList]);
