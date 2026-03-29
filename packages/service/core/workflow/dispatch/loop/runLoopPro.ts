@@ -245,6 +245,10 @@ async function runLoopProArrayMode(props: Props): Promise<Response> {
       break;
     }
 
+    if (loopEndList.length > 0) {
+      break;
+    }
+
     interactiveData = undefined;
     lastIndex = undefined;
   }

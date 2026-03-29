@@ -510,4 +510,112 @@ describe('checkLoopProConditionTermination', () => {
 
     expect(checkLoopProConditionTermination({ nodes, edges })).toBeUndefined();
   });
+
+  it('array mode passes without loopProEnd when loopStart exists', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'array' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toBeUndefined();
+  });
+
+  it('array mode (default when loopProMode omitted) passes without loopProEnd', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toBeUndefined();
+  });
+
+  it('returns loop_pro nodeId when loopStart is missing (array mode)', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'array' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toEqual(['loop-pro']);
+  });
+
+  it('condition mode fails when no termination node exists', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'condition' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toEqual(['loop-pro']);
+  });
 });

@@ -17,6 +17,7 @@ import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '../../input';
+import { getWorkflowBatchMaxConcurrencyCap } from '../../../runtime/workflowBatchLimits';
 
 export const BatchNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.batch,
@@ -42,13 +43,12 @@ export const BatchNode: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.batchParallelConcurrency,
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-      selectedTypeIndex: 0,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput],
       valueType: WorkflowIOValueTypeEnum.number,
       required: true,
       label: i18nT('workflow:batch_parallel_concurrency'),
       min: 1,
-      max: 10,
+      max: getWorkflowBatchMaxConcurrencyCap(),
       value: 5
     },
     {

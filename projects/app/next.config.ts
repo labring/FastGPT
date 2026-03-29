@@ -11,6 +11,9 @@ const isRspack = isDev && !isWebpack;
 
 const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_URL,
+  env: {
+    NEXT_PUBLIC_WORKFLOW_BATCH_MAX_CONCURRENCY: process.env.WORKFLOW_BATCH_MAX_CONCURRENCY ?? ''
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh-CN', 'zh-Hant'],
