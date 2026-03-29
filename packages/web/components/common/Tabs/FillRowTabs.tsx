@@ -15,19 +15,23 @@ type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   iconGap?: number;
 };
 
-const FillRowTabs = ({
-  list,
-  value,
-  onChange,
-  py = '2.5',
-  px = '4',
-  iconSize = '18px',
-  labelSize = 'sm',
-  iconGap = 2,
-  ...props
-}: Props) => {
+const FillRowTabs = (
+  {
+    list,
+    value,
+    onChange,
+    py = '2.5',
+    px = '4',
+    iconSize = '18px',
+    labelSize = 'sm',
+    iconGap = 2,
+    ...props
+  }: Props,
+  ref: React.Ref<HTMLDivElement>
+) => {
   return (
     <Box
+      ref={ref}
       display={'inline-flex'}
       px={'3px'}
       py={'3px'}
@@ -76,5 +80,5 @@ const FillRowTabs = ({
 };
 
 export default forwardRef(FillRowTabs) as <T>(
-  props: Props<T> & { ref?: React.Ref<HTMLSelectElement> }
+  props: Props<T> & { ref?: React.Ref<HTMLDivElement> }
 ) => JSX.Element;

@@ -113,23 +113,33 @@ export const calculateModelPrice = ({
   multiple?: number;
 }) => {
   const tiers = getRuntimeResolvedPriceTiers(config);
+  // 匹配梯度区间，左开右闭 (prevMax, maxInputTokens]
+  // 第一个梯度特殊处理为左闭右闭 [0, maxInputTokens]
   const getMatchingResolvedTier = (
     resolvedTiers: ModelPriceTierType[],
     currentInputTokens = 0
   ): ModelPriceTierType | undefined => {
     if (resolvedTiers.length === 0) return undefined;
 
-    const safeInputTokens = Math.max(0, currentInputTokens);
-    for (let i = resolvedTiers.length - 1; i >= 0; i--) {
+    for (let i = 0; i < resolvedTiers.length; i++) {
       const tier = resolvedTiers[i];
-      if (safeInputTokens >= (tier.minInputTokens ?? 0)) {
+      const maxInputTokens = tier.maxInputTokens;
+
+      // 开放末端梯度（无 maxInputTokens）
+      if (!maxInputTokens) {
+        return tier;
+      }
+
+      // 检查是否在当前梯度范围内
+      if (currentInputTokens <= maxInputTokens) {
         return tier;
       }
     }
 
-    return resolvedTiers[0];
+    // 如果都不匹配，返回最后一个梯度
+    return resolvedTiers[resolvedTiers.length - 1];
   };
-  const matchedTier = getMatchingResolvedTier(tiers, inputTokens);
+  const matchedTier = getMatchingResolvedTier(tiers, inputTokens / multiple);
 
   const totalPoints =
     (matchedTier?.inputPrice ?? 0) * (inputTokens / multiple) +

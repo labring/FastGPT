@@ -800,30 +800,32 @@ export const ModelEditModal = ({
       if (data.type === ModelTypeEnum.llm) {
         const priceTiers = sanitizeModelPriceTiers(data.priceTiers);
 
-        let currentLowerExclusiveBound = 1;
-        priceTiers.forEach((tier, index) => {
+        let currentLowerExclusiveBound = 0;
+
+        for (let index = 0; index < priceTiers.length; index++) {
+          const tier = priceTiers[index];
           const hasPrice =
             typeof tier.inputPrice === 'number' || typeof tier.outputPrice === 'number';
 
           if (!hasPrice) {
-            throw new Error(t('account:model.price_tier_price_required'));
+            return Promise.reject(t('account:model.price_tier_price_required'));
           }
 
           if (index < priceTiers.length - 1 && typeof tier.maxInputTokens !== 'number') {
-            throw new Error(t('account:model.price_tier_max_required'));
+            return Promise.reject(t('account:model.price_tier_max_required'));
           }
 
           if (
             typeof tier.maxInputTokens === 'number' &&
             tier.maxInputTokens <= currentLowerExclusiveBound
           ) {
-            throw new Error(t('account:model.price_tier_range_invalid'));
+            return Promise.reject(t('account:model.price_tier_range_invalid'));
           }
 
           if (typeof tier.maxInputTokens === 'number') {
             currentLowerExclusiveBound = tier.maxInputTokens;
           }
-        });
+        }
 
         data.priceTiers = priceTiers as any;
       }

@@ -53,7 +53,13 @@ export function getRerankModel(model?: string) {
   return global.reRankModelMap.get(model) || getDefaultRerankModel();
 }
 
-export const findAIModel = (model: string): SystemModelItemType | undefined => {
+export const findAIModel = (
+  model: string | SystemModelItemType
+): SystemModelItemType | undefined => {
+  if (typeof model === 'object') {
+    return model;
+  }
+
   return (
     global.llmModelMap.get(model) ||
     global.embeddingModelMap.get(model) ||

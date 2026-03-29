@@ -2,15 +2,20 @@
 import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
-export const ModelPriceTierSchema = z.object({
-  minInputTokens: z.number().min(0).optional(),
-  maxInputTokens: z.number().min(0).nullish().meta({
-    description:
-      'The maximum number of input tokens for this tier. If not provided, the tier is open-ended.'
-  }),
-  inputPrice: z.number(),
-  outputPrice: z.number()
-});
+export const ModelPriceTierSchema = z
+  .object({
+    minInputTokens: z.number().min(0).optional().meta({
+      description: '最小输入 tokens 值，单位: k/tokens'
+    }),
+    maxInputTokens: z.number().min(0).nullish().meta({
+      description: '最大输入 tokens 值，单位: k/tokens. 如果未提供，则视为无限大梯度。'
+    }),
+    inputPrice: z.number(),
+    outputPrice: z.number()
+  })
+  .meta({
+    description: '模型价格梯度, 为左开右闭规则。'
+  });
 export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
 
 const PriceTypeSchema = z.object({

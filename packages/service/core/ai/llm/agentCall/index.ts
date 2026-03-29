@@ -310,11 +310,12 @@ export const runAgentCall = async ({
     const totalPoints = userKey
       ? 0
       : formatModelChars2Points({
-          model: modelData.model,
+          model: modelData,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
         }).totalPoints;
     llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
+
     usagePush?.([
       {
         moduleName: i18nT('account_usage:agent_call'),
