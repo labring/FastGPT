@@ -512,7 +512,7 @@ export async function dispatchDatasetSearch(
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
           model: vectorModel!.name,
-          inputTokens: embeddingTokens,
+          inputTokens: embeddingTokens
         });
       nodeDispatchUsages.push({
         totalPoints: embeddingTotalPoints,
@@ -688,6 +688,14 @@ export async function dispatchDatasetSearch(
         // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
         ...(rerankError && { rerankError })
       },
+      ...((correctionData || faqAnswer) && {
+        [DispatchNodeResponseKeyEnum.newVariables]: {
+          // 设置全局变量 correct_mapping_answer
+          ...(correctionData && { hTRJXdb1: correctionData.correctedAnswer }),
+          // 设置全局变量 faqAnswer
+          ...(faqAnswer && { udQRlgfO: faqAnswer })
+        }
+      }),
       nodeDispatchUsages,
       [DispatchNodeResponseKeyEnum.toolResponses]:
         searchRes.length > 0
