@@ -61,13 +61,15 @@ function checkAgentModelAvailable(agentModel?: string): boolean {
 }
 
 /**
- * Check if PDF parsing service is available
+ * Check if custom parse URL is configured
+ * Key validation happens at parse time (throws error if url set but key missing)
  */
-function checkPdfParseServiceAvailable(): boolean {
-  const customPdfParse = global.systemEnv?.customPdfParse;
+function hasCustomParseUrl(): boolean {
+  return !!global.systemEnv?.customPdfParse?.url;
+}
 
-  // 与 readRawContentByFileBuffer 保持一致：url 和 key 均须配置才视为自定义服务可用
-  return !!(customPdfParse?.url && customPdfParse?.key) || !!customPdfParse?.doc2xKey;
+function hasDoc2xKey(): boolean {
+  return !!global.systemEnv?.customPdfParse?.doc2xKey;
 }
 
 /**
@@ -131,20 +133,11 @@ export function adaptiveAdjustConfig(params: AdaptiveConfigParams): AdaptiveConf
     adjustedEnhanceConfig.syntheticIndex = false;
   }
 
-  // 3. Check PDF parsing service availability (only for file import)
+  // 3. Check PDF parsing service - auto-enable if url configured, explicit false disables it
   if ('parseConfig' in modeConfig && modeConfig.parseConfig) {
     const parseConfig = modeConfig.parseConfig as { customPdfParse?: boolean };
-    if (parseConfig.customPdfParse && !checkPdfParseServiceAvailable()) {
-      adjustments.push({
-        field: 'customPdfParse',
-        originalValue: true,
-        adjustedValue: false,
-        reason: 'PDF parsing service not configured (customPdfParse.url and key, or doc2xKey required)'
-      });
-      adjustedParseConfig.customPdfParse = false;
-    } else {
-      adjustedParseConfig.customPdfParse = parseConfig.customPdfParse;
-    }
+    adjustedParseConfig.customPdfParse =
+      parseConfig.customPdfParse !== false && (hasCustomParseUrl() || hasDoc2xKey());
   }
 
   return {

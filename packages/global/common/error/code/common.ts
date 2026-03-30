@@ -13,7 +13,8 @@ export enum CommonErrEnum {
   pdfEncrypted = 'pdfEncrypted',
   pptxParseFailed = 'pptxParseFailed',
   fileTypeRequiresExternalParse = 'fileTypeRequiresExternalParse',
-  unsupportedFileType = 'unsupportedFileType'
+  unsupportedFileType = 'unsupportedFileType',
+  customParseMissingKey = 'customParseMissingKey'
 }
 const datasetErr = [
   {
@@ -55,6 +56,10 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.unsupportedFileType,
     message: i18nT('file:unsupported_file_type')
+  },
+  {
+    statusText: CommonErrEnum.customParseMissingKey,
+    message: i18nT('file:custom_parse_missing_key')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {
