@@ -62,7 +62,6 @@ type State = {
   aiproxyIdMap: NonNullable<InitDateResponse['aiproxyIdMap']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
-  datasetModelList: LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
@@ -166,7 +165,6 @@ export const useSystemStore = create<State>()(
         aiproxyIdMap: {},
         defaultModels: {},
         llmModelList: [],
-        datasetModelList: [],
         embeddingModelList: [],
         ttsModelList: [],
         reRankModelList: [],
@@ -238,7 +236,6 @@ export const useSystemStore = create<State>()(
             state.llmModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
               state.llmModelList;
-            state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
             state.embeddingModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.embedding) ??
               state.embeddingModelList;
@@ -272,7 +269,6 @@ export const useSystemStore = create<State>()(
           aiproxyIdMap: state.aiproxyIdMap,
           defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
-          datasetModelList: state.datasetModelList,
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,

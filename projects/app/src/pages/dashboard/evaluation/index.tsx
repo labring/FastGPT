@@ -224,7 +224,7 @@ const Evaluation = () => {
                         <Td>
                           <Flex alignItems={'center'} gap={1.5}>
                             <Avatar src={item.appAvatar} w={5} borderRadius={'4px'} />
-                            <Box color={'myGray.900'}>{item.appName}</Box>
+                            <Box color={'myGray.900'}>{t(item.appName)}</Box>
                           </Flex>
                         </Td>
                         <Td color={'myGray.900'}>

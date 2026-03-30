@@ -147,7 +147,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       customFeedbacks
     } = await runWorkflow({
       ...props,
-      usageId: undefined,
       lastInteractive: childrenInteractive,
       // Rewrite stream mode
       ...(system_forbid_stream
@@ -186,6 +185,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const { text } = chatValue2RuntimePrompt(assistantResponses);
 
     const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+    props.usagePush([
+      {
+        moduleName: appData.name,
+        totalPoints: usagePoints
+      }
+    ]);
 
     return {
       data: {
@@ -212,12 +217,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
         mergeSignId: props.node.nodeId
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: appData.name,
-          totalPoints: usagePoints
-        }
-      ],
       [DispatchNodeResponseKeyEnum.toolResponses]: text,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };

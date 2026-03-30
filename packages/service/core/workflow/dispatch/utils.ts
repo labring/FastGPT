@@ -6,8 +6,7 @@ import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workf
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
-import type {
-  ChatDispatchProps} from '@fastgpt/global/core/workflow/runtime/type';
+import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   type RuntimeNodeItemType,
   type SystemVariablesType
@@ -448,7 +447,6 @@ export const getNodeErrResponse = ({
   error,
   customErr,
   responseData,
-  nodeDispatchUsages,
   runTimes,
   newVariables,
   system_memories
@@ -456,7 +454,6 @@ export const getNodeErrResponse = ({
   error: any;
   customErr?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
-  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
@@ -464,7 +461,6 @@ export const getNodeErrResponse = ({
   const errorText = getErrText(error);
 
   return {
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
     [DispatchNodeResponseKeyEnum.memories]: system_memories,

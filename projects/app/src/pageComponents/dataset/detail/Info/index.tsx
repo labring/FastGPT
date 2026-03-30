@@ -38,7 +38,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
-  const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+  const { feConfigs, llmModelList, embeddingModelList, getVlmModelList } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -214,13 +214,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <AIModelSelector
               w={'100%'}
               value={agentModel.model}
-              list={datasetModelList.map((item) => ({
+              list={llmModelList.map((item) => ({
                 label: item.name,
                 value: item.model
               }))}
               fontSize={'mini'}
               onChange={(e) => {
-                const agentModel = datasetModelList.find((item) => item.model === e);
+                const agentModel = llmModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
                 return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();

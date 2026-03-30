@@ -127,6 +127,15 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       inputTokens: inputTokens,
       outputTokens: outputTokens
     });
+    props.usagePush([
+      {
+        moduleName: name,
+        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+        model: modelName,
+        inputTokens,
+        outputTokens
+      }
+    ]);
 
     return {
       data: {
@@ -146,16 +155,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         extractDescription: description,
         extractResult: arg,
         contextTotalLen: chatHistories.length + 2
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: name,
-          totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-          model: modelName,
-          inputTokens,
-          outputTokens
-        }
-      ]
+      }
     };
   } catch (error) {
     return getNodeErrResponse({ error });

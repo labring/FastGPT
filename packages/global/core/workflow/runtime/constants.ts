@@ -33,7 +33,6 @@ export enum DispatchNodeResponseKeyEnum {
   skipHandleId = 'skipHandleId', // skip handle id
   nodeResponse = 'responseData', // run node response
   nodeResponses = 'nodeResponses', // node responses
-  nodeDispatchUsages = 'nodeDispatchUsages', // the node bill.
   childrenResponses = 'childrenResponses', // Some nodes make recursive calls that need to be returned
   toolResponses = 'toolResponses', // The result is passed back to the tool node for use
   assistantResponses = 'assistantResponses', // assistant response
@@ -42,7 +41,10 @@ export enum DispatchNodeResponseKeyEnum {
   runTimes = 'runTimes', // run times
   newVariables = 'newVariables', // new variables
   memories = 'system_memories', // memories
-  customFeedbacks = 'customFeedbacks' // custom feedbacks
+  customFeedbacks = 'customFeedbacks', // custom feedbacks
+
+  /** @deprecated */
+  nodeDispatchUsages = 'nodeDispatchUsages' // the node bill.
 }
 
 export const needReplaceReferenceInputTypeList = [

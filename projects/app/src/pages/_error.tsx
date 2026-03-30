@@ -38,12 +38,6 @@ function Error() {
         title: '未配置语言模型',
         status: 'error'
       });
-    } else if (!llmModelList.some((item) => item.datasetProcess)) {
-      modelError = true;
-      toast({
-        title: '未配置知识库文件处理模型',
-        status: 'error'
-      });
     }
     if (embeddingModelList.length === 0) {
       modelError = true;

@@ -96,7 +96,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     const response = await runWorkflow({
       ...props,
-      usageId: undefined,
       lastInteractive: interactiveData?.childrenResponse,
       variables: newVariables,
       runtimeNodes,
@@ -115,7 +114,15 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     }
     loopResponseDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
-    totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
+
+    const itemUsagePoint = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
+    totalPoints += itemUsagePoint;
+    props.usagePush([
+      {
+        totalPoints: itemUsagePoint,
+        moduleName: `${name}-${index}`
+      }
+    ]);
 
     // Collect custom feedbacks
     if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
@@ -161,14 +168,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: totalPoints
-      ? [
-          {
-            totalPoints,
-            moduleName: name
-          }
-        ]
-      : [],
     [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined

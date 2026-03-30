@@ -2,13 +2,36 @@
 import { ModelTypeEnum } from './constants';
 import z from 'zod';
 
+export const ModelPriceTierSchema = z
+  .object({
+    minInputTokens: z.number().min(0).optional().meta({
+      description: '最小输入 tokens 值，单位: k/tokens'
+    }),
+    maxInputTokens: z.number().min(0).nullish().meta({
+      description: '最大输入 tokens 值，单位: k/tokens. 如果未提供，则视为无限大梯度。'
+    }),
+    inputPrice: z.number(),
+    outputPrice: z.number()
+  })
+  .meta({
+    description: '模型价格梯度, 为左开右闭规则。'
+  });
+export type ModelPriceTierType = z.infer<typeof ModelPriceTierSchema>;
+
 const PriceTypeSchema = z.object({
   charsPointsPrice: z.number().optional(), // 1k chars=n points; 60s=n points;
-  // If inputPrice is set, the input-output charging scheme is adopted
+  // 新版的梯度价格计算字段
+  priceTiers: z.array(ModelPriceTierSchema).optional().meta({
+    description:
+      'The price tiers for this model. If not provided, the model will use the default price tiers.'
+  }),
+
+  /** @deprecated */
   inputPrice: z.number().optional(), // 1k tokens=n points
+  /** @deprecated */
   outputPrice: z.number().optional() // 1k tokens=n points
 });
-type PriceType = z.infer<typeof PriceTypeSchema>;
+export type PriceType = z.infer<typeof PriceTypeSchema>;
 
 const BaseModelItemSchema = z.object({
   provider: z.string(),
@@ -42,12 +65,8 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   vision: z.boolean().optional(),
   reasoning: z.boolean().optional(),
 
-  // diff function model
-  datasetProcess: z.boolean().optional(), // dataset
-  usedInClassify: z.boolean().optional(), // classify
-  usedInExtractFields: z.boolean().optional(), // extract fields
-  usedInToolCall: z.boolean().optional(), // tool call
-  useInEvaluation: z.boolean().optional(), // evaluation
+  // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
+  testMode: z.boolean().optional(), // test mode flag
 
   functionCall: z.boolean(),
   toolChoice: z.boolean(),
@@ -59,7 +78,18 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   // LLM
   isDefaultDatasetTextModel: z.boolean().optional(),
   isDefaultDatasetImageModel: z.boolean().optional(),
-  isDefaultHelperBotModel: z.boolean().optional()
+  isDefaultHelperBotModel: z.boolean().optional(),
+
+  /** @deprecated */
+  datasetProcess: z.boolean().optional(), // dataset
+  /** @deprecated */
+  usedInClassify: z.boolean().optional(),
+  /** @deprecated */
+  usedInExtractFields: z.boolean().optional(),
+  /** @deprecated */
+  usedInToolCall: z.boolean().optional(),
+  /** @deprecated */
+  useInEvaluation: z.boolean().optional()
 });
 export type LLMModelItemType = z.infer<typeof LLMModelItemSchema>;
 
@@ -78,7 +108,8 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
 export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
 
 export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
-  type: z.literal(ModelTypeEnum.rerank)
+  type: z.literal(ModelTypeEnum.rerank),
+  maxToken: z.number().optional() // max input token for rerank query + one document
 });
 export type RerankModelItemType = z.infer<typeof RerankModelItemSchema>;
 

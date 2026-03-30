@@ -176,6 +176,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         }
         return (tool.systemKeyCost ?? 0) + (tool.currentCost ?? 0);
       })();
+      props.usagePush([
+        {
+          moduleName: name,
+          totalPoints: usagePoints
+        }
+      ]);
 
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
@@ -196,13 +202,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           moduleLogo: avatar,
           totalPoints: usagePoints
         },
-        [DispatchNodeResponseKeyEnum.toolResponses]: result,
-        [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-          {
-            moduleName: name,
-            totalPoints: usagePoints
-          }
-        ]
+        [DispatchNodeResponseKeyEnum.toolResponses]: result
       };
     } else if (toolConfig?.mcpTool?.toolId) {
       // pluginId: toolSetAppId/toolsetName/toolName

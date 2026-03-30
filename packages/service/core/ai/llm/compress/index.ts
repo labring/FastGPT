@@ -12,6 +12,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { parseJsonArgs } from '../../utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -22,11 +23,13 @@ const logger = getLogger(LogCategories.MODULE.AI.LLM);
 export const compressRequestMessages = async ({
   checkIsStopping,
   messages,
-  model
+  model,
+  userKey
 }: {
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messages: ChatCompletionMessageParam[];
   model: LLMModelItemType;
+  userKey?: OpenaiAccountType;
 }): Promise<{
   messages: ChatCompletionMessageParam[];
   usage?: ChatNodeUsageType;
@@ -74,6 +77,7 @@ export const compressRequestMessages = async ({
 
     const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
       isAborted: checkIsStopping,
+      userKey,
       body: {
         stream: true,
         model,
@@ -96,14 +100,16 @@ export const compressRequestMessages = async ({
       return { messages };
     }
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: model.model,
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
-    });
+    const totalPoints = userKey
+      ? 0
+      : formatModelChars2Points({
+          model: model.model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        }).totalPoints;
     const compressedUsage = {
       moduleName: i18nT('account_usage:compress_llm_messages'),
-      model: modelName,
+      model: model.name,
       totalPoints,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
@@ -176,22 +182,30 @@ function splitIntoChunks(content: string, chunkSize: number): string[] {
 export const compressLargeContent = async ({
   content,
   model,
-  maxTokens
+  maxTokens,
+  userKey
 }: {
   content: string;
   model: LLMModelItemType;
   maxTokens: number;
+  userKey?: OpenaiAccountType;
 }): Promise<{
   compressed: string;
   usage?: ChatNodeUsageType;
 }> => {
+  type CompressUsageType = {
+    inputTokens: number;
+    outputTokens: number;
+    totalPoints: number;
+  };
+
   async function chunkAndCompress(params: {
     content: string;
     maxTokens: number;
     model: LLMModelItemType;
   }): Promise<{
     compressed: string;
-    usage?: { inputTokens: number; outputTokens: number };
+    usage: CompressUsageType;
   }> {
     async function compressSingleChunk(params: {
       chunk: string;
@@ -200,7 +214,7 @@ export const compressLargeContent = async ({
       chunkIndex?: number;
     }): Promise<{
       compressed: string;
-      usage?: { inputTokens: number; outputTokens: number };
+      usage: CompressUsageType;
     }> {
       const { chunk, targetTokens, model, chunkIndex } = params;
 
@@ -225,6 +239,7 @@ export const compressLargeContent = async ({
       );
 
       const { answerText, usage } = await createLLMResponse({
+        userKey,
         body: {
           model,
           messages: [
@@ -245,9 +260,21 @@ export const compressLargeContent = async ({
       if (!answerText) {
         throw new Error('Empty response from LLM');
       }
+
+      const totalPoints = userKey
+        ? 0
+        : formatModelChars2Points({
+            model: model.model,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens
+          }).totalPoints;
+
       return {
         compressed: answerText.trim(),
-        usage
+        usage: {
+          ...usage,
+          totalPoints
+        }
       };
     }
 
@@ -267,9 +294,10 @@ export const compressLargeContent = async ({
       originTotalLength: content.length
     });
 
-    const usage = {
+    const usage: CompressUsageType = {
       inputTokens: 0,
-      outputTokens: 0
+      outputTokens: 0,
+      totalPoints: 0
     };
 
     const compressedChunks = await batchRun(chunks, async (chunk, index) => {
@@ -279,8 +307,10 @@ export const compressLargeContent = async ({
         model,
         chunkIndex: index
       });
-      usage.inputTokens += result.usage?.inputTokens || 0;
-      usage.outputTokens += result.usage?.outputTokens || 0;
+      usage.inputTokens += result.usage.inputTokens;
+      usage.outputTokens += result.usage.outputTokens;
+      usage.totalPoints += result.usage.totalPoints;
+
       return result.compressed;
     });
 
@@ -383,21 +413,15 @@ export const compressLargeContent = async ({
       model
     });
 
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: model.model,
-      inputTokens: result.usage?.inputTokens || 0,
-      outputTokens: result.usage?.outputTokens || 0
-    });
-
     // 格式化为 ChatNodeUsageType
     return {
       compressed: result.compressed.trim(),
       usage: {
         moduleName: i18nT('account_usage:llm_compress_text'),
-        model: modelName,
-        totalPoints,
-        inputTokens: result.usage?.inputTokens || 0,
-        outputTokens: result.usage?.outputTokens || 0
+        model: model.name,
+        totalPoints: result.usage.totalPoints,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens
       }
     };
   } catch (error) {
@@ -413,13 +437,15 @@ export const compressToolResponse = async ({
   model,
   currentMessagesTokens = 0,
   toolLength = 1,
-  reservedTokens = 8000
+  reservedTokens = 8000,
+  userKey
 }: {
   response: string;
   model: LLMModelItemType;
   currentMessagesTokens?: number;
   toolLength?: number;
   reservedTokens?: number; // 预留给输出的 token 数
+  userKey?: OpenaiAccountType;
 }): Promise<{
   compressed: string;
   usage?: ChatNodeUsageType;
@@ -446,6 +472,7 @@ export const compressToolResponse = async ({
   return compressLargeContent({
     content: response,
     model,
-    maxTokens
+    maxTokens,
+    userKey
   });
 };

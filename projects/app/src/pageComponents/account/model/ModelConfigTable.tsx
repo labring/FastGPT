@@ -49,6 +49,8 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { AddModelButton } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
+import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -101,32 +103,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.chat'),
-        priceLabel:
-          typeof item.inputPrice === 'number' ? (
-            <Box>
-              <Flex>
-                {`${t('common:Input')}:`}
-                <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-                  {item.inputPrice || 0}
-                </Box>
-                {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-              </Flex>
-              <Flex>
-                {`${t('common:Output')}:`}
-                <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-                  {item.outputPrice || 0}
-                </Box>
-                {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-              </Flex>
-            </Box>
-          ) : (
-            <Flex color={'myGray.700'}>
-              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-                {item.charsPointsPrice || 0}
-              </Box>
-              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-            </Flex>
-          ),
+        priceLabel: (
+          <PriceTiersLabel
+            config={item}
+            unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+          />
+        ),
         tagColor: 'blue'
       }));
     const formatVectorModelList = systemModelList
@@ -288,6 +270,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       charsPointsPrice: 0,
       inputPrice: undefined,
       outputPrice: undefined,
+      priceTiers: undefined,
 
       isCustom: true,
       isActive: true,
@@ -403,13 +386,16 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td fontSize={'sm'}>
                       <HStack>
                         <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                        <CopyBox
-                          value={showModelId ? item.model : item.name}
-                          color={'myGray.900'}
-                          fontWeight={'500'}
-                        >
-                          {showModelId ? item.model : item.name}
-                        </CopyBox>
+                        <Flex alignItems={'center'} gap={1} minW={0}>
+                          <CopyBox
+                            value={showModelId ? item.model : item.name}
+                            color={'myGray.900'}
+                            fontWeight={'500'}
+                          >
+                            {showModelId ? item.model : item.name}
+                          </CopyBox>
+                          {Boolean('testMode' in item && item.testMode) && <TestModeBetaTag />}
+                        </Flex>
                       </HStack>
                       <HStack mt={2}>
                         {item.contextToken && (
@@ -571,7 +557,6 @@ const DefaultModelModal = ({
   const {
     defaultModels,
     llmModelList,
-    datasetModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
@@ -704,14 +689,14 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.datasetTextLLM?.model}
-              list={datasetModelList.map((item) => ({
+              list={llmModelList.map((item) => ({
                 value: item.model,
                 label: item.name
               }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
-                  datasetTextLLM: datasetModelList.find((item) => item.model === e)
+                  datasetTextLLM: llmModelList.find((item) => item.model === e)
                 }));
               }}
             />

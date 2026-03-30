@@ -28,6 +28,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import PriceTiersLabel from '../PriceTiersLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
@@ -206,25 +207,11 @@ const AIChatSettingsModal = ({
             <Tbody>
               <Tr color={'myGray.900'}>
                 <Td pt={0} pb={2}>
-                  {typeof selectedModel?.inputPrice === 'number' ? (
-                    <>
-                      <Box>
-                        {t('common:support.wallet.Ai point every thousand tokens_input', {
-                          points: selectedModel?.inputPrice || 0
-                        })}
-                      </Box>
-                      <Box>
-                        {t('common:support.wallet.Ai point every thousand tokens_output', {
-                          points: selectedModel?.outputPrice || 0
-                        })}
-                      </Box>
-                    </>
-                  ) : (
-                    <>
-                      {t('common:support.wallet.Ai point every thousand tokens', {
-                        points: selectedModel?.charsPointsPrice || 0
-                      })}
-                    </>
+                  {!!selectedModel && (
+                    <PriceTiersLabel
+                      config={selectedModel}
+                      unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                    />
                   )}
                 </Td>
 

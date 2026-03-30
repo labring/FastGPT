@@ -49,7 +49,8 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
               ...(type === EmbeddingTypeEnm.db && model.dbConfig),
               ...(type === EmbeddingTypeEnm.query && model.queryConfig),
               model: model.model,
-              input: chunk
+              input: chunk,
+              encoding_format: 'float'
             },
             model.requestUrl
               ? {

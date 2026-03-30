@@ -22,6 +22,7 @@ import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -58,19 +59,12 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
     _systemModelList.push(model);
 
-    // Add default value
-    if (model.type === ModelTypeEnum.llm) {
-      model.datasetProcess = model.datasetProcess ?? true;
-      model.usedInClassify = model.usedInClassify ?? true;
-      model.usedInExtractFields = model.usedInExtractFields ?? true;
-      model.usedInToolCall = model.usedInToolCall ?? true;
-      model.useInEvaluation = model.useInEvaluation ?? true;
-    }
-
     if (model.isActive) {
       _systemActiveModelList.push(model);
 
       if (model.type === ModelTypeEnum.llm) {
+        model.priceTiers = getRuntimeResolvedPriceTiers(model);
+
         _llmModelMap.set(model.model, model);
         _llmModelMap.set(model.name, model);
         if (model.isDefault) {
@@ -144,14 +138,15 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         isCustom: false,
 
         ...(model.type === ModelTypeEnum.llm && {
-          maxResponse: model.maxTokens || 4000
+          maxResponse: model.maxTokens ?? 16000
         }),
 
         ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
           ? {
-              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 4000,
+              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 8000,
               defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
               fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+              /** @deprecated */
               maxTokens: undefined
             }
           : {})
@@ -182,9 +177,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         _systemDefaultModel.llm = Array.from(_llmModelMap.values())[0];
       }
       if (!_systemDefaultModel.datasetTextLLM) {
-        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values()).find(
-          (item) => item.datasetProcess
-        );
+        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values())[0];
       }
       if (!_systemDefaultModel.datasetImageLLM) {
         _systemDefaultModel.datasetImageLLM = Array.from(_llmModelMap.values()).find(

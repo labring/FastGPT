@@ -70,6 +70,15 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     inputTokens: inputTokens,
     outputTokens: outputTokens
   });
+  props.usagePush([
+    {
+      moduleName: name,
+      totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+      model: modelName,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens
+    }
+  ]);
 
   return {
     data: {
@@ -90,16 +99,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: name,
-        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-        model: modelName,
-        inputTokens: inputTokens,
-        outputTokens: outputTokens
-      }
-    ]
+    }
   };
 };
 

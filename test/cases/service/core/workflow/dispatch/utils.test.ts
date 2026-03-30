@@ -811,15 +811,12 @@ describe('getNodeErrResponse', () => {
   });
 
   it('should pass through optional fields', () => {
-    const usages = [{ totalPoints: 1, tokens: 100, moduleName: 'test' }] as any;
     const result = getNodeErrResponse({
       error: 'fail',
-      nodeDispatchUsages: usages,
       runTimes: 3,
       newVariables: { a: 1 },
       system_memories: { mem: 'val' }
     });
-    expect(result[DispatchNodeResponseKeyEnum.nodeDispatchUsages]).toBe(usages);
     expect(result[DispatchNodeResponseKeyEnum.runTimes]).toBe(3);
     expect(result[DispatchNodeResponseKeyEnum.newVariables]).toEqual({ a: 1 });
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({ mem: 'val' });

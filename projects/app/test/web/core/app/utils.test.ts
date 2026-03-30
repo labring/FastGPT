@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/utils';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
+import { appWorkflow2AgentForm } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
@@ -168,5 +169,31 @@ describe('getAppQGuideCustomURL', () => {
 
     const result = getAppQGuideCustomURL(appDetail);
     expect(result).toBe('');
+  });
+});
+
+describe('appWorkflow2AgentForm', () => {
+  it('should normalize dataset rerank fields from partial datasetParams', () => {
+    const result = appWorkflow2AgentForm({
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetParams,
+              value: {
+                datasets: [],
+                searchMode: 'embedding'
+              }
+            }
+          ]
+        } as any
+      ],
+      chatConfig: {} as any
+    });
+
+    expect(result.dataset.usingReRank).toBe(false);
+    expect(result.dataset.rerankModel).toBe('');
+    expect(result.dataset.rerankWeight).toBe(0.5);
   });
 });

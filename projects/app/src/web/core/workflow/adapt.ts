@@ -14,7 +14,6 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import type { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -188,8 +187,6 @@ type V1WorkflowType = {
     step?: number; // slider
     max?: number; // slider, number input
     min?: number; // slider, number input
-
-    llmModelType?: LLMModelTypeEnum;
   }[];
   outputs: {
     type?: OutputTypeEnum;
@@ -314,8 +311,7 @@ export const v1Workflow2V2 = (
           markList: input.markList,
           step: input.step,
           max: input.max,
-          min: input.min,
-          llmModelType: input.llmModelType
+          min: input.min
         };
 
         if (input.key === 'userChatInput') {

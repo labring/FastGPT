@@ -17,6 +17,9 @@ export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
   iconColor?: ImageProps['color'];
   title?: any;
+  contentPx?: ModalContentProps['px'];
+  contentPy?: ModalContentProps['py'];
+  headerPx?: ModalContentProps['px'];
   isCentered?: boolean;
   isLoading?: boolean;
   isOpen?: boolean;
@@ -38,6 +41,9 @@ const MyModal = ({
   iconColor,
   size = 'sm',
   showCloseButton = true,
+  contentPx = '8',
+  contentPy = '8',
+  headerPx,
   ...props
 }: MyModalProps) => {
   const { isPc } = useSystem();
@@ -77,7 +83,8 @@ const MyModal = ({
         position={'relative'}
         maxH={'80vh'}
         boxShadow={'3.5'}
-        padding={'8'}
+        px={contentPx}
+        py={contentPy}
         containerProps={{
           zIndex: props.zIndex
         }}
@@ -92,7 +99,7 @@ const MyModal = ({
             fontWeight={'500'}
             mb={6}
             py={0}
-            px={0}
+            px={headerPx ?? contentPx}
             gap={3}
           >
             {iconSrc && (

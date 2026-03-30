@@ -22,7 +22,6 @@ import {
   getSystemPrompt_ChatItemType,
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
-import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt } from './constants';
@@ -200,6 +199,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolDispatchFlowResponses, // tool flow response
       toolCallInputTokens,
       toolCallOutputTokens,
+      toolCallTotalPoints,
       completeMessages = [], // The actual message sent to AI(just save text)
       assistantResponses = [], // FastGPT system store assistant.value response
       finish_reason,
@@ -225,18 +225,15 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     })();
 
     // Usage computed
-    const { totalPoints: modelTotalPoints, modelName } = formatModelChars2Points({
-      model,
-      inputTokens: toolCallInputTokens,
-      outputTokens: toolCallOutputTokens
-    });
-    const modelUsage = externalProvider.openaiAccount?.key ? 0 : modelTotalPoints;
-
-    const toolUsages = toolDispatchFlowResponses.map((item) => item.flowUsages).flat();
-    const toolTotalPoints = toolUsages.reduce((sum, item) => sum + item.totalPoints, 0);
-
+    // modelName 直接从 toolModel 获取；totalPoints 使用预计算值，保证梯度计费正确
+    const modelName = toolModel.name;
+    const modelTotalPoints = toolCallTotalPoints;
+    const toolTotalPoints = toolDispatchFlowResponses
+      .map((item) => item.flowUsages)
+      .flat()
+      .reduce((sum, item) => sum + item.totalPoints, 0);
     // concat tool usage
-    const totalPointsUsage = modelUsage + toolTotalPoints;
+    const totalPointsUsage = modelTotalPoints + toolTotalPoints;
 
     // Preview assistant responses
     const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
@@ -264,21 +261,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         [DispatchNodeResponseKeyEnum.runTimes]: toolDispatchFlowResponses.reduce(
           (sum, item) => sum + item.runTimes,
           0
-        ),
-        ...(totalPointsUsage && {
-          [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-            // 模型本身的积分消耗
-            {
-              moduleName: name,
-              model: modelName,
-              totalPoints: modelUsage,
-              inputTokens: toolCallInputTokens,
-              outputTokens: toolCallOutputTokens
-            },
-            // 工具的消耗
-            ...toolUsages
-          ]
-        })
+        )
       });
     }
 
@@ -314,18 +297,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         finishReason: finish_reason,
         llmRequestIds: requestIds
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        // 模型本身的积分消耗
-        {
-          moduleName: name,
-          model: modelName,
-          totalPoints: modelUsage,
-          inputTokens: toolCallInputTokens,
-          outputTokens: toolCallOutputTokens
-        },
-        // 工具的消耗
-        ...toolUsages
-      ],
       [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
     };
   } catch (error) {

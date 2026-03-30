@@ -155,7 +155,6 @@ const EditForm = ({
             <Box flex={'1 0 0'}>
               <SettingLLMModel
                 bg="myGray.50"
-                llmModelType={'all'}
                 defaultData={{
                   model: appForm.aiSettings.model
                   // temperature: appForm.aiSettings.temperature,

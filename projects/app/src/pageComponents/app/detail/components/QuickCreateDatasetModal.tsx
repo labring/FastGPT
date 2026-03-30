@@ -45,12 +45,12 @@ const QuickCreateDatasetModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, datasetModelList } = useSystemStore();
+  const { defaultModels, embeddingModelList, llmModelList } = useSystemStore();
 
   const defaultVectorModel =
     defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model;
   const defaultAgentModel =
-    defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model;
+    defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model;
   const defaultVLLM = defaultModels.datasetImageLLM?.model;
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);

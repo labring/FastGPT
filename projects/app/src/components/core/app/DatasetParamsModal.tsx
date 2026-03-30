@@ -57,21 +57,26 @@ const DatasetParamsModal = ({
   onSuccess: (e: AppDatasetSearchParamsType) => void;
 }) => {
   const { t } = useTranslation();
-  const { teamPlanStatus } = useUserStore();
   const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
-  const chatModelSelectList = (() =>
-    llmModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
-  const reRankModelSelectList = (() =>
-    reRankModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
+  const queryExtensionModelList = useMemo(
+    () =>
+      llmModelList.map((item) => ({
+        value: item.model,
+        label: item.name
+      })),
+    [llmModelList]
+  );
+  const reRankModelSelectList = useMemo(
+    () =>
+      reRankModelList.map((item) => ({
+        value: item.model,
+        label: item.name
+      })),
+    [reRankModelList]
+  );
 
   const { register, setValue, getValues, handleSubmit, watch } =
     useForm<AppDatasetSearchParamsType>({
@@ -121,7 +126,7 @@ const DatasetParamsModal = ({
       setValue('datasetSearchExtensionModel', '');
     }
   }, [
-    chatModelSelectList,
+    queryExtensionModelList,
     datasetSearchUsingCfrForm,
     defaultModels.llm?.model,
     queryExtensionModel,
@@ -370,7 +375,7 @@ const DatasetParamsModal = ({
                     <SelectAiModel
                       width={'100%'}
                       value={queryExtensionModel}
-                      list={chatModelSelectList}
+                      list={queryExtensionModelList}
                       onChange={(val: any) => {
                         setValue('datasetSearchExtensionModel', val);
                       }}

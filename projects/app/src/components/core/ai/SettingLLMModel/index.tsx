@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
@@ -14,7 +13,6 @@ import { useLatest } from 'ahooks';
 
 type Props = {
   defaultModel?: string;
-  llmModelType?: `${LLMModelTypeEnum}`;
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
@@ -22,7 +20,6 @@ type Props = {
 
 const SettingLLMModel = ({
   defaultModel,
-  llmModelType = LLMModelTypeEnum.all,
   defaultData,
   onChange,
   ...props
@@ -33,30 +30,12 @@ const SettingLLMModel = ({
   const model = defaultData.model;
 
   const { modelSet, modelList } = useMemoEnhance(() => {
-    const modelSet = new Set<string>();
-    const modelList = llmModelList.filter((modelData) => {
-      if (!llmModelType) {
-        modelSet.add(modelData.model);
-        return true;
-      }
-      const filterField = llmModelTypeFilterMap[llmModelType];
-      if (!filterField) {
-        modelSet.add(modelData.model);
-        return true;
-      }
-      // @ts-ignore
-      if (!!modelData[filterField]) {
-        modelSet.add(modelData.model);
-        return true;
-      }
-      return false;
-    });
-
+    const modelSet = new Set<string>(llmModelList.map((item) => item.model));
     return {
-      modelList,
+      modelList: llmModelList,
       modelSet
     };
-  }, [llmModelList, llmModelType]);
+  }, [llmModelList]);
 
   // Set default model
   const lastDefaultModel = useLatest(defaultModel);

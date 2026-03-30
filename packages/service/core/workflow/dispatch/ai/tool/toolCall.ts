@@ -35,6 +35,7 @@ type ResponseType = {
   toolDispatchFlowResponses: ChildResponseItemType[];
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
+  toolCallTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
   completeMessages: ChatCompletionMessageParam[];
   assistantResponses: AIChatItemValueItemType[];
   finish_reason: CompletionFinishReason;
@@ -51,7 +52,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     ...workflowProps
   } = props;
   const {
-    res,
     checkIsStopping,
     requestOrigin,
     runtimeNodes,
@@ -60,6 +60,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     retainDatasetCite = true,
     externalProvider,
     workflowStreamResponse,
+    usagePush,
     params: {
       temperature,
       maxToken,
@@ -155,6 +156,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   const {
     inputTokens,
     outputTokens,
+    llmTotalPoints,
     completeMessages,
     assistantMessages,
     interactiveResponse,
@@ -180,8 +182,10 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       retainDatasetCite,
       useVision: aiChatVision
     },
-    isAborted: checkIsStopping,
+    childrenInteractiveParams,
     userKey: externalProvider.openaiAccount,
+    isAborted: checkIsStopping,
+    usagePush,
     onReasoning({ text }) {
       if (!aiChatReasoning) return;
       workflowStreamResponse?.({
@@ -298,7 +302,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           const toolRunResponse = await runWorkflow({
             ...workflowProps,
             runtimeNodes,
-            usageId: undefined,
             isToolCall: true
           });
 
@@ -352,7 +355,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         stop
       };
     },
-    childrenInteractiveParams,
     handleInteractiveTool: async ({ childrenResponse, toolParams }) => {
       initToolNodes(runtimeNodes, childrenResponse.entryNodeIds);
       initToolCallEdges(runtimeEdges, childrenResponse.entryNodeIds);
@@ -362,7 +364,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         lastInteractive: childrenResponse,
         runtimeNodes,
         runtimeEdges,
-        usageId: undefined,
         isToolCall: true
       });
       // console.dir(runtimeEdges, { depth: null });
@@ -420,6 +421,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     toolDispatchFlowResponses: toolRunResponses,
     toolCallInputTokens: inputTokens,
     toolCallOutputTokens: outputTokens,
+    toolCallTotalPoints: llmTotalPoints,
     completeMessages,
     assistantResponses,
     finish_reason,

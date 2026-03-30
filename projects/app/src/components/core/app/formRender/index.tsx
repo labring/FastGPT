@@ -15,8 +15,8 @@ import { isSecretValue } from '@fastgpt/global/common/secret/utils';
 import FileSelector from '../FileSelector/index';
 import { formatTime2YMDHMS, formatToISOWithTimezone } from '@fastgpt/global/common/string/time';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const InputRender = (props: InputRenderProps) => {
   const {
@@ -27,7 +27,8 @@ const InputRender = (props: InputRenderProps) => {
     isDisabled,
     isInvalid,
     placeholder,
-    bg = 'white'
+    bg = 'white',
+    modelList
   } = props;
 
   const { t } = useSafeTranslation();
@@ -202,12 +203,10 @@ const InputRender = (props: InputRenderProps) => {
       <AIModelSelector
         {...commonProps}
         cacheModel={false}
-        list={
-          llmModelList?.map((item) => ({
-            value: item.model,
-            label: item.name
-          })) || []
-        }
+        list={(modelList || llmModelList).map((item) => ({
+          value: item.model,
+          label: item.name
+        }))}
       />
     );
   }

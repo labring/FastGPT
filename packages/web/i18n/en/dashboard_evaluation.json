@@ -10,6 +10,7 @@
   "Start_end_time": "Start time / End time",
   "Task_name": "Task name",
   "Task_name_placeholder": "Please enter a task name",
+  "app_deleted": "App deleted",
   "app_required": "Please select the evaluation application",
   "app_response": "Application output",
   "back": "back",

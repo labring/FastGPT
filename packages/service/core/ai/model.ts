@@ -11,9 +11,9 @@ export const getLLMModel = (model?: string | LLMModelItemType) => {
 
 export const getDatasetModel = (model?: string) => {
   return (
-    Array.from(global.llmModelMap.values())
-      ?.filter((item) => item.datasetProcess)
-      ?.find((item) => item.model === model || item.name === model) ?? getDefaultLLMModel()
+    Array.from(global.llmModelMap.values())?.find(
+      (item) => item.model === model || item.name === model
+    ) ?? getDefaultLLMModel()
   );
 };
 
@@ -53,7 +53,13 @@ export function getRerankModel(model?: string) {
   return global.reRankModelMap.get(model) || getDefaultRerankModel();
 }
 
-export const findAIModel = (model: string): SystemModelItemType | undefined => {
+export const findAIModel = (
+  model: string | SystemModelItemType
+): SystemModelItemType | undefined => {
+  if (typeof model === 'object') {
+    return model;
+  }
+
   return (
     global.llmModelMap.get(model) ||
     global.embeddingModelMap.get(model) ||

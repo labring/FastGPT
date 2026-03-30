@@ -32,10 +32,12 @@ type RunAgentCallProps = {
     stream?: boolean;
   };
 
-  usagePush?: (usages: ChatNodeUsageType[]) => void;
+  usagePush: (usages: ChatNodeUsageType[]) => void;
+  isAborted: CreateLLMResponseProps['isAborted'];
   userKey?: CreateLLMResponseProps['userKey'];
-  isAborted?: CreateLLMResponseProps['isAborted'];
 
+  childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
+  // LLM 压缩后回调
   onCompressContext?: (usage: {
     modelName: string;
     inputTokens?: number;
@@ -43,7 +45,17 @@ type RunAgentCallProps = {
     totalPoints: number;
     seconds: number;
   }) => void;
-  childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
+  // 工具压缩后回调
+  onToolCompress?: (e: {
+    call: ChatCompletionMessageToolCall;
+    response: string;
+    usage: {
+      inputTokens: number;
+      outputTokens: number;
+      totalPoints: number;
+    };
+  }) => void;
+  // 处理交互工具
   handleInteractiveTool: (e: ToolCallChildrenInteractive['params']) => Promise<{
     response: string;
     assistantMessages: ChatCompletionMessageParam[];
@@ -51,6 +63,7 @@ type RunAgentCallProps = {
     interactive?: WorkflowInteractiveResponseType;
     stop?: boolean;
   }>;
+  // 处理工具响应
   handleToolResponse: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
@@ -61,15 +74,6 @@ type RunAgentCallProps = {
     interactive?: WorkflowInteractiveResponseType;
     stop?: boolean;
   }>;
-  onToolCompress?: (e: {
-    call: ChatCompletionMessageToolCall;
-    response: string;
-    usage: {
-      inputTokens: number;
-      outputTokens: number;
-      totalPoints: number;
-    };
-  }) => void;
 } & ResponseEvents;
 
 type RunAgentResponse = {
@@ -83,6 +87,7 @@ type RunAgentResponse = {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  llmTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
   compressInputTokens: number;
   compressOutputTokens: number;
   childrenUsages: ChatNodeUsageType[];
@@ -109,8 +114,8 @@ export const runAgentCall = async ({
   maxRunAgentTimes,
   body: { model, messages, max_tokens, tools, ...body },
 
-  usagePush,
   userKey,
+  usagePush,
   isAborted,
 
   onCompressContext,
@@ -154,6 +159,7 @@ export const runAgentCall = async ({
 
   let inputTokens: number = 0;
   let outputTokens: number = 0;
+  let llmTotalPoints: number = 0; // 每次 LLM 调用单独计价后累加，避免梯度计费错误
   let compressInputTokens = 0;
   let compressOutputTokens = 0;
   let finish_reason: CompletionFinishReason | undefined;
@@ -206,6 +212,7 @@ export const runAgentCall = async ({
         model: modelData.model,
         inputTokens: 0,
         outputTokens: 0,
+        llmTotalPoints: 0,
         compressInputTokens: 0,
         compressOutputTokens: 0,
         childrenUsages,
@@ -232,31 +239,20 @@ export const runAgentCall = async ({
     const result = await compressRequestMessages({
       checkIsStopping: isAborted,
       messages: requestMessages,
-      model: modelData
+      model: modelData,
+      userKey
     });
     requestMessages = result.messages;
     if (result.usage) {
       compressInputTokens += result.usage.inputTokens || 0;
       compressOutputTokens += result.usage.outputTokens || 0;
-      const compressedUsage = formatModelChars2Points({
-        model: modelData.model,
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens
-      });
-      const usage = {
-        moduleName: i18nT('account_usage:compress_llm_messages'),
-        model: compressedUsage.modelName,
-        totalPoints: compressedUsage.totalPoints,
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens
-      };
-      childrenUsages.push(usage);
-      usagePush?.([usage]);
+      childrenUsages.push(result.usage);
+      usagePush?.([result.usage]);
       onCompressContext?.({
-        modelName: compressedUsage.modelName,
+        modelName: modelData.name,
         inputTokens: result.usage.inputTokens,
         outputTokens: result.usage.outputTokens,
-        totalPoints: compressedUsage.totalPoints,
+        totalPoints: result.usage.totalPoints,
         seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
       });
     }
@@ -311,16 +307,20 @@ export const runAgentCall = async ({
     // Record usage
     inputTokens += usage.inputTokens;
     outputTokens += usage.outputTokens;
-    const agentUsage = formatModelChars2Points({
-      model: modelData.model,
-      inputTokens: usage.inputTokens,
-      outputTokens: usage.outputTokens
-    });
+    const totalPoints = userKey
+      ? 0
+      : formatModelChars2Points({
+          model: modelData,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        }).totalPoints;
+    llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
+
     usagePush?.([
       {
         moduleName: i18nT('account_usage:agent_call'),
-        model: agentUsage.modelName,
-        totalPoints: agentUsage.totalPoints,
+        model: modelData.name,
+        totalPoints,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens
       }
@@ -348,7 +348,7 @@ export const runAgentCall = async ({
         messages: cloneRequestMessages
       });
       childrenUsages.push(...toolUsages);
-      usagePush?.(toolUsages);
+      usagePush(toolUsages);
 
       // 5. Add tool response to messages
       // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
@@ -360,7 +360,8 @@ export const runAgentCall = async ({
           model: modelData,
           currentMessagesTokens,
           toolLength: toolCalls.length,
-          reservedTokens: 8000 // 预留 8k tokens 给输出
+          reservedTokens: 8000, // 预留 8k tokens 给输出
+          userKey
         });
       if (compressionUsage) {
         childrenUsages.push(compressionUsage);
@@ -369,9 +370,9 @@ export const runAgentCall = async ({
           call: tool,
           response: compressed_context,
           usage: {
-            inputTokens: compressionUsage.inputTokens || 0,
-            outputTokens: compressionUsage.outputTokens || 0,
-            totalPoints: compressionUsage.totalPoints || 0
+            inputTokens: compressionUsage.inputTokens!,
+            outputTokens: compressionUsage.outputTokens!,
+            totalPoints: compressionUsage.totalPoints!
           }
         });
       }
@@ -416,6 +417,7 @@ export const runAgentCall = async ({
     model: modelData.model,
     inputTokens,
     outputTokens,
+    llmTotalPoints,
     compressInputTokens,
     compressOutputTokens,
     childrenUsages,

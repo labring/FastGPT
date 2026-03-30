@@ -32,6 +32,7 @@ import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { PlanAgentParamsType } from './constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 const agentLogger = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -64,6 +65,7 @@ type DispatchPlanAgentProps = PlanAgentConfig &
     checkIsStopping: () => boolean;
     completionTools: ChatCompletionTool[];
     getSubAppInfo: GetSubAppInfoFnType;
+    userKey?: OpenaiAccountType;
   } & (InitialParams | ContinueParams | InteractiveParams);
 
 export type DispatchPlanAgentResponse = {
@@ -175,6 +177,7 @@ export const dispatchPlanAgent = async ({
   task,
   description,
   background,
+  userKey,
   ...props
 }: DispatchPlanAgentProps): Promise<DispatchPlanAgentResponse> => {
   const startTime = Date.now();
@@ -200,7 +203,6 @@ export const dispatchPlanAgent = async ({
   ];
 
   // 分类：query/user select/user form
-
   // 上一轮是 Ask 模式，进行工具调用拼接
   if (props.mode === 'interactive') {
     const lastMessages = props.planMessages[props.planMessages.length - 1];
@@ -254,6 +256,7 @@ export const dispatchPlanAgent = async ({
     requestId
   } = await createLLMResponse({
     isAborted: checkIsStopping,
+    userKey,
     body: {
       messages: requestMessages,
       ...requestParams
@@ -265,7 +268,19 @@ export const dispatchPlanAgent = async ({
   }
 
   const llmRequestIds: string[] = [requestId];
-  /* 
+  let totalPoints = 0; // 每次 LLM 调用单独计价后累加，避免梯度计费错误
+
+  // 初始调用的价格计算
+  const initialPoints = userKey
+    ? 0
+    : formatModelChars2Points({
+        model: modelData.model,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }).totalPoints;
+  totalPoints += initialPoints;
+
+  /*
     正常输出情况：
     1. text: 正常生成plan
     2. toolCall: 调用ask工具
@@ -300,6 +315,7 @@ export const dispatchPlanAgent = async ({
 
     const regenerateResponse = await createLLMResponse({
       isAborted: checkIsStopping,
+      userKey,
       body: {
         messages: [
           ...completeMessages,
@@ -311,10 +327,21 @@ export const dispatchPlanAgent = async ({
         ...requestParams
       }
     });
+    completeMessages = regenerateResponse.completeMessages;
+
+    // 再生成的价格计算（单独计价）
+    const regenPoints = userKey
+      ? 0
+      : formatModelChars2Points({
+          model: modelData.model,
+          inputTokens: regenerateResponse.usage.inputTokens,
+          outputTokens: regenerateResponse.usage.outputTokens
+        }).totalPoints;
+    totalPoints += regenPoints;
+    // 累加 tokens 仅用于展示
     usage.inputTokens += regenerateResponse.usage.inputTokens;
     usage.outputTokens += regenerateResponse.usage.outputTokens;
     llmRequestIds.push(regenerateResponse.requestId);
-    completeMessages = regenerateResponse.completeMessages;
 
     [askInteractive, plan] = await Promise.all([
       parseAskInteractive(regenerateResponse.toolCalls || []),
@@ -352,11 +379,8 @@ export const dispatchPlanAgent = async ({
     };
   })();
 
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: modelData.model,
-    inputTokens: usage.inputTokens,
-    outputTokens: usage.outputTokens
-  });
+  // 使用累加的价格（每次调用单独计价后累加），保证梯度计费正确
+  const modelName = modelData.name;
 
   const nodeId = getNanoid(6);
   const nodeResponse: ChatHistoryItemResType = {

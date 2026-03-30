@@ -17,7 +17,6 @@ import {
   Input_Template_UserChatInput
 } from '../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../tip';
-import { LLMModelTypeEnum } from '../../../ai/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../input';
 import { Output_Template_Error_Message } from '../output';
@@ -38,10 +37,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
   courseUrl: '/docs/introduction/guide/dashboard/workflow/tool/',
   version: '4.9.2',
   inputs: [
-    {
-      ...Input_Template_SettingAiModel,
-      llmModelType: LLMModelTypeEnum.all
-    },
+    Input_Template_SettingAiModel,
     {
       key: NodeInputKeyEnum.aiChatTemperature,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
