@@ -9,7 +9,11 @@ export enum CommonErrEnum {
   fileNotFound = 'fileNotFound',
   unAuthFile = 'unAuthFile',
   missingParams = 'missingParams',
-  inheritPermissionError = 'inheritPermissionError'
+  inheritPermissionError = 'inheritPermissionError',
+  pdfEncrypted = 'pdfEncrypted',
+  pptxParseFailed = 'pptxParseFailed',
+  fileTypeRequiresExternalParse = 'fileTypeRequiresExternalParse',
+  unsupportedFileType = 'unsupportedFileType'
 }
 const datasetErr = [
   {
@@ -35,6 +39,22 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.inheritPermissionError,
     message: 'error.inheritPermissionError'
+  },
+  {
+    statusText: CommonErrEnum.pdfEncrypted,
+    message: i18nT('file:pdf_encrypted_error')
+  },
+  {
+    statusText: CommonErrEnum.pptxParseFailed,
+    message: i18nT('file:pptx_parse_failed')
+  },
+  {
+    statusText: CommonErrEnum.fileTypeRequiresExternalParse,
+    message: i18nT('file:file_type_requires_external_parse')
+  },
+  {
+    statusText: CommonErrEnum.unsupportedFileType,
+    message: i18nT('file:unsupported_file_type')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

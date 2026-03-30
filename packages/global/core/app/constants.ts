@@ -16,11 +16,11 @@ export enum AppTypeEnum {
   mcpToolSet = 'toolSet', // 'mcp'
   httpToolSet = 'httpToolSet',
   hidden = 'hidden',
-  assistant = 'assistant',
 
   // deprecated
   tool = 'tool',
-  httpPlugin = 'httpPlugin'
+  httpPlugin = 'httpPlugin',
+  assistant = 'assistant'
 }
 
 export const AppFolderTypeList = [
@@ -34,12 +34,7 @@ export const ToolTypeList = [
   AppTypeEnum.httpToolSet,
   AppTypeEnum.workflowTool
 ];
-export const AppTypeList = [
-  AppTypeEnum.simple,
-  AppTypeEnum.agent,
-  AppTypeEnum.workflow,
-  AppTypeEnum.assistant
-];
+export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.agent, AppTypeEnum.workflow, AppTypeEnum.assistant];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
@@ -94,7 +89,7 @@ export const AssistantGlobalVarKey = {
 } as const;
 
 export const defaultFileExtensionTypes = {
-  canSelectFile: ['.pdf', '.docx', '.pptx', '.xlsx', '.txt', '.md', '.html', '.csv'],
+  canSelectFile: ['.pdf', '.docx', '.pptx', '.xls', '.xlsx', '.txt', '.md', '.html', '.csv'],
   canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
   canSelectVideo: ['.mp4', '.mov', '.avi', '.mpeg', '.webm'],
   canSelectAudio: ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.mpga'],
@@ -134,3 +129,4 @@ export const getUploadFileType = ({
   }
   return types.join(', ');
 };
+

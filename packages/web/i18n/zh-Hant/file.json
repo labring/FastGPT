@@ -43,7 +43,12 @@
   "template_strict_highlight": "嚴格按照模版",
   "total_files": "共{{selectFiles.length}}個文件",
   "upload_error_description": "單次僅支援上傳多個檔案或一個資料夾",
+  "pdf_encrypted_error": "此 PDF 已加密，無法解析，請上傳未加密的檔案",
+  "pptx_parse_failed": "PPT 檔案解析失敗，請確認檔案格式為 .pptx 且內容完整",
+  "file_type_requires_external_parse": ".ppt / .doc / .xls 格式需要設定外部解析服務（customPdfParse），請聯絡管理員",
+  "unsupported_file_type": "不支援的檔案類型，支援格式：txt, md, html, pdf, docx, pptx, xls, xlsx, csv",
   "upload_failed": "上傳失敗",
   "upload_file_error": "請上傳圖片",
   "uploading": "正在上傳..."
 }
+

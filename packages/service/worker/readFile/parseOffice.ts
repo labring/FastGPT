@@ -1,9 +1,12 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import fs from 'fs';
+import path from 'path';
 import decompress from 'decompress';
 import { DOMParser } from '@xmldom/xmldom';
 import { clearDirFiles } from '../../common/file/utils';
 import { addLog } from '../../common/system/log';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 const DEFAULTDECOMPRESSSUBLOCATION = '/tmp';
 
@@ -40,7 +43,7 @@ const parsePowerPoint = async ({
     files.length == 0 ||
     !files.map((file) => file.path).some((filename) => filename.match(slidesRegex))
   ) {
-    return Promise.reject('解析 PPT 失败');
+    return Promise.reject(new UserError(CommonErrEnum.pptxParseFailed));
   }
 
   // Sort files by slide number to ensure correct order
@@ -55,10 +58,24 @@ const parsePowerPoint = async ({
   // Returning an array of all the xml contents read using fs.readFileSync
   const xmlContentArray = await Promise.all(
     sortedFiles.map(async (file) => {
+      // 安全的路径拼接：防止路径遍历攻击
+      const safePath = path.join(decompressPath, file.path);
+      // 验证最终路径在目标目录内
+      const normalizedSafePath = path.normalize(safePath);
+      const normalizedDecompressPath = path.normalize(decompressPath);
+      if (!normalizedSafePath.startsWith(normalizedDecompressPath + path.sep)) {
+        addLog.error('Potential path traversal attack detected', {
+          decompressPath,
+          filePath: file.path,
+          resolvedPath: normalizedSafePath
+        });
+        throw new UserError(CommonErrEnum.pptxParseFailed);
+      }
+
       try {
-        return await fs.promises.readFile(`${decompressPath}/${file.path}`, encoding);
+        return await fs.promises.readFile(safePath, encoding);
       } catch (err) {
-        return await fs.promises.readFile(`${decompressPath}/${file.path}`, 'utf-8');
+        return await fs.promises.readFile(safePath, 'utf-8');
       }
     })
   );
@@ -120,21 +137,31 @@ export const parseOffice = async ({
     });
   }
 
-  const text = await (async () => {
-    try {
-      switch (extension) {
-        case 'pptx':
-          return parsePowerPoint({ filepath, decompressPath, encoding });
-        default:
-          return Promise.reject('只能读取 .pptx 文件');
-      }
-    } catch (error) {
-      addLog.error(`Load ppt error`, { error });
+  let text: string = '';
+  try {
+    switch (extension) {
+      case 'pptx':
+        text = await parsePowerPoint({ filepath, decompressPath, encoding });
+        break;
+      default:
+        throw new UserError(CommonErrEnum.pptxParseFailed);
     }
-    return '';
-  })();
+  } catch (error) {
+    if (error instanceof UserError) throw error;
+    addLog.error(`Load ppt error`, { error });
+    throw new UserError(CommonErrEnum.pptxParseFailed);
+  } finally {
+    try {
+      fs.unlinkSync(filepath);
+    } catch {
+      // ignore
+    }
+    try {
+      clearDirFiles(decompressPath);
+    } catch (error) {
+      addLog.warn('Failed to clean up temporary directory', { decompressPath, error });
+    }
+  }
 
-  fs.unlinkSync(filepath);
-  clearDirFiles(decompressPath);
   return text;
 };
