@@ -94,6 +94,14 @@ export default openai;
 export * from 'openai';
 export type { Stream };
 
+// Synonym Mapping for Prompt
+export type SynonymMappingForPrompt = {
+  standardizedTerm: string; // 标准词
+  synonymTerms: string[]; // 同义词列表
+  source: 'query' | 'chunk'; // 来源：查询词或chunk
+  chunkId?: string; // chunk来源时的ID
+};
+
 // Other
 export type PromptTemplateItem = {
   title: string;

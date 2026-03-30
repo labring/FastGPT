@@ -13,6 +13,10 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
 同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
 
+## 词汇映射说明
+
+{{synonymMappings}}
+
 ## 追溯展示规则
 
 - 使用 [id](CITE) 的格式来引用 <Cites></Cites> 中的知识，其中 CITE 是固定常量, id 为引文中的 id。
@@ -48,6 +52,10 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
       ['4.9.7']: `## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
+## 词汇映射说明
+
+{{synonymMappings}}
+
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
@@ -74,6 +82,10 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
       ['4.9.7']: `## 任务描述
 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
 同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
+
+## 词汇映射说明
+
+{{synonymMappings}}
 
 ## 追溯展示规则
 
@@ -114,6 +126,10 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
       ['4.9.7']: `## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
+## 词汇映射说明
+
+{{synonymMappings}}
+
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
@@ -147,6 +163,10 @@ export const Prompt_userQuotePromptList_EN: PromptTemplateItem[] = [
       ['4.9.7']: `## Task Description
 You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.
 To ensure credibility and traceability, you must append citation markers at the end of each paragraph to indicate which references were used.
+
+## Vocabulary Mapping
+
+{{synonymMappings}}
 
 ## Citation Rules
 
@@ -183,6 +203,10 @@ To ensure credibility and traceability, you must append citation markers at the 
       ['4.9.7']: `## Task Description
 As a Q&A assistant, you will use the data pairs provided within <QA></QA> to answer the question.
 
+## Vocabulary Mapping
+
+{{synonymMappings}}
+
 ## Response Requirements
 - Select one or more relevant Q&A pairs to answer.
 - Your response should closely match the content in <Answer></Answer>.
@@ -207,8 +231,12 @@ As a Q&A assistant, you will use the data pairs provided within <QA></QA> to ans
     desc: '',
     value: {
       ['4.9.7']: `## Task Description
-You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.  
+You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.
 To enhance credibility and traceability, you must append citation markers at the end of each paragraph to indicate which sources were referenced.
+
+## Vocabulary Mapping
+
+{{synonymMappings}}
 
 ## Citation Rules
 
@@ -220,7 +248,7 @@ To enhance credibility and traceability, you must append citation markers at the
 
 ## General Rules
 
-- If you are uncertain about the answer, clarify that you don’t know.
+- If you are uncertain about the answer, clarify that you don't know.
 - Keep your answer consistent with the content in <Cites></Cites>, but avoid mentioning that your knowledge comes from <Cites></Cites>.
 - Use Markdown syntax to format your response. Pay special attention to images, tables, and lists—output them completely and correctly.
 - If a relevant image is available, output only the image URL in Markdown format: [](url). Do not include alt text or descriptions.
@@ -248,6 +276,10 @@ You may ONLY use content from <Cites></Cites> as your knowledge source. Do not u
     value: {
       ['4.9.7']: `## Task Description
 As a Q&A assistant, you will answer questions using the data pairs provided within <QA></QA>.
+
+## Vocabulary Mapping
+
+{{synonymMappings}}
 
 ## Response Requirements
 - Select one or more relevant Q&A pairs to formulate your answer.
@@ -287,6 +319,10 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
 同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
 
+## 词汇映射说明
+
+{{synonymMappings}}
+
 ## 追溯展示规则
 
 - 使用 [id](CITE) 的格式来引用 <Cites></Cites> 中的知识，其中 CITE 是固定常量, id 为引文中的 id。
@@ -315,6 +351,10 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
       ['4.9.8']: `## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
+## 词汇映射说明
+
+{{synonymMappings}}
+
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
@@ -334,6 +374,10 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
       ['4.9.7']: `## 任务描述
 你是一个知识库回答助手，可以使用 <Cites></Cites> 中的内容作为你本次回答的参考。
 同时，为了使回答结果更加可信并且可追溯，你需要在每段话结尾添加引用标记，标识参考了哪些内容。
+
+## 词汇映射说明
+
+{{synonymMappings}}
 
 ## 追溯展示规则
 
@@ -367,6 +411,10 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
       ['4.9.7']: `## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
+## 词汇映射说明
+
+{{synonymMappings}}
+
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
@@ -394,6 +442,10 @@ export const Prompt_systemQuotePromptList_EN: PromptTemplateItem[] = [
 You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.
 
 To ensure credibility and traceability, you must append citation markers at the end of each paragraph to indicate which references were used.
+
+## Vocabulary Mapping
+
+{{synonymMappings}}
 
 ## Citation Rules
 
@@ -423,6 +475,10 @@ To ensure credibility and traceability, you must append citation markers at the 
       ['4.9.8']: `## Task Description
 As a Q&A assistant, you will use the data pairs provided within <QA></QA> to answer the question.
 
+## Vocabulary Mapping
+
+{{synonymMappings}}
+
 ## Response Requirements
 - Select one or more relevant Q&A pairs to answer.
 - Your response should closely match the content in <Answer></Answer>.
@@ -440,8 +496,12 @@ As a Q&A assistant, you will use the data pairs provided within <QA></QA> to ans
     desc: '',
     value: {
       ['4.9.7']: `## Task Description
-You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.  
+You are a knowledge base assistant. You may use the content within <Cites></Cites> as reference for your response.
 To enhance credibility and traceability, you must append citation markers at the end of each paragraph to indicate which sources were referenced.
+
+## Vocabulary Mapping
+
+{{synonymMappings}}
 
 ## Citation Rules
 
@@ -453,7 +513,7 @@ To enhance credibility and traceability, you must append citation markers at the
 
 ## General Rules
 
-- If you are uncertain about the answer, clarify that you don’t know.
+- If you are uncertain about the answer, clarify that you don't know.
 - Keep your answer consistent with the content in <Cites></Cites>, but avoid mentioning that your knowledge comes from <Cites></Cites>.
 - Use Markdown syntax to format your response. Pay special attention to images, tables, and lists—output them completely and correctly.
 - If a relevant image is available, output only the image URL in Markdown format: [](url). Do not include alt text or descriptions.
@@ -474,6 +534,10 @@ You may ONLY use content from <Cites></Cites> as your knowledge source. Do not u
     value: {
       ['4.9.7']: `## Task Description
 As a Q&A assistant, you will answer questions using the data pairs provided within <QA></QA>.
+
+## Vocabulary Mapping
+
+{{synonymMappings}}
 
 ## Response Requirements
 - Select one or more relevant Q&A pairs to formulate your answer.
@@ -496,7 +560,6 @@ You may ONLY use content from <QA></QA> as your knowledge source. Do not use you
 export const get_systemQuotePromptList = () => {
   return getLang() === LangEnum.en ? Prompt_systemQuotePromptList_EN : Prompt_systemQuotePromptList;
 };
-
 
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
@@ -567,7 +630,6 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 
 // Document quote prompt
 export const getDocumentQuotePrompt = (version?: string) => {
-
   const promptMapZh = {
     ['4.9.7']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
 <FilesContent>

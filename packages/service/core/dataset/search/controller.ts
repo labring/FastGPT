@@ -27,7 +27,7 @@ import { reRankRecall } from '../../../core/ai/rerank';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { jiebaSplit } from '../../../common/string/jieba/index';
+import { jiebaSplit, jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
@@ -39,6 +39,8 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension, getDatasetSqlResultLimit } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { formatDatasetDataValue } from '../data/controller';
+import { extractChunkSynonyms } from './synonym';
+import { MongoDatasetSynonymMapping } from '../synonym/mappingSchema';
 import {
   DBDatasetValueVectorTableName,
   DBDatasetVectorTableName,
@@ -654,6 +656,9 @@ export async function searchDatasetData(
               return;
             }
 
+            // 提取该 chunk 的同义词映射
+            const synonymMappings = extractChunkSynonyms(data, String(item.id));
+
             const result: SearchDataResponseItemType = {
               id: String(data._id),
               updateTime: data.updateTime,
@@ -668,7 +673,8 @@ export async function searchDatasetData(
               collectionId: String(data.collectionId),
               ...getCollectionSourceData(collection),
               score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }],
-              metadata: data.metadata
+              metadata: data.metadata,
+              synonymMappings: synonymMappings.length > 0 ? synonymMappings : undefined
             };
 
             return result;
@@ -698,12 +704,14 @@ export async function searchDatasetData(
     queries,
     limit,
     filterCollectionIdList,
-    forbidCollectionIdList
+    forbidCollectionIdList,
+    customWords = []
   }: {
     queries: string[];
     limit: number;
     filterCollectionIdList?: string[];
     forbidCollectionIdList: string[];
+    customWords?: string[];
   }): Promise<{
     fullTextRecallResults: SearchDataResponseItemType[][];
   }> => {
@@ -742,7 +750,8 @@ export async function searchDatasetData(
         queries,
         limit,
         filterCollectionIdList,
-        forbidCollectionIdList
+        forbidCollectionIdList,
+        customWords
       });
     }
   };
@@ -846,6 +855,9 @@ export async function searchDatasetData(
             return;
           }
 
+          // 提取该 chunk 的同义词映射
+          const synonymMappings = extractChunkSynonyms(data, String(item.id));
+
           return {
             id: String(data._id),
             datasetId: String(data.datasetId),
@@ -866,7 +878,8 @@ export async function searchDatasetData(
                 value: item.score || 0,
                 index
               }
-            ]
+            ],
+            synonymMappings: synonymMappings.length > 0 ? synonymMappings : undefined
           };
         })
         .filter((item) => {
@@ -891,23 +904,26 @@ export async function searchDatasetData(
     queries,
     limit,
     filterCollectionIdList,
-    forbidCollectionIdList
+    forbidCollectionIdList,
+    customWords = []
   }: {
     queries: string[];
     limit: number;
     filterCollectionIdList?: string[];
     forbidCollectionIdList: string[];
+    customWords?: string[];
   }): Promise<{
     fullTextRecallResults: SearchDataResponseItemType[][];
   }> => {
     const recallResults = await Promise.all(
       queries.map(async (query) => {
+        const jiebaSplitResult = await jiebaSplitWithCustomDict({ text: query, customWords });
         return (await MongoDatasetDataText.aggregate(
           [
             {
               $match: {
                 teamId: new Types.ObjectId(teamId),
-                $text: { $search: await jiebaSplit({ text: query }) },
+                $text: { $search: jiebaSplitResult },
                 datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
                 ...(filterCollectionIdList
                   ? {
@@ -1049,6 +1065,55 @@ export async function searchDatasetData(
       fullTextRecallResults
     };
   };
+
+  // 获取多个知识库的全部同义词词汇作为自定义词表
+  const getAllDatasetsSynonymWords = async (datasetIdList: string[]): Promise<string[]> => {
+    if (!datasetIdList || datasetIdList.length === 0) {
+      return [];
+    }
+
+    try {
+      const allMappings = await MongoDatasetSynonymMapping.find(
+        {
+          teamId: new Types.ObjectId(teamId),
+          datasetId: { $in: datasetIdList.map((id) => new Types.ObjectId(id)) }
+        },
+        'standardizedTerm synonymTerms'
+      ).lean();
+
+      const synonymWords = new Set<string>();
+
+      // 收集所有标准词和同义词
+      allMappings.forEach((mapping) => {
+        if (mapping.standardizedTerm) {
+          synonymWords.add(mapping.standardizedTerm);
+        }
+        if (mapping.synonymTerms && Array.isArray(mapping.synonymTerms)) {
+          mapping.synonymTerms.forEach((term) => {
+            if (term) {
+              synonymWords.add(term);
+            }
+          });
+        }
+      });
+
+      const result = Array.from(synonymWords);
+      addLog.debug('getAllDatasetsSynonymWords', {
+        datasetCount: datasetIdList.length,
+        totalSynonymWords: result.length,
+        words: result.slice(0, 10) // 仅打印前10个词用于debug
+      });
+
+      return result;
+    } catch (error) {
+      addLog.error('getAllDatasetsSynonymWords error', {
+        datasetIds: datasetIdList,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return [];
+    }
+  };
+
   const multiQueryRecall = async ({
     embeddingLimit,
     fullTextLimit
@@ -1186,12 +1251,17 @@ export async function searchDatasetData(
         forbidCollectionIdList,
         filterCollectionIdList
       }),
-      fullTextRecall({
-        queries,
-        limit: fullTextLimit,
-        filterCollectionIdList,
-        forbidCollectionIdList
-      })
+      (async () => {
+        // 获取知识库的全部同义词作为自定义词表
+        const synonymWords = await getAllDatasetsSynonymWords(datasetIds);
+        return await fullTextRecall({
+          queries,
+          limit: fullTextLimit,
+          filterCollectionIdList,
+          forbidCollectionIdList,
+          customWords: synonymWords //关联的全部同义词
+        });
+      })()
     ]);
 
     // rrf concat
@@ -1368,7 +1438,10 @@ export const defaultSearchDatasetData = async ({
         : undefined,
       embeddingModel: props.model,
       extensionBg: datasetSearchExtensionBg,
-      histories
+      histories,
+      isAssistant,
+      teamId: props.teamId,
+      datasetIds
     });
 
   // 新增：检索开始计时（问题改写之后）

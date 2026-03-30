@@ -134,6 +134,11 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         label: t('common:core.app.Quote templates'),
         icon: 'core/app/simpleMode/variable'
       },
+      {
+        key: 'synonymMappings',
+        label: t('common:core.app.Synonym mappings') || 'Synonym mappings',
+        icon: 'core/app/simpleMode/variable'
+      },
       ...(aiChatQuoteRole === 'user'
         ? [
             {

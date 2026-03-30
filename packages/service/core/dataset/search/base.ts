@@ -115,56 +115,59 @@ export const embeddingRecall = async ({
       })
   ]);
 
-  const embeddingRecallResults = recallResults.map((item) => {
-    const set = new Set<string>();
-    return (
-      item.results
-        .map((item, index) => {
-          const collection = collectionMaps.get(String(item.collectionId));
-          if (!collection) {
-            console.log('Collection is not found', item);
-            return;
-          }
+  const embeddingRecallResults = await Promise.all(
+    recallResults.map(async (item) => {
+      const set = new Set<string>();
+      const results: SearchDataResponseItemType[] = [];
 
-          const data = dataMaps.get(String(item.id));
-          if (!data) {
-            console.log('Data is not found', item);
-            return;
-          }
+      for (let index = 0; index < item.results.length; index++) {
+        const recallItem = item.results[index];
+        const collection = collectionMaps.get(String(recallItem.collectionId));
+        if (!collection) {
+          console.log('Collection is not found', recallItem);
+          continue;
+        }
 
-          const result: SearchDataResponseItemType = {
-            id: String(data._id),
-            updateTime: data.updateTime,
-            ...formatDatasetDataValue({
-              q: data.q,
-              a: data.a,
-              imageId: data.imageId,
-              imageDescMap: data.imageDescMap
-            }),
-            chunkIndex: data.chunkIndex,
-            datasetId: String(data.datasetId),
-            collectionId: String(data.collectionId),
-            ...getCollectionSourceData(collection),
-            score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
-          };
+        const data = dataMaps.get(String(recallItem.id));
+        if (!data) {
+          console.log('Data is not found', recallItem);
+          continue;
+        }
 
-          return result;
-        })
-        // 多个向量对应一个数据，每一路召回，保障数据只有一份，并且取最高排名
-        .filter((item) => {
-          if (!item) return false;
-          if (set.has(item.id)) return false;
-          set.add(item.id);
-          return true;
-        })
-        .map((item, index) => {
-          return {
-            ...item!,
-            score: item!.score.map((item) => ({ ...item, index }))
-          };
-        }) as SearchDataResponseItemType[]
-    );
-  });
+        // 多个向量对应一个数据，每一路召回，保障数据只有一份
+        if (set.has(data._id.toString())) {
+          continue;
+        }
+        set.add(data._id.toString());
+
+        const result: SearchDataResponseItemType = {
+          id: String(data._id),
+          updateTime: data.updateTime,
+          ...formatDatasetDataValue({
+            q: data.q,
+            a: data.a,
+            imageId: data.imageId,
+            imageDescMap: data.imageDescMap
+          }),
+          chunkIndex: data.chunkIndex,
+          datasetId: String(data.datasetId),
+          collectionId: String(data.collectionId),
+          ...getCollectionSourceData(collection),
+          score: [
+            {
+              type: SearchScoreTypeEnum.embedding,
+              value: recallItem?.score || 0,
+              index: results.length
+            }
+          ]
+        };
+
+        results.push(result);
+      }
+
+      return results;
+    })
+  );
 
   return {
     embeddingRecallResults,
