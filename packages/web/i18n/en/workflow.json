@@ -245,5 +245,7 @@
   "customer_service.answer_mode_summary": "LLM Summary",
   "customer_service.welcome_text_default": "Hello! How can I help you?",
   "correction_data_hit_check": "Whether correction data is matched",
-  "use_correction_data_reply": "Use correction data reply"
+  "use_correction_data_reply": "Use correction data reply",
+  "debug_file_url_input.doc_link_placeholder": "文档链接",
+  "debug_file_url_input.add_doc_link": "添加文档链接"
 }

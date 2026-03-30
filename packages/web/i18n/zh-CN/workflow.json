@@ -245,5 +245,7 @@
   "customer_service.answer_mode_summary": "模型总结",
   "customer_service.welcome_text_default": "您好，请问有什么可以帮您？",
   "correction_data_hit_check": "是否命中校正数据",
-  "use_correction_data_reply": "使用校正数据回复"
+  "use_correction_data_reply": "使用校正数据回复",
+  "debug_file_url_input.doc_link_placeholder": "文档链接",
+  "debug_file_url_input.add_doc_link": "添加文档链接"
 }
