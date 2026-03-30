@@ -39,6 +39,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ExceptionInfoModal from '../RefinedCollectionCard/ExceptionInfoModal';
+import BuildingAnimation from '../components/BuildingAnimation';
 
 const RefinedDataCard = () => {
   const router = useRouter();
@@ -68,6 +69,7 @@ const RefinedDataCard = () => {
   const [hasProcessedActiveId, setHasProcessedActiveId] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showExceptionModal, setShowExceptionModal] = useState(false);
+  const prevActiveTrainingStatusRef = useRef<string | undefined>(undefined);
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
@@ -134,11 +136,11 @@ const RefinedDataCard = () => {
       refreshDeps: [collectionId],
       manual: false,
       onError: () => {
-        // router.replace({
-        //   query: {
-        //     datasetId
-        //   }
-        // });
+        router.replace({
+          query: {
+            datasetId
+          }
+        });
       }
     }
   );
@@ -273,6 +275,7 @@ const RefinedDataCard = () => {
     total,
     Pagination,
     getData: fetchData,
+    pageNum,
     setData: setDatasetDataList,
     isLoading
   } = usePagination(getDatasetDataList, {
@@ -286,6 +289,26 @@ const RefinedDataCard = () => {
     refreshDeps: [debouncedSearchText, collectionId],
     EmptyTip: EmptyTipDom
   });
+
+  const hasTrainingData = useMemo(
+    () => datasetDataList.some((item) => item.trainingStatus === 'training'),
+    [datasetDataList]
+  );
+
+  // Polling when there are items in training status
+  useRequest(
+    async () => {
+      if (!hasTrainingData) return;
+      await fetchData(pageNum);
+    },
+    {
+      manual: false,
+      ready: hasTrainingData,
+      pollingInterval: hasTrainingData ? 6000 : undefined,
+      errorToast: '',
+      refreshDeps: [hasTrainingData, pageNum]
+    }
+  );
 
   // Manually trigger data fetch after page calculation
   React.useEffect(() => {
@@ -360,6 +383,21 @@ const RefinedDataCard = () => {
       fetchActiveDataDetail(firstId);
     }
   }, [datasetDataList, activeCardId, activeId, fetchActiveDataDetail, hasProcessedActiveId]);
+
+  // When the active item's trainingStatus changes in the list, re-fetch its detail
+  React.useEffect(() => {
+    if (!activeCardId) return;
+    const activeItem = datasetDataList.find((item) => item._id === activeCardId);
+    const currentStatus = activeItem?.trainingStatus;
+
+    if (
+      prevActiveTrainingStatusRef.current !== undefined &&
+      prevActiveTrainingStatusRef.current !== currentStatus
+    ) {
+      fetchActiveDataDetail(activeCardId);
+    }
+    prevActiveTrainingStatusRef.current = currentStatus;
+  }, [datasetDataList, activeCardId, fetchActiveDataDetail]);
 
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
@@ -806,7 +844,7 @@ const RefinedDataCard = () => {
               {/* Index List */}
               {activeDataDetail?.trainingStatus === 'training' ? (
                 <Flex direction={'column'} align={'center'} justify={'center'} flex={1} gap={2}>
-                  <MyIcon name={'core/dataset/loading'} w={'22px'} />
+                  <BuildingAnimation />
                   <Box fontSize={'sm'} color={'myGray.500'}>
                     {t('dataset:rebuilding_edit_tip')}
                   </Box>
