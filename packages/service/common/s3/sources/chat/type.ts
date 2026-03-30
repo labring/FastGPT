@@ -24,7 +24,8 @@ export const UploadChatFileSchema = z.object({
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
   buffer: z.instanceof(Buffer),
-  contentType: z.string().optional()
+  contentType: z.string().optional(),
+  expiredTime: z.date().optional()
 });
 
 export type UploadFileParams = z.infer<typeof UploadChatFileSchema>;

@@ -20,12 +20,14 @@ Image：{{imgCount}}
 export const getSandboxToolWorkflowResponse = ({
   name,
   logo,
+  toolId = SANDBOX_TOOL_NAME,
   input,
   response,
   durationSeconds
 }: {
   name: string;
   logo: string;
+  toolId?: string;
   input: Record<string, any>;
   response: string;
   durationSeconds: number;
@@ -36,7 +38,7 @@ export const getSandboxToolWorkflowResponse = ({
         moduleName: name,
         moduleType: FlowNodeTypeEnum.tool,
         moduleLogo: logo,
-        toolId: SANDBOX_TOOL_NAME,
+        toolId,
         toolInput: input,
         toolRes: response,
         totalPoints: 0,

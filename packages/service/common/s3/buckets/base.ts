@@ -197,18 +197,29 @@ export class S3BaseBucket {
   }
 
   async uploadFileByBuffer(params: UploadFileByBufferParams) {
-    const { key, buffer, contentType } = UploadFileByBufferSchema.parse(params);
+    const {
+      key,
+      buffer,
+      filename,
+      contentType,
+      expiredTime = addHours(new Date(), 1)
+    } = UploadFileByBufferSchema.parse(params);
 
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucketName,
-      expiredTime: addHours(new Date(), 1)
+      expiredTime
     });
 
     await this.client.uploadObject({
       key,
       body: buffer,
-      contentType: contentType || 'application/octet-stream'
+      contentType: contentType || 'application/octet-stream',
+      metadata: {
+        contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
+        originFilename: encodeURIComponent(filename),
+        uploadTime: new Date().toISOString()
+      }
     });
 
     return {

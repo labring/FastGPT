@@ -1,8 +1,9 @@
 import {
-  SANDBOX_TOOL_NAME,
+  SANDBOX_GET_FILE_URL_TOOL,
   SANDBOX_ICON,
   SANDBOX_NAME,
-  SANDBOX_TOOL_DESCRIPTION
+  SANDBOX_READ_FILE_TOOL_NAME,
+  SANDBOX_SHELL_TOOL
 } from '../../../ai/sandbox/constants';
 import type { I18nStringType } from '../../../../common/i18n/type';
 
@@ -12,7 +13,8 @@ export enum SubAppIds {
   model = 'model_agent',
   fileRead = 'file_read',
   datasetSearch = 'dataset_search',
-  sandboxTool = 'sandbox_shell'
+  sandboxTool = 'sandbox_shell',
+  sandboxGetFileUrl = 'sandbox_get_file_url'
 }
 
 export const systemSubInfo: Record<
@@ -22,7 +24,12 @@ export const systemSubInfo: Record<
   [SubAppIds.sandboxTool]: {
     name: SANDBOX_NAME,
     avatar: SANDBOX_ICON,
-    toolDescription: SANDBOX_TOOL_DESCRIPTION
+    toolDescription: SANDBOX_SHELL_TOOL.function.description!
+  },
+  [SubAppIds.sandboxGetFileUrl]: {
+    name: SANDBOX_READ_FILE_TOOL_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription: SANDBOX_GET_FILE_URL_TOOL.function.description!
   },
   [SubAppIds.plan]: {
     name: {
