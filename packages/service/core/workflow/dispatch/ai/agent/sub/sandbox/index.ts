@@ -86,17 +86,17 @@ export const dispatchSandboxShell = async ({
 };
 
 export const dispatchSandboxGetFileUrl = async ({
-  filePath,
+  paths,
   appId,
   userId,
   chatId,
   lang
 }: SandboxDispatchParams & {
-  filePath: string;
+  paths: string[];
 }): Promise<SandboxDispatchResult> => {
   const { input, response, durationSeconds } = await callSandboxTool({
     toolName: SANDBOX_GET_FILE_URL_TOOL_NAME,
-    rawArgs: JSON.stringify({ filePath }),
+    rawArgs: JSON.stringify({ paths }),
     appId,
     userId,
     chatId

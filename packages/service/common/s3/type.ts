@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Mimes } from './constants';
 import type { S3BaseBucket } from './buckets/base';
+import { Readable } from 'node:stream';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -63,7 +64,7 @@ export const UploadImage2S3BucketParamsSchema = z.object({
 export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketParamsSchema>;
 
 export const UploadFileByBufferSchema = z.object({
-  buffer: z.instanceof(Buffer),
+  body: z.union([z.instanceof(Buffer), z.string(), z.instanceof(Readable)]),
   contentType: z.string().optional(),
   key: z.string().nonempty(),
   filename: z.string().nonempty(),

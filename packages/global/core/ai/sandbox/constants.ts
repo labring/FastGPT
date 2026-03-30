@@ -34,7 +34,7 @@ export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SANDBOX_TOOL_NAME,
-    description: '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等',
+    description: '在独立 Linux 虚拟机环境中执行 shell 命令，支持文件操作、代码运行、包安装等',
     parameters: {
       type: 'object',
       properties: {
@@ -58,7 +58,7 @@ export const SANDBOX_READ_FILE_TOOL_NAME: I18nStringType = {
 };
 export const SANDBOX_GET_FILE_URL_TOOL_NAME = 'sandbox_get_file_url';
 export const SandboxGetFileUrlToolSchema = z.object({
-  filePath: z.string()
+  paths: z.array(z.string())
 });
 export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
   type: 'function',
@@ -68,12 +68,16 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
     parameters: {
       type: 'object',
       properties: {
-        filePath: {
-          type: 'string',
-          description: '文件访问路径，例如: output.csv'
+        paths: {
+          type: 'array',
+          items: {
+            type: 'string',
+            description: '文件访问路径，例如: output.csv'
+          },
+          description: '文件访问路径，例如: ["output.csv", "output.txt"]'
         }
       },
-      required: ['filePath']
+      required: ['paths']
     }
   }
 };

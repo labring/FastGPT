@@ -196,10 +196,10 @@ export class S3BaseBucket {
     return await this.client.generatePresignedGetUrl({ key, expiredSeconds: expires });
   }
 
-  async uploadFileByBuffer(params: UploadFileByBufferParams) {
+  async uploadFileByBody(params: UploadFileByBufferParams) {
     const {
       key,
-      buffer,
+      body,
       filename,
       contentType,
       expiredTime = addHours(new Date(), 1)
@@ -213,7 +213,7 @@ export class S3BaseBucket {
 
     await this.client.uploadObject({
       key,
-      body: buffer,
+      body,
       contentType: contentType || 'application/octet-stream',
       metadata: {
         contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,

@@ -420,7 +420,7 @@ export const masterCall = async ({
             }
 
             const result = await dispatchSandboxGetFileUrl({
-              filePath: toolParams.data.filePath,
+              paths: toolParams.data.paths,
               appId: runningAppInfo.id,
               userId: props.uid,
               chatId,

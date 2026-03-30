@@ -53,7 +53,7 @@ type UserChatItemValueItemType = {
 
 ## 三、S3 存储方案
 
-### 核心选择：`S3ChatSource.uploadChatFileByBuffer()`
+### 核心选择：`S3ChatSource.uploadChatFile()`
 
 | 字段 | 值 |
 |------|----|
@@ -66,9 +66,9 @@ type UserChatItemValueItemType = {
 
 ```
 getS3ChatSource()
-  └── uploadChatFileByBuffer({ appId, chatId, uId, filename, buffer, contentType })
+  └── uploadChatFile({ appId, chatId, uId, filename, buffer, contentType })
         └── getFileS3Key.chat(...)  →  key = "chat/{appId}/{uId}/{chatId}/{filename}"
-        └── uploadFileByBuffer({ key, buffer, contentType })
+        └── uploadFileByBody({ key, buffer, contentType })
               ├── MongoS3TTL.create({ expiredTime: +1h })   // 文件 1 小时后自动清理
               ├── client.uploadObject(...)
               └── returns { key, accessUrl }               // accessUrl 预签名 2h
@@ -327,7 +327,7 @@ for (const msg of msgs) {
 
 ### 5.3 `wechat/fileHandler.ts` — 新建文件处理模块
 
-图片和文件**统一存入 S3 私有桶**（`chat` source），通过 `S3ChatSource.uploadChatFileByBuffer()` 写入，
+图片和文件**统一存入 S3 私有桶**（`chat` source），通过 `S3ChatSource.uploadChatFile()` 写入，
 上传完成后用 `createGetChatFileURL()` 生成预签名 URL 传给 workflow。
 
 ```typescript
@@ -366,7 +366,7 @@ export async function downloadAndStoreMedia(params: {
 
     // 上传到 S3，返回 { key, accessUrl }
     // accessUrl 是 createExternalUrl({ key, expiredHours: 2 }) 的预签名 URL
-    const { key, accessUrl } = await chatSource.uploadChatFileByBuffer({
+    const { key, accessUrl } = await chatSource.uploadChatFile({
       appId,
       chatId,
       uId,

@@ -11,6 +11,7 @@ import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import path from 'path';
 import { jwtSignS3ObjectKey } from '../../../common/s3/utils';
 import { addHours } from 'date-fns';
+import { Readable } from 'stream';
 
 type SandboxToolCallParams = {
   toolName: string;
@@ -45,20 +46,28 @@ export const callSandboxTool = async ({
     if (!parsed.success) {
       return { input: {}, response: parsed.error.message, durationSeconds: getDuration() };
     }
-
     const { command, timeout } = parsed.data;
-    const instance = await getSandboxClient({ appId, userId, chatId });
-    const result = await instance.exec(command, timeout);
 
-    return {
-      input: { command, timeout },
-      response: JSON.stringify({
-        stdout: result.stdout,
-        stderr: result.stderr,
-        exitCode: result.exitCode
-      }),
-      durationSeconds: getDuration()
-    };
+    try {
+      const instance = await getSandboxClient({ appId, userId, chatId });
+      const result = await instance.exec(command, timeout);
+
+      return {
+        input: { command, timeout },
+        response: JSON.stringify({
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode
+        }),
+        durationSeconds: getDuration()
+      };
+    } catch (error: any) {
+      return {
+        input: { command, timeout },
+        response: getErrText(error),
+        durationSeconds: getDuration()
+      };
+    }
   }
 
   if (toolName === SANDBOX_GET_FILE_URL_TOOL_NAME) {
@@ -67,38 +76,43 @@ export const callSandboxTool = async ({
       return { input: {}, response: parsed.error.message, durationSeconds: getDuration() };
     }
 
-    const { filePath } = parsed.data;
+    const { paths } = parsed.data;
 
     try {
       const instance = await getSandboxClient({ appId, userId, chatId });
-      const filename = path.basename(filePath);
 
-      const stream = instance.provider.readFileStream(filePath);
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk);
-      }
-      const fileBuffer = Buffer.concat(chunks);
+      const result = await Promise.all(
+        paths.map(async (url) => {
+          const filename = path.basename(url);
+          const stream = instance.provider.readFileStream(url);
+          const readable = Readable.from(stream); // AsyncIterable<Uint8Array> → Readable
 
-      const chatBucket = getS3ChatSource();
-      const { key } = await chatBucket.uploadChatFileByBuffer({
-        appId,
-        chatId,
-        uId: userId,
-        filename,
-        buffer: fileBuffer,
-        expiredTime: addHours(new Date(), 2)
-      });
-      const url = jwtSignS3ObjectKey(key, addHours(new Date(), 2));
+          const chatBucket = getS3ChatSource();
+          const { key } = await chatBucket.uploadChatFile({
+            appId,
+            chatId,
+            uId: userId,
+            filename,
+            body: readable,
+            expiredTime: addHours(new Date(), 2)
+          });
+          const fileUrl = jwtSignS3ObjectKey(key, addHours(new Date(), 2));
+
+          return {
+            fileUrl,
+            filename
+          };
+        })
+      );
 
       return {
-        input: { filePath },
-        response: JSON.stringify({ url, expired: '2 hours', filename }),
+        input: { paths },
+        response: JSON.stringify(result),
         durationSeconds: getDuration()
       };
     } catch (error) {
       return {
-        input: { filePath },
+        input: { paths },
         response: `Get file URL error: ${getErrText(error)}`,
         durationSeconds: getDuration()
       };

@@ -72,7 +72,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return;
       } catch (error) {
-        console.log(32324242);
         return jsonRes(res, {
           code: 500,
           error
