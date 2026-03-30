@@ -63,7 +63,9 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     usageId
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
-  const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
+  // 只要系统配置了自定义解析服务 url，且 App 没有显式禁用（=== false），则自动启用
+  const hasCustomParseUrl = !!global.systemEnv?.customPdfParse?.url;
+  const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse !== false && hasCustomParseUrl;
 
   // Get files from histories
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);

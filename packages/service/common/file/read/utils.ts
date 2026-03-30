@@ -200,14 +200,13 @@ export const readRawContentByFileBuffer = async ({
   const getParseFn = (): (() => Promise<ReadFileResponse>) => {
     if (!customPdfParse) return systemParse;
     const cfg = global.systemEnv.customPdfParse;
-    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls'].includes(extension);
-    if (isDocumentType && cfg?.url && cfg?.key)
+    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'html', 'csv'].includes(extension);
+    if (isDocumentType && cfg?.url) {
+      if (!cfg?.key) return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
       return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+    }
     if (extension === 'pdf' && cfg?.doc2xKey)
       return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });
-    addLog.warn('Custom PDF parse enabled but no service configured, fallback to system parser', {
-      extension
-    });
     return systemParse;
   };
 
@@ -277,14 +276,13 @@ export const readS3FileContentByBuffer = async ({
   const getParseFn = (): (() => Promise<ReadFileResponse>) => {
     if (!customPdfParse) return systemParse;
     const cfg = global.systemEnv.customPdfParse;
-    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls'].includes(extension);
-    if (isDocumentType && cfg?.url && cfg?.key)
+    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'html', 'csv'].includes(extension);
+    if (isDocumentType && cfg?.url) {
+      if (!cfg?.key) return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
       return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+    }
     if (extension === 'pdf' && cfg?.doc2xKey)
       return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });
-    addLog.warn('Custom PDF parse enabled but no service configured, fallback to system parser', {
-      extension
-    });
     return systemParse;
   };
 

@@ -47,6 +47,7 @@
   "pptx_parse_failed": "PPT 文件解析失败，请确认文件格式为 .pptx 且内容完整",
   "file_type_requires_external_parse": ".ppt / .doc / .xls 格式需要配置外部解析服务（customPdfParse），请联系管理员",
   "unsupported_file_type": "不支持的文件类型，支持格式：txt, md, html, pdf, docx, pptx, xls, xlsx, csv",
+  "custom_parse_missing_key": "已配置自定义解析服务地址，但未填写 key，请联系管理员补充配置",
   "upload_failed": "上传异常",
   "upload_file_error": "请上传图片",
   "uploading": "正在上传..."
