@@ -15,6 +15,7 @@ import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import {
+  NodeInputKeyEnum,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -33,6 +34,8 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
+import DebugFileUrlInput from '../components/DebugFileUrlInput';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -161,7 +164,8 @@ export const useDebug = () => {
         nodeVariables: renderInputs.reduce((acc: Record<string, any>, input) => {
           const isReference = checkInputIsReference(input);
           if (isReference) {
-            acc[input.key] = undefined;
+            // 文件 URL 列表从空数组开始，避免显示引用格式数据
+            acc[input.key] = input.key === NodeInputKeyEnum.fileUrlList ? [] : undefined;
           } else if (typeof input.value === 'object') {
             acc[input.key] = JSON.stringify(input.value, null, 2);
           } else {
@@ -174,6 +178,7 @@ export const useDebug = () => {
       }
     });
     const { handleSubmit } = variablesForm;
+    const [debugUploading, setDebugUploading] = useState(false);
 
     const onClose = () => {
       setRuntimeNodeId(undefined);
@@ -191,6 +196,12 @@ export const useDebug = () => {
                 inputs: runtimeNode.inputs.map((input) => {
                   let parseValue = (() => {
                     try {
+                      // 文件列表：表单直接存储 string[] URL，无需转换
+                      if (input.key === NodeInputKeyEnum.fileUrlList) {
+                        const value = data.nodeVariables[input.key];
+                        return Array.isArray(value) ? value : [];
+                      }
+
                       if (
                         input.valueType === WorkflowIOValueTypeEnum.string ||
                         input.valueType === WorkflowIOValueTypeEnum.number ||
@@ -263,19 +274,35 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
-            {renderInputs.map((item) => (
-              <LabelAndFormRender
-                {...item}
-                key={item.key}
-                label={item.label}
-                required={item.required}
-                placeholder={t(item.placeholder || item.description)}
-                inputType={nodeInputTypeToInputType(item.renderTypeList)}
-                form={variablesForm}
-                fieldName={`nodeVariables.${item.key}`}
-                bg={'myGray.50'}
-              />
-            ))}
+            {renderInputs.map((item) => {
+              if (item.key === NodeInputKeyEnum.fileUrlList) {
+                return (
+                  <DebugFileUrlInput
+                    key={item.key}
+                    label={item.label}
+                    required={item.required}
+                    onChange={(urls) => variablesForm.setValue(`nodeVariables.${item.key}`, urls)}
+                    setUploading={setDebugUploading}
+                    fileSelectConfig={
+                      appDetail.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
+                    }
+                  />
+                );
+              }
+              return (
+                <LabelAndFormRender
+                  {...item}
+                  key={item.key}
+                  label={item.label}
+                  required={item.required}
+                  placeholder={t(item.placeholder || item.description)}
+                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                  form={variablesForm}
+                  fieldName={`nodeVariables.${item.key}`}
+                  bg={'myGray.50'}
+                />
+              );
+            })}
           </Box>
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
@@ -320,7 +347,13 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>{t('common:Run')}</Button>
+          <Button
+            isDisabled={debugUploading}
+            isLoading={debugUploading}
+            onClick={handleSubmit(onClickRun, onCheckRunError)}
+          >
+            {t('common:Run')}
+          </Button>
         </Flex>
       </MyRightDrawer>
     );
@@ -334,7 +367,8 @@ export const useDebug = () => {
     internalVar,
     filteredVar,
     runtimeNodeId,
-    onStartNodeDebug
+    onStartNodeDebug,
+    appDetail
   ]);
 
   return {

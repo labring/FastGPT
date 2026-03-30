@@ -9,7 +9,7 @@ import {
   HStack,
   ModalFooter,
   type BoxProps,
-  Checkbox,
+  // Checkbox,
   VStack
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
@@ -22,7 +22,7 @@ import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
+// import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileTypeSelector';
@@ -135,11 +135,19 @@ const FileSelect = ({
               borderRadius="md"
               p={4}
             >
-              <FileTypeSelectorPanel value={localValue} onChange={setLocalValue} />
+              <FileTypeSelectorPanel
+                value={localValue}
+                onChange={(newValue) => {
+                  setLocalValue({
+                    ...newValue,
+                    customPdfParse: newValue.canSelectFile
+                  });
+                }}
+              />
             </VStack>
           </VStack>
 
-          {localValue.canSelectFile && feConfigs?.showCustomPdfParse && (
+          {/* localValue.canSelectFile && feConfigs?.showCustomPdfParse && (
             <HStack justifyContent={'flex-start'} spacing={1} mt={2}>
               <Checkbox
                 isChecked={localValue.customPdfParse}
@@ -171,7 +179,7 @@ const FileSelect = ({
                 </MyTag>
               )}
             </HStack>
-          )}
+          ) */}
         </ModalBody>
         <ModalFooter>
           <Button
