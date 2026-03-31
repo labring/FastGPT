@@ -87,7 +87,7 @@ curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compo
 chmod +x /usr/local/bin/docker-compose
 # 验证安装
 docker -v
-docker-compose -v
+docker compose -v
 # 如失效，自行百度~
 ```
   </Tab>
@@ -173,7 +173,8 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 
 ```bash
 # 启动容器
-docker-compose up -d
+docker compose --profile prepull pull agent-sandbox-image && dockercompose up -d
+
 ```
 
 ### 5. 访问 FastGPT
@@ -261,8 +262,8 @@ mongo:
 3. 重启服务
 
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 4. 进入容器执行副本集合初始化
@@ -297,8 +298,8 @@ rs.status()
 修改完后重启：
 
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 ### 如何更新版本？
@@ -308,15 +309,14 @@ docker-compose up -d
 3. 执行下面命令会自动拉取镜像：
 
    ```bash
-   docker-compose pull
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. 执行初始化脚本（如果有）
 
 ### 如何自定义配置文件？
 
-修改`config.json`文件，并执行`docker-compose down`再执行`docker-compose up -d`重起容器。具体配置，参考[配置详解](/docs/self-host/config/json)。
+修改`config.json`文件，并执行`docker compose down`再执行`docker compose up -d`重起容器。具体配置，参考[配置详解](/docs/self-host/config/json)。
 
 ### 如何检查自定义配置文件是否挂载
 
@@ -327,7 +327,7 @@ docker-compose up -d
 
 1. 挂载目录不正确
 2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
-3. 修改后，没有`docker-compose down`再`docker-compose up -d`，restart是不会重新挂载文件的。
+3. 修改后，没有`docker compose down`再`docker compose up -d`，restart是不会重新挂载文件的。
 
 ### 如何检查环境变量是否正常加载
 

@@ -76,15 +76,46 @@ esac
 
 # ========== 3. 检测可用 IP ==========
 IP_LIST=()
+PRIMARY_IP=""
+
+# 尝试获取主路由 IP (默认网关对应的 IP)
 if command -v ip &>/dev/null; then
-    for ip in $(ip -4 addr show 2>/dev/null | awk '/inet / {split($2,a,"/"); print a[1]}' | grep -v '127.0.0.1'); do
-        IP_LIST+=("$ip")
+    PRIMARY_IP=$(ip route get 1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+fi
+
+# 获取所有物理/主要网卡 IP，过滤掉本地回环、Docker桥接、虚拟网卡等
+if command -v ip &>/dev/null; then
+    VALID_IPS=$(ip -4 -o addr show | grep -vE ' lo|docker[0-9]+|br-[a-z0-9]+|veth' | awk '{split($4,a,"/"); print a[1]}')
+    for ip in $VALID_IPS; do
+        if [ "$ip" != "127.0.0.1" ]; then
+            IP_LIST+=("$ip")
+        fi
     done
 elif command -v ifconfig &>/dev/null; then
     for ip in $(ifconfig 2>/dev/null | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'); do
         IP_LIST+=("$ip")
     done
 fi
+
+# 去重并确保 PRIMARY_IP 排在第一位
+UNIQUE_IPS=()
+if [ -n "$PRIMARY_IP" ]; then
+    UNIQUE_IPS+=("$PRIMARY_IP")
+fi
+
+for ip in "${IP_LIST[@]}"; do
+    match=false
+    for u_ip in "${UNIQUE_IPS[@]}"; do
+        if [ "$u_ip" == "$ip" ]; then
+            match=true
+            break
+        fi
+    done
+    if [ "$match" = false ]; then
+        UNIQUE_IPS+=("$ip")
+    fi
+done
+IP_LIST=("${UNIQUE_IPS[@]}")
 
 # 地址选择函数
 # 参数: $1=标题, $2=端口
@@ -96,8 +127,12 @@ select_address() {
     if [ ${#IP_LIST[@]} -gt 0 ]; then
         # 构建带完整地址的选项列表
         local opts=()
-        for ip in "${IP_LIST[@]}"; do
-            opts+=("http://$ip:$port")
+        for i in "${!IP_LIST[@]}"; do
+            if [ $i -eq 0 ] && [ -n "$PRIMARY_IP" ] && [ "${IP_LIST[$i]}" == "$PRIMARY_IP" ]; then
+                opts+=("http://${IP_LIST[$i]}:$port (推荐/主IP)")
+            else
+                opts+=("http://${IP_LIST[$i]}:$port")
+            fi
         done
         opts+=("其他 (手动输入)")
 
@@ -118,12 +153,12 @@ select_address() {
 }
 
 # ========== 4. 选择 S3 访问地址 (端口 9000) ==========
-select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认):" 9000
+select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000
 S3_ADDR="$SELECTED_ADDR"
 S3_CUSTOM=$SELECTED_CUSTOM
 
-# ========== 5. 选择 SSE MCP 访问地址 (端口 3005) ==========
-select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认):" 3005
+# ========== 5. 选择 SSE MCP 访问地址 (端口 3003) ==========
+select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003
 MCP_ADDR="$SELECTED_ADDR"
 MCP_CUSTOM=$SELECTED_CUSTOM
 
@@ -148,7 +183,7 @@ if [ -n "$MCP_ADDR" ]; then
     if $MCP_CUSTOM; then
         MCP_DISPLAY="$MCP_ADDR"
     else
-        MCP_DISPLAY="http://$MCP_ADDR:3005"
+        MCP_DISPLAY="http://$MCP_ADDR:3003"
     fi
 else
     MCP_DISPLAY="未设置"
@@ -237,7 +272,7 @@ if [ -n "$MCP_ADDR" ]; then
     if $MCP_CUSTOM; then
         MCP_ENDPOINT="$MCP_ADDR"
     else
-        MCP_ENDPOINT="http://$MCP_ADDR:3005"
+        MCP_ENDPOINT="http://$MCP_ADDR:3003"
     fi
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -258,10 +293,11 @@ fi
 # ========== 完成 ==========
 echo ""
 echo "配置下载成功! 后续操作:"
-echo "  1. 启动服务:   docker compose up -d"
-echo "  2. 开放端口:   3000, 9000, 3005"
-echo "  3. 访问服务:   http://localhost:3000"
-echo "  4. 登录服务:   默认账号为 'root', 密码为: '1234'"
-echo "  5. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
+echo "  1. 预热沙盒:   docker compose --profile prepull pull agent-sandbox-image"
+echo "  2. 启动服务:   docker compose up -d"
+echo "  3. 开放端口:   3000, 9000, 3003"
+echo "  4. 访问服务:   http://localhost:3000"
+echo "  5. 登录服务:   默认账号为 'root', 密码为: '1234'"
+echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 echo ""
 echo "详细文档: https://doc.fastgpt.cn/docs/self-host/deploy/docker"
