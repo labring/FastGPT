@@ -54,7 +54,7 @@ const SandboxInstanceSchema = new Schema({
 });
 
 SandboxInstanceSchema.index(
-  { appId: 1, userId: 1, chatId: 1 },
+  { provider: 1, appId: 1, userId: 1, chatId: 1 },
   {
     unique: true,
     partialFilterExpression: {
