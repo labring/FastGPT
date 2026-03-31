@@ -79,8 +79,7 @@ const vector = {
   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
 `,
     extra: `\
-configs:
-  init_sql:
+init_sql:
     name: init_sql
     content: |
       ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;

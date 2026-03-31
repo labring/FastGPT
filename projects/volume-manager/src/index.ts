@@ -27,7 +27,7 @@ app.use('/v1/*', async (c, next) => {
 app.route('/v1/volumes', volumeRoutes(service));
 
 const server = Bun.serve({
-  port: env.VM_PORT,
+  port: env.PORT,
   fetch: app.fetch
 });
 

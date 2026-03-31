@@ -303,9 +303,11 @@ ${{vec.db}}
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
-    image: opensandbox/server:v0.1.9
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
     container_name: opensandbox-server
     restart: always
+    ports: # 生产环境建议不要暴露
+      - 8090:8090
     networks:
       - fastgpt
     volumes:
@@ -314,7 +316,7 @@ ${{vec.db}}
       - source: opensandbox-config
         target: /etc/opensandbox/config.toml
     environment:
-      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
       interval: 10s
@@ -330,10 +332,10 @@ ${{vec.db}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # Docker 模式必须挂载（只读即可）
     environment:
-      - VM_RUNTIME=docker
-      - VM_AUTH_TOKEN=*x-volume-manager-auth-token # 对应 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
-      - VM_VOLUME_NAME_PREFIX=fastgpt-session # volume 名称前缀
-      - VM_LOG_LEVEL=info
+      VM_RUNTIME: docker
+      VM_AUTH_TOKEN: *x-volume-manager-auth-token # 对应 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
+      VM_VOLUME_NAME_PREFIX: fastgpt-session # volume 名称前缀
+      VM_LOG_LEVEL: info
     healthcheck:
       test:
         [
@@ -399,6 +401,7 @@ networks:
   vector:
 
 configs:
+  ${{vec.extra}}
   opensandbox-config:
     content: |
       [server]

@@ -105,7 +105,7 @@ type Props = {
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
-  const enableSandbox = teamPlanStatus?.standard?.enableSandbox;
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
 
   const filterProInputs = useMemoEnhance(() => {
