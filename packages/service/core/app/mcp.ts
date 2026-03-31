@@ -60,7 +60,7 @@ export class MCPClient {
       await this.client.connect(transport);
       return this.client;
     } catch (error) {
-      logger.debug('StreamableHTTP connect failed, falling back to SSE', { url: this.url, error });
+      await this.client.close().catch(() => {});
       await this.client.connect(
         new SSEClientTransport(new URL(this.url), {
           requestInit: {
