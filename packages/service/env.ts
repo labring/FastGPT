@@ -8,7 +8,7 @@ const BoolSchema = z
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 
-export const env = createEnv({
+const env = createEnv({
   server: {
     // ===== Agent sandbox =====
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
@@ -48,8 +48,8 @@ export const env = createEnv({
     APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
     DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
 
-    WORKFLOW_MAX_LOOP_TIMES: z.coerce.number().int().positive().default(100),
-    WORKFLOW_BATCH_MAX_CONCURRENCY: z.coerce.number().int().positive().default(10),
+    WORKFLOW_MAX_LOOP_TIMES: z.coerce.number().int().min(5).default(100),
+    WORKFLOW_BATCH_MAX_CONCURRENCY: z.coerce.number().int().min(5).default(10),
     WORKFLOW_BATCH_MAX_RETRY: z.coerce.number().int().min(0).default(5)
   },
   emptyStringAsUndefined: true,
@@ -59,3 +59,11 @@ export const env = createEnv({
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);
   }
 });
+
+if (env.WORKFLOW_BATCH_MAX_CONCURRENCY > env.WORKFLOW_MAX_LOOP_TIMES) {
+  throw new Error(
+    'Invalid environment: WORKFLOW_BATCH_MAX_CONCURRENCY must be <= WORKFLOW_MAX_LOOP_TIMES'
+  );
+}
+
+export { env };

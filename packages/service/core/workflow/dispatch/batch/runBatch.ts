@@ -66,8 +66,9 @@ type Response = DispatchNodeResultType<{
 
 const getRuntimeConcurrency = (raw: any) => {
   const num = Math.floor(Number(raw));
+  const upper = Math.min(env.WORKFLOW_BATCH_MAX_CONCURRENCY, env.WORKFLOW_MAX_LOOP_TIMES);
   if (!Number.isFinite(num)) return 5;
-  return Math.max(1, Math.min(env.WORKFLOW_BATCH_MAX_CONCURRENCY, num));
+  return Math.max(5, Math.min(upper, num));
 };
 const getRuntimeRetry = (raw: any) => {
   const num = Math.floor(Number(raw));

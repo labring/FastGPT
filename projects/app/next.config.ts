@@ -3,6 +3,23 @@ import path from 'path';
 import withBundleAnalyzerInit from '@next/bundle-analyzer';
 import withRspack from 'next-rspack';
 
+/** Align defaults with packages/service/env.ts (zod) */
+const assertWorkflowBatchEnv = () => {
+  const loopRaw = process.env.WORKFLOW_MAX_LOOP_TIMES;
+  const batchRaw = process.env.WORKFLOW_BATCH_MAX_CONCURRENCY;
+  const loopTimes = loopRaw === undefined || loopRaw === '' ? 100 : Math.floor(Number(loopRaw));
+  const batchConc = batchRaw === undefined || batchRaw === '' ? 10 : Math.floor(Number(batchRaw));
+  if (!Number.isFinite(loopTimes) || loopTimes < 5) {
+    throw new Error('[next.config] WORKFLOW_MAX_LOOP_TIMES must be an integer >= 5');
+  }
+  if (!Number.isFinite(batchConc) || batchConc < 5 || batchConc > loopTimes) {
+    throw new Error(
+      '[next.config] WORKFLOW_BATCH_MAX_CONCURRENCY must be an integer >= 5 and <= WORKFLOW_MAX_LOOP_TIMES'
+    );
+  }
+};
+assertWorkflowBatchEnv();
+
 const withBundleAnalyzer = withBundleAnalyzerInit({ enabled: process.env.ANALYZE === 'true' });
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -12,7 +29,8 @@ const isRspack = isDev && !isWebpack;
 const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_URL,
   env: {
-    NEXT_PUBLIC_WORKFLOW_BATCH_MAX_CONCURRENCY: process.env.WORKFLOW_BATCH_MAX_CONCURRENCY ?? ''
+    NEXT_PUBLIC_WORKFLOW_BATCH_MAX_CONCURRENCY: process.env.WORKFLOW_BATCH_MAX_CONCURRENCY ?? '',
+    NEXT_PUBLIC_WORKFLOW_MAX_LOOP_TIMES: process.env.WORKFLOW_MAX_LOOP_TIMES ?? ''
   },
   i18n: {
     defaultLocale: 'en',
