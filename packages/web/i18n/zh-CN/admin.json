@@ -122,7 +122,7 @@
   "type_empty": "type 不能为空",
   "quantity_must_be_positive": "数量必须大于0",
   "team_not_found": "未找到团队",
-  "dataset_training_rebuilding": "数据集正在训练或者重建中，请稍后再试",
+  "dataset_training_rebuilding": "数据集正在处理或者重建中，请稍后再试",
   "database_rebuilding_index": "数据库重建索引",
   "type_not_support": "暂不支持该类型消息",
   "send_verification_code_success": "发送验证码成功",
