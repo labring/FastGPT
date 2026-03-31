@@ -232,6 +232,16 @@ export const FlowValueTypeMap: Record<
   }
 };
 
+export const getFlowValueTypeMeta = (
+  valueType?: WorkflowIOValueTypeEnum | string | null
+): (typeof FlowValueTypeMap)[WorkflowIOValueTypeEnum] => {
+  if (valueType == null || valueType === '') {
+    return FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
+  }
+  const meta = FlowValueTypeMap[valueType as WorkflowIOValueTypeEnum];
+  return meta ?? FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
+};
+
 export const EDGE_TYPE = 'default';
 
 export const chatHistoryValueDesc = `{
