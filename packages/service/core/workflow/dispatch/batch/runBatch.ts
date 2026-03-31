@@ -181,6 +181,15 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
           });
         });
 
+        // if (process.env.NODE_ENV !== 'production') {
+        //   console.log('[dispatchBatch] runWorkflow try', {
+        //     batchModule: name,
+        //     itemIndex: index,
+        //     attempt,
+        //     retryTimesLimit: retryTimes
+        //   });
+        // }
+
         const response = await runWorkflow({
           ...props,
           usageId: undefined,
@@ -237,6 +246,15 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
         }
         return;
       } catch (error) {
+        // if (process.env.NODE_ENV !== 'production') {
+        //   console.warn('[dispatchBatch] runWorkflow error', {
+        //     batchModule: name,
+        //     itemIndex: index,
+        //     attempt,
+        //     error: getErrText(error),
+        //     willRetry: attempt < retryTimes
+        //   });
+        // }
         attempt++;
         if (attempt > retryTimes) {
           orderedRawResult[index] = {

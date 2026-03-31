@@ -526,6 +526,30 @@ export const getLoopProModeFromInputs = (
 };
 
 /**
+ * 是否允许删除「本不应删」的 loopProEnd（与画布 remove 校验一致）：
+ * - 同一 loopPro 下多个 End：可删；
+ * - 仅一个 End 且非 condition 模式（含缺省 array）：可删；
+ * - 仅一个 End 且 condition 模式：不可删。
+ */
+export const allowDeleteExtraLoopProEndNode = (
+  node: FlowNodeItemType,
+  allNodes: FlowNodeItemType[],
+  getNodeById: (id: string | null | undefined) => FlowNodeItemType | undefined,
+  parentNodeDeleted = false
+): boolean => {
+  if (node.flowNodeType !== FlowNodeTypeEnum.loopProEnd) return false;
+  if (!node.parentNodeId || parentNodeDeleted) return false;
+  const parent = getNodeById(node.parentNodeId);
+  if (parent?.flowNodeType !== FlowNodeTypeEnum.loopPro) return false;
+  const siblingEnds = allNodes.filter(
+    (n) => n.parentNodeId === node.parentNodeId && n.flowNodeType === FlowNodeTypeEnum.loopProEnd
+  );
+  if (siblingEnds.length > 1) return true;
+  const mode = parent.inputs?.find((i) => i.key === NodeInputKeyEnum.loopProMode)?.value;
+  return mode !== 'condition';
+};
+
+/**
  * loop_pro（strict 保存/调试）：
  * - array：仅需存在 Loop Start；可无 LoopProEnd（每轮子图跑完即下一项，遍历完数组即结束）。
  * - condition：须存在从 Loop Start 到 LoopProEnd / loopEnd 的有向路径。

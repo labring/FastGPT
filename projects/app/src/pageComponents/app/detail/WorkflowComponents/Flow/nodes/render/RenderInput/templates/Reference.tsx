@@ -103,10 +103,15 @@ export const useReference = ({
             <Flex alignItems={'center'}>
               <Avatar
                 src={resolveReferenceListNodeAvatar(node, getNodeById)}
-                w={isArray ? '1rem' : '1.05rem'}
+                w={isArray ? 4 : 5}
+                h={isArray ? 4 : 5}
                 borderRadius={'xs'}
+                objectFit={'contain'}
+                flexShrink={0}
               />
-              <Box ml={1}>{t(node.name as any)}</Box>
+              <Box ml={1} lineHeight={isArray ? '1rem' : '1.25rem'}>
+                {t(node.name as any)}
+              </Box>
             </Flex>
           ),
           value: node.nodeId,

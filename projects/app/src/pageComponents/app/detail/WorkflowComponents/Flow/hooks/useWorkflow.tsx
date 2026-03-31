@@ -36,6 +36,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { allowDeleteExtraLoopProEndNode } from '@/web/core/workflow/utils';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -673,24 +674,12 @@ export const useWorkflow = () => {
         const parentNodeDeleted = changes.find(
           (c) => c.type === 'remove' && c.id === node?.data.parentNodeId
         );
-        const allowDeleteExtraLoopProEnd =
-          node.data.flowNodeType === FlowNodeTypeEnum.loopProEnd &&
-          !!node.data.parentNodeId &&
-          !parentNodeDeleted &&
-          (() => {
-            const parent = getRawNodeById(node.data.parentNodeId);
-            if (parent?.data.flowNodeType !== FlowNodeTypeEnum.loopPro) return false;
-            const siblingEnds = nodes.filter(
-              (n) =>
-                n.data.parentNodeId === node.data.parentNodeId &&
-                n.data.flowNodeType === FlowNodeTypeEnum.loopProEnd
-            );
-            if (siblingEnds.length > 1) return true;
-            const mode = parent.data.inputs?.find(
-              (i) => i.key === NodeInputKeyEnum.loopProMode
-            )?.value;
-            return mode !== 'condition';
-          })();
+        const allowDeleteExtraLoopProEnd = allowDeleteExtraLoopProEndNode(
+          node.data,
+          nodes.map((n) => n.data),
+          (id) => getRawNodeById(id)?.data,
+          !!parentNodeDeleted
+        );
         // Forbidden delete && Parents are not deleted together
         if (node.data.forbidDelete && !parentNodeDeleted && !allowDeleteExtraLoopProEnd) {
           toast({

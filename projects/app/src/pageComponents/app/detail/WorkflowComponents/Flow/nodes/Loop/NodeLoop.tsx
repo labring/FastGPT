@@ -2,7 +2,7 @@
   loop / batch / loopPro 父节点：共用本组件；子画布尺寸与输入区逻辑按 flowNodeType 分支。
 */
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
@@ -41,7 +41,8 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { getWorkflowGlobalVariables, nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { LoopProEndNode } from '@fastgpt/global/core/workflow/template/system/loop/v2/loopProEnd';
 import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
@@ -64,10 +65,8 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs, isFolded, flowNodeType, catchError } = data;
   const isLoopPro = flowNodeType === FlowNodeTypeEnum.loopPro;
 
-  const { getNodeById, nodeIds, nodeAmount, getNodeList, systemConfigNode } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { getNodeById, nodeIds, nodeAmount, getNodeList, getNodes, setNodes, systemConfigNode } =
+    useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const resetParentNodeSizeAndPosition = useContextSelector(
@@ -313,6 +312,28 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [t]
   );
 
+  /** 数组模式可无 End；切到条件模式时需有终止节点，与新建 loopPro 时 list.tsx 注入位置一致 */
+  const injectLoopProEndIfMissingForCondition = useCallback(() => {
+    if (!isLoopPro) return;
+    const hasLoopProEnd = getNodeList().some(
+      (n) => n.parentNodeId === nodeId && n.flowNodeType === FlowNodeTypeEnum.loopProEnd
+    );
+    if (hasLoopProEnd) return;
+    const parentRf = getNodes().find((n) => n.id === nodeId);
+    if (!parentRf) return;
+    const { x, y } = parentRf.position;
+    const endNode = nodeTemplate2FlowNode({
+      template: LoopProEndNode as any,
+      position: { x: x + 420, y: y + 800 },
+      parentNodeId: nodeId,
+      selected: false,
+      t
+    });
+    setNodes((state) =>
+      state.map((n) => ({ ...n, selected: false })).concat({ ...endNode, selected: false })
+    );
+  }, [getNodeList, getNodes, isLoopPro, nodeId, setNodes, t]);
+
   const visibleInputs = useMemo(() => {
     if (!isLoopPro) return inputs;
     return inputs.filter((input) => {
@@ -479,6 +500,9 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!loopProModeInput || opt.value === loopProMode) return;
+                            if (opt.value === 'condition') {
+                              injectLoopProEndIfMissingForCondition();
+                            }
                             onChangeNode({
                               nodeId,
                               type: 'updateInput',

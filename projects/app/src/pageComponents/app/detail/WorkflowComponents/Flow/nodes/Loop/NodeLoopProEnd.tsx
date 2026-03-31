@@ -9,7 +9,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const menuForbid = {
   copy: true,
-  delete: true,
   debug: true
 } as const;
 
