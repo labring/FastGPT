@@ -124,7 +124,8 @@ export const useConfirm = (props?: {
 
       const isInputDeleteConfirmValid = !isInputDelete
         ? true
-        : !!customContentInputConfirmText && inputValue.trim() === customContentInputConfirmText;
+        : !!customContentInputConfirmText &&
+          inputValue.trim() === customContentInputConfirmText.trim();
 
       return (
         <MyModal
