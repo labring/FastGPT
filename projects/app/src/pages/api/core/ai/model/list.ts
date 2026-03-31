@@ -48,15 +48,13 @@ async function handler(
     priceTiers: model.priceTiers,
     isActive: model.isActive ?? false,
     isCustom: model.isCustom ?? false,
+    testMode: model?.testMode,
 
     // Tag
     contextToken:
       'maxContext' in model ? model.maxContext : 'maxToken' in model ? model.maxToken : undefined,
     vision: 'vision' in model ? model.vision : undefined,
-    toolChoice: 'toolChoice' in model ? model.toolChoice : undefined,
-
-    // LLM Model
-    testMode: 'testMode' in model ? model.testMode : undefined
+    toolChoice: 'toolChoice' in model ? model.toolChoice : undefined
   }));
 }
 

@@ -95,7 +95,7 @@
   "model.show_stop_sign": "Display stop sequence parameters",
   "model.show_top_p": "Show Top-p parameters",
   "model.test_mode": "Mark as test model",
-  "model.test_mode_tip": "After being turned on, the model is only used for AI dialogue and is not used for other model processing scenarios such as knowledge base file processing, text extraction, application evaluation, problem classification, tool calling nodes, etc.",
+  "model.test_mode_tip": "When enabled, the model will have a Beta logo added when selected.",
   "model.test_model": "Model testing",
   "model.tool_choice": "Tool choice",
   "model.tool_choice_tag": "ToolCall",

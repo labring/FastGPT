@@ -1150,14 +1150,12 @@ export const ModelEditModal = ({
             )}
             {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
             {CustomApi}
-            {isLLMModel && (
-              <SwitchField
-                label={t('account:model.test_mode')}
-                tip={t('account:model.test_mode_tip')}
-                field={'testMode'}
-                register={register}
-              />
-            )}
+            <SwitchField
+              label={t('account:model.test_mode')}
+              tip={t('account:model.test_mode_tip')}
+              field={'testMode'}
+              register={register}
+            />
           </Grid>
         </Section>
       </ModalBody>

@@ -154,7 +154,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
       return {
         model: item.model,
         name: item.name,
-        testMode: 'testMode' in item ? item.testMode : undefined,
+        testMode: item.testMode,
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: provider.name,

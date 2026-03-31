@@ -394,7 +394,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           >
                             {showModelId ? item.model : item.name}
                           </CopyBox>
-                          {Boolean('testMode' in item && item.testMode) && <TestModeBetaTag />}
+                          {item.testMode && <TestModeBetaTag />}
                         </Flex>
                       </HStack>
                       <HStack mt={2}>
