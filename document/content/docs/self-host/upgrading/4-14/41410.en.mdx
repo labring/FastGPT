@@ -1,0 +1,76 @@
+---
+title: 'V4.14.10'
+description: 'FastGPT V4.14.10 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Add agent-sandbox related configurations
+
+The following configuration adjustments are for `docker compose` deployments. `sealos` commercial users can contact support for an online sandbox service solution.
+
+Open the [latest yml deployment file](https://github.com/labring/FastGPT/blob/main/deploy/docker/global/docker-compose.pg.yml) and add the following:
+
+1. Add the `x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'` variable configuration at the top of the file.
+2. Add 3 new services: `opensandbox-server`, `volume-manager`, and `agent-sandbox-image`.
+3. Add `configs` (you can find this content at the bottom of the file, just copy and append it directly).
+4. Modify the `fastgpt` environment variables to include the following:
+
+```bash
+# ==================== Agent sandbox config ====================
+AGENT_SANDBOX_PROVIDER: opensandbox
+# OpenSandbox config (effective when PROVIDER: opensandbox)
+AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://opensandbox-server:8090
+AGENT_SANDBOX_OPENSANDBOX_API_KEY:
+AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.0.2
+# Volume persistence config (optional under opensandbox provider)
+AGENT_SANDBOX_ENABLE_VOLUME: true
+AGENT_SANDBOX_VOLUME_MANAGER_URL: http://volume-manager:3000
+AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
+```
+
+### 2. Modify the sandbox image name
+
+The image name under the original `sandbox` services needs to be changed from `fastgpt-sandbox` to `fastgpt-code-sandbox`.
+
+### 3. Update image tags
+
+- Update FastGPT image tag to: `v4.14.10`
+- Update FastGPT commercial image tag to: `v4.14.10`
+- Update fastgpt-plugin image tag to: `v0.5.6`
+- Update code-sandbox image tag to: `v4.14.10`
+
+Restart the service after updating.
+
+### 4. Update system tools and refresh icons
+
+Some system tool icons have been removed and replaced with image links, so some tool icons will be lost. You can update the system tools again (uninstall and reinstall, or directly import the pkg to overwrite).
+
+## 🚀 Features
+
+1. Added OpenSandbox docker deployment and adaptation, with support for data persistence via mounted volumes.
+2. Added sandbox file link reading tool, allowing AI to directly return file access links.
+3. Added WeChat Personal Account publishing channel.
+4. Added streaming output support for Lark publishing channel.
+5. The maximum directory limit can now be configured via environment variables.
+6. Added max limit configuration for rerank models to prevent rerank failures caused by exceeding the single document limit.
+7. Added tiered billing mode for LLMs and unified the billing push method.
+
+## ⚙️ Optimizations
+
+1. Optimized workflow runtime to reduce computational complexity.
+2. Added calculation limits for large variables to prevent thread blocking caused by high computational complexity.
+3. Removed configurations like "Used for knowledge base file processing" and "Used for question classification" from model settings, and unified them with a "Test Model" flag. Test models will have a special identifier and can only be used in AI chat; they will be filtered out in other scenarios.
+
+## 🐛 Bug Fixes
+
+1. Fixed an issue where the default values of global variables in sub-workflows were not taking effect.
+2. Fixed an issue where the configured rerank model was not displaying in agent mode.
+3. Fixed an issue where the output of the bge-m3 embedding vector model was always 0.
+4. Fixed a call failure caused by connection exceptions during concurrent MCP calls.
+5. Fixed security vulnerabilities in the login API.
+6. Fixed MCP SSRF security vulnerabilities.
+7. Fixed an issue where workflow tool errors were not properly caught.
+8. Fixed an issue where the default values of global variables in sub-workflows were not taking effect.

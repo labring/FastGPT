@@ -1,9 +1,11 @@
 {
   "tags": {
-    "fastgpt": "v4.14.9.5",
-    "fastgpt-sandbox": "v4.14.9.5",
-    "fastgpt-mcp_server": "v4.14.9",
-    "fastgpt-plugin": "v0.5.5",
+    "fastgpt": "v4.14.10",
+    "fastgpt-code-sandbox": "v4.14.10",
+    "fastgpt-mcp_server": "v4.14.10",
+    "fastgpt-plugin": "v0.5.6",
+    "volume-manager": "v0.0.2",
+    "agent-sandbox-image": "v0.0.2",
     "aiproxy": "v0.3.5",
     "aiproxy-pg": "0.8.0-pg15",
     "mongo": "5.0.32",
@@ -14,17 +16,16 @@
     "milvus-etcd": "v3.5.5",
     "milvus-standalone": "v2.4.3",
     "oceanbase": "4.3.5-lts",
-    "seekdb": "1.0.1.0-100000392025122619",
-    "opensandbox-server": "v0.1.7",
-    "opensandbox-execd": "v1.0.7",
-    "opensandbox-egress": "v1.0.1"
+    "seekdb": "1.0.1.0-100000392025122619"
   },
   "images": {
     "cn": {
       "fastgpt": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt",
       "fastgpt-plugin": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin",
-      "fastgpt-sandbox": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox",
+      "fastgpt-code-sandbox": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox",
       "fastgpt-mcp_server": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server",
+      "volume-manager": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager",
+      "agent-sandbox-image": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox",
       "aiproxy": "registry.cn-hangzhou.aliyuncs.com/labring/aiproxy",
       "aiproxy-pg": "registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector",
       "mongo": "registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo",
@@ -35,16 +36,14 @@
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
       "oceanbase": "oceanbase/oceanbase-ce",
-      "seekdb": "oceanbase/seekdb",
-      "opensandbox-server": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server",
-      "opensandbox-execd": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd",
-      "opensandbox-egress": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress"
+      "seekdb": "oceanbase/seekdb"
     },
     "global": {
       "fastgpt": "ghcr.io/labring/fastgpt",
       "fastgpt-plugin": "ghcr.io/labring/fastgpt-plugin",
-      "fastgpt-sandbox": "ghcr.io/labring/fastgpt-sandbox",
+      "fastgpt-code-sandbox": "ghcr.io/labring/fastgpt-code-sandbox",
       "fastgpt-mcp_server": "ghcr.io/labring/fastgpt-mcp_server",
+      "volume-manager": "ghcr.io/labring/fastgpt-agent-volume-manager",
       "aiproxy": "ghcr.io/labring/aiproxy",
       "aiproxy-pg": "pgvector/pgvector",
       "mongo": "mongo",
@@ -55,10 +54,7 @@
       "milvus-etcd": "quay.io/coreos/etcd",
       "milvus-standalone": "milvusdb/milvus",
       "oceanbase": "oceanbase/oceanbase-ce",
-      "seekdb": "oceanbase/seekdb",
-      "opensandbox-server": "opensandbox/server",
-      "opensandbox-execd": "opensandbox/execd",
-      "opensandbox-egress": "opensandbox/egress"
+      "seekdb": "oceanbase/seekdb"
     }
   }
 }

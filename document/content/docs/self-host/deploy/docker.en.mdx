@@ -87,7 +87,7 @@ curl -L https://github.com/docker/compose/releases/download/v2.20.3/docker-compo
 chmod +x /usr/local/bin/docker-compose
 # Verify installation
 docker -v
-docker-compose -v
+docker compose -v
 # If it fails, search online for solutions
 ```
   </Tab>
@@ -173,7 +173,7 @@ Run in the same directory as docker-compose.yml. Ensure `docker-compose` version
 
 ```bash
 # Start containers
-docker-compose up -d
+docker compose --profile prepull pull agent-sandbox-image && docker compose up -d
 ```
 
 ### 5. Access FastGPT
@@ -260,8 +260,8 @@ mongo:
 3. Restart services:
 
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 4. Enter the container and initialize the replica set:
@@ -296,8 +296,8 @@ By default, OneAPI connection address and key are configured. Modify the environ
 After modifying, restart:
 
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 ### How to Update Versions?
@@ -307,15 +307,14 @@ docker-compose up -d
 3. Run these commands to pull and restart:
 
    ```bash
-   docker-compose pull
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. Run initialization scripts (if any)
 
 ### How to Customize Configuration Files?
 
-Modify `config.json`, then run `docker-compose down` followed by `docker-compose up -d` to restart. For details, see [Configuration Guide](/docs/self-host/config/json).
+Modify `config.json`, then run `docker compose down` followed by `docker compose up -d` to restart. For details, see [Configuration Guide](/docs/self-host/config/json).
 
 ### How to Check if Custom Config File is Mounted
 
@@ -326,7 +325,7 @@ Modify `config.json`, then run `docker-compose down` followed by `docker-compose
 
 1. Incorrect mount directory
 2. Invalid config file — logs will show `invalid json`. The file must be valid JSON.
-3. Didn't run `docker-compose down` then `docker-compose up -d` after changes. A simple restart doesn't remount files.
+3. Didn't run `docker compose down` then `docker compose up -d` after changes. A simple restart doesn't remount files.
 
 ### How to Check if Environment Variables Loaded
 
