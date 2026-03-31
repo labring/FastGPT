@@ -191,6 +191,19 @@ const HomeChatWindow = () => {
     onChangeGlobalAppId(id);
   };
 
+  // 切换到新会话时重置标题,防止显示上一个会话的标题
+  useEffect(() => {
+    const isNewChat = !histories.find((h) => h.chatId === chatId);
+
+    if (isNewChat && chatBoxData.title) {
+      // 清空新会话的标题,防止显示旧标题
+      setChatBoxData((state) => ({
+        ...state,
+        title: ''
+      }));
+    }
+  }, [chatId, histories, chatBoxData.title, setChatBoxData]);
+
   useMount(() => {
     if (!feConfigs?.isPlus) {
       handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
@@ -306,10 +319,11 @@ const HomeChatWindow = () => {
       });
 
       // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
+      // 顶部标题也从 histories 中获取，保持同步
+      // setChatBoxData((state) => ({
+      //   ...state,
+      //   title: newTitle
+      // }));
 
       refreshRecentlyUsed();
 
@@ -463,19 +477,24 @@ const HomeChatWindow = () => {
         flexDirection={'column'}
       >
         {isPc ? (
-          chatBoxData?.title && (
-            <Flex
-              py={3}
-              bg="white"
-              fontWeight={500}
-              color="myGray.600"
-              alignItems="center"
-              justifyContent="center"
-              borderBottom="sm"
-            >
-              {chatBoxData?.title}
-            </Flex>
-          )
+          <Flex
+            py={3}
+            bg="white"
+            fontWeight={500}
+            color="myGray.600"
+            alignItems="center"
+            justifyContent="center"
+            borderBottom="sm"
+          >
+            {(() => {
+              const currentHistory = histories.find((h) => h.chatId === chatId);
+              return (
+                currentHistory?.customTitle ||
+                currentHistory?.title ||
+                t('common:core.chat.New Chat')
+              );
+            })()}
+          </Flex>
         ) : (
           <ChatHeader
             pane={pane}

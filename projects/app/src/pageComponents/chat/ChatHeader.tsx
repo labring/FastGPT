@@ -53,7 +53,12 @@ const ChatHeader = ({
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const { source } = useChatStore();
+  const { source, chatId } = useChatStore();
+  const histories = useContextSelector(ChatContext, (v) => v.histories);
+
+  // 从 histories 中获取标题，与左侧列表保持一致
+  const currentHistory = histories.find((h) => h.chatId === chatId);
+  const headerTitle = currentHistory?.customTitle || currentHistory?.title;
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
@@ -74,7 +79,7 @@ const ChatHeader = ({
         <>
           <PcHeader
             totalRecordsCount={totalRecordsCount}
-            title={chatData.title || t('common:core.chat.New Chat')}
+            title={headerTitle || t('common:core.chat.New Chat')}
             chatModels={chatData.app.chatModels}
             chatId={chatData.chatId || ''}
           />
