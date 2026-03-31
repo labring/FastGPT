@@ -391,6 +391,7 @@ const RefinedDataCard = () => {
     const currentStatus = activeItem?.trainingStatus;
 
     if (
+      activeItem &&
       prevActiveTrainingStatusRef.current !== undefined &&
       prevActiveTrainingStatusRef.current !== currentStatus
     ) {
@@ -405,6 +406,7 @@ const RefinedDataCard = () => {
       setDatasetDataList((prev) => {
         return prev.filter((data) => data._id !== dataId);
       });
+      fetchData(pageNum);
       toast({
         title: t('common:delete_success'),
         status: 'success'
