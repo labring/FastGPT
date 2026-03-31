@@ -232,6 +232,17 @@ export const FlowValueTypeMap: Record<
   }
 };
 
+/** 非法或缺失的 valueType 时退回 any，避免 UI 访问 undefined.label 崩溃（如导入脏 JSON） */
+export const getFlowValueTypeMeta = (
+  valueType?: WorkflowIOValueTypeEnum | string | null
+): (typeof FlowValueTypeMap)[WorkflowIOValueTypeEnum] => {
+  if (valueType == null || valueType === '') {
+    return FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
+  }
+  const meta = FlowValueTypeMap[valueType as WorkflowIOValueTypeEnum];
+  return meta ?? FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
+};
+
 export const EDGE_TYPE = 'default';
 
 export const chatHistoryValueDesc = `{
