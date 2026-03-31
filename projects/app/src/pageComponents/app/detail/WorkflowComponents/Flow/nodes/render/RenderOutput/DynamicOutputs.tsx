@@ -89,8 +89,8 @@ const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => 
             </Flex>
             {outputs.length > 0 && <Box w={6} />}
           </Flex>
-          {[...outputs, defaultOutput].map((output) => (
-            <Box key={output.key || '__add_row__'} _notLast={{ mb: 1.5 }}>
+          {[...outputs, defaultOutput].map((output, index) => (
+            <Box key={output.key || index} _notLast={{ mb: 1.5 }}>
               <DynamicOutputItem
                 output={output}
                 outputs={outputs}
