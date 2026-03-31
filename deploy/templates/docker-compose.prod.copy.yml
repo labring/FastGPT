@@ -304,7 +304,6 @@ networks:
 ${{vec.extra}}
 
 configs:
-  # opensandbox config
   opensandbox-config:
     content: |
       [server]
@@ -314,17 +313,13 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.7"
+       execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6"
 
       [egress]
       image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
 
       [docker]
       network_mode = "bridge"
+      # 容器内访问宿主机服务时需要设置为宿主机 IP 或 hostname
+      # macOS/Windows: host.docker.internal；Linux: 宿主机 LAN IP（如 192.168.1.100）
       host_ip = "host.docker.internal"
-      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
-      no_new_privileges = true
-      pids_limit = 512
-
-      [ingress]
-      mode = "direct"
