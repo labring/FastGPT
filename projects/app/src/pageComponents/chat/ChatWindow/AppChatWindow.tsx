@@ -148,10 +148,11 @@ const AppChatWindow = () => {
       });
 
       // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
+      // 顶部标题也从 histories 中获取，保持同步
+      // setChatBoxData((state) => ({
+      //   ...state,
+      //   title: newTitle
+      // }));
 
       refreshRecentlyUsed();
 
@@ -160,7 +161,6 @@ const AppChatWindow = () => {
     [
       appId,
       chatId,
-      setChatBoxData,
       forbidLoadChat,
       isShowCite,
       refreshRecentlyUsed,
