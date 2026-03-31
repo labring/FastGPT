@@ -216,7 +216,8 @@ export async function getServerSideProps(context: any) {
         'evaluation',
         'train',
         'database_client',
-        'sangfor'
+        'sangfor',
+        'admin'
       ]))
     }
   };
