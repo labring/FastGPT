@@ -13,6 +13,9 @@ import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/u
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { env } from '../../../../env';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const batchLogger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
 /** 节点响应里是否带有需关注的错误（开启 catch 的节点仅作记录，不参与批量成败） */
 const flowResponseHasError = (res: ChatHistoryItemResType) => {
@@ -163,8 +166,10 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
   const customFeedbacks: string[] = [];
 
   const runOne = async (item: any, index: number) => {
-    let attempt = 0;
-    while (attempt <= retryTimes) {
+    /** 首次执行 + 配置的重试次数（仅失败后再跑） */
+    const maxRuns = 1 + retryTimes;
+
+    for (let runIndex = 1; runIndex <= maxRuns; runIndex++) {
       try {
         const taskRuntimeNodes = cloneDeep(runtimeNodes);
         taskRuntimeNodes.forEach((node) => {
@@ -180,15 +185,6 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
             }
           });
         });
-
-        // if (process.env.NODE_ENV !== 'production') {
-        //   console.log('[dispatchBatch] runWorkflow try', {
-        //     batchModule: name,
-        //     itemIndex: index,
-        //     attempt,
-        //     retryTimesLimit: retryTimes
-        //   });
-        // }
 
         const response = await runWorkflow({
           ...props,
@@ -223,45 +219,57 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
           failMessages.push(i18nT('workflow:batch_child_loop_output_invalid'));
         }
 
-        if (failMessages.length > 0) {
-          orderedRawResult[index] = {
-            success: false,
-            message: failMessages.join('\n')
-          };
-        } else {
-          orderedRawResult[index] = {
-            success: true,
-            data: loopOutputValue
-          };
-          orderedSuccessResult.push({
-            index,
-            data: loopOutputValue
-          });
-        }
-
         detailResponses.push(...response.flowResponses);
         totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
         if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
           customFeedbacks.push(...response[DispatchNodeResponseKeyEnum.customFeedbacks]);
         }
-        return;
-      } catch (error) {
-        // if (process.env.NODE_ENV !== 'production') {
-        //   console.warn('[dispatchBatch] runWorkflow error', {
-        //     batchModule: name,
-        //     itemIndex: index,
-        //     attempt,
-        //     error: getErrText(error),
-        //     willRetry: attempt < retryTimes
-        //   });
-        // }
-        attempt++;
-        if (attempt > retryTimes) {
+
+        if (failMessages.length > 0) {
+          const message = failMessages.join('\n');
           orderedRawResult[index] = {
             success: false,
-            message: getErrText(error)
+            message
           };
+          if (runIndex < maxRuns) {
+            batchLogger.warn('[dispatchBatch] child workflow business failure, will retry', {
+              batchModuleName: name,
+              itemIndex: index,
+              attempt: runIndex,
+              maxRuns,
+              reasonSummary: message.slice(0, 500)
+            });
+            continue;
+          }
+          return;
         }
+
+        orderedRawResult[index] = {
+          success: true,
+          data: loopOutputValue
+        };
+        orderedSuccessResult.push({
+          index,
+          data: loopOutputValue
+        });
+        return;
+      } catch (error) {
+        const message = getErrText(error);
+        orderedRawResult[index] = {
+          success: false,
+          message
+        };
+        if (runIndex < maxRuns) {
+          batchLogger.warn('[dispatchBatch] child workflow threw, will retry', {
+            batchModuleName: name,
+            itemIndex: index,
+            attempt: runIndex,
+            maxRuns,
+            reasonSummary: message.slice(0, 500)
+          });
+          continue;
+        }
+        return;
       }
     }
   };
