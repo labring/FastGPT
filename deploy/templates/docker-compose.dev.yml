@@ -5,7 +5,7 @@
 #   - pg: 5432
 #   - mongo: 27017
 #   - redis: 6379
-#   - fastgpt-sandbox: 3002
+#   - fastgpt-code-sandbox: 3002
 #   - fastgpt-plugin: 3003
 #   - aiproxy: 3010
 # - 使用 pgvector 作为默认的向量库
@@ -168,7 +168,7 @@ services:
       retries: 3
   code-sandbox:
     container_name: code-sandbox
-    image: ${{fastgpt-sandbox.image}}:${{fastgpt-sandbox.tag}}
+    image: ${{fastgpt-code-sandbox.image}}:${{fastgpt-code-sandbox.tag}}
     ports:
       - 3002:3000
     networks:

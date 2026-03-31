@@ -170,7 +170,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.9.5 
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.10 
     ports:
       - 3000:3000
     networks:
@@ -257,7 +257,7 @@ services:
       - ./config.json:/app/data/config.json
   code-sandbox:
     container_name: code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.14.9.5
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.10
     networks:
       - fastgpt
     restart: always
@@ -302,7 +302,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.9
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.10
     networks:
       - fastgpt
     ports:
@@ -312,7 +312,7 @@ services:
       <<: [*x-log-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.5
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.6
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -441,11 +441,6 @@ networks:
   vector:
 
 configs:
-  init_sql:
-    name: init_sql
-    content: |
-      ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
-    
   opensandbox-config:
     content: |
       [server]
@@ -465,3 +460,8 @@ configs:
       # 容器内访问宿主机服务时需要设置为宿主机 IP 或 hostname
       # macOS/Windows: host.docker.internal；Linux: 宿主机 LAN IP（如 192.168.1.100）
       host_ip = "host.docker.internal"
+  init_sql:
+    name: init_sql
+    content: |
+      ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
+    

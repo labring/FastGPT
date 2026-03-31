@@ -157,7 +157,7 @@ services:
 
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.14.9.5 
+    image: ghcr.io/labring/fastgpt:v4.14.10 
     ports:
       - 3000:3000
     networks:
@@ -244,7 +244,7 @@ services:
       - ./config.json:/app/data/config.json
   code-sandbox:
     container_name: code-sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.14.9.5
+    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.10
     networks:
       - fastgpt
     restart: always
@@ -289,7 +289,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.9
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.10
     networks:
       - fastgpt
     ports:
@@ -299,7 +299,7 @@ services:
       <<: [*x-log-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.5.5
+    image: ghcr.io/labring/fastgpt-plugin:v0.5.6
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -428,7 +428,6 @@ networks:
   vector:
 
 configs:
-  
   opensandbox-config:
     content: |
       [server]
@@ -448,3 +447,4 @@ configs:
       # 容器内访问宿主机服务时需要设置为宿主机 IP 或 hostname
       # macOS/Windows: host.docker.internal；Linux: 宿主机 LAN IP（如 192.168.1.100）
       host_ip = "host.docker.internal"
+  
