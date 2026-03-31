@@ -19,7 +19,7 @@ import { MongoS3TTL } from '../schema';
 import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
 import { addS3DelJob } from '../mq';
-import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
+import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../type';
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
@@ -203,7 +203,7 @@ export class S3BaseBucket {
       filename,
       contentType,
       expiredTime = addHours(new Date(), 1)
-    } = UploadFileByBufferSchema.parse(params);
+    } = UploadFileByBodySchema.parse(params);
 
     await MongoS3TTL.create({
       minioKey: key,

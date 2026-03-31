@@ -12,6 +12,8 @@ import path from 'path';
 import { jwtSignS3ObjectKey } from '../../../common/s3/utils';
 import { addHours } from 'date-fns';
 import { Readable } from 'stream';
+import { getLogger } from '@fastgpt-sdk/otel';
+import { LogCategories } from '../../../common/logger';
 
 type SandboxToolCallParams = {
   toolName: string;
@@ -62,6 +64,7 @@ export const callSandboxTool = async ({
         durationSeconds: getDuration()
       };
     } catch (error: any) {
+      getLogger(LogCategories.MODULE.AI.AGENT).error('[Sandbox Shell] Execution failed', { error });
       return {
         input: { command, timeout },
         response: getErrText(error),
@@ -111,6 +114,8 @@ export const callSandboxTool = async ({
         durationSeconds: getDuration()
       };
     } catch (error) {
+      getLogger(LogCategories.MODULE.AI.AGENT).error('[Sandbox Get File URL] failed', { error });
+
       return {
         input: { paths },
         response: `Get file URL error: ${getErrText(error)}`,

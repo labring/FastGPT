@@ -31,7 +31,7 @@
 | `packages/service/core/workflow/dispatch/ai/agent/master/call.ts` | 修改 | 新增工具拦截逻辑（Agent 模式） |
 | `packages/service/common/s3/buckets/base.ts` | 修改 | `uploadFileByBody` 新增 `filename`、`expiredTime` 参数 |
 | `packages/service/common/s3/sources/chat/index.ts` | 修改 | `uploadChatFile` 透传 `filename`、`expiredTime` |
-| `packages/service/common/s3/type.ts` | 修改 | `UploadFileByBufferSchema` 新增 `filename`、`expiredTime` 字段 |
+| `packages/service/common/s3/type.ts` | 修改 | `UploadFileByBodySchema` 新增 `filename`、`expiredTime` 字段 |
 | `packages/service/common/s3/sources/chat/type.ts` | 修改 | `UploadChatFileSchema` 新增 `expiredTime` 字段 |
 | `projects/app/src/pages/api/system/file/[jwt].ts` | 修改 | 下载接口支持 `Content-Disposition` 响应头 |
 
@@ -138,10 +138,10 @@ export const callSandboxTool = async (params: SandboxToolCallParams): Promise<Sa
 
 ### 3.3 S3 上传（uploadFileByBody 扩展）
 
-扩展 `packages/service/common/s3/type.ts` 的 `UploadFileByBufferSchema`，新增 `filename`（必填）和 `expiredTime`（可选）字段：
+扩展 `packages/service/common/s3/type.ts` 的 `UploadFileByBodySchema`，新增 `filename`（必填）和 `expiredTime`（可选）字段：
 
 ```typescript
-export const UploadFileByBufferSchema = z.object({
+export const UploadFileByBodySchema = z.object({
   buffer: z.instanceof(Buffer),
   contentType: z.string().optional(),
   key: z.string().nonempty(),

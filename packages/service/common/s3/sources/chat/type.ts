@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import { UploadFileByBufferSchema } from '../../type';
+import { UploadFileByBodySchema } from '../../type';
 
 export const ChatFileUploadSchema = z.object({
   appId: ObjectIdSchema,
@@ -23,10 +23,10 @@ export const UploadChatFileSchema = z.object({
   appId: ObjectIdSchema,
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
-  filename: UploadFileByBufferSchema.shape.filename,
-  body: UploadFileByBufferSchema.shape.body,
-  contentType: UploadFileByBufferSchema.shape.contentType,
-  expiredTime: UploadFileByBufferSchema.shape.expiredTime
+  filename: UploadFileByBodySchema.shape.filename,
+  body: UploadFileByBodySchema.shape.body,
+  contentType: UploadFileByBodySchema.shape.contentType,
+  expiredTime: UploadFileByBodySchema.shape.expiredTime
 });
 
 export type UploadFileParams = z.infer<typeof UploadChatFileSchema>;
