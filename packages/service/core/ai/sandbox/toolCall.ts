@@ -91,15 +91,16 @@ export const callSandboxTool = async ({
           const readable = Readable.from(stream); // AsyncIterable<Uint8Array> → Readable
 
           const chatBucket = getS3ChatSource();
+          const expiredTime = addHours(new Date(), 2);
           const { key } = await chatBucket.uploadChatFile({
             appId,
             chatId,
             uId: userId,
             filename,
             body: readable,
-            expiredTime: addHours(new Date(), 2)
+            expiredTime: expiredTime
           });
-          const fileUrl = jwtSignS3ObjectKey(key, addHours(new Date(), 2));
+          const fileUrl = jwtSignS3ObjectKey(key, expiredTime);
 
           return {
             fileUrl,
