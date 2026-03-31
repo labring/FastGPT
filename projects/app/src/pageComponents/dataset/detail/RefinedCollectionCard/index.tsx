@@ -456,16 +456,6 @@ const CollectionCard = () => {
                     </>
                   ) : (
                     <>
-                      <Th py={4} w="150px">
-                        <HStack
-                          spacing={1}
-                          cursor={'pointer'}
-                          onClick={() => handleSort('createTime')}
-                        >
-                          <Box>{t('common:create_time')}</Box>
-                          {renderSortIcon('createTime')}
-                        </HStack>
-                      </Th>
                       <Th py={4} w="100px">
                         <HStack
                           spacing={1}
@@ -484,6 +474,16 @@ const CollectionCard = () => {
                             onChange={setStatusFilter}
                             hideNotExist
                           />
+                        </HStack>
+                      </Th>
+                      <Th py={4} w="150px">
+                        <HStack
+                          spacing={1}
+                          cursor={'pointer'}
+                          onClick={() => handleSort('createTime')}
+                        >
+                          <Box>{t('common:create_time')}</Box>
+                          {renderSortIcon('createTime')}
                         </HStack>
                       </Th>
                       <Th py={4} w="150px">
@@ -592,9 +592,6 @@ const CollectionCard = () => {
                       </>
                     ) : (
                       <>
-                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
-                          {formatTime2YMDHM(collection.createTime)}
-                        </Td>
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
                           {formatDataAmount(collection, isStructureDocument)}
                         </Td>
@@ -631,6 +628,9 @@ const CollectionCard = () => {
                               </Flex>
                             </MyTag>
                           )}
+                        </Td>
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
+                          {formatTime2YMDHM(collection.createTime)}
                         </Td>
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
                           {formatTime2YMDHM(collection.updateTime)}

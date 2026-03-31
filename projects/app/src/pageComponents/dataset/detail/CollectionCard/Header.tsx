@@ -315,7 +315,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                 color={'myGray.600'}
               >
                 <Flex align={'center'}>
-                  {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
                   {titleLabel}
                   {i18n.language === 'en' ? '  ' : ''}({total})
                 </Flex>
@@ -676,7 +675,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               onClick={onOpenFileUploadModal}
               leftIcon={<Icon name="common/folderImport" w={'18px'} />}
             >
-              {t('dataset:add_file')}
+              {t('dataset:add')}
             </Button>
           )}
           {/* apiDataset */}
