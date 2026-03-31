@@ -29,7 +29,7 @@ export const checkTeamAIPoints = async (teamId: string) => {
 };
 
 export const checkTeamMemberLimit = async (teamId: string, newCount: number) => {
-  const [{ standardConstants }, memberCount] = await Promise.all([
+  const [{ standardConstants, standard: standardPlan }, memberCount] = await Promise.all([
     getTeamStandPlan({
       teamId
     }),
@@ -39,7 +39,8 @@ export const checkTeamMemberLimit = async (teamId: string, newCount: number) => 
     })
   ]);
 
-  if (standardConstants && newCount + memberCount > standardConstants.maxTeamMember) {
+  const maxTeamMember = standardConstants?.maxTeamMember ?? standardPlan?.maxTeamMember;
+  if (maxTeamMember != null && newCount + memberCount > maxTeamMember) {
     return Promise.reject(TeamErrEnum.teamOverSize);
   }
 };
@@ -54,7 +55,7 @@ export const checkTeamAppTypeLimit = async ({
   amount?: number;
 }) => {
   if (appCheckType === 'app') {
-    const [{ standardConstants }, appCount] = await Promise.all([
+    const [{ standardConstants, standard: standardPlan }, appCount] = await Promise.all([
       getTeamStandPlan({ teamId }),
       MongoApp.countDocuments({
         teamId,
@@ -64,7 +65,8 @@ export const checkTeamAppTypeLimit = async ({
       })
     ]);
 
-    if (standardConstants && appCount + amount > standardConstants.maxAppAmount) {
+    const maxAppAmount = standardConstants?.maxAppAmount ?? standardPlan?.maxApp;
+    if (maxAppAmount != null && appCount + amount > maxAppAmount) {
       return Promise.reject(TeamErrEnum.appAmountNotEnough);
     }
 
@@ -127,7 +129,7 @@ export const checkDatasetIndexLimit = async ({
 };
 
 export const checkTeamDatasetLimit = async (teamId: string) => {
-  const [{ standardConstants }, datasetCount] = await Promise.all([
+  const [{ standardConstants, standard: standardPlan }, datasetCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
     MongoDataset.countDocuments({
       teamId,
@@ -136,7 +138,8 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
   ]);
 
   // User check
-  if (standardConstants && datasetCount >= standardConstants.maxDatasetAmount) {
+  const maxDatasetAmount = standardConstants?.maxDatasetAmount ?? standardPlan?.maxDataset;
+  if (maxDatasetAmount != null && datasetCount >= maxDatasetAmount) {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
   }
 
