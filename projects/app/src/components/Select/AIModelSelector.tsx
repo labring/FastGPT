@@ -19,7 +19,7 @@ type Props = SelectProps & {
 };
 
 const isTestModeModel = (model?: SystemModelItemType) => {
-  return !!(model && 'testMode' in model && model.testMode);
+  return !!model?.testMode;
 };
 
 const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip() {

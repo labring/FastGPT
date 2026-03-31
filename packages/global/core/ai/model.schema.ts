@@ -45,7 +45,10 @@ const BaseModelItemSchema = z.object({
 
   // If has requestUrl, it will request the model directly
   requestUrl: z.string().optional(),
-  requestAuth: z.string().optional()
+  requestAuth: z.string().optional(),
+
+  // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
+  testMode: z.boolean().optional() // test mode flag
 });
 type BaseModelItemType = z.infer<typeof BaseModelItemSchema>;
 
@@ -64,9 +67,6 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   censor: z.boolean().optional(),
   vision: z.boolean().optional(),
   reasoning: z.boolean().optional(),
-
-  // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
-  testMode: z.boolean().optional(), // test mode flag
 
   functionCall: z.boolean(),
   toolChoice: z.boolean(),
