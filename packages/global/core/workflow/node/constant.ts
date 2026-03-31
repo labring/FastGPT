@@ -232,7 +232,6 @@ export const FlowValueTypeMap: Record<
   }
 };
 
-/** 非法或缺失的 valueType 时退回 any，避免 UI 访问 undefined.label 崩溃（如导入脏 JSON） */
 export const getFlowValueTypeMeta = (
   valueType?: WorkflowIOValueTypeEnum | string | null
 ): (typeof FlowValueTypeMap)[WorkflowIOValueTypeEnum] => {
