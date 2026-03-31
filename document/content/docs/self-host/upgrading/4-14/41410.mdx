@@ -54,10 +54,11 @@ AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
 
 1. 增加 OpenSandbox docker 部署方案及适配，并支持通过挂载 volume 进行数据持久化。
 2. 新增沙盒读取文件链接工具，可以直接让 AI 返回文件的访问链接。
-3. 飞书发布渠道，支持流输出。
-4. 目录最大上限，可通过环境变量配置。
-5. rerank 模型上限配置，避免超出单条 document 上限导致 rerank 失败。
-6. 增加 LLM 梯度计量计费模式，同时统一计费推送方式。
+3. 新增微信个人号发布渠道
+4. 飞书发布渠道，支持流输出。
+5. 目录最大上限，可通过环境变量配置。
+6. rerank 模型上限配置，避免超出单条 document 上限导致 rerank 失败。
+7. 增加 LLM 梯度计量计费模式，同时统一计费推送方式。
 
 ## ⚙️ 优化
 
@@ -71,3 +72,7 @@ AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
 2. agent 模式下已配的 rerank 模型不显示。
 3. bge-m3 embedding 向量模型输出都为 0 的问题。
 4. MCP 并发调用时，连接异常导致调用失败。
+5. 修复登录接口安全问题
+6. 修复 MCP SSRF 安全问题
+7. 修复工作流工具错误未成功捕获问题
+8. 修复子工作流全局变量默认值未生效

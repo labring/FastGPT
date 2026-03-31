@@ -52,10 +52,11 @@ Some system tool icons have been removed and replaced with image links, so some 
 
 1. Added OpenSandbox docker deployment and adaptation, with support for data persistence via mounted volumes.
 2. Added sandbox file link reading tool, allowing AI to directly return file access links.
-3. Added streaming output support for Lark publishing channel.
-4. The maximum directory limit can now be configured via environment variables.
-5. Added max limit configuration for rerank models to prevent rerank failures caused by exceeding the single document limit.
-6. Added tiered billing mode for LLMs and unified the billing push method.
+3. Added WeChat Personal Account publishing channel.
+4. Added streaming output support for Lark publishing channel.
+5. The maximum directory limit can now be configured via environment variables.
+6. Added max limit configuration for rerank models to prevent rerank failures caused by exceeding the single document limit.
+7. Added tiered billing mode for LLMs and unified the billing push method.
 
 ## ⚙️ Optimizations
 
@@ -69,3 +70,7 @@ Some system tool icons have been removed and replaced with image links, so some 
 2. Fixed an issue where the configured rerank model was not displaying in agent mode.
 3. Fixed an issue where the output of the bge-m3 embedding vector model was always 0.
 4. Fixed a call failure caused by connection exceptions during concurrent MCP calls.
+5. Fixed security vulnerabilities in the login API.
+6. Fixed MCP SSRF security vulnerabilities.
+7. Fixed an issue where workflow tool errors were not properly caught.
+8. Fixed an issue where the default values of global variables in sub-workflows were not taking effect.
