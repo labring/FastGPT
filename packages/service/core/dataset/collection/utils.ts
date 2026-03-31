@@ -178,6 +178,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     teamId: collection.teamId,
     tmbId: collection.tmbId,
     datasetId: collection.datasetId,
+    customPdfParse: collection.customPdfParse,
     ...sourceReadType
   });
 
