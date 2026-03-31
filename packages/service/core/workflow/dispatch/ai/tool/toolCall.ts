@@ -18,16 +18,16 @@ import { runAgentCall } from '../../../../ai/llm/agentCall';
 import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import {
-  SANDBOX_SHELL_TOOL,
-  SandboxShellToolSchema,
   SANDBOX_SYSTEM_PROMPT,
   SANDBOX_ICON,
-  SANDBOX_NAME,
-  SANDBOX_TOOL_NAME
+  SANDBOX_TOOL_NAME,
+  SANDBOX_GET_FILE_URL_TOOL_NAME,
+  SANDBOX_TOOLS
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { getSandboxClient } from '../../../../ai/sandbox/controller';
 import { getSandboxToolWorkflowResponse } from './constants';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { callSandboxTool } from '../../../../ai/sandbox/toolCall';
+import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 type ResponseType = {
   requestIds: string[];
@@ -121,7 +121,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   let finalMessages = messages;
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     // 注入 sandbox_shell 工具
-    tools.push(SANDBOX_SHELL_TOOL);
+    tools.push(...SANDBOX_TOOLS);
 
     // 追加提示词
     const systemMessage = messages.find((m) => m.role === 'system');
@@ -135,10 +135,11 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   }
 
   const getToolInfo = (name: string) => {
-    if (name === SANDBOX_TOOL_NAME) {
+    const systemTool = systemSubInfo[name];
+    if (systemTool) {
       return {
-        name: SANDBOX_NAME[workflowProps.lang || 'zh-CN'] || SANDBOX_TOOL_NAME,
-        avatar: SANDBOX_ICON
+        name: parseI18nString(systemTool.name, workflowProps.lang),
+        avatar: systemTool.avatar
       };
     }
 
@@ -240,7 +241,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     },
     handleToolResponse: async ({ call, messages }) => {
       const tool = getToolInfo(call.function?.name);
-      const startTime = Date.now();
 
       const {
         response,
@@ -250,41 +250,29 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         interactive,
         stop
       } = await (async () => {
-        // 拦截 sandbox_shell 调用
-        if (call.function?.name === SANDBOX_TOOL_NAME) {
-          try {
-            const params = SandboxShellToolSchema.parse(parseJsonArgs(call.function.arguments));
+        // 拦截 sandbox 工具调用
+        if (
+          call.function?.name === SANDBOX_TOOL_NAME ||
+          call.function?.name === SANDBOX_GET_FILE_URL_TOOL_NAME
+        ) {
+          const { input, response, durationSeconds } = await callSandboxTool({
+            toolName: call.function.name,
+            rawArgs: call.function.arguments ?? '',
+            appId: String(workflowProps.runningAppInfo.id),
+            userId: String(workflowProps.uid),
+            chatId: workflowProps.chatId
+          });
 
-            const instance = await getSandboxClient({
-              appId: String(workflowProps.runningAppInfo.id),
-              userId: String(workflowProps.uid),
-              chatId: workflowProps.chatId
-            });
-            const result = await instance.exec(params.command, params.timeout);
+          const flowResponse = getSandboxToolWorkflowResponse({
+            name: tool.name,
+            logo: SANDBOX_ICON,
+            toolId: call.function.name,
+            input,
+            response,
+            durationSeconds
+          });
 
-            const stringToolResponse = JSON.stringify({
-              stdout: result.stdout,
-              stderr: result.stderr,
-              exitCode: result.exitCode
-            });
-
-            const flowResponse = getSandboxToolWorkflowResponse({
-              name: tool.name,
-              logo: SANDBOX_ICON,
-              input: params,
-              response: stringToolResponse,
-              durationSeconds: +((Date.now() - startTime) / 1000).toFixed(2)
-            });
-
-            return {
-              response: stringToolResponse,
-              flowResponse
-            };
-          } catch (error) {
-            return {
-              response: `Sandbox execution error: ${getErrText(error)}`
-            };
-          }
+          return { response, flowResponse };
         } else {
           const toolNode = tool?.rawData;
 

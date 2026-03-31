@@ -19,7 +19,7 @@ import { MongoS3TTL } from '../schema';
 import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
 import { addS3DelJob } from '../mq';
-import { type UploadFileByBufferParams, UploadFileByBufferSchema } from '../type';
+import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../type';
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 
@@ -196,19 +196,30 @@ export class S3BaseBucket {
     return await this.client.generatePresignedGetUrl({ key, expiredSeconds: expires });
   }
 
-  async uploadFileByBuffer(params: UploadFileByBufferParams) {
-    const { key, buffer, contentType } = UploadFileByBufferSchema.parse(params);
+  async uploadFileByBody(params: UploadFileByBufferParams) {
+    const {
+      key,
+      body,
+      filename,
+      contentType,
+      expiredTime = addHours(new Date(), 1)
+    } = UploadFileByBodySchema.parse(params);
 
     await MongoS3TTL.create({
       minioKey: key,
       bucketName: this.bucketName,
-      expiredTime: addHours(new Date(), 1)
+      expiredTime
     });
 
     await this.client.uploadObject({
       key,
-      body: buffer,
-      contentType: contentType || 'application/octet-stream'
+      body,
+      contentType: contentType || 'application/octet-stream',
+      metadata: {
+        contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
+        originFilename: encodeURIComponent(filename),
+        uploadTime: new Date().toISOString()
+      }
     });
 
     return {

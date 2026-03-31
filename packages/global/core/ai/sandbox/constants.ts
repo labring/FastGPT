@@ -26,20 +26,15 @@ export const SANDBOX_NAME: I18nStringType = {
 };
 export const SANDBOX_ICON = 'core/app/sandbox/sandbox' as const;
 export const SANDBOX_TOOL_NAME = 'sandbox_shell';
-export const SANDBOX_TOOL_DESCRIPTION =
-  '在独立 Linux 环境中执行 shell 命令，支持文件操作、代码运行、包安装等';
-
-// ---- 系统提示词（useAgentSandbox=true 时追加） ----
-export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
-- 预装：bash / python3 / node / bun / git / curl
-- 可自行安装软件包（apt / pip / npm）
-- 生成的文件内容都保存在当前目录下即可`;
-
+export const SandboxShellToolSchema = z.object({
+  command: z.string(),
+  timeout: z.number().optional()
+});
 export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SANDBOX_TOOL_NAME,
-    description: SANDBOX_TOOL_DESCRIPTION,
+    description: '在独立 Linux 虚拟机环境中执行 shell 命令，支持文件操作、代码运行、包安装等',
     parameters: {
       type: 'object',
       properties: {
@@ -47,7 +42,7 @@ export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
         timeout: {
           type: 'number',
           description: '超时秒数',
-          max: 300,
+          max: 600,
           min: 1
         }
       },
@@ -56,10 +51,41 @@ export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
   }
 };
 
-export const SANDBOX_TOOLS: ChatCompletionTool[] = [SANDBOX_SHELL_TOOL];
-
-// Zod Schema 用于参数验证
-export const SandboxShellToolSchema = z.object({
-  command: z.string(),
-  timeout: z.number().optional()
+export const SANDBOX_READ_FILE_TOOL_NAME: I18nStringType = {
+  'zh-CN': '虚拟机/获取文件链接',
+  'zh-Hant': '虛擬機/獲取文件鏈接',
+  en: 'Sandbox/Get File URL'
+};
+export const SANDBOX_GET_FILE_URL_TOOL_NAME = 'sandbox_get_file_url';
+export const SandboxGetFileUrlToolSchema = z.object({
+  paths: z.array(z.string())
 });
+export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: SANDBOX_GET_FILE_URL_TOOL_NAME,
+    description: '从虚拟机读取指定文件，上传至云存储，返回 2 小时有效期的访问链接',
+    parameters: {
+      type: 'object',
+      properties: {
+        paths: {
+          type: 'array',
+          items: {
+            type: 'string',
+            description: '文件访问路径，例如: output.csv'
+          },
+          description: '文件访问路径，例如: ["output.csv", "output.txt"]'
+        }
+      },
+      required: ['paths']
+    }
+  }
+};
+
+export const SANDBOX_TOOLS: ChatCompletionTool[] = [SANDBOX_SHELL_TOOL, SANDBOX_GET_FILE_URL_TOOL];
+
+export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
+- 预装：bash / python3 / node / bun / git / curl
+- 可自行安装软件包（apt / pip / npm）
+- 生成的文件内容都保存在当前目录下即可
+- 若需要将生成的文件分享给用户，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 工具获取文件的临时访问链接（有效期 2 小时）`;

@@ -14,7 +14,6 @@ import { dispatchTool } from '../sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DatasetSearchToolSchema } from '../sub/dataset/utils';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
-import { dispatchSandboxShell } from '../sub/sandbox';
 import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
 import { getStepCallQuery, getStepDependon } from './dependon';
@@ -33,8 +32,11 @@ import { dispatchApp, dispatchPlugin } from '../sub/app';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import {
   SandboxShellToolSchema,
-  SANDBOX_TOOL_NAME
+  SANDBOX_TOOL_NAME,
+  SANDBOX_GET_FILE_URL_TOOL_NAME,
+  SandboxGetFileUrlToolSchema
 } from '@fastgpt/global/core/ai/sandbox/constants';
+import { dispatchSandboxShell, dispatchSandboxGetFileUrl } from '../sub/sandbox';
 
 type Response = {
   stepResponse?: {
@@ -393,6 +395,32 @@ export const masterCall = async ({
             const result = await dispatchSandboxShell({
               command: toolParams.data.command,
               timeout: toolParams.data.timeout,
+              appId: runningAppInfo.id,
+              userId: props.uid,
+              chatId,
+              lang: props.lang
+            });
+
+            childrenResponses.push(result.nodeResponse);
+
+            return {
+              response: result.response,
+              usages: result.usages
+            };
+          }
+          if (toolId === SANDBOX_GET_FILE_URL_TOOL_NAME) {
+            const toolParams = SandboxGetFileUrlToolSchema.safeParse(
+              parseJsonArgs(call.function.arguments)
+            );
+            if (!toolParams.success) {
+              return {
+                response: toolParams.error.message,
+                usages: []
+              };
+            }
+
+            const result = await dispatchSandboxGetFileUrl({
+              paths: toolParams.data.paths,
               appId: runningAppInfo.id,
               userId: props.uid,
               chatId,

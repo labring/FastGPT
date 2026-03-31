@@ -40,11 +40,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         }
 
-        if (metadata) {
+        if (metadata?.contentType) {
           res.setHeader('Content-Type', metadata.contentType);
         }
         if (metadata?.contentLength) {
           res.setHeader('Content-Length', metadata.contentLength);
+        }
+        if (metadata?.filename) {
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${encodeURIComponent(metadata.filename)}"`
+          );
         }
         res.setHeader('Cache-Control', 'public, max-age=31536000');
 

@@ -87,8 +87,8 @@ export class S3ChatSource extends S3PrivateBucket {
     return key;
   }
 
-  async uploadChatFileByBuffer(params: UploadFileParams) {
-    const { appId, chatId, uId, filename, buffer, contentType } =
+  async uploadChatFile(params: UploadFileParams) {
+    const { appId, chatId, uId, filename, body, contentType, expiredTime } =
       UploadChatFileSchema.parse(params);
     const { fileKey } = getFileS3Key.chat({
       appId,
@@ -97,10 +97,12 @@ export class S3ChatSource extends S3PrivateBucket {
       filename
     });
 
-    return this.uploadFileByBuffer({
+    return this.uploadFileByBody({
       key: fileKey,
-      buffer,
-      contentType
+      filename,
+      body,
+      contentType,
+      expiredTime
     });
   }
 

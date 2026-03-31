@@ -43,7 +43,7 @@ const MyModal = ({
   showCloseButton = true,
   contentPx = '8',
   contentPy = '8',
-  headerPx,
+  headerPx = 0,
   ...props
 }: MyModalProps) => {
   const { isPc } = useSystem();
@@ -99,7 +99,7 @@ const MyModal = ({
             fontWeight={'500'}
             mb={6}
             py={0}
-            px={headerPx ?? contentPx}
+            px={headerPx}
             gap={3}
           >
             {iconSrc && (
