@@ -16,8 +16,12 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
-  config.feConfigs.uploadFileMaxSize = Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000);
-  config.feConfigs.uploadFileMaxAmount = Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000);
+  config.feConfigs.uploadFileMaxSize = Number(
+    process.env.UPLOAD_FILE_MAX_SIZE || config.feConfigs.uploadFileMaxSize || 1000
+  );
+  config.feConfigs.uploadFileMaxAmount = Number(
+    process.env.UPLOAD_FILE_MAX_AMOUNT || config.feConfigs.uploadFileMaxAmount || 1000
+  );
 
   global.feConfigs = config.feConfigs;
   global.systemEnv = config.systemEnv;
