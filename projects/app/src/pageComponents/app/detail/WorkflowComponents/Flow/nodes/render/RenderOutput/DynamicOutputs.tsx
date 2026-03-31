@@ -30,6 +30,86 @@ const defaultOutput: FlowNodeOutputItemType = {
   description: ''
 };
 
+const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => {
+  const { t } = useTranslation();
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+
+  const handleUpdateOutput = useCallback(
+    (originalKey: string, updatedOutput: FlowNodeOutputItemType) => {
+      onChangeNode({
+        nodeId,
+        type: 'replaceOutput',
+        key: originalKey,
+        value: updatedOutput
+      });
+    },
+    [nodeId, onChangeNode]
+  );
+
+  const handleDeleteOutput = useCallback(
+    (key: string) => {
+      onChangeNode({
+        nodeId,
+        type: 'delOutput',
+        key
+      });
+    },
+    [nodeId, onChangeNode]
+  );
+
+  const handleAddOutput = useCallback(
+    (newOutput: FlowNodeOutputItemType) => {
+      onChangeNode({
+        nodeId,
+        type: 'addOutput',
+        value: newOutput
+      });
+    },
+    [nodeId, onChangeNode]
+  );
+
+  const Render = useMemo(() => {
+    return (
+      <Box pb={3}>
+        <HStack className="nodrag" cursor={'default'} position={'relative'}>
+          <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
+            <Box>{addOutput.label || t('common:core.workflow.Custom outputs')}</Box>
+            {addOutput.description && <QuestionTip label={addOutput.description} />}
+          </HStack>
+        </HStack>
+        <Box mt={2}>
+          <Flex alignItems={'center'} mb={2} gap={2} px={1}>
+            <Flex flex={'1'}>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
+                {t('workflow:Variable_name')}
+              </Box>
+              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
+                {t('common:core.module.Data Type')}
+              </Box>
+            </Flex>
+            {outputs.length > 0 && <Box w={6} />}
+          </Flex>
+          {[...outputs, defaultOutput].map((output) => (
+            <Box key={output.key || '__add_row__'} _notLast={{ mb: 1.5 }}>
+              <DynamicOutputItem
+                output={output}
+                outputs={outputs}
+                onUpdate={handleUpdateOutput}
+                onDelete={handleDeleteOutput}
+                onAdd={handleAddOutput}
+              />
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    );
+  }, [outputs, addOutput, handleUpdateOutput, handleDeleteOutput, handleAddOutput, t]);
+
+  return Render;
+};
+
+export default React.memo(DynamicOutputs);
+
 const DynamicOutputItem = ({
   output,
   outputs,
@@ -148,83 +228,3 @@ const DynamicOutputItem = ({
     </Flex>
   );
 };
-
-const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => {
-  const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const handleUpdateOutput = useCallback(
-    (originalKey: string, updatedOutput: FlowNodeOutputItemType) => {
-      onChangeNode({
-        nodeId,
-        type: 'replaceOutput',
-        key: originalKey,
-        value: updatedOutput
-      });
-    },
-    [nodeId, onChangeNode]
-  );
-
-  const handleDeleteOutput = useCallback(
-    (key: string) => {
-      onChangeNode({
-        nodeId,
-        type: 'delOutput',
-        key
-      });
-    },
-    [nodeId, onChangeNode]
-  );
-
-  const handleAddOutput = useCallback(
-    (newOutput: FlowNodeOutputItemType) => {
-      onChangeNode({
-        nodeId,
-        type: 'addOutput',
-        value: newOutput
-      });
-    },
-    [nodeId, onChangeNode]
-  );
-
-  const Render = useMemo(() => {
-    return (
-      <Box pb={3}>
-        <HStack className="nodrag" cursor={'default'} position={'relative'}>
-          <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-            <Box>{addOutput.label || t('common:core.workflow.Custom outputs')}</Box>
-            {addOutput.description && <QuestionTip label={addOutput.description} />}
-          </HStack>
-        </HStack>
-        <Box mt={2}>
-          <Flex alignItems={'center'} mb={2} gap={2} px={1}>
-            <Flex flex={'1'}>
-              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
-                {t('workflow:Variable_name')}
-              </Box>
-              <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
-                {t('common:core.module.Data Type')}
-              </Box>
-            </Flex>
-            {outputs.length > 0 && <Box w={6} />}
-          </Flex>
-          {[...outputs, defaultOutput].map((output) => (
-            <Box key={output.key || '__add_row__'} _notLast={{ mb: 1.5 }}>
-              <DynamicOutputItem
-                output={output}
-                outputs={outputs}
-                onUpdate={handleUpdateOutput}
-                onDelete={handleDeleteOutput}
-                onAdd={handleAddOutput}
-              />
-            </Box>
-          ))}
-        </Box>
-      </Box>
-    );
-  }, [outputs, addOutput, handleUpdateOutput, handleDeleteOutput, handleAddOutput, t]);
-
-  return Render;
-};
-
-export default React.memo(DynamicOutputs);
