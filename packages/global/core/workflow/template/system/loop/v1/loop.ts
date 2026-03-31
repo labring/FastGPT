@@ -22,7 +22,6 @@ export const LoopNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loop,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.loop,
-  abandon: true,
   showSourceHandle: true,
   showTargetHandle: true,
   avatar: 'core/workflow/template/loop',

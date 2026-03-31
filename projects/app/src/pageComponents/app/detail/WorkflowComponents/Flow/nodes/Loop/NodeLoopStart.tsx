@@ -73,15 +73,13 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       (output) => output.key === NodeOutputKeyEnum.loopStartInput
     );
 
-    // if effectiveLoopItemType is undefined, delete loopStartInput output
-    if (!effectiveLoopItemType && loopArrayOutput) {
+    if (isLoopProConditionMode && loopArrayOutput) {
       onChangeNode({
         nodeId,
         type: 'delOutput',
         key: NodeOutputKeyEnum.loopStartInput
       });
     }
-    // if effectiveLoopItemType is not undefined, and has no loopArrayOutput, add loopStartInput output
     if (effectiveLoopItemType && !loopArrayOutput) {
       onChangeNode({
         nodeId,
@@ -95,8 +93,11 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       });
     }
-    // if effectiveLoopItemType is not undefined, and has loopArrayOutput, update loopStartInput output
-    if (effectiveLoopItemType && loopArrayOutput) {
+    if (
+      effectiveLoopItemType &&
+      loopArrayOutput &&
+      loopArrayOutput.valueType !== effectiveLoopItemType
+    ) {
       onChangeNode({
         nodeId,
         type: 'updateOutput',
@@ -107,7 +108,14 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       });
     }
-  }, [loopStartLive?.outputs, nodeId, onChangeNode, effectiveLoopItemType, t]);
+  }, [
+    loopStartLive?.outputs,
+    nodeId,
+    onChangeNode,
+    effectiveLoopItemType,
+    isLoopProConditionMode,
+    t
+  ]);
 
   useEffect(() => {
     const idxOut = loopStartLive?.outputs.find((o) => o.key === NodeOutputKeyEnum.loopStartIndex);
