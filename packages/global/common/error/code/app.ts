@@ -6,7 +6,8 @@ export enum AppErrEnum {
   unAuthApp = 'unAuthApp',
   invalidOwner = 'invalidOwner',
   invalidAppType = 'invalidAppType',
-  canNotEditAdminPermission = 'canNotEditAdminPermission'
+  canNotEditAdminPermission = 'canNotEditAdminPermission',
+  exportSkillFailed = 'exportSkillFailed'
 }
 const appErrList = [
   {
@@ -28,6 +29,10 @@ const appErrList = [
   {
     statusText: AppErrEnum.canNotEditAdminPermission,
     message: i18nT('common:code_error.app_error.can_not_edit_admin_permission')
+  },
+  {
+    statusText: AppErrEnum.exportSkillFailed,
+    message: i18nT('skill:export_skill_failed')
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {

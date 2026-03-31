@@ -1,0 +1,12 @@
+{
+  "name": "fastgpt-skill",
+  "version": "1.0.0",
+  "description": "FastGPT skill template",
+  "main": "scripts/chat.js",
+  "scripts": {
+    "test": "node -e \"const { chat } = require('./scripts/chat'); chat({ message: '你好' }).then(r => console.log(r.reply)).catch(e => console.error(e.message));\""
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}

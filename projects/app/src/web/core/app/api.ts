@@ -61,3 +61,28 @@ export const resumeInheritPer = (appId: string) =>
   GET(`/core/app/resumeInheritPermission`, { appId });
 
 export const changeOwner = (data: AppChangeOwnerBody) => POST(`/proApi/core/app/changeOwner`, data);
+
+/**
+ * 导出应用为 SKILL
+ */
+export const postExportSkill = async (data: {
+  appId: string;
+  skillName: string;
+  skillDescription: string;
+}): Promise<Blob> => {
+  const { instance } = await import('@/web/common/api/request');
+  const { getWebReqUrl } = await import('@fastgpt/web/common/system/utils');
+
+  const response = await instance.request({
+    baseURL: getWebReqUrl('/api'),
+    url: `/core/app/exportSkill?appId=${data.appId}`,
+    method: 'POST',
+    data: {
+      skillName: data.skillName,
+      skillDescription: data.skillDescription
+    },
+    responseType: 'blob'
+  });
+
+  return response.data;
+};

@@ -293,6 +293,17 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:export_app_chat_log'),
     params: {} as { name?: string; appName: string; appType: string }
   },
+  [AuditEventEnum.EXPORT_APP_AS_SKILL]: {
+    content: i18nT('account_team:log_export_app_as_skill'),
+    typeLabel: i18nT('account_team:export_app_as_skill'),
+    params: {} as {
+      name?: string;
+      appName: string;
+      appType: string;
+      apiKeyName: string;
+      skillName: string;
+    }
+  },
 
   // Eval
   [AuditEventEnum.CREATE_EVALUATION]: {

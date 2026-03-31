@@ -25,7 +25,8 @@ export const I18N_NAMESPACES = [
   'evaluation',
   'train',
   'admin',
-  'database_client'
+  'database_client',
+  'skill'
 ];
 
 export const I18N_NAMESPACES_MAP = I18N_NAMESPACES.reduce(

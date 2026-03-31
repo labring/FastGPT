@@ -26,6 +26,7 @@ import type dashboard_evaluation from './zh-CN/dashboard_evaluation.json';
 import type database_client from './zh-CN/database_client.json';
 import type admin from './zh-CN/admin.json';
 import type train from './zh-CN/train.json';
+import type skill from './zh-CN/skill.json';
 import type { I18N_NAMESPACES } from './constants';
 
 export interface I18nNamespaces {
@@ -56,6 +57,7 @@ export interface I18nNamespaces {
   database_client: typeof database_client;
   admin: typeof admin;
   train: typeof train;
+  skill: typeof skill;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];

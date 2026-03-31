@@ -309,7 +309,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user']))
+      ...(await serviceSideProps(content, ['app', 'user', 'skill']))
     }
   };
 }

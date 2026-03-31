@@ -176,6 +176,7 @@
   "code_error.openapi_error.api_key_not_exist": "Api Key 不存在",
   "code_error.openapi_error.exceed_limit": "最多 10 组 API 密钥",
   "code_error.openapi_error.un_auth": "无权操作该 Api Key",
+  "code_error.openapi_error.create_skill_key_failed": "创建 Skill API Key 失败，请稍后重试",
   "code_error.outlink_error.invalid_link": "分享链接无效",
   "code_error.outlink_error.link_not_exist": "分享链接不存在",
   "code_error.outlink_error.un_auth_user": "身份校验失败",

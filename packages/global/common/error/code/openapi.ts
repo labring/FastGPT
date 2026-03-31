@@ -4,7 +4,8 @@ import { i18nT } from '../../../../web/i18n/utils';
 export enum OpenApiErrEnum {
   unExist = 'openapiUnExist',
   unAuth = 'openapiUnAuth',
-  exceedLimit = 'openapiExceedLimit'
+  exceedLimit = 'openapiExceedLimit',
+  createSkillKeyFailed = 'openapiCreateSkillKeyFailed'
 }
 
 const errList = [
@@ -19,6 +20,10 @@ const errList = [
   {
     statusText: OpenApiErrEnum.exceedLimit,
     message: i18nT('common:code_error.openapi_error.exceed_limit')
+  },
+  {
+    statusText: OpenApiErrEnum.createSkillKeyFailed,
+    message: i18nT('common:code_error.openapi_error.create_skill_key_failed')
   }
 ];
 
