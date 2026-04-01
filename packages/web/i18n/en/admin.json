@@ -332,6 +332,8 @@
   "max_upload_files_per_time_desc": "Maximum number of files per upload to a knowledge base",
   "max_upload_file_size": "Max file size (MB)",
   "max_upload_file_size_desc": "Maximum file size per upload to a knowledge base If you change it to a larger value, ensure the gateway configuration is modified accordingly.",
+  "max_upload_file_size_tip": "Please enter an integer between 0 and 200",
+  "custom_pdf_parse_timeout_tip": "Please enter an integer between 0 and 120",
   "export_interval_minutes": "Export interval (minutes)",
   "site_sync_interval_minutes": "Site sync usage interval (minutes)",
   "mobile_sidebar_location": "On mobile devices, the sidebar items are displayed in Account > Profile.",
