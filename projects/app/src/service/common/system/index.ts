@@ -140,7 +140,7 @@ export async function getInitConfig() {
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
-  show_git: true,
+  show_git: false,
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/docs/introduction/development/openapi/intro',
   submitPluginRequestUrl: 'https://github.com/labring/fastgpt-plugin/issues',
@@ -156,8 +156,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   scripts: [],
   favicon: '/favicon.ico',
   chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || '',
-  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
-  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
+  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 200),
+  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 20)
 };
 
 export async function initSystemConfig() {
