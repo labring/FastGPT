@@ -1,5 +1,6 @@
 import type {
   IAwsS3CompatibleStorageOptions,
+  IBosStorageOptions,
   ICosStorageOptions,
   IOssStorageOptions,
   IStorageOptions
@@ -86,6 +87,30 @@ export function createDefaultStorageOptions() {
           : 3,
         publicAccessExtraSubPath: process.env.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH || undefined
       } satisfies Omit<IAwsS3CompatibleStorageOptions, 'bucket'> & {
+        publicBucket: string;
+        privateBucket: string;
+        externalBaseUrl?: string;
+      };
+    }
+
+    case 'bos': {
+      return {
+        vendor: 'bos',
+        forcePathStyle: process.env.STORAGE_S3_FORCE_PATH_STYLE === 'false' ? false : true,
+        externalBaseUrl: process.env.STORAGE_EXTERNAL_ENDPOINT || undefined,
+        endpoint: process.env.STORAGE_BOS_ENDPOINT || process.env.STORAGE_S3_ENDPOINT || '',
+        region: process.env.STORAGE_REGION || 'bj',
+        publicBucket: process.env.STORAGE_PUBLIC_BUCKET || 'fastgpt-public',
+        privateBucket: process.env.STORAGE_PRIVATE_BUCKET || 'fastgpt-private',
+        credentials: {
+          accessKeyId: process.env.STORAGE_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY || ''
+        },
+        maxRetries: process.env.STORAGE_S3_MAX_RETRIES
+          ? parseInt(process.env.STORAGE_S3_MAX_RETRIES)
+          : 3,
+        publicAccessExtraSubPath: process.env.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH || undefined
+      } satisfies Omit<IBosStorageOptions, 'bucket'> & {
         publicBucket: string;
         privateBucket: string;
         externalBaseUrl?: string;

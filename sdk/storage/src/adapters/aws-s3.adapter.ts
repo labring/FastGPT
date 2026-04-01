@@ -10,7 +10,7 @@ import {
   PutObjectCommand,
   S3Client
 } from '@aws-sdk/client-s3';
-import type { IAwsS3CompatibleStorageOptions, IStorage } from '../interface';
+import type { IAwsS3CompatibleStorageOptions, IBosStorageOptions, IStorage } from '../interface';
 import type {
   UploadObjectParams,
   UploadObjectResult,
@@ -53,8 +53,8 @@ export class AwsS3StorageAdapter implements IStorage {
     return this.options.bucket;
   }
 
-  constructor(protected readonly options: IAwsS3CompatibleStorageOptions) {
-    if (options.vendor !== 'aws-s3' && options.vendor !== 'minio') {
+  constructor(protected readonly options: IAwsS3CompatibleStorageOptions | IBosStorageOptions) {
+    if (options.vendor !== 'aws-s3' && options.vendor !== 'minio' && options.vendor !== 'bos') {
       throw new Error('Invalid storage vendor');
     }
 

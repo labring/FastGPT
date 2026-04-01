@@ -12,6 +12,10 @@ export function createStorage(
       return new AwsS3StorageAdapter(options);
     }
 
+    case 'bos': {
+      return new AwsS3StorageAdapter(options);
+    }
+
     case 'oss': {
       return new OssStorageAdapter(options);
     }

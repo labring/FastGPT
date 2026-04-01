@@ -5,6 +5,7 @@ export type {
   IStorage,
   IStorageOptions,
   IAwsS3CompatibleStorageOptions,
+  IBosStorageOptions,
   IOssStorageOptions,
   ICosStorageOptions,
   ICommonStorageOptions

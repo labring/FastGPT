@@ -219,13 +219,13 @@ export interface ICosStorageOptions extends ICommonStorageOptions {
 }
 
 /**
- * 百度 BOS 存储配置（预留）。
+ * 百度 BOS 存储配置。
  *
  * 说明：
- * - 当前 `IStorageOptions` 并未包含该类型，可能尚未完整实现/接入。
- * - 先保留接口便于后续扩展。
+ * - BOS 提供 S3 兼容访问方式，这里复用 S3 兼容配置结构。
+ * - `endpoint` 通常填写为 `https://s3.{region}.bcebos.com`。
  */
-export interface IBosStorageOptions extends ICommonStorageOptions {
+export interface IBosStorageOptions extends Omit<IAwsS3CompatibleStorageOptions, 'vendor'> {
   /** 存储厂商标识（BOS）。 */
   vendor: 'bos';
 }
@@ -237,10 +237,11 @@ export interface IBosStorageOptions extends ICommonStorageOptions {
  * - 根据 `vendor` 字段区分不同厂商配置，adapter 工厂函数通常也会基于该字段选择实现。
  *
  * 注意：
- * - 当前仅包含 `aws-s3`/`minio`/`oss`/`cos`；若后续接入新厂商，需要在此处补齐联合成员。
+ * - 当前包含 `aws-s3`/`minio`/`bos`/`oss`/`cos`；若后续接入新厂商，需要在此处补齐联合成员。
  */
 export type IStorageOptions =
   | IAwsS3CompatibleStorageOptions
+  | IBosStorageOptions
   | IOssStorageOptions
   | ICosStorageOptions;
 
