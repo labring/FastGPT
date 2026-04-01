@@ -546,7 +546,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
           <Flex alignItems={'center'} mb={2}>
             <MyIcon name={'common/warn'} w={'16px'} color={'yellow.500'} mr={2} />
             <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.600'}>
-              {t('chat:log.error.error_prefix')} - {errorText.moduleName}
+              {t('chat:log.error.error_prefix')} - {t(errorText.moduleName as any)}
             </Box>
           </Flex>
           <Box
@@ -561,7 +561,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
               whiteSpace={'pre-wrap'}
               ml={6}
             >
-              {errorText.errorText}
+              {t(errorText.errorText as any)}
             </Box>
             {!errorExpanded && errorContentOverflow && (
               <Box

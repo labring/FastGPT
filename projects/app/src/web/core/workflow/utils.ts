@@ -19,7 +19,8 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId
+  getHandleId,
+  isValidReferenceValueFormat
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -28,6 +29,7 @@ import {
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
@@ -349,6 +351,73 @@ export const filterWorkflowNodeOutputsByType = (
   );
 };
 
+/** 引用变量列表展示：挂在 loopPro 子画布下的循环开始/结束使用 Pro 系列图标（节点数据里仍为模板 avatar） */
+export const resolveReferenceListNodeAvatar = (
+  node: FlowNodeItemType,
+  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined
+): string => {
+  const parentId = node.parentNodeId;
+  if (!parentId) return node.avatar || '';
+  const parent = getNodeById(parentId);
+  if (parent?.flowNodeType !== FlowNodeTypeEnum.loopPro) return node.avatar || '';
+  if (node.flowNodeType === FlowNodeTypeEnum.loopStart) {
+    return 'core/workflow/template/loopProStart';
+  }
+  if (
+    node.flowNodeType === FlowNodeTypeEnum.loopProEnd ||
+    node.flowNodeType === FlowNodeTypeEnum.loopEnd
+  ) {
+    return 'core/workflow/template/loopProEnd';
+  }
+  return node.avatar || '';
+};
+
+/** 完整响应侧边栏：父节点为 loopPro 时，子链路中的循环开始/结束使用 Pro 系列图标（与画布、引用选择器一致） */
+export const resolveLoopProSubflowAvatarOverride = (
+  parentModuleType: FlowNodeTypeEnum | undefined,
+  moduleType: FlowNodeTypeEnum
+): string | undefined => {
+  if (parentModuleType !== FlowNodeTypeEnum.loopPro) return undefined;
+  if (moduleType === FlowNodeTypeEnum.loopStart) {
+    return 'core/workflow/template/loopProStart';
+  }
+  if (moduleType === FlowNodeTypeEnum.loopProEnd || moduleType === FlowNodeTypeEnum.loopEnd) {
+    return 'core/workflow/template/loopProEnd';
+  }
+  return undefined;
+};
+
+/**
+ * loop / batch / loopPro：父容器输入里配置的「引用」往往只写在 input.value 中、图上没有边；
+ * 子画布内选引用时需把这些上游节点也纳入可选范围（再沿边继续反向展开）。
+ */
+const getContainerParentReferenceSeedNodeIds = (parent: FlowNodeItemType): string[] => {
+  const seeds = new Set<string>();
+  const tryAdd = (value: unknown) => {
+    if (!isValidReferenceValueFormat(value)) return;
+    const refNodeId = value[0];
+    if (refNodeId && refNodeId !== VARIABLE_NODE_ID) seeds.add(refNodeId);
+  };
+
+  for (const input of parent.inputs || []) {
+    const renderType = input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+    if (renderType === FlowNodeInputTypeEnum.reference) {
+      tryAdd(input.value);
+      continue;
+    }
+    if (Array.isArray(input.value) && input.value.length > 0) {
+      for (const item of input.value) {
+        tryAdd(item);
+      }
+    }
+  }
+  return [...seeds];
+};
+
+/**
+ * 引用下拉可选的上游节点：沿入边反向递归，并注入全局变量伪节点。
+ * 子画布内若只沿边，会选不到仅出现在父容器（batch/loop/loopPro）输入引用里的主画布节点，故额外用父输入中的引用作为种子再沿边展开。
+ */
 export const getNodeAllSource = ({
   nodeId,
   systemConfigNode,
@@ -389,6 +458,25 @@ export const getNodeAllSource = ({
   };
   findSourceNode(nodeId);
 
+  if (parentId) {
+    const parent = getNodeById(parentId);
+    if (
+      parent &&
+      [FlowNodeTypeEnum.batch, FlowNodeTypeEnum.loop, FlowNodeTypeEnum.loopPro].includes(
+        parent.flowNodeType
+      )
+    ) {
+      for (const seedId of getContainerParentReferenceSeedNodeIds(parent)) {
+        const seedNode = getNodeById(seedId);
+        if (!seedNode) continue;
+        if (!sourceNodes.has(seedNode.nodeId)) {
+          sourceNodes.set(seedNode.nodeId, seedNode);
+        }
+        findSourceNode(seedId);
+      }
+    }
+  }
+
   sourceNodes.set(
     'system_global_variable',
     getGlobalVariableNode({
@@ -407,13 +495,217 @@ type ConnectivityIssue = {
   nodeId: string;
   issue: 'isolated' | 'no_input' | 'unreachable_from_start';
 };
-export const checkWorkflowNodeAndConnection = ({
+
+/** loop / batch：子画布内必须恰好 1 个「结束」节点 */
+export const checkLoopBatchSingleLoopEnd = ({
+  nodes
+}: {
+  nodes: Node<FlowNodeItemType, string | undefined>[];
+}): string[] | undefined => {
+  for (const wfNode of nodes) {
+    const ft = wfNode.data.flowNodeType;
+    if (ft !== FlowNodeTypeEnum.loop && ft !== FlowNodeTypeEnum.batch) continue;
+
+    const parentId = wfNode.data.nodeId;
+    const endCount = nodes.filter(
+      (n) => n.data.parentNodeId === parentId && n.data.flowNodeType === FlowNodeTypeEnum.loopEnd
+    ).length;
+    if (endCount !== 1) {
+      return [wfNode.data.nodeId];
+    }
+  }
+  return undefined;
+};
+
+/** loop_pro 子画布模式：与运行时 dispatch 一致，缺省为 array */
+export const getLoopProModeFromInputs = (
+  inputs: FlowNodeItemType['inputs'] | undefined
+): 'array' | 'condition' => {
+  const v = inputs?.find((i) => i.key === NodeInputKeyEnum.loopProMode)?.value;
+  return v === 'condition' ? 'condition' : 'array';
+};
+
+/**
+ * 是否允许删除「本不应删」的 loopProEnd（与画布 remove 校验一致）：
+ * - 同一 loopPro 下多个 End：可删；
+ * - 仅一个 End 且非 condition 模式（含缺省 array）：可删；
+ * - 仅一个 End 且 condition 模式：不可删。
+ */
+export const allowDeleteExtraLoopProEndNode = (
+  node: FlowNodeItemType,
+  allNodes: FlowNodeItemType[],
+  getNodeById: (id: string | null | undefined) => FlowNodeItemType | undefined,
+  parentNodeDeleted = false
+): boolean => {
+  if (node.flowNodeType !== FlowNodeTypeEnum.loopProEnd) return false;
+  if (!node.parentNodeId || parentNodeDeleted) return false;
+  const parent = getNodeById(node.parentNodeId);
+  if (parent?.flowNodeType !== FlowNodeTypeEnum.loopPro) return false;
+  const siblingEnds = allNodes.filter(
+    (n) => n.parentNodeId === node.parentNodeId && n.flowNodeType === FlowNodeTypeEnum.loopProEnd
+  );
+  if (siblingEnds.length > 1) return true;
+  const mode = parent.inputs?.find((i) => i.key === NodeInputKeyEnum.loopProMode)?.value;
+  return mode !== 'condition';
+};
+
+/**
+ * loop_pro（strict 保存/调试）：
+ * - array：仅需存在 Loop Start；可无 LoopProEnd（每轮子图跑完即下一项，遍历完数组即结束）。
+ * - condition：须存在从 Loop Start 到 LoopProEnd / loopEnd 的有向路径。
+ */
+export const checkLoopProConditionTermination = ({
   nodes,
   edges
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
 }): string[] | undefined => {
+  for (const wfNode of nodes) {
+    if (wfNode.data.flowNodeType !== FlowNodeTypeEnum.loopPro) continue;
+
+    const parentId = wfNode.data.nodeId;
+    const childIds = new Set(
+      nodes.filter((n) => n.data.parentNodeId === parentId).map((n) => n.data.nodeId)
+    );
+
+    const loopStart = nodes.find(
+      (n) => n.data.parentNodeId === parentId && n.data.flowNodeType === FlowNodeTypeEnum.loopStart
+    );
+
+    if (!loopStart) {
+      return [wfNode.data.nodeId];
+    }
+
+    if (getLoopProModeFromInputs(wfNode.data.inputs) !== 'condition') {
+      continue;
+    }
+
+    const loopEndIds = new Set(
+      nodes
+        .filter(
+          (n) =>
+            n.data.parentNodeId === parentId &&
+            (n.data.flowNodeType === FlowNodeTypeEnum.loopProEnd ||
+              n.data.flowNodeType === FlowNodeTypeEnum.loopEnd)
+        )
+        .map((n) => n.data.nodeId)
+    );
+
+    if (loopEndIds.size === 0) {
+      return [wfNode.data.nodeId];
+    }
+
+    const queue: string[] = [loopStart.data.nodeId];
+    const visited = new Set<string>();
+    let reachedEnd = false;
+
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (loopEndIds.has(id)) {
+        reachedEnd = true;
+        break;
+      }
+      if (visited.has(id)) continue;
+      visited.add(id);
+
+      for (const edge of edges) {
+        if (edge.source !== id) continue;
+        if (!childIds.has(edge.target)) continue;
+        queue.push(edge.target);
+      }
+    }
+
+    if (!reachedEnd) {
+      return [wfNode.data.nodeId];
+    }
+  }
+
+  return undefined;
+};
+
+/** 保存期：loopEnd / loopProEnd 禁止出边；边的两端须在同一 parent 作用域（与 ConnectionHandle 规则一致） */
+export const checkWorkflowEdgesStructure = (
+  nodes: Node<FlowNodeItemType, string | undefined>[],
+  edges: Edge<any>[]
+): string[] | undefined => {
+  const nodeById = new Map(nodes.map((n) => [n.data.nodeId, n]));
+
+  for (const node of nodes) {
+    const ft = node.data.flowNodeType;
+    if (ft !== FlowNodeTypeEnum.loopEnd && ft !== FlowNodeTypeEnum.loopProEnd) continue;
+    if (edges.some((e) => e.source === node.data.nodeId)) {
+      return [node.data.nodeId];
+    }
+  }
+
+  for (const edge of edges) {
+    const sourceNode = nodeById.get(edge.source);
+    const targetNode = nodeById.get(edge.target);
+    if (!sourceNode || !targetNode) continue;
+
+    const sourceParent = sourceNode.data.parentNodeId;
+    const targetParent = targetNode.data.parentNodeId;
+    if (sourceParent !== targetParent) {
+      return [edge.source];
+    }
+  }
+
+  return undefined;
+};
+
+/** 批量并行子画布内禁止通过「变量更新」写入应用级全局变量（可读不可写） */
+export const checkBatchParallelNoGlobalVariableWrites = (
+  nodes: Node<FlowNodeItemType, string | undefined>[]
+): string[] | undefined => {
+  const nodeById = new Map(nodes.map((n) => [n.data.nodeId, n]));
+  const violating: string[] = [];
+
+  for (const node of nodes) {
+    const parentId = node.data.parentNodeId;
+    if (!parentId) continue;
+    const parent = nodeById.get(parentId);
+    if (!parent || parent.data.flowNodeType !== FlowNodeTypeEnum.batch) continue;
+    if (node.data.flowNodeType !== FlowNodeTypeEnum.variableUpdate) continue;
+
+    const updateList = node.data.inputs.find((i) => i.key === NodeInputKeyEnum.updateList)
+      ?.value as TUpdateListItem[] | undefined;
+    if (!Array.isArray(updateList)) continue;
+
+    const writesGlobal = updateList.some(
+      (item) => item?.variable?.[0] === VARIABLE_NODE_ID && !!item?.variable?.[1]
+    );
+    if (writesGlobal) {
+      violating.push(node.data.nodeId);
+    }
+  }
+
+  return violating.length > 0 ? violating : undefined;
+};
+
+export const isBatchGlobalWriteViolation = (
+  nodes: Node<FlowNodeItemType, string | undefined>[],
+  failedNodeIds: string[]
+): boolean => {
+  const violations = checkBatchParallelNoGlobalVariableWrites(nodes);
+  if (!violations?.length) return false;
+  return failedNodeIds.some((id) => violations.includes(id));
+};
+
+export const checkWorkflowNodeAndConnection = ({
+  nodes,
+  edges,
+  options
+}: {
+  nodes: Node<FlowNodeItemType, string | undefined>[];
+  edges: Edge<any>[];
+  options?: { strictLoopProCondition?: boolean };
+}): string[] | undefined => {
+  const batchGlobalWriteIssue = checkBatchParallelNoGlobalVariableWrites(nodes);
+  if (batchGlobalWriteIssue) {
+    return batchGlobalWriteIssue;
+  }
+
   // Node check
   for (const node of nodes) {
     const data = node.data;
@@ -496,6 +788,16 @@ export const checkWorkflowNodeAndConnection = ({
     if (
       inputs.some((input) => {
         if (
+          data.flowNodeType === FlowNodeTypeEnum.loopPro &&
+          input.key === NodeInputKeyEnum.loopInputArray
+        ) {
+          const mode = inputs.find((i) => i.key === NodeInputKeyEnum.loopProMode)?.value ?? 'array';
+          if (mode === 'condition') {
+            return false;
+          }
+        }
+
+        if (
           !input.valueType ||
           [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
         ) {
@@ -565,6 +867,16 @@ export const checkWorkflowNodeAndConnection = ({
     if (!hasEdge) {
       return [data.nodeId];
     }
+  }
+
+  const structureIssues = checkWorkflowEdgesStructure(nodes, edges);
+  if (structureIssues) {
+    return structureIssues;
+  }
+
+  const batchLoopEndIssue = checkLoopBatchSingleLoopEnd({ nodes });
+  if (batchLoopEndIssue) {
+    return batchLoopEndIssue;
   }
 
   // Edge check
@@ -665,6 +977,13 @@ export const checkWorkflowNodeAndConnection = ({
   const connectivityIssues = checkConnectivity(nodes, edges);
   if (connectivityIssues.length > 0) {
     return connectivityIssues;
+  }
+
+  if (options?.strictLoopProCondition) {
+    const loopProIssue = checkLoopProConditionTermination({ nodes, edges });
+    if (loopProIssue) {
+      return loopProIssue;
+    }
   }
 };
 

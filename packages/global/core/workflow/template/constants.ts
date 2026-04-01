@@ -26,8 +26,11 @@ import { IfElseNode } from './system/ifElse/index';
 import { FormInputNode } from './system/interactive/formInput';
 import { UserSelectNode } from './system/interactive/userSelect';
 import { LafModule } from './system/laf';
-import { LoopNode } from './system/loop/loop';
+import { LoopNode } from './system/loop/v1/loop';
+import { BatchNode } from './system/batch';
+import { LoopProNode } from './system/loop/v2/loopPro';
 import { LoopEndNode } from './system/loop/loopEnd';
+import { LoopProEndNode } from './system/loop/v2/loopProEnd';
 import { LoopStartNode } from './system/loop/loopStart';
 import { ReadFilesNode } from './system/readFiles';
 import { RunToolNode } from './system/runTool';
@@ -55,7 +58,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
-  LoopNode
+  BatchNode,
+  LoopProNode
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -85,8 +89,10 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunPluginModule,
   RunAppNode,
   RunAppModule,
+  LoopNode,
   LoopStartNode,
   LoopEndNode,
+  LoopProEndNode,
   RunToolNode,
   RunToolSetNode
 ];

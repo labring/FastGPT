@@ -16,6 +16,7 @@ import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,
@@ -25,6 +26,13 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.any]: WorkflowIOValueTypeEnum.arrayAny
 };
 
+const menuForbid = {
+  copy: true,
+  delete: true,
+  debug: true
+} as const;
+
+/** batch & loopEnd */
 const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, parentNodeId } = data;
   const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
@@ -37,9 +45,8 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs]
   );
 
-  // Get loopEnd input value type
   const valueType = useMemo(() => {
-    if (!inputItem) return;
+    if (!inputItem?.value?.length) return;
 
     const targetId = inputItem.value[0];
 
@@ -61,11 +68,19 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     if (!valueType) return;
 
     const parentNode = getNodeById(parentNodeId);
-    const parentNodeOutput = parentNode?.outputs.find(
+    if (
+      !parentNode ||
+      (parentNode.flowNodeType !== FlowNodeTypeEnum.loop &&
+        parentNode.flowNodeType !== FlowNodeTypeEnum.batch)
+    ) {
+      return;
+    }
+
+    const parentNodeOutput = parentNode.outputs.find(
       (output) => output.key === NodeOutputKeyEnum.loopArray
     );
 
-    if (parentNode && parentNodeOutput) {
+    if (parentNodeOutput) {
       onChangeNode({
         nodeId: parentNode.nodeId,
         type: 'updateOutput',
@@ -78,20 +93,23 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
+  const intro =
+    data.intro && String(data.intro).trim() ? data.intro : ('workflow:loop_end_intro' as const);
+
   return (
     <NodeCard
       selected={selected}
       {...data}
+      name={t('workflow:loop_end')}
+      intro={intro}
       w={'420px'}
-      menuForbid={{
-        copy: true,
-        delete: true,
-        debug: true
-      }}
+      menuForbid={menuForbid}
     >
-      <Box px={4} pb={4} pt={2}>
-        {inputItem && <Reference item={inputItem} nodeId={nodeId} />}
-      </Box>
+      {inputItem ? (
+        <Box px={4} pb={4} pt={2}>
+          <Reference item={inputItem} nodeId={nodeId} />
+        </Box>
+      ) : null}
     </NodeCard>
   );
 };

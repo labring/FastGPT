@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { resolveLoopProSubflowAvatarOverride } from '@/web/core/workflow/utils';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
 import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
@@ -29,6 +31,8 @@ type sideTabItemType = {
   moduleName: string;
   runningTime?: number;
   moduleType: string;
+  // distinguish icons
+  parentModuleType?: FlowNodeTypeEnum;
   // nodeId:string; // abandon
   id: string;
   children: sideTabItemType[];
@@ -152,14 +156,18 @@ export const WholeResponseContent = ({
         )}
         {(activeModule?.childrenResponses ||
           activeModule.toolDetail ||
-          activeModule.pluginDetail) && (
+          activeModule.pluginDetail ||
+          activeModule.loopDetail ||
+          activeModule.batchDetail) && (
           <Row
             label={t('chat:response.child total points')}
             value={formatNumber(
               [
                 ...(activeModule.childrenResponses || []),
                 ...(activeModule.toolDetail || []),
-                ...(activeModule.pluginDetail || [])
+                ...(activeModule.pluginDetail || []),
+                ...(activeModule.loopDetail || []),
+                ...(activeModule.batchDetail || [])
               ]?.reduce((sum, item) => sum + (item.totalPoints || 0), 0) || 0
             )}
           />
@@ -493,9 +501,15 @@ export const WholeResponseContent = ({
         value={activeModule?.updateVarResult}
       />
 
-      {/* loop */}
+      {/* loop & loopPro */}
       <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
-      <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
+      {activeModule?.moduleType !== FlowNodeTypeEnum.loopPro && (
+        <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
+      )}
+      <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.batchInput} />
+      <Row label={t('workflow:batch_result_success')} value={activeModule?.batchResult} />
+      <Row label={t('workflow:batch_result_raw')} value={activeModule?.batchRawResult} />
+      <Row label={t('workflow:batch_status')} value={activeModule?.batchStatus} />
 
       {/* loopStart */}
       <Row
@@ -627,6 +641,10 @@ const SideTabItem = ({
         >
           <Avatar
             src={
+              resolveLoopProSubflowAvatarOverride(
+                sideBarItem.parentModuleType,
+                sideBarItem.moduleType as FlowNodeTypeEnum
+              ) ||
               sideBarItem.moduleLogo ||
               moduleTemplatesFlat.find(
                 (template) => sideBarItem.moduleType === template.flowNodeType
@@ -724,6 +742,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
             }
+            if (Array.isArray(item.batchDetail)) {
+              helper(item.batchDetail);
+            }
             if (Array.isArray(item.childrenResponses)) {
               helper(item.childrenResponses);
             }
@@ -751,17 +772,29 @@ export const ResponseBox = React.memo(function ResponseBox({
 
   const sliderResponseList: sideTabItemType[] = useMemo(() => {
     /* Format response data to slider data */
-    function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
+    function pretreatmentResponse(
+      res: ChatHistoryItemResType[],
+      parentModuleType?: FlowNodeTypeEnum
+    ): sideTabItemType[] {
       return res.map((item) => {
         let children: sideTabItemType[] = [];
+        const selfType = item.moduleType;
         if (
-          !!(item?.toolDetail || item?.pluginDetail || item?.loopDetail || item?.childrenResponses)
+          !!(
+            item?.toolDetail ||
+            item?.pluginDetail ||
+            item?.loopDetail ||
+            item?.batchDetail ||
+            item?.childrenResponses
+          )
         ) {
-          if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
-          if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
-          if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+          if (item?.toolDetail) children.push(...pretreatmentResponse(item.toolDetail, selfType));
+          if (item?.pluginDetail)
+            children.push(...pretreatmentResponse(item.pluginDetail, selfType));
+          if (item?.loopDetail) children.push(...pretreatmentResponse(item.loopDetail, selfType));
+          if (item?.batchDetail) children.push(...pretreatmentResponse(item.batchDetail, selfType));
           if (item?.childrenResponses)
-            children.push(...pretreatmentResponse(item?.childrenResponses));
+            children.push(...pretreatmentResponse(item.childrenResponses, selfType));
         }
 
         return {
@@ -769,12 +802,13 @@ export const ResponseBox = React.memo(function ResponseBox({
           moduleName: item.moduleName,
           runningTime: item.runningTime,
           moduleType: item.moduleType,
+          parentModuleType,
           id: item.id ?? item.nodeId,
           children
         };
       });
     }
-    return pretreatmentResponse(response);
+    return pretreatmentResponse(response, undefined);
   }, [response]);
 
   const {

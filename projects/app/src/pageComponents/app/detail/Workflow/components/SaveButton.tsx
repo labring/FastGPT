@@ -8,6 +8,15 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import SaveAndPublishModal from '../../WorkflowComponents/Flow/components/SaveAndPublish';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
+/** 发布/校验未通过时由 onClickSave 抛出；message 为空以免 useRequest 弹出通用错误 toast */
+export class WorkflowPublishCheckAbortedError extends Error {
+  constructor() {
+    super('');
+    this.name = 'WorkflowPublishCheckAbortedError';
+    Object.setPrototypeOf(this, WorkflowPublishCheckAbortedError.prototype);
+  }
+}
+
 const SaveButton = ({
   colorSchema,
   isLoading,
@@ -89,7 +98,16 @@ const SaveButton = ({
               cursor={'pointer'}
               isLoading={isLoading}
               onClick={async () => {
-                await onClickSave({});
+                try {
+                  await onClickSave({});
+                } catch (e) {
+                  if (e instanceof WorkflowPublishCheckAbortedError) {
+                    onClose();
+                    setIsSave(false);
+                    return;
+                  }
+                  throw e;
+                }
                 toast({
                   status: 'success',
                   title: t('app:saved_success'),

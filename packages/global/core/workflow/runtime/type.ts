@@ -11,7 +11,7 @@ import type { DispatchNodeResponseKeyEnum } from './constants';
 import type { NodeInputKeyEnum } from '../constants';
 import { NodeOutputKeyEnum } from '../constants';
 import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
-import type { NextApiResponse } from 'next';
+import type { ServerResponse } from 'http';
 import type { AppSchemaType } from '../../app/type';
 import type { RuntimeEdgeItemType } from '../type/edge';
 import { type ReadFileNodeResponseType } from '../template/system/readFiles/type';
@@ -48,7 +48,7 @@ export type ExternalProviderType = {
 
 /* workflow props */
 export type ChatDispatchProps = {
-  res?: NextApiResponse;
+  res?: ServerResponse;
   checkIsStopping: () => boolean;
   lang?: localeType;
   requestOrigin?: string;
@@ -394,6 +394,12 @@ export type DispatchNodeResponseType = {
   loopResult?: any[];
   loopInput?: any[];
   loopDetail?: ChatHistoryItemResType[];
+  // batch
+  batchInput?: any[];
+  batchResult?: any[];
+  batchRawResult?: any[];
+  batchStatus?: 'success' | 'failed' | 'partial_success';
+  batchDetail?: ChatHistoryItemResType[];
   // loop start
   loopInputValue?: any;
   // loop end

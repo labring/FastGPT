@@ -25,7 +25,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PublishHistories from '../PublishHistoriesSlider';
-import SaveButton from '../Workflow/components/SaveButton';
+import SaveButton, { WorkflowPublishCheckAbortedError } from '../Workflow/components/SaveButton';
 import {
   WorkflowSnapshotContext,
   type WorkflowSnapshotsType
@@ -83,32 +83,38 @@ const Header = () => {
       isPublish?: boolean;
       versionName?: string;
     }) => {
-      const data = flowData2StoreData();
-      if (data) {
-        await onSaveApp({
-          ...data,
-          isPublish,
-          versionName,
-          chatConfig: appDetail.chatConfig,
-          //@ts-ignore
-          version: 'v2'
-        });
-        // Mark the current snapshot as saved
-        setPast((prevPast) =>
-          prevPast.map((item, index) =>
-            index === 0
-              ? {
-                  ...item,
-                  isSaved: true
-                }
-              : item
-          )
-        );
-      }
+      const data = isPublish
+        ? flowData2StoreDataAndCheck(false, { strictLoopProCondition: true })
+        : flowData2StoreData();
+      if (!data) throw new WorkflowPublishCheckAbortedError();
+      await onSaveApp({
+        ...data,
+        isPublish,
+        versionName,
+        chatConfig: appDetail.chatConfig,
+        //@ts-ignore
+        version: 'v2'
+      });
+      setPast((prevPast) =>
+        prevPast.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                isSaved: true
+              }
+            : item
+        )
+      );
     },
     {
       manual: true,
-      refreshDeps: [onSaveApp, setPast, flowData2StoreData, appDetail.chatConfig]
+      refreshDeps: [
+        onSaveApp,
+        setPast,
+        flowData2StoreData,
+        flowData2StoreDataAndCheck,
+        appDetail.chatConfig
+      ]
     }
   );
 
@@ -206,7 +212,9 @@ const Header = () => {
                 variant={'whitePrimary'}
                 flexShrink={0}
                 onClick={() => {
-                  const data = flowData2StoreDataAndCheck();
+                  const data = flowData2StoreDataAndCheck(false, {
+                    strictLoopProCondition: true
+                  });
                   if (data) {
                     setWorkflowTestData(data);
                   }

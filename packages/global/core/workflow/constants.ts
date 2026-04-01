@@ -237,8 +237,13 @@ export enum NodeInputKeyEnum {
   // user select
   userSelectOptions = 'userSelectOptions',
 
+  // batch
+  batchParallelConcurrency = 'batchParallelConcurrency',
+  batchParallelRetryTimes = 'batchParallelRetryTimes',
   // loop
   loopInputArray = 'loopInputArray',
+  /** loop_pro: 'array' | 'condition' */
+  loopProMode = 'loopProMode',
   childrenNodeIdList = 'childrenNodeIdList',
   nodeWidth = 'nodeWidth',
   nodeHeight = 'nodeHeight',
@@ -305,6 +310,9 @@ export enum NodeOutputKeyEnum {
   //user select
   selectResult = 'selectResult',
 
+  // batch
+  batchRawResult = 'batchRawResult',
+  batchStatus = 'batchStatus',
   // loop
   loopArray = 'loopArray',
   // loop start

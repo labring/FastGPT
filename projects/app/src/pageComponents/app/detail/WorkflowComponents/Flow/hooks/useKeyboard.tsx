@@ -49,7 +49,13 @@ export const useKeyboard = () => {
     const nodes = getNodes();
 
     const selectedNodes = nodes.filter(
-      (node) => node.selected && !node.data?.isError && node.data?.unique !== true
+      (node) =>
+        node.selected &&
+        !node.data?.isError &&
+        node.data?.unique !== true &&
+        node.data?.flowNodeType !== FlowNodeTypeEnum.loopEnd &&
+        node.data?.flowNodeType !== FlowNodeTypeEnum.loopProEnd &&
+        node.data?.flowNodeType !== FlowNodeTypeEnum.loopStart
     );
     if (selectedNodes.length === 0) return;
     copyData(JSON.stringify(selectedNodes), t('common:core.workflow.Copy node'));
@@ -68,7 +74,17 @@ export const useKeyboard = () => {
       if (!Array.isArray(parseData)) return;
       // filter workflow data
       const filteredData = parseData.filter(
-        (item) => !!item.type && item.data?.unique !== true && item.type !== FlowNodeTypeEnum.loop
+        (item) =>
+          !!item.type &&
+          item.data?.unique !== true &&
+          ![
+            FlowNodeTypeEnum.loop,
+            FlowNodeTypeEnum.batch,
+            FlowNodeTypeEnum.loopPro,
+            FlowNodeTypeEnum.loopEnd,
+            FlowNodeTypeEnum.loopProEnd,
+            FlowNodeTypeEnum.loopStart
+          ].includes(item.type as FlowNodeTypeEnum)
       );
 
       if (filteredData.length === 0) return;

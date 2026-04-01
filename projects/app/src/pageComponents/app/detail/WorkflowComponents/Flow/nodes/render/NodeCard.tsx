@@ -23,7 +23,7 @@ import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
 import { getToolPreviewNode, getToolVersionList } from '@/web/core/app/api/tool';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { allowDeleteExtraLoopProEndNode, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -218,7 +218,11 @@ const NodeCard = (props: Props) => {
   }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
-  const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
+  const isLoopNode = [
+    FlowNodeTypeEnum.loop,
+    FlowNodeTypeEnum.batch,
+    FlowNodeTypeEnum.loopPro
+  ].includes(node?.flowNodeType as FlowNodeTypeEnum);
   const showVersion = useMemo(() => {
     // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (
@@ -684,6 +688,7 @@ const MenuRender = React.memo(function MenuRender({
   menuForbid?: Props['menuForbid'];
 }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { openDebugNode, DebugInputModal } = useDebug();
   const { setNodes, setEdges, getNodeList, getNodeById } = useContextSelector(
     WorkflowBufferDataContext,
@@ -696,6 +701,10 @@ const MenuRender = React.memo(function MenuRender({
   // Get current node to check if folded
   const currentNode = getNodeById(nodeId);
   const isFolded = currentNode?.isFolded;
+  const canMenuDelete =
+    !!currentNode &&
+    (!currentNode.forbidDelete ||
+      allowDeleteExtraLoopProEndNode(currentNode, getNodeList(), getNodeById, false));
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
@@ -772,27 +781,39 @@ const MenuRender = React.memo(function MenuRender({
     [computedNewNodeName, setNodes, t]
   );
   const onDelNode = useCallback(
-    (nodeId: string) => {
+    (targetId: string) => {
+      const node = getNodeById(targetId);
+      if (
+        node?.forbidDelete &&
+        !allowDeleteExtraLoopProEndNode(node, getNodeList(), getNodeById, false)
+      ) {
+        toast({
+          status: 'warning',
+          title: t('common:core.workflow.Can not delete node')
+        });
+        return;
+      }
+
       // Remove node and its child nodes
       setNodes((state) =>
-        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
+        state.filter((item) => item.data.nodeId !== targetId && item.data.parentNodeId !== targetId)
       );
 
       // Remove edges connected to the node and its child nodes
       const childNodeIds = getNodeList()
-        .filter((node) => node.parentNodeId === nodeId)
-        .map((node) => node.nodeId);
+        .filter((n) => n.parentNodeId === targetId)
+        .map((n) => n.nodeId);
       setEdges((state) =>
         state.filter(
           (edge) =>
-            edge.source !== nodeId &&
-            edge.target !== nodeId &&
+            edge.source !== targetId &&
+            edge.target !== targetId &&
             !childNodeIds.includes(edge.target) &&
             !childNodeIds.includes(edge.source)
         )
       );
     },
-    [getNodeList, setEdges, setNodes]
+    [getNodeById, getNodeList, setEdges, setNodes, t, toast]
   );
 
   const Render = useMemo(() => {
@@ -834,7 +855,7 @@ const MenuRender = React.memo(function MenuRender({
               onClick: () => onCopyNode(nodeId)
             }
           ]),
-      ...(menuForbid?.delete
+      ...(menuForbid?.delete || !canMenuDelete
         ? []
         : [
             {
@@ -885,6 +906,7 @@ const MenuRender = React.memo(function MenuRender({
     menuForbid?.copy,
     menuForbid?.delete,
     menuForbid?.fold,
+    canMenuDelete,
     t,
     DebugInputModal,
     openDebugNode,

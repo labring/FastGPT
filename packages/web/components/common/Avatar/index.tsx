@@ -16,10 +16,19 @@ const Avatar = ({
   const isIcon = !!iconPaths[src as any];
 
   return isIcon ? (
-    <Box display={'inline-flex'} {...props}>
+    <Box
+      display={'inline-flex'}
+      alignItems={'center'}
+      justifyContent={'center'}
+      flexShrink={0}
+      w={w}
+      h={w}
+      {...props}
+    >
       <MyIcon
         name={src as any}
         w={w}
+        h={w}
         borderRadius={props.borderRadius}
         {...(fill ? { fill } : {})}
       />

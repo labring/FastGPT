@@ -17,7 +17,9 @@ import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   filterWorkflowNodeOutputsByType,
-  checkWorkflowNodeAndConnection
+  checkWorkflowNodeAndConnection,
+  checkWorkflowEdgesStructure,
+  checkLoopProConditionTermination
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
@@ -235,5 +237,385 @@ describe('checkWorkflowNodeAndConnection', () => {
   it('should handle empty nodes and edges', () => {
     const result = checkWorkflowNodeAndConnection({ nodes: [], edges: [] });
     expect(result).toBeUndefined();
+  });
+});
+
+describe('checkWorkflowEdgesStructure', () => {
+  it('flags loopEnd with outgoing edge', () => {
+    const nodes = [
+      {
+        id: 'le',
+        type: FlowNodeTypeEnum.loopEnd,
+        data: {
+          nodeId: 'le',
+          flowNodeType: FlowNodeTypeEnum.loopEnd,
+          parentNodeId: 'p',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'n2',
+        type: FlowNodeTypeEnum.emptyNode,
+        data: {
+          nodeId: 'n2',
+          flowNodeType: FlowNodeTypeEnum.emptyNode,
+          parentNodeId: 'p',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    const edges: Edge[] = [{ id: 'e1', source: 'le', target: 'n2', type: EDGE_TYPE } as Edge];
+
+    expect(checkWorkflowEdgesStructure(nodes, edges)).toEqual(['le']);
+  });
+
+  it('flags loopProEnd with outgoing edge', () => {
+    const nodes = [
+      {
+        id: 'lpe',
+        type: FlowNodeTypeEnum.loopProEnd,
+        data: {
+          nodeId: 'lpe',
+          flowNodeType: FlowNodeTypeEnum.loopProEnd,
+          parentNodeId: 'p',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'n2',
+        type: FlowNodeTypeEnum.emptyNode,
+        data: {
+          nodeId: 'n2',
+          flowNodeType: FlowNodeTypeEnum.emptyNode,
+          parentNodeId: 'p',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    const edges: Edge[] = [{ id: 'e1', source: 'lpe', target: 'n2', type: EDGE_TYPE } as Edge];
+
+    expect(checkWorkflowEdgesStructure(nodes, edges)).toEqual(['lpe']);
+  });
+
+  it('flags cross-scope edge (mismatched parentNodeId)', () => {
+    const nodes = [
+      {
+        id: 'root',
+        type: FlowNodeTypeEnum.workflowStart,
+        data: {
+          nodeId: 'root',
+          flowNodeType: FlowNodeTypeEnum.workflowStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'child',
+        type: FlowNodeTypeEnum.emptyNode,
+        data: {
+          nodeId: 'child',
+          flowNodeType: FlowNodeTypeEnum.emptyNode,
+          parentNodeId: 'batch-1',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    const edges: Edge[] = [{ id: 'e1', source: 'root', target: 'child', type: EDGE_TYPE } as Edge];
+
+    expect(checkWorkflowEdgesStructure(nodes, edges)).toEqual(['root']);
+  });
+
+  it('allows same-scope edges', () => {
+    const nodes = [
+      {
+        id: 'a',
+        type: FlowNodeTypeEnum.emptyNode,
+        data: {
+          nodeId: 'a',
+          flowNodeType: FlowNodeTypeEnum.emptyNode,
+          parentNodeId: 'p',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'b',
+        type: FlowNodeTypeEnum.emptyNode,
+        data: {
+          nodeId: 'b',
+          flowNodeType: FlowNodeTypeEnum.emptyNode,
+          parentNodeId: 'p',
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    const edges: Edge[] = [{ id: 'e1', source: 'a', target: 'b', type: EDGE_TYPE } as Edge];
+
+    expect(checkWorkflowEdgesStructure(nodes, edges)).toBeUndefined();
+  });
+});
+
+describe('checkLoopProConditionTermination', () => {
+  it('returns loop_pro nodeId when no path from loopStart to loopEnd', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'condition' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'le',
+        type: FlowNodeTypeEnum.loopProEnd,
+        data: {
+          nodeId: 'le',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopProEnd,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toEqual(['loop-pro']);
+  });
+
+  it('returns undefined when loopStart reaches loopEnd inside child subgraph', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'condition' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'le',
+        type: FlowNodeTypeEnum.loopProEnd,
+        data: {
+          nodeId: 'le',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopProEnd,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    const edges: Edge[] = [
+      {
+        id: 'e1',
+        source: 'ls',
+        target: 'le',
+        type: EDGE_TYPE
+      }
+    ];
+
+    expect(checkLoopProConditionTermination({ nodes, edges })).toBeUndefined();
+  });
+
+  it('treats legacy loopEnd under loopPro as termination target for path check', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'condition' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'le',
+        type: FlowNodeTypeEnum.loopEnd,
+        data: {
+          nodeId: 'le',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopEnd,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    const edges: Edge[] = [{ id: 'e1', source: 'ls', target: 'le', type: EDGE_TYPE }];
+
+    expect(checkLoopProConditionTermination({ nodes, edges })).toBeUndefined();
+  });
+
+  it('array mode passes without loopProEnd when loopStart exists', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'array' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toBeUndefined();
+  });
+
+  it('array mode (default when loopProMode omitted) passes without loopProEnd', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toBeUndefined();
+  });
+
+  it('returns loop_pro nodeId when loopStart is missing (array mode)', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'array' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toEqual(['loop-pro']);
+  });
+
+  it('condition mode fails when no termination node exists', () => {
+    const nodes = [
+      {
+        id: 'loop-pro',
+        type: FlowNodeTypeEnum.loopPro,
+        data: {
+          nodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopPro,
+          inputs: [{ key: NodeInputKeyEnum.loopProMode, value: 'condition' }],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      },
+      {
+        id: 'ls',
+        type: FlowNodeTypeEnum.loopStart,
+        data: {
+          nodeId: 'ls',
+          parentNodeId: 'loop-pro',
+          flowNodeType: FlowNodeTypeEnum.loopStart,
+          inputs: [],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ] as Node<FlowNodeItemType>[];
+
+    expect(checkLoopProConditionTermination({ nodes, edges: [] })).toEqual(['loop-pro']);
   });
 });

@@ -59,6 +59,15 @@ export const useNodeTemplates = () => {
             ) {
               return false;
             }
+            // LoopProEnd：Displayed in the base list only when there is already a loopPro on the canvas.
+            if (item.flowNodeType === FlowNodeTypeEnum.loopProEnd) {
+              const hasLoopPro = getNodeList().some(
+                (node) => node.flowNodeType === FlowNodeTypeEnum.loopPro
+              );
+              if (!hasLoopPro) {
+                return false;
+              }
+            }
             return true;
           })
           .map<NodeTemplateListItemType>((item) => ({

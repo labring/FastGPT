@@ -18,6 +18,8 @@
     "sandbox-v2",
     "sandbox",
     "loop",
+    "looppro",
+    "batch",
     "knowledge_base_search_merge",
     "coreferenceResolution",
     "laf",

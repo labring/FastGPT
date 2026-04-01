@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getNodeAllSource, filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
+import {
+  getNodeAllSource,
+  filterWorkflowNodeOutputsByType,
+  resolveReferenceListNodeAvatar
+} from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
@@ -17,7 +21,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import {
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  isParentChildContainerFlowNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import {
@@ -61,26 +65,33 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 
 export const useReference = ({
   nodeId,
-  valueType = WorkflowIOValueTypeEnum.any
+  valueType = WorkflowIOValueTypeEnum.any,
+  restrictToWorkflowParentId
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
+  restrictToWorkflowParentId?: string;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById, systemConfigNode, getNodeList } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   // 获取可选的变量列表
   const referenceList = useMemoEnhance(() => {
-    const sourceNodes = getNodeAllSource({
-      nodeId,
-      systemConfigNode,
-      getNodeById,
-      edges: edges,
-      chatConfig: appDetail.chatConfig,
-      t
-    });
+    const sourceNodes = restrictToWorkflowParentId
+      ? getNodeList().filter((n) => n.parentNodeId === restrictToWorkflowParentId)
+      : getNodeAllSource({
+          nodeId,
+          systemConfigNode,
+          getNodeById,
+          edges: edges,
+          chatConfig: appDetail.chatConfig,
+          t
+        });
 
     const isArray = valueType?.includes('array');
 
@@ -90,8 +101,17 @@ export const useReference = ({
         return {
           label: (
             <Flex alignItems={'center'}>
-              <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
-              <Box ml={1}>{t(node.name as any)}</Box>
+              <Avatar
+                src={resolveReferenceListNodeAvatar(node, getNodeById)}
+                w={isArray ? 4 : 5}
+                h={isArray ? 4 : 5}
+                borderRadius={'xs'}
+                objectFit={'contain'}
+                flexShrink={0}
+              />
+              <Box ml={1} lineHeight={isArray ? '1rem' : '1.25rem'}>
+                {t(node.name as any)}
+              </Box>
             </Flex>
           ),
           value: node.nodeId,
@@ -114,7 +134,17 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail.chatConfig, t, valueType]);
+  }, [
+    restrictToWorkflowParentId,
+    getNodeList,
+    nodeId,
+    systemConfigNode,
+    getNodeById,
+    edges,
+    appDetail.chatConfig,
+    t,
+    valueType
+  ]);
 
   return {
     referenceList
@@ -152,7 +182,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const popDirection = useMemo(() => {
     const node = getNodeById(nodeId);
     if (!node) return 'bottom';
-    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+    return isParentChildContainerFlowNodeType(node.flowNodeType) ? 'top' : 'bottom';
   }, [nodeId, getNodeById]);
 
   return (

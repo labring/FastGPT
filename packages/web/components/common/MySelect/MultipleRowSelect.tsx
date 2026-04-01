@@ -195,7 +195,8 @@ export const MultipleRowSelect = ({
   return (
     <Box
       css={css({
-        '& div': {
+        // 仅作用于触发按钮内部，避免下拉列表项里的图标/布局 div 被强制 width:auto 导致与文字错位
+        '& .multiple-row-select-trigger div': {
           width: 'auto !important'
         }
       })}
@@ -221,6 +222,9 @@ export const MultipleRowSelect = ({
             transform: 'none'
           }}
           {...ButtonProps}
+          className={[ButtonProps?.className, 'multiple-row-select-trigger']
+            .filter(Boolean)
+            .join(' ')}
           {...(isOpen
             ? {
                 boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',

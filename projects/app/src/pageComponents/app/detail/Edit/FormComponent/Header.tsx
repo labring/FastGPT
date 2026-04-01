@@ -16,7 +16,7 @@ import { publishStatusStyle } from '../../constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import SaveButton from '../../Workflow/components/SaveButton';
+import SaveButton, { WorkflowPublishCheckAbortedError } from '../../Workflow/components/SaveButton';
 import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import {
   compareSimpleAppSnapshot,
@@ -30,6 +30,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowNodeAndConnection,
+  isBatchGlobalWriteViolation,
   storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -95,10 +96,28 @@ const Header = ({
       versionName?: string;
       autoSave?: boolean;
     }) => {
-      const { nodes, edges } = form2WorkflowFn(appForm, t);
+      const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
+      if (isPublish && !autoSave) {
+        const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
+        const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
+        const checkResults = checkWorkflowNodeAndConnection({
+          nodes,
+          edges,
+          options: { strictLoopProCondition: true }
+        });
+        if (checkResults) {
+          toast({
+            title: isBatchGlobalWriteViolation(nodes, checkResults)
+              ? t('workflow:batch_no_global_variable_write')
+              : t('app:app.error.publish_unExist_app'),
+            status: 'warning'
+          });
+          throw new WorkflowPublishCheckAbortedError();
+        }
+      }
       await onSaveApp({
-        nodes,
-        edges,
+        nodes: storeNodes,
+        edges: storeEdges,
         chatConfig: appForm.chatConfig,
         isPublish,
         versionName,
@@ -254,11 +273,16 @@ const Header = ({
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
                     const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
-                    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+                    const checkResults = checkWorkflowNodeAndConnection({
+                      nodes,
+                      edges
+                    });
 
                     if (checkResults) {
                       toast({
-                        title: t('app:app.error.publish_unExist_app'),
+                        title: isBatchGlobalWriteViolation(nodes, checkResults)
+                          ? t('workflow:batch_no_global_variable_write')
+                          : t('app:app.error.publish_unExist_app'),
                         status: 'warning'
                       });
                     }
