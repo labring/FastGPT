@@ -8,28 +8,30 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ## Object Storage Configuration
 
-This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Alibaba Cloud OSS, and Tencent Cloud COS.
+This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Baidu BOS, Alibaba Cloud OSS, and Tencent Cloud COS.
 
 ### Common Required Environment Variables
 
 > - Temporary credential authentication (e.g., STS) is not supported. Ensure service security on your own.
 > - Private bucket reuse is not supported. If you set the private and public bucket names to the same value, ensure the bucket policy is at least **public read, private write**.
 
-- `STORAGE_VENDOR` Enum value. Options: `minio`, `aws-s3`, `oss`, `cos`.
+- `STORAGE_VENDOR` Enum value. Options: `minio`, `aws-s3`, `bos`, `oss`, `cos`.
 - `STORAGE_REGION` Region where the object storage service is located, e.g., `us-east-1`. Refer to your provider's region list. For self-hosted MinIO, any value works.
 - `STORAGE_ACCESS_KEY_ID` Access Key ID for the service credentials
 - `STORAGE_SECRET_ACCESS_KEY` Secret Access Key for the service credentials
 - `STORAGE_PUBLIC_BUCKET` FastGPT public resource bucket name
 - `STORAGE_PRIVATE_BUCKET` FastGPT private resource bucket name
 
-### Self-Hosted MinIO and AWS S3
+### Self-Hosted MinIO, AWS S3, and Other S3-Compatible Storage
 
 > MinIO has strong AWS S3 protocol support, so MinIO and AWS S3 configurations are nearly identical — differences come from provider-specific or self-hosted requirements.
 > In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS, RustFS, etc.
+> If you are using Baidu BOS, set `STORAGE_VENDOR` to `bos` and prefer `STORAGE_BOS_ENDPOINT`.
 
 - `STORAGE_S3_ENDPOINT` Internal connection address. Can be a container ID, e.g., `http://fastgpt-minio:9000`
+- `STORAGE_BOS_ENDPOINT` [BOS Optional] Baidu BOS S3-compatible endpoint. For example, the Beijing region can use `https://s3.bj.bcebos.com`
 - `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). This address is used when generating signed file upload URLs.
-- `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
+- `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`. For BOS, keeping this as `true` is recommended.
 - `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
 
 **Complete Example**
@@ -45,6 +47,26 @@ STORAGE_PUBLIC_BUCKET=fastgpt-public
 STORAGE_PRIVATE_BUCKET=fastgpt-private
 STORAGE_EXTERNAL_ENDPOINT=http://127.0.0.1:9000
 STORAGE_S3_ENDPOINT=http://127.0.0.1:9000
+STORAGE_S3_FORCE_PATH_STYLE=true
+STORAGE_S3_MAX_RETRIES=3
+```
+
+### Baidu BOS
+
+> - BOS is integrated through its S3-compatible API.
+> - Use a region that has an official BOS S3-compatible endpoint, such as `bj`, `gz`, or `su`.
+> - When using BOS, keep `STORAGE_S3_FORCE_PATH_STYLE=true`.
+
+**Complete Example**
+
+```dotenv
+STORAGE_VENDOR=bos
+STORAGE_REGION=bj
+STORAGE_ACCESS_KEY_ID=your_access_key
+STORAGE_SECRET_ACCESS_KEY=your_secret_key
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_BOS_ENDPOINT=https://s3.bj.bcebos.com
 STORAGE_S3_FORCE_PATH_STYLE=true
 STORAGE_S3_MAX_RETRIES=3
 ```

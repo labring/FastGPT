@@ -37,6 +37,7 @@
     "object-storage",
     "storage",
     "aws-s3",
+    "bos",
     "cos",
     "minio",
     "oss"
