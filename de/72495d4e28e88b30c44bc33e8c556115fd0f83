@@ -1,0 +1,71 @@
+projects/app/src/pages/api/core/agentSkills/debugChat.ts
+  0d2696abb220eaef 234
+test/cases/service/core/agentSkills/sandboxSchema.test.ts
+  0d2696abb220eaef 17,38-40,51,64-65,76,92,100,113,116,124,147-149,160,173-174
+projects/app/.env.template
+  0fa9a369fe5f9b3e 50-52
+packages/service/env.ts
+  0fa9a369fe5f9b3e 25-27
+projects/app/test/api/core/agentSkills/debugChat.test.ts
+  582639f30ff4d819 314
+packages/service/core/agentSkills/sandboxController.ts
+  0d2696abb220eaef 133,143,162-163,191-192,240,339,359-360,419,437,463
+packages/service/core/ai/sandbox/type.ts
+  0d2696abb220eaef 56-61,65-75,77
+packages/service/core/workflow/dispatch/ai/agent/sub/sandbox/lifecycle.ts
+  0d2696abb220eaef 195,221-222,278,359,446
+projects/app/src/pages/api/core/agentSkills/save-deploy.ts
+  0d2696abb220eaef 65,68
+packages/global/core/agentSkills/type.ts
+  0d2696abb220eaef 185-188,192-195,198-200,212
+packages/service/core/ai/sandbox/schema.ts
+  0d2696abb220eaef 91-93,117,121-122
+projects/app/src/service/sandboxProxy.ts
+  0d2696abb220eaef 48,50,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "de72495d4e28e88b30c44bc33e8c556115fd0f83",
+  "prompts": {
+    "0d2696abb220eaef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96b1771f-24ef-4710-bf88-abf2647613bc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 112,
+      "total_deletions": 120,
+      "accepted_lines": 84,
+      "overriden_lines": 0
+    },
+    "0fa9a369fe5f9b3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7976489e-a212-4961-8da1-6c6bf4e6ad02",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "582639f30ff4d819": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49a21c13-ed6d-4b7c-a574-a9d3da3bba45",
+        "model": "anthropic/claude-4.6-sonnet-20260217"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
