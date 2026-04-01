@@ -88,7 +88,7 @@ export class MCPClient {
 
     this.client.onerror = (error) => {
       // 忽略掉不支持 streamable 的错误
-      if (error.message.includes('SSE stream: Not Found')) return;
+      if (error?.message?.includes('SSE stream: Not Found')) return;
       logger.warn('MCP client connection error', { url: this.url, error });
       this.connectionPromise = null;
     };
