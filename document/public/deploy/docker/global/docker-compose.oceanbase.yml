@@ -220,7 +220,7 @@ services:
       AGENT_SANDBOX_OPENSANDBOX_API_KEY:
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: undefined
-      AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.0.2
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
       # Volume 持久化配置（opensandbox provider 下可选）
       AGENT_SANDBOX_ENABLE_VOLUME: true
       AGENT_SANDBOX_VOLUME_MANAGER_URL: http://volume-manager:3000
@@ -358,7 +358,7 @@ services:
       retries: 5
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   volume-manager:
-    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.0.2
+    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.1
     container_name: volume-manager
     restart: always
     networks:
@@ -384,7 +384,7 @@ services:
       retries: 5
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   agent-sandbox-image:
-    image: undefined:v0.0.2
+    image: undefined:v0.1
     profiles:
       - prepull
 
