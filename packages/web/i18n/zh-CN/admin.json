@@ -332,6 +332,8 @@
   "max_upload_files_per_time_desc": "用户上传知识库时，每次上传最多选择多少个文件",
   "max_upload_file_size": "上传文件最大大小（M）",
   "max_upload_file_size_desc": "用户上传知识库时，每个文件最大是多少。放大的话，需要注意网关也要设置得够大。",
+  "max_upload_file_size_tip": "请输入0~200的整数",
+  "custom_pdf_parse_timeout_tip": "请输入0~120的整数",
   "export_interval_minutes": "导出间隔时长（分钟）",
   "site_sync_interval_minutes": "站点同步使用间隔时长（分钟）",
   "mobile_sidebar_location": "移动端的侧边栏显示在账号 - 个人信息里",

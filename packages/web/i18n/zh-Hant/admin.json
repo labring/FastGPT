@@ -332,6 +332,8 @@
   "max_upload_files_per_time_desc": "用戶上傳知識庫時，每次上傳最多選擇多少個文件",
   "max_upload_file_size": "上傳文件最大大小（M）",
   "max_upload_file_size_desc": "用戶上傳知識庫時，每個文件最大是多少。放大的話，需要注意網關也要設置得夠大。",
+  "max_upload_file_size_tip": "請輸入0~200的整數",
+  "custom_pdf_parse_timeout_tip": "請輸入0~120的整數",
   "export_interval_minutes": "導出間隔時長（分鐘）",
   "site_sync_interval_minutes": "站點同步使用間隔時長（分鐘）",
   "mobile_sidebar_location": "移動端的側邊欄顯示在賬號 - 個人信息里",
