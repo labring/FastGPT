@@ -23,5 +23,5 @@
   "export_skill_success": "匯出成功",
   "export_skill_downloading": "導出中...",
   "archive_error": "生成 Skill 壓縮包失敗",
-  "field_required": "此字段为必填项"
+  "field_required": "此欄位為必填項"
 }

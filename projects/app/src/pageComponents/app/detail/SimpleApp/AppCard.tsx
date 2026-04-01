@@ -7,7 +7,8 @@ import {
   HStack,
   ModalBody,
   Checkbox,
-  ModalFooter
+  ModalFooter,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { type AppSchema, type AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
@@ -25,6 +26,7 @@ import { postTransition2Workflow } from '@/web/core/app/api/app';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { type SimpleAppSnapshotType } from './useSnapshots';
 import ExportConfigPopover from '@/pageComponents/app/detail/ExportConfigPopover';
+import ExportSkillModal from '@/components/core/app/ExportSkillModal';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
 const AppCard = ({
@@ -44,6 +46,11 @@ const AppCard = ({
   const appId = appDetail._id;
   const { feConfigs } = useSystemStore();
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
+  const {
+    isOpen: isOpenExportSkill,
+    onOpen: onOpenExportSkill,
+    onClose: onCloseExportSkill
+  } = useDisclosure();
 
   // transition to workflow
   const [transitionCreateNew, setTransitionCreateNew] = useState<boolean>();
@@ -118,7 +125,7 @@ const AppCard = ({
               size={['sm', 'md']}
               variant={'whitePrimary'}
               leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
-              onClick={onOpenInfoEdit}
+              onClick={() => onOpenInfoEdit(appForm)}
             >
               {t('common:Setting')}
             </Button>
@@ -137,6 +144,11 @@ const AppCard = ({
               menuList={[
                 {
                   children: [
+                    {
+                      icon: 'core/skill/skill',
+                      label: t('skill:export_as_skill'),
+                      onClick: onOpenExportSkill
+                    },
                     {
                       label: (
                         <Flex>
@@ -190,6 +202,14 @@ const AppCard = ({
         </HStack>
       </Box>
       {TeamTagsSet && <TagsEditModal onClose={() => setTeamTagsSet(undefined)} />}
+      {isOpenExportSkill && (
+        <ExportSkillModal
+          appId={appDetail._id}
+          appName={appDetail.name}
+          appIntro={appDetail.intro}
+          onClose={onCloseExportSkill}
+        />
+      )}
       {transitionCreateNew !== undefined && (
         <MyModal isOpen title={t('app:transition_to_workflow')} iconSrc="core/app/type/workflow">
           <ModalBody>
