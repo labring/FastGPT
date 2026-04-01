@@ -132,8 +132,8 @@ services:
       timeout: 20s
       retries: 3
 
-  fastgpt:
-    container_name: fastgpt
+  fastgpt-app:
+    container_name: fastgpt-app
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.10 
     ports:
       - 3000:3000
@@ -170,8 +170,8 @@ services:
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
       # code-sandbox 地址
-      SANDBOX_URL: http://code-sandbox:3000
-      SANDBOX_TOKEN: *x-code-sandbox-token
+      CODE_SANDBOX_URL: http://code-sandbox:3000
+      CODE_SANDBOX_TOKEN: *x-code-sandbox-token
       # AI Proxy 的地址，如果配了该地址，优先使用
       AIPROXY_API_ENDPOINT: http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
@@ -274,7 +274,7 @@ services:
     restart: always
     environment:
       <<: [*x-log-config]
-      FASTGPT_ENDPOINT: http://fastgpt:3000
+      FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.6
     container_name: fastgpt-plugin
