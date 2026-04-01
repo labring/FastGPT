@@ -36,7 +36,7 @@ export const env = createEnv({
     LOG_OTEL_URL: z.url().optional(),
 
     METRICS_ENABLE_OTEL: BoolSchema.default(false),
-    METRICS_EXPORT_INTERVAL: z.coerce.number().int().positive().default(15000),
+    METRICS_EXPORT_INTERVAL: z.coerce.number().int().positive().default(30000),
     METRICS_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     METRICS_OTEL_URL: z.url().optional(),
 

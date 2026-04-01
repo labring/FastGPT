@@ -5,6 +5,7 @@ import type {
   ObservableGauge
 } from '@opentelemetry/api';
 import { getMeter } from '@fastgpt-sdk/otel/metrics';
+import { cpus } from 'os';
 
 type RuntimeMetricAttributes = Record<string, never>;
 
@@ -15,6 +16,9 @@ type RuntimeObservableSet = {
   processMemoryHeapTotal: ObservableGauge<RuntimeMetricAttributes>;
   processMemoryExternal: ObservableGauge<RuntimeMetricAttributes>;
   processMemoryArrayBuffers: ObservableGauge<RuntimeMetricAttributes>;
+  processCpuUser: ObservableGauge<RuntimeMetricAttributes>;
+  processCpuSystem: ObservableGauge<RuntimeMetricAttributes>;
+  processCpuUtilization: ObservableGauge<RuntimeMetricAttributes>;
   processUptime: ObservableGauge<RuntimeMetricAttributes>;
 };
 
@@ -24,6 +28,9 @@ let runtimeMetricsRegistered = false;
 let runtimeMeter: Meter | undefined;
 let runtimeObservables: Observable<RuntimeMetricAttributes>[] = [];
 let runtimeMetricsCallback: BatchObservableCallback<RuntimeMetricAttributes> | undefined;
+
+let previousCpuUsage: NodeJS.CpuUsage | undefined;
+let previousCpuTimestamp: number | undefined;
 
 function createRuntimeObservables(): RuntimeObservableSet {
   const meter = getMeter('fastgpt.runtime');
@@ -50,6 +57,18 @@ function createRuntimeObservables(): RuntimeObservableSet {
       description: 'Memory allocated for ArrayBuffer and SharedArrayBuffer instances',
       unit: 'By'
     }),
+    processCpuUser: meter.createObservableGauge(`${prefix}.cpu.user`, {
+      description: 'Cumulative user CPU time of the current process',
+      unit: 'us'
+    }),
+    processCpuSystem: meter.createObservableGauge(`${prefix}.cpu.system`, {
+      description: 'Cumulative system CPU time of the current process',
+      unit: 'us'
+    }),
+    processCpuUtilization: meter.createObservableGauge(`${prefix}.cpu.utilization`, {
+      description: 'CPU utilization ratio of the current process (0~1, across all cores)',
+      unit: '1'
+    }),
     processUptime: meter.createObservableGauge(`${prefix}.uptime`, {
       description: 'Process uptime',
       unit: 's'
@@ -69,6 +88,9 @@ export function startRuntimeMetrics() {
     observables.processMemoryHeapTotal,
     observables.processMemoryExternal,
     observables.processMemoryArrayBuffers,
+    observables.processCpuUser,
+    observables.processCpuSystem,
+    observables.processCpuUtilization,
     observables.processUptime
   ];
   runtimeMetricsCallback = (result) => {
@@ -79,6 +101,29 @@ export function startRuntimeMetrics() {
     result.observe(observables.processMemoryHeapTotal, memoryUsage.heapTotal);
     result.observe(observables.processMemoryExternal, memoryUsage.external);
     result.observe(observables.processMemoryArrayBuffers, memoryUsage.arrayBuffers);
+
+    const currentCpuUsage = process.cpuUsage();
+    const currentTimestamp = Date.now();
+
+    result.observe(observables.processCpuUser, currentCpuUsage.user);
+    result.observe(observables.processCpuSystem, currentCpuUsage.system);
+
+    if (previousCpuUsage && previousCpuTimestamp) {
+      const elapsedUs = (currentTimestamp - previousCpuTimestamp) * 1000;
+      if (elapsedUs > 0) {
+        const cpuDeltaUs =
+          currentCpuUsage.user -
+          previousCpuUsage.user +
+          (currentCpuUsage.system - previousCpuUsage.system);
+        const coreCount = cpus().length || 1;
+        const utilization = cpuDeltaUs / (elapsedUs * coreCount);
+        result.observe(observables.processCpuUtilization, Math.min(1, Math.max(0, utilization)));
+      }
+    }
+
+    previousCpuUsage = currentCpuUsage;
+    previousCpuTimestamp = currentTimestamp;
+
     result.observe(observables.processUptime, process.uptime());
   };
 
@@ -95,4 +140,6 @@ export function stopRuntimeMetrics() {
   runtimeMeter = undefined;
   runtimeObservables = [];
   runtimeMetricsCallback = undefined;
+  previousCpuUsage = undefined;
+  previousCpuTimestamp = undefined;
 }

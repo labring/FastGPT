@@ -10,7 +10,7 @@ import {
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import type { Resource } from '@opentelemetry/resources';
 import { defaultResource, resourceFromAttributes } from '@opentelemetry/resources';
-import { LoggerProvider, SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
+import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { inspect as nodeInspect } from 'util';
 import { mapLevelToSeverityNumber } from './helpers';
@@ -88,7 +88,7 @@ async function initializeLoggerProvider(
   const otlpExporter = new OTLPLogExporter(options.otlpExporterConfig);
   const loggerProvider = new LoggerProvider({
     resource,
-    processors: [new SimpleLogRecordProcessor(otlpExporter)]
+    processors: [new BatchLogRecordProcessor(otlpExporter)]
   });
 
   return loggerProvider;
