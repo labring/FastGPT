@@ -658,7 +658,10 @@ const RefinedDataCard = () => {
                               {item.imageSize ? (
                                 <>{formatFileSize(item.imageSize)}</>
                               ) : (
-                                <>{getTextValidLength((item?.q || '') + (item?.a || ''))} 字符</>
+                                <>
+                                  {getTextValidLength((item?.q || '') + (item?.a || ''))}{' '}
+                                  {t('common:unit.character')}
+                                </>
                               )}
                             </Box>
                             <Box flex={1} />
