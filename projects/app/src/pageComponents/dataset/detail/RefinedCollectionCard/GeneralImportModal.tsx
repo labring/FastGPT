@@ -206,7 +206,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
           } catch (error) {
             console.error('Upload file error:', error);
             toast({
-              title: getErrText(error),
+              title: t(getErrText(error)),
               status: 'error'
             });
           }
