@@ -47,14 +47,14 @@ function normalizeMetricsOptions(options?: false | MetricsOptions) {
   if (options === false) {
     return {
       enabled: false,
-      exportIntervalMillis: 15000
+      exportIntervalMillis: 30000
     };
   }
 
   return {
     enabled: options?.enabled ?? false,
     serviceName: options?.serviceName,
-    exportIntervalMillis: options?.exportIntervalMillis ?? 15000,
+    exportIntervalMillis: options?.exportIntervalMillis ?? 30000,
     otlpExporterConfig: {
       url: options?.url,
       headers: options?.headers

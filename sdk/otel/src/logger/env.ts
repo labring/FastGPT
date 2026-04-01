@@ -50,7 +50,7 @@ export function createLoggerOptionsFromEnv(
             parseStringEnv(env.LOG_OTEL_URL) ??
             options.defaultOtelUrl ??
             'http://localhost:4318/v1/logs',
-          level: parseLogLevel(env.LOG_OTEL_LEVEL, options.defaultOtelLevel ?? 'info')
+          level: parseLogLevel(env.LOG_OTEL_LEVEL, options.defaultOtelLevel ?? 'warning')
         }
       : false,
     sensitiveProperties: options.sensitiveProperties
