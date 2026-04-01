@@ -62,10 +62,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId: skillId,
       chatId: 'edit-debug',
       status: SandboxStatusEnum.running,
-      'detail.sandboxType': SandboxTypeEnum.editDebug
+      'metadata.sandboxType': SandboxTypeEnum.editDebug
     });
 
-    if (!sandboxInfo || sandboxInfo.detail?.providerStatus.state !== 'Running') {
+    if (!sandboxInfo || sandboxInfo.metadata?.providerStatus?.state !== 'Running') {
       return jsonRes(res, {
         code: 404,
         error: 'Edit sandbox not found or not running'

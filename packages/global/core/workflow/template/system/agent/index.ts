@@ -17,7 +17,6 @@ import {
   Input_Template_UserChatInput
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
-import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
 import { Input_Template_File_Link } from '../../input';
 import { Output_Template_Error_Message } from '../../output';
@@ -38,10 +37,7 @@ export const AgentNode: FlowNodeTemplateType = {
   catchError: false,
   version: '4.17.0',
   inputs: [
-    {
-      ...Input_Template_SettingAiModel,
-      llmModelType: LLMModelTypeEnum.all
-    },
+    Input_Template_SettingAiModel,
     {
       key: NodeInputKeyEnum.aiChatTemperature,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],

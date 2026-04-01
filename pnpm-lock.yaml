@@ -250,8 +250,8 @@ importers:
         specifier: 'catalog:'
         version: 0.1.0
       '@fastgpt-sdk/sandbox-adapter':
-        specifier: ^0.0.34
-        version: 0.0.34
+        specifier: ^0.0.35
+        version: 0.0.35
       '@fastgpt-sdk/storage':
         specifier: 'catalog:'
         version: 0.6.15(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
@@ -1079,22 +1079,6 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@24.0.13)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)
 
-  projects/volume-manager:
-    dependencies:
-      hono:
-        specifier: ^4.6.0
-        version: 4.11.7
-      zod:
-        specifier: ^4
-        version: 4.1.12
-    devDependencies:
-      '@types/bun':
-        specifier: latest
-        version: 1.3.10
-      vitest:
-        specifier: ^2.0.0
-        version: 2.1.9(@types/node@24.0.13)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)
-
   scripts/icon:
     dependencies:
       express:
@@ -1231,6 +1215,10 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@alibaba-group/opensandbox@0.1.5':
+    resolution: {integrity: sha512-NJOqqezZ7xXvSisJqail3kTirsfWMP/IM8H2iKnj8m1R9EEwRRutSTV/xDKaK+wkBnuv6cheu/8T6HJrXFw1Mw==}
+    engines: {node: '>=20'}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -2766,8 +2754,8 @@ packages:
   '@fastgpt-sdk/plugin@0.3.8':
     resolution: {integrity: sha512-GjKrXMHxeF5UMkYGXawrUpzZjVRw3DICNYODeYwsUVOy+/ltu5zuwsqLkuuGQ7Arp/SBCmYRjG/MHmeNp4xxfw==}
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.34':
-    resolution: {integrity: sha512-YXCwycqs2yByOPUMMjm2tf0BYUJfLR9D4bvHDv6xIbfKT5btT+hR1pujW5nVawXJDefYNsDfLy8dQ+IkMd21xQ==}
+  '@fastgpt-sdk/sandbox-adapter@0.0.35':
+    resolution: {integrity: sha512-pgK4qRqt24xhs4tz5oZfYK7GYloYbJrFsONWZMiFvuRvPVF7hn0BRN0er3akXhX10gUj3ASFwLnWxycEsggapQ==}
     engines: {node: '>=18'}
 
   '@fastgpt-sdk/storage@0.6.15':
@@ -11795,6 +11783,11 @@ packages:
 
 snapshots:
 
+  '@alibaba-group/opensandbox@0.1.5':
+    dependencies:
+      openapi-fetch: 0.14.1
+      undici: 7.18.2
+
   '@alloc/quick-lru@5.2.0': {}
 
   '@ampproject/remapping@2.3.0':
@@ -13790,8 +13783,9 @@ snapshots:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
 
-  '@fastgpt-sdk/sandbox-adapter@0.0.34':
+  '@fastgpt-sdk/sandbox-adapter@0.0.35':
     dependencies:
+      '@alibaba-group/opensandbox': 0.1.5
       '@e2b/code-interpreter': 2.4.0
 
   '@fastgpt-sdk/storage@0.6.15(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':

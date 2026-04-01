@@ -75,23 +75,23 @@ function toOpenSandboxCreateConfig(
  */
 export function getSandboxProviderConfig(): SandboxProviderConfig {
   const provider = (env.AGENT_SANDBOX_PROVIDER ?? 'opensandbox') as SandboxProviderType;
-  const runtime = (env.AGENT_SANDBOX_RUNTIME ?? 'kubernetes') as SandboxRuntime;
+  const runtime = (env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME ?? 'kubernetes') as SandboxRuntime;
 
   switch (provider) {
     case 'opensandbox':
       return {
         provider,
-        baseUrl: env.AGENT_SANDBOX_BASE_URL ?? 'http://127.0.0.1:8080',
-        apiKey: env.AGENT_SANDBOX_API_KEY,
+        baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? 'http://127.0.0.1:8080',
+        apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
         runtime,
-        useServerProxy: env.AGENT_SANDBOX_USE_SERVER_PROXY
+        useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
       };
 
     case 'sealosdevbox':
       return {
         provider,
-        baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL ?? env.AGENT_SANDBOX_BASE_URL ?? '',
-        token: env.AGENT_SANDBOX_SEALOS_TOKEN ?? env.AGENT_SANDBOX_API_KEY ?? '',
+        baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL ?? '',
+        token: env.AGENT_SANDBOX_SEALOS_TOKEN ?? '',
         runtime
       };
 
@@ -109,12 +109,12 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
 export function getSandboxDefaults(): SandboxDefaults {
   return {
     defaultImage: {
-      repository: env.AGENT_SANDBOX_DEFAULT_IMAGE ?? 'fastgpt-agent-sandbox',
-      tag: env.AGENT_SANDBOX_DEFAULT_IMAGE_TAG ?? 'latest'
+      repository: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO ?? 'fastgpt-agent-sandbox',
+      tag: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG ?? 'latest'
     },
-    workDirectory: env.AGENT_SANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
-    targetPort: 8080,
-    entrypoint: env.AGENT_SANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
+    workDirectory: env.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
+    targetPort: env.AGENT_SANDBOX_OPENSANDBOX_TARGET_PORT ?? 8080,
+    entrypoint: env.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
   };
 }
 
@@ -163,9 +163,15 @@ export function buildSandboxAdapter(
 ): ISandbox {
   switch (providerConfig.provider) {
     case 'opensandbox':
+      if (!providerSandboxId) {
+        throw new Error(
+          'Sandbox provider "opensandbox" requires providerSandboxId when initializing the adapter'
+        );
+      }
       return createSandbox(
         'opensandbox',
         {
+          sessionId: providerSandboxId,
           apiKey: providerConfig.apiKey,
           baseUrl: providerConfig.baseUrl,
           runtime: providerConfig.runtime,
@@ -269,16 +275,24 @@ export type VolumeManagerConfig = {
  * Throws when any required field is missing.
  */
 export function getVolumeManagerConfig(): VolumeManagerConfig {
-  const { VOLUME_MANAGER_URL, VOLUME_MANAGER_TOKEN, VOLUME_MANAGER_MOUNT_PATH } = env;
-  if (!VOLUME_MANAGER_URL || !VOLUME_MANAGER_TOKEN || !VOLUME_MANAGER_MOUNT_PATH) {
+  const {
+    AGENT_SANDBOX_VOLUME_MANAGER_URL,
+    AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
+    AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
+  } = env;
+  if (
+    !AGENT_SANDBOX_VOLUME_MANAGER_URL ||
+    !AGENT_SANDBOX_VOLUME_MANAGER_TOKEN ||
+    !AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
+  ) {
     throw new Error(
-      'Missing required Volume Manager configuration: VOLUME_MANAGER_URL, VOLUME_MANAGER_TOKEN, VOLUME_MANAGER_MOUNT_PATH must be set'
+      'Missing required Volume Manager configuration: AGENT_SANDBOX_VOLUME_MANAGER_URL, AGENT_SANDBOX_VOLUME_MANAGER_TOKEN, AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH must be set'
     );
   }
   return {
-    url: VOLUME_MANAGER_URL,
-    token: VOLUME_MANAGER_TOKEN,
-    mountPath: VOLUME_MANAGER_MOUNT_PATH
+    url: AGENT_SANDBOX_VOLUME_MANAGER_URL,
+    token: AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
+    mountPath: AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
   };
 }
 

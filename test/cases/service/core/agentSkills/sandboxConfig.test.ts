@@ -46,6 +46,7 @@ describe('sandboxConfig provider helpers', () => {
         runtime: 'kubernetes'
       },
       {
+        providerSandboxId: 'sandbox-1',
         createConfig: {
           image: {
             repository: 'fastgpt-agent-sandbox',
@@ -57,6 +58,7 @@ describe('sandboxConfig provider helpers', () => {
 
     expect(result.provider).toBe('opensandbox');
     expect((result as any).connectionConfig).toEqual({
+      sessionId: 'sandbox-1',
       apiKey: 'api-key',
       baseUrl: 'http://sandbox.local',
       runtime: 'kubernetes'
@@ -67,6 +69,19 @@ describe('sandboxConfig provider helpers', () => {
         tag: 'latest'
       }
     });
+  });
+
+  it('requires providerSandboxId when building opensandbox adapter', async () => {
+    const { buildSandboxAdapter } = await loadSandboxConfigModule();
+
+    expect(() =>
+      buildSandboxAdapter({
+        provider: 'opensandbox',
+        baseUrl: 'http://sandbox.local',
+        apiKey: 'api-key',
+        runtime: 'docker'
+      })
+    ).toThrow('Sandbox provider "opensandbox" requires providerSandboxId');
   });
 
   it('rejects unsupported managed create config for sealosdevbox', async () => {
@@ -99,12 +114,17 @@ describe('sandboxConfig provider helpers', () => {
     const connectMock = vi
       .spyOn(
         Object.getPrototypeOf(
-          buildSandboxAdapter({
-            provider: 'opensandbox',
-            baseUrl: 'http://sandbox.local',
-            apiKey: 'api-key',
-            runtime: 'docker'
-          })
+          buildSandboxAdapter(
+            {
+              provider: 'opensandbox',
+              baseUrl: 'http://sandbox.local',
+              apiKey: 'api-key',
+              runtime: 'docker'
+            },
+            {
+              providerSandboxId: 'sandbox-1'
+            }
+          )
         ),
         'connect'
       )

@@ -46,9 +46,6 @@ const SandboxInstanceSchema = new Schema({
     type: Schema.Types.Mixed
   },
   metadata: {
-    type: Schema.Types.Mixed
-  },
-  detail: {
     sandboxType: {
       type: String,
       enum: Object.values(SandboxTypeEnum)
@@ -91,10 +88,9 @@ const SandboxInstanceSchema = new Schema({
       size: Number,
       uploadedAt: Date
     },
-    metadata: {
-      type: Map,
-      of: Schema.Types.Mixed
-    }
+    skillName: String,
+    skillVersion: String,
+    volumeEnabled: Boolean
   }
 });
 
@@ -118,12 +114,12 @@ SandboxInstanceSchema.index(
     partialFilterExpression: {
       appId: { $exists: true },
       chatId: { $exists: true },
-      'detail.sandboxType': { $exists: true }
+      'metadata.sandboxType': { $exists: true }
     }
   }
 );
-SandboxInstanceSchema.index({ 'detail.skillId': 1 });
-SandboxInstanceSchema.index({ 'detail.sandboxType': 1, chatId: 1 });
+SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
+SandboxInstanceSchema.index({ 'metadata.sandboxType': 1, chatId: 1 });
 
 export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
   collectionName,

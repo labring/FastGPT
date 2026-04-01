@@ -7,10 +7,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/agentSkills/api';
 
-async function handler(
-  req: ApiRequestProps<SkillDebugDeleteChatItemBody>,
-  _res: NextApiResponse
-) {
+async function handler(req: ApiRequestProps<SkillDebugDeleteChatItemBody>, _res: NextApiResponse) {
   const { skillId, chatId, contentId } = req.body;
 
   if (!skillId) throw new UserError('skillId is required');

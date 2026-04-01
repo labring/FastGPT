@@ -5,8 +5,10 @@ import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agent
 // ---- 沙盒实例 DB 类型 ----
 export const SandboxProviderSchema = z.enum(['sealosdevbox', 'opensandbox', 'e2b']);
 export type SandboxProviderType = z.infer<typeof SandboxProviderSchema>;
+export const SandboxProviderValues = SandboxProviderSchema.options;
 export const SharedSandboxStatusSchema = z.enum(SandboxStatusEnum);
 export type SharedSandboxStatusType = z.infer<typeof SharedSandboxStatusSchema>;
+export const SharedSandboxStatusValues = SharedSandboxStatusSchema.options;
 
 export const SandboxLimitSchema = z.object({
   cpuCount: z.number(),
@@ -27,14 +29,6 @@ export const SandboxStorageSchema = z.object({
 });
 export type SandboxStorageType = z.infer<typeof SandboxStorageSchema>;
 
-export const SandboxMetadataSchema = z.object({
-  volumeEnabled: z.boolean().optional(),
-
-  teamId: z.string().optional(),
-  tmbId: z.string().optional()
-});
-export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
-
 export const SandboxImageSchema = z.object({
   repository: z.string(),
   tag: z.string().optional()
@@ -47,14 +41,37 @@ export const SandboxEndpointSchema = z.object({
   url: z.string()
 });
 
-export const SandboxDetailSchema = z.object({
-  sandboxType: z.enum(SandboxTypeEnum),
+export const SandboxProviderStatusSchema = z.object({
+  state: z.string(),
+  message: z.string().optional(),
+  reason: z.string().optional()
+});
+
+export const SandboxPersistedStorageSchema = z.object({
+  bucket: z.string(),
+  key: z.string(),
+  size: z.number(),
+  uploadedAt: z.date()
+});
+
+export const SandboxMetadataSchema = z.object({
+  sandboxType: z.enum(SandboxTypeEnum).optional(),
+  teamId: z.string().optional(),
+  tmbId: z.string().optional(),
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
-  image: SandboxImageSchema,
-  endpoint: SandboxEndpointSchema.optional()
+  provider: SandboxProviderSchema.optional(),
+  image: SandboxImageSchema.optional(),
+  providerStatus: SandboxProviderStatusSchema.optional(),
+  providerCreatedAt: z.date().optional(),
+  endpoint: SandboxEndpointSchema.optional(),
+  storage: SandboxPersistedStorageSchema.optional(),
+  skillName: z.string().optional(),
+  skillVersion: z.string().optional(),
+  volumeEnabled: z.boolean().optional()
 });
+export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 
 export const SandboxInstanceZodSchema = z.object({
   _id: z.string(),
@@ -68,7 +85,6 @@ export const SandboxInstanceZodSchema = z.object({
   limit: SandboxLimitSchema.nullish(),
   provider: SandboxProviderSchema,
   storage: SandboxStorageSchema.nullish(),
-  metadata: SandboxMetadataSchema.nullish(),
-  detail: SandboxDetailSchema.optional()
+  metadata: SandboxMetadataSchema.optional()
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceZodSchema>;

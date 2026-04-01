@@ -231,7 +231,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const sandboxInstance = await MongoSandboxInstance.findOne({
       appId: skillId,
       chatId: 'edit-debug',
-      'detail.sandboxType': SandboxTypeEnum.editDebug
+      'metadata.sandboxType': SandboxTypeEnum.editDebug
     }).lean();
     if (!sandboxInstance) {
       throw new UserError(

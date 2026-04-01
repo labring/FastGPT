@@ -49,7 +49,7 @@ export class SandboxClient {
     private readonly opts: {
       resourceLimits?: ResourceLimits;
       vmConfig?: VolumeManagerResult | undefined;
-    }
+    } = {}
   ) {
     this.sandboxId = props.sandboxId;
     this.appId = props.appId;

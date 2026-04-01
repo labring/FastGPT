@@ -14,7 +14,7 @@ describe('SandboxInstance Schema', () => {
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       status: 'running',
-      detail: {
+      metadata: {
         sandboxType: 'edit-debug',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
@@ -35,9 +35,9 @@ describe('SandboxInstance Schema', () => {
     expect(doc.appId).toBe(mockInstance.appId);
     expect(doc.chatId).toBe('edit-debug');
     expect(doc.status).toBe('running');
-    expect(doc.detail.sandboxType).toBe('edit-debug');
-    expect(doc.detail.provider).toBe('opensandbox');
-    expect(doc.detail.providerStatus.state).toBe('Running');
+    expect(doc.metadata!.sandboxType).toBe('edit-debug');
+    expect(doc.metadata!.provider).toBe('opensandbox');
+    expect(doc.metadata!.providerStatus!.state).toBe('Running');
   });
 
   it('should have default values for optional fields', async () => {
@@ -48,7 +48,7 @@ describe('SandboxInstance Schema', () => {
       userId: '507f1f77bcf86cd799439013',
       chatId: 'session-chat-001',
       status: 'running',
-      detail: {
+      metadata: {
         sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
@@ -61,8 +61,8 @@ describe('SandboxInstance Schema', () => {
 
     expect(doc.lastActiveAt).toBeInstanceOf(Date);
     expect(doc.createdAt).toBeInstanceOf(Date);
-    expect(doc.detail.image.tag).toBe('latest');
-    expect(doc.detail.provider).toBe('opensandbox');
+    expect(doc.metadata!.image!.tag).toBe('latest');
+    expect(doc.metadata!.provider).toBe('opensandbox');
   });
 
   it('should validate status enum', async () => {
@@ -73,7 +73,7 @@ describe('SandboxInstance Schema', () => {
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       status: 'invalid-status' as any,
-      detail: {
+      metadata: {
         sandboxType: 'edit-debug',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
@@ -89,7 +89,7 @@ describe('SandboxInstance Schema', () => {
     expect(validation?.errors?.status).toBeDefined();
   });
 
-  it('should validate detail.sandboxType enum', async () => {
+  it('should validate metadata.sandboxType enum', async () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-jkl012',
@@ -97,7 +97,7 @@ describe('SandboxInstance Schema', () => {
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       status: 'running',
-      detail: {
+      metadata: {
         sandboxType: 'invalid-type' as any,
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
@@ -110,10 +110,10 @@ describe('SandboxInstance Schema', () => {
 
     const validation = doc.validateSync();
     expect(validation).toBeDefined();
-    expect(validation?.errors?.['detail.sandboxType']).toBeDefined();
+    expect(validation?.errors?.['metadata.sandboxType']).toBeDefined();
   });
 
-  it('should allow endpoint and storage as optional fields in detail', async () => {
+  it('should allow endpoint and storage as optional fields in metadata', async () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-mno345',
@@ -121,7 +121,7 @@ describe('SandboxInstance Schema', () => {
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       status: 'running',
-      detail: {
+      metadata: {
         sandboxType: 'edit-debug',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
@@ -144,9 +144,9 @@ describe('SandboxInstance Schema', () => {
       }
     });
 
-    expect(doc.detail.endpoint?.host).toBe('localhost');
-    expect(doc.detail.endpoint?.port).toBe(8080);
-    expect(doc.detail.storage?.size).toBe(1024);
+    expect(doc.metadata!.endpoint?.host).toBe('localhost');
+    expect(doc.metadata!.endpoint?.port).toBe(8080);
+    expect(doc.metadata!.storage?.size).toBe(1024);
   });
 
   it('should support stopped status', async () => {
@@ -157,7 +157,7 @@ describe('SandboxInstance Schema', () => {
       userId: '507f1f77bcf86cd799439013',
       chatId: 'session-chat-002',
       status: 'stopped',
-      detail: {
+      metadata: {
         sandboxType: 'session-runtime',
         teamId: '507f1f77bcf86cd799439012',
         tmbId: '507f1f77bcf86cd799439013',
@@ -170,7 +170,7 @@ describe('SandboxInstance Schema', () => {
     });
 
     expect(doc.status).toBe('stopped');
-    expect(doc.detail.sandboxType).toBe('session-runtime');
-    expect(doc.detail.skillIds).toHaveLength(2);
+    expect(doc.metadata!.sandboxType).toBe('session-runtime');
+    expect(doc.metadata!.skillIds).toHaveLength(2);
   });
 });

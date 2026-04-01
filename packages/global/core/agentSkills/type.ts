@@ -8,7 +8,6 @@ import {
 } from './constants';
 import { SandboxStatusEnum } from '../ai/sandbox/constants';
 
-const LooseObjectSchema = z.object({}).catchall(z.any());
 const BufferSchema = z.custom<Buffer>(
   (value) => typeof Buffer !== 'undefined' && Buffer.isBuffer(value),
   'Expected Buffer'
@@ -183,20 +182,22 @@ export const SandboxStorageSchema = AgentSkillStorageSchema.extend({
   uploadedAt: z.date()
 });
 
-export const SandboxInstanceDetailSchema = z.object({
-  sandboxType: SandboxTypeSchema,
-  teamId: z.string(),
-  tmbId: z.string(),
+export const SandboxInstanceMetadataSchema = z.object({
+  sandboxType: SandboxTypeSchema.optional(),
+  teamId: z.string().optional(),
+  tmbId: z.string().optional(),
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
-  provider: z.string(),
-  image: SandboxImageConfigSchema,
-  providerStatus: SandboxProviderStatusSchema,
-  providerCreatedAt: z.date(),
+  provider: z.string().optional(),
+  image: SandboxImageConfigSchema.optional(),
+  providerStatus: SandboxProviderStatusSchema.optional(),
+  providerCreatedAt: z.date().optional(),
   endpoint: SkillSandboxEndpointSchema.optional(),
   storage: SandboxStorageSchema.optional(),
-  metadata: z.union([z.map(z.string(), z.any()), LooseObjectSchema]).optional()
+  skillName: z.string().optional(),
+  skillVersion: z.string().optional(),
+  volumeEnabled: z.boolean().optional()
 });
 
 export const SandboxInstanceSchema = z.object({
@@ -208,6 +209,6 @@ export const SandboxInstanceSchema = z.object({
   status: SandboxStatusSchema,
   lastActiveAt: z.date(),
   createdAt: z.date(),
-  detail: SandboxInstanceDetailSchema
+  metadata: SandboxInstanceMetadataSchema.optional()
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceSchema>;

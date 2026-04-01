@@ -30,7 +30,7 @@ import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
-import { deleteSandboxesByAppId, deleteSandboxesByChatIdList } from '../ai/sandbox/controller';
+import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/controller';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
@@ -159,7 +159,7 @@ export const deleteAppDataProcessor = async ({
   await deleteSandboxesByAppId(appId);
   // 删除 session-runtime 类型沙盒（appId 字段存储为 teamId，需通过 chatId 关联查询）
   const appChatIds = (await MongoChat.find({ appId }, { _id: 1 }).lean()).map((c) => String(c._id));
-  await deleteSandboxesByChatIdList(appChatIds);
+  await deleteSandboxesByChatIds({ appId, chatIds: appChatIds });
   await getS3ChatSource().deleteChatFilesByPrefix({ appId });
   await MongoAppChatLog.deleteMany({ teamId, appId });
   await MongoChatItemResponse.deleteMany({ appId });
