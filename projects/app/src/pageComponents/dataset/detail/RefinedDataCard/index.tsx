@@ -929,6 +929,7 @@ const RefinedDataCard = () => {
             a: editingData.a
           }}
           trainingType={collection?.trainingType}
+          imagePreviewUrl={editingData.imagePreviewUrl}
           onClose={() => setEditingDataId(null)}
           onSuccess={(data) => {
             // Update local data

@@ -83,7 +83,19 @@ export async function pushDataListToTrainingQueue({
     if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
-        return Promise.reject(i18nT('common:error_vlm_not_config'));
+        // imageParse mode can use customPdfParse service instead of VLM
+        const hasCustomPdfParse =
+          mode === TrainingModeEnum.imageParse &&
+          !!global.systemEnv?.customPdfParse?.url &&
+          !!global.systemEnv?.customPdfParse?.key;
+        if (!hasCustomPdfParse) {
+          return Promise.reject(i18nT('common:error_vlm_not_config'));
+        }
+        return {
+          maxToken: getLLMMaxChunkSize(agentModelData),
+          model: agentModelData.model,
+          weight: 0
+        };
       }
       return {
         maxToken: getLLMMaxChunkSize(vllmModelData),

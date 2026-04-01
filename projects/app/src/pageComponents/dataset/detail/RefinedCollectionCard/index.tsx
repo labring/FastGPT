@@ -796,7 +796,9 @@ const CollectionCard = () => {
                                             {collection.type === DatasetCollectionTypeEnum.link ||
                                             collection.name.toLowerCase().endsWith('.txt')
                                               ? t('dataset:view_original')
-                                              : t('dataset:download_file')}
+                                              : collection.type === DatasetCollectionTypeEnum.images
+                                                ? t('dataset:view_image')
+                                                : t('dataset:download_file')}
                                           </Flex>
                                         ),
                                         onClick: () => handleReadSource(collection._id)

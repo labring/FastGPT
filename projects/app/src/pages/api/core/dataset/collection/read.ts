@@ -10,6 +10,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 export type readCollectionSourceQuery = {};
 
@@ -101,6 +102,21 @@ async function handler(
       }
       if (collection.externalFileUrl) {
         return collection.externalFileUrl;
+      }
+    }
+    if (collection.type === DatasetCollectionTypeEnum.images) {
+      const imageData = await MongoDatasetData.findOne(
+        { collectionId: collection._id },
+        { imageId: 1 }
+      ).lean();
+      if (imageData?.imageId && isS3ObjectKey(imageData.imageId, 'dataset')) {
+        return (
+          await getS3DatasetSource().createGetDatasetFileURL({
+            key: imageData.imageId,
+            expiredHours: 1,
+            external: true
+          })
+        ).url;
       }
     }
 

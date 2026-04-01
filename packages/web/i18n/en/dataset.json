@@ -422,6 +422,7 @@
   "processing": "Processing",
   "view_original": "View original",
   "download_file": "Download file",
+  "view_image": "View image",
   "confirm_delete_index": "Confirm to delete this index?",
   "confirm_delete_faq": "Confirm to delete this FAQ?",
   "confirm_delete_chunk": "Confirm to delete this chunk?",

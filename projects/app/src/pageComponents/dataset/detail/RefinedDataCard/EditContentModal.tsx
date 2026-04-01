@@ -15,6 +15,7 @@ import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/datas
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import styles from '../styles.module.scss';
+import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 
 type EditDataType = {
   q: string;
@@ -27,6 +28,7 @@ type EditContentModalProps = {
   collectionId?: string;
   defaultValue: { q?: string; a?: string };
   trainingType?: DatasetCollectionDataProcessModeEnum;
+  imagePreviewUrl?: string;
   onClose: () => void;
   onSuccess: (data: EditDataType & { chunkIndex?: number }) => void;
 };
@@ -37,6 +39,7 @@ const EditContentModal = ({
   collectionId,
   defaultValue,
   trainingType,
+  imagePreviewUrl,
   onClose,
   onSuccess
 }: EditContentModalProps) => {
@@ -48,6 +51,7 @@ const EditContentModal = ({
   });
 
   const isFAQ = trainingType === DatasetCollectionDataProcessModeEnum.template;
+  const isImageParse = trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
 
   // Fetch current data detail to get indexes (edit mode only)
   const { data: currentData } = useRequest(
@@ -139,71 +143,140 @@ const EditContentModal = ({
     <MyModal
       isOpen={true}
       isCentered
-      w={['20rem', '50rem']}
+      w={isImageParse ? ['20rem', '70rem'] : ['20rem', '50rem']}
       onClose={onClose}
       closeOnOverlayClick={false}
-      maxW={'800px'}
+      maxW={isImageParse ? '1000px' : '800px'}
       h={'650px'}
       title={modalTitle}
     >
       <MyBox display={'flex'} flexDir={'column'} h={'100%'} py={4}>
-        <Flex flex={'1 0 0'} h={['auto', '0']} flexDir={'column'} px={7}>
-          {/* Question/Content Input */}
-          <Flex flexDir={'column'} flex={'1 0 0'} h={0}>
-            <FormLabel required={isFAQ || undefined} mb={1}>
-              {isFAQ ? (
-                t('dataset:question')
-              ) : (
-                <Text as="span" color={'myGray.500'} fontSize={'12px'} fontWeight={400}>
-                  {t('dataset:markdown_tip')}
-                </Text>
-              )}
-            </FormLabel>
-            <Textarea
-              resize={'vertical'}
-              className={styles.scrollbar}
-              flex={'1 0 0'}
-              tabIndex={1}
-              _focus={{
-                borderColor: 'primary.500',
-                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                bg: 'white'
-              }}
-              borderRadius={'md'}
-              borderColor={'myGray.200'}
-              {...register('q', {
-                required: true
-              })}
-            />
-          </Flex>
+        {isImageParse ? (
+          /* imageParse: left image preview, right description textarea */
+          <Flex flex={'1 0 0'} h={0} px={7} gap={4}>
+            {/* Left: image preview */}
+            <Flex flexDir={'column'} flex={'0 0 auto'} w={'45%'}>
+              <FormLabel mb={1}>{t('file:image')}</FormLabel>
+              <Box
+                flex={'1 0 0'}
+                h={0}
+                border={'1.5px solid'}
+                borderColor={'myGray.200'}
+                borderRadius={'md'}
+                overflow={'hidden'}
+              >
+                {imagePreviewUrl ? (
+                  <MyPhotoView
+                    src={imagePreviewUrl}
+                    alt="image"
+                    w={'100%'}
+                    h={'100%'}
+                    objectFit={'contain'}
+                  />
+                ) : (
+                  <Flex
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    h={'100%'}
+                    color={'myGray.400'}
+                    fontSize={'sm'}
+                  >
+                    {t('file:Loading_image failed')}
+                  </Flex>
+                )}
+              </Box>
+            </Flex>
 
-          {/* Answer Input - Only for FAQ */}
-          {isFAQ && (
-            <Flex flexDir={'column'} flex={'4 0 0'} mt={5}>
-              <FormLabel required mb={1}>
-                {t('dataset:answer')}
-                <Text as="span" color={'myGray.500'} fontSize={'12px'} fontWeight={400} ml={2}>
+            {/* Right: description textarea */}
+            <Flex flexDir={'column'} flex={'1 0 0'}>
+              <FormLabel mb={1}>
+                {t('file:image_description')}
+                <Text
+                  as="span"
+                  display={'inline'}
+                  color={'myGray.500'}
+                  fontSize={'12px'}
+                  fontWeight={400}
+                  ml={2}
+                >
                   {t('dataset:markdown_tip')}
                 </Text>
               </FormLabel>
               <Textarea
-                resize={'vertical'}
+                resize={'none'}
                 className={styles.scrollbar}
                 flex={'1 0 0'}
-                tabIndex={2}
-                borderRadius={'md'}
-                border={'1.5px solid '}
-                borderColor={'myGray.200'}
+                tabIndex={1}
                 _focus={{
                   borderColor: 'primary.500',
                   boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
                   bg: 'white'
                 }}
-                {...register('a', { required: isFAQ })}
+                borderRadius={'md'}
+                borderColor={'myGray.200'}
+                {...register('q', { required: true })}
               />
             </Flex>
-          )}
-        </Flex>
+          </Flex>
+        ) : (
+          <Flex flex={'1 0 0'} h={['auto', '0']} flexDir={'column'} px={7}>
+            {/* Question/Content Input */}
+            <Flex flexDir={'column'} flex={'1 0 0'} h={0}>
+              <FormLabel required={isFAQ || undefined} mb={1}>
+                {isFAQ ? (
+                  t('dataset:question')
+                ) : (
+                  <Text as="span" color={'myGray.500'} fontSize={'12px'} fontWeight={400}>
+                    {t('dataset:markdown_tip')}
+                  </Text>
+                )}
+              </FormLabel>
+              <Textarea
+                resize={'vertical'}
+                className={styles.scrollbar}
+                flex={'1 0 0'}
+                tabIndex={1}
+                _focus={{
+                  borderColor: 'primary.500',
+                  boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                  bg: 'white'
+                }}
+                borderRadius={'md'}
+                borderColor={'myGray.200'}
+                {...register('q', {
+                  required: true
+                })}
+              />
+            </Flex>
+
+            {/* Answer Input - Only for FAQ */}
+            {isFAQ && (
+              <Flex flexDir={'column'} flex={'4 0 0'} mt={5}>
+                <FormLabel required mb={1}>
+                  {t('dataset:answer')}
+                  <Text as="span" color={'myGray.500'} fontSize={'12px'} fontWeight={400} ml={2}>
+                    {t('dataset:markdown_tip')}
+                  </Text>
+                </FormLabel>
+                <Textarea
+                  resize={'vertical'}
+                  className={styles.scrollbar}
+                  flex={'1 0 0'}
+                  tabIndex={2}
+                  borderRadius={'md'}
+                  border={'1.5px solid '}
+                  borderColor={'myGray.200'}
+                  _focus={{
+                    borderColor: 'primary.500',
+                    boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                    bg: 'white'
+                  }}
+                  {...register('a', { required: isFAQ })}
+                />
+              </Flex>
+            )}
+          </Flex>
+        )}
 
         <ModalFooter py={0} pt={4}>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>

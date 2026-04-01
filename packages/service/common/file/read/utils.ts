@@ -92,12 +92,16 @@ const parseByCustomService = async ({
     if (response.error) {
       addLog.warn('Custom PDF parse service returned error', { error: response.error });
       return Promise.reject(
-        new Error(typeof response.error === 'string' ? response.error : JSON.stringify(response.error))
+        new Error(
+          typeof response.error === 'string' ? response.error : JSON.stringify(response.error)
+        )
       );
     }
 
     if (typeof response.pages !== 'number' || response.pages < 0) {
-      return Promise.reject(new Error(`Invalid response: pages must be a non-negative number, got ${response.pages}`));
+      return Promise.reject(
+        new Error(`Invalid response: pages must be a non-negative number, got ${response.pages}`)
+      );
     }
     if (typeof response.markdown !== 'string') {
       return Promise.reject(new Error('Invalid response: markdown must be a string'));
@@ -198,11 +202,35 @@ export const readRawContentByFileBuffer = async ({
   const systemParse = () => readRawContentFromBuffer({ extension, encoding, buffer });
 
   const getParseFn = (): (() => Promise<ReadFileResponse>) => {
+    const isImageType = ['jpg', 'jpeg', 'png'].includes(extension);
+    if (isImageType) {
+      const cfg = global.systemEnv.customPdfParse;
+      if (cfg?.url) {
+        if (!cfg?.key)
+          return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
+        return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+      }
+      return () =>
+        Promise.reject(
+          `Image file type (.${extension}) cannot be parsed as a document. Please use the image dataset collection feature or configure customPdfParse.`
+        );
+    }
     if (!customPdfParse) return systemParse;
     const cfg = global.systemEnv.customPdfParse;
-    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'html', 'csv'].includes(extension);
+    const isDocumentType = [
+      'pdf',
+      'doc',
+      'docx',
+      'ppt',
+      'pptx',
+      'xls',
+      'xlsx',
+      'html',
+      'csv'
+    ].includes(extension);
     if (isDocumentType && cfg?.url) {
-      if (!cfg?.key) return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
+      if (!cfg?.key)
+        return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
       return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
     }
     if (extension === 'pdf' && cfg?.doc2xKey)
@@ -274,11 +302,35 @@ export const readS3FileContentByBuffer = async ({
   const systemParse = () => readRawContentFromBuffer({ extension, encoding, buffer });
 
   const getParseFn = (): (() => Promise<ReadFileResponse>) => {
+    const isImageType = ['jpg', 'jpeg', 'png'].includes(extension);
+    if (isImageType) {
+      const cfg = global.systemEnv.customPdfParse;
+      if (cfg?.url) {
+        if (!cfg?.key)
+          return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
+        return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+      }
+      return () =>
+        Promise.reject(
+          `Image file type (.${extension}) cannot be parsed as a document. Please use the image dataset collection feature or configure customPdfParse.`
+        );
+    }
     if (!customPdfParse) return systemParse;
     const cfg = global.systemEnv.customPdfParse;
-    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'html', 'csv'].includes(extension);
+    const isDocumentType = [
+      'pdf',
+      'doc',
+      'docx',
+      'ppt',
+      'pptx',
+      'xls',
+      'xlsx',
+      'html',
+      'csv'
+    ].includes(extension);
     if (isDocumentType && cfg?.url) {
-      if (!cfg?.key) return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
+      if (!cfg?.key)
+        return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
       return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
     }
     if (extension === 'pdf' && cfg?.doc2xKey)
@@ -328,4 +380,3 @@ export const readS3FileContentByBuffer = async ({
 
   return { rawText: getFormatText ? formatText || rawText : rawText };
 };
-

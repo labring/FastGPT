@@ -1,6 +1,9 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ImageCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
-import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
+import {
+  createCollectionAndInsertData,
+  delCollection
+} from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum
@@ -13,10 +16,14 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addDays, addSeconds } from 'date-fns';
 import fs from 'node:fs';
-import path from 'node:path';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+
+const ALLOWED_IMAGE_MIMETYPES = new Set(['image/jpeg', 'image/png']);
 
 async function handler(
   req: ApiRequestProps<ImageCreateDatasetCollectionParams>
@@ -29,7 +36,15 @@ async function handler(
       maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
-    const { parentId, datasetId, collectionName } = result.data;
+    const { parentId, datasetId, collectionName, overwriteDuplicate } = result.data;
+
+    // 校验文件类型，只允许图片格式
+    const invalidFiles = result.fileMetadata.filter(
+      (file) => !ALLOWED_IMAGE_MIMETYPES.has(file.mimetype)
+    );
+    if (invalidFiles.length > 0) {
+      return Promise.reject(i18nT('file:image_unsupported_file_type'));
+    }
 
     const { dataset, teamId, tmbId } = await authDataset({
       datasetId,
@@ -48,13 +63,80 @@ async function handler(
       num: result.fileMetadata.length
     });
 
-    if (!dataset.vlmModel) {
+    const hasVlm = !!dataset.vlmModel;
+    const hasCustomParse = !!(
+      global.systemEnv.customPdfParse?.url && global.systemEnv.customPdfParse?.key
+    );
+    if (!hasVlm && !hasCustomParse) {
       return Promise.reject(i18nT('file:Image_dataset_requires_VLM_model_to_be_configured'));
+    }
+
+    // 构造父目录查询条件
+    const parentQuery: Record<string, any> = parentId
+      ? { parentId }
+      : { $or: [{ parentId: null }, { parentId: { $exists: false } }] };
+
+    let finalCollectionName = collectionName;
+
+    if (overwriteDuplicate) {
+      // 覆盖模式：先删除同名 collection
+      const existingCollection = await MongoDatasetCollection.findOne(
+        { datasetId, name: collectionName, ...parentQuery },
+        '_id'
+      );
+      if (existingCollection) {
+        const collections = await findCollectionAndChild({
+          teamId,
+          datasetId,
+          collectionId: String(existingCollection._id),
+          fields: '_id teamId datasetId fileId metadata'
+        });
+        await mongoSessionRun((session) =>
+          delCollection({ collections, delImg: true, delFile: true, session })
+        );
+      }
+    } else {
+      // 继续上传模式：若同名则加 (N) 数字后缀
+      const existingCollection = await MongoDatasetCollection.findOne(
+        { datasetId, name: collectionName, ...parentQuery },
+        '_id'
+      );
+      if (existingCollection) {
+        const lastDotIndex = collectionName.lastIndexOf('.');
+        const nameWithoutExt =
+          lastDotIndex > 0 ? collectionName.substring(0, lastDotIndex) : collectionName;
+        const nameExt = lastDotIndex > 0 ? collectionName.substring(lastDotIndex) : '';
+
+        const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedBase = escapeRegex(nameWithoutExt);
+        const escapedExt = escapeRegex(nameExt);
+
+        const existingNames = await MongoDatasetCollection.find(
+          {
+            datasetId,
+            name: { $regex: `^${escapedBase}\\(\\d+\\)${escapedExt}$` },
+            ...parentQuery
+          },
+          'name'
+        ).lean();
+
+        let maxSuffix = 0;
+        const suffixRegex = new RegExp(`^${escapedBase}\\((\\d+)\\)${escapedExt}$`);
+        for (const doc of existingNames) {
+          const match = doc.name.match(suffixRegex);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxSuffix) maxSuffix = num;
+          }
+        }
+
+        finalCollectionName = `${nameWithoutExt}(${maxSuffix + 1})${nameExt}`;
+      }
     }
 
     const imageIds = await Promise.all(
       result.fileMetadata.map(async (file) => {
-        const filename = path.basename(file.filename);
+        const filename = decodeURIComponent(file.originalname);
         const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
         return uploadImage2S3Bucket('private', {
           base64Img: (await fs.promises.readFile(file.path)).toString('base64'),
@@ -75,7 +157,7 @@ async function handler(
         tmbId,
         datasetId,
         type: DatasetCollectionTypeEnum.images,
-        name: collectionName,
+        name: finalCollectionName,
         trainingType: DatasetCollectionDataProcessModeEnum.imageParse
       }
     });
