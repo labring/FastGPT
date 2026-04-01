@@ -5,8 +5,23 @@ import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { FlowNodeOutputItemTypeSchema } from '../../../../core/workflow/type/io';
 import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
+import { FlowNodeOutputItemTypeSchema } from '../../../../core/workflow/type/io';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import z from 'zod';
+
+const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
+  invalidCondition: true
+}).extend({
+  invalidCondition: z.any().optional().meta({
+    description: 'Internal editor validation function. This field is not expected in API payloads.'
+  })
+});
+
+const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
+  outputs: true
+}).extend({
+  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
+});
 
 const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
   invalidCondition: true
