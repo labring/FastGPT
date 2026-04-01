@@ -22,6 +22,10 @@ import {
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { env } from '../../../../env';
+import {
+  buildCatchErrorMapForChildren,
+  collectChildWorkflowUncaughtErrors
+} from '../utils/collectChildWorkflowUncaughtErrors';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopProMode]?: 'array' | 'condition';
@@ -84,6 +88,28 @@ function buildLoopProDataOutputs(
   return data;
 }
 
+function loopProFailOnChildUncaughtErrors(
+  props: Props,
+  runtimeNodes: RuntimeNodeItemType[],
+  newVariables: Record<string, any>,
+  message: string,
+  catchError: boolean | undefined
+): Response {
+  if (catchError) {
+    const dataOnError = buildLoopProDataOutputs(props.node, runtimeNodes, newVariables);
+    return {
+      error: { [NodeOutputKeyEnum.error]: message },
+      data: dataOnError,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        errorText: message,
+        mergeSignId: props.node.nodeId,
+        customOutputs: Object.keys(dataOnError).length > 0 ? dataOnError : undefined
+      }
+    };
+  }
+  throw new Error(message);
+}
+
 export const dispatchLoopPro = async (props: Props): Promise<Response> => {
   const { params, runtimeEdges, lastInteractive, runtimeNodes, node } = props;
   const {
@@ -143,6 +169,8 @@ async function runLoopProArrayMode(props: Props): Promise<Response> {
     loopInputArray?: any[];
     childrenNodeIdList?: string[];
   };
+
+  const catchErrorByNodeId = buildCatchErrorMapForChildren(runtimeNodes, childrenNodeIdList);
 
   let interactiveData =
     lastInteractive?.type === 'loopInteractive' ? lastInteractive?.params : undefined;
@@ -216,6 +244,21 @@ async function runLoopProArrayMode(props: Props): Promise<Response> {
         };
       }
       throw new Error(text);
+    }
+
+    const uncaught = collectChildWorkflowUncaughtErrors(
+      response.flowResponses,
+      childrenNodeIdList,
+      catchErrorByNodeId
+    );
+    if (uncaught.length > 0) {
+      return loopProFailOnChildUncaughtErrors(
+        props,
+        runtimeNodes,
+        newVariables,
+        uncaught.join('\n'),
+        catchError
+      );
     }
 
     const loopEndList = response.flowResponses.filter(
@@ -300,6 +343,8 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
   } = props;
   const { childrenNodeIdList = [] } = params as { childrenNodeIdList?: string[] };
 
+  const catchErrorByNodeId = buildCatchErrorMapForChildren(runtimeNodes, childrenNodeIdList);
+
   const loopResponseDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
@@ -366,6 +411,21 @@ async function runLoopProConditionMode(props: Props, maxTimes: number): Promise<
         };
       }
       throw new Error('Condition loop does not support interactive nodes in child workflow');
+    }
+
+    const uncaught = collectChildWorkflowUncaughtErrors(
+      response.flowResponses,
+      childrenNodeIdList,
+      catchErrorByNodeId
+    );
+    if (uncaught.length > 0) {
+      return loopProFailOnChildUncaughtErrors(
+        props,
+        runtimeNodes,
+        newVariables,
+        uncaught.join('\n'),
+        catchError
+      );
     }
 
     const loopEndList = response.flowResponses.filter(

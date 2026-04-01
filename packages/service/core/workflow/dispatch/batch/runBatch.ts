@@ -14,40 +14,12 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { env } from '../../../../env';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import {
+  buildCatchErrorMapForChildren,
+  collectChildWorkflowUncaughtErrors
+} from '../utils/collectChildWorkflowUncaughtErrors';
 
 const batchLogger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
-
-/** 节点响应里是否带有需关注的错误（开启 catch 的节点仅作记录，不参与批量成败） */
-const flowResponseHasError = (res: ChatHistoryItemResType) => {
-  if (res.errorText) return true;
-  if (res.error == null || res.error === '') return false;
-  if (typeof res.error === 'string') return true;
-  if (typeof res.error === 'object' && Object.keys(res.error).length > 0) return true;
-  return Boolean(res.error);
-};
-
-const formatFlowResponseError = (res: ChatHistoryItemResType) => {
-  if (res.errorText) return res.errorText;
-  if (typeof res.error === 'string') return res.error;
-  if (res.error && typeof res.error === 'object') return getErrText(res.error);
-  return res.moduleName || res.nodeId;
-};
-
-/** 子画布内未开启「错误时继续」的节点若带 error，则本批元素视为失败 */
-const collectBatchChildUncaughtErrors = (
-  flowResponses: ChatHistoryItemResType[],
-  childrenNodeIdList: string[],
-  catchErrorByNodeId: Map<string, boolean | undefined>
-) => {
-  const messages: string[] = [];
-  for (const res of flowResponses) {
-    if (!childrenNodeIdList.includes(res.nodeId)) continue;
-    if (catchErrorByNodeId.get(res.nodeId)) continue;
-    if (!flowResponseHasError(res)) continue;
-    messages.push(`${res.moduleName}: ${formatFlowResponseError(res)}`);
-  }
-  return messages;
-};
 
 type BatchRawResultItem = {
   success: boolean;
@@ -152,12 +124,7 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
   const concurrency = getRuntimeConcurrency(batchParallelConcurrency);
   const retryTimes = getRuntimeRetry(batchParallelRetryTimes);
 
-  const catchErrorByNodeId = new Map<string, boolean | undefined>();
-  runtimeNodes.forEach((n) => {
-    if (childrenNodeIdList.includes(n.nodeId)) {
-      catchErrorByNodeId.set(n.nodeId, n.catchError);
-    }
-  });
+  const catchErrorByNodeId = buildCatchErrorMapForChildren(runtimeNodes, childrenNodeIdList);
 
   const orderedRawResult: BatchRawResultItem[] = new Array(loopInputArray.length);
   const orderedSuccessResult: any[] = [];
@@ -204,7 +171,7 @@ export const dispatchBatch = async (props: Props): Promise<Response> => {
         );
         const loopOutputValue = loopEndList[loopEndList.length - 1]?.loopOutputValue;
 
-        const uncaughtErrors = collectBatchChildUncaughtErrors(
+        const uncaughtErrors = collectChildWorkflowUncaughtErrors(
           flowResponses,
           childrenNodeIdList,
           catchErrorByNodeId
