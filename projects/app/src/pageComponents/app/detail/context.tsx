@@ -43,7 +43,7 @@ type AppContextType = {
   setAppDetail: Dispatch<SetStateAction<AppDetailType>>;
   loadingApp: boolean;
   updateAppDetail: (data: AppUpdateParams) => Promise<void>;
-  onOpenInfoEdit: () => void;
+  onOpenInfoEdit: (appForm?: any) => void;
   onOpenTeamTagModal: () => void;
   onDelApp: () => void;
   onSaveApp: (data: PostPublishAppProps) => Promise<void>;
@@ -72,7 +72,7 @@ export const AppContext = createContext<AppContextType>({
   setAppDetail: function (value: SetStateAction<AppDetailType>): void {
     throw new Error('Function not implemented.');
   },
-  onOpenInfoEdit: function (): void {
+  onOpenInfoEdit: function (appForm?: any): void {
     throw new Error('Function not implemented.');
   },
   onOpenTeamTagModal: function (): void {
@@ -102,9 +102,10 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     currentTab?: TabEnum;
   };
 
+  const [infoModalAppForm, setInfoModalAppForm] = useState<any>();
   const {
     isOpen: isOpenInfoEdit,
-    onOpen: onOpenInfoEdit,
+    onOpen: onOpenInfoEditBase,
     onClose: onCloseInfoEdit
   } = useDisclosure();
   const {
@@ -112,6 +113,19 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onOpen: onOpenTeamTagModal,
     onClose: onCloseTeamTagModal
   } = useDisclosure();
+
+  const onOpenInfoEdit = useCallback(
+    (appForm?: any) => {
+      setInfoModalAppForm(appForm);
+      onOpenInfoEditBase();
+    },
+    [onOpenInfoEditBase]
+  );
+
+  const handleCloseInfoEdit = useCallback(() => {
+    setInfoModalAppForm(undefined);
+    onCloseInfoEdit();
+  }, [onCloseInfoEdit]);
 
   const route2Tab = useCallback(
     (currentTab: `${TabEnum}`) => {
@@ -277,8 +291,9 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       {children}
       {isOpenInfoEdit && (
         <InfoModal
-          onClose={onCloseInfoEdit}
+          onClose={handleCloseInfoEdit}
           hideAuthConfig={appDetail.type === AppTypeEnum.assistant}
+          appForm={infoModalAppForm}
         />
       )}
       {isOpenTeamTagModal && <TagsEditModal onClose={onCloseTeamTagModal} />}

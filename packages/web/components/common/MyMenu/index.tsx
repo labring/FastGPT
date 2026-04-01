@@ -38,7 +38,8 @@ export type Props = {
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
-
+  isOpen?: boolean;
+  onOpenChange?: (isOpen: boolean) => void;
   placement?: PlacementWithLogical;
   menuList: MenuItemData[];
 };
@@ -196,19 +197,34 @@ const MyMenu = ({
   offset,
   Button,
   menuList,
-  placement = 'bottom-start'
+  placement = 'bottom-start',
+  isOpen: externalIsOpen,
+  onOpenChange
 }: Props) => {
   const { isPc } = useSystem();
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+
+  // 使用外部控制的 isOpen 或内部状态
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
 
   const formatTrigger = !isPc ? 'click' : trigger;
+
+  const handleSetIsOpen = useCallback(
+    (newIsOpen: boolean) => {
+      if (externalIsOpen === undefined) {
+        setInternalIsOpen(newIsOpen);
+      }
+      onOpenChange?.(newIsOpen);
+    },
+    [externalIsOpen, onOpenChange]
+  );
 
   useOutsideClick({
     ref: ref,
     handler: () => {
-      setIsOpen(false);
+      handleSetIsOpen(false);
     }
   });
 
@@ -233,14 +249,14 @@ const MyMenu = ({
         ref={ref}
         onMouseEnter={() => {
           if (formatTrigger === 'hover') {
-            setIsOpen(true);
+            handleSetIsOpen(true);
           }
           clearTimeout(closeTimer.current);
         }}
         onMouseLeave={() => {
           if (formatTrigger === 'hover') {
             closeTimer.current = setTimeout(() => {
-              setIsOpen(false);
+              handleSetIsOpen(false);
             }, 100);
           }
         }}
@@ -250,7 +266,7 @@ const MyMenu = ({
           onClickCapture={(e) => {
             e.stopPropagation();
             if (formatTrigger === 'click') {
-              setIsOpen(!isOpen);
+              handleSetIsOpen(!isOpen);
             }
           }}
         >
@@ -293,7 +309,7 @@ const MyMenu = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       if (child.onClick) {
-                        setIsOpen(false);
+                        handleSetIsOpen(false);
                         child.onClick();
                       }
                     }}

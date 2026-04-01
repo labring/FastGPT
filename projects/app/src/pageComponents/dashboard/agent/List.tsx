@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Grid, Flex, VStack, Spinner } from '@chakra-ui/react';
+import { Box, Grid, Flex, VStack, Spinner, useDisclosure } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -33,6 +33,7 @@ import AppCard from './AppCard';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
+const ExportSkillModal = dynamic(() => import('@/components/core/app/ExportSkillModal'));
 
 const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
   const { t } = useTranslation();
@@ -68,6 +69,11 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
+  const [exportSkillApp, setExportSkillApp] = useState<{
+    id: string;
+    name: string;
+    intro?: string;
+  }>();
 
   const editPerApp = useMemo(
     () =>
@@ -153,6 +159,11 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
+  const stableSetExportSkillApp = useCallback(
+    (app: { id: string; name: string; intro?: string }) => setExportSkillApp(app),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   if (myApps.length === 0 && isFetchingApps) return null;
 
@@ -199,6 +210,7 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
               getBoxProps={getBoxProps}
               setEditedApp={stableSetEditedApp}
               setEditPerAppId={stableSetEditPerAppId}
+              setExportSkillApp={stableSetExportSkillApp}
               openConfirmDel={openConfirmDel}
               openConfirmCopy={openConfirmCopy}
               onclickDelApp={onclickDelApp}
@@ -229,6 +241,14 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
             setEditedApp(undefined);
           }}
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
+        />
+      )}
+      {!!exportSkillApp && (
+        <ExportSkillModal
+          appId={exportSkillApp.id}
+          appName={exportSkillApp.name}
+          appIntro={exportSkillApp.intro}
+          onClose={() => setExportSkillApp(undefined)}
         />
       )}
       {!!editPerApp && (

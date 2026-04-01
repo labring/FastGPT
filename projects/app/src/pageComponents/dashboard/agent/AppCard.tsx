@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, type UseToastOptions } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Grid, IconButton, HStack, type UseToastOptions, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -23,6 +23,9 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import dynamic from 'next/dynamic';
+
+const ExportConfigPopover = dynamic(() => import('./ExportConfigPopover'));
 
 type OpenConfirmFn = (params: {
   onConfirm?: Function;
@@ -37,6 +40,7 @@ export type AppCardProps = {
   getBoxProps: (params: { dataId: string; isFolder: boolean }) => Record<string, any>;
   setEditedApp: (app: EditResourceInfoFormType) => void;
   setEditPerAppId: (id: string) => void;
+  setExportSkillApp: (app: { id: string; name: string; intro?: string }) => void;
   openConfirmDel: OpenConfirmFn;
   openConfirmCopy: OpenConfirmFn;
   onclickDelApp: (id: string) => Promise<any>;
@@ -50,6 +54,7 @@ const AppCard = React.memo(function AppCard({
   getBoxProps,
   setEditedApp,
   setEditPerAppId,
+  setExportSkillApp,
   openConfirmDel,
   openConfirmCopy,
   onclickDelApp,
@@ -62,6 +67,16 @@ const AppCard = React.memo(function AppCard({
   const { folderDetail, setMoveAppId, setSearchKey } = useContextSelector(AppListContext, (v) => v);
 
   const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
+
+  const handleOpenExportSkill = useCallback(() => {
+    setIsMenuOpen(false);
+    setExportSkillApp({
+      id: app._id,
+      name: app.name,
+      intro: app.intro
+    });
+  }, [app._id, app.name, app.intro, setExportSkillApp]);
 
   const isAgent = AppTypeList.includes(app.type);
   const isTool = ToolTypeList.includes(app.type);
@@ -168,6 +183,26 @@ const AppCard = React.memo(function AppCard({
         : [
             {
               children: [
+                ...([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant].includes(
+                  app.type
+                )
+                  ? [
+                      {
+                        icon: 'core/skill/skill',
+                        type: 'grayBg' as MenuItemType,
+                        label: t('skill:export_as_skill'),
+                        onClick: handleOpenExportSkill
+                      },
+                      {
+                        type: 'grayBg' as MenuItemType,
+                        label: (
+                          <Flex>
+                            <ExportConfigPopover appName={app.name} appId={app._id} />
+                          </Flex>
+                        )
+                      }
+                    ]
+                  : []),
                 {
                   icon: 'copy',
                   type: 'grayBg' as MenuItemType,
@@ -230,7 +265,10 @@ const AppCard = React.memo(function AppCard({
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
-        onMouseEnter={() => setIsHovered(true)}
+        onMouseEnter={() => {
+          setIsHovered(true);
+          setIsMenuOpen(true);
+        }}
         onMouseLeave={() => setIsHovered(false)}
         _hover={{
           borderColor: 'primary.300',
@@ -308,7 +346,7 @@ const AppCard = React.memo(function AppCard({
               </HStack>
             )}
             {hasBtnPer && (isHovered || !isPc) && (
-              <Box display={'flex'}>
+              <Box display={'flex'} onClick={(e) => e.stopPropagation()}>
                 <MyMenu
                   Button={
                     <IconButton
@@ -319,6 +357,8 @@ const AppCard = React.memo(function AppCard({
                     />
                   }
                   menuList={menuList}
+                  isOpen={isMenuOpen}
+                  onOpenChange={setIsMenuOpen}
                 />
               </Box>
             )}
