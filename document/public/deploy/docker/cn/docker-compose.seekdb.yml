@@ -44,7 +44,6 @@ x-vec-config: &x-vec-config
   SEEKDB_URL: mysql://root:seekdbpassword@seekdb:2881/mysql
 
 
-version: '3.3'
 services:
   # Vector DB
   vectorDB:
@@ -358,6 +357,7 @@ services:
       VM_AUTH_TOKEN: *x-volume-manager-auth-token # 对应 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
       VM_VOLUME_NAME_PREFIX: fastgpt-session # volume 名称前缀
       VM_LOG_LEVEL: info
+      VM_DOCKER_API_VERSION: v1.44
     healthcheck:
       test:
         [
