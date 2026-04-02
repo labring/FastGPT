@@ -17,9 +17,9 @@ x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
 x-share-db-config: &x-share-db-config
-  MONGODB_URI: mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+  MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
-  REDIS_URL: redis://default:mypassword@redis:6379
+  REDIS_URL: redis://default:mypassword@fastgpt-redis:6379
   # @see https://doc.fastgpt.cn/docs/self-host/config/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
@@ -41,14 +41,14 @@ x-log-config: &x-log-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-  MILVUS_ADDRESS: http://milvusStandalone:19530
+  MILVUS_ADDRESS: http://fastgpt-milvus-standalone:19530
   MILVUS_TOKEN: none
     
 
 services:
   # Vector DB
-  milvus-minio:
-    container_name: milvus-minio
+  fastgpt-milvus-minio:
+    container_name: fastgpt-milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
       MINIO_ACCESS_KEY: minioadmin
@@ -64,8 +64,8 @@ services:
       timeout: 20s
       retries: 3
   # milvus
-  milvus-etcd:
-    container_name: milvus-etcd
+  fastgpt-milvus-etcd:
+    container_name: fastgpt-milvus-etcd
     image: quay.io/coreos/etcd:v3.5.5
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -82,15 +82,15 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-  vectorDB:
-    container_name: milvusStandalone
+  fastgpt-milvus-standalone:
+    container_name: fastgpt-milvus-standalone
     image: milvusdb/milvus:v2.4.3
     command: ['milvus', 'run', 'standalone']
     security_opt:
       - seccomp:unconfined
     environment:
-      ETCD_ENDPOINTS: milvus-etcd:2379
-      MINIO_ADDRESS: milvus-minio:9000
+      ETCD_ENDPOINTS: fastgpt-milvus-etcd:2379
+      MINIO_ADDRESS: fastgpt-milvus-minio:9000
     networks:
       - fastgpt
       - vector
@@ -103,12 +103,12 @@ services:
       timeout: 20s
       retries: 3
     depends_on:
-      - 'milvus-etcd'
-      - 'milvus-minio'
+      - 'fastgpt-milvus-etcd'
+      - 'fastgpt-milvus-minio'
 
-  mongo:
+  fastgpt-mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
-    container_name: mongo
+    container_name: fastgpt-mongo
     restart: always
     networks:
       - fastgpt
@@ -136,7 +136,7 @@ services:
           rs.initiate({
               _id: "rs0",
               members: [
-                  { _id: 0, host: "mongo:27017" }
+                  { _id: 0, host: "fastgpt-mongo:27017" }
               ]
           })
         }' > /data/initReplicaSet.js
@@ -154,9 +154,9 @@ services:
 
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
-  redis:
+  fastgpt-redis:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
-    container_name: redis
+    container_name: fastgpt-redis
     networks:
       - fastgpt
     restart: always
@@ -199,9 +199,10 @@ services:
     networks:
       - fastgpt
     depends_on:
-      - mongo
-      - code-sandbox
-      - vectorDB
+      - fastgpt-mongo
+      - fastgpt-code-sandbox
+      - fastgpt-milvus-standalone
+
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
@@ -229,24 +230,24 @@ services:
       PLUGIN_BASE_URL: http://fastgpt-plugin:3000
       PLUGIN_TOKEN: *x-plugin-auth-token
       # code-sandbox 地址
-      CODE_SANDBOX_URL: http://code-sandbox:3000
+      CODE_SANDBOX_URL: http://fastgpt-code-sandbox:3000
       CODE_SANDBOX_TOKEN: *x-code-sandbox-token
       # AI Proxy 的地址，如果配了该地址，优先使用
-      AIPROXY_API_ENDPOINT: http://aiproxy:3000
+      AIPROXY_API_ENDPOINT: http://fastgpt-aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       AIPROXY_API_TOKEN: *x-aiproxy-token
 
       # ==================== Agent sandbox 配置 ====================
       AGENT_SANDBOX_PROVIDER: opensandbox
       # OpenSandbox 配置（PROVIDER: opensandbox 时生效）
-      AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://opensandbox-server:8090
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
       AGENT_SANDBOX_OPENSANDBOX_API_KEY:
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
       # Volume 持久化配置（opensandbox provider 下可选）
       AGENT_SANDBOX_ENABLE_VOLUME: true
-      AGENT_SANDBOX_VOLUME_MANAGER_URL: http://volume-manager:3000
+      AGENT_SANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
       AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
 
       # ==================== 日志与监控 ====================
@@ -278,8 +279,8 @@ services:
       MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
       - ./config.json:/app/data/config.json
-  code-sandbox:
-    container_name: code-sandbox
+  fastgpt-code-sandbox:
+    container_name: fastgpt-code-sandbox
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.10
     networks:
       - fastgpt
@@ -361,9 +362,9 @@ services:
   # 沙盒控制器：管理 Docker 容器的创建/执行/停止/删除
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
-  opensandbox-server:
+  fastgpt-opensandbox-server:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
-    container_name: opensandbox-server
+    container_name: fastgpt-opensandbox-server
     restart: always
     networks:
       - fastgpt
@@ -380,9 +381,9 @@ services:
       timeout: 5s
       retries: 5
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
-  volume-manager:
+  fastgpt-volume-manager:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.1
-    container_name: volume-manager
+    container_name: fastgpt-volume-manager
     restart: always
     networks:
       - fastgpt
@@ -407,18 +408,18 @@ services:
       timeout: 5s
       retries: 5
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
-  agent-sandbox-image:
+  fastgpt-agent-sandbox-image:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.1
     profiles:
       - prepull
 
   # AI Proxy
-  aiproxy:
+  fastgpt-aiproxy:
     image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.5
-    container_name: aiproxy
+    container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
-      aiproxy_pg:
+      fastgpt-aiproxy-pg:
         condition: service_healthy
     networks:
       - fastgpt
@@ -429,7 +430,7 @@ services:
       # 错误日志详情保存时间（小时）
       LOG_DETAIL_STORAGE_HOURS: 1
       # 数据库连接地址
-      SQL_DSN: postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      SQL_DSN: postgres://postgres:aiproxy@fastgpt-aiproxy-pg:5432/aiproxy
       # 最大重试次数
       RETRY_TIMES: 3
       # 不需要计费
@@ -441,10 +442,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  aiproxy_pg:
+  fastgpt-aiproxy-pg:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
     restart: unless-stopped
-    container_name: aiproxy_pg
+    container_name: fastgpt-aiproxy-pg
     volumes:
       - fastgpt-aiproxy_pg:/var/lib/postgresql/data
     networks:

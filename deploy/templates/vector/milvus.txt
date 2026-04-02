@@ -1,5 +1,5 @@
-  milvus-minio:
-    container_name: milvus-minio
+  fastgpt-milvus-minio:
+    container_name: fastgpt-milvus-minio
     image: ${{milvus-minio.image}}:${{milvus-minio.tag}}
     environment:
       MINIO_ACCESS_KEY: minioadmin
@@ -15,8 +15,8 @@
       timeout: 20s
       retries: 3
   # milvus
-  milvus-etcd:
-    container_name: milvus-etcd
+  fastgpt-milvus-etcd:
+    container_name: fastgpt-milvus-etcd
     image: ${{milvus-etcd.image}}:${{milvus-etcd.tag}}
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
@@ -33,15 +33,15 @@
       interval: 30s
       timeout: 20s
       retries: 3
-  vectorDB:
-    container_name: milvusStandalone
+  fastgpt-milvus-standalone:
+    container_name: fastgpt-milvus-standalone
     image: ${{milvus-standalone.image}}:${{milvus-standalone.tag}}
     command: ['milvus', 'run', 'standalone']
     security_opt:
       - seccomp:unconfined
     environment:
-      ETCD_ENDPOINTS: milvus-etcd:2379
-      MINIO_ADDRESS: milvus-minio:9000
+      ETCD_ENDPOINTS: fastgpt-milvus-etcd:2379
+      MINIO_ADDRESS: fastgpt-milvus-minio:9000
     networks:
       - fastgpt
       - vector
@@ -54,5 +54,5 @@
       timeout: 20s
       retries: 3
     depends_on:
-      - 'milvus-etcd'
-      - 'milvus-minio'
+      - 'fastgpt-milvus-etcd'
+      - 'fastgpt-milvus-minio'

@@ -1,6 +1,6 @@
-  vectorDB:
+  fastgpt-ob:
     image:  ${{oceanbase.image}}:${{oceanbase.tag}}
-    container_name: ob
+    container_name: fastgpt-ob
     restart: always
     # ports: # 生产环境建议不要暴露
     #   - 2881:2881
