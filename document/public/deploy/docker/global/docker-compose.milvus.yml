@@ -56,7 +56,7 @@ services:
     networks:
       - vector
     volumes:
-      - ./milvus-minio:/minio_data
+      - fastgpt-milvus-minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -75,7 +75,7 @@ services:
     networks:
       - vector
     volumes:
-      - ./milvus/etcd:/etcd
+      - fastgpt-milvus-etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
       test: ['CMD', 'etcdctl', 'endpoint', 'health']
@@ -95,7 +95,7 @@ services:
       - fastgpt
       - vector
     volumes:
-      - ./milvus/data:/var/lib/milvus
+      - fastgpt-milvus-data:/var/lib/milvus
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
       interval: 30s
@@ -105,6 +105,7 @@ services:
     depends_on:
       - 'milvus-etcd'
       - 'milvus-minio'
+
   mongo:
     image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: mongo
@@ -116,7 +117,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=myusername
       - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
-      - ./mongo/data:/data/db
+      - fastgpt-mongo:/data/db
     healthcheck:
       test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
       interval: 10s
@@ -168,7 +169,7 @@ services:
       retries: 3
       start_period: 30s
     volumes:
-      - ./redis/data:/data
+      - fastgpt-redis:/data
   fastgpt-minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: fastgpt-minio
@@ -182,7 +183,7 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
-      - ./fastgpt-minio:/data
+      - fastgpt-minio:/data
     command: server /data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -445,7 +446,7 @@ services:
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
-      - ./aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
     networks:
       - aiproxy
     environment:
@@ -462,6 +463,20 @@ networks:
   fastgpt:
   aiproxy:
   vector:
+
+volumes:
+  fastgpt-pg:
+  fastgpt-mongo:
+  fastgpt-redis:
+  fastgpt-minio:
+  fastgpt-milvus-minio:
+  fastgpt-milvus-etcd:
+  fastgpt-milvus-data:
+  fastgpt-ob-data:
+  fastgpt-ob-config:
+  fastgpt-seekdb-data:
+  fastgpt-seekdb-config:
+  fastgpt-aiproxy_pg:
 
 configs:
   opensandbox-config:
