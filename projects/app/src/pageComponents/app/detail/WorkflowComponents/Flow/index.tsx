@@ -99,18 +99,24 @@ const Workflow = () => {
   } = useDisclosure();
 
   const [movingCanvas, setMovingCanvas] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 异步 fitView：等待所有节点加载完成后再执行
   const { fitView } = useReactFlow();
   const fitViewDone = useRef(false);
   useEffect(() => {
-    // 确保仅自动布局一次。且所有节点都渲染完成。
-    if (fitViewDone.current || !nodes.length || !nodes.every((node) => node.width && node.height))
+    // 确保仅自动布局一次。且所有节点都渲染完成。且 ReactFlow 已完成初始化。
+    if (
+      !isInitialized ||
+      fitViewDone.current ||
+      !nodes.length ||
+      !nodes.every((node) => node.width && node.height)
+    )
       return;
 
     fitViewDone.current = true;
     setTimeout(() => fitView({ padding: 0.3, nodes }), 0);
-  }, [nodes, fitView]);
+  }, [nodes, fitView, isInitialized]);
 
   return (
     <>
@@ -148,6 +154,7 @@ const Workflow = () => {
 
         <ReactFlow
           ref={reactFlowWrapperCallback}
+          onInit={() => setIsInitialized(true)}
           nodes={nodes}
           edges={edges}
           minZoom={minZoom}
