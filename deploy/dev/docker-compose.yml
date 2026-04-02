@@ -253,7 +253,7 @@ services:
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
     image: opensandbox/server:v0.1.9
-    container_name: opensandbox-server
+    container_name: fastgpt-opensandbox-server
     restart: always
     ports:
       - 8090:8090
