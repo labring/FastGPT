@@ -48,7 +48,7 @@ services:
 ${{vec.db}}
   mongo:
     image: ${{mongo.image}}:${{mongo.tag}} # cpu 不支持 AVX 时候使用 4.4.29
-    container_name: mongo
+    container_name: fastgpt-mongo
     restart: always
     networks:
       - fastgpt
@@ -96,7 +96,7 @@ ${{vec.db}}
         wait $$!
   redis:
     image: ${{redis.image}}:${{redis.tag}}
-    container_name: redis
+    container_name: fastgpt-redis
     networks:
       - fastgpt
     restart: always
@@ -219,7 +219,7 @@ ${{vec.db}}
     volumes:
       - ./config.json:/app/data/config.json
   code-sandbox:
-    container_name: code-sandbox
+    container_name: fastgpt-code-sandbox
     image: ${{fastgpt-code-sandbox.image}}:${{fastgpt-code-sandbox.tag}}
     networks:
       - fastgpt
@@ -303,7 +303,7 @@ ${{vec.db}}
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
-    container_name: opensandbox-server
+    container_name: fastgpt-opensandbox-server
     restart: always
     networks:
       - fastgpt
@@ -322,7 +322,7 @@ ${{vec.db}}
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   volume-manager:
     image: ${{volume-manager.image}}:${{volume-manager.tag}}
-    container_name: volume-manager
+    container_name: fastgpt-volume-manager
     restart: always
     networks:
       - fastgpt
@@ -355,7 +355,7 @@ ${{vec.db}}
   # AI Proxy
   aiproxy:
     image: ${{aiproxy.image}}:${{aiproxy.tag}}
-    container_name: aiproxy
+    container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
       aiproxy_pg:
@@ -384,7 +384,7 @@ ${{vec.db}}
   aiproxy_pg:
     image: ${{aiproxy-pg.image}}:${{aiproxy-pg.tag}} # docker hub
     restart: unless-stopped
-    container_name: aiproxy_pg
+    container_name: fastgpt-aiproxy-pg
     volumes:
       - fastgpt-aiproxy_pg:/var/lib/postgresql/data
     networks:

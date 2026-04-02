@@ -48,7 +48,7 @@ services:
   # Vector DB
   vectorDB:
     image:  oceanbase/seekdb:1.0.1.0-100000392025122619
-    container_name: seekdb
+    container_name: fastgpt-seekdb
     restart: always
     # ports: # 生产环境建议不要暴露
     #   - 2881:2881
@@ -72,7 +72,7 @@ services:
 
   mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
-    container_name: mongo
+    container_name: fastgpt-mongo
     restart: always
     networks:
       - fastgpt
@@ -120,7 +120,7 @@ services:
         wait $$!
   redis:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
-    container_name: redis
+    container_name: fastgpt-redis
     networks:
       - fastgpt
     restart: always
@@ -243,7 +243,7 @@ services:
     volumes:
       - ./config.json:/app/data/config.json
   code-sandbox:
-    container_name: code-sandbox
+    container_name: fastgpt-code-sandbox
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.10
     networks:
       - fastgpt
@@ -327,7 +327,7 @@ services:
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
-    container_name: opensandbox-server
+    container_name: fastgpt-opensandbox-server
     restart: always
     networks:
       - fastgpt
@@ -346,7 +346,7 @@ services:
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   volume-manager:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.1
-    container_name: volume-manager
+    container_name: fastgpt-volume-manager
     restart: always
     networks:
       - fastgpt
@@ -379,7 +379,7 @@ services:
   # AI Proxy
   aiproxy:
     image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.5
-    container_name: aiproxy
+    container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
       aiproxy_pg:
@@ -408,7 +408,7 @@ services:
   aiproxy_pg:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
     restart: unless-stopped
-    container_name: aiproxy_pg
+    container_name: fastgpt-aiproxy-pg
     volumes:
       - fastgpt-aiproxy_pg:/var/lib/postgresql/data
     networks:

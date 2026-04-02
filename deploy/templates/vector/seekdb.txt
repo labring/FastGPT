@@ -1,6 +1,6 @@
   vectorDB:
     image:  ${{seekdb.image}}:${{seekdb.tag}}
-    container_name: seekdb
+    container_name: fastgpt-seekdb
     restart: always
     # ports: # 生产环境建议不要暴露
     #   - 2881:2881

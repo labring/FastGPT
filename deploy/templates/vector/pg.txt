@@ -1,6 +1,6 @@
   vectorDB:
     image: ${{pg.image}}:${{pg.tag}}
-    container_name: pg
+    container_name: fastgpt-pg
     restart: always
     networks:
       - fastgpt
