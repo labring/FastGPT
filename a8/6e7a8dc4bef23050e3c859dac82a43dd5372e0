@@ -1,0 +1,36 @@
+deploy/templates/docker-compose.prod.yml
+  588cce9547576648 60,112,126,389,407-420,441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "a86e7a8dc4bef23050e3c859dac82a43dd5372e0",
+  "prompts": {
+    "588cce9547576648": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d4c3d-755e-7a42-a41e-737c184b2ac0",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 5,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    },
+    "821e99261655119a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d4c34-2fed-74f2-af1f-d941e992085c",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 76,
+      "total_deletions": 0,
+      "accepted_lines": 76,
+      "overriden_lines": 0
+    }
+  }
+}
