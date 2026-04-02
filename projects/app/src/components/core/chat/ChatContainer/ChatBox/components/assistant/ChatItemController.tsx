@@ -198,7 +198,8 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
           </MyTooltip>
         );
       }
-      if (chat.totalQuoteList && chat.totalQuoteList.length === 0) {
+      // 使用新字段quoteList是检索最终结果，totalQuoteList是llm返回结果中带cite的逆向解释出来的
+      if (chat.quoteList && chat.quoteList.length === 0) {
         elements.push(
           <MyTag key="quote-list" colorSchema="pink" showDot={false}>
             <Flex alignItems={'center'}>

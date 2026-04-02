@@ -198,8 +198,12 @@ export type DispatchNodeResponseType = {
     model: string;
     inputTokens: number;
     outputTokens: number;
-    query: string;
+    query?: string; // 改为可选，当没有问题改写时为 undefined
     rewriteTime?: number;
+    synonymRewriteResult?: {
+      standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
+      coreferenceResolved: string; // 指代消除后的查询（同义词标准化前）
+    };
   };
   deepSearchResult?: {
     model: string;

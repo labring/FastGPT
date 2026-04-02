@@ -64,57 +64,57 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
   // get llm module account and history preview length and total quote list and external link list
-  const { llmModuleAccount, historyPreviewLength, totalQuoteList, toolCiteLinks } =
-    flatResData.reduce(
-      (acc, item) => {
-        // LLM
-        if (isLLMNode(item)) {
-          acc.llmModuleAccount = acc.llmModuleAccount + 1;
-          if (acc.historyPreviewLength === undefined) {
-            acc.historyPreviewLength = item.historyPreview?.length;
-          }
+  const { llmModuleAccount, historyPreviewLength, quoteList, toolCiteLinks } = flatResData.reduce(
+    (acc, item) => {
+      // LLM
+      if (isLLMNode(item)) {
+        acc.llmModuleAccount = acc.llmModuleAccount + 1;
+        if (acc.historyPreviewLength === undefined) {
+          acc.historyPreviewLength = item.historyPreview?.length;
         }
-        // Dataset search result
-        if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
-          acc.totalQuoteList.push(...item.quoteList.filter(Boolean));
-        }
-
-        // Tool call
-        if (item.moduleType === FlowNodeTypeEnum.tool) {
-          const citeLinks = item?.toolRes?.citeLinks;
-          if (citeLinks && Array.isArray(citeLinks)) {
-            citeLinks.forEach(({ name = '', url = '' }: ToolCiteLinksType) => {
-              if (url) {
-                const key = `${name}::${url}`;
-                if (!acc.linkDedupe.has(key)) {
-                  acc.linkDedupe.add(key);
-                  acc.toolCiteLinks.push({ name, url });
-                }
-              }
-            });
-          }
-        }
-
-        return acc;
-      },
-      {
-        llmModuleAccount: 0,
-        historyPreviewLength: undefined as number | undefined,
-        totalQuoteList: [] as SearchDataResponseItemType[],
-        toolCiteLinks: [] as ToolCiteLinksType[],
-        linkDedupe: new Set<string>()
       }
-    );
+      // Dataset search result
+      if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
+        acc.quoteList.push(...item.quoteList.filter(Boolean));
+      }
+
+      // Tool call
+      if (item.moduleType === FlowNodeTypeEnum.tool) {
+        const citeLinks = item?.toolRes?.citeLinks;
+        if (citeLinks && Array.isArray(citeLinks)) {
+          citeLinks.forEach(({ name = '', url = '' }: ToolCiteLinksType) => {
+            if (url) {
+              const key = `${name}::${url}`;
+              if (!acc.linkDedupe.has(key)) {
+                acc.linkDedupe.add(key);
+                acc.toolCiteLinks.push({ name, url });
+              }
+            }
+          });
+        }
+      }
+
+      return acc;
+    },
+    {
+      llmModuleAccount: 0,
+      historyPreviewLength: undefined as number | undefined,
+      quoteList: [] as SearchDataResponseItemType[],
+      toolCiteLinks: [] as ToolCiteLinksType[],
+      linkDedupe: new Set<string>()
+    }
+  );
 
   // Filter quote list to only include citations actually referenced in the response text
   const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
   const citedIds = extractCitationIdsFromText(responseText);
-  const filteredQuoteList = totalQuoteList.filter((quote) => citedIds.includes(quote.id));
+  const filteredQuoteList = quoteList.filter((quote) => citedIds.includes(quote.id));
 
   return {
     ...historyItem,
     llmModuleAccount,
-    totalQuoteList: filteredQuoteList,
+    quoteList, // 原始未过滤的引用列表，用于判断是否有知识库搜索结果
+    totalQuoteList: filteredQuoteList, // 过滤后的引用列表，只包含实际被引用的
     historyPreviewLength,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {})
   };

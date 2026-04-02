@@ -150,7 +150,8 @@ export type AdminFbkType = {
 };
 
 export type ResponseTagItemType = {
-  totalQuoteList?: SearchDataResponseItemType[];
+  quoteList?: SearchDataResponseItemType[]; // 原始未过滤的引用列表，与后端"未找到知识"判断一致
+  totalQuoteList?: SearchDataResponseItemType[]; // 过滤后的引用列表，只包含实际被引用的
   llmModuleAccount?: number;
   historyPreviewLength?: number;
   toolCiteLinks?: ToolCiteLinksType[];

@@ -658,7 +658,9 @@ export async function dispatchDatasetSearch(
               model: queryExtensionResult.llmModel,
               inputTokens: queryExtensionResult.inputTokens,
               outputTokens: queryExtensionResult.outputTokens,
-              query: queryExtensionResult.query
+              query: queryExtensionResult.query,
+              synonymRewriteResult: queryExtensionResult.synonymRewriteResult,
+              rewriteTime: queryExtensionResult.rewriteTime
             }
           : undefined,
         deepSearchResult,
