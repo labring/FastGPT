@@ -58,7 +58,7 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
     volumes:
-      - ./pg/data:/var/lib/postgresql/data
+      - fastgpt-pg:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
       interval: 5s
@@ -79,7 +79,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=myusername
       - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
-      - ./mongo/data:/data/db
+      - fastgpt-mongo:/data/db
     healthcheck:
       test:
         [
@@ -145,9 +145,9 @@ services:
       retries: 3
       start_period: 30s
     volumes:
-      - ./redis/data:/data
+      - fastgpt-redis:/data
   fastgpt-minio:
-    image: ${{minio.image}}:${{minio.tag}}
+    image: ${{minio.image}}:${{minio.tag}} # cpu 不支持 AVX 时候使用 ${{minio.tag}}-cpuv1
     container_name: fastgpt-minio
     restart: always
     networks:
@@ -159,7 +159,7 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
-      - ./fastgpt-minio:/data
+      - fastgpt-minio:/data
     command: server /data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -341,7 +341,7 @@ services:
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
-      - ./aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
     networks:
       - aiproxy
     environment:
@@ -357,6 +357,13 @@ services:
 networks:
   fastgpt:
   aiproxy:
+
+volumes:
+  fastgpt-pg:
+  fastgpt-mongo:
+  fastgpt-redis:
+  fastgpt-minio:
+  fastgpt-aiproxy_pg:
 
 configs:
   opensandbox-config:
