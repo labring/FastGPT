@@ -1,4 +1,4 @@
-  vectorDB:
+  fastgpt-pg:
     image: ${{pg.image}}:${{pg.tag}}
     container_name: fastgpt-pg
     restart: always

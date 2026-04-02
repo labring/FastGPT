@@ -1,4 +1,4 @@
-  vectorDB:
+  fastgpt-seekdb:
     image:  ${{seekdb.image}}:${{seekdb.tag}}
     container_name: fastgpt-seekdb
     restart: always
