@@ -18,6 +18,8 @@ class ChatRequestManager {
   private chatRecordsCache: Map<string, ChatSiteItemType[]> = new Map();
   // 标记哪些会话正在进行流式输出
   private streamingChats: Set<string> = new Set();
+  // 缓存更新订阅者：用于组件重挂载后继续接收流式数据
+  private subscribers: Map<string, (records: ChatSiteItemType[]) => void> = new Map();
   // 记录每个会话的最后活跃时间
   private lastActiveTime: Map<string, number> = new Map();
   // forbidLoadChatMap 的自动清理定时器
@@ -192,6 +194,7 @@ class ChatRequestManager {
         this.controllers.delete(chatId);
         this.chatRecordsCache.delete(chatId);
         this.streamingChats.delete(chatId);
+        this.subscribers.delete(chatId);
         this.lastActiveTime.delete(chatId);
         // 清理 forbidLoad 定时器
         this.clearForbidLoadTimer(chatId);
@@ -248,6 +251,7 @@ class ChatRequestManager {
     this.controllers.clear();
     this.chatRecordsCache.clear();
     this.streamingChats.clear();
+    this.subscribers.clear();
     this.lastActiveTime.clear();
     // 清理所有 forbidLoad 定时器
     this.forbidLoadTimers.forEach((timer) => clearTimeout(timer));
@@ -307,6 +311,12 @@ class ChatRequestManager {
       // 直接设置新值（向后兼容）
       this.chatRecordsCache.set(chatId, updater);
     }
+
+    // 通知订阅者（用于组件重挂载后继续接收流式更新）
+    const subscriber = this.subscribers.get(chatId);
+    if (subscriber) {
+      subscriber(this.chatRecordsCache.get(chatId)!);
+    }
   }
 
   /**
@@ -330,6 +340,22 @@ class ChatRequestManager {
   clearChatRecordsCache(chatId: string) {
     this.chatRecordsCache.delete(chatId);
     this.streamingChats.delete(chatId);
+  }
+
+  /**
+   * 订阅指定会话的缓存更新
+   * 用于组件在流式输出期间重新挂载后，继续接收后续流式数据
+   * @param chatId 会话ID
+   * @param callback 缓存更新时的回调函数
+   * @returns 取消订阅的函数
+   */
+  subscribe(chatId: string, callback: (records: ChatSiteItemType[]) => void): () => void {
+    this.subscribers.set(chatId, callback);
+    return () => {
+      if (this.subscribers.get(chatId) === callback) {
+        this.subscribers.delete(chatId);
+      }
+    };
   }
 
   // ==================== forbidLoadChatMap 辅助方法 ====================

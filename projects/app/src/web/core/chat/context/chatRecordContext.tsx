@@ -118,6 +118,7 @@ const ChatRecordContextProvider = ({
         const cachedRecords = chatRequestManager.getChatRecordsCache(data.chatId);
         if (cachedRecords && chatRequestManager.isStreaming(data.chatId)) {
           // 使用缓存数据，不从服务器加载
+          setIsChatRecordsLoaded(true);
           return {
             list: cachedRecords,
             hasMorePrev: false,
@@ -159,6 +160,18 @@ const ChatRecordContextProvider = ({
       showErrorToast: false
     }
   );
+
+  // 组件在流式输出期间重新挂载时，订阅缓存更新以同步后续流式数据到当前 setChatRecords
+  useEffect(() => {
+    const chatId = params.chatId;
+    if (!chatId || !chatRequestManager.isStreaming(chatId)) return;
+
+    const unsubscribe = chatRequestManager.subscribe(chatId, (records) => {
+      setChatRecords(records);
+    });
+
+    return unsubscribe;
+  }, [params.chatId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const contextValue = useMemoEnhance(() => {
     return {

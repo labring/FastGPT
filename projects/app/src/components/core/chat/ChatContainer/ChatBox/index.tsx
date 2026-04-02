@@ -121,6 +121,13 @@ const ChatBox = ({
   const { setNotSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true; // 重挂载时重置（兼容 React Strict Mode 双重挂载）
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 获取当前会话的 AbortController
   const getChatControllers = useMemoizedFn(() => chatRequestManager.getControllers(chatId));
@@ -408,18 +415,21 @@ const ChatBox = ({
       }
 
       // 当前会话，正常更新 UI 和缓存
-      setChatRecords((state) => {
-        autoTTSResponse &&
-          state.length > 0 &&
-          splitText2Audio(formatChatValue2InputType(state[state.length - 1].value).text || '');
+      if (!isMountedRef.current) {
+        // 组件已卸载：setChatRecords 为 no-op，直接更新缓存（供重新挂载后加载）
+        chatRequestManager.updateChatRecordsCache(targetChatId || chatId, updateChatData);
+      } else {
+        // 组件已挂载：同步更新 UI 和缓存
+        setChatRecords((state) => {
+          autoTTSResponse &&
+            state.length > 0 &&
+            splitText2Audio(formatChatValue2InputType(state[state.length - 1].value).text || '');
 
-        const newState = updateChatData(state);
-
-        // 更新缓存（无论是否为当前会话）
-        chatRequestManager.updateChatRecordsCache(targetChatId || chatId, newState);
-
-        return newState;
-      });
+          const newState = updateChatData(state);
+          chatRequestManager.updateChatRecordsCache(targetChatId || chatId, newState);
+          return newState;
+        });
+      }
 
       const forceScroll = event === SseResponseEventEnum.interactive;
       generatingScroll(forceScroll);
