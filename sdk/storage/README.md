@@ -1,6 +1,6 @@
 # @fastgpt-sdk/storage
 
-FastGPT 的对象存储 SDK，提供 **统一的、与厂商无关的**存储接口（S3/MinIO/BOS/OSS/COS 等），用于上传、下载、删除、列举对象以及获取元数据。
+FastGPT 的对象存储 SDK，提供 **统一的、与厂商无关的**存储接口（S3/MinIO/OSS/COS 等），用于上传、下载、删除、列举对象以及获取元数据。
 
 > 本包为 ESM（`"type": "module"`），并要求 Node.js **>= 20**。
 
@@ -74,7 +74,7 @@ const storage = createStorage({
 });
 ```
 
-### MinIO / BOS / 其他 S3 兼容
+### MinIO / 其他 S3 兼容
 
 ```ts
 import { createStorage } from '@fastgpt-sdk/storage';
@@ -87,24 +87,6 @@ const storage = createStorage({
   credentials: {
     accessKeyId: process.env.MINIO_ACCESS_KEY ?? '',
     secretAccessKey: process.env.MINIO_SECRET_KEY ?? ''
-  },
-  forcePathStyle: true
-});
-```
-
-### 百度 BOS
-
-```ts
-import { createStorage } from '@fastgpt-sdk/storage';
-
-const storage = createStorage({
-  vendor: 'bos',
-  bucket: 'my-bucket',
-  region: 'bj',
-  endpoint: 'https://s3.bj.bcebos.com',
-  credentials: {
-    accessKeyId: process.env.BOS_ACCESS_KEY_ID ?? '',
-    secretAccessKey: process.env.BOS_SECRET_ACCESS_KEY ?? ''
   },
   forcePathStyle: true
 });
@@ -165,7 +147,7 @@ const storage = createStorage({
 - **`destroy()`**: 资源清理/连接释放。
 
 > 重要：当前实现状态（以代码为准）：
-> - `generatePresignedPutUrl`：**AWS S3 / MinIO / BOS / COS / OSS 已实现**。
+> - `generatePresignedPutUrl`：**AWS S3 / MinIO / COS / OSS 已实现**。
 > - `generatePresignedGetUrl`：目前各 adapter 仍为 **未实现**（会抛 `Error('Method not implemented.')`）。
 
 ### 预签名 PUT 直传示例（浏览器 / 前端）
@@ -214,4 +196,5 @@ pnpm -C FastGPT/packages/storage build
 ```
 
 发布前会执行 `prepublishOnly` 自动构建产物到 `dist/`。
+
 

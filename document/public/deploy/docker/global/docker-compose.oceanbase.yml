@@ -21,16 +21,15 @@ x-share-db-config: &x-share-db-config
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@redis:6379
   # @see https://doc.fastgpt.cn/docs/self-host/config/object-storage
-  STORAGE_VENDOR: minio # minio | aws-s3 | bos | cos | oss
+  STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
   STORAGE_SECRET_ACCESS_KEY: minioadmin
   STORAGE_PUBLIC_BUCKET: fastgpt-public
   STORAGE_PRIVATE_BUCKET: fastgpt-private
   STORAGE_EXTERNAL_ENDPOINT: http://192.168.0.2:9000 # 一个服务器和客户端均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)
-  STORAGE_BOS_ENDPOINT: https://s3.bj.bcebos.com # 仅 BOS 使用，例如北京区域
   STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
-  STORAGE_S3_FORCE_PATH_STYLE: true # MinIO 和 BOS 建议保持 true
+  STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
 # Log 配置
 x-log-config: &x-log-config
@@ -170,7 +169,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.14.10
+    image: ghcr.io/labring/fastgpt:v4.14.10 
     ports:
       - 3000:3000
     networks:
@@ -250,7 +249,7 @@ services:
       LLM_REQUEST_TRACKING_RETENTION_HOURS: 6
       # ==================== 功能开关与特殊配置 ====================
       # 自定义跨域；不配置时默认允许所有跨域（逗号分割）
-      ALLOWED_ORIGINS:
+      ALLOWED_ORIGINS: 
       # HTML 转 Markdown 最大字符数（超过后不执行转换）
       MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
@@ -465,3 +464,4 @@ configs:
     name: init_sql
     content: |
       ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
+    
