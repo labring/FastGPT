@@ -1,0 +1,77 @@
+document/public/deploy/docker/global/docker-compose.ziliiz.yml
+  1f28ab079ff3ca48 52,100,223,307,326,359,388,428
+deploy/templates/vector/ob.txt
+  1f28ab079ff3ca48 3,36
+deploy/templates/vector/pg.txt
+  1f28ab079ff3ca48 3,18
+document/public/deploy/docker/cn/docker-compose.seekdb.yml
+  1f28ab079ff3ca48 51,72,75,123,246,330,349,382,411,451
+deploy/docker/global/docker-compose.ziliiz.yml
+  1f28ab079ff3ca48 52,100,223,307,326,359,388,428
+document/public/deploy/docker/global/docker-compose.pg.yml
+  1f28ab079ff3ca48 50,66,69,117,240,324,343,376,405,445
+document/public/deploy/docker/cn/docker-compose.pg.yml
+  1f28ab079ff3ca48 50,66,69,117,240,324,343,376,405,445
+deploy/docker/global/docker-compose.pg.yml
+  1f28ab079ff3ca48 50,66,69,117,240,324,343,376,405,445
+deploy/docker/cn/docker-compose.pg.yml
+  1f28ab079ff3ca48 50,66,69,117,240,324,343,376,405,445
+document/public/deploy/docker/cn/docker-compose.oceanbase.yml
+  1f28ab079ff3ca48 51,85,88,136,259,343,362,395,424,468
+deploy/dev/docker-compose.cn.yml
+  1f28ab079ff3ca48 5-7,10,49,71,133,170,256,277,311,342
+deploy/docker/cn/docker-compose.oceanbase.yml
+  1f28ab079ff3ca48 51,85,88,136,259,343,362,395,424,468
+deploy/docker/cn/docker-compose.seekdb.yml
+  1f28ab079ff3ca48 51,72,75,123,246,330,349,382,411,451
+deploy/docker/global/docker-compose.milvus.yml
+  1f28ab079ff3ca48 51,68,86,108,111,159,282,366,385,418,447,487
+deploy/templates/docker-compose.prod.yml
+  1f28ab079ff3ca48 51,99,222,306,325,358,387,427
+document/public/deploy/docker/cn/docker-compose.zilliz.yml
+  1f28ab079ff3ca48 52,100,223,307,326,359,388,428
+deploy/docker/cn/docker-compose.zilliz.yml
+  1f28ab079ff3ca48 52,100,223,307,326,359,388,428
+document/public/deploy/docker/global/docker-compose.oceanbase.yml
+  1f28ab079ff3ca48 51,85,88,136,259,343,362,395,424,468
+deploy/docker/global/docker-compose.seekdb.yml
+  1f28ab079ff3ca48 51,72,75,123,246,330,349,382,411,451
+deploy/docker/global/docker-compose.oceanbase.yml
+  1f28ab079ff3ca48 51,85,88,136,259,343,362,395,424,468
+document/public/deploy/docker/global/docker-compose.seekdb.yml
+  1f28ab079ff3ca48 51,72,75,123,246,330,349,382,411,451
+deploy/dev/docker-compose.yml
+  1f28ab079ff3ca48 5-7,10,49,71,133,170,256,277,311,342
+document/public/deploy/docker/global/docker-compose.milvus.yml
+  1f28ab079ff3ca48 51,68,86,108,111,159,282,366,385,418,447,487
+document/public/deploy/docker/cn/docker-compose.milvus.yml
+  1f28ab079ff3ca48 51,68,86,108,111,159,282,366,385,418,447,487
+deploy/docker/cn/docker-compose.milvus.yml
+  1f28ab079ff3ca48 51,68,86,108,111,159,282,366,385,418,447,487
+deploy/templates/vector/milvus.txt
+  1f28ab079ff3ca48 2,19,37,58
+deploy/templates/vector/seekdb.txt
+  1f28ab079ff3ca48 3,23
+deploy/templates/docker-compose.dev.yml
+  1f28ab079ff3ca48 5-7,10,49,71,133,170,256,277,311,342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "525edb8c902a423e7f9dd5beca381dfad681d63c",
+  "prompts": {
+    "1f28ab079ff3ca48": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d4c80-914d-7c20-84b4-2ddf274f61b0",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 254,
+      "total_deletions": 238,
+      "accepted_lines": 254,
+      "overriden_lines": 0
+    }
+  }
+}
