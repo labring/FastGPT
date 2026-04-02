@@ -363,7 +363,7 @@ services:
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   fastgpt-opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.1.9
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -413,11 +413,11 @@ services:
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.7
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-execd:v1.0.7
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.3
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-egress:v1.0.3
     profiles:
       - prepull
 
@@ -497,10 +497,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.7"
+      execd_image = "registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-execd:v1.0.7"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.3"
+      image = "registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-egress:v1.0.3"
 
       [docker]
       network_mode = "bridge"
