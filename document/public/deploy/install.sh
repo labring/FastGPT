@@ -293,7 +293,7 @@ fi
 # ========== 完成 ==========
 echo ""
 echo "配置下载成功! 后续操作:"
-echo "  1. 预热沙盒:   docker compose --profile prepull pull agent-sandbox-image"
+echo "  1. 预热沙盒:   docker compose --profile prepull pull agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
 echo "  2. 启动服务:   docker compose up -d"
 echo "  3. 开放端口:   3000, 9000, 3003"
 echo "  4. 访问服务:   http://localhost:3000"
