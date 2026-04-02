@@ -1,0 +1,27 @@
+deploy/dev/docker-compose.cn.yml
+  24d91e9f4be48ac3 61,82,148,150,162,344,361-366
+deploy/templates/docker-compose.dev.yml
+  24d91e9f4be48ac3 61,82,148,150,162,344,361-366
+deploy/dev/docker-compose.yml
+  24d91e9f4be48ac3 61,82,148,150,162,344,361-366
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "50d0db38207251c939693c5fa840c22de07f6483",
+  "prompts": {
+    "24d91e9f4be48ac3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d4bf1-a059-7ae2-b486-935859e1a272",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 39,
+      "total_deletions": 18,
+      "accepted_lines": 39,
+      "overriden_lines": 0
+    }
+  }
+}
