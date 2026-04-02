@@ -1,0 +1,71 @@
+deploy/templates/docker-compose.dev.yml
+  8c536128d591dbdc 255,305-314,386,389
+deploy/docker/cn/docker-compose.zilliz.yml
+  8c536128d591dbdc 306,353-359,361-362,440,450
+deploy/docker/cn/docker-compose.oceanbase.yml
+  8c536128d591dbdc 343,390-396,398-399,477,491
+deploy/docker/cn/docker-compose.seekdb.yml
+  8c536128d591dbdc 330,377-383,385-386,464,474
+document/public/deploy/docker/global/docker-compose.pg.yml
+  8c536128d591dbdc 204,324,370-377,379-380,458,468
+deploy/docker/global/docker-compose.milvus.yml
+  8c536128d591dbdc 246,366,412-419,421-422,500,510
+document/public/deploy/docker/global/docker-compose.seekdb.yml
+  8c536128d591dbdc 210,330,376-383,385-386,464,474
+document/public/deploy/docker/cn/docker-compose.milvus.yml
+  8c536128d591dbdc 366,413-419,421-422,500,510
+document/public/deploy/docker/cn/docker-compose.seekdb.yml
+  8c536128d591dbdc 330,377-383,385-386,464,474
+document/public/deploy/docker/global/docker-compose.ziliiz.yml
+  8c536128d591dbdc 186,306,352-359,361-362,440,450
+deploy/docker/global/docker-compose.oceanbase.yml
+  8c536128d591dbdc 223,343,389-396,398-399,477,491
+deploy/docker/global/docker-compose.ziliiz.yml
+  8c536128d591dbdc 186,306,352-359,361-362,440,450
+deploy/args.json
+  8c536128d591dbdc 9-10,32-34,53-56
+document/public/deploy/docker/global/docker-compose.milvus.yml
+  8c536128d591dbdc 246,366,412-419,421-422,500,510
+deploy/docker/global/docker-compose.seekdb.yml
+  8c536128d591dbdc 210,330,376-383,385-386,464,474
+deploy/docker/cn/docker-compose.milvus.yml
+  8c536128d591dbdc 366,413-419,421-422,500,510
+deploy/templates/docker-compose.prod.yml
+  8c536128d591dbdc 305,352-361,439,442,449
+document/public/deploy/docker/cn/docker-compose.zilliz.yml
+  8c536128d591dbdc 306,353-359,361-362,440,450
+deploy/docker/global/docker-compose.pg.yml
+  8c536128d591dbdc 204,324,370-377,379-380,458,468
+document/public/deploy/docker/cn/docker-compose.pg.yml
+  8c536128d591dbdc 324,371-377,379-380,458,468
+document/public/deploy/docker/cn/docker-compose.oceanbase.yml
+  8c536128d591dbdc 343,390-396,398-399,477,491
+document/public/deploy/docker/global/docker-compose.oceanbase.yml
+  8c536128d591dbdc 223,343,389-396,398-399,477,491
+deploy/dev/docker-compose.yml
+  8c536128d591dbdc 255,304-311,313-314,386
+deploy/dev/docker-compose.cn.yml
+  8c536128d591dbdc 255,305-311,313-314,386
+deploy/docker/cn/docker-compose.pg.yml
+  8c536128d591dbdc 324,371-377,379-380,458,468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "606df1d1105af005fe443a98626c4049caad5b1e",
+  "prompts": {
+    "8c536128d591dbdc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d4c67-d11d-7a73-84aa-35b913130068",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 351,
+      "total_deletions": 149,
+      "accepted_lines": 319,
+      "overriden_lines": 0
+    }
+  }
+}
