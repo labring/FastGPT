@@ -180,7 +180,7 @@ services:
       # ==================== Agent sandbox 配置 ====================
       AGENT_SANDBOX_PROVIDER: opensandbox
       # OpenSandbox 配置（PROVIDER: opensandbox 时生效）
-      AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://opensandbox-server:8090
       AGENT_SANDBOX_OPENSANDBOX_API_KEY:
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt-agent-sandbox
@@ -302,7 +302,7 @@ services:
   # 沙盒控制器：管理 Docker 容器的创建/执行/停止/删除
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
-  fastgpt-opensandbox-server:
+  opensandbox-server:
     image: opensandbox/server:v0.1.9
     container_name: fastgpt-opensandbox-server
     restart: always
@@ -320,6 +320,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
+  opensandbox-agent-sandbox-image:
+    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.1
+    profiles:
+      - prepull
+  opensandbox-execd-image:
+    image: opensandbox/execd:v1.0.7
+    profiles:
+      - prepull
+  opensandbox-egress-image:
+    image: opensandbox/egress:v1.0.3
+    profiles:
+      - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   fastgpt-volume-manager:
     image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.1
@@ -347,19 +360,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
-  fastgpt-agent-sandbox-image:
-    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.1
-    profiles:
-      - prepull
-  opensandbox-execd-image:
-    image: opensandbox/execd:v1.0.7
-    profiles:
-      - prepull
-  opensandbox-egress-image:
-    image: opensandbox/egress:v1.0.3
-    profiles:
-      - prepull
 
   # AI Proxy
   fastgpt-aiproxy:

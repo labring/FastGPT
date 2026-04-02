@@ -251,9 +251,9 @@ services:
   # 沙盒控制器：管理 Docker 容器的创建/执行/停止/删除
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
-  fastgpt-opensandbox-server:
+  opensandbox-server:
     image: ${{opensandbox-server.image}}:${{opensandbox-server.tag}}
-    container_name: fastgpt-opensandbox-server
+    container_name: opensandbox-server
     restart: always
     ports:
       - 8090:8090
@@ -271,6 +271,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
+  opensandbox-agent-sandbox-image:
+    image: ${{agent-sandbox-image.image}}:${{agent-sandbox-image.tag}}
+    profiles:
+      - prepull
+  opensandbox-execd-image:
+    image: ${{opensandbox-execd.image}}:${{opensandbox-execd.tag}}
+    profiles:
+      - prepull
+  opensandbox-egress-image:
+    image: ${{opensandbox-egress.image}}:${{opensandbox-egress.tag}}
+    profiles:
+      - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   fastgpt-volume-manager:
     image: ${{volume-manager.image}}:${{volume-manager.tag}}
@@ -299,19 +312,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
-  fastgpt-agent-sandbox-image:
-    image: ${{agent-sandbox-image.image}}:${{agent-sandbox-image.tag}}
-    profiles:
-      - prepull
-  opensandbox-execd-image:
-    image: ${{opensandbox-execd.image}}:${{opensandbox-execd.tag}}
-    profiles:
-      - prepull
-  opensandbox-egress-image:
-    image: ${{opensandbox-egress.image}}:${{opensandbox-egress.tag}}
-    profiles:
-      - prepull
 
   # AI Proxy
   fastgpt-aiproxy:
