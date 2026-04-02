@@ -9,6 +9,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useSandboxEditor } from './SandboxEditor/hook';
+import { useSandboxStatus } from './SandboxEditor/hook';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
@@ -25,16 +26,17 @@ const ToolMenu = ({
 
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
-  const { chatId, appId, setChatId, outLinkAuthData } = useChatStore();
+  const { chatId, outLinkAuthData } = useChatStore();
 
-  // Sandbox state
-  const {
-    SandboxEditorModal,
-    SandboxEntryIcon,
-    setSandboxExists,
-    sandboxExists,
-    onOpenSandboxModal
-  } = useSandboxEditor({
+  // Status Hook: 顶层单例，负责网络同步与入口图标显示
+  const { sandboxExists, setSandboxExists, SandboxEntryIcon } = useSandboxStatus({
+    appId: chatData.appId,
+    chatId,
+    outLinkAuthData
+  });
+
+  // UI Hook: 负责弹窗渲染
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
     appId: chatData.appId,
     chatId,
     outLinkAuthData
@@ -42,7 +44,7 @@ const ToolMenu = ({
 
   return (
     <>
-      {isPc && <SandboxEntryIcon />}
+      {isPc && <SandboxEntryIcon onOpen={onOpenSandboxModal} />}
       <MyMenu
         Button={
           <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'}>

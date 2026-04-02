@@ -18,7 +18,7 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -40,8 +40,12 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
     edges: appDetail.edges || []
   });
 
-  // Sandbox state
-  const { SandboxEditorModal, SandboxEntryIcon, setSandboxExists } = useSandboxEditor({
+  // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
+  const { SandboxEntryIcon, setSandboxExists } = useSandboxStatus({
+    appId: appDetail._id,
+    chatId
+  });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
     appId: appDetail._id,
     chatId
   });
@@ -81,7 +85,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
 
-          <SandboxEntryIcon size={'smSquare'} mr={2} />
+          <SandboxEntryIcon size={'smSquare'} mr={2} onOpen={onOpenSandboxModal} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"

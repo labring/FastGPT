@@ -169,7 +169,7 @@ export type AIChatItemType = {
   citeCollectionIds?: string[];
 
   /**
-   * @deprecated 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
+   * 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
    */
   [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
 };

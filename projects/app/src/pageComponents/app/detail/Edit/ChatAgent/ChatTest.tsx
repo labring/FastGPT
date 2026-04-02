@@ -24,7 +24,7 @@ import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context'
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { loadGeneratedTools } from './utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -50,8 +50,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     edges: appDetail.edges || []
   });
 
-  // Sandbox state
-  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
+  // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
+  const { SandboxEntryIcon } = useSandboxStatus({
+    appId: appDetail._id,
+    chatId
+  });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
     appId: appDetail._id,
     chatId
   });
@@ -126,7 +130,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           )}
 
           <Box flex={1} />
-          <SandboxEntryIcon size={'smSquare'} mr={2} />
+          <SandboxEntryIcon size={'smSquare'} mr={2} onOpen={onOpenSandboxModal} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
