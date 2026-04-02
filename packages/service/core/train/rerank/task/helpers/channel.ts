@@ -68,7 +68,7 @@ export async function createTunedModelChannel(params: {
         // Channel exists, update it to ensure configuration is current
         const updateUrl = `${aiproxyUrl}/api/channel/${existingChannel.id}`;
         const updateData = {
-          type: 1,
+          type: 50,
           name: channelName,
           base_url: endpoint.base_url,
           models: [modelConfigId],
@@ -103,7 +103,7 @@ export async function createTunedModelChannel(params: {
     // Step 2: Channel doesn't exist, create it
     const channelApiUrl = `${aiproxyUrl}/api/channel/`;
     const requestData = {
-      type: 1,
+      type: 50,
       name: channelName,
       base_url: endpoint.base_url,
       models: [modelConfigId],
