@@ -330,7 +330,7 @@ services:
     networks:
       - fastgpt
     ports:
-      - 3005:3000
+      - 3003:3000
     restart: always
     environment:
       <<: [*x-log-config]

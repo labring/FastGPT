@@ -6,8 +6,12 @@
 #   - fastgpt-mongo: 27017
 #   - fastgpt-redis: 6379
 #   - fastgpt-code-sandbox: 3002
-#   - fastgpt-plugin: 3003
+#   - fastgpt-mcp-server: 3003
+#   - fastgpt-plugin: 3004
+#   - fastgpt-volume-manager: 3005
+#   - opensandbox-server: 8090
 #   - fastgpt-aiproxy: 3010
+#   - fastgpt-aiproxy-pg: 5432
 # - 使用 pgvector 作为默认的向量库
 
 # plugin auth token
