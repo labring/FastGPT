@@ -57,13 +57,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Ch Hub
+      - name: Login to Ali Hub
         uses: docker/login-action@v3
         with:
-          registry: mvn.jschrj.com
-          username: ${{ secrets.PRIVATE_CH_REGISTRY_USERNAME }}
-          password: ${{ secrets.PRIVATE_CH_REGISTRY_PASSWORD }}
-
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build for ${{ matrix.archs.arch }}
         id: build
@@ -116,13 +120,18 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Ch Hub
+      - name: Login to Ali Hub
         uses: docker/login-action@v3
         with:
-          registry: mvn.jschrj.com
-          username: ${{ secrets.PRIVATE_CH_REGISTRY_USERNAME }}
-          password: ${{ secrets.PRIVATE_CH_REGISTRY_PASSWORD }}
-          
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
@@ -138,19 +147,23 @@ jobs:
           if [[ "${{ github.ref_name }}" == "main" ]]; then
             echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
             echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Ch_Tag=mvn.jschrj.com/fastgpt/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Ch_Latest=mvn.jschrj.com/fastgpt/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
           else
             echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
             echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-            echo "Ch_Tag=mvn.jschrj.com/fastgpt/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
-            echo "Ch_Latest=mvn.jschrj.com/fastgpt/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
           fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ch_Tag}\n${Ch_Latest}")"
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
               $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}@sha256:%s ' *)
