@@ -1,0 +1,63 @@
+deploy/docker/global/docker-compose.seekdb.yml
+  047f30f16649f380 5,41,45-46,72,109,115,118,157,190,202,215,219,262,266,278,284,324,378,444,452,456,459
+document/public/deploy/docker/global/docker-compose.ziliiz.yml
+  047f30f16649f380 5,41,46,49,86,92,95,134,167,179,192,196,239,243,255,261,301,355,421,429,433,436
+deploy/docker/cn/docker-compose.oceanbase.yml
+  047f30f16649f380 5,41,45-46,85,122,128,131,170,203,215,228,232,275,279,291,297,337,391,457,465,469,472
+deploy/docker/global/docker-compose.ziliiz.yml
+  047f30f16649f380 5,41,46,49,86,92,95,134,167,179,192,196,239,243,255,261,301,355,421,429,433,436
+deploy/docker/cn/docker-compose.zilliz.yml
+  047f30f16649f380 5,41,46,49,86,92,95,134,167,179,192,196,239,243,255,261,301,355,421,429,433,436
+document/public/deploy/docker/global/docker-compose.oceanbase.yml
+  047f30f16649f380 5,41,45-46,85,122,128,131,170,203,215,228,232,275,279,291,297,337,391,457,465,469,472
+deploy/init.mjs
+  047f30f16649f380 56-59,62,66-69,72,78-79,87-90,93-94,103-106,109-110
+document/public/deploy/docker/global/docker-compose.milvus.yml
+  047f30f16649f380 5,41,47,108,145,151,154,193,226,238,251,255,298,302,314,320,360,414,480,488,492,495
+document/public/deploy/docker/cn/docker-compose.oceanbase.yml
+  047f30f16649f380 5,41,45-46,85,122,128,131,170,203,215,228,232,275,279,291,297,337,391,457,465,469,472
+deploy/docker/global/docker-compose.milvus.yml
+  047f30f16649f380 5,41,47,108,145,151,154,193,226,238,251,255,298,302,314,320,360,414,480,488,492,495
+deploy/docker/global/docker-compose.pg.yml
+  047f30f16649f380 5,41,45,66,103,109,112,151,184,196,209,213,256,260,272,278,318,372,438,446,450,453
+deploy/docker/cn/docker-compose.seekdb.yml
+  047f30f16649f380 5,41,45-46,72,109,115,118,157,190,202,215,219,262,266,278,284,324,378,444,452,456,459
+document/public/deploy/docker/cn/docker-compose.zilliz.yml
+  047f30f16649f380 5,41,46,49,86,92,95,134,167,179,192,196,239,243,255,261,301,355,421,429,433,436
+deploy/docker/cn/docker-compose.pg.yml
+  047f30f16649f380 5,41,45,66,103,109,112,151,184,196,209,213,256,260,272,278,318,372,438,446,450,453
+deploy/docker/cn/docker-compose.milvus.yml
+  047f30f16649f380 5,41,47,108,145,151,154,193,226,238,251,255,298,302,314,320,360,414,480,488,492,495
+document/public/deploy/docker/global/docker-compose.pg.yml
+  047f30f16649f380 5,41,45,66,103,109,112,151,184,196,209,213,256,260,272,278,318,372,438,446,450,453
+deploy/docker/global/docker-compose.oceanbase.yml
+  047f30f16649f380 5,41,45-46,85,122,128,131,170,203,215,228,232,275,279,291,297,337,391,457,465,469,472
+document/public/deploy/docker/global/docker-compose.seekdb.yml
+  047f30f16649f380 5,41,45-46,72,109,115,118,157,190,202,215,219,262,266,278,284,324,378,444,452,456,459
+document/public/deploy/docker/cn/docker-compose.milvus.yml
+  047f30f16649f380 5,41,47,108,145,151,154,193,226,238,251,255,298,302,314,320,360,414,480,488,492,495
+document/public/deploy/docker/cn/docker-compose.seekdb.yml
+  047f30f16649f380 5,41,45-46,72,109,115,118,157,190,202,215,219,262,266,278,284,324,378,444,452,456,459
+document/public/deploy/docker/cn/docker-compose.pg.yml
+  047f30f16649f380 5,41,45,66,103,109,112,151,184,196,209,213,256,260,272,278,318,372,438,446,450,453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.22",
+  "base_commit_sha": "26839f4d184f4dad466015d3216794edbaf65908",
+  "prompts": {
+    "047f30f16649f380": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d4d2a-5d9e-7ed3-a17b-c75df1bfac64",
+        "model": "gpt-5.4-high"
+      },
+      "human_author": "Jon <ljp@sangfor.com.cn>",
+      "messages": [],
+      "total_additions": 566,
+      "total_deletions": 532,
+      "accepted_lines": 1016,
+      "overriden_lines": 0
+    }
+  }
+}
