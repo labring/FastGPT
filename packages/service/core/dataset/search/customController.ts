@@ -734,6 +734,17 @@ export async function searchDatasetDataForAssistant(
   };
 
   /* 【步骤 2】主流程：召回 */
+  // 添加检索开始日志
+  addLog.debug('Assistant Retrieval Start', {
+    queries,
+    searchMode,
+    datasetCount: datasetIds.length,
+    maxTokens,
+    usingReRank,
+    rerankModel,
+    rerankMethod
+  });
+
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   const {

@@ -234,10 +234,7 @@ export async function generateSynthesis(): Promise<any> {
         throw fetchError;
       }
     } catch (err: any) {
-      addLog.error(`[Synthesis Queue] Error`, {
-        error: err,
-        'time(ms)': Date.now() - startTime
-      });
+      addLog.error(`[Synthesis Queue] Error (time: ${Date.now() - startTime}ms)`, err);
 
       await MongoDatasetTraining.updateOne(
         {

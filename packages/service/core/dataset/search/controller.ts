@@ -143,7 +143,7 @@ export type SearchDatasetDataResponse = {
     inputTokens: number;
     outputTokens: number;
     embeddingTokens: number;
-    query: string;
+    query?: string; // 改为可选，当没有问题改写时为 undefined
     synonymRewriteResult?: {
       standardizedQuery: string; // 指代消除后标准化的查询（用于检索）
       coreferenceResolved: string; // 指代消除后的查询（同义词标准化前）
@@ -1283,6 +1283,17 @@ export async function searchDatasetData(
   // count limit
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
+  // 添加检索开始日志
+  addLog.info('Non-Assistant Retrieval Start', {
+    queries,
+    searchMode,
+    datasetCount: datasetIds.length,
+    maxTokens,
+    usingReRank,
+    rerankModel,
+    rerankMethod
+  });
+
   // recall
   const {
     embeddingRecallResults,
@@ -1430,7 +1441,7 @@ export const defaultSearchDatasetData = async ({
   const query = props.queries[0];
   const histories = props.histories;
 
-  const { searchQueries, reRankQuery, aiExtensionResult, rewriteTime } =
+  const { searchQueries, reRankQuery, aiExtensionResult, rewriteTime, queriesForStorage } =
     await datasetSearchQueryExtension({
       query,
       llmModel: datasetSearchUsingExtensionQuery
@@ -1536,7 +1547,7 @@ export const defaultSearchDatasetData = async ({
               inputTokens: aiExtensionResult.inputTokens,
               outputTokens: aiExtensionResult.outputTokens,
               embeddingTokens: aiExtensionResult.embeddingTokens,
-              query: searchQueries.join('\n'),
+              query: queriesForStorage || undefined,
               synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
               rewriteTime // 新增：问题改写耗时（仅assistant场景）
             }
@@ -1598,7 +1609,7 @@ export const defaultSearchDatasetData = async ({
               inputTokens: aiExtensionResult.inputTokens,
               outputTokens: aiExtensionResult.outputTokens,
               embeddingTokens: aiExtensionResult.embeddingTokens,
-              query: searchQueries.join('\n'),
+              query: queriesForStorage || undefined,
               synonymRewriteResult: aiExtensionResult.synonymRewriteResult,
               rewriteTime // 新增：问题改写耗时（仅assistant场景）
             }
@@ -1633,7 +1644,8 @@ export const defaultSearchDatasetData = async ({
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
           embeddingTokens: aiExtensionResult.embeddingTokens,
-          query: searchQueries.join('\n')
+          query: queriesForStorage || searchQueries.join('\n'),
+          synonymRewriteResult: aiExtensionResult.synonymRewriteResult
         }
       : undefined
   };

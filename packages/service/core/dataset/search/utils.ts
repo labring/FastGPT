@@ -274,7 +274,13 @@ export const datasetSearchQueryExtension = async ({
    *   - 有同义词: queries = [原始, 标准化]
    *   - 无同义词: queries = [原始]
    */
+
+  // 用于落库的改写问题（不包含原始问题，只包含改写后的问题）
+  let queriesForStorage = '';
+
   if (aiExtensionResult) {
+    // 如果有问题改写结果，只保存改写后的问题（不包含原始问题）
+    queriesForStorage = aiExtensionResult.extensionQueries.join('\n');
     queries = queries.concat(aiExtensionResult.extensionQueries);
     reRankQuery = queries.join('\n');
     // 如果 aiExtensionResult 有同义词结果,使用它;否则使用独立的同义词结果
@@ -295,7 +301,12 @@ export const datasetSearchQueryExtension = async ({
       searchQueries: queries,
       reRankQuery,
       aiExtensionResult: dummyResult,
-      rewriteTime: undefined
+      rewriteTime: undefined,
+      // 纯同义词改写场景不落库:
+      // 1. 同义词替换是基于规则的映射,不是AI生成的内容,不需要记录
+      // 2. standardizedQuery已在synonymRewriteResult中保存,可通过该字段访问
+      // 3. queriesForStorage专门用于存储AI改写生成的问题,同义词替换不属于此类
+      queriesForStorage: ''
     };
   }
 
@@ -303,7 +314,8 @@ export const datasetSearchQueryExtension = async ({
    * 【assistant类型应用专用处理】仅场景4执行
    *
    * 场景4 (isAssistant=true):
-   *   queries 当前格式: [标准化(指代消除), 标准化(改写1), 标准化(改写2), ...]
+   *   queries 当前格式: [原始, 标准化(指代消除), 标准化(改写1), 标准化(改写2), ...]
+   *   queriesForStorage 当前格式: 标准化(指代消除)\n标准化(改写1)\n标准化(改写2)\n...（不包含原始问题）
    *   进行分号拼接: queries = [标准化1;标准化2;标准化3;...]
    *   用于多路并行检索: 每个query作为独立的检索请求
    *
@@ -313,6 +325,9 @@ export const datasetSearchQueryExtension = async ({
    *   不执行此逻辑，queries 保持数组形式
    */
   //参考客服跑验证集逻辑，不开问题优化，传入的query是原始query+问题改写+指代消除的标准化后的；拼接在一起
+
+  // queriesForStorage 已在上面的 if (aiExtensionResult) 分支中设置，无需再次处理
+
   if (isAssistant) {
     reRankQuery = queries.join('\n'); // 先计算 reranker 使用的换行符拼接
     queries = [queries.join(';')]; // 检索使用分号拼接
@@ -326,7 +341,8 @@ export const datasetSearchQueryExtension = async ({
     searchQueries: queries,
     reRankQuery,
     aiExtensionResult,
-    rewriteTime
+    rewriteTime,
+    queriesForStorage // 用于落库的 query（只包含改写后的问题，不包含原始问题）
   };
 };
 
