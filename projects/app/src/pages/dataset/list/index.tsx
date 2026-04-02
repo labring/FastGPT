@@ -30,11 +30,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import {
-  DashboardNavbar,
-  SIDEBAR_EXPANDED_WIDTH,
-  SIDEBAR_COLLAPSED_WIDTH
-} from '@/pageComponents/dashboard/Container';
+import { DashboardNavbar, SIDEBAR_COLLAPSED_WIDTH } from '@/pageComponents/dashboard/Container';
+import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -89,7 +86,7 @@ const Dataset = () => {
       overflowY={'auto'}
       overflowX={'hidden'}
     >
-      <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
+      <Flex pt={[4, 6]} px={4}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'center'}>
             <FolderPath
@@ -348,19 +345,20 @@ export async function getServerSideProps(content: any) {
 
 function DatasetContextWrapper() {
   const { isPc } = useSystem();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+  const [isCollapsed] = useState(true);
+  const sidebarWidth = SIDEBAR_COLLAPSED_WIDTH;
 
   return (
     <>
-      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} />}
       <Box
         h={'100%'}
         pl={isPc ? sidebarWidth : 0}
         position={'relative'}
-        bg={'white'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
         transition="padding-left 0.2s ease"
       >
+        <BgDecoration />
         <DatasetContextProvider>
           <Dataset />
         </DatasetContextProvider>

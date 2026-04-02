@@ -1,7 +1,7 @@
 // @file 工具工作台页面，展示我的工具和系统工具列表
 'use client';
 import React, { useMemo, useState } from 'react';
-import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -36,6 +36,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import ToolModal from '@/pages/dashboard/create/ToolModal';
 import type { ToolModalAppType } from '@/pages/dashboard/create/ToolModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -108,66 +109,22 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      {/* 顶部类型 Tabs */}
-      {isPc && paths.length === 0 && (
-        <Flex
-          align="center"
-          justify="center"
-          py={3}
-          borderBottom="1px solid"
-          borderColor="myGray.100"
-          flexShrink={0}
-        >
-          <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} p={1}>
-            {toolTabList.map((tab) => {
-              const isActive = isSystemTool ? tab.value === 'system' : tab.value === 'my';
-              return (
-                <Box
-                  key={tab.value}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor={isActive ? 'default' : 'pointer'}
-                  px={6}
-                  h={8}
-                  fontSize={'13px'}
-                  fontWeight={'medium'}
-                  userSelect={'none'}
-                  {...(isActive
-                    ? {
-                        bg: 'white',
-                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                        color: 'myGray.900',
-                        borderRadius: '4px'
-                      }
-                    : {
-                        color: 'myGray.500',
-                        onClick: () => router.push(tab.path)
-                      })}
-                >
-                  {tab.label}
-                </Box>
-              );
-            })}
-          </HStack>
-        </Flex>
-      )}
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
+          pr={folderDetail ? 4 : 4}
+          pl={4}
           pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
-              <Box>
+          <Flex alignItems={'center'} position={'relative'}>
+            <Box flex={1}>
+              {!isPc ? (
+                MenuIcon
+              ) : paths.length > 0 ? (
                 <FolderPath
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
@@ -181,14 +138,25 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     });
                   }}
                 />
-              </Box>
-            ) : (
-              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-                {t('common:navbar.Tools')}
+              ) : (
+                <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+                  {t('common:navbar.Tools')}
+                </Box>
+              )}
+            </Box>
+            {isPc && paths.length === 0 && (
+              <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+                <MyTabs
+                  tabs={toolTabList}
+                  value={isSystemTool ? 'system' : 'my'}
+                  onChange={(value) => {
+                    const tab = toolTabList.find((t) => t.value === value);
+                    if (tab) router.push(tab.path);
+                  }}
+                />
               </Box>
             )}
-            <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
+            <Flex flex={1} justifyContent={'flex-end'} alignItems={'center'} gap={3}>
               {isPc && (
                 <>
                   <MySelect
