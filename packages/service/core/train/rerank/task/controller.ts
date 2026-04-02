@@ -13,6 +13,10 @@ import { buildModelEndpoint } from '../utils';
 import { deleteRerankModelConfig } from '../model/controller';
 import { getRerankTrainDataDir } from '../constants';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import { MongoRerankTrainset } from '../trainset/schema';
+import { MongoRerankTrainsetData } from '../data/schema';
+import { deleteSFTTask } from '../external';
+import { MongoSystemModel } from '../../../ai/config/schema';
 
 /**
  * Create rerank training task (decoupled from App)
@@ -36,9 +40,27 @@ export async function createRerankTrainTask(params: {
   teamId: string;
   tmbId: string;
   name?: string;
+  trainType?: string;
 }): Promise<string> {
-  const { baseModelId, trainsetId, evalDatasetId, datasetIds, newModelName, teamId, tmbId, name } =
-    params;
+  const {
+    baseModelId,
+    trainsetId,
+    evalDatasetId,
+    datasetIds,
+    newModelName,
+    teamId,
+    tmbId,
+    name,
+    trainType
+  } = params;
+
+  // Reject disabled models: getRerankModel() silently falls back to the default model
+  // for disabled models (not in reRankModelMap), which would cause a baseModelId/endpoint mismatch.
+  // Check DB directly to detect disabled models before the fallback kicks in.
+  const dbModel = await MongoSystemModel.findOne({ model: baseModelId }, 'metadata').lean();
+  if (dbModel?.metadata?.isActive === false) {
+    return Promise.reject(RerankTrainErrEnum.taskBaseModelDisabled);
+  }
 
   const rerankModel = getRerankModel(baseModelId);
   if (!rerankModel) {
@@ -76,6 +98,7 @@ export async function createRerankTrainTask(params: {
       name: name || `Rerank Training - ${new Date().toLocaleDateString()}`,
       baseModelId,
       baseModelEndpoint,
+      trainType: trainType || 'lora',
       status: RerankTrainTaskStatusEnum.pending,
       checkpoint: {
         stage: null,
@@ -189,11 +212,15 @@ export async function getRerankTrainTask(
 }
 
 /**
- * Delete rerank training task with cascading deletion
+ * Delete rerank training task with unified artifact cleanup
  *
- * Cascades deletion to: evaluation datasets, evaluation data, task record, temp files.
- * Note: File cleanup executes asynchronously outside transaction to avoid blocking DB operations.
- * Note: No longer cascades to App versions (applying stage no longer creates app versions).
+ * Cleanup order:
+ * 1. FastGPT model config + AI Proxy channel (registering stage artifact)
+ * 2. SFT Bridge resources (finetuning stage artifact, async non-blocking)
+ * 3. Eval dataset collections + data (generate_evaldataset stage artifact)
+ * 4. Auto-generated trainset + data (generate_trainset stage artifact, auto mode only)
+ * 5. Task record
+ * 6. Temp JSONL files (async non-blocking)
  *
  * @param taskId - Task ID to delete
  * @param session - Optional MongoDB session for transaction
@@ -205,78 +232,114 @@ export async function deleteRerankTrainTask(
 ): Promise<void> {
   const task = await MongoRerankTrainTask.findById(taskId, null, { session }).lean();
   if (!task) {
-    throw new Error('Task not found');
+    return Promise.reject(RerankTrainErrEnum.taskNotExist);
   }
 
   const tempFilePath = task.result?.trainDatasetFilePath;
 
-  // Delete associated tuned model when deleting task
+  // 1. Clean up FastGPT model config + AI Proxy channel (registering stage artifact)
   const tunedModelId = task.checkpoint?.data?.registering?.tunedModelId;
-  const sftTaskId = task.checkpoint?.data?.finetuning?.sftTaskId;
   if (tunedModelId) {
-    addLog.info('Deleting tuned model associated with task', {
+    addLog.info('Deleting tuned model config associated with task', {
       taskId,
-      tunedModelId,
-      sftTaskId
+      tunedModelId
     });
 
     try {
-      await deleteRerankModelConfig(tunedModelId, sftTaskId);
-      addLog.info('Successfully deleted tuned model', {
-        taskId,
-        tunedModelId,
-        sftTaskId
-      });
+      // Delete model config and channel only; SFT Bridge is handled separately below
+      await deleteRerankModelConfig(tunedModelId);
+      addLog.info('Successfully deleted tuned model config', { taskId, tunedModelId });
     } catch (error) {
-      addLog.warn('Failed to delete tuned model, continuing with task deletion', {
+      addLog.warn('Failed to delete tuned model config, continuing with task deletion', {
         taskId,
         tunedModelId,
-        sftTaskId,
         error: error instanceof Error ? error.message : String(error)
       });
     }
   }
 
-  const evalCollections = await MongoEvalDatasetCollection.find(
-    {
-      'metadata.taskId': taskId
-    },
-    null,
-    { session }
-  ).lean();
-
-  if (evalCollections.length > 0) {
-    const collectionIds = evalCollections.map((col) => col._id);
-
-    const deletedDataResult = await MongoEvalDatasetData.deleteMany(
-      {
-        evalDatasetCollectionId: { $in: collectionIds }
-      },
-      { session }
-    );
-
-    addLog.info('Deleted eval dataset data for task', {
-      taskId,
-      deletedCount: deletedDataResult.deletedCount
+  // 2. Clean up SFT Bridge resources (async non-blocking)
+  const sftTaskId = task.checkpoint?.data?.finetuning?.sftTaskId;
+  if (sftTaskId) {
+    setImmediate(() => {
+      deleteSFTTask({ taskId: sftTaskId }).catch((err) => {
+        addLog.warn('Failed to delete SFT task from SFT Bridge', {
+          taskId,
+          sftTaskId,
+          error: String(err)
+        });
+      });
     });
-
-    const deletedCollectionResult = await MongoEvalDatasetCollection.deleteMany(
-      {
-        _id: { $in: collectionIds }
-      },
-      { session }
-    );
-
-    addLog.info('Deleted eval dataset collections for task', {
-      taskId,
-      deletedCount: deletedCollectionResult.deletedCount
-    });
+    addLog.info('Triggered async SFT task deletion', { taskId, sftTaskId });
   }
 
-  await MongoRerankTrainTask.deleteOne({ _id: taskId }, { session });
+  // 3. Clean up auto-generated eval dataset + data (only if this task auto-generated it)
+  // autoGenerated=true is written by generate_evaldataset stage in auto mode.
+  // Exact mode: stage returns false, nothing is created, so nothing to delete.
+  // Mixed mode (trainsetId + evalDatasetId + datasetIds): exact mode skips generation → autoGenerated=false → safe.
+  if (task.checkpoint?.data?.generate_evaldataset?.autoGenerated) {
+    const evalCollections = await MongoEvalDatasetCollection.find(
+      { 'metadata.taskId': taskId },
+      null,
+      { session }
+    ).lean();
 
+    if (evalCollections.length > 0) {
+      const collectionIds = evalCollections.map((col) => col._id);
+
+      const deletedDataResult = await MongoEvalDatasetData.deleteMany(
+        { evalDatasetCollectionId: { $in: collectionIds } },
+        { session }
+      );
+      addLog.info('Deleted eval dataset data for task', {
+        taskId,
+        deletedCount: deletedDataResult.deletedCount
+      });
+
+      const deletedCollectionResult = await MongoEvalDatasetCollection.deleteMany(
+        { _id: { $in: collectionIds } },
+        { session }
+      );
+      addLog.info('Deleted eval dataset collections for task', {
+        taskId,
+        deletedCount: deletedCollectionResult.deletedCount
+      });
+    }
+  }
+
+  // 4. Clean up auto-generated trainset + data (only if this task auto-generated it)
+  // autoGenerated=true is written by generate_trainset stage in auto mode.
+  // Exact mode: stage returns false → safe from accidental deletion even if trainsetId is present.
+  const autoTrainsetId =
+    task.checkpoint?.data?.generate_trainset?.autoGenerated && task.trainsetId
+      ? String(task.trainsetId)
+      : undefined;
+  if (autoTrainsetId) {
+    try {
+      const deletedTrainData = await MongoRerankTrainsetData.deleteMany(
+        { trainsetId: autoTrainsetId },
+        { session }
+      );
+      await MongoRerankTrainset.deleteOne({ _id: autoTrainsetId }, { session });
+      addLog.info('Deleted auto-generated trainset and data', {
+        taskId,
+        trainsetId: autoTrainsetId,
+        deletedDataCount: deletedTrainData.deletedCount
+      });
+    } catch (error) {
+      addLog.warn('Failed to delete auto-generated trainset, continuing', {
+        taskId,
+        trainsetId: autoTrainsetId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  // 5. Delete task record
+  await MongoRerankTrainTask.deleteOne({ _id: taskId }, { session });
   addLog.info('Deleted rerank train task', { taskId });
 
+  // 6. Clean up temp files (async non-blocking)
   if (tempFilePath) {
     setImmediate(() => {
       cleanupTempFiles(tempFilePath).catch((error) => {
@@ -294,7 +357,7 @@ export async function deleteRerankTrainTask(
 export async function cancelRerankTrainTask(taskId: string): Promise<void> {
   const task = await MongoRerankTrainTask.findById(taskId).lean();
   if (!task) {
-    throw new Error('Task not found');
+    return Promise.reject(RerankTrainErrEnum.taskNotExist);
   }
 
   if (
@@ -302,7 +365,7 @@ export async function cancelRerankTrainTask(taskId: string): Promise<void> {
     task.status === RerankTrainTaskStatusEnum.failed ||
     task.status === RerankTrainTaskStatusEnum.cancelled
   ) {
-    throw new Error('Cannot cancel a task that is already finished');
+    return Promise.reject(RerankTrainErrEnum.taskCannotCancel);
   }
 
   await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.cancelled);

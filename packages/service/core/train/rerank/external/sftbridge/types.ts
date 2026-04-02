@@ -4,6 +4,7 @@ import type { ReadStream } from 'fs';
 export type CreateSFTTaskRequest = {
   datasetFile: Buffer | ReadStream;
   taskType: 'rerank' | 'embed';
+  trainType?: 'lora' | 'ptuning'; // Training type: lora or ptuning
   parameters?: {
     learning_rate?: number;
     epochs?: number;

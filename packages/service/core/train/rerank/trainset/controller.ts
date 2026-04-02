@@ -4,6 +4,7 @@ import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/cons
 import { addLog } from '../../../../common/system/log';
 import { calculateTrainsetStats } from '../data/controller';
 import type { ClientSession } from '../../../../common/mongo';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 
 /**
  * Create rerank trainset (decoupled from App)
@@ -55,7 +56,7 @@ export async function getRerankTrainset(
   }).lean();
 
   if (!trainset) {
-    throw new Error('Trainset not found or permission denied');
+    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
   }
 
   // Dynamically calculate statistics

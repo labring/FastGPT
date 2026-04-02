@@ -6,15 +6,12 @@ export enum RerankTrainErrEnum {
   // Trainset errors
   trainsetNotExist = 'trainsetNotExist',
   trainsetGenerating = 'trainsetGenerating',
-  trainsetAlreadyReady = 'trainsetAlreadyReady',
-  trainsetNotReady = 'trainsetNotReady',
   trainsetInUse = 'trainsetInUse',
   trainsetGenerationFailed = 'trainsetGenerationFailed',
 
   // Training data errors
   trainDataNotExist = 'trainDataNotExist',
   noTrainDataAvailable = 'noTrainDataAvailable',
-  noDatasetAvailable = 'noDatasetAvailable',
 
   // Training task errors
   taskNotExist = 'taskNotExist',
@@ -23,8 +20,8 @@ export enum RerankTrainErrEnum {
   taskCannotCancel = 'taskCannotCancel',
   taskCannotDelete = 'taskCannotDelete',
   taskModelNotFound = 'taskModelNotFound',
+  taskBaseModelDisabled = 'taskBaseModelDisabled',
   taskNotCompleted = 'taskNotCompleted',
-  tunedModelNotKept = 'tunedModelNotKept',
   tunedModelNotFound = 'tunedModelNotFound',
 
   // Eval dataset errors
@@ -45,7 +42,6 @@ export enum RerankTrainErrEnum {
   // === Preparing Stage Errors ===
   prepareTrainsetDeleted = 'prepareTrainsetDeleted',
   prepareDataEmpty = 'prepareDataEmpty',
-  prepareGenerationFailed = 'prepareGenerationFailed',
   prepareTimeout = 'prepareTimeout',
   prepareFileSystemError = 'prepareFileSystemError',
   prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
@@ -99,7 +95,6 @@ export enum RerankTrainErrEnum {
   trainsetGenDatabaseError = 'trainsetGenDatabaseError',
   trainsetGenAlreadyGenerating = 'trainsetGenAlreadyGenerating',
   trainsetGenNotFound = 'trainsetGenNotFound',
-  trainsetGenCancelled = 'trainsetGenCancelled',
 
   // === General Errors ===
   unknownError = 'unknownError'
@@ -113,15 +108,12 @@ export enum RerankTrainSuggestionEnum {
   // Trainset errors
   trainsetNotExist = 'trainsetNotExist',
   trainsetGenerating = 'trainsetGenerating',
-  trainsetAlreadyReady = 'trainsetAlreadyReady',
-  trainsetNotReady = 'trainsetNotReady',
   trainsetInUse = 'trainsetInUse',
   trainsetGenerationFailed = 'trainsetGenerationFailed',
 
   // Training data errors
   trainDataNotExist = 'trainDataNotExist',
   noTrainDataAvailable = 'noTrainDataAvailable',
-  noDatasetAvailable = 'noDatasetAvailable',
 
   // Training task errors
   taskNotExist = 'taskNotExist',
@@ -130,8 +122,8 @@ export enum RerankTrainSuggestionEnum {
   taskCannotCancel = 'taskCannotCancel',
   taskCannotDelete = 'taskCannotDelete',
   taskModelNotFound = 'taskModelNotFound',
+  taskBaseModelDisabled = 'taskBaseModelDisabled',
   taskNotCompleted = 'taskNotCompleted',
-  tunedModelNotKept = 'tunedModelNotKept',
   tunedModelNotFound = 'tunedModelNotFound',
 
   // Eval dataset errors
@@ -152,7 +144,6 @@ export enum RerankTrainSuggestionEnum {
   // === Preparing Stage Errors ===
   prepareTrainsetDeleted = 'prepareTrainsetDeleted',
   prepareDataEmpty = 'prepareDataEmpty',
-  prepareGenerationFailed = 'prepareGenerationFailed',
   prepareTimeout = 'prepareTimeout',
   prepareFileSystemError = 'prepareFileSystemError',
   prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
@@ -206,7 +197,6 @@ export enum RerankTrainSuggestionEnum {
   trainsetGenDatabaseError = 'trainsetGenDatabaseError',
   trainsetGenAlreadyGenerating = 'trainsetGenAlreadyGenerating',
   trainsetGenNotFound = 'trainsetGenNotFound',
-  trainsetGenCancelled = 'trainsetGenCancelled',
 
   // === General Errors ===
   unknownError = 'unknownError'

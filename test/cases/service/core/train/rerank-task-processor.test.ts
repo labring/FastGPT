@@ -53,7 +53,10 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 
 vi.mock('@fastgpt/service/core/train/rerank/model/controller', () => ({
   createRerankModelConfig: vi.fn(),
-  deleteRerankModelConfig: vi.fn()
+  deleteRerankModelConfig: vi.fn(),
+  enableRerankModel: vi.fn(),
+  disableRerankModel: vi.fn(),
+  replaceRerankModelInApps: vi.fn().mockResolvedValue(0)
 }));
 
 // Mock channel module
@@ -516,7 +519,7 @@ describe('Rerank Train Task Processor', () => {
 
       // Verify applying stage
       expect(checkpointData.applying).toBeDefined();
-      expect(checkpointData.applying.newModelKept).toBeDefined();
+      expect(checkpointData.applying.newModelIsBetter).toBeDefined();
 
       // Verify final result saving
       const { MongoRerankTrainTask } = await import(
@@ -546,7 +549,7 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_recall: 0.78
               }
             },
-            newModelKept: expect.any(Boolean)
+            newModelIsBetter: expect.any(Boolean)
           }
         }
       );
@@ -760,7 +763,7 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_recall: 0.78
               }
             },
-            newModelKept: expect.any(Boolean)
+            newModelIsBetter: expect.any(Boolean)
           }
         }
       );
@@ -1173,7 +1176,7 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_recall: 0.78
               }
             },
-            newModelKept: expect.any(Boolean)
+            newModelIsBetter: expect.any(Boolean)
           }
         }
       );
@@ -2080,9 +2083,12 @@ describe('Rerank Train Task Processor', () => {
         }
       } as any);
 
-      // Verify deletion was called (deleting previous fine-tuned model)
-      // previousTaskId is empty because no previous task was found, so sftTaskId is undefined
-      expect(deleteRerankModelConfig).toHaveBeenCalledWith('base_model_123', undefined);
+      // Verify that the previous fine-tuned base model was disabled (not deleted)
+      // apply stage: when new model is better and base is a tuned model, disable it
+      const { disableRerankModel } = await import(
+        '@fastgpt/service/core/train/rerank/model/controller'
+      );
+      expect(disableRerankModel).toHaveBeenCalledWith('base_model_123');
 
       // Verify final task status
       expect(updateTaskStatus).toHaveBeenCalledWith(
@@ -2523,9 +2529,12 @@ describe('Rerank Train Task Processor', () => {
       const result = await runApplyingStage(mockTask as any);
 
       // one up one down is not an improvement, should rollback
-      expect(result.newModelKept).toBe(false);
-      // should delete the new tuned model produced in this run
-      expect(deleteRerankModelConfig).toHaveBeenCalledWith('tuned_model_new', 'sft_123');
+      expect(result.newModelIsBetter).toBe(false);
+      // should disable the new tuned model (not delete — deletion is done at task cleanup time)
+      const { disableRerankModel } = await import(
+        '@fastgpt/service/core/train/rerank/model/controller'
+      );
+      expect(disableRerankModel).toHaveBeenCalledWith('tuned_model_new');
     });
   });
 });

@@ -28,7 +28,7 @@ const mockTasks = new Map<string, MockTaskInfo>();
 export async function mockCreateSFTTask(
   request: CreateSFTTaskRequest
 ): Promise<CreateSFTTaskResponse> {
-  addLog.debug('[MOCK] SFT Bridge create optimization task', {
+  addLog.info('[MOCK] SFT Bridge create optimization task', {
     taskType: request.taskType,
     parameters: request.parameters
   });
@@ -120,7 +120,7 @@ export async function mockQuerySFTTaskStatus(
     }
   }
 
-  addLog.debug('[MOCK] SFT Bridge query task status', {
+  addLog.info('[MOCK] SFT Bridge query task status', {
     taskId: request.taskId,
     status: currentStatus,
     progress,
@@ -140,7 +140,7 @@ export async function mockQuerySFTTaskStatus(
 export async function mockDeleteSFTTask(
   request: DeleteSFTTaskRequest
 ): Promise<DeleteSFTTaskResponse> {
-  addLog.debug('[MOCK] SFT Bridge delete task', {
+  addLog.info('[MOCK] SFT Bridge delete task', {
     taskId: request.taskId
   });
 

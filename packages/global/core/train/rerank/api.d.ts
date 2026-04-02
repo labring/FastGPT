@@ -4,7 +4,11 @@ import type {
   RerankTrainsetDataSchemaType,
   RerankTrainTaskSchemaType
 } from './type';
-import type { TrainDataSourceEnum, RerankTrainTaskStatusEnum } from './constants';
+import type {
+  TrainDataSourceEnum,
+  RerankTrainTaskStatusEnum,
+  RerankTrainTypeEnum
+} from './constants';
 
 // ===== Common Types =====
 export type MessageResponse = { message: string };
@@ -114,6 +118,7 @@ export type CreateRerankTrainTaskRequest = {
   baseModelId: string; // Base model ID (BaseModelItemType.model), replaces appId
   newModelName?: string; // Optional name for the trained model
   name?: string;
+  trainType?: `${RerankTrainTypeEnum}`; // Training type: lora or ptuning, defaults to lora
 };
 export type CreateRerankTrainTaskResponse = {
   taskId: string;
@@ -157,12 +162,12 @@ export type CancelRerankTrainTaskResponse = MessageResponse;
 export type DeleteRerankTrainTaskRequest = TaskIdQuery;
 export type DeleteRerankTrainTaskResponse = MessageResponse;
 
-// Apply Training Results to Apps (new independent interface)
-export type ApplyRerankTrainTaskToAppsRequest = {
-  taskId: string; // Training task ID (status must be completed and newModelKept === true)
-  appIds: string[]; // App IDs to replace rerank model in
+// Apply Training Task Results (manually apply tuned model from a completed task)
+export type ApplyRerankTrainTaskRequest = {
+  taskId: string; // Training task ID (status must be completed)
 };
-export type ApplyRerankTrainTaskToAppsResponse = {
-  updatedAppsCount: number; // Number of apps successfully updated
-  skippedAppIds: string[]; // App IDs that were skipped (not found or no rerank node)
+export type ApplyRerankTrainTaskResponse = {
+  tunedModelId: string;
+  bestModelId?: string; // The previously active model that was replaced (if any)
+  updatedAppsCount: number;
 };

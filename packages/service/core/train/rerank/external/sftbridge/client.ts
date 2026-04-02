@@ -45,6 +45,7 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
   addLog.debug('SFT Bridge create optimization task', {
     url,
     taskType: request.taskType,
+    trainType: request.trainType,
     hasParameters: !!request.parameters
   });
 
@@ -55,6 +56,10 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
       contentType: 'application/jsonl'
     });
     formData.append('task_type', request.taskType);
+
+    if (request.trainType) {
+      formData.append('train_type', request.trainType);
+    }
 
     if (request.parameters) {
       formData.append('parameters', JSON.stringify(request.parameters));

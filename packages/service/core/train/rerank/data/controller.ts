@@ -2,6 +2,8 @@ import { MongoRerankTrainsetData } from './schema';
 import { TrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
 import type { TrainsetStatistics } from '@fastgpt/global/core/train/rerank/type';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /** Create manual training data (decoupled from App) */
 export async function createManualTrainData(params: {
@@ -69,12 +71,12 @@ export async function updateTrainData(params: {
 /** Delete training data */
 export async function deleteTrainData(dataIds: string[]): Promise<number> {
   if (dataIds.length === 0) {
-    throw new Error('dataIds is empty');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   const firstData = await MongoRerankTrainsetData.findById(dataIds[0]).lean();
   if (!firstData) {
-    throw new Error('Train data not found');
+    return Promise.reject(RerankTrainErrEnum.trainDataNotExist);
   }
 
   const result = await MongoRerankTrainsetData.deleteMany({

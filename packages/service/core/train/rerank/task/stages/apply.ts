@@ -9,17 +9,13 @@ import {
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { createEnhancedError } from '../../utils';
-import { MongoRerankTrainTask } from '../schema';
 import { isTunedModel } from '../helpers/model';
-import { deleteRerankModelConfig } from '../../model/controller';
 import { TrainTaskUnrecoverableError } from '../errors';
+import { disableRerankModel, replaceRerankModelInApps } from '../../model/controller';
 
 /**
  * Compare evaluation performance between base model and tuned model
  * Both overall_mrr and overall_precision must be better for the tuned model
- * @param baseModelResult Base model (previous tuned model) evaluation result
- * @param tunedModelResult New tuned model evaluation result
- * @returns true if tuned model performs better than base model in BOTH overall_mrr and overall_precision
  */
 function compareEvalPerformance(
   baseModelResult: RerankEvalResult | null | undefined,
@@ -49,7 +45,6 @@ function compareEvalPerformance(
   const basePrecision = baseDetails.overall_precision;
   const tunedPrecision = tunedDetails.overall_precision;
 
-  // If any required metric is missing, conservatively keep the previous model
   if (
     baseMRR === undefined ||
     tunedMRR === undefined ||
@@ -65,7 +60,6 @@ function compareEvalPerformance(
     return false;
   }
 
-  // Both overall_mrr and overall_precision must be better (higher is better for both metrics)
   const mrrImproved = tunedMRR > baseMRR;
   const precisionImproved = tunedPrecision > basePrecision;
 
@@ -88,15 +82,15 @@ function compareEvalPerformance(
  * Compares base model and tuned model evaluation results to decide
  * whether to keep the new tuned model or roll back.
  *
- * - New model better: Keep it. If baseModelId is itself a tuned model (continuous training),
- *   find the previous task and delete the old model.
- * - New model worse: Delete the newly trained model and its SFT task.
+ * - New model better: Replace App references (old → new). If baseModelId is a tuned model, disable it.
+ * - New model worse: Disable the newly trained model (artifacts cleaned up by task deletion).
  *
  * @param task - Rerank training task instance
- * @returns Object containing newModelKept flag
+ * @returns Object containing newModelIsBetter flag and updatedAppCount
  */
 export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise<{
-  newModelKept: boolean;
+  newModelIsBetter: boolean;
+  updatedAppCount?: number;
 }> {
   addLog.info('Run applying stage', { taskId: String(task._id) });
 
@@ -118,82 +112,56 @@ export async function runApplyingStage(task: RerankTrainTaskSchemaType): Promise
   const newModelIsBetter = compareEvalPerformance(baseModelEvalResult, tunedModelEvalResult);
 
   if (newModelIsBetter) {
-    addLog.info('New tuned model performs better, keeping it', {
+    addLog.info('New tuned model performs better, replacing App references', {
       taskId: String(task._id),
       tunedModelId,
-      baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
-      tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
-      baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
-      tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+      baseModelId: task.baseModelId
     });
 
-    // Continuous training scenario: if the base model is itself a tuned model, delete it
+    const updatedAppCount = await replaceRerankModelInApps(
+      task.baseModelId,
+      tunedModelId,
+      task.teamId,
+      task.tmbId,
+      'Auto-apply rerank model'
+    );
+
+    // If base model is itself a tuned model, disable it (artifacts cleaned up by task deletion)
     if (isTunedModel(task.baseModelId)) {
-      addLog.info('Continuous training: base model is a tuned model, will delete it', {
+      addLog.info('Continuous training: base model is a tuned model, disabling it', {
         taskId: String(task._id),
         baseModelId: task.baseModelId
       });
 
       try {
-        // Find the previous task that created this base model to get its sftTaskId
-        const prevTask = await MongoRerankTrainTask.findOne(
-          { 'checkpoint.data.registering.tunedModelId': task.baseModelId },
-          'checkpoint.data.finetuning.sftTaskId'
-        ).lean();
-
-        const prevSftTaskId = prevTask?.checkpoint?.data?.finetuning?.sftTaskId;
-
-        addLog.info('Deleting previous tuned model', {
+        await disableRerankModel(task.baseModelId);
+      } catch (err) {
+        addLog.error('Failed to disable previous tuned model, continuing', {
           taskId: String(task._id),
           baseModelId: task.baseModelId,
-          prevSftTaskId
-        });
-
-        await deleteRerankModelConfig(task.baseModelId, prevSftTaskId);
-
-        addLog.info('Successfully deleted previous tuned model', {
-          taskId: String(task._id),
-          baseModelId: task.baseModelId
-        });
-      } catch (deleteError) {
-        addLog.error('Failed to delete previous tuned model, continuing', {
-          taskId: String(task._id),
-          baseModelId: task.baseModelId,
-          error: deleteError instanceof Error ? deleteError.message : String(deleteError)
+          error: err instanceof Error ? err.message : String(err)
         });
       }
     }
 
-    return { newModelKept: true };
+    return { newModelIsBetter: true, updatedAppCount };
   } else {
-    // New model is not better: delete the newly trained model
-    addLog.info('New tuned model does not perform better, rolling back', {
+    // New model is not better: disable the newly trained model
+    addLog.info('New tuned model does not perform better, disabling it', {
       taskId: String(task._id),
-      tunedModelId,
-      baseModelMRR: baseModelEvalResult?.detailed_results?.overall_mrr,
-      tunedModelMRR: tunedModelEvalResult?.detailed_results?.overall_mrr,
-      baseModelPrecision: baseModelEvalResult?.detailed_results?.overall_precision,
-      tunedModelPrecision: tunedModelEvalResult?.detailed_results?.overall_precision
+      tunedModelId
     });
 
     try {
-      const sftTaskId = checkpointData.finetuning?.sftTaskId;
-
-      await deleteRerankModelConfig(tunedModelId, sftTaskId);
-
-      addLog.info('Successfully deleted underperforming tuned model', {
+      await disableRerankModel(tunedModelId);
+    } catch (err) {
+      addLog.error('Failed to disable underperforming tuned model', {
         taskId: String(task._id),
         tunedModelId,
-        sftTaskId
-      });
-    } catch (deleteError) {
-      addLog.error('Failed to delete underperforming tuned model', {
-        taskId: String(task._id),
-        tunedModelId,
-        error: deleteError instanceof Error ? deleteError.message : String(deleteError)
+        error: err instanceof Error ? err.message : String(err)
       });
     }
 
-    return { newModelKept: false };
+    return { newModelIsBetter: false };
   }
 }

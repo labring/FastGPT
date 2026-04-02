@@ -426,11 +426,7 @@ describe('Rerank Train Data API', () => {
         '@fastgpt/service/core/train/rerank/data/controller'
       );
 
-      try {
-        await deleteTrainData(['non_existent_data']);
-      } catch (error: any) {
-        expect(error.message).toBe('Train data not found');
-      }
+      await expect(deleteTrainData(['non_existent_data'])).rejects.toBe('trainDataNotExist');
     });
   });
 });

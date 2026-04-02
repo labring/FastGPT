@@ -3,7 +3,7 @@ import type { RetrievalContextItem } from '@fastgpt/global/core/evaluation/datas
 import { DEFAULT_SEARCH_SIMILARITY, DEFAULT_SEARCH_LIMIT } from '../../constants';
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
+import { RerankMethodEnum, DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MAX_SEARCH_RUN_TIMES } from '../../constants';
 import { addLog } from '../../../../../common/system/log';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -85,7 +85,7 @@ export async function performDatasetSearch(
       similarity: DEFAULT_SEARCH_SIMILARITY,
       limit: DEFAULT_SEARCH_LIMIT,
       userChatInput: query,
-      searchMode: 'embedding' as any,
+      searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: undefined,
       usingReRank: false,
       rerankModel: undefined,

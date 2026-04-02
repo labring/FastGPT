@@ -77,6 +77,7 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     const createResponse = await createSFTTask({
       datasetFile,
       taskType: 'rerank',
+      trainType: task.trainType || 'lora',
       parameters: {
         learning_rate: DEFAULT_SFT_BRIDGE_LEARNING_RATE,
         epochs: 3,

@@ -24,7 +24,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateRerankTrainTaskResponse>
 ): Promise<CreateRerankTrainTaskResponse> {
-  const { baseModelId, trainsetId, evalDatasetId, datasetIds, newModelName, name } =
+  const { baseModelId, trainsetId, evalDatasetId, datasetIds, newModelName, name, trainType } =
     req.body as CreateRerankTrainTaskRequest;
 
   if (!baseModelId) {
@@ -83,7 +83,8 @@ async function handler(
     newModelName,
     teamId,
     tmbId,
-    name
+    name,
+    trainType
   });
 
   // 6. Enqueue the task

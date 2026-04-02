@@ -22,6 +22,12 @@ export enum RerankTrainTaskStatusEnum {
   cancelled = 'cancelled'
 }
 
+/** Training type */
+export enum RerankTrainTypeEnum {
+  lora = 'lora',
+  ptuning = 'ptuning'
+}
+
 /** Training task checkpoint stage */
 export enum RerankTaskCheckpointStageEnum {
   generate_trainset = 'generate_trainset', // Generate training set (renamed from preparing; auto mode: create trainset + trigger data gen; exact mode: wait for ready)
