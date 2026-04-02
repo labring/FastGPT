@@ -7,7 +7,7 @@
     networks:
       - vector
     volumes:
-      - ./milvus-minio:/minio_data
+      - fastgpt-milvus-minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -26,7 +26,7 @@
     networks:
       - vector
     volumes:
-      - ./milvus/etcd:/etcd
+      - fastgpt-milvus-etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
       test: ['CMD', 'etcdctl', 'endpoint', 'health']
@@ -46,7 +46,7 @@
       - fastgpt
       - vector
     volumes:
-      - ./milvus/data:/var/lib/milvus
+      - fastgpt-milvus-data:/var/lib/milvus
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
       interval: 30s

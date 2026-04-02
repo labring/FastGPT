@@ -57,7 +57,7 @@ ${{vec.db}}
       - MONGO_INITDB_ROOT_USERNAME=myusername
       - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
-      - ./mongo/data:/data/db
+      - fastgpt-mongo:/data/db
     healthcheck:
       test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
       interval: 10s
@@ -109,7 +109,7 @@ ${{vec.db}}
       retries: 3
       start_period: 30s
     volumes:
-      - ./redis/data:/data
+      - fastgpt-redis:/data
   fastgpt-minio:
     image: ${{minio.image}}:${{minio.tag}}
     container_name: fastgpt-minio
@@ -123,7 +123,7 @@ ${{vec.db}}
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
-      - ./fastgpt-minio:/data
+      - fastgpt-minio:/data
     command: server /data --console-address ":9001"
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
@@ -386,7 +386,7 @@ ${{vec.db}}
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
-      - ./aiproxy_pg:/var/lib/postgresql/data
+      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
     networks:
       - aiproxy
     environment:
@@ -403,6 +403,20 @@ networks:
   fastgpt:
   aiproxy:
   vector:
+
+volumes:
+  fastgpt-pg:
+  fastgpt-mongo:
+  fastgpt-redis:
+  fastgpt-minio:
+  fastgpt-milvus-minio:
+  fastgpt-milvus-etcd:
+  fastgpt-milvus-data:
+  fastgpt-ob-data:
+  fastgpt-ob-config:
+  fastgpt-seekdb-data:
+  fastgpt-seekdb-config:
+  fastgpt-aiproxy_pg:
 
 configs:
   opensandbox-config:

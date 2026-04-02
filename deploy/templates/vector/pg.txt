@@ -10,7 +10,7 @@
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
     volumes:
-      - ./pg/data:/var/lib/postgresql/data
+      - fastgpt-pg:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'username', '-d', 'postgres']
       interval: 5s
