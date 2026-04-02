@@ -23,6 +23,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
+import SkillSelect from '../FormComponent/ToolSelector/SkillSelect';
 import { cardStyles } from '../../constants';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
@@ -252,6 +253,28 @@ const EditForm = ({
             )}
           </Flex>
         </Box>
+
+        {/* skill choice */}
+        {feConfigs?.show_skill && (
+          <Box {...BoxStyles}>
+            <SkillSelect
+              selectedSkills={appForm.selectedAgentSkills || []}
+              onAddSkill={(skill) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])]
+                }));
+              }}
+              onRemoveSkill={(skillId) => {
+                setAppForm((state) => ({
+                  ...state,
+                  selectedAgentSkills:
+                    state.selectedAgentSkills?.filter((item) => item.skillId !== skillId) || []
+                }));
+              }}
+            />
+          </Box>
+        )}
 
         {/* tool choice */}
         <Box {...BoxStyles}>

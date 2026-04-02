@@ -109,6 +109,8 @@ export type FastGPTFeConfigsType = {
   limit?: {
     exportDatasetLimitMinutes?: number;
     websiteSyncLimitMinuted?: number;
+    agentSandboxMaxEditDebug?: number;
+    agentSandboxMaxSessionRuntime?: number;
   };
 
   uploadFileMaxAmount: number;
@@ -143,6 +145,8 @@ export type FastGPTFeConfigsType = {
 
   // tmp
   agentSandboxFree?: boolean;
+  // Beta features
+  show_skill?: boolean;
 };
 
 export type SystemEnvType = {

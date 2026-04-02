@@ -138,7 +138,7 @@ describe('deleteSandboxesByAppId', () => {
         appId: appId1,
         userId: 'u1',
         chatId: 'c2',
-        status: 'stoped',
+        status: 'stopped',
         lastActiveAt: new Date(),
         createdAt: new Date()
       },
@@ -203,7 +203,7 @@ describe('cronJob - suspendInactiveSandboxes', () => {
         appId: appId1,
         userId: 'u',
         chatId: 'c3',
-        status: 'stoped',
+        status: 'stopped',
         lastActiveAt: old,
         createdAt: old
       }

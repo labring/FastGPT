@@ -52,7 +52,8 @@ describe('Playground Visibility Config API', () => {
         showCite: true,
         showFullText: true,
         canDownloadSource: true,
-        showWholeResponse: true
+        showWholeResponse: true,
+        showSkillReferences: false
       });
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -93,7 +94,8 @@ describe('Playground Visibility Config API', () => {
         showCite: false,
         showFullText: false,
         canDownloadSource: false,
-        showWholeResponse: false
+        showWholeResponse: false,
+        showSkillReferences: false
       });
     } else {
       // If there are permission issues, we still expect the API to validate parameters
@@ -156,7 +158,8 @@ describe('Playground Visibility Config API', () => {
         showCite: false,
         showFullText: true,
         canDownloadSource: false,
-        showWholeResponse: true
+        showWholeResponse: true,
+        showSkillReferences: false
       });
     } else {
       // If there are permission issues, we still expect the API to validate parameters

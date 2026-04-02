@@ -157,6 +157,7 @@ export async function initSystemConfig() {
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
       show_agent_sandbox: !!env.AGENT_SANDBOX_PROVIDER,
+      show_skill: env.SHOW_SKILL,
       payFormUrl: process.env.PAY_FORM_URL || '',
 
       agentSandboxFree: process.env.AGENT_SANDBOX_FREE_TIP === 'true'

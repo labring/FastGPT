@@ -173,5 +173,19 @@
   "tool_output": "工具輸出",
   "unsupported_file_type": "不支援的檔案類型",
   "variable_invisable_in_share": "外部變量在免登錄鏈接中不可見",
-  "view_citations": "檢視引用"
+  "view_citations": "檢視引用",
+  "web_site_sync": "網站同步",
+  "sandbox_status_checkExisting": "檢查沙箱狀態...",
+  "sandbox_status_connecting": "連接已有沙箱...",
+  "sandbox_status_fetchSkills": "載入技能資訊...",
+  "sandbox_status_creatingContainer": "啟動沙箱（約 60 秒）...",
+  "sandbox_status_deployingSkills": "部署技能 {{skillName}}...",
+  "sandbox_status_downloadingPackage": "下載技能套件 {{skillName}}...",
+  "sandbox_status_uploadingPackage": "上傳技能套件 {{skillName}}...",
+  "sandbox_status_extractingPackage": "解壓縮技能套件 {{skillName}}...",
+  "sandbox_status_ready_warm": "沙箱已連接",
+  "sandbox_status_ready_cold": "沙箱就緒",
+  "sandbox_status_failed": "沙箱啟動失敗",
+  "sandbox_status_lazyInit": "初始化沙箱...",
+  "skill_calling": "正在呼叫技能：{{name}}"
 }

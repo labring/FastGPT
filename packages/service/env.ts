@@ -5,6 +5,7 @@ const BoolSchema = z
   .string()
   .transform((val) => val === 'true')
   .pipe(z.boolean());
+const NumSchema = z.coerce.number();
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 
@@ -12,6 +13,7 @@ export const env = createEnv({
   server: {
     // ===== Agent sandbox =====
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
+    AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
     AGENT_SANDBOX_SEALOS_BASEURL: z.string().url().optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
 
@@ -26,8 +28,15 @@ export const env = createEnv({
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
     AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/workspace'),
 
-    AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
+    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.optional(),
+    AGENT_SKILL_MAX_UNCOMPRESSED_SIZE: NumSchema.optional(),
+    AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.optional(),
+    AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.optional(),
 
+    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.optional(),
+    AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.optional(),
+
+    // ===== Logging =====
     LOG_ENABLE_CONSOLE: BoolSchema.default(true),
     LOG_CONSOLE_LEVEL: LogLevelSchema.default('debug'),
     LOG_ENABLE_OTEL: BoolSchema.default(false),
@@ -46,7 +55,11 @@ export const env = createEnv({
     TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional(),
 
     APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
-    DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000)
+    DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
+
+    // Beta features
+    // Whether the Skill feature is enabled (frontend entries + backend runtime)
+    SHOW_SKILL: BoolSchema.default(false)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
