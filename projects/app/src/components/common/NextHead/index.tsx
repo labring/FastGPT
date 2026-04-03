@@ -10,7 +10,7 @@ const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?:
 
   const formatIcon = useMemo(() => {
     if (!icon) return defaultIcon;
-    if (icon.startsWith('http') || icon.startsWith('/')) {
+    if (icon.startsWith('http') || icon.startsWith('/') || icon.startsWith('data:')) {
       return icon;
     }
     return defaultIcon;
@@ -25,7 +25,7 @@ const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?:
       />
       <meta httpEquiv="Content-Security-Policy" content="img-src * data: blob:;" />
       {desc && <meta name="description" content={desc} />}
-      {icon && <link rel="icon" href={formatIcon} />}
+      <link rel="icon" href={formatIcon} />
     </Head>
   );
 };

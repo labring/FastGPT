@@ -25,7 +25,7 @@ type AppPropsWithLayout = AppProps & {
 };
 
 // 哪些路由有自定义 Head
-const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail/', '/dataset/detail'];
+const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
 // 哪些路由不需要 Layout
 const routesWithoutLayout = ['/openapi'];
 
