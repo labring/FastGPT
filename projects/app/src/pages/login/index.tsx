@@ -173,7 +173,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
             w={'60%'}
             flexDirection={'column'}
             alignItems={'flex-start'}
-            bg={`url(${feConfigs?.systemBackground ? feConfigs.systemBackground : getWebReqUrl('/icon/sangfor-login-bg2.svg')}) center / cover no-repeat`}
+            bg={`url('${feConfigs?.systemBackground ? feConfigs.systemBackground : getWebReqUrl('/icon/sangfor-login-bg2.svg')}') center / cover no-repeat`}
             position={'relative'}
             padding={'6% 5% 0'}
           >

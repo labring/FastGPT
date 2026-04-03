@@ -62,7 +62,7 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
           <NextHead
             title={title}
             desc={process.env.SYSTEM_DESCRIPTION || t('common:system_intro', { title })}
-            icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
+            icon={getWebReqUrl(feConfigs?.systemLogo || process.env.SYSTEM_FAVICON)}
           />
         )}
         {setLayout(<Component {...pageProps} />)}

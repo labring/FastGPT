@@ -193,7 +193,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       <Flex alignItems={'center'} justifyContent={'center'}>
         <Flex flexDirection={'column'} alignItems={'center'} gap={8}>
           <MyImage src={logoSrc} w={['36px', '48px']} alt={'icon'} />
-          <Box ml={[3, 5]} fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
+          <Box fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
             {feConfigs?.systemTitle || t('sangfor:support.user.login.fastgpt_sxf_com')}
           </Box>
         </Flex>
