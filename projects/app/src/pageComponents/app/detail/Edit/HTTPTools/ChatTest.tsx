@@ -209,6 +209,7 @@ const Render = ({
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showSkillReferences={true}
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>

@@ -86,6 +86,7 @@ export type Props = ChatCompletionCreateParams &
     stream?: boolean;
     detail?: boolean;
     retainDatasetCite?: boolean;
+    showSkillReferences?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
   };
 
@@ -95,6 +96,7 @@ type AuthResponseType = {
   app: AppSchemaType;
   showCite?: boolean;
   showRunningStatus?: boolean;
+  showSkillReferences?: boolean;
   authType: `${AuthUserTypeEnum}`;
   apikey?: string;
   responseAllData: boolean;
@@ -117,6 +119,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     stream = false,
     detail = false,
     retainDatasetCite = false,
+    showSkillReferences,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
@@ -165,7 +168,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       apikey,
       responseAllData,
       outLinkUserId = customUid,
-      showRunningStatus
+      showRunningStatus,
+      showSkillReferences: authShowSkillReferences
     } = await (async () => {
       // share chat
       if (shareId && outLinkUid) {
@@ -208,6 +212,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     pushTrack.teamChatQPM({ teamId });
 
     retainDatasetCite = retainDatasetCite && !!showCite;
+    const finalShowSkillReferences =
+      (showSkillReferences ?? authShowSkillReferences ?? false) && !!showRunningStatus;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
 
     // Check message type
@@ -321,6 +327,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           histories: newHistories,
           stream,
           retainDatasetCite,
+          showSkillReferences: finalShowSkillReferences,
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite
         });
@@ -547,8 +554,17 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, appId, authType, showCite, showRunningStatus, uid, sourceName } =
-    await authOutLinkChatStart(data);
+  const {
+    teamId,
+    tmbId,
+    appId,
+    authType,
+    showCite,
+    showRunningStatus,
+    showSkillReferences,
+    uid,
+    sourceName
+  } = await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
   if (!app) {
@@ -571,7 +587,8 @@ const authShareChat = async ({
     responseAllData: false,
     showCite,
     outLinkUserId: uid,
-    showRunningStatus
+    showRunningStatus,
+    showSkillReferences
   };
 };
 const authTeamSpaceChat = async ({
@@ -609,6 +626,7 @@ const authTeamSpaceChat = async ({
     apikey: '',
     responseAllData: false,
     showCite: true,
+    showSkillReferences: true,
     outLinkUserId: uid
   };
 };
@@ -690,7 +708,8 @@ const authHeaderRequest = async ({
     authType,
     sourceName,
     responseAllData: true,
-    showCite: true
+    showCite: true,
+    showSkillReferences: true
   };
 };
 

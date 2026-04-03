@@ -13,6 +13,8 @@
 #   - fastgpt-aiproxy: 3010
 #   - fastgpt-aiproxy-pg: 5432
 # - 使用 pgvector 作为默认的向量库
+# - 配置 opensandbox-config 的 network_mode 为 docker 网络，如 dev_fastgpt
+# - 配置 opensandbox-config 的 host_ip 为宿主机 LAN IP，如 192.168.1.100
 
 # plugin auth token
 x-plugin-auth-token: &x-plugin-auth-token 'token'

@@ -97,6 +97,8 @@ type Props = OutLinkChatAuthProps &
       }
     >;
     onTriggerRefresh?: () => void;
+    // 自定义删除消息的实现，不传则使用默认的 delChatRecordById
+    onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
   };
 
 const ChatBox = ({
@@ -108,7 +110,8 @@ const ChatBox = ({
   showWorkorder,
   onStartChat,
   chatType,
-  onTriggerRefresh
+  onTriggerRefresh,
+  onDeleteChatItem
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -254,6 +257,8 @@ const ChatBox = ({
       plan,
       stepId,
       stepTitle,
+      sandboxStatus,
+      skill,
       variables,
       nodeResponse,
       durationSeconds,
@@ -292,6 +297,59 @@ const ChatBox = ({
               ...item,
               status,
               moduleName: name
+            };
+          }
+          if (event === SseResponseEventEnum.sandboxStatus && sandboxStatus) {
+            const getSandboxPhaseLabel = (): string => {
+              const { phase, isWarmStart, skillName } = sandboxStatus;
+              if (phase === 'deployingSkills') {
+                return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
+              }
+              if (
+                phase === 'downloadingPackage' ||
+                phase === 'uploadingPackage' ||
+                phase === 'extractingPackage'
+              ) {
+                return t(`chat:sandbox_status_${phase}` as any, { skillName: skillName ?? '' });
+              }
+              if (phase === 'ready') {
+                return t(
+                  isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'
+                );
+              }
+              return t(`chat:sandbox_status_${phase}` as any);
+            };
+            return {
+              ...item,
+              status: 'loading' as const,
+              moduleName: getSandboxPhaseLabel()
+            };
+          }
+          if (event === SseResponseEventEnum.skillCall && skill) {
+            // 去重检查：避免同一个 skill 在同一步骤中重复展示
+            const alreadyExists = item.value.some(
+              (v) =>
+                v.stepId === stepId && v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
+            );
+            if (alreadyExists) return item;
+
+            const skillId = skill.id || responseValueId || getNanoid(10);
+            const val: AIChatItemValueItemType = {
+              id: responseValueId,
+              stepId,
+              skills: [
+                {
+                  id: skillId,
+                  skillName: skill.skillName,
+                  skillAvatar: skill.skillAvatar || '',
+                  description: skill.description,
+                  skillMdPath: skill.skillMdPath
+                }
+              ]
+            };
+            return {
+              ...item,
+              value: [...item.value, val]
             };
           }
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
@@ -751,6 +809,9 @@ const ChatBox = ({
   // retry input
   const onDelMessage = useCallback(
     (contentId: string, delFile = true) => {
+      if (onDeleteChatItem) {
+        return onDeleteChatItem(contentId, delFile);
+      }
       return delChatRecordById({
         appId,
         chatId,
@@ -759,7 +820,7 @@ const ChatBox = ({
         ...outLinkAuthData
       });
     },
-    [appId, chatId, outLinkAuthData]
+    [appId, chatId, outLinkAuthData, onDeleteChatItem]
   );
   const retryInput = useMemoizedFn((dataId?: string) => {
     if (!dataId || !onDelMessage) return;
