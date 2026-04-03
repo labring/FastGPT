@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
 import type { IconButtonProps } from '@chakra-ui/react';
 import { IconButton } from '@chakra-ui/react';
@@ -15,19 +15,17 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
  * useSandboxEditor —— UI Hook
  *
  * 职责：仅负责渲染 SandboxEditorModal 弹窗及其开关逻辑。
- * 性能：移除所有 fetch 逻辑与定时器。
- * 组件：供 ResponseTags 等细粒度组件调用，不产生额外网络开销。
  */
 export const useSandboxEditor = ({
   appId,
   chatId,
   outLinkAuthData,
-  onClose: onCloseCallback
+  afterClose
 }: {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
-  onClose?: () => void;
+  afterClose?: () => void;
 }) => {
   const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
 
@@ -37,8 +35,8 @@ export const useSandboxEditor = ({
 
   const onCloseSandboxModal = useCallback(() => {
     setSandboxModalOpen(false);
-    onCloseCallback?.();
-  }, [onCloseCallback]);
+    afterClose?.();
+  }, [afterClose]);
 
   const SandboxEditorModalDom = useCallback(() => {
     return sandboxModalOpen ? (
@@ -64,9 +62,8 @@ export const useSandboxEditor = ({
  * 职责：负责 checkSandboxExist 的网络同步及 SandboxEntryIcon 的显示控制。
  * 同步模式：
  *   1. 历史记录（ChatRecordContext）：useMemo 派生，无副作用。
- *   2. chatId 切换：渲染期 `prevChatId !== chatId` 重置 API 状态（React 推荐的 during-render 更新模式）。
- *   3. 网络请求：单一 useEffect，仅在 chatId 变化时触发 1 次。
- * 组件：供 Header / ToolMenu 等单一顶层入口组件调用。
+ *   2. chatId 切换：渲染周期利用 useRef 确认 ID 变化并同步重置状态，防止 UI 闪烁。
+ *   3. 网络请求：单一 useEffect，在参数变化时触发 1 次。
  */
 export const useSandboxStatus = ({
   appId,
@@ -78,11 +75,11 @@ export const useSandboxStatus = ({
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   const { t } = useTranslation();
-  const [prevChatId, setPrevChatId] = useState<string | undefined>(undefined);
   const [apiSandboxExists, setApiSandboxExists] = useState(false);
+  const lastChatIdRef = useRef(chatId);
 
-  if (prevChatId !== chatId) {
-    setPrevChatId(chatId);
+  if (lastChatIdRef.current !== chatId) {
+    lastChatIdRef.current = chatId;
     setApiSandboxExists(false);
   }
 
@@ -112,7 +109,7 @@ export const useSandboxStatus = ({
     return () => {
       cancelled = true;
     };
-  }, [appId, chatId, outLinkAuthData]);
+  }, [appId, chatId]);
 
   const sandboxExists = hasSandboxInHistory || apiSandboxExists;
 

@@ -8,8 +8,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useSandboxEditor } from './SandboxEditor/hook';
-import { useSandboxStatus } from './SandboxEditor/hook';
+import { useSandboxEditor, useSandboxStatus } from './SandboxEditor/hook';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
