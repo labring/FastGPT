@@ -15,8 +15,7 @@ import {
   Input,
   ModalBody,
   ModalFooter,
-  Textarea,
-  useDisclosure
+  Textarea
 } from '@chakra-ui/react';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -33,13 +32,6 @@ import { useContextSelector } from 'use-context-selector';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
-import dynamic from 'next/dynamic';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-
-const ExportSkillModal = dynamic(() => import('@/components/core/app/ExportSkillModal'));
-const ExportConfigPopover = dynamic(
-  () => import('@/pageComponents/app/detail/ExportConfigPopover')
-);
 
 const InfoModal = ({
   onClose,
@@ -53,18 +45,6 @@ const InfoModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
-
-  const {
-    isOpen: isOpenExportSkill,
-    onOpen: onOpenExportSkill,
-    onClose: onCloseExportSkill
-  } = useDisclosure();
-
-  // 打开导出 Skill 弹窗时，关闭当前信息弹窗
-  const handleOpenExportSkill = useCallback(() => {
-    onOpenExportSkill();
-    onClose();
-  }, [onOpenExportSkill, onClose]);
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -236,27 +216,6 @@ const InfoModal = ({
       </ModalBody>
 
       <ModalFooter>
-        {[AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant].includes(
-          appDetail.type
-        ) && (
-          <>
-            <Button
-              variant={'whiteBase'}
-              leftIcon={<MyIcon name={'core/skill/skill'} w={'14px'} />}
-              onClick={handleOpenExportSkill}
-            >
-              {t('skill:export_as_skill')}
-            </Button>
-            <Box ml={2}>
-              <ExportConfigPopover
-                appName={appDetail.name}
-                chatConfig={appDetail.chatConfig}
-                appForm={appForm}
-              />
-            </Box>
-          </>
-        )}
-        <Box flex={1} />
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:Close')}
         </Button>
@@ -266,14 +225,6 @@ const InfoModal = ({
       </ModalFooter>
 
       <AvatarUploader />
-      {isOpenExportSkill && (
-        <ExportSkillModal
-          appId={appDetail._id}
-          appName={appDetail.name}
-          appIntro={appDetail.intro}
-          onClose={onCloseExportSkill}
-        />
-      )}
     </MyModal>
   );
 };
