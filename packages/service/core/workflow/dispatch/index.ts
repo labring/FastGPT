@@ -114,6 +114,12 @@ export async function dispatchWorkFlow({
 
   /* Init function */
   // Check point
+  addLog.debug('[dispatchWorkFlow] Before checkTeamAIPoints', {
+    runningUserInfo,
+    runningAppInfo,
+    mode: data.mode,
+    usageSource
+  });
   await checkTeamAIPoints(runningUserInfo.teamId);
 
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([

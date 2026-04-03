@@ -12,13 +12,29 @@ import { MongoEvaluation } from '../../core/evaluation/task/schema';
 import { MongoEvalDatasetCollection } from '../../core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalMetric } from '../../core/evaluation/metric/schema';
+import { addLog } from '../../common/system/log';
 
 export const checkTeamAIPoints = async (teamId: string) => {
   if (!global.subPlans?.standard) return;
 
-  const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
+  const { totalPoints, usedPoints, surplusPoints } = await teamPoint.getTeamPoints({ teamId });
+
+  addLog.debug('[checkTeamAIPoints] Team points balance check', {
+    teamId,
+    totalPoints,
+    usedPoints,
+    surplusPoints,
+    isEnough: usedPoints < totalPoints
+  });
 
   if (usedPoints >= totalPoints) {
+    addLog.debug('[checkTeamAIPoints] Insufficient AI points', {
+      teamId,
+      totalPoints,
+      usedPoints,
+      surplusPoints,
+      deficit: usedPoints - totalPoints
+    });
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
   }
 

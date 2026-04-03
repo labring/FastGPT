@@ -21,6 +21,7 @@ import {
   CacheKeyEnumTime,
   incrValueToCache
 } from '../../../common/redis/cache';
+import { addLog } from '../../../common/system/log';
 
 export const getStandardPlansConfig = () => {
   return global?.subPlans?.standard;
@@ -327,19 +328,35 @@ export const teamPoint = {
     if (surplusCacheStr && totalCacheStr) {
       const totalPoints = Number(totalCacheStr);
       const surplusPoints = Number(surplusCacheStr);
-      return {
+      const result = {
         totalPoints,
         surplusPoints,
         usedPoints: totalPoints - surplusPoints
       };
+      addLog.debug('[teamPoint.getTeamPoints] Load from Redis cache', {
+        teamId,
+        source: 'redis',
+        ...result
+      });
+      return result;
     }
 
+    addLog.debug('[teamPoint.getTeamPoints] Redis cache miss, loading from database', {
+      teamId,
+      source: 'database'
+    });
     const planStatus = await getTeamPlanStatus({ teamId });
-    return {
+    const result = {
       totalPoints: planStatus.totalPoints,
       surplusPoints: planStatus.totalPoints - planStatus.usedPoints,
       usedPoints: planStatus.usedPoints
     };
+    addLog.debug('[teamPoint.getTeamPoints] Loaded from database', {
+      teamId,
+      source: 'database',
+      ...result
+    });
+    return result;
   },
   incrTeamPointsCache: async ({ teamId, value }: { teamId: string; value: number }) => {
     const surplusCacheKey = `${CacheKeyEnum.team_point_surplus}:${teamId}`;
