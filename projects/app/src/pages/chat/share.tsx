@@ -569,8 +569,7 @@ export async function getServerSideProps(context: any) {
         'workflow',
         'login',
         'database_client',
-        'sangfor',
-        'admin'
+        'sangfor'
       ]))
     }
   };
