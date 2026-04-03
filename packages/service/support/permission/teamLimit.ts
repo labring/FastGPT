@@ -15,7 +15,14 @@ import { MongoEvalMetric } from '../../core/evaluation/metric/schema';
 import { addLog } from '../../common/system/log';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  if (!global.subPlans?.standard) return;
+  if (!global.subPlans?.standard) {
+    addLog.debug('[checkTeamAIPoints] Skip check - no standard plan configured', {
+      teamId,
+      hasSubPlans: !!global.subPlans,
+      hasStandardPlan: !!global.subPlans?.standard
+    });
+    return;
+  }
 
   const { totalPoints, usedPoints, surplusPoints } = await teamPoint.getTeamPoints({ teamId });
 
