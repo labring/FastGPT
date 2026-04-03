@@ -12,13 +12,46 @@ import { MongoEvaluation } from '../../core/evaluation/task/schema';
 import { MongoEvalDatasetCollection } from '../../core/evaluation/dataset/evalDatasetCollectionSchema';
 import { MongoEvalDatasetData } from '../../core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalMetric } from '../../core/evaluation/metric/schema';
+import { addLog } from '../../common/system/log';
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  if (!global.subPlans?.standard) return;
+  addLog.debug('[checkTeamAIPoints] Global configuration', {
+    hasSubPlans: !!global.subPlans,
+    hasStandardPlan: !!global.subPlans?.standard,
+    subPlansKeys: global.subPlans ? Object.keys(global.subPlans) : [],
+    standardPlanKeys: global.subPlans?.standard ? Object.keys(global.subPlans.standard) : [],
+    hasSystemEnv: !!global.systemEnv,
+    hasFeConfigs: !!global.feConfigs,
+    hasLicenseData: !!global.licenseData
+  });
 
-  const { totalPoints, usedPoints } = await teamPoint.getTeamPoints({ teamId });
+  if (!global.subPlans?.standard) {
+    addLog.debug('[checkTeamAIPoints] Skip check - no standard plan configured', {
+      teamId,
+      hasSubPlans: !!global.subPlans,
+      hasStandardPlan: !!global.subPlans?.standard
+    });
+    return;
+  }
+
+  const { totalPoints, usedPoints, surplusPoints } = await teamPoint.getTeamPoints({ teamId });
+
+  addLog.debug('[checkTeamAIPoints] Team points balance check', {
+    teamId,
+    totalPoints,
+    usedPoints,
+    surplusPoints,
+    isEnough: usedPoints < totalPoints
+  });
 
   if (usedPoints >= totalPoints) {
+    addLog.debug('[checkTeamAIPoints] Insufficient AI points', {
+      teamId,
+      totalPoints,
+      usedPoints,
+      surplusPoints,
+      deficit: usedPoints - totalPoints
+    });
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
   }
 
