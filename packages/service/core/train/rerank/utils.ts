@@ -14,12 +14,11 @@ import {
   DEFAULT_MAX_SAMPLE_PAIRS
 } from './constants';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
-import type {
-  EnhancedErrorMessage
-} from '@fastgpt/global/core/train/rerank/error';
+import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import type {
   RerankTrainErrEnum,
-  RerankTrainSuggestionEnum} from '@fastgpt/global/common/error/code/train';
+  RerankTrainSuggestionEnum
+} from '@fastgpt/global/common/error/code/train';
 import {
   getTrainErrorMessageKey,
   getTrainErrorSuggestionKey
@@ -459,7 +458,7 @@ export async function sampleDataFromDataset(
       // Fetch all IDs and apply a deterministic Fisher-Yates shuffle seeded by datasetId,
       // so train (first 80%) and eval (last 20%) always use the same permutation.
       const allDocs = await MongoDatasetData.find(match).select('_id').lean();
-      const shuffledIds = allDocs.map((doc: any) => doc._id as Types.ObjectId);
+      const shuffledIds = allDocs.map((doc: any) => new Types.ObjectId(doc._id as string));
 
       const rng = seededRandom(hashString(datasetId));
       for (let i = shuffledIds.length - 1; i > 0; i--) {
@@ -505,50 +504,49 @@ export async function sampleDataFromDataset(
       sampleCount: sampleData.length
     });
 
-    const formattedData = sampleData
-      .map((doc) => {
-        // Filter to only keep synthesis indexes with synId
-        const allSynthesisIndexes = (doc.indexes as DatasetDataIndexItemType[]).filter(
-          (idx) => idx.type === DatasetDataIndexTypeEnum.synthesis && idx.synId !== undefined
-        );
+    const formattedData = sampleData.map((doc) => {
+      // Filter to only keep synthesis indexes with synId
+      const allSynthesisIndexes = (doc.indexes as DatasetDataIndexItemType[]).filter(
+        (idx) => idx.type === DatasetDataIndexTypeEnum.synthesis && idx.synId !== undefined
+      );
 
-        // Count indexes per synId to identify complete pairs
-        const synIdCounts = new Map<number, number>();
-        for (const idx of allSynthesisIndexes) {
-          const synId = idx.synId!;
-          synIdCounts.set(synId, (synIdCounts.get(synId) || 0) + 1);
+      // Count indexes per synId to identify complete pairs
+      const synIdCounts = new Map<number, number>();
+      for (const idx of allSynthesisIndexes) {
+        const synId = idx.synId!;
+        synIdCounts.set(synId, (synIdCounts.get(synId) || 0) + 1);
+      }
+
+      // Keep only indexes from complete pairs (synId with exactly 2 indexes)
+      const validSynIds = new Set<number>();
+      let discardedCount = 0;
+      for (const [synId, count] of synIdCounts) {
+        if (count === 2) {
+          validSynIds.add(synId);
+        } else {
+          discardedCount += count;
+          addLog.warn('Incomplete synthesis pair, discarding', {
+            dataId: doc._id.toString(),
+            synId,
+            count
+          });
         }
+      }
 
-        // Keep only indexes from complete pairs (synId with exactly 2 indexes)
-        const validSynIds = new Set<number>();
-        let discardedCount = 0;
-        for (const [synId, count] of synIdCounts) {
-          if (count === 2) {
-            validSynIds.add(synId);
-          } else {
-            discardedCount += count;
-            addLog.warn('Incomplete synthesis pair, discarding', {
-              dataId: doc._id.toString(),
-              synId,
-              count
-            });
-          }
-        }
+      // Filter to only keep complete pairs and sort by synId
+      const synthesisIndexes = allSynthesisIndexes
+        .filter((idx) => validSynIds.has(idx.synId!))
+        .sort((a, b) => (a.synId ?? 0) - (b.synId ?? 0));
 
-        // Filter to only keep complete pairs and sort by synId
-        const synthesisIndexes = allSynthesisIndexes
-          .filter((idx) => validSynIds.has(idx.synId!))
-          .sort((a, b) => (a.synId ?? 0) - (b.synId ?? 0));
-
-        return {
-          datasetId: doc.datasetId.toString(),
-          dataId: doc._id.toString(),
-          q: doc.q,
-          a: doc.a,
-          indexes: synthesisIndexes,
-          discardedCount
-        };
-      });
+      return {
+        datasetId: doc.datasetId.toString(),
+        dataId: doc._id.toString(),
+        q: doc.q,
+        a: doc.a,
+        indexes: synthesisIndexes,
+        discardedCount
+      };
+    });
 
     const totalDiscarded = formattedData.reduce((sum, d) => sum + d.discardedCount, 0);
     const filtered = formattedData.filter((item) => item.indexes.length >= 2);
@@ -562,9 +560,7 @@ export async function sampleDataFromDataset(
     });
 
     // Remove discardedCount from final data
-    allSamples.push(
-      ...filtered.map(({ discardedCount, ...rest }) => rest)
-    );
+    allSamples.push(...filtered.map(({ discardedCount, ...rest }) => rest));
   }
 
   // Apply even distribution for train/eval modes to limit total indexes
