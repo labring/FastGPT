@@ -24,7 +24,7 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 type Props = {
   isOpen: boolean;
@@ -54,8 +54,12 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
-  // Sandbox state
-  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
+  // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
+  const { SandboxEntryIcon } = useSandboxStatus({
+    appId: appDetail._id,
+    chatId
+  });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
     appId: appDetail._id,
     chatId
   });
@@ -143,7 +147,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
             <Box flex={1} />
 
-            <SandboxEntryIcon mr={2} />
+            <SandboxEntryIcon mr={2} onOpen={onOpenSandboxModal} />
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
                 mr={2}
