@@ -255,6 +255,48 @@ If you find it tedious to configure models through the UI, you can use a configu
 
 </Accordions>
 
+## Configuration Without AI Proxy
+
+If you don't want to deploy the AI Proxy service, you can configure models to use official APIs directly by setting custom request URLs. This approach is suitable for simple scenarios but lacks load balancing, logging, and other features.
+
+### Configuration Steps
+
+1. Navigate to the `Model Configuration` page and click "Add Model"
+2. Fill in the basic model information (Model ID, Name, etc.)
+3. In the `Custom Request URL` field, enter the complete API endpoint
+4. In the `Custom Request Key` field, enter your API Key
+
+<Alert icon="⚠️" context="warning">
+Important Notes:
+
+1. The custom request URL must be a **complete endpoint URL**, not just the BaseUrl. For example:
+   - LLM: `https://api.openai.com/v1/chat/completions`
+   - Embedding: `https://api.openai.com/v1/embeddings`
+
+2. If both an AI Proxy channel and a custom request URL are configured, the system will prioritize the custom request URL.
+
+3. When using custom request URLs, the model test function works directly without requiring the AI Proxy service.
+</Alert>
+
+### Example: Direct OpenAI API Usage
+
+```json
+{
+  "model": "gpt-4o-custom",
+  "metadata": {
+    "provider": "OpenAI",
+    "model": "gpt-4o",
+    "name": "GPT-4o (Direct)",
+    "requestUrl": "https://api.openai.com/v1/chat/completions",
+    "requestAuth": "sk-xxxxx",
+    "maxContext": 128000,
+    "maxResponse": 4096,
+    "isActive": true,
+    "isCustom": true
+  }
+}
+```
+
 ## Other
 
 ### Channel Priority
