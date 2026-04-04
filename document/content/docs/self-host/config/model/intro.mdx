@@ -255,6 +255,48 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 
 </Accordions>
 
+## 不使用 AI Proxy 的配置方法
+
+如果你不想部署 AI Proxy 服务，也可以通过配置模型的自定义请求地址来直接使用官方 API。这种方式适合简单场景，但缺少负载均衡、日志等功能。
+
+### 配置步骤
+
+1. 在`模型配置`页面中，点击新增模型
+2. 填写模型基本信息（模型 ID、名称等）
+3. 在`自定义请求地址`字段填写完整的 API 地址
+4. 在`自定义请求 Key` 字段填写 API Key
+
+<Alert icon="⚠️" context="warning">
+注意事项：
+
+1. 自定义请求地址需要填写**完整的请求地址**，不是 BaseUrl。例如：
+   - LLM: `https://api.openai.com/v1/chat/completions`
+   - Embedding: `https://api.openai.com/v1/embeddings`
+
+2. 如果同时配置了 AI Proxy 渠道和自定义请求地址，系统会优先使用自定义请求地址。
+
+3. 使用自定义请求地址时，模型测试功能可以直接使用，不需要 AI Proxy 服务。
+</Alert>
+
+### 示例：直接使用 OpenAI API
+
+```json
+{
+  "model": "gpt-4o-custom",
+  "metadata": {
+    "provider": "OpenAI",
+    "model": "gpt-4o",
+    "name": "GPT-4o (Direct)",
+    "requestUrl": "https://api.openai.com/v1/chat/completions",
+    "requestAuth": "sk-xxxxx",
+    "maxContext": 128000,
+    "maxResponse": 4096,
+    "isActive": true,
+    "isCustom": true
+  }
+}
+```
+
 ## 其他
 
 ### 渠道优先级

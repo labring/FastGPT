@@ -18,7 +18,10 @@ import {
   Box,
   Flex,
   Button,
-  HStack
+  HStack,
+  Alert,
+  AlertIcon,
+  AlertDescription
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -53,7 +56,14 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     runAsync: refreshChannelList,
     loading: loadingChannelList
   } = useRequest(getChannelList, {
-    manual: false
+    manual: false,
+    onError: (error: any) => {
+      // Handle AI Proxy configuration errors with user-friendly messages
+      const errorMsg = error?.message || error;
+      if (errorMsg.includes('AI Proxy') || errorMsg.includes('AIPROXY')) {
+        setAiproxyError(errorMsg);
+      }
+    }
   });
 
   const { data: channelProviders = {} } = useRequest(getChannelProviders, {
@@ -88,6 +98,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   });
 
   const [modelTestData, setTestModelData] = useState<{ channelId: number; models: string[] }>();
+  const [aiproxyError, setAiproxyError] = useState<string>();
 
   const isLoading =
     loadingChannelList ||
@@ -105,6 +116,12 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             {t('account_model:create_channel')}
           </Button>
         </Flex>
+      )}
+      {aiproxyError && (
+        <Alert status="warning" mb={2} borderRadius="md">
+          <AlertIcon />
+          <AlertDescription fontSize="sm">{aiproxyError}</AlertDescription>
+        </Alert>
       )}
       <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
         <TableContainer h={'100%'} overflowY={'auto'} fontSize={'sm'}>

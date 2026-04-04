@@ -16,6 +16,47 @@ interface ResponseDataType {
   data: any;
 }
 
+const channelApiEndpointSuffixList = [
+  '/chat/completions',
+  '/embeddings',
+  '/audio/transcriptions',
+  '/audio/speech',
+  '/rerank',
+  '/responses'
+];
+
+const trimTrailingSlash = (path: string) => {
+  if (path === '/') return path;
+  return path.replace(/\/+$/, '') || '/';
+};
+
+const stripApiEndpointSuffix = (pathname: string) => {
+  const matchedSuffix = channelApiEndpointSuffixList.find((suffix) => pathname.endsWith(suffix));
+  if (!matchedSuffix) return pathname;
+
+  const stripped = pathname.slice(0, -matchedSuffix.length) || '/';
+  return trimTrailingSlash(stripped);
+};
+
+export const normalizeChannelBaseUrl = (baseUrl?: string) => {
+  const formatBaseUrl = baseUrl?.trim();
+  if (!formatBaseUrl) return '';
+
+  try {
+    const url = new URL(formatBaseUrl);
+    const formatPathname = trimTrailingSlash(url.pathname || '/');
+    const normalizedPathname = stripApiEndpointSuffix(formatPathname);
+
+    url.pathname = normalizedPathname === '/' ? '' : normalizedPathname;
+    url.search = '';
+    url.hash = '';
+
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return formatBaseUrl;
+  }
+};
+
 /**
  * 请求成功,检查请求头
  */
@@ -137,7 +178,7 @@ export const postCreateChannel = (data: CreateChannelProps) =>
   POST(`/createChannel`, {
     type: data.type,
     name: data.name,
-    base_url: data.base_url,
+    base_url: normalizeChannelBaseUrl(data.base_url),
     models: data.models,
     model_mapping: data.model_mapping,
     key: data.key,
@@ -152,7 +193,7 @@ export const putChannel = (data: ChannelInfoType) =>
   PUT(`/channel/${data.id}`, {
     type: data.type,
     name: data.name,
-    base_url: data.base_url,
+    base_url: normalizeChannelBaseUrl(data.base_url),
     models: data.models,
     model_mapping: data.model_mapping,
     key: data.key,

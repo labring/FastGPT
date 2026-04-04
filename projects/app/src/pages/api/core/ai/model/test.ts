@@ -36,9 +36,20 @@ async function handler(
 
   if (!modelData) return Promise.reject('Model not found');
 
+  // If channelId is provided, use channel-based routing (AI Proxy)
+  // Otherwise, use custom requestUrl/requestAuth if available
   if (channelId) {
+    // When using AI Proxy channel, remove custom URL to force channel routing
     delete modelData.requestUrl;
     delete modelData.requestAuth;
+  } else {
+    // When not using channel, check if model has custom request configuration
+    // This allows direct API testing without AI Proxy
+    const hasCustomRequest = modelData.requestUrl && modelData.requestAuth;
+    if (!hasCustomRequest) {
+      // If no custom request is configured, will use default AI API configuration
+      logger.debug('Testing model without custom request URL, will use default AI API configuration');
+    }
   }
 
   const headers: Record<string, string> = channelId
