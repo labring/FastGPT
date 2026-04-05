@@ -21,6 +21,10 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
   Input_Template_Children_Node_List,
   Input_Template_LOOP_NODE_OFFSET
 } from '@fastgpt/global/core/workflow/template/input';
@@ -37,7 +41,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, isFolded } = data;
+  const { nodeId, inputs, outputs, isFolded, flowNodeType } = data;
   const { getNodeById, nodeIds, nodeAmount, getNodeList, systemConfigNode } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
@@ -108,6 +112,106 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     });
   }, [loopInputArray, newValueType, nodeId, onChangeNode]);
 
+  // Normalize batch numeric inputs to keep UI and backend behavior consistent.
+  useEffect(() => {
+    if (flowNodeType !== FlowNodeTypeEnum.batch) return;
+
+    const normalizeInput = ({
+      key,
+      min,
+      max,
+      defaultValue
+    }: {
+      key: NodeInputKeyEnum;
+      min: number;
+      max: number;
+      defaultValue: number;
+    }) => {
+      const input = inputs.find((item) => item.key === key);
+      if (!input) return;
+
+      const num = Math.floor(Number(input.value));
+      const nextValue = Number.isFinite(num) ? Math.max(min, Math.min(max, num)) : defaultValue;
+
+      if (input.value === nextValue) return;
+
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key,
+        value: {
+          ...input,
+          value: nextValue
+        }
+      });
+    };
+
+    normalizeInput({
+      key: NodeInputKeyEnum.batchParallelConcurrency,
+      min: 1,
+      max: 10,
+      defaultValue: 5
+    });
+    normalizeInput({
+      key: NodeInputKeyEnum.batchParallelRetryTimes,
+      min: 0,
+      max: 5,
+      defaultValue: 3
+    });
+  }, [flowNodeType, inputs, nodeId, onChangeNode]);
+
+  useEffect(() => {
+    if (flowNodeType !== FlowNodeTypeEnum.batch) return;
+
+    const expectedConcurrency = [
+      FlowNodeInputTypeEnum.numberInput,
+      FlowNodeInputTypeEnum.reference
+    ] as const;
+    const concurrencyInput = inputs.find(
+      (i) => i.key === NodeInputKeyEnum.batchParallelConcurrency
+    );
+    if (concurrencyInput) {
+      const list = concurrencyInput.renderTypeList || [];
+      const matches =
+        list.length === expectedConcurrency.length &&
+        list.every((t, i) => t === expectedConcurrency[i]);
+      if (!matches) {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.batchParallelConcurrency,
+          value: {
+            ...concurrencyInput,
+            renderTypeList: [...expectedConcurrency],
+            selectedTypeIndex: Math.min(Math.max(concurrencyInput.selectedTypeIndex ?? 0, 0), 1)
+          }
+        });
+      }
+    }
+
+    const expectedRetry = [FlowNodeInputTypeEnum.numberInput] as const;
+    const retryInput = inputs.find((i) => i.key === NodeInputKeyEnum.batchParallelRetryTimes);
+    if (retryInput) {
+      const list = retryInput.renderTypeList || [];
+      const matches = list.length === expectedRetry.length && list[0] === expectedRetry[0];
+      if (!matches) {
+        const num = Math.floor(Number(retryInput.value));
+        const nextValue = Number.isFinite(num) ? Math.max(0, Math.min(5, num)) : 3;
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.batchParallelRetryTimes,
+          value: {
+            ...retryInput,
+            renderTypeList: [...expectedRetry],
+            selectedTypeIndex: 0,
+            value: nextValue
+          }
+        });
+      }
+    }
+  }, [flowNodeType, inputs, nodeId, onChangeNode]);
+
   // Update childrenNodeIdList
   const childrenNodeIdList = useMemoEnhance(() => {
     return getNodeList()
@@ -161,7 +265,9 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
         <>
           <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
-            {t('workflow:loop_body')}
+            {flowNodeType === FlowNodeTypeEnum.batch
+              ? t('workflow:execution_logic')
+              : t('workflow:loop_body')}
           </FormLabel>
           <Box
             flex={1}

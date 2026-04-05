@@ -218,15 +218,19 @@ const NodeCard = (props: Props) => {
   }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
-  const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
+  const isLoopNode = [FlowNodeTypeEnum.loop, FlowNodeTypeEnum.batch].includes(
+    node?.flowNodeType as FlowNodeTypeEnum
+  );
   const showVersion = useMemo(() => {
     // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (
       isAppNode &&
-      (node.toolConfig?.mcpToolSet ||
+      (
+        node.toolConfig?.mcpToolSet ||
         node.toolConfig?.mcpTool ||
         node?.toolConfig?.httpToolSet ||
-        node?.toolConfig?.systemToolSet)
+        node?.toolConfig?.systemToolSet
+      )
     )
       return false;
     // 2. Team app/System commercial plugin

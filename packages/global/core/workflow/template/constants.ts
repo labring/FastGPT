@@ -27,6 +27,7 @@ import { FormInputNode } from './system/interactive/formInput';
 import { UserSelectNode } from './system/interactive/userSelect';
 import { LafModule } from './system/laf';
 import { LoopNode } from './system/loop/loop';
+import { BatchNode } from './system/loop/batch';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { LoopStartNode } from './system/loop/loopStart';
 import { ReadFilesNode } from './system/readFiles';
@@ -55,7 +56,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
-  LoopNode
+  LoopNode,
+  BatchNode
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [

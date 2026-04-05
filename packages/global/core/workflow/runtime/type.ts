@@ -394,6 +394,12 @@ export type DispatchNodeResponseType = {
   loopResult?: any[];
   loopInput?: any[];
   loopDetail?: ChatHistoryItemResType[];
+  // batch
+  batchInput?: any[];
+  batchResult?: any[];
+  batchRawResult?: any[];
+  batchStatus?: 'success' | 'failed' | 'partial_success';
+  batchDetail?: ChatHistoryItemResType[];
   // loop start
   loopInputValue?: any;
   // loop end

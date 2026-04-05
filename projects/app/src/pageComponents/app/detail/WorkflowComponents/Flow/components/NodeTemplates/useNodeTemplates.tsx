@@ -38,6 +38,10 @@ export const useNodeTemplates = () => {
       if (templateType === TemplateTypeEnum.basic) {
         return basicNodeTemplates
           .filter((item) => {
+            // hide deprecated templates from add panel
+            if (item.abandon) {
+              return false;
+            }
             // unique node filter
             if (item.unique) {
               const nodeExist = getNodeList().some(
