@@ -13,7 +13,12 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector';
 import { getVariableInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
 import { addVariable } from '../VariableEdit';
-import { useValidateFieldName, useSubmitErrorHandler } from '../utils/formValidation';
+import {
+  useValidateFieldKey,
+  useValidateFieldName,
+  useSubmitErrorHandler
+} from '../utils/formValidation';
+import { shouldLockVariableIdentifier } from '../utils/variableEditor';
 
 const VariableEditModal = ({
   onClose,
@@ -29,6 +34,7 @@ const VariableEditModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
+  const validateFieldKey = useValidateFieldKey();
   const onSubmitError = useSubmitErrorHandler();
 
   const form = useForm<VariableItemType>({
@@ -36,6 +42,8 @@ const VariableEditModal = ({
   });
   const { setValue, reset, watch, getValues } = form;
   const type = watch('type');
+  const isIdentifierReadonly = useMemo(() => shouldLockVariableIdentifier(variable), [variable]);
+
   useEffect(() => {
     reset(variable);
   }, [variable, reset]);
@@ -76,16 +84,25 @@ const VariableEditModal = ({
   const onSubmitSuccess = useCallback(
     (data: VariableItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
+      data.key = data?.key?.trim();
 
-      const otherVariables = variables.filter((v) => v.key !== data.key);
-      const isValid = validateFieldName(data.label, {
-        existingKeys: otherVariables.flatMap((v) => [v.key, v.label]),
-        systemVariables: workflowSystemVariables,
-        currentKey: data.key
+      const otherVariables = variables.filter((v) => v.key !== variable.key);
+      const isValidLabel = validateFieldName(data.label, {
+        existingKeys: otherVariables.map((v) => v.label),
+        systemVariables: workflowSystemVariables
       });
-
-      if (!isValid) {
+      if (!isValidLabel) {
         return;
+      }
+
+      if (data.key) {
+        const isValidKey = validateFieldKey(data.key, {
+          existingKeys: otherVariables.map((v) => v.key),
+          reservedKeys: workflowSystemVariables.map((item) => item.key)
+        });
+        if (!isValidKey) {
+          return;
+        }
       }
 
       // For custom and internal types, user can select valueType manually, so don't override it
@@ -137,7 +154,17 @@ const VariableEditModal = ({
         });
       }
     },
-    [variables, inputTypeList, onChange, reset, onClose, validateFieldName, toast, t]
+    [
+      variables,
+      inputTypeList,
+      onChange,
+      reset,
+      onClose,
+      validateFieldName,
+      validateFieldKey,
+      toast,
+      t
+    ]
   );
 
   return (
@@ -167,6 +194,7 @@ const VariableEditModal = ({
           isEdit={!!variable?.key}
           inputType={type}
           defaultValueType={defaultValueType}
+          identifierReadonly={isIdentifierReadonly}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}
