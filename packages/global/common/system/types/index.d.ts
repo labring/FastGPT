@@ -68,6 +68,7 @@ export type FastGPTFeConfigsType = {
   show_coupon?: boolean;
   show_discount_coupon?: boolean;
   showWecomConfig?: boolean;
+  show_user_operations?: boolean;
   concatMd?: string;
 
   show_dataset_feishu?: boolean;
