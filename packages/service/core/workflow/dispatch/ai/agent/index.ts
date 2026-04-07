@@ -102,7 +102,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       history = 6,
       fileUrlList: fileLinks,
       agent_selectedTools: selectedTools = [],
-      skills: skillIds,
+      skills: skillIds = [],
       useEditDebugSandbox,
       // Dataset search configuration
       agent_datasetParams: datasetParams,
@@ -150,7 +150,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       fileUrls: fileLinks,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      histories: chatHistories
+      histories: chatHistories,
+      useSkill: skillIds.length > 0
     });
 
     // 交互模式进来的话，这个值才是交互输入的值
@@ -233,6 +234,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       .map((c) => c.systemPrompt)
       .filter(Boolean)
       .join('\n\n');
+    // TODO: 看看要不要和 getSubapps 合并
     const capabilityTools = capabilities.flatMap((c) => c.completionTools ?? []);
     const capabilityToolCallHandler =
       capabilities.length > 0 ? createCapabilityToolCallHandler(capabilities) : undefined;
@@ -280,7 +282,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: capabilitySystemPrompt
-        ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`
+        ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`.trim()
         : systemPrompt,
       selectedDataset: datasetParams?.datasets
     });

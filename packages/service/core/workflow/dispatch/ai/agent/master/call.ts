@@ -40,7 +40,7 @@ import {
   SandboxGetFileUrlToolSchema
 } from '@fastgpt/global/core/ai/sandbox/constants';
 import { dispatchSandboxShell, dispatchSandboxGetFileUrl } from '../sub/sandbox';
-import type { CapabilityToolCallHandler } from '../capability/type';
+import type { CapabilityToolCallHandlerType } from '../capability/type';
 
 type Response = {
   stepResponse?: {
@@ -83,7 +83,7 @@ export const masterCall = async ({
   step?: AgentStepItemType;
 
   // Capability tool call handler
-  capabilityToolCallHandler?: CapabilityToolCallHandler;
+  capabilityToolCallHandler?: CapabilityToolCallHandlerType;
 }): Promise<Response> => {
   const {
     checkIsStopping,
@@ -485,6 +485,7 @@ export const masterCall = async ({
             }
           }
 
+          // TODO: 所有内置工具，合并成一个 function
           // Capability tools (e.g. sandbox skills)
           const capResult = await capabilityToolCallHandler?.(
             toolId,
@@ -665,11 +666,9 @@ export const masterCall = async ({
         }
       });
 
-      // TODO: 推送账单
-
       return {
         response,
-        assistantMessages: [], // TODO
+        assistantMessages: [],
         usages,
         stop
       };

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { getSandboxProxyTarget } from '@/service/sandboxProxy';
-import { createRelayToken } from '@/service/sandboxProxyUtils';
+import { getSandboxProxyTarget } from '@/service/core/sandbox/proxy';
+import { createRelayToken } from '@/service/core/sandbox/proxyUtils';
 
 const dev = process.env.NODE_ENV !== 'production';
 // Internal proxy auth endpoint called by server.ts before forwarding to sandbox.

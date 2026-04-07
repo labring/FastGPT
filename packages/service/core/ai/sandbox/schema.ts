@@ -3,14 +3,14 @@ const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from './type';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxProtocolEnum, SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
-import { SandboxLimitSchema, SandboxProviderValues, SharedSandboxStatusValues } from './type';
+import { SandboxLimitSchema, SandboxProviderSchema } from './type';
 
 export const collectionName = 'agent_sandbox_instances';
 
 const SandboxInstanceSchema = new Schema({
   provider: {
     type: String,
-    enum: SandboxProviderValues,
+    enum: SandboxProviderSchema.options,
     required: true
   },
   // 唯一 id，chat 模式下，由 3 个 id hash 获取。
@@ -25,7 +25,7 @@ const SandboxInstanceSchema = new Schema({
 
   status: {
     type: String,
-    enum: SharedSandboxStatusValues,
+    enum: Object.values(SandboxStatusEnum),
     default: SandboxStatusEnum.running,
     required: true
   },
@@ -47,54 +47,6 @@ const SandboxInstanceSchema = new Schema({
   },
   metadata: {
     type: Schema.Types.Mixed
-  },
-  detail: {
-    sandboxType: {
-      type: String,
-      enum: Object.values(SandboxTypeEnum)
-    },
-    teamId: String,
-    tmbId: String,
-    skillId: String,
-    sessionId: String,
-    skillIds: [String],
-    provider: {
-      type: String,
-      enum: SandboxProviderValues
-    },
-    image: {
-      repository: String,
-      tag: {
-        type: String,
-        default: 'latest'
-      }
-    },
-    providerStatus: {
-      state: String,
-      message: String,
-      reason: String
-    },
-    providerCreatedAt: Date,
-    endpoint: {
-      host: String,
-      port: Number,
-      protocol: {
-        type: String,
-        enum: Object.values(SandboxProtocolEnum),
-        default: SandboxProtocolEnum.http
-      },
-      url: String
-    },
-    storage: {
-      bucket: String,
-      key: String,
-      size: Number,
-      uploadedAt: Date
-    },
-    metadata: {
-      type: Map,
-      of: Schema.Types.Mixed
-    }
   }
 });
 
@@ -118,12 +70,12 @@ SandboxInstanceSchema.index(
     partialFilterExpression: {
       appId: { $exists: true },
       chatId: { $exists: true },
-      'detail.sandboxType': { $exists: true }
+      'metadata.sandboxType': { $exists: true }
     }
   }
 );
-SandboxInstanceSchema.index({ 'detail.skillId': 1 });
-SandboxInstanceSchema.index({ 'detail.sandboxType': 1, chatId: 1 });
+SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
+SandboxInstanceSchema.index({ 'metadata.sandboxType': 1, chatId: 1 });
 
 export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
   collectionName,

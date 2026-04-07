@@ -122,12 +122,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             </FormLabel>
             <Switch
               {...register('showRunningStatus', {
-                onChange(e) {
-                  if (!e.target.checked) {
-                    setValue('showSkillReferences', false);
-                  }
-                  autoSave();
-                }
+                onChange: autoSave
               })}
               isChecked={showRunningStatus}
             />

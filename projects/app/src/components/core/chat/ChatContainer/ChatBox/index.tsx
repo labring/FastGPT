@@ -97,7 +97,7 @@ type Props = OutLinkChatAuthProps &
       }
     >;
     onTriggerRefresh?: () => void;
-    // 自定义删除消息的实现，不传则使用默认的 delChatRecordById
+    // TODO: 待优化。 自定义删除消息的实现，不传则使用默认的 delChatRecordById
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
   };
 

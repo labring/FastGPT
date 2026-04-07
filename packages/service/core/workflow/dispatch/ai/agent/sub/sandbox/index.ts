@@ -129,5 +129,5 @@ export {
   dispatchSandboxEditFile,
   dispatchSandboxExecute,
   dispatchSandboxSearch
-} from './dispatch';
+} from './skill';
 export { buildSkillsContextPrompt } from './prompt';

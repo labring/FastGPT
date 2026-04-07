@@ -127,6 +127,7 @@ const CustomInputLabel = React.memo(function CustomInputLabel({
   );
 });
 
+// TODO: 待优化，不一定需要重写，用模板渲染也可以
 const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, catchError, inputs, outputs } = data;
   const { t } = useTranslation();

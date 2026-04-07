@@ -115,7 +115,7 @@ export const useNodeTemplates = () => {
             AppTypeEnum.folder,
             AppTypeEnum.simple,
             AppTypeEnum.workflow,
-            AppTypeEnum.chatAgent
+            ...(feConfigs?.show_skill ? [AppTypeEnum.chatAgent] : [])
           ]
         }).then((res) => res.filter((app) => app.id !== appId));
       }

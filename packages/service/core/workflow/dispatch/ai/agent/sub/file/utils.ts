@@ -35,12 +35,14 @@ export const formatFileInput = ({
   fileUrls = [],
   requestOrigin,
   maxFiles,
-  histories
+  histories,
+  useSkill
 }: {
   fileUrls?: string[];
   requestOrigin?: string;
   maxFiles: number;
   histories: ChatItemType[];
+  useSkill: boolean;
 }): {
   filesMap: Record<string, string>;
   allFilesMap: Record<string, { url: string; name: string; type: string }>;
@@ -57,7 +59,7 @@ export const formatFileInput = ({
   }
 
   const parseFn = (urls: string[]) => {
-    const parseUrlList = urls
+    const parseResult = urls
       // Remove invalid urls
       .filter((url) => {
         if (typeof url !== 'string') return false;
@@ -69,11 +71,6 @@ export const formatFileInput = ({
         }
 
         return false;
-      })
-      // Get document and image type files
-      .filter((url) => {
-        const type = parseUrlToFileType(url)?.type;
-        return type === 'file' || type === 'image';
       })
       .map((url) => {
         try {
@@ -92,19 +89,13 @@ export const formatFileInput = ({
         }
       })
       .filter(Boolean)
-      .slice(0, maxFiles);
-
-    const parseResult = parseUrlList
-      .map((url) => parseUrlToFileType(url))
-      .filter(
-        (item) =>
-          item?.name &&
-          (item?.type === ChatFileTypeEnum.file || item?.type === ChatFileTypeEnum.image)
-      ) as {
+      .slice(0, maxFiles)
+      .map(parseUrlToFileType) as {
       type: `${ChatFileTypeEnum}`;
       name: string;
       url: string;
     }[];
+
     return parseResult;
   };
 
@@ -145,37 +136,41 @@ export const formatFileInput = ({
       {} as Record<string, string>
     );
 
-  // 只为新上传的文件（在 queryParseResult 中但不在历史中的）生成 prompt
+  /* ===== 构建新文件的提示词 ===== */
+  // 只为新上传的文件（在 queryParseResult 中但不在历史中的）生成 prompt. skill 模式，都注入提示词
   const newFiles = queryParseResult.filter(
-    (queryFile) => !historyParseResult.some((histFile) => histFile.name === queryFile.name)
+    (queryFile) =>
+      (queryFile.type === ChatFileTypeEnum.file || useSkill) &&
+      !historyParseResult.some((histFile) => histFile.name === queryFile.name)
   );
-
-  const promptList: { index: string; name: string; type: string }[] = [];
-  newFiles.forEach((item) => {
+  const promptList = newFiles.map((item) => {
     const index = uniqueFiles.findIndex((f) => f.name === item.name);
-    promptList.push({ index: `${index + 1}`, name: item.name, type: item.type });
+    return {
+      index: `${index + 1}`,
+      name: item.name,
+      type: item.type === ChatFileTypeEnum.file ? 'document' : 'image'
+    };
   });
 
-  const hasNewFiles = promptList.length > 0;
-
-  const prompt = hasNewFiles
-    ? `<available_files>
+  const prompt =
+    newFiles.length > 0
+      ? `<available_files>
 当前对话中用户已上传以下文件：
 
-${promptList
-  .map(
-    (item) =>
-      `- 文件${item.index}: ${item.name} [${item.type === ChatFileTypeEnum.file ? 'document' : 'image'}]`
-  )
-  .join('\n')}
+${promptList.map((item) => `- 文件${item.index}: ${item.name}(${item.type})`).join('\n')}
 **重要提示**：
 - 如果用户的任务涉及文件分析、解析或处理，请在规划步骤时优先考虑使用文件解析工具
 - 在步骤的 description 中可以使用 @文件解析工具 来处理这些文件
-**文件访问说明**：
+
+${
+  useSkill
+    ? `**文件访问说明**：
 - 读取文本内容 → 使用 file_read 工具（仅支持 document 类型）
-- 将文件写入沙箱供技能处理 → 使用 sandbox_fetch_user_file 工具（支持所有类型）
+- 将文件写入沙箱供技能处理 → 使用 sandbox_fetch_user_file 工具（支持所有类型）`
+    : ''
+}
 </available_files>`
-    : '';
+      : '';
 
   return {
     filesMap,

@@ -416,16 +416,7 @@ function EditLinkModal({
           </Box>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <FormLabel>{t('publish:show_node')}</FormLabel>
-            <Switch
-              {...register('showRunningStatus', {
-                onChange(e) {
-                  if (!e.target.checked) {
-                    setValue('showSkillReferences', false);
-                  }
-                }
-              })}
-              isChecked={showRunningStatus}
-            />
+            <Switch {...register('showRunningStatus')} />
           </Flex>
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>

@@ -2,7 +2,7 @@ import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import type { IncomingHttpHeaders } from 'http';
-import { upsertProxySession, getProxySession } from './sandboxProxyUtils';
+import { upsertProxySession, getProxySession } from './proxyUtils';
 
 const dev = process.env.NODE_ENV !== 'production';
 
@@ -45,16 +45,16 @@ export async function getSandboxProxyTarget(
 
   dev &&
     console.log(
-      `[sandboxProxy] found sandbox _id=${sandbox._id} sandboxTeamId=${sandbox.detail?.teamId} authTeamId=${authTeamId} status=${sandbox.status}`
+      `[sandboxProxy] found sandbox _id=${sandbox._id} sandboxTeamId=${sandbox.metadata?.teamId} authTeamId=${authTeamId} status=${sandbox.status}`
     );
-  if (String(sandbox.detail?.teamId) !== authTeamId) {
+  if (String(sandbox.metadata?.teamId) !== authTeamId) {
     throw Object.assign(new Error('Access denied'), { statusCode: 403 });
   }
   if (sandbox.status !== SandboxStatusEnum.running) {
     throw Object.assign(new Error('Sandbox is not running'), { statusCode: 503 });
   }
 
-  const { host, protocol } = sandbox.detail!.endpoint!;
+  const { host, protocol } = sandbox.metadata!.endpoint!;
   // Cache target for subsequent cookie-less sub-requests (sandboxed iframe)
   upsertProxySession(sandboxId, authTeamId, host, protocol);
   return `${protocol}://${host}:${targetPort}`;

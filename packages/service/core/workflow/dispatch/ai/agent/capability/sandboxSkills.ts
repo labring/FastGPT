@@ -25,7 +25,7 @@ import {
   dispatchSandboxExecute,
   dispatchSandboxSearch,
   dispatchSandboxFetchUserFile
-} from '../sub/sandbox/dispatch';
+} from '../sub/sandbox/skill';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowResponseType } from '../../../type';

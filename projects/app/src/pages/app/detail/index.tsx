@@ -83,6 +83,7 @@ const Provider = () => {
 
 export async function getServerSideProps(context: any) {
   return {
+    // TODO: 精简 i18n，避免交叉使用。
     props: {
       ...(await serviceSideProps(context, [
         'app',

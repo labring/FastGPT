@@ -27,14 +27,6 @@ export const SandboxStorageSchema = z.object({
 });
 export type SandboxStorageType = z.infer<typeof SandboxStorageSchema>;
 
-export const SandboxMetadataSchema = z.object({
-  volumeEnabled: z.boolean().optional(),
-
-  teamId: z.string().optional(),
-  tmbId: z.string().optional()
-});
-export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
-
 export const SandboxImageSchema = z.object({
   repository: z.string(),
   tag: z.string().optional()
@@ -47,14 +39,20 @@ export const SandboxEndpointSchema = z.object({
   url: z.string()
 });
 
-export const SandboxDetailSchema = z.object({
+export const SandboxMetadataSchema = z.object({
   sandboxType: z.enum(SandboxTypeEnum),
+  teamId: z.string().optional(),
+  tmbId: z.string().optional(),
+
+  volumeEnabled: z.boolean().optional(),
+
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
   image: SandboxImageSchema,
   endpoint: SandboxEndpointSchema.optional()
 });
+export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 
 export const SandboxInstanceZodSchema = z.object({
   _id: z.string(),
@@ -68,7 +66,6 @@ export const SandboxInstanceZodSchema = z.object({
   limit: SandboxLimitSchema.nullish(),
   provider: SandboxProviderSchema,
   storage: SandboxStorageSchema.nullish(),
-  metadata: SandboxMetadataSchema.nullish(),
-  detail: SandboxDetailSchema.optional()
+  metadata: SandboxMetadataSchema.nullish()
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceZodSchema>;

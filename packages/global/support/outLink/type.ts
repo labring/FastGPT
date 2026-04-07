@@ -125,11 +125,11 @@ export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
 
 export const PlaygroundVisibilityConfigSchema = z.object({
   showRunningStatus: z.boolean(),
-  showSkillReferences: z.boolean(),
-  showCite: z.boolean(),
-  showFullText: z.boolean(),
-  canDownloadSource: z.boolean(),
-  showWholeResponse: z.boolean()
+  showSkillReferences: z.boolean().optional().default(true),
+  showCite: z.boolean().optional().default(true),
+  showFullText: z.boolean().optional().default(true),
+  canDownloadSource: z.boolean().optional().default(true),
+  showWholeResponse: z.boolean().optional().default(true)
 });
 
 export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;

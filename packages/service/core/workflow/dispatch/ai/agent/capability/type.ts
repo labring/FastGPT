@@ -7,7 +7,7 @@ export type CapabilityToolCallResult = {
   assistantResponses?: AIChatItemValueItemType[];
 };
 
-export type CapabilityToolCallHandler = (
+export type CapabilityToolCallHandlerType = (
   toolId: string,
   args: string,
   toolCallId: string
@@ -33,7 +33,7 @@ export type AgentCapability = {
 // Create a composite tool call handler that tries each capability in order
 export function createCapabilityToolCallHandler(
   capabilities: AgentCapability[]
-): CapabilityToolCallHandler {
+): CapabilityToolCallHandlerType {
   return async (
     toolId: string,
     args: string,

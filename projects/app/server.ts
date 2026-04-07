@@ -35,8 +35,8 @@ async function main() {
   // Import pure utilities from sandboxProxyUtils — no service-layer deps, safe in tsx CJS mode.
   // getSandboxProxyTarget is NOT imported here; auth is delegated to the proxyAuth API route.
   const { parseSubdomainProxy, rewriteHtml, redeemRelayToken } = (await import(
-    './src/service/sandboxProxyUtils'
-  )) as typeof import('./src/service/sandboxProxyUtils');
+    './src/service/core/sandbox/proxyUtils'
+  )) as typeof import('./src/service/core/sandbox/proxyUtils');
 
   const proxy = httpProxy.createProxyServer({ xfwd: true, changeOrigin: true });
   proxy.on(
