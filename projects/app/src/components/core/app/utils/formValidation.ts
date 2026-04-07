@@ -1,6 +1,10 @@
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useCallback } from 'react';
+import {
+  validateVariableIdentifier,
+  workflowVariableReservedKeys
+} from '@fastgpt/global/core/app/variableIdentifier';
 
 export const useValidateFieldName = () => {
   const { t } = useTranslation();
@@ -61,6 +65,46 @@ export const useValidateFieldName = () => {
   );
 
   return validateFieldName;
+};
+
+export const useValidateFieldKey = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  const validateFieldKey = useCallback(
+    (
+      key: string,
+      options?: {
+        existingKeys?: string[];
+        reservedKeys?: readonly string[];
+        currentKey?: string;
+      }
+    ) => {
+      const result = validateVariableIdentifier(key, {
+        reservedKeys: workflowVariableReservedKeys,
+        ...options
+      });
+
+      if (result.valid) return true;
+
+      const titleMap = {
+        required: t('app:variable_key_required'),
+        invalid_format: t('app:variable_key_invalid'),
+        duplicate: t('workflow:field_name_already_exists'),
+        system_conflict: t('app:variable_key_system_conflict')
+      } as const;
+
+      toast({
+        status: 'warning',
+        title: titleMap[result.reason]
+      });
+
+      return false;
+    },
+    [t, toast]
+  );
+
+  return validateFieldKey;
 };
 
 export const useSubmitErrorHandler = () => {

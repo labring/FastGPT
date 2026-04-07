@@ -27,7 +27,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
   });
 
   beforeUpdateAppFormat({
-    nodes
+    nodes,
+    chatConfig
   });
   updateParentFoldersUpdateTime({
     parentId: app.parentId

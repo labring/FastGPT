@@ -109,7 +109,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
     // format nodes data
     // 1. dataset search limit, less than model quoteMaxToken
     beforeUpdateAppFormat({
-      nodes
+      nodes,
+      chatConfig
     });
 
     if (app.type === AppTypeEnum.mcpToolSet && avatar) {
