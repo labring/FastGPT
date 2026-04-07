@@ -73,10 +73,10 @@ export const downloadSandbox = async (data: {
   const a = document.createElement('a');
   a.href = url;
 
-  // 从响应头获取文件名
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const fileNameMatch = contentDisposition?.match(/filename="(.+)"/);
-  const fileName = fileNameMatch ? fileNameMatch[1] : `download-${Date.now()}.zip`;
+  // 解析文件名
+  const contentDisposition = response.headers.get('Content-Disposition') || '';
+  const match = contentDisposition.match(/filename="?([^";]+)"?/i);
+  const fileName = match ? decodeURIComponent(match[1]) : `download-${Date.now()}.zip`;
 
   a.download = fileName;
   document.body.appendChild(a);

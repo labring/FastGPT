@@ -42,13 +42,16 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   // 通过 getFileInfo 准确判断路径是文件还是目录
   const fileInfoMap = await sandbox.provider.getFileInfo([path]);
   const fileInfo = fileInfoMap.get(path);
-  const isDirectory = fileInfo?.isDirectory ?? path.endsWith('/');
+  const isDirectory = fileInfo?.isDirectory ?? (path === '.' || path === '' || path.endsWith('/'));
 
   if (isDirectory) {
     // 下载目录为 ZIP
-    const fileName = path.split('/').filter(Boolean).pop() || 'workspace';
+    const isRoot = path === '.' || path === '' || path === '/';
+    const rawFileName = isRoot ? 'workspace' : path.split('/').filter(Boolean).pop() || 'workspace';
+    const fileName = encodeURIComponent(`${rawFileName}-${Date.now()}.zip`);
+
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}-${Date.now()}.zip"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 
     const archive = archiver('zip', {
       zlib: { level: 9 }
@@ -59,7 +62,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     });
 
     archive.pipe(res);
-
     // 递归添加文件到 ZIP
     await addDirectoryToArchive(sandbox, archive, path, '');
 
@@ -73,14 +75,15 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       return Promise.reject('Failed to read file');
     }
 
-    const fileName = path.split('/').pop() || 'file';
+    const rawFileName = path.split('/').pop() || 'file';
+    const fileName = encodeURIComponent(rawFileName);
 
     if (preview) {
-      // 预览逻辑: 设置内容类型，不强制下载
+      // 预览逻辑
       const contentType = mime.getType(path) || 'application/octet-stream';
       res.setHeader('Content-Type', contentType);
     } else {
-      // 下载逻辑: 强制下载
+      // 下载逻辑
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     }
