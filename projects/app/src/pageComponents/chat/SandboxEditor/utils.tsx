@@ -93,7 +93,59 @@ export const getLanguageByExtension = (ext?: string): string => {
     toml: 'toml',
     ini: 'ini',
     conf: 'plaintext',
-    config: 'plaintext'
+    config: 'plaintext',
+    plaintext: 'plaintext'
   };
-  return langMap[ext?.toLowerCase() || ''] || 'plaintext';
+  return langMap[ext?.toLowerCase() ?? 'plaintext'];
+};
+
+// Update tree node
+export const updateTreeNode = <
+  T extends {
+    type: 'file' | 'directory';
+    name: string;
+    path: string;
+    children?: T[];
+    loaded?: boolean;
+  }
+>(
+  tree: T[],
+  targetPath: string,
+  children: T[],
+  loaded: boolean = false
+): T[] => {
+  return tree.map((node) => {
+    if (node.path === targetPath) {
+      return { ...node, children, loaded } as T;
+    }
+    if (node.children) {
+      return { ...node, children: updateTreeNode(node.children, targetPath, children, loaded) };
+    }
+    return node;
+  });
+};
+
+// Filter tree
+export const filterTree = <
+  T extends { type: 'file' | 'directory'; name: string; path: string; children?: T[] }
+>(
+  nodes: T[],
+  query: string
+): T[] => {
+  if (!query) return nodes;
+
+  return nodes
+    .map((node) => {
+      if (node.type === 'file' && node.name.toLowerCase().includes(query.toLowerCase())) {
+        return node;
+      }
+      if (node.children) {
+        const filteredChildren = filterTree(node.children, query);
+        if (filteredChildren.length > 0) {
+          return { ...node, children: filteredChildren } as T;
+        }
+      }
+      return null;
+    })
+    .filter((node): node is T => node !== null);
 };

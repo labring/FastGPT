@@ -3,7 +3,6 @@ import React from 'react';
 import type { Props as EditorProps } from './Editor';
 import SandboxEditor from './Editor';
 import { useTranslation } from 'next-i18next';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type Props = EditorProps & {
   onClose: () => void;
