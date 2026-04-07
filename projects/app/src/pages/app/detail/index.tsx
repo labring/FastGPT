@@ -11,30 +11,12 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 
-const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const MCPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/MCPTools'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/HTTPTools'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
+const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'));
+const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'));
+const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'));
+const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'));
+const MCPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/MCPTools'));
+const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/HTTPTools'));
 
 const AppDetail = () => {
   const { setAppId, setSource } = useChatStore();

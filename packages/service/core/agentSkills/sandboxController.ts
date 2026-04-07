@@ -32,7 +32,7 @@ import type {
 } from '@fastgpt/global/core/agentSkills/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxClient } from '../ai/sandbox/controller';
+import { getSandboxClient } from '../ai/sandbox/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { env } from '../../env';
@@ -130,7 +130,7 @@ export async function createEditDebugSandbox(
   const existingInstance = await MongoSandboxInstance.findOne({
     appId: skillId,
     chatId: EDIT_DEBUG_CHAT_ID,
-    'detail.sandboxType': SandboxTypeEnum.editDebug
+    'metadata.sandboxType': SandboxTypeEnum.editDebug
   });
 
   if (existingInstance?.status === SandboxStatusEnum.running) {
@@ -140,7 +140,7 @@ export async function createEditDebugSandbox(
       sandboxId: existingInstance.sandboxId
     });
 
-    const endpointInfo = existingInstance.detail!.endpoint!;
+    const endpointInfo = existingInstance.metadata!.endpoint!;
 
     await MongoSandboxInstance.updateOne(
       { _id: existingInstance._id },
@@ -159,8 +159,8 @@ export async function createEditDebugSandbox(
       providerSandboxId: existingInstance.sandboxId,
       endpoint: endpointInfo,
       status: {
-        state: existingInstance.detail!.providerStatus.state,
-        message: existingInstance.detail!.providerStatus.message
+        state: existingInstance.status
+        // message: existingInstance.metadata!.providerStatus.message
       }
     };
   }
@@ -188,8 +188,8 @@ export async function createEditDebugSandbox(
         {
           status: SandboxStatusEnum.running,
           lastActiveAt: new Date(),
-          'detail.endpoint': endpointInfo,
-          'detail.providerStatus': { state: 'Running' }
+          'metadata.endpoint': endpointInfo,
+          'metadata.providerStatus': { state: 'Running' }
         }
       );
 
@@ -237,7 +237,7 @@ export async function createEditDebugSandbox(
   if (maxEditDebug !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
       status: SandboxStatusEnum.running,
-      'detail.sandboxType': SandboxTypeEnum.editDebug
+      'metadata.sandboxType': SandboxTypeEnum.editDebug
     });
     if (activeCount >= maxEditDebug) {
       const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
@@ -336,7 +336,7 @@ export async function createEditDebugSandbox(
             status: SandboxStatusEnum.running,
             lastActiveAt: new Date(),
             createdAt: new Date(),
-            detail: {
+            metadata: {
               sandboxType: SandboxTypeEnum.editDebug,
               teamId,
               tmbId,
@@ -418,7 +418,7 @@ export async function getSandboxInfo(
 
   const sandbox = await MongoSandboxInstance.findOne({
     _id: sandboxId,
-    'detail.teamId': teamId
+    'metadata.teamId': teamId
   });
 
   if (!sandbox) {
@@ -436,7 +436,7 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
 
   const instanceDoc = await MongoSandboxInstance.findOne({
     _id: sandboxId,
-    'detail.teamId': teamId
+    'metadata.teamId': teamId
   });
 
   if (!instanceDoc) {
@@ -445,7 +445,8 @@ export async function deleteSandbox(params: DeleteSandboxParams): Promise<void> 
 
   addLog.info('[Sandbox] Deleting sandbox', { sandboxId });
 
-  new SandboxClient({ sandboxId: instanceDoc.sandboxId }).delete().catch((err) => {
+  const client = await getSandboxClient({ sandboxId: instanceDoc.sandboxId });
+  await client.delete().catch((err) => {
     addLog.error('[Sandbox] Failed to delete sandbox', {
       sandboxId: instanceDoc.sandboxId,
       error: err
@@ -462,7 +463,7 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
 
   // Find all sandbox instances related to these skills
   const instances = await MongoSandboxInstance.find({
-    $or: [{ appId: { $in: skillIds } }, { 'detail.skillId': { $in: skillIds } }]
+    $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
   }).lean();
 
   if (instances.length === 0) return;
@@ -473,14 +474,15 @@ export async function deleteSkillRelatedSandboxes(skillIds: string[]): Promise<v
   });
 
   await Promise.allSettled(
-    instances.map((doc) =>
-      new SandboxClient({ sandboxId: doc.sandboxId }).delete().catch((err) => {
+    instances.map(async (doc) => {
+      const client = await getSandboxClient({ sandboxId: doc.sandboxId });
+      await client.delete().catch((err) => {
         addLog.error('[Sandbox] Failed to delete sandbox', {
           sandboxId: doc.sandboxId,
           error: err
         });
-      })
-    )
+      });
+    })
   );
 }
 

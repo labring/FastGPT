@@ -192,7 +192,7 @@ export async function createAgentSandbox(
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
   const existingInstance = await MongoSandboxInstance.findOne({
     chatId: sessionId,
-    'detail.sandboxType': SandboxTypeEnum.sessionRuntime
+    'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
   });
 
   if (existingInstance) {
@@ -218,8 +218,8 @@ export async function createAgentSandbox(
       { lastActiveAt: new Date() }
     );
 
-    const reusedSkillIds = existingInstance.detail?.skillIds
-      ? existingInstance.detail.skillIds.map(String)
+    const reusedSkillIds = existingInstance.metadata?.skillIds
+      ? existingInstance.metadata.skillIds.map(String)
       : skillIds;
     const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
 
@@ -275,7 +275,7 @@ export async function createAgentSandbox(
   if (maxSessionRuntime !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
       status: SandboxStatusEnum.running,
-      'detail.sandboxType': SandboxTypeEnum.sessionRuntime
+      'metadata.sandboxType': SandboxTypeEnum.sessionRuntime
     });
     if (activeCount >= maxSessionRuntime) {
       const message = `Active session-runtime sandbox limit reached (${activeCount}/${maxSessionRuntime}). Please try again later.`;
@@ -356,7 +356,7 @@ export async function createAgentSandbox(
       status: SandboxStatusEnum.running,
       lastActiveAt: new Date(),
       createdAt: new Date(),
-      detail: {
+      metadata: {
         sandboxType: SandboxTypeEnum.sessionRuntime,
         teamId,
         tmbId,
@@ -443,7 +443,7 @@ export async function connectEditDebugSandbox(
   const instanceDoc = await MongoSandboxInstance.findOne({
     appId: skillId,
     chatId: 'edit-debug',
-    'detail.sandboxType': SandboxTypeEnum.editDebug
+    'metadata.sandboxType': SandboxTypeEnum.editDebug
   });
   if (!instanceDoc) {
     throw new Error('No active edit-debug sandbox found for this skill');

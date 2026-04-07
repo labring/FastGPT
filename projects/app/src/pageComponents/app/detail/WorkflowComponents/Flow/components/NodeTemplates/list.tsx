@@ -371,7 +371,7 @@ const NodeTemplateList = ({
         }, {});
 
         templates.forEach((item) => {
-          if (showSkill && item.flowNodeType === FlowNodeTypeEnum.agent) {
+          if (!showSkill && item.flowNodeType === FlowNodeTypeEnum.agent) {
             return;
           }
           if (item.templateType && map[item.templateType]) {
