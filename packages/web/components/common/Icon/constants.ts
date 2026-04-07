@@ -40,6 +40,7 @@ export const iconPaths = {
   'common/downArrowFill': () => import('./icons/common/downArrowFill.svg'),
   'common/download': () => import('./icons/common/download.svg'),
   'common/downloadLine': () => import('./icons/common/downloadLine.svg'),
+  'common/htmlPreview': () => import('./icons/common/htmlPreview.svg'),
   'common/edit': () => import('./icons/common/edit.svg'),
   'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
   'common/ellipsis': () => import('./icons/common/ellipsis.svg'),

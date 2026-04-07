@@ -105,6 +105,8 @@
   "sandbox_entry_tooltip": "View Sandbox files",
   "sandbox_files": "Sandbox files",
   "sandbox_no_file": "There are no files in the sandbox yet",
+  "sandbox_source": "Source",
+  "sandbox_preview": "Preview",
   "sandbox_binary_file_no_preview": "The file cannot be previewed, please download and view it directly",
   "sandbox_search_files": "Search files",
   "sandbox_select_file_edit": "Select a file to edit",

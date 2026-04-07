@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, IconButton, Center } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Editor from '@monaco-editor/react';
 import { useTranslation } from 'next-i18next';
 import type { OpenedFile } from './FileTabs';
+import Markdown from '@fastgpt/web/components/common/Markdown';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
@@ -33,6 +36,14 @@ const EditorContent = ({
   isUpdatingRef
 }: Props) => {
   const { t } = useTranslation();
+  const [viewMode, setViewMode] = useState<'source' | 'preview'>('source');
+
+  const handleHtmlPreview = () => {
+    if (!activeFile) return;
+    const blob = new Blob([activeFile.content], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
 
   const renderFileContent = () => {
     if (!activeFile) return null;
@@ -46,11 +57,7 @@ const EditorContent = ({
         return (
           <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
             <Box position="relative" maxW="100%" maxH="100%">
-              <img
-                src={content}
-                alt={name}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-              />
+              <MyPhotoView src={content} alt={name} maxW="100%" maxH="100%" objectFit="contain" />
             </Box>
           </Center>
         );
@@ -76,10 +83,37 @@ const EditorContent = ({
         );
       }
 
-      return <Center h="full">{t('chat:sandbox_binary_file_no_preview')}</Center>;
+      return t('chat:sandbox_binary_file_no_preview');
     }
 
-    // 文本文件 (包含 html/md/svg)
+    // 文本文件预览模式
+    if (viewMode === 'preview') {
+      const { language, content } = activeFile;
+      if (language === 'markdown') {
+        return (
+          <Box h="full" overflow="auto" bg="white">
+            <Markdown source={content} />
+          </Box>
+        );
+      }
+      if (language === 'svg') {
+        return (
+          <Center h="full" bg="myGray.50" borderRadius="md" overflow="auto">
+            <Box
+              dangerouslySetInnerHTML={{ __html: content }}
+              sx={{
+                svg: {
+                  maxW: '100%',
+                  maxH: '100%'
+                }
+              }}
+            />
+          </Center>
+        );
+      }
+    }
+
+    // 文本文件源码模式 (Monaco Editor)
     return (
       <Editor
         height="100%"
@@ -166,6 +200,30 @@ const EditorContent = ({
           {activeFile?.name || ''}
         </Box>
         <Flex align="center" gap={2}>
+          {/* HTML Preview Icon */}
+          {activeFile?.language === 'html' && (
+            <IconButton
+              size="sm"
+              icon={<MyIcon name="common/htmlPreview" w="16px" />}
+              aria-label={'Preview'}
+              onClick={handleHtmlPreview}
+              variant="whiteBase"
+            />
+          )}
+          {/* MD/SVG Toggle Preview Switch */}
+          {(activeFile?.language === 'markdown' || activeFile?.language === 'svg') && (
+            <FillRowTabs
+              list={[
+                { label: t('chat:sandbox_source'), value: 'source' },
+                { label: t('chat:sandbox_preview'), value: 'preview' }
+              ]}
+              value={viewMode}
+              onChange={(v) => setViewMode(v as any)}
+              py="1"
+              px="2"
+              fontSize="xs"
+            />
+          )}
           {activeFilePath && (
             <IconButton
               size="sm"

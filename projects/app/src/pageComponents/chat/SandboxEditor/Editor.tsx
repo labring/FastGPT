@@ -318,6 +318,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
                 closeFile={closeFile}
               />
               <EditorContent
+                key={activeFilePath}
                 activeFile={activeFile}
                 activeFilePath={activeFilePath}
                 saving={saving}
