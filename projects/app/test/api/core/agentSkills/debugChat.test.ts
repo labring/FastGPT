@@ -311,7 +311,7 @@ describe('debugChat handler — parameter validation', () => {
       chatId: 'edit-debug',
       userId: testUser.tmbId,
       status: 'running',
-      detail: {
+      metadata: {
         sandboxType: 'edit-debug',
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,

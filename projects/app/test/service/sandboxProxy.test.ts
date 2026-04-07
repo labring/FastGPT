@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseSubdomainProxy, rewriteHtml } from '@/service/sandboxProxyUtils';
+import { parseSubdomainProxy, rewriteHtml } from '@/service/core/sandbox/proxyUtils';
 
 describe('parseSubdomainProxy', () => {
   it('returns null for undefined host', () => {

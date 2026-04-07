@@ -51,7 +51,8 @@ describe('sandboxConfig provider helpers', () => {
             repository: 'fastgpt-agent-sandbox',
             tag: 'latest'
           }
-        }
+        },
+        providerSandboxId: ''
       }
     );
 
@@ -59,7 +60,9 @@ describe('sandboxConfig provider helpers', () => {
     expect((result as any).connectionConfig).toEqual({
       apiKey: 'api-key',
       baseUrl: 'http://sandbox.local',
-      runtime: 'kubernetes'
+      runtime: 'kubernetes',
+      useServerProxy: undefined,
+      sessionId: ''
     });
     expect((result as any).createConfig).toEqual({
       image: {
@@ -99,12 +102,23 @@ describe('sandboxConfig provider helpers', () => {
     const connectMock = vi
       .spyOn(
         Object.getPrototypeOf(
-          buildSandboxAdapter({
-            provider: 'opensandbox',
-            baseUrl: 'http://sandbox.local',
-            apiKey: 'api-key',
-            runtime: 'docker'
-          })
+          buildSandboxAdapter(
+            {
+              provider: 'opensandbox',
+              baseUrl: 'http://sandbox.local',
+              apiKey: 'api-key',
+              runtime: 'docker'
+            },
+            {
+              providerSandboxId: 'sandbox-1',
+              createConfig: {
+                image: {
+                  repository: 'fastgpt-agent-sandbox',
+                  tag: 'latest'
+                }
+              }
+            }
+          )
         ),
         'connect'
       )
