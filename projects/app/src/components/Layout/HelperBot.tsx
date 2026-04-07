@@ -128,7 +128,7 @@ const HelperBot = () => {
           {/* iframe */}
           <Box
             as="iframe"
-            src={`${botIframeUrl}&showWorkorder=1`}
+            src={`${botIframeUrl}`}
             w={'100%'}
             h={'100%'}
             border={'none'}
