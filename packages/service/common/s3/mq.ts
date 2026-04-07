@@ -35,7 +35,7 @@ export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
       return undefined;
     }
     if (data.prefix) {
-      return `${data.bucketName}:${data.prefix}`;
+      return `${data.bucketName}-${data.prefix}`;
     }
     throw new Error('Invalid s3 delete job data');
   })();

@@ -6,6 +6,7 @@ import {
   SANDBOX_SHELL_TOOL
 } from '../../../ai/sandbox/constants';
 import type { I18nStringType } from '../../../../common/i18n/type';
+import { skillToolsMap } from './skillTools';
 
 export enum SubAppIds {
   plan = 'plan_agent',
@@ -76,5 +77,6 @@ export const systemSubInfo: Record<
     },
     avatar: 'core/workflow/template/agent',
     toolDescription: '调用 LLM 模型完成一些通用任务。'
-  }
+  },
+  ...skillToolsMap
 };

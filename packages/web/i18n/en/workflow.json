@@ -170,6 +170,12 @@
   "target_fields_description": "A target field consists of 'description' and 'key'. Multiple target fields can be extracted.",
   "template.agent": "Agent",
   "template.agent_intro": "Automatically select one or more functional blocks for calling through the AI model, or call plugins.",
+  "template.agent_module": "Agent",
+  "template.agent_module_intro": "Associate required tools and Skills to enable AI-driven autonomous invocation and planning",
+  "agent.tools": "Tools",
+  "agent.prompt_skill_tip": "@ to select Skills and tools, \"/\" to select variables",
+  "agent.select_skill": "Select Skill",
+  "agent.select_tool": "Select Tool",
   "template.ai_chat": "AI Chat",
   "template.ai_chat_intro": "AI Large Model Chat",
   "template.dataset_search": "Dataset Search",
@@ -218,5 +224,6 @@
   "workflow.My edit": "My Edit",
   "workflow.Switch_success": "Switch Successful",
   "workflow.Team cloud": "Team Cloud",
-  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits."
+  "workflow.exit_tips": "Your changes have not been saved. 'Exit directly' will not save your edits.",
+  "params_setting": "Parameters"
 }

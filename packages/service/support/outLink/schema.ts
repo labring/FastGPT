@@ -48,6 +48,10 @@ const OutLinkSchema = new Schema({
     type: Boolean,
     default: false
   },
+  showSkillReferences: {
+    type: Boolean,
+    default: false
+  },
   showCite: {
     type: Boolean,
     default: false

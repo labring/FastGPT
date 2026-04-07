@@ -17,6 +17,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   agent = 'agent',
+  skill = 'skill',
   tool = 'tool',
   system_tool = 'systemTool',
   app_templates = 'templateMarket',
@@ -126,6 +127,16 @@ const DashboardContainer = ({
           }
         ]
       },
+      ...(feConfigs?.show_skill
+        ? [
+            {
+              groupId: TabEnum.skill,
+              groupAvatar: 'common/skill',
+              groupName: 'Skill',
+              children: []
+            }
+          ]
+        : []),
       {
         groupId: TabEnum.tool,
         groupAvatar: 'core/app/type/plugin',
@@ -207,7 +218,15 @@ const DashboardContainer = ({
           ]
         : [])
     ];
-  }, [currentType, feConfigs.appTemplateCourse, feConfigs?.isPlus, t, templateList, templateTags]);
+  }, [
+    currentType,
+    feConfigs.appTemplateCourse,
+    feConfigs?.isPlus,
+    feConfigs?.show_skill,
+    t,
+    templateList,
+    templateTags
+  ]);
 
   const MenuIcon = useMemo(
     () => (

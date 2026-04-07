@@ -50,7 +50,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
   [FlowNodeTypeEnum.stopTool]: NodeStopTool,
-  [FlowNodeTypeEnum.agent]: undefined,
+  [FlowNodeTypeEnum.agent]: dynamic(() => import('./nodes/NodeAgent')),
   [FlowNodeTypeEnum.toolCall]: dynamic(() => import('./nodes/NodeToolCall')),
   [FlowNodeTypeEnum.tool]: NodeSimple,
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),

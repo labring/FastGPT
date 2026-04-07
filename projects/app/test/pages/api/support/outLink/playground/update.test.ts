@@ -42,7 +42,9 @@ describe('Playground Visibility Update API', () => {
       showRunningStatus: false,
       showCite: false,
       showFullText: false,
-      canDownloadSource: false
+      canDownloadSource: false,
+      showSkillReferences: false,
+      showWholeResponse: false
     };
 
     const res = await Call(updateApi.default, {
@@ -61,7 +63,7 @@ describe('Playground Visibility Update API', () => {
       }).lean();
 
       if (createdConfig) {
-        expect(createdConfig.appId).toBe(testApp._id);
+        expect(String(createdConfig.appId)).toBe(String(testApp._id));
         expect(createdConfig.type).toBe(PublishChannelEnum.playground);
         expect(createdConfig.showRunningStatus).toBe(false);
         expect(createdConfig.showCite).toBe(false);
@@ -81,7 +83,9 @@ describe('Playground Visibility Update API', () => {
       showRunningStatus: true,
       showCite: true,
       showFullText: true,
-      canDownloadSource: true
+      canDownloadSource: true,
+      showSkillReferences: true,
+      showWholeResponse: true
     };
 
     const res = await Call(updateApi.default, {
@@ -118,7 +122,9 @@ describe('Playground Visibility Update API', () => {
       showRunningStatus: false,
       showCite: true,
       showFullText: false,
-      canDownloadSource: true
+      canDownloadSource: true,
+      showSkillReferences: true,
+      showWholeResponse: true
     };
 
     const res = await Call(updateApi.default, {
@@ -169,7 +175,9 @@ describe('Playground Visibility Update API', () => {
       showRunningStatus: false,
       showCite: false,
       showFullText: false,
-      canDownloadSource: false
+      canDownloadSource: false,
+      showSkillReferences: false,
+      showWholeResponse: false
     };
 
     const res = await Call(updateApi.default, {
@@ -187,7 +195,9 @@ describe('Playground Visibility Update API', () => {
       showRunningStatus: false,
       showCite: false,
       showFullText: false,
-      canDownloadSource: false
+      canDownloadSource: false,
+      showSkillReferences: false,
+      showWholeResponse: false
     };
 
     const res = await Call(updateApi.default, {
@@ -202,7 +212,9 @@ describe('Playground Visibility Update API', () => {
     // Test with missing boolean fields (should fail validation)
     const updateData = {
       appId: testApp._id,
-      showRunningStatus: false
+      showRunningStatus: false,
+      showSkillReferences: false,
+      showWholeResponse: false
       // Missing other boolean fields
     };
 
@@ -246,7 +258,9 @@ describe('Playground Visibility Update API', () => {
       showRunningStatus: false,
       showCite: false,
       showFullText: true,
-      canDownloadSource: true
+      canDownloadSource: true,
+      showSkillReferences: true,
+      showWholeResponse: true
     };
 
     const res = await Call(updateApi.default, {

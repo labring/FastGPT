@@ -21,6 +21,10 @@ export enum SseResponseEventEnum {
   plan = 'plan', // plan response
   stepTitle = 'stepTitle', // step title response
 
+  // Sandbox lifecycle
+  sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
+  skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
+
   // Helperbot
   collectionForm = 'collectionForm', // collection form for HelperBot
   topAgentConfig = 'topAgentConfig' // form data for TopAgent

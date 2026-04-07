@@ -1,5 +1,6 @@
 import { type Monaco } from '@monaco-editor/react';
 import { useCallback } from 'react';
+import { type CompletionModel, type CompletionPosition } from './type';
 
 let monacoInstance: Monaco | null = null;
 
@@ -10,7 +11,7 @@ const usePythonCompletion = () => {
 
     monaco.languages.registerCompletionItemProvider('python', {
       triggerCharacters: ['_'],
-      provideCompletionItems: (model, position) => {
+      provideCompletionItems: (model: CompletionModel, position: CompletionPosition) => {
         const wordInfo = model.getWordUntilPosition(position);
         const currentWordPrefix = wordInfo.word;
         const lineContent = model.getLineContent(position.lineNumber);

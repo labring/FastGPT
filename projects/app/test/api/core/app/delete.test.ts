@@ -85,7 +85,7 @@ describe('App Delete Queue', () => {
       });
 
       expect(mockQueue.add).toHaveBeenCalledWith('delete_app', jobData, {
-        jobId: 'team-123:app-123',
+        jobId: 'team-123-app-123',
         delay: 1000
       });
 
@@ -109,7 +109,7 @@ describe('App Delete Queue', () => {
         'delete_app',
         jobData,
         expect.objectContaining({
-          jobId: 'team-xyz:app-abc'
+          jobId: 'team-xyz-app-abc'
         })
       );
     });
@@ -161,7 +161,7 @@ describe('App Delete API Integration', () => {
         appId: String(testApp._id)
       },
       {
-        jobId: `${rootUser.teamId}:${testApp._id}`,
+        jobId: `${rootUser.teamId}-${testApp._id}`,
         delay: 1000
       }
     );

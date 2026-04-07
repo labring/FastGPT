@@ -21,7 +21,10 @@ import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
 import { dispatchPlanAgent } from '../sub/plan';
 import type { WorkflowResponseItemType } from '../../../type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
@@ -37,6 +40,7 @@ import {
   SandboxGetFileUrlToolSchema
 } from '@fastgpt/global/core/ai/sandbox/constants';
 import { dispatchSandboxShell, dispatchSandboxGetFileUrl } from '../sub/sandbox';
+import type { CapabilityToolCallHandlerType } from '../capability/type';
 
 type Response = {
   stepResponse?: {
@@ -47,6 +51,7 @@ type Response = {
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   masterMessages: ChatCompletionMessageParam[];
+  capabilityAssistantResponses?: AIChatItemValueItemType[];
 
   nodeResponse: ChatHistoryItemResType;
 };
@@ -61,6 +66,7 @@ export const masterCall = async ({
   filesMap,
   steps,
   step,
+  capabilityToolCallHandler,
   ...props
 }: DispatchAgentModuleProps & {
   masterMessages: ChatCompletionMessageParam[];
@@ -75,6 +81,9 @@ export const masterCall = async ({
   // Step call
   steps?: AgentStepItemType[];
   step?: AgentStepItemType;
+
+  // Capability tool call handler
+  capabilityToolCallHandler?: CapabilityToolCallHandlerType;
 }): Promise<Response> => {
   const {
     checkIsStopping,
@@ -100,6 +109,7 @@ export const masterCall = async ({
 
   const startTime = Date.now();
   const childrenResponses: ChatHistoryItemResType[] = [];
+  const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
   const isStepCall = steps && step;
   const stepId = step?.id;
   const stepStreamResponse = (args: WorkflowResponseItemType) => {
@@ -189,7 +199,8 @@ export const masterCall = async ({
         content: getMasterSystemPrompt({
           systemPrompt,
           hasUserTools,
-          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox
+          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+          hasSandboxSkills: !!capabilityToolCallHandler
         })
       },
       ...masterMessages
@@ -474,142 +485,167 @@ export const masterCall = async ({
             }
           }
 
-          // User Sub App
-          else {
-            const tool = getSubApp(toolId);
-            if (!tool) {
-              return {
-                response: `Can't find the tool ${toolId}`,
-                usages: []
-              };
+          // TODO: 所有内置工具，合并成一个 function
+          // Capability tools (e.g. sandbox skills)
+          const capResult = await capabilityToolCallHandler?.(
+            toolId,
+            call.function.arguments ?? '',
+            callId
+          );
+          if (capResult != null) {
+            if (capResult.assistantResponses?.length) {
+              capabilityAssistantResponses.push(...capResult.assistantResponses);
             }
-            const toolCallParams = parseJsonArgs(call.function.arguments);
-
-            if (call.function.arguments && !toolCallParams) {
-              return {
-                response: 'Params is not object',
-                usages: []
-              };
-            }
-
-            // Get params
-            const requestParams = {
-              ...tool.params,
-              ...toolCallParams
+            const subInfo = getSubAppInfo(toolId);
+            childrenResponses.push({
+              nodeId: callId,
+              id: callId,
+              moduleType: FlowNodeTypeEnum.tool,
+              moduleName: subInfo.name,
+              moduleLogo: subInfo.avatar,
+              toolInput: parseJsonArgs(call.function.arguments),
+              toolRes: capResult.response
+            });
+            return {
+              response: capResult.response,
+              usages: capResult.usages || []
             };
-            // Remove sensitive data
+          }
 
-            if (tool.type === 'tool') {
-              const { response, usages, runningTime, toolParams, result } = await dispatchTool({
-                tool: {
-                  name: tool.name,
-                  version: tool.version,
-                  toolConfig: tool.toolConfig
-                },
-                params: requestParams,
-                runningUserInfo,
-                runningAppInfo,
-                chatId,
-                uid,
-                variables,
-                workflowStreamResponse: stepStreamResponse
-              });
+          // User Sub App
+          const tool = getSubApp(toolId);
+          if (!tool) {
+            return {
+              response: `Can't find the tool ${toolId}`,
+              usages: []
+            };
+          }
+          const toolCallParams = parseJsonArgs(call.function.arguments);
 
-              childrenResponses.push({
-                nodeId: callId,
-                id: callId,
-                runningTime,
-                moduleType: FlowNodeTypeEnum.tool,
-                moduleName: tool.name,
-                moduleLogo: tool.avatar,
-                toolInput: toolParams,
-                toolRes: result || response,
-                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-              });
-              return {
-                response,
-                usages
-              };
-            } else if (tool.type === 'workflow') {
-              const { userChatInput, ...params } = requestParams;
+          if (call.function.arguments && !toolCallParams) {
+            return {
+              response: 'Params is not object',
+              usages: []
+            };
+          }
 
-              const { response, runningTime, usages } = await dispatchApp({
-                appId: tool.id,
-                userChatInput: userChatInput,
-                customAppVariables: params,
-                checkIsStopping,
-                lang: props.lang,
-                requestOrigin: props.requestOrigin,
-                mode: props.mode,
-                timezone: props.timezone,
-                externalProvider: props.externalProvider,
-                runningAppInfo: props.runningAppInfo,
-                runningUserInfo: props.runningUserInfo,
-                retainDatasetCite: props.retainDatasetCite,
-                maxRunTimes: props.maxRunTimes,
-                workflowDispatchDeep: props.workflowDispatchDeep,
-                variables: props.variables
-              });
+          // Get params
+          const requestParams = {
+            ...tool.params,
+            ...toolCallParams
+          };
+          // Remove sensitive data
 
-              childrenResponses.push({
-                nodeId: callId,
-                id: callId,
-                runningTime,
-                moduleType: FlowNodeTypeEnum.appModule,
-                moduleName: tool.name,
-                moduleLogo: tool.avatar,
-                toolInput: requestParams,
-                toolRes: response,
-                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-              });
+          if (tool.type === 'tool') {
+            const { response, usages, runningTime, toolParams, result } = await dispatchTool({
+              tool: {
+                name: tool.name,
+                version: tool.version,
+                toolConfig: tool.toolConfig
+              },
+              params: requestParams,
+              runningUserInfo,
+              runningAppInfo,
+              chatId,
+              uid,
+              variables,
+              workflowStreamResponse: stepStreamResponse
+            });
 
-              return {
-                response,
-                usages,
-                runningTime
-              };
-            } else if (tool.type === 'toolWorkflow') {
-              const { response, result, runningTime, usages } = await dispatchPlugin({
-                appId: tool.id,
-                userChatInput: '',
-                customAppVariables: requestParams,
-                checkIsStopping,
-                lang: props.lang,
-                requestOrigin: props.requestOrigin,
-                mode: props.mode,
-                timezone: props.timezone,
-                externalProvider: props.externalProvider,
-                runningAppInfo: props.runningAppInfo,
-                runningUserInfo: props.runningUserInfo,
-                retainDatasetCite: props.retainDatasetCite,
-                maxRunTimes: props.maxRunTimes,
-                workflowDispatchDeep: props.workflowDispatchDeep,
-                variables: props.variables
-              });
+            childrenResponses.push({
+              nodeId: callId,
+              id: callId,
+              runningTime,
+              moduleType: FlowNodeTypeEnum.tool,
+              moduleName: tool.name,
+              moduleLogo: tool.avatar,
+              toolInput: toolParams,
+              toolRes: result || response,
+              totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+            });
+            return {
+              response,
+              usages
+            };
+          } else if (tool.type === 'workflow') {
+            const { userChatInput, ...params } = requestParams;
 
-              childrenResponses.push({
-                nodeId: callId,
-                id: callId,
-                runningTime,
-                moduleType: FlowNodeTypeEnum.pluginModule,
-                moduleName: tool.name,
-                moduleLogo: tool.avatar,
-                toolInput: requestParams,
-                toolRes: result,
-                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-              });
+            const { response, runningTime, usages } = await dispatchApp({
+              appId: tool.id,
+              userChatInput: userChatInput,
+              customAppVariables: params,
+              checkIsStopping,
+              lang: props.lang,
+              requestOrigin: props.requestOrigin,
+              mode: props.mode,
+              timezone: props.timezone,
+              externalProvider: props.externalProvider,
+              runningAppInfo: props.runningAppInfo,
+              runningUserInfo: props.runningUserInfo,
+              retainDatasetCite: props.retainDatasetCite,
+              maxRunTimes: props.maxRunTimes,
+              workflowDispatchDeep: props.workflowDispatchDeep,
+              variables: props.variables
+            });
 
-              return {
-                response,
-                usages,
-                runningTime
-              };
-            } else {
-              return {
-                response: 'Invalid tool type',
-                usages: []
-              };
-            }
+            childrenResponses.push({
+              nodeId: callId,
+              id: callId,
+              runningTime,
+              moduleType: FlowNodeTypeEnum.appModule,
+              moduleName: tool.name,
+              moduleLogo: tool.avatar,
+              toolInput: requestParams,
+              toolRes: response,
+              totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+            });
+
+            return {
+              response,
+              usages,
+              runningTime
+            };
+          } else if (tool.type === 'toolWorkflow') {
+            const { response, result, runningTime, usages } = await dispatchPlugin({
+              appId: tool.id,
+              userChatInput: '',
+              customAppVariables: requestParams,
+              checkIsStopping,
+              lang: props.lang,
+              requestOrigin: props.requestOrigin,
+              mode: props.mode,
+              timezone: props.timezone,
+              externalProvider: props.externalProvider,
+              runningAppInfo: props.runningAppInfo,
+              runningUserInfo: props.runningUserInfo,
+              retainDatasetCite: props.retainDatasetCite,
+              maxRunTimes: props.maxRunTimes,
+              workflowDispatchDeep: props.workflowDispatchDeep,
+              variables: props.variables
+            });
+
+            childrenResponses.push({
+              nodeId: callId,
+              id: callId,
+              runningTime,
+              moduleType: FlowNodeTypeEnum.pluginModule,
+              moduleName: tool.name,
+              moduleLogo: tool.avatar,
+              toolInput: requestParams,
+              toolRes: result,
+              totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+            });
+
+            return {
+              response,
+              usages,
+              runningTime
+            };
+          } else {
+            return {
+              response: 'Invalid tool type',
+              usages: []
+            };
           }
         } catch (error) {
           return {
@@ -630,11 +666,9 @@ export const masterCall = async ({
         }
       });
 
-      // TODO: 推送账单
-
       return {
         response,
-        assistantMessages: [], // TODO
+        assistantMessages: [],
         usages,
         stop
       };
@@ -724,7 +758,8 @@ export const masterCall = async ({
       completeMessages,
       assistantMessages,
       nodeResponse,
-      masterMessages: masterMessages.concat(assistantMessages)
+      masterMessages: masterMessages.concat(assistantMessages),
+      capabilityAssistantResponses
     };
   }
 
@@ -735,6 +770,7 @@ export const masterCall = async ({
     completeMessages,
     assistantMessages,
     nodeResponse,
-    masterMessages: filterMemoryMessages(completeMessages)
+    masterMessages: filterMemoryMessages(completeMessages),
+    capabilityAssistantResponses
   };
 };

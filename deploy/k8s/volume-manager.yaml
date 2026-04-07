@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: volume-manager-secret
+  namespace: opensandbox
+type: Opaque
+stringData:
+  auth-token: changeme
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fastgpt-local
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: volume-manager
+  namespace: opensandbox
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: volume-manager
+  namespace: opensandbox
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: volume-manager
+  namespace: opensandbox
+subjects:
+  - kind: ServiceAccount
+    name: volume-manager
+    namespace: opensandbox
+roleRef:
+  kind: Role
+  name: volume-manager
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: volume-manager
+  namespace: opensandbox
+  labels:
+    app: volume-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: volume-manager
+  template:
+    metadata:
+      labels:
+        app: volume-manager
+    spec:
+      serviceAccountName: volume-manager
+      containers:
+        - name: volume-manager
+          image: fastgpt-volume-manager:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+          env:
+            - name: VM_RUNTIME
+              value: kubernetes
+            - name: VM_K8S_NAMESPACE
+              value: opensandbox
+            - name: VM_K8S_PVC_STORAGE_CLASS
+              value: fastgpt-local
+            - name: VM_LOG_LEVEL
+              value: info
+            - name: VM_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: volume-manager-secret
+                  key: auth-token
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: volume-manager
+  namespace: opensandbox
+spec:
+  selector:
+    app: volume-manager
+  ports:
+    - port: 3001
+      targetPort: 3001
+  type: ClusterIP

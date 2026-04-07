@@ -15,7 +15,8 @@ export const getSubapps = async ({
   getPlanTool,
   hasDataset,
   hasFiles,
-  useAgentSandbox
+  useAgentSandbox,
+  extraTools
 }: {
   tmbId: string;
   tools: SkillToolType[];
@@ -23,7 +24,8 @@ export const getSubapps = async ({
   getPlanTool?: Boolean;
   hasDataset?: boolean;
   hasFiles: boolean;
-  useAgentSandbox: boolean;
+  useAgentSandbox?: boolean;
+  extraTools?: ChatCompletionTool[];
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -48,6 +50,11 @@ export const getSubapps = async ({
   /* Sandbox Shell */
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     completionTools.push(...SANDBOX_TOOLS);
+  }
+
+  /* Capability extra tools (e.g. sandbox skills) */
+  if (extraTools && extraTools.length > 0) {
+    completionTools.push(...extraTools);
   }
 
   /* System tool */

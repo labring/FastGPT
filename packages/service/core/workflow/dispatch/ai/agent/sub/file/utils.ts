@@ -35,14 +35,17 @@ export const formatFileInput = ({
   fileUrls = [],
   requestOrigin,
   maxFiles,
-  histories
+  histories,
+  useSkill
 }: {
   fileUrls?: string[];
   requestOrigin?: string;
   maxFiles: number;
   histories: ChatItemType[];
+  useSkill: boolean;
 }): {
   filesMap: Record<string, string>;
+  allFilesMap: Record<string, { url: string; name: string; type: string }>;
   prompt: string;
 } => {
   const filesFromHistories = getHistoryFileLinks(histories);
@@ -50,12 +53,13 @@ export const formatFileInput = ({
   if (filesFromHistories.length === 0 && fileUrls.length === 0) {
     return {
       filesMap: {},
+      allFilesMap: {},
       prompt: ''
     };
   }
 
   const parseFn = (urls: string[]) => {
-    const parseUrlList = urls
+    const parseResult = urls
       // Remove invalid urls
       .filter((url) => {
         if (typeof url !== 'string') return false;
@@ -68,8 +72,6 @@ export const formatFileInput = ({
 
         return false;
       })
-      // Just get the document type file
-      .filter((url) => parseUrlToFileType(url)?.type === 'file')
       .map((url) => {
         try {
           // Check is system upload file
@@ -87,15 +89,13 @@ export const formatFileInput = ({
         }
       })
       .filter(Boolean)
-      .slice(0, maxFiles);
-
-    const parseResult = parseUrlList
-      .map((url) => parseUrlToFileType(url))
-      .filter((item) => item?.name && item?.type === ChatFileTypeEnum.file) as {
+      .slice(0, maxFiles)
+      .map(parseUrlToFileType) as {
       type: `${ChatFileTypeEnum}`;
       name: string;
       url: string;
     }[];
+
     return parseResult;
   };
 
@@ -116,37 +116,65 @@ export const formatFileInput = ({
 
   const uniqueFiles = Array.from(uniqueFilesMap.values());
 
-  // 只为新上传的文件（在 queryParseResult 中但不在历史中的）生成 prompt
-  const newFiles = queryParseResult.filter(
-    (queryFile) => !historyParseResult.some((histFile) => histFile.name === queryFile.name)
+  // Build allFilesMap: all files (documents + images) with unified sequential index
+  const allFilesMap = uniqueFiles.reduce(
+    (acc, item, index) => {
+      acc[`${index + 1}`] = { url: item.url, name: item.name, type: item.type };
+      return acc;
+    },
+    {} as Record<string, { url: string; name: string; type: string }>
   );
 
-  const promptList: { index: string; name: string }[] = [];
-  newFiles.forEach((item) => {
+  // filesMap: derived from allFilesMap, only document type files (preserving index)
+  const filesMap = Object.entries(allFilesMap)
+    .filter(([, v]) => v.type === ChatFileTypeEnum.file)
+    .reduce(
+      (acc, [k, v]) => {
+        acc[k] = v.url;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+
+  /* ===== 构建新文件的提示词 ===== */
+  // 只为新上传的文件（在 queryParseResult 中但不在历史中的）生成 prompt. skill 模式，都注入提示词
+  const newFiles = queryParseResult.filter(
+    (queryFile) =>
+      (queryFile.type === ChatFileTypeEnum.file || useSkill) &&
+      !historyParseResult.some((histFile) => histFile.name === queryFile.name)
+  );
+  const promptList = newFiles.map((item) => {
     const index = uniqueFiles.findIndex((f) => f.name === item.name);
-    promptList.push({ index: `${index + 1}`, name: item.name });
+    return {
+      index: `${index + 1}`,
+      name: item.name,
+      type: item.type === ChatFileTypeEnum.file ? 'document' : 'image'
+    };
   });
+
   const prompt =
-    promptList.length > 0
+    newFiles.length > 0
       ? `<available_files>
 当前对话中用户已上传以下文件：
 
-${promptList.map((item) => `- 文件${item.index}: ${item.name}`).join('\n')}
-
+${promptList.map((item) => `- 文件${item.index}: ${item.name}(${item.type})`).join('\n')}
 **重要提示**：
 - 如果用户的任务涉及文件分析、解析或处理，请在规划步骤时优先考虑使用文件解析工具
 - 在步骤的 description 中可以使用 @文件解析工具 来处理这些文件
+
+${
+  useSkill
+    ? `**文件访问说明**：
+- 读取文本内容 → 使用 file_read 工具（仅支持 document 类型）
+- 将文件写入沙箱供技能处理 → 使用 sandbox_fetch_user_file 工具（支持所有类型）`
+    : ''
+}
 </available_files>`
       : '';
 
   return {
-    filesMap: uniqueFiles.reduce(
-      (acc, item, index) => {
-        acc[index + 1] = item.url;
-        return acc;
-      },
-      {} as Record<string, string>
-    ),
+    filesMap,
+    allFilesMap,
     prompt
   };
 };

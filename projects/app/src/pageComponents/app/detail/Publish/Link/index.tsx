@@ -186,6 +186,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 canDownloadSource: item.canDownloadSource,
                                 showFullText: item.showFullText,
                                 showRunningStatus: item.showRunningStatus,
+                                showSkillReferences: item.showSkillReferences,
                                 limit: item.limit
                               })
                           },
@@ -281,6 +282,8 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
+  const showRunningStatus = watch('showRunningStatus');
+  const showSkillReferences = watch('showSkillReferences');
   const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
@@ -476,6 +479,24 @@ function EditLinkModal({
               isChecked={canDownloadSource}
             />
           </Flex>
+          {feConfigs?.show_skill && (
+            <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+              <Flex alignItems={'center'}>
+                <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
+                <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
+              </Flex>
+              <Switch
+                {...register('showSkillReferences', {
+                  onChange(e) {
+                    if (e.target.checked) {
+                      setValue('showRunningStatus', true);
+                    }
+                  }
+                })}
+                isChecked={showSkillReferences}
+              />
+            </Flex>
+          )}
         </Box>
       </ModalBody>
 

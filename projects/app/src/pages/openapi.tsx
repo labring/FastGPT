@@ -1,21 +1,19 @@
 'use client';
-import { ApiReferenceReact } from '@scalar/api-reference-react';
-import '@scalar/api-reference-react/style.css';
 import { Box } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+
+// 动态加载 @scalar/api-reference-react，避免其 CSS side-effect 在 Node 端
+// (next build 的 collecting page data 阶段) 被解析导致 ERR_UNKNOWN_FILE_EXTENSION。
+const ApiReferenceReact = dynamic(
+  () =>
+    Promise.all([
+      import('@scalar/api-reference-react'),
+      import('@scalar/api-reference-react/style.css')
+    ]).then(([mod]) => mod.ApiReferenceReact),
+  { ssr: false }
+);
 
 function OpenAPIPage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // 仅在客户端渲染,避免 SSR 兼容性问题
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <Box w="100vw" h="100vh" overflow="auto">
       <ApiReferenceReact

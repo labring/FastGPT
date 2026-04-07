@@ -33,6 +33,52 @@ export const StepTitleItemSchema = z.object({
 });
 export type StepTitleItemType = z.infer<typeof StepTitleItemSchema>;
 
+/* Sandbox lifecycle phase */
+export type SandboxStatusPhase =
+  // Lifecycle phases
+  | 'checkExisting' // checking for existing container in MongoDB
+  | 'connecting' // warm-start: reusing existing container
+  | 'fetchSkills' // cold-start: fetching skill metadata from DB
+  | 'creatingContainer' // cold-start: creating container, waiting ready (up to 60s)
+  // Skill deployment phases (used in both session-runtime and edit-debug)
+  | 'deployingSkills' // announcing which skill is about to be deployed
+  | 'downloadingPackage' // downloading skill package from MinIO
+  | 'uploadingPackage' // uploading package into sandbox container
+  | 'extractingPackage' // extracting package in sandbox
+  // Lazy-init phases
+  | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
+  // Terminal phases
+  | 'ready' // sandbox is ready
+  | 'failed'; // initialization failed
+// Note: 'expiredDetected' and 'restarting' are internal and filtered server-side
+
+export type SandboxStatusItemType = {
+  sandboxId: string; // sessionId or skillId (correlates events for same sandbox)
+  phase: SandboxStatusPhase;
+  isWarmStart?: boolean; // present on 'connecting' and 'ready'
+  skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
+  // 'uploadingPackage', 'extractingPackage' in session-runtime
+  message?: string; // optional human-readable message
+  // Present on 'ready' phase for edit-debug sandboxes
+  endpoint?: {
+    host: string;
+    port: number;
+    protocol: 'http' | 'https';
+    url: string;
+  };
+  providerSandboxId?: string; // present on 'ready' for edit-debug
+};
+
+/* Skill module response */
+export const SkillModuleResponseItemSchema = z.object({
+  id: z.string(),
+  skillName: z.string(),
+  skillAvatar: z.string(),
+  description: z.string(),
+  skillMdPath: z.string()
+});
+export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItemSchema>;
+
 /* --------- chat ---------- */
 export type ChatSchemaType = {
   _id: string;
@@ -143,6 +189,7 @@ export const AIChatItemValueSchema = z.object({
     })
     .nullish(),
   tools: z.array(ToolModuleResponseItemSchema).nullish(),
+  skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
   plan: AgentPlanSchema.nullish(),
   stepTitle: StepTitleItemSchema.nullish(),

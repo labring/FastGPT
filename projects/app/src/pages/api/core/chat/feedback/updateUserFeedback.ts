@@ -76,7 +76,7 @@ async function handler(
         return 0;
       })();
 
-      await MongoAppChatLog.updateOne(
+      await MongoAppChatLog.findOneAndUpdate(
         {
           teamId,
           appId,
@@ -89,7 +89,8 @@ async function handler(
           }
         },
         {
-          sort: { createTime: -1 }
+          sort: { createTime: -1 },
+          session
         }
       );
     }
