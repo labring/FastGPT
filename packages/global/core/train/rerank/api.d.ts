@@ -162,10 +162,12 @@ export type CancelRerankTrainTaskResponse = MessageResponse;
 export type DeleteRerankTrainTaskRequest = TaskIdQuery;
 export type DeleteRerankTrainTaskResponse = MessageResponse;
 
-// Apply Training Task Results (manually apply tuned model from a completed task)
+// Apply Training Task Results — @deprecated, apply stage removed from pipeline
+/** @deprecated Apply stage has been removed from the training pipeline */
 export type ApplyRerankTrainTaskRequest = {
   taskId: string; // Training task ID (status must be completed)
 };
+/** @deprecated Apply stage has been removed from the training pipeline */
 export type ApplyRerankTrainTaskResponse = {
   tunedModelId: string;
   bestModelId?: string; // The previously active model that was replaced (if any)

@@ -214,6 +214,7 @@ export type RerankTrainTaskSchemaType = {
         tunedModelEvalResult: RerankEvalResult;
       };
 
+      /** @deprecated Apply stage has been removed from the training pipeline */
       applying?: {
         newModelIsBetter: boolean;
         updatedAppCount?: number;
@@ -226,6 +227,7 @@ export type RerankTrainTaskSchemaType = {
       finetuning?: Date;
       registering?: Date;
       eval_tunedmodel?: Date;
+      /** @deprecated */
       applying?: Date;
     };
   };
@@ -237,7 +239,9 @@ export type RerankTrainTaskSchemaType = {
     evalDatasetId: string;
     baseModelEvalResult: RerankEvalResult;
     tunedModelEvalResult: RerankEvalResult;
-    newModelIsBetter: boolean;
+    /** @deprecated Apply stage has been removed from the training pipeline */
+    newModelIsBetter?: boolean;
+    /** @deprecated Apply stage has been removed from the training pipeline */
     updatedAppCount?: number;
   };
 

@@ -77,6 +77,10 @@ function compareEvalPerformance(
 }
 
 /**
+ * @deprecated This stage has been removed from the rerank training pipeline.
+ * Trained models are now applied to apps via separate manual workflows.
+ * This function and file are kept for reference only and should not be called.
+ *
  * Stage 7: Apply - Decision and Cleanup
  *
  * Compares base model and tuned model evaluation results to decide

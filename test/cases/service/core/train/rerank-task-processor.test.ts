@@ -460,11 +460,8 @@ describe('Rerank Train Task Processor', () => {
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
-        7,
-        mockTaskId,
-        RerankTaskCheckpointStageEnum.applying
-      );
+      // applying stage has been deprecated and removed from pipeline
+      expect(updateCheckpointStage).toHaveBeenCalledTimes(6);
 
       // Verify data preparation stage
       expect(fs.createWriteStream).toHaveBeenCalled();
@@ -517,9 +514,7 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // Verify applying stage
-      expect(checkpointData.applying).toBeDefined();
-      expect(checkpointData.applying.newModelIsBetter).toBeDefined();
+      // Verify applying stage is no longer executed (deprecated)
 
       // Verify final result saving
       const { MongoRerankTrainTask } = await import(
@@ -548,8 +543,7 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            newModelIsBetter: expect.any(Boolean)
+            }
           }
         }
       );
@@ -730,7 +724,8 @@ describe('Rerank Train Task Processor', () => {
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      // applying stage is deprecated and no longer called
+      expect(updateCheckpointStage).not.toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.applying
       );
@@ -762,8 +757,7 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            newModelIsBetter: expect.any(Boolean)
+            }
           }
         }
       );
@@ -1175,8 +1169,7 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            newModelIsBetter: expect.any(Boolean)
+            }
           }
         }
       );
@@ -1471,7 +1464,8 @@ describe('Rerank Train Task Processor', () => {
       }
     });
 
-    test('applying 阶段缺少 tunedModelId 时应该抛出 UnrecoverableError', async () => {
+    // @deprecated - applying stage has been removed from pipeline, this test is no longer relevant
+    test.skip('applying 阶段缺少 tunedModelId 时应该抛出 UnrecoverableError', async () => {
       const { getRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/controller'
       );
@@ -1858,7 +1852,8 @@ describe('Rerank Train Task Processor', () => {
     });
   });
 
-  describe('Auto-delete previous fine-tuned model', () => {
+  // @deprecated - applying stage has been removed from pipeline, all tests in this block are no longer relevant
+  describe.skip('Auto-delete previous fine-tuned model', () => {
     test('when new model performs better, should auto-delete previous fine-tuned model', async () => {
       const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
         await import('@fastgpt/service/core/train/rerank/task/controller');
@@ -2493,7 +2488,8 @@ describe('Rerank Train Task Processor', () => {
       );
     });
 
-    test('MRR 改进但 Precision 下降时，应视为新模型未改进，删除新模型', async () => {
+    // @deprecated - applying stage has been removed from pipeline
+    test.skip('MRR 改进但 Precision 下降时，应视为新模型未改进，删除新模型', async () => {
       const { runApplyingStage } = await import(
         '@fastgpt/service/core/train/rerank/task/stages/apply'
       );

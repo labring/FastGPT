@@ -78,11 +78,11 @@ vi.mock('@fastgpt/service/core/train/rerank/validation', () => ({
 }));
 
 describe('Rerank Train Task Controller', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
 
     // Default: MongoSystemModel.findOne returns null (model not in DB = original model, not disabled)
-    const { MongoSystemModel } = require('@fastgpt/service/core/ai/config/schema');
+    const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
     (MongoSystemModel.findOne as any).mockReturnValue({
       lean: vi.fn().mockResolvedValue(null)
     });

@@ -19,7 +19,8 @@ import { runEvalBaseModelStage } from './stages/eval-basemodel';
 import { runFinetuneStage } from './stages/finetune';
 import { runRegisterStage } from './stages/register';
 import { runEvalTunedModelStage } from './stages/eval-tunedmodel';
-import { runApplyingStage } from './stages/apply';
+// @deprecated - apply stage removed from pipeline, keeping import for reference
+// import { runApplyingStage } from './stages/apply';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
@@ -175,25 +176,27 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.eval_tunedmodel);
     }
 
-    // Stage 7: applying
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.applying)) {
-      const taskBeforeApply = await getRerankTrainTask(taskId);
-      if (!taskBeforeApply) {
-        const enhancedError = createEnhancedError(
-          RerankTaskCheckpointStageEnum.applying,
-          RerankTrainErrEnum.processorTaskLostAfterEval,
-          RerankTrainSuggestionEnum.processorTaskLostAfterEval
-        );
-        throw new TrainTaskUnrecoverableError(enhancedError);
-      }
-
-      const applyResult = await runApplyingStage(taskBeforeApply);
-      await updateCheckpointData(taskId, 'applying', {
-        newModelIsBetter: applyResult.newModelIsBetter,
-        updatedAppCount: applyResult.updatedAppCount
-      });
-      await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.applying);
-    }
+    // Stage 7: applying — @deprecated, no longer executed in pipeline
+    // The apply stage has been removed from the pipeline.
+    // Trained models are now applied to apps via separate manual workflows.
+    // if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.applying)) {
+    //   const taskBeforeApply = await getRerankTrainTask(taskId);
+    //   if (!taskBeforeApply) {
+    //     const enhancedError = createEnhancedError(
+    //       RerankTaskCheckpointStageEnum.applying,
+    //       RerankTrainErrEnum.processorTaskLostAfterEval,
+    //       RerankTrainSuggestionEnum.processorTaskLostAfterEval
+    //     );
+    //     throw new TrainTaskUnrecoverableError(enhancedError);
+    //   }
+    //
+    //   const applyResult = await runApplyingStage(taskBeforeApply);
+    //   await updateCheckpointData(taskId, 'applying', {
+    //     newModelIsBetter: applyResult.newModelIsBetter,
+    //     updatedAppCount: applyResult.updatedAppCount
+    //   });
+    //   await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.applying);
+    // }
 
     // Write final result
     const finalTask = await getRerankTrainTask(taskId);
@@ -206,7 +209,6 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
     const finalCheckpoint = finalTask.checkpoint.data || {};
-    const applyCheckpoint = finalCheckpoint.applying;
     await MongoRerankTrainTask.updateOne(
       { _id: taskId },
       {
@@ -216,9 +218,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
           tunedModelId: finalCheckpoint.registering?.tunedModelId || '',
           evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId || '',
           baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
-          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
-          newModelIsBetter: applyCheckpoint?.newModelIsBetter ?? false,
-          updatedAppCount: applyCheckpoint?.updatedAppCount
+          tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult
         }
       }
     );
@@ -256,8 +256,8 @@ function shouldRunStage(
     RerankTaskCheckpointStageEnum.eval_basemodel,
     RerankTaskCheckpointStageEnum.finetuning,
     RerankTaskCheckpointStageEnum.registering,
-    RerankTaskCheckpointStageEnum.eval_tunedmodel,
-    RerankTaskCheckpointStageEnum.applying
+    RerankTaskCheckpointStageEnum.eval_tunedmodel
+    // RerankTaskCheckpointStageEnum.applying — @deprecated, removed from pipeline
   ];
 
   const currentStageEnum = currentStage as RerankTaskCheckpointStageEnum;

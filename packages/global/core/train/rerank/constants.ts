@@ -36,5 +36,6 @@ export enum RerankTaskCheckpointStageEnum {
   finetuning = 'finetuning', // Model fine-tuning (sft bridge executes fine-tuning and auto-deploys)
   registering = 'registering', // Model registration (register configuration in FastGPT)
   eval_tunedmodel = 'eval_tunedmodel', // Evaluate fine-tuned model, compare with baseline
-  applying = 'applying' // Decision stage: keep new model or roll back; integrated cleanup logic
+  /** @deprecated Apply stage has been removed from the training pipeline */
+  applying = 'applying' // @deprecated — Decision stage: was used to auto-apply model to apps
 }

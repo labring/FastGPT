@@ -22,6 +22,10 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /**
+ * @deprecated This API endpoint has been deprecated.
+ * Trained models are now applied to apps via separate manual workflows.
+ * This handler is kept for reference only.
+ *
  * Find the currently active model in the training chain, starting from tunedModelId
  * and walking up through baseModelId links.
  *
@@ -65,6 +69,7 @@ async function findBestModelInChain(
   return undefined;
 }
 
+/** @deprecated This API endpoint has been deprecated. See apply-task.ts file header. */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ApplyRerankTrainTaskResponse>
