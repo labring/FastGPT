@@ -34,7 +34,7 @@ const SettingLLMModel = ({
     return {
       modelList: llmModelList,
       modelSet,
-      defaultLLMModel: getWebDefaultLLMModel(llmModelList).model
+      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.model
     };
   }, [llmModelList]);
 
