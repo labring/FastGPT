@@ -1,5 +1,6 @@
 import { type Monaco } from '@monaco-editor/react';
 import { useCallback } from 'react';
+import { type CompletionModel, type CompletionPosition } from './type';
 
 let monacoInstance: Monaco | null = null;
 
@@ -10,16 +11,8 @@ const useSystemHelperCompletion = () => {
 
     const buildSuggestions = (
       monaco: Monaco,
-      model: Parameters<
-        Parameters<
-          typeof monaco.languages.registerCompletionItemProvider
-        >[1]['provideCompletionItems']
-      >[0],
-      position: Parameters<
-        Parameters<
-          typeof monaco.languages.registerCompletionItemProvider
-        >[1]['provideCompletionItems']
-      >[1],
+      model: CompletionModel,
+      position: CompletionPosition,
       memberSnippet: string
     ) => {
       const lineContent = model.getLineContent(position.lineNumber);
@@ -76,7 +69,7 @@ const useSystemHelperCompletion = () => {
     for (const lang of ['javascript', 'typescript'] as const) {
       monaco.languages.registerCompletionItemProvider(lang, {
         triggerCharacters: ['.'],
-        provideCompletionItems: (model, position) =>
+        provideCompletionItems: (model: CompletionModel, position: CompletionPosition) =>
           buildSuggestions(monaco, model, position, jsSnippet)
       });
     }
@@ -85,7 +78,7 @@ const useSystemHelperCompletion = () => {
     const pySnippet = 'httpRequest(${1:url}, method="${2:GET}", headers={}, timeout=${3:60})';
     monaco.languages.registerCompletionItemProvider('python', {
       triggerCharacters: ['.'],
-      provideCompletionItems: (model, position) =>
+      provideCompletionItems: (model: CompletionModel, position: CompletionPosition) =>
         buildSuggestions(monaco, model, position, pySnippet)
     });
   }, []);

@@ -7,7 +7,6 @@ import { readFileTool } from './sub/file/utils';
 import { PlanAgentTool } from './sub/plan/constants';
 import { datasetSearchTool } from './sub/dataset/utils';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
-import { allSandboxTools } from '@fastgpt/global/core/workflow/node/agent/sandboxTools';
 
 export const getSubapps = async ({
   tmbId,

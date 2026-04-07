@@ -1,5 +1,6 @@
 import { type Monaco } from '@monaco-editor/react';
 import { useCallback } from 'react';
+import { type CompletionModel, type CompletionPosition } from './type';
 
 /**
  * Sandbox runtime type declarations.
@@ -103,7 +104,7 @@ const useJSCompletion = () => {
 
     monaco.languages.registerCompletionItemProvider('javascript', {
       triggerCharacters: ['.'],
-      provideCompletionItems: (model, position) => {
+      provideCompletionItems: (model: CompletionModel, position: CompletionPosition) => {
         const wordInfo = model.getWordUntilPosition(position);
         const currentWordPrefix = wordInfo.word;
 

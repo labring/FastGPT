@@ -9,7 +9,7 @@ import {
   SandboxExecuteSchema,
   SandboxSearchSchema,
   SandboxFetchUserFileSchema
-} from '@fastgpt/global/core/workflow/node/agent/sandboxTools';
+} from '@fastgpt/global/core/workflow/node/agent/skillTools';
 import {
   createAgentSandbox,
   releaseAgentSandbox,

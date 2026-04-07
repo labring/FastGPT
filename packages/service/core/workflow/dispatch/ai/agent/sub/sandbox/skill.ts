@@ -14,7 +14,7 @@ import type {
   SandboxExecuteSchema,
   SandboxSearchSchema,
   SandboxFetchUserFileSchema
-} from '@fastgpt/global/core/workflow/node/agent/sandboxTools';
+} from '@fastgpt/global/core/workflow/node/agent/skillTools';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
 import path from 'path';
