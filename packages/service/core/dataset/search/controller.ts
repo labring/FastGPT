@@ -1424,7 +1424,12 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   isAssistant?: boolean;
-  datasetIds?: string[];
+  /**
+   * 用于同义词检索和问题改写的知识库 ID 列表（通常为节点内所有知识库 ID）。
+   * 与 SearchDatasetDataProps.datasetIds（用于向量检索的分组 ID）分开，避免名称冲突。
+   * 若不传，则降级为使用 datasetIds（分组 ID）进行同义词检索。
+   */
+  synonymDatasetIds?: string[];
   appId?: string; // 用于校正数据检索
   faqAnswerMode?: 'quote' | 'llm-summary'; // FAQ 回答模式
 };
@@ -1433,11 +1438,13 @@ export const defaultSearchDatasetData = async ({
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
   isAssistant,
-  datasetIds,
+  synonymDatasetIds,
   appId,
   faqAnswerMode,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
+  // 同义词检索使用全部知识库 ID（synonymDatasetIds），若未传则降级为分组 ID（props.datasetIds）
+  const datasetIds = synonymDatasetIds ?? props.datasetIds;
   const query = props.queries[0];
   const histories = props.histories;
 
@@ -1620,19 +1627,20 @@ export const defaultSearchDatasetData = async ({
   // ===== FAQ 检索结束 =====
 
   // 根据 isAssistant 选择调用哪个函数
+  // 向量检索使用分组内的知识库 ID（props.datasetIds），同义词检索已在上方使用 datasetIds（全量 ID）
   const result = isAssistant
     ? await searchDatasetDataForAssistant({
         ...props,
         reRankQuery: reRankQuery,
         queries: searchQueries,
-        datasetIds,
+        datasetIds: props.datasetIds,
         retrievalStartTime // 传递检索开始时间，确保 correction 和 FAQ 检索时间被计入
       })
     : await searchDatasetData({
         ...props,
         reRankQuery: reRankQuery,
         queries: searchQueries,
-        datasetIds
+        datasetIds: props.datasetIds
       });
 
   return {

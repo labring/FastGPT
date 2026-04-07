@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Box, Button, Flex, Grid, Switch, useDisclosure, useTheme } from '@chakra-ui/react';
+import { Box, Button, Flex, Switch, useDisclosure } from '@chakra-ui/react';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
@@ -12,6 +12,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -22,6 +24,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
 }: RenderInputProps) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { embeddingModelList } = useSystemStore();
 
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
@@ -56,44 +59,64 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   const Render = useMemo(() => {
     return (
       <>
-        <Grid
-          gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
-          gridGap={4}
-          minW={'350px'}
-          w={'100%'}
-        >
-          <Button
-            h={10}
-            leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
-            onClick={onOpenDatasetSelect}
-          >
-            {t('common:Choose')}
-          </Button>
-          {selectedDatasets.map((item) => (
-            <Flex
-              key={item.datasetId}
-              alignItems={'center'}
+        <Flex direction={'column'} gap={2} minW={'350px'} w={'100%'}>
+          <Box>
+            <Button
               h={10}
+              leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
+              onClick={onOpenDatasetSelect}
+            >
+              {t('common:Choose')}
+            </Button>
+          </Box>
+          {selectedDatasets.map((dataset) => (
+            <Flex
+              key={dataset.datasetId}
+              alignItems={'center'}
+              minH={10}
               boxShadow={'sm'}
               bg={'white'}
               border={'base'}
               px={2}
+              py={1}
               borderRadius={'md'}
+              gap={2}
             >
-              <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
+              <Avatar src={dataset.avatar} w={'18px'} borderRadius={'xs'} flexShrink={0} />
               <Box
-                ml={1.5}
                 flex={'1 0 0'}
                 w={0}
                 className="textEllipsis"
                 fontWeight={'bold'}
                 fontSize={['sm', 'sm']}
               >
-                {item.name}
+                {dataset.name}
               </Box>
+              {dataset.datasetType !== DatasetTypeEnum.structureDocument &&
+                embeddingModelList.length > 0 && (
+                  <Box flexShrink={0}>
+                    <AIModelSelector
+                      value={dataset.vectorModel?.model}
+                      fontSize={'mini'}
+                      list={embeddingModelList.map((m) => ({ label: m.name, value: m.model }))}
+                      onChange={(modelId) => {
+                        const newModel = embeddingModelList.find((m) => m.model === modelId);
+                        const newValue = selectedDatasets.map((d) =>
+                          d.datasetId === dataset.datasetId ? { ...d, vectorModel: newModel } : d
+                        );
+                        onChangeNode({
+                          nodeId,
+                          key: item.key,
+                          type: 'updateInput',
+                          value: { ...item, value: newValue }
+                        });
+                      }}
+                    />
+                  </Box>
+                )}
             </Flex>
           ))}
-        </Grid>
+        </Flex>
         {isOpenDatasetSelect && (
           <DatasetSelectModal
             defaultSelectedDatasets={selectedDatasets.map((item) => ({
@@ -165,7 +188,8 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     onOpenDatasetSelect,
     selectedDatasets,
     t,
-    inputs
+    inputs,
+    embeddingModelList
   ]);
 
   return Render;
