@@ -29,27 +29,29 @@ const SettingLLMModel = ({
 
   const model = defaultData.model;
 
-  const { modelSet, modelList } = useMemoEnhance(() => {
+  const { modelSet, modelList, defaultLLMModel } = useMemoEnhance(() => {
     const modelSet = new Set<string>(llmModelList.map((item) => item.model));
     return {
       modelList: llmModelList,
-      modelSet
+      modelSet,
+      defaultLLMModel: getWebDefaultLLMModel(llmModelList).model
     };
   }, [llmModelList]);
 
   // Set default model
   const lastDefaultModel = useLatest(defaultModel);
   useEffect(() => {
+    if (modelSet.size === 0) return;
     if (!modelSet.has(model)) {
-      const defaultLLM = lastDefaultModel.current || getWebDefaultLLMModel(modelList).model;
-      if (defaultLLM) {
+      const defaultLLM = lastDefaultModel.current || defaultLLMModel;
+      if (defaultLLM && modelSet.has(defaultLLM)) {
         onChange({
           ...defaultData,
           model: defaultLLM
         });
       }
     }
-  }, [modelList, model, defaultData]);
+  }, [model, defaultData, modelSet, defaultLLMModel]);
 
   const {
     isOpen: isOpenAIChatSetting,
