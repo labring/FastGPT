@@ -103,7 +103,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       ...(userInfo?.username === 'root'
         ? [
             {
-              label: t('common:navbar.Config'),
+              label: t('common:navbar.plugin'),
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
               link: '/config/tool',
