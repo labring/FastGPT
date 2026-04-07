@@ -201,10 +201,12 @@ export function useLinkedScroll<
     ({
       children,
       ScrollContainerRef,
+      dataScrollContainer: _dataScrollContainer,
       ...props
     }: {
       children: ReactNode;
       ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+      dataScrollContainer?: string;
     } & BoxProps) => {
       // If external ref is provided, use it; otherwise use internal ref
       const actualContainerRef = ScrollContainerRef || containerRef;

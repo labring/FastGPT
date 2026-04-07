@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Box, Checkbox } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
@@ -17,6 +17,10 @@ import type { SubmitChatCorrectionResponse } from '@fastgpt/global/core/chat/cor
 import type { CorrectionDataType } from '@fastgpt/global/core/chat/correction/type';
 import { formatChatValue2InputType } from '../../utils';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { getDatasetDataBatchPermission } from '@/web/core/dataset/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const CorrectionModal = dynamic(
   () => import('@/pageComponents/app/detail/ConversationLogs/CorrectionModal')
@@ -46,6 +50,42 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const appId = chatBoxData?.appId;
   const chatId = chatBoxData?.chatId;
+
+  const { userInfo } = useUserStore();
+  const [datasetReadPerMap, setDatasetReadPerMap] = useState<Record<string, boolean>>({});
+
+  // 收集所有记录中唯一的 datasetId，批量查询权限
+  const uniqueDatasetIds = useMemo(() => {
+    if (!userInfo) return [];
+    return Array.from(
+      new Set(
+        chatRecords
+          .filter((record) => record.obj === ChatRoleEnum.AI)
+          .flatMap((record) => {
+            const { totalQuoteList = [] } = addStatisticalDataToHistoryItem(record);
+            return totalQuoteList
+              .filter((item) => !isDatabaseSource(item.sourceId) && item.datasetId)
+              .map((item) => item.datasetId);
+          })
+      )
+    );
+  }, [chatRecords, userInfo]);
+
+  useEffect(() => {
+    if (uniqueDatasetIds.length === 0) return;
+    getDatasetDataBatchPermission(uniqueDatasetIds)
+      .then((resultMap) => {
+        setDatasetReadPerMap(
+          Object.fromEntries(
+            uniqueDatasetIds.map((id) => [id, resultMap[id]?.permission?.hasReadPer ?? false])
+          )
+        );
+      })
+      .catch(() => {
+        setDatasetReadPerMap(Object.fromEntries(uniqueDatasetIds.map((id) => [id, false])));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueDatasetIds.join(',')]);
 
   // 纠错弹窗状态
   const [correctionModalData, setCorrectionModalData] = useState<{
@@ -174,6 +214,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
                       chat={item}
                       isLastChild={index === chatRecords.length - 1}
                       onCorrectError={handleCorrectError}
+                      datasetReadPerMap={datasetReadPerMap}
                       {...{
                         statusBoxData
                       }}

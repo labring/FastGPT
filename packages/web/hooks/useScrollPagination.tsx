@@ -297,6 +297,7 @@ export function useScrollPagination<
       children,
       ScrollContainerRef,
       isLoading: isLoadingProp,
+      dataScrollContainer: _dataScrollContainer,
       ...props
     }: {
       isLoading?: boolean;
