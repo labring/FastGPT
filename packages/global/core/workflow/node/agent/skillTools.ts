@@ -10,20 +10,69 @@ export enum SandboxToolIds {
   fetchUserFile = 'sandbox_fetch_user_file'
 }
 
-export const sandboxToolDescriptions = {
-  [SandboxToolIds.readFile]:
-    'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.',
-  [SandboxToolIds.writeFile]:
-    'Create or overwrite a file in the sandbox. Used to write input data, create config files, etc.',
-  [SandboxToolIds.editFile]:
-    'Edit files in the sandbox precisely by finding and replacing specified content. Supports batch editing across multiple files.',
-  [SandboxToolIds.execute]:
-    'Execute a shell command in the sandbox. Used to run scripts, install dependencies, execute skills, etc.',
-  [SandboxToolIds.search]:
-    'Search for files in the sandbox. Find matching file paths by filename pattern (glob).',
-  [SandboxToolIds.fetchUserFile]:
-    'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.'
-} as const;
+export const skillToolsMap = {
+  // Sandbox tools
+  [SandboxToolIds.readFile]: {
+    name: {
+      'zh-CN': '读取文件',
+      'zh-Hant': '讀取文件',
+      en: 'ReadFile'
+    },
+    avatar: 'core/workflow/template/readFiles',
+    toolDescription:
+      'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.'
+  },
+  [SandboxToolIds.writeFile]: {
+    name: {
+      'zh-CN': '写入文件',
+      'zh-Hant': '寫入文件',
+      en: 'WriteFile'
+    },
+    avatar: 'core/workflow/template/readFiles',
+    toolDescription:
+      'Create or overwrite a file in the sandbox. Used to write input data, create config files, etc.'
+  },
+  [SandboxToolIds.editFile]: {
+    name: {
+      'zh-CN': '编辑文件',
+      'zh-Hant': '編輯文件',
+      en: 'EditFile'
+    },
+    avatar: 'core/workflow/template/readFiles',
+    toolDescription:
+      'Edit files in the sandbox precisely by finding and replacing specified content. Supports batch editing across multiple files.'
+  },
+  [SandboxToolIds.execute]: {
+    name: {
+      'zh-CN': '执行命令',
+      'zh-Hant': '執行命令',
+      en: 'Execute'
+    },
+    avatar: 'core/workflow/template/codeRun',
+    toolDescription:
+      'Execute a shell command in the sandbox. Used to run scripts, install dependencies, execute skills, etc.'
+  },
+  [SandboxToolIds.search]: {
+    name: {
+      'zh-CN': '搜索文件',
+      'zh-Hant': '搜索文件',
+      en: 'SearchFile'
+    },
+    avatar: 'core/workflow/template/datasetSearch',
+    toolDescription:
+      'Search for files in the sandbox. Find matching file paths by filename pattern (glob).'
+  },
+  [SandboxToolIds.fetchUserFile]: {
+    name: {
+      'zh-CN': '获取用户文件',
+      'zh-Hant': '獲取用戶文件',
+      en: 'FetchUserFile'
+    },
+    avatar: 'core/workflow/template/readFiles',
+    toolDescription:
+      'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.'
+  }
+};
 
 // Zod parameter schemas (runtime validation)
 export const SandboxReadFileSchema = z.object({
@@ -65,7 +114,7 @@ export const sandboxReadFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.readFile,
-    description: sandboxToolDescriptions[SandboxToolIds.readFile],
+    description: skillToolsMap[SandboxToolIds.readFile].toolDescription,
     parameters: {
       type: 'object',
       properties: {
@@ -84,7 +133,7 @@ export const sandboxWriteFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.writeFile,
-    description: sandboxToolDescriptions[SandboxToolIds.writeFile],
+    description: skillToolsMap[SandboxToolIds.writeFile].toolDescription,
     parameters: {
       type: 'object',
       properties: {
@@ -100,7 +149,7 @@ export const sandboxEditFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.editFile,
-    description: sandboxToolDescriptions[SandboxToolIds.editFile],
+    description: skillToolsMap[SandboxToolIds.editFile].toolDescription,
     parameters: {
       type: 'object',
       properties: {
@@ -127,7 +176,7 @@ export const sandboxExecuteTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.execute,
-    description: sandboxToolDescriptions[SandboxToolIds.execute],
+    description: skillToolsMap[SandboxToolIds.execute].toolDescription,
     parameters: {
       type: 'object',
       properties: {
@@ -144,7 +193,7 @@ export const sandboxSearchTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.search,
-    description: sandboxToolDescriptions[SandboxToolIds.search],
+    description: skillToolsMap[SandboxToolIds.search].toolDescription,
     parameters: {
       type: 'object',
       properties: {
@@ -160,7 +209,7 @@ export const sandboxFetchUserFileTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SandboxToolIds.fetchUserFile,
-    description: sandboxToolDescriptions[SandboxToolIds.fetchUserFile],
+    description: skillToolsMap[SandboxToolIds.fetchUserFile].toolDescription,
     parameters: {
       type: 'object',
       properties: {

@@ -6,7 +6,7 @@ import {
   SANDBOX_SHELL_TOOL
 } from '../../../ai/sandbox/constants';
 import type { I18nStringType } from '../../../../common/i18n/type';
-import { SandboxToolIds, sandboxToolDescriptions } from './sandboxTools';
+import { skillToolsMap } from './skillTools';
 
 export enum SubAppIds {
   plan = 'plan_agent',
@@ -78,59 +78,5 @@ export const systemSubInfo: Record<
     avatar: 'core/workflow/template/agent',
     toolDescription: '调用 LLM 模型完成一些通用任务。'
   },
-  // Sandbox tools
-  [SandboxToolIds.readFile]: {
-    name: {
-      'zh-CN': '读取文件',
-      'zh-Hant': '讀取文件',
-      en: 'ReadFile'
-    },
-    avatar: 'core/workflow/template/readFiles',
-    toolDescription: sandboxToolDescriptions[SandboxToolIds.readFile]
-  },
-  [SandboxToolIds.writeFile]: {
-    name: {
-      'zh-CN': '写入文件',
-      'zh-Hant': '寫入文件',
-      en: 'WriteFile'
-    },
-    avatar: 'core/workflow/template/readFiles',
-    toolDescription: sandboxToolDescriptions[SandboxToolIds.writeFile]
-  },
-  [SandboxToolIds.editFile]: {
-    name: {
-      'zh-CN': '编辑文件',
-      'zh-Hant': '編輯文件',
-      en: 'EditFile'
-    },
-    avatar: 'core/workflow/template/readFiles',
-    toolDescription: sandboxToolDescriptions[SandboxToolIds.editFile]
-  },
-  [SandboxToolIds.execute]: {
-    name: {
-      'zh-CN': '执行命令',
-      'zh-Hant': '執行命令',
-      en: 'Execute'
-    },
-    avatar: 'core/workflow/template/codeRun',
-    toolDescription: sandboxToolDescriptions[SandboxToolIds.execute]
-  },
-  [SandboxToolIds.search]: {
-    name: {
-      'zh-CN': '搜索文件',
-      'zh-Hant': '搜索文件',
-      en: 'SearchFile'
-    },
-    avatar: 'core/workflow/template/datasetSearch',
-    toolDescription: sandboxToolDescriptions[SandboxToolIds.search]
-  },
-  [SandboxToolIds.fetchUserFile]: {
-    name: {
-      'zh-CN': '获取用户文件',
-      'zh-Hant': '獲取用戶文件',
-      en: 'FetchUserFile'
-    },
-    avatar: 'core/workflow/template/readFiles',
-    toolDescription: sandboxToolDescriptions[SandboxToolIds.fetchUserFile]
-  }
+  ...skillToolsMap
 };
