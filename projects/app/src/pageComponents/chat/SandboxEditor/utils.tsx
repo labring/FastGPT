@@ -46,7 +46,7 @@ export const getIconByFilename = (filename: string): IconNameType => {
 };
 
 // 获取文件语言
-export const getLanguageByExtension = (ext?: string): string => {
+export const getLanguageByFileName = (fileName: string): string => {
   const langMap: Record<string, string> = {
     py: 'python',
     js: 'javascript',
@@ -96,7 +96,9 @@ export const getLanguageByExtension = (ext?: string): string => {
     config: 'plaintext',
     plaintext: 'plaintext'
   };
-  return langMap[ext?.toLowerCase() ?? 'plaintext'];
+
+  const ext = fileName.split('.').at(-1)?.toLocaleLowerCase();
+  return langMap[ext ?? 'plaintext'];
 };
 
 // Update tree node

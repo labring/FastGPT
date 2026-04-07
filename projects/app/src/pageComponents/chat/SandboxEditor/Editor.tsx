@@ -13,7 +13,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import FileTree, { type TreeNode } from './components/FileTree';
 import FileTabs, { type OpenedFile } from './components/FileTabs';
 import EditorContent from './components/EditorContent';
-import { getLanguageByExtension, updateTreeNode, filterTree } from './utils';
+import { updateTreeNode, filterTree, getLanguageByFileName } from './utils';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
@@ -137,9 +137,8 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
     // 新打开文件
     try {
       const content = await loadFile(filePath);
-      const fileName = filePath.split('/').pop() || '';
-      const ext = fileName.split('.').pop();
-      const language = getLanguageByExtension(ext);
+      const fileName = filePath.split('/').at(-1) || '';
+      const language = getLanguageByFileName(fileName);
 
       const newFile: OpenedFile = {
         path: filePath,
