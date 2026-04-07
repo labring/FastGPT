@@ -75,6 +75,8 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
       title: chat?.title || '',
       userAvatar: team?.avatar,
       variables,
+      chatGenerateStatus: chat?.chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

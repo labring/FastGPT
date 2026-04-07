@@ -1,5 +1,5 @@
 import { SearchDataResponseItemSchema } from '../dataset/type';
-import type { ChatSourceEnum } from './constants';
+import type { ChatGernateStatusEnum, ChatSourceEnum } from './constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
@@ -120,6 +120,9 @@ export type ChatSchemaType = {
   hasUnreadBadFeedback?: boolean;
   // Error count (redundant field for performance)
   errorCount?: number;
+
+  chatGenerateStatus: ChatGernateStatusEnum;
+  hasBeenRead: boolean;
 
   deleteTime?: Date | null;
 };

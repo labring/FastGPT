@@ -459,6 +459,7 @@ const HomeChatWindow = () => {
             appId={appId}
             chatId={chatId}
             isReady={!loading}
+            enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
             slogan={chatSettings?.slogan}

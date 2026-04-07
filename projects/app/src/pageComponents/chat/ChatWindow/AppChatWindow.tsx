@@ -189,6 +189,7 @@ const AppChatWindow = () => {
               appId={appId}
               chatId={chatId}
               isReady={!loading}
+              enableAutoResume
               feedbackType={'user'}
               chatType={ChatTypeEnum.chat}
               outLinkAuthData={outLinkAuthData}

@@ -1,8 +1,14 @@
 import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
-import { GetLLMRequestRecordParamsSchema, LLMRequestRecordSchema } from './api';
+import {
+  GetLLMRequestRecordParamsSchema,
+  LLMRequestRecordSchema,
+  ResumeStreamParamsSchema,
+  StreamNoNeedToBeResumeSchema
+} from './api';
 import { SandboxPath } from './sandbox';
 import { AgentPath } from './agent';
+import { z } from 'zod';
 
 export const AIPath: OpenAPIPath = {
   ...SandboxPath,
@@ -22,6 +28,34 @@ export const AIPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: LLMRequestRecordSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/v1/stream/resume': {
+    post: {
+      summary: '恢复流式响应',
+      description: '恢复流式响应',
+      tags: [TagsMap.aiCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ResumeStreamParamsSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功恢复流式响应，如果不需要恢复，则返回终态事件',
+          content: {
+            'text/event-stream': {
+              schema: z.string()
+            },
+            'application/json': {
+              schema: StreamNoNeedToBeResumeSchema
             }
           }
         }

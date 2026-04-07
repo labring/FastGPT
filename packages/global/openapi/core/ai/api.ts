@@ -1,5 +1,6 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
+import { ChatGernateStatusEnum } from '../../../core/chat/constants';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
@@ -52,3 +53,44 @@ export const ChatMessageSchema = z.object({
   tool_calls: z.array(z.object()).optional().meta({ description: '工具调用' }),
   tool_call_id: z.string().optional().meta({ description: '工具调用 ID' })
 });
+export const ResumeStreamParamsSchema = z.object({
+  appId: ObjectIdSchema,
+  teamId: ObjectIdSchema.optional(),
+  chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
+});
+
+export type ResumeStreamParams = z.infer<typeof ResumeStreamParamsSchema>;
+
+export const StreamResumeCompletedRecordsSchema = z.object({
+  list: z.array(z.any()).meta({
+    description: '最新已落库的聊天记录'
+  }),
+  total: z.number().int().nonnegative().meta({
+    example: 2,
+    description: '聊天记录总数'
+  }),
+  hasMorePrev: z.boolean().meta({
+    example: false,
+    description: '是否还有更早的记录'
+  }),
+  hasMoreNext: z.boolean().meta({
+    example: false,
+    description: '是否还有更新的记录'
+  })
+});
+
+export const StreamNoNeedToBeResumeSchema = z.object({
+  chatGenerateStatus: z.nativeEnum(ChatGernateStatusEnum).meta({
+    example: ChatGernateStatusEnum.done,
+    description: '聊天生成状态'
+  }),
+  hasBeenRead: z.boolean().meta({
+    example: true,
+    description: '是否已读'
+  }),
+  records: StreamResumeCompletedRecordsSchema.meta({
+    description: '当恢复请求到达时，对话已结束并已落库的最新聊天记录'
+  })
+});
+
+export type StreamNoNeedToBeResumeType = z.infer<typeof StreamNoNeedToBeResumeSchema>;

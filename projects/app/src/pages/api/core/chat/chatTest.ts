@@ -47,9 +47,13 @@ import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+import { ensureGenerateChat, updateChatGenerateStatus } from '@/service/core/chat/resume-status';
+import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { mirrorChatStream } from '@/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let {
+  let streamResumeMirror: ReturnType<typeof mirrorChatStream> | undefined;
+  const {
     nodes = [],
     edges = [],
     messages = [],
@@ -60,6 +64,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatConfig,
     chatId
   } = ChatTestPropsSchema.parse(req.body);
+  const source = ChatSourceEnum.test;
   try {
     const originIp = getIpFromRequest(req);
 
@@ -144,6 +149,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       variables = {};
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
+
+    await ensureGenerateChat({
+      appId: String(app._id),
+      chatId,
+      teamId: String(teamId),
+      tmbId: String(tmbId),
+      source,
+      sourceName: appName || ''
+    });
+
+    streamResumeMirror = mirrorChatStream({
+      res,
+      teamId: String(teamId),
+      appId: String(app._id),
+      chatId
+    });
+    await streamResumeMirror.reset();
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
@@ -230,7 +252,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appChatConfig: chatConfig,
       variables: newVariables,
       newTitle,
-      source: ChatSourceEnum.test,
+      source,
+      sourceName: appName || '',
       userContent: userQuestion,
       aiContent: aiResponse,
       durationSeconds,
@@ -247,9 +270,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       await pushChatRecords(params);
     }
+
+    await updateChatGenerateStatus({
+      appId: String(app._id),
+      chatId,
+      status: ChatGernateStatusEnum.done
+    });
+
+    await streamResumeMirror.flush();
   } catch (err: any) {
+    if (appId && chatId) {
+      await updateChatGenerateStatus({
+        appId,
+        chatId,
+        status: ChatGernateStatusEnum.error
+      });
+    }
     res.status(500);
     sseErrRes(res, err);
+    await streamResumeMirror?.flush();
+  } finally {
+    streamResumeMirror?.restore();
   }
   res.end();
 }

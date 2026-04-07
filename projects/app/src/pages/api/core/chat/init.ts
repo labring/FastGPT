@@ -54,6 +54,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       title: chat?.title || '',
       userAvatar: undefined,
       variables,
+      chatGenerateStatus: chat?.chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

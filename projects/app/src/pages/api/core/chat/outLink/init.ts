@@ -50,6 +50,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     title: chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
+    chatGenerateStatus: chat?.chatGenerateStatus,
+    hasBeenRead: chat?.hasBeenRead,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig,

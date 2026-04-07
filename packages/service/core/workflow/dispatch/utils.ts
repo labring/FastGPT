@@ -20,7 +20,8 @@ import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
 import {
   DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
+  SseResponseEventEnum,
+  StreamResumeMirrorActive
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -118,7 +119,9 @@ export const getWorkflowResponseWrite = ({
   showNodeStatus?: boolean;
 }) => {
   const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
-    if (!res || res.closed || !streamResponse) return;
+    let _res = res as NextApiResponse & { [StreamResumeMirrorActive]?: boolean };
+    const allowWriteToMirrorAfterClose = !!_res && _res[StreamResumeMirrorActive];
+    if (!res || !streamResponse || (res.closed && !allowWriteToMirrorAfterClose)) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -163,7 +166,7 @@ export const getWorkflowChildResponseWrite = ({
   };
 };
 
-/* 
+/*
   Filter orphan edges from workflow.
   Orphan edges are edges that have a source or target that is not in the nodes array.
   This is used to prevent errors when the workflow is edited and the nodes are not updated.

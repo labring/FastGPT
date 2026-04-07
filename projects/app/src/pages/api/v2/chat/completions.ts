@@ -64,6 +64,9 @@ import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+import { ensureGenerateChat, updateChatGenerateStatus } from '@/service/core/chat/resume-status';
+import { mirrorChatStream } from '@/service/core/chat/resume';
+import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -91,6 +94,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
+  let mirror: ReturnType<typeof mirrorChatStream> | undefined;
+  let runningChatId: string | undefined;
+  let runningAppId: string | undefined;
 
   try {
     if (!Array.isArray(messages)) {
@@ -240,6 +246,47 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
+    const saveChatId = chatId || getNanoid(24);
+    const source = (() => {
+      if (shareId) {
+        return ChatSourceEnum.share;
+      }
+      if (authType === 'apikey') {
+        return ChatSourceEnum.api;
+      }
+      if (spaceTeamId) {
+        return ChatSourceEnum.team;
+      }
+      return ChatSourceEnum.online;
+    })();
+
+    runningChatId = saveChatId;
+    runningAppId = String(app._id);
+
+    await ensureGenerateChat({
+      appId: runningAppId,
+      chatId: runningChatId,
+      teamId,
+      tmbId: String(tmbId),
+      source,
+      sourceName: sourceName || '',
+      shareId,
+      outLinkUid: outLinkUserId
+    });
+
+    mirror = stream
+      ? mirrorChatStream({
+          res,
+          teamId,
+          appId: runningAppId,
+          chatId: runningChatId
+        })
+      : undefined;
+
+    if (mirror) {
+      await mirror.reset();
+    }
+
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
@@ -247,8 +294,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       id: chatId,
       showNodeStatus: showRunningStatus
     });
-
-    const saveChatId = chatId || getNanoid(24);
 
     /* start flow controller */
     const {
@@ -300,19 +345,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // save chat
-    const source = (() => {
-      if (shareId) {
-        return ChatSourceEnum.share;
-      }
-      if (authType === 'apikey') {
-        return ChatSourceEnum.api;
-      }
-      if (spaceTeamId) {
-        return ChatSourceEnum.team;
-      }
-      return ChatSourceEnum.online;
-    })();
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -354,6 +386,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await pushChatRecords(params);
     }
 
+    await updateChatGenerateStatus({
+      appId: runningAppId,
+      chatId: runningChatId,
+      status: ChatGernateStatusEnum.done
+    });
+
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
     if (isOwnerUse && source === ChatSourceEnum.online) {
       await recordAppUsage({
@@ -384,6 +422,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         data: '[DONE]'
       });
 
+      await mirror?.flush();
       res.end();
     } else {
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -467,8 +506,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
+    if (runningAppId && runningChatId) {
+      await updateChatGenerateStatus({
+        appId: runningAppId,
+        chatId: runningChatId,
+        status: ChatGernateStatusEnum.error
+      });
+    }
     if (stream) {
       sseErrRes(res, err);
+      await mirror?.flush();
       res.end();
     } else {
       jsonRes(res, {
@@ -476,6 +523,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         error: err
       });
     }
+  } finally {
+    mirror?.restore();
   }
 }
 export default NextAPI(handler);
