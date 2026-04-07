@@ -8,6 +8,7 @@ export type OpenedFile = {
   name: string;
   content: string;
   language: string;
+  isBinary: boolean;
   isDirty: boolean;
 };
 

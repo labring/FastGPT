@@ -105,7 +105,7 @@
   "sandbox_entry_tooltip": "查看虚拟机文件",
   "sandbox_files": "虚拟机文件",
   "sandbox_no_file": "虚拟机里还没有文件",
-  "sandbox_not_utf_file_tip": "无法预览该文件，请直接下载查看",
+  "sandbox_binary_file_no_preview": "无法预览该文件，请直接下载查看",
   "sandbox_search_files": "搜索文件",
   "sandbox_select_file_edit": "选择一个文件进行编辑",
   "sandox.files": "虚拟机文件",

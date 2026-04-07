@@ -102,7 +102,7 @@
   "sandbox_entry_tooltip": "查看虛擬機器文件",
   "sandbox_files": "虛擬機器文件",
   "sandbox_no_file": "虛擬機器裡還沒有文件",
-  "sandbox_not_utf_file_tip": "無法預覽該文件，請直接下載查看",
+  "sandbox_binary_file_no_preview": "無法預覽該文件，請直接下載查看",
   "sandbox_search_files": "搜尋文件",
   "sandbox_select_file_edit": "選擇一個文件進行編輯",
   "sandox.files": "虛擬機器文件",

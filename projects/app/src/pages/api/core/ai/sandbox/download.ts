@@ -1,4 +1,5 @@
 import type { NextApiResponse } from 'next';
+import mime from 'mime';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
@@ -11,12 +12,13 @@ const DownloadBodySchema = z.object({
   appId: z.string(),
   chatId: z.string(),
   path: z.string().default('.').describe('要下载的路径(文件或目录)'),
+  preview: z.boolean().optional().describe('是否直接预览(不强制下载)'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 });
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
   const body = DownloadBodySchema.parse(req.body);
-  const { appId, chatId, path, outLinkAuthData } = body;
+  const { appId, chatId, path, preview, outLinkAuthData } = body;
 
   // 鉴权
   const { uid } = await authChatCrud({
@@ -72,8 +74,17 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     }
 
     const fileName = path.split('/').pop() || 'file';
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    if (preview) {
+      // 预览逻辑: 设置内容类型，不强制下载
+      const contentType = mime.getType(path) || 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+    } else {
+      // 下载逻辑: 强制下载
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    }
+
     res.send(Buffer.from(result.content));
   }
 }

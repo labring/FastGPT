@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, IconButton, Center } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Editor from '@monaco-editor/react';
 import { useTranslation } from 'next-i18next';
@@ -34,6 +34,116 @@ const EditorContent = ({
 }: Props) => {
   const { t } = useTranslation();
 
+  const renderFileContent = () => {
+    if (!activeFile) return null;
+
+    // 二进制文件预览 (图片/音频/视频)
+    if (activeFile.isBinary) {
+      const { language, content, name } = activeFile;
+      if (!content.startsWith('blob:')) return null;
+
+      if (language === 'image') {
+        return (
+          <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
+            <Box position="relative" maxW="100%" maxH="100%">
+              <img
+                src={content}
+                alt={name}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
+            </Box>
+          </Center>
+        );
+      }
+
+      if (language === 'audio') {
+        return (
+          <Center h="full" bg="myGray.50" borderRadius="md">
+            <audio controls src={content}>
+              Your browser does not support the audio element.
+            </audio>
+          </Center>
+        );
+      }
+
+      if (language === 'video') {
+        return (
+          <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
+            <video controls src={content} style={{ maxWidth: '100%', maxHeight: '100%' }}>
+              Your browser does not support the video element.
+            </video>
+          </Center>
+        );
+      }
+
+      return <Center h="full">{t('chat:sandbox_binary_file_no_preview')}</Center>;
+    }
+
+    // 文本文件 (包含 html/md/svg)
+    return (
+      <Editor
+        height="100%"
+        language={activeFile.language || 'plaintext'}
+        value={activeFile.content || ''}
+        theme="vs-light"
+        options={{
+          minimap: { enabled: false },
+          overviewRulerLanes: 0,
+          overviewRulerBorder: false,
+          fontSize: 13,
+          lineNumbers: 'on',
+          lineNumbersMinChars: 4,
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          lineHeight: 20,
+          fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
+          tabSize: 2,
+          wordWrap: 'on',
+          smoothScrolling: true,
+          cursorBlinking: 'smooth',
+          renderLineHighlight: 'line',
+          scrollbar: {
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10
+          }
+        }}
+        onMount={(editor, monaco) => {
+          editorRef.current = editor;
+
+          // 保存快捷键 Ctrl/Cmd + S
+          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            saveFile();
+          });
+
+          // 全部保存快捷键 Ctrl/Cmd + Shift + S
+          editor.addCommand(
+            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
+            () => {
+              openedFiles.forEach((file) => {
+                if (file.isDirty) {
+                  saveFile(file.path);
+                }
+              });
+            }
+          );
+        }}
+        onChange={(value) => {
+          // 防止循环更新
+          if (isUpdatingRef.current) return;
+
+          // 更新当前文件内容
+          if (activeFilePath && value !== undefined) {
+            setOpenedFiles((prev) =>
+              prev.map((f) =>
+                f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f
+              )
+            );
+          }
+        }}
+      />
+    );
+  };
+
   return (
     <Flex
       flex={'1 0 0'}
@@ -44,7 +154,6 @@ const EditorContent = ({
       borderRadius={'md'}
       bg={'white'}
     >
-      {/* 文件信息栏 */}
       <Flex
         align="center"
         justify="space-between"
@@ -57,7 +166,6 @@ const EditorContent = ({
           {activeFile?.name || ''}
         </Box>
         <Flex align="center" gap={2}>
-          {/* 下载当前文件按钮 */}
           {activeFilePath && (
             <IconButton
               size="sm"
@@ -68,7 +176,6 @@ const EditorContent = ({
               variant="whiteBase"
             />
           )}
-          {/* 未保存标签和保存按钮 */}
           {activeFile?.isDirty && (
             <IconButton
               size="sm"
@@ -82,73 +189,8 @@ const EditorContent = ({
         </Flex>
       </Flex>
 
-      {/* 编辑器 */}
-      <Box flex={1} borderColor="myGray.200">
-        {activeFile?.content === '[Binary File - Cannot Display]' ? (
-          t('chat:sandbox_not_utf_file_tip')
-        ) : (
-          <Editor
-            height="100%"
-            language={activeFile?.language || 'plaintext'}
-            value={activeFile?.content || ''}
-            theme="vs-light"
-            options={{
-              minimap: { enabled: false },
-              overviewRulerLanes: 0,
-              overviewRulerBorder: false,
-              fontSize: 13,
-              lineNumbers: 'on',
-              lineNumbersMinChars: 4,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              lineHeight: 20,
-              fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
-              tabSize: 2,
-              wordWrap: 'on',
-              smoothScrolling: true,
-              cursorBlinking: 'smooth',
-              renderLineHighlight: 'line',
-              scrollbar: {
-                verticalScrollbarSize: 10,
-                horizontalScrollbarSize: 10
-              }
-            }}
-            onMount={(editor, monaco) => {
-              editorRef.current = editor;
-
-              // 保存快捷键 Ctrl/Cmd + S
-              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-                saveFile();
-              });
-
-              // 全部保存快捷键 Ctrl/Cmd + Shift + S
-              editor.addCommand(
-                monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
-                () => {
-                  // 保存所有未保存的文件
-                  openedFiles.forEach((file) => {
-                    if (file.isDirty) {
-                      saveFile(file.path);
-                    }
-                  });
-                }
-              );
-            }}
-            onChange={(value) => {
-              // 防止循环更新
-              if (isUpdatingRef.current) return;
-
-              // 更新当前文件内容
-              if (activeFilePath && value !== undefined) {
-                setOpenedFiles((prev) =>
-                  prev.map((f) =>
-                    f.path === activeFilePath ? { ...f, content: value, isDirty: true } : f
-                  )
-                );
-              }
-            }}
-          />
-        )}
+      <Box flex={1} borderColor="myGray.200" overflow="hidden">
+        {renderFileContent()}
       </Box>
     </Flex>
   );

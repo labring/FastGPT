@@ -16,23 +16,6 @@ export const listSandboxFiles = async (
   });
 
 /**
- * 读取文件内容
- */
-export const readSandboxFile = async (
-  data: Omit<Extract<SandboxFileOperationBody, { action: 'read' }>, 'action'>
-) =>
-  POST<Extract<SandboxFileOperationResponse, { action: 'read' }>>(
-    '/core/ai/sandbox/file',
-    {
-      ...data,
-      action: 'read' as const
-    },
-    {
-      maxQuantity: 1
-    }
-  );
-
-/**
  * 写入文件内容
  */
 export const writeSandboxFile = async (
@@ -42,6 +25,29 @@ export const writeSandboxFile = async (
     ...data,
     action: 'write' as const
   });
+
+/**
+ * 获取文件内容或预览数据
+ */
+export const getSandboxFile = async (data: {
+  appId: string;
+  chatId: string;
+  path: string;
+  preview?: boolean;
+  outLinkAuthData?: any;
+}) => {
+  const response = await fetch('/api/core/ai/sandbox/download', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...data, preview: data.preview ?? true })
+  });
+
+  if (!response.ok) {
+    throw new Error('Fetch file failed');
+  }
+
+  return response;
+};
 
 /**
  * 下载文件或目录
@@ -55,7 +61,7 @@ export const downloadSandbox = async (data: {
   const response = await fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify({ ...data, preview: false })
   });
 
   if (!response.ok) {

@@ -3,7 +3,7 @@ import { Center, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type Editor from '@monaco-editor/react';
-import { listSandboxFiles, readSandboxFile, writeSandboxFile, downloadSandbox } from './api';
+import { listSandboxFiles, writeSandboxFile, downloadSandbox, getSandboxFile } from './api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useMount } from 'ahooks';
@@ -13,7 +13,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import FileTree, { type TreeNode } from './components/FileTree';
 import FileTabs, { type OpenedFile } from './components/FileTabs';
 import EditorContent from './components/EditorContent';
-import { updateTreeNode, filterTree, getLanguageByFileName } from './utils';
+import { getLanguageByFileName, updateTreeNode, filterTree, getIsBinaryByLanguage } from './utils';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
@@ -62,19 +62,26 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
 
       return nodes;
     },
-    {
-      manual: true
-    }
+    { manual: true }
   );
 
   // 初始加载根目录的 loading 状态
   const [loadingRoot, setLoadingRoot] = useState(false);
 
-  // 读取文件
+  // 读取文件内容 - 根据 language 来决定解码策略
   const { runAsync: loadFile, loading: loadingFile } = useRequest(
-    async (filePath: string) => {
-      const data = await readSandboxFile({ appId, chatId, outLinkAuthData, path: filePath });
-      return data.content;
+    async (filePath: string, language: string): Promise<string> => {
+      const response = await getSandboxFile({ appId, chatId, outLinkAuthData, path: filePath });
+
+      const isBinary = getIsBinaryByLanguage(language);
+
+      if (isBinary) {
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      } else {
+        const content = await response.text();
+        return content;
+      }
     },
     { manual: true }
   );
@@ -86,7 +93,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
       if (!targetPath) return;
 
       const targetFile = openedFiles.find((f) => f.path === targetPath);
-      if (!targetFile) return;
+      if (!targetFile || targetFile.isBinary) return;
 
       await writeSandboxFile({
         appId,
@@ -136,15 +143,18 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
 
     // 新打开文件
     try {
-      const content = await loadFile(filePath);
-      const fileName = filePath.split('/').at(-1) || '';
+      const fileName = filePath.split('/').pop() || '';
       const language = getLanguageByFileName(fileName);
+      const isBinary = getIsBinaryByLanguage(language);
+
+      const content = await loadFile(filePath, language);
 
       const newFile: OpenedFile = {
         path: filePath,
         name: fileName,
         content,
         language,
+        isBinary,
         isDirty: false
       };
 
@@ -161,6 +171,11 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
 
     // 如果关闭的是当前文件,切换到其他文件
     setOpenedFiles((prev) => {
+      const target = prev.find((f) => f.path === filePath);
+      if (target?.isBinary && target.content.startsWith('blob:')) {
+        URL.revokeObjectURL(target.content);
+      }
+
       const newOpenedFiles = prev.filter((f) => f.path !== filePath);
 
       if (activeFilePath === filePath) {
@@ -185,9 +200,8 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
 
   // 当切换 tab 时,更新编辑器内容
   useEffect(() => {
-    if (!editorRef.current || !activeFilePath) return;
-
-    if (!activeFile) return;
+    if (!editorRef.current || !activeFilePath || !activeFile) return;
+    if (activeFile.isBinary) return;
 
     // 使用 ref 标记防止循环更新
     isUpdatingRef.current = true;

@@ -51,25 +51,6 @@ async function handler(
         return { action: 'list', files };
       }
 
-      case 'read': {
-        const results = await sandbox.provider.readFiles([body.path]);
-        const result = results[0];
-
-        if (result.error) {
-          return Promise.reject(result.error);
-        }
-
-        // 尝试将 Uint8Array 转换为 UTF-8 字符串
-        try {
-          const decoder = new TextDecoder('utf-8', { fatal: true });
-          const content = decoder.decode(result.content);
-          return { action: 'read', content };
-        } catch (error) {
-          // 非 UTF-8 内容,返回特殊标记
-          return { action: 'read', content: '[Binary File - Cannot Display]' };
-        }
-      }
-
       case 'write': {
         const results = await sandbox.provider.writeFiles([
           {

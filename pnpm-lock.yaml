@@ -84,6 +84,9 @@ catalogs:
     lodash:
       specifier: 4.17.23
       version: 4.17.23
+    mime:
+      specifier: ^4.1.0
+      version: 4.1.0
     minio:
       specifier: 8.0.7
       version: 8.0.7
@@ -352,7 +355,7 @@ importers:
         specifier: ^1.11.0
         version: 1.11.0
       mime:
-        specifier: ^4.1.0
+        specifier: 'catalog:'
         version: 4.1.0
       minio:
         specifier: 'catalog:'
@@ -740,6 +743,9 @@ importers:
       mermaid:
         specifier: ^10.9.4
         version: 10.9.4
+      mime:
+        specifier: 'catalog:'
+        version: 4.1.0
       minio:
         specifier: 'catalog:'
         version: 8.0.7
@@ -5341,6 +5347,7 @@ packages:
   '@xmldom/xmldom@0.8.10':
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@zag-js/dom-query@0.31.1':
     resolution: {integrity: sha512-oiuohEXAXhBxpzzNm9k2VHGEOLC1SXlXSbRPcfBZ9so5NRQUA++zCE7cyQJqGLTZR0t3itFLlZqDbYEXRrefwg==}
