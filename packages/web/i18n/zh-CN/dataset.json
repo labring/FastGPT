@@ -193,7 +193,7 @@
   "status_error": "运行异常",
   "sync_collection_failed": "同步集合错误，请检查是否能正常访问源文件",
   "sync_schedule": "自动同步",
-  "sync_schedule_tip": "仅会同步已存在的集合。包括链接集合以及 API 知识库里所有集合。系统会每天进行轮询更新，无法确定具体的更新时间。",
+  "sync_schedule_tip": "开启后，将在 1~5 小时后首次自动同步已选择的内容，之后每 24 小时自动同步一次。",
   "tag.Add_new_tag": "新建标签",
   "tag.Edit_tag": "编辑标签",
   "tag.add": "创建",
