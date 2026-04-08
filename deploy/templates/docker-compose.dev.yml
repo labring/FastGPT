@@ -368,47 +368,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  opensandbox-server:
-    image: ${{opensandbox-server.image}}:${{opensandbox-server.tag}}
-    container_name: opensandbox-server
-    restart: always
-    networks:
-      - fastgpt
-    ports:
-      - '8090:8090'
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    configs:
-      - source: opensandbox-config
-        target: /etc/opensandbox/config.toml
-    environment:
-      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-  volume-manager:
-    image: fastgpt-volume-manager:latest
-    container_name: volume-manager
-    restart: always
-    networks:
-      - fastgpt
-    ports:
-      - 3004:3001
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - VM_RUNTIME=docker
-      - VM_AUTH_TOKEN=changeme
-      - VM_VOLUME_NAME_PREFIX=fastgpt-session
-      - VM_LOG_LEVEL=info
-    healthcheck:
-      test:
-        ['CMD', 'bun', '-e', "fetch('http://localhost:3001/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 networks:
   fastgpt:
   aiproxy:
