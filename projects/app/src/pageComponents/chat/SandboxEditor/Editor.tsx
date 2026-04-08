@@ -343,6 +343,9 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
                 openedFiles={openedFiles}
                 editorRef={editorRef}
                 isUpdatingRef={isUpdatingRef}
+                appId={appId}
+                chatId={chatId}
+                outLinkAuthData={outLinkAuthData}
               />
             </>
           ) : (

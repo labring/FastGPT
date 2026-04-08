@@ -94,3 +94,13 @@ export const checkSandboxExist = async (data: {
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => POST<{ exists: boolean }>('/core/ai/sandbox/checkExist', data);
+
+/**
+ * 获取 HTML 预览链接 (S3 托管)
+ */
+export const getHtmlPreviewLink = (data: {
+  appId: string;
+  chatId: string;
+  content: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}) => POST<string>('/core/ai/sandbox/getHtmlPreviewLink', data);

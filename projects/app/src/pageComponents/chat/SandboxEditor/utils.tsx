@@ -103,7 +103,7 @@ export const getLanguageByFileName = (fileName: string): string => {
  * 判断语言是否属于二进制
  */
 export const getIsBinaryByLanguage = (language: string) => {
-  return ['image', 'audio', 'video'].includes(language);
+  return ['image', 'audio', 'video', 'pdf'].includes(language);
 };
 
 // Update tree node

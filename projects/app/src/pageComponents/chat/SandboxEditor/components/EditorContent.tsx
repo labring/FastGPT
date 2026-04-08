@@ -7,6 +7,8 @@ import type { OpenedFile } from './FileTabs';
 import Markdown from '@fastgpt/web/components/common/Markdown';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
+import { getHtmlPreviewLink } from '../api';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
@@ -21,6 +23,9 @@ type Props = {
   openedFiles: OpenedFile[];
   editorRef: React.MutableRefObject<EditorInstance | undefined>;
   isUpdatingRef: React.MutableRefObject<boolean>;
+  appId?: string;
+  chatId?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
 };
 
 const EditorContent = ({
@@ -33,16 +38,32 @@ const EditorContent = ({
   setOpenedFiles,
   openedFiles,
   editorRef,
-  isUpdatingRef
+  isUpdatingRef,
+  appId,
+  chatId,
+  outLinkAuthData
 }: Props) => {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<'source' | 'preview'>('source');
+  const [generatingLink, setGeneratingLink] = useState(false);
 
-  const handleHtmlPreview = () => {
-    if (!activeFile) return;
-    const blob = new Blob([activeFile.content], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+  const handleHtmlPreview = async () => {
+    if (!activeFile || !appId || !chatId) return;
+
+    try {
+      setGeneratingLink(true);
+      const url = await getHtmlPreviewLink({
+        appId,
+        chatId,
+        content: activeFile.content,
+        outLinkAuthData
+      });
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setGeneratingLink(false);
+    }
   };
 
   const renderFileContent = () => {
@@ -207,6 +228,7 @@ const EditorContent = ({
               size="sm"
               icon={<MyIcon name="common/htmlPreview" w="16px" />}
               aria-label={'Preview'}
+              isLoading={generatingLink}
               onClick={handleHtmlPreview}
               variant="whiteBase"
             />
