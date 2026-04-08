@@ -378,6 +378,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
         onClose={handleCancel}
         w="600px"
         h="auto"
+        closeOnOverlayClick={false}
       >
         <ModalBody py={6} px={8}>
           <Flex direction="column" gap={3}>

@@ -223,6 +223,8 @@ const FaqImportModal = ({
         iconColor={'primary.600'}
         title={t('dataset:faq_import_title')}
         isOpen
+        onClose={onClose}
+        closeOnOverlayClick={false}
         w={'500px'}
         h={'auto'}
       >
@@ -352,4 +354,3 @@ const FaqImportModal = ({
 };
 
 export default FaqImportModal;
-
