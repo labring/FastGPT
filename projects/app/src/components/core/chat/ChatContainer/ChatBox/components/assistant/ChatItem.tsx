@@ -15,6 +15,7 @@ import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
 import AIResponseBox from '../../../../components/AIResponseBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import {
   type AIChatItemValueItemType,
@@ -25,7 +26,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import ChatBoxDivider from '../../../../Divider';
-import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { getSourceNameIcon, isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 
@@ -51,6 +52,7 @@ type BasicProps = {
   };
   questionGuides?: string[];
   children?: React.ReactNode;
+  datasetReadPerMap?: Record<string, boolean>;
 } & Omit<ChatItemControllerProps, 'onCorrectError'> & {
     onCorrectError?: (dataId: string, defaultCorrectionData?: any) => void;
   };
@@ -61,7 +63,13 @@ type Props = BasicProps & {
 
 // 轻量级引用展示组件
 const SimpleCitationDisplay = React.memo(
-  function SimpleCitationDisplay({ historyItem }: { historyItem: ChatSiteItemType }) {
+  function SimpleCitationDisplay({
+    historyItem,
+    datasetReadPerMap
+  }: {
+    historyItem: ChatSiteItemType;
+    datasetReadPerMap: Record<string, boolean>;
+  }) {
     const { t } = useTranslation();
     const [isExpanded, setIsExpanded] = React.useState(true);
     const { totalQuoteList: quoteList = [], toolCiteLinks = [] } = useMemo(
@@ -81,15 +89,21 @@ const SimpleCitationDisplay = React.memo(
         }, {})
       )
         .flat()
-        .map((item, index) => ({
-          id: item.collectionId,
-          displayText: item.sourceName,
-          icon: item.imageId
-            ? 'core/dataset/imageFill'
-            : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-          index: index + 1,
-          url: `/dataset/detail?datasetId=${item.datasetId}&collectionId=${item.collectionId}&currentTab=dataCard`
-        }));
+        .map((item, index) => {
+          const isDbSource = isDatabaseSource(item.sourceId);
+          const hasReadPer =
+            !(item.datasetId in datasetReadPerMap) || datasetReadPerMap[item.datasetId];
+          return {
+            id: item.collectionId,
+            displayText: item.sourceName,
+            icon: item.imageId
+              ? 'core/dataset/imageFill'
+              : getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+            index: index + 1,
+            url: `/dataset/detail?datasetId=${item.datasetId}&collectionId=${item.collectionId}&currentTab=dataCard`,
+            noPermission: !isDbSource && !hasReadPer
+          };
+        });
 
       // 链接引用
       const linkItems = toolCiteLinks.map((r, index) => ({
@@ -97,11 +111,12 @@ const SimpleCitationDisplay = React.memo(
         displayText: r.name,
         icon: 'common/link',
         index: datasetItems.length + index + 1,
-        url: r.url
+        url: r.url,
+        noPermission: false
       }));
 
       return [...datasetItems, ...linkItems].filter((v) => !isCorrectionRecord(v.id));
-    }, [quoteList, toolCiteLinks]);
+    }, [quoteList, toolCiteLinks, datasetReadPerMap]);
 
     if (citationList.length === 0) return null;
 
@@ -139,48 +154,61 @@ const SimpleCitationDisplay = React.memo(
             flexDirection="column"
           >
             {citationList.map((item) => (
-              <Flex
+              <MyTooltip
                 key={item.id}
-                height={'16px'}
-                alignItems={'center'}
-                pl={'12px'}
-                cursor={'pointer'}
-                onClick={() => item.url && window.open(item.url, '_blank')}
-                _hover={{ '& .citation-file-name': { textDecoration: 'underline' } }}
+                label={item.noPermission ? t('common:core.dataset.error.unAuthDataset') : ''}
               >
-                <Box
-                  w={'14px'}
-                  h={'14px'}
-                  display={'flex'}
+                <Flex
+                  height={'16px'}
                   alignItems={'center'}
-                  justifyContent={'center'}
-                  fontSize={'10px'}
-                  color={'#909499'}
-                  background={'#F0F2F5'}
-                  borderRadius={'10px'}
-                  mr={'5px'}
-                  flexShrink={0}
+                  pl={'12px'}
+                  cursor={item.noPermission ? 'not-allowed' : 'pointer'}
+                  opacity={item.noPermission ? 0.5 : 1}
+                  onClick={() => {
+                    if (item.noPermission) return;
+                    item.url && window.open(item.url, '_blank');
+                  }}
+                  _hover={
+                    item.noPermission
+                      ? {}
+                      : { '& .citation-file-name': { textDecoration: 'underline' } }
+                  }
                 >
-                  {item.index}
-                </Box>
-                <Box
-                  className="citation-file-name"
-                  fontSize={'12px'}
-                  lineHeight={'14px'}
-                  color={'#1A7EFF'}
-                  _hover={{ textDecoration: 'underline' }}
-                  ml={1}
-                >
-                  {item.displayText}
-                </Box>
-              </Flex>
+                  <Box
+                    w={'14px'}
+                    h={'14px'}
+                    display={'flex'}
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    fontSize={'10px'}
+                    color={'#909499'}
+                    background={'#F0F2F5'}
+                    borderRadius={'10px'}
+                    mr={'5px'}
+                    flexShrink={0}
+                  >
+                    {item.index}
+                  </Box>
+                  <Box
+                    className="citation-file-name"
+                    fontSize={'12px'}
+                    lineHeight={'14px'}
+                    color={item.noPermission ? '#909499' : '#1A7EFF'}
+                    ml={1}
+                  >
+                    {item.displayText}
+                  </Box>
+                </Flex>
+              </MyTooltip>
             ))}
           </Box>
         )}
       </>
     );
   },
-  (prevProps, nextProps) => prevProps.historyItem.dataId === nextProps.historyItem.dataId
+  (prevProps, nextProps) =>
+    prevProps.historyItem.dataId === nextProps.historyItem.dataId &&
+    prevProps.datasetReadPerMap === nextProps.datasetReadPerMap
 );
 
 const HumanContentCard = React.memo(
@@ -238,7 +266,15 @@ const AIContentCard = React.memo(function AIContentCard({
 });
 
 const ChatItem = (props: Props) => {
-  const { type, statusBoxData, children, isLastChild, chat, onCorrectError } = props;
+  const {
+    type,
+    statusBoxData,
+    children,
+    isLastChild,
+    chat,
+    onCorrectError,
+    datasetReadPerMap = {}
+  } = props;
 
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
@@ -419,7 +455,7 @@ const ChatItem = (props: Props) => {
                   isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
                   isChatting={isChatting}
                 />
-                <SimpleCitationDisplay historyItem={chat} />
+                <SimpleCitationDisplay historyItem={chat} datasetReadPerMap={datasetReadPerMap} />
                 <Box color="#CCCCCC" mt={2} fontSize={'0.85rem'}>
                   {t('app:chat_item_cost_time')} {chat.durationSeconds}s
                 </Box>

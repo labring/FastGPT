@@ -369,6 +369,11 @@ export const getDatasetDataList = (data: GetDatasetDataListProps) =>
 export const getDatasetDataPermission = (id?: string) =>
   GET<GetQuotePermissionResponse>(`/core/dataset/data/getPermission`, { id });
 
+export const getDatasetDataBatchPermission = (ids: string[]) =>
+  POST<Record<string, GetQuotePermissionResponse>>(`/core/dataset/data/getBatchPermission`, {
+    ids
+  });
+
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });
 
