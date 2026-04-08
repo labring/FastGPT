@@ -13,23 +13,20 @@ import {
 /**
  * Create embedding model configuration (idempotent)
  *
- * Integrates with FastGPT model management system to create model configuration and AI Proxy channel.
  * Architecture: Model config contains metadata only, channel contains access credentials.
- * Order: 1) Create model config first, 2) Create channel second, 3) Poll until channel is available.
+ * Order: 1) Create model config, 2) Create channel, 3) Poll until channel is available.
  *
- * Key difference from rerank: No replaceModelInApps function (embedding models don't need to be
- * replicated across apps in the same way as rerank models).
- *
- * @param params - Model configuration parameters
- * @param params.name - Model alias name
- * @param params.endpoint - Model endpoint configuration
- * @param params.endpoint.base_url - OpenAI API base URL (stored in channel only)
- * @param params.endpoint.api_key - API key (stored in channel only)
- * @param params.endpoint.model - Model name
- * @param params.isActive - Whether to activate the model
- * @param params.charsPointsPrice - Character points price
+ * @param params.name - Display name for the tuned model
+ * @param params.endpoint - Tuned model endpoint (stored in channel, not model config)
+ * @param params.isActive - Whether to activate the model immediately
+ * @param params.charsPointsPrice - Inherited from base model
+ * @param params.defaultToken - Inherited from base model (split text default token)
+ * @param params.maxToken - Inherited from base model (model max token)
+ * @param params.weight - Inherited from base model (training weight)
+ * @param params.normalization - Inherited from base model
+ * @param params.batchSize - Inherited from base model
+ * @param params.defaultConfig - Inherited from base model (post request config)
  * @returns Model configuration object ID
- * @throws {Error} When model config or channel creation fails, or channel does not become available within timeout
  */
 export async function createEmbeddingModelConfig(params: {
   name: string;
@@ -39,24 +36,33 @@ export async function createEmbeddingModelConfig(params: {
     model: string;
   };
   isActive: boolean;
-  charsPointsPrice: number;
+  charsPointsPrice?: number;
+  defaultToken?: number;
+  maxToken?: number;
+  weight?: number;
+  normalization?: boolean;
+  batchSize?: number;
+  defaultConfig?: Record<string, any>;
 }): Promise<string> {
-  const { name, endpoint, isActive, charsPointsPrice } = params;
+  const { name, endpoint, isActive } = params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 
-  // Step 1: Create or update model configuration in database (idempotent with upsert)
-  // Model config contains metadata only, no credentials
   const modelConfig: EmbeddingModelItemType = {
     provider: getModelProvider('Sangfor AICP').id,
     model,
     name,
     isActive: isActive ?? true,
     isCustom: true,
-    isTuned: true, // Mark as fine-tuned model created by training module
-    // Do NOT store requestUrl and requestAuth - these are in the channel
+    isTuned: true,
     type: ModelTypeEnum.embedding,
-    charsPointsPrice
+    charsPointsPrice: params.charsPointsPrice ?? 0,
+    defaultToken: params.defaultToken ?? 512,
+    maxToken: params.maxToken ?? 512,
+    weight: params.weight ?? 0,
+    normalization: params.normalization,
+    batchSize: params.batchSize,
+    defaultConfig: params.defaultConfig
   };
 
   const result = await MongoSystemModel.findOneAndUpdate(

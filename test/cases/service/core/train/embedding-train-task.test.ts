@@ -12,6 +12,7 @@ import {
   EmbeddingTrainTaskStatusEnum,
   EmbeddingTaskCheckpointStageEnum
 } from '@fastgpt/global/core/train/embedding/constants';
+import { createMockDoc } from './mockDoc';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -106,9 +107,11 @@ describe('Embedding Train Task Controller', () => {
       (MongoEmbeddingTrainTask.findOne as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue(null) // no running task
       });
-      (MongoEmbeddingTrainTask.create as any).mockResolvedValue([{ _id: 'task_123' }]);
+      (MongoEmbeddingTrainTask.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'task_123' })
+      ]);
 
-      const taskId = await createEmbeddingTrainTask({
+      const task = await createEmbeddingTrainTask({
         baseModelId: 'model_123',
         trainsetId: 'trainset_123',
         teamId: 'team_123',
@@ -116,9 +119,9 @@ describe('Embedding Train Task Controller', () => {
         name: 'My Task'
       });
 
-      expect(taskId).toBe('task_123');
+      expect(String(task._id)).toBe('task_123');
 
-      // Verify the task was created with the correct model config (baseModelId instead of appId)
+      // Verify the task was created with the correct model config
       expect(MongoEmbeddingTrainTask.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -146,16 +149,18 @@ describe('Embedding Train Task Controller', () => {
       (MongoEmbeddingTrainTask.findOne as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue(null)
       });
-      (MongoEmbeddingTrainTask.create as any).mockResolvedValue([{ _id: 'task_456' }]);
+      (MongoEmbeddingTrainTask.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'task_456' })
+      ]);
 
-      const taskId = await createEmbeddingTrainTask({
+      const task = await createEmbeddingTrainTask({
         baseModelId: 'model_123',
         datasetIds: ['dataset_1', 'dataset_2'],
         teamId: 'team_123',
         tmbId: 'tmb_123'
       });
 
-      expect(taskId).toBe('task_456');
+      expect(String(task._id)).toBe('task_456');
       expect(MongoEmbeddingTrainTask.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({

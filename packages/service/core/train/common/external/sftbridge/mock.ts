@@ -112,9 +112,11 @@ export async function mockQuerySFTTaskStatus(
   };
 
   if (currentStatus === SFTTaskStatus.completed) {
-    const baseUrl = process.env.MOCK_SFT_ENDPOINT_BASE_URL;
-    const model = process.env.MOCK_SFT_ENDPOINT_MODEL;
-    const apiKey = process.env.MOCK_SFT_ENDPOINT_API_KEY;
+    const envPrefix =
+      task.taskType === 'rerank' ? 'MOCK_SFT_RERANK_ENDPOINT' : 'MOCK_SFT_EMBED_ENDPOINT';
+    const baseUrl = process.env[`${envPrefix}_BASE_URL`];
+    const model = process.env[`${envPrefix}_MODEL`];
+    const apiKey = process.env[`${envPrefix}_API_KEY`];
     if (baseUrl && model && apiKey) {
       response.endpoint = { base_url: baseUrl, model, api_key: apiKey };
     }

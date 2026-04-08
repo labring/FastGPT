@@ -361,5 +361,19 @@
   "retry_rerank_train_task": "重试 Rerank 训练任务",
   "log_retry_rerank_train_task": "【{{name}}】重试了训练任务【{{taskName}}】",
   "cancel_rerank_train_task": "取消 Rerank 训练任务",
-  "log_cancel_rerank_train_task": "【{{name}}】取消了训练任务【{{taskName}}】"
+  "log_cancel_rerank_train_task": "【{{name}}】取消了训练任务【{{taskName}}】",
+  "create_embedding_trainset": "创建向量嵌入训练集",
+  "log_create_embedding_trainset": "【{{name}}】创建了向量嵌入训练集【{{trainsetName}}】",
+  "delete_embedding_trainset": "删除向量嵌入训练集",
+  "log_delete_embedding_trainset": "【{{name}}】删除了训练集【{{trainsetName}}】",
+  "generate_embedding_trainset_data": "生成向量嵌入训练集数据",
+  "log_generate_embedding_trainset_data": "【{{name}}】为训练集【{{trainsetName}}】生成了 {{datasetCount}} 个数据集的训练数据",
+  "create_embedding_train_task": "创建向量嵌入训练任务",
+  "log_create_embedding_train_task": "【{{name}}】创建了训练任务【{{taskName}}】，基础模型：{{baseModelId}}",
+  "delete_embedding_train_task": "删除向量嵌入训练任务",
+  "log_delete_embedding_train_task": "【{{name}}】删除了训练任务【{{taskName}}】",
+  "retry_embedding_train_task": "重试向量嵌入训练任务",
+  "log_retry_embedding_train_task": "【{{name}}】重试了训练任务【{{taskName}}】",
+  "cancel_embedding_train_task": "取消向量嵌入训练任务",
+  "log_cancel_embedding_train_task": "【{{name}}】取消了训练任务【{{taskName}}】"
 }

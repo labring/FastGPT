@@ -358,5 +358,19 @@
   "retry_rerank_train_task": "Retry Rerank Train Task",
   "log_retry_rerank_train_task": "{{name}} retried the train task ({{taskName}}).",
   "cancel_rerank_train_task": "Cancel Rerank Train Task",
-  "log_cancel_rerank_train_task": "{{name}} cancelled the train task ({{taskName}})."
+  "log_cancel_rerank_train_task": "{{name}} cancelled the train task ({{taskName}}).",
+  "create_embedding_trainset": "Create Embedding Trainset",
+  "log_create_embedding_trainset": "{{name}} created an Embedding trainset ({{trainsetName}}).",
+  "delete_embedding_trainset": "Delete Embedding Trainset",
+  "log_delete_embedding_trainset": "{{name}} deleted the trainset ({{trainsetName}}).",
+  "generate_embedding_trainset_data": "Generate Embedding Trainset Data",
+  "log_generate_embedding_trainset_data": "{{name}} generated training data from {{datasetCount}} datasets for trainset ({{trainsetName}}).",
+  "create_embedding_train_task": "Create Embedding Train Task",
+  "log_create_embedding_train_task": "{{name}} created a train task ({{taskName}}) with base model: {{baseModelId}}.",
+  "delete_embedding_train_task": "Delete Embedding Train Task",
+  "log_delete_embedding_train_task": "{{name}} deleted the train task ({{taskName}}).",
+  "retry_embedding_train_task": "Retry Embedding Train Task",
+  "log_retry_embedding_train_task": "{{name}} retried the train task ({{taskName}}).",
+  "cancel_embedding_train_task": "Cancel Embedding Train Task",
+  "log_cancel_embedding_train_task": "{{name}} cancelled the train task ({{taskName}})."
 }

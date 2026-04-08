@@ -3,7 +3,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import {
-  cleanupTempFiles,
+  cleanupRerankTempFiles,
   deleteRerankTrainTask
 } from '@fastgpt/service/core/train/rerank/task/controller';
 
@@ -54,7 +54,7 @@ describe('临时文件清理功能', () => {
     await expect(fs.access(testFilePath)).resolves.toBeUndefined();
 
     // Call cleanup function
-    await cleanupTempFiles(testFilePath);
+    await cleanupRerankTempFiles(testFilePath);
 
     // Verify file is deleted
     await expect(fs.access(testFilePath)).rejects.toThrow();
@@ -64,13 +64,13 @@ describe('临时文件清理功能', () => {
     const nonExistentFile = path.join(tempDir, 'non_existent_file.jsonl');
 
     // Should execute without throwing
-    await expect(cleanupTempFiles(nonExistentFile)).resolves.toBeUndefined();
+    await expect(cleanupRerankTempFiles(nonExistentFile)).resolves.toBeUndefined();
   });
 
   test('没有提供参数时应该记录警告', async () => {
     const { addLog } = await import('@fastgpt/service/common/system/log');
 
-    await expect(cleanupTempFiles()).resolves.toBeUndefined();
+    await expect(cleanupRerankTempFiles()).resolves.toBeUndefined();
     expect(addLog.warn).toHaveBeenCalledWith(
       'Both filePath and taskId are not provided for cleanup'
     );
@@ -91,10 +91,10 @@ describe('临时文件清理功能', () => {
     }
 
     // Call cleanup function
-    await cleanupTempFiles(undefined, testTaskId);
+    await cleanupRerankTempFiles(undefined, testTaskId);
 
     // Verify files for the specified task are deleted
-    // Use regex matching consistent with cleanupTempFiles logic
+    // Use regex matching consistent with cleanupRerankTempFiles logic
     const tempFilePattern = new RegExp(`^rerank_train_${testTaskId}_\\d+\\.jsonl$`);
     const targetFiles = testFiles.filter((file) => tempFilePattern.test(file));
 
@@ -112,7 +112,7 @@ describe('临时文件清理功能', () => {
 describe('训练任务删除时的文件清理', () => {
   test('删除任务时应该清理临时文件 - 集成测试', async () => {
     // This test validates the full deletion flow but requires a real database
-    // In unit tests we primarily verify the cleanupTempFiles function itself
+    // In unit tests we primarily verify the cleanupRerankTempFiles function itself
     // Integration tests can be run with a real database
 
     // Create a temporary file for testing
@@ -123,7 +123,7 @@ describe('训练任务删除时的文件清理', () => {
     await expect(fs.access(testFile)).resolves.toBeUndefined();
 
     // Call cleanup function
-    await cleanupTempFiles(testFile);
+    await cleanupRerankTempFiles(testFile);
 
     // Verify file is deleted
     await expect(fs.access(testFile)).rejects.toThrow();

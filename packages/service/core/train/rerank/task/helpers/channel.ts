@@ -304,6 +304,12 @@ export async function waitForChannelAvailable(params: {
 }): Promise<void> {
   const { model, endpoint } = params;
 
+  // Skip polling in mock mode — mock endpoint may not be a real AI Proxy channel
+  if (process.env.USE_SFT_BRIDGE_MOCK === 'true') {
+    addLog.info('Channel availability check skipped (mock mode enabled)', { model });
+    return;
+  }
+
   const aiproxyUrl = process.env.AIPROXY_API_ENDPOINT;
   const aiproxyToken = process.env.AIPROXY_API_TOKEN;
 

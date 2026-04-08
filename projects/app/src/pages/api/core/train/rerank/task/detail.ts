@@ -10,7 +10,7 @@ import type {
   RerankTrainTaskDetailRequest,
   RerankTrainTaskDetailResponse
 } from '@fastgpt/global/core/train/rerank/api';
-import { buildTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/rerank/task/utils';
+import { buildRerankTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/rerank/task/utils';
 
 async function handler(
   req: NextApiRequest,
@@ -34,13 +34,13 @@ async function handler(
   // Query task detail via aggregation pipeline (includes creator info)
   const tasks = await MongoRerankTrainTask.aggregate([
     { $match: { _id: new Types.ObjectId(taskId) } },
-    ...buildTrainTaskAggregationPipeline()
+    ...buildRerankTrainTaskAggregationPipeline()
   ]);
 
   const task = tasks[0];
 
   if (!task) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskNotExist);
   }
 
   return task;

@@ -3,14 +3,14 @@ import type {
   RerankEvalResult
 } from '@fastgpt/global/core/train/rerank/type';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
-import { createEnhancedError } from '../../utils';
+import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { addLog } from '../../../../../common/system/log';
-import { TrainTaskUnrecoverableError } from '../errors';
-import { evaluateModel } from '../helpers/evaluate-model';
+import { TrainTaskUnrecoverableError } from '../../../common/errors';
+import { evaluateRerankModelHelper } from '../helpers/evaluate-model';
 
 /**
  * Stage 6: Evaluate Tuned Model
@@ -28,25 +28,25 @@ export async function runEvalTunedModelStage(task: RerankTrainTaskSchemaType): P
 
   const evalDatasetId = task.checkpoint.data?.generate_evaldataset?.evalDatasetId;
   if (!evalDatasetId) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.eval_tunedmodel,
-      RerankTrainErrEnum.evalDatasetEmptyBeforeEval,
-      RerankTrainSuggestionEnum.evalDatasetEmptyBeforeEval
+      RerankTrainErrEnum.rerankEvalDatasetEmptyBeforeEval,
+      RerankTrainSuggestionEnum.rerankEvalDatasetEmptyBeforeEval
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const tunedModelId = task.checkpoint.data?.registering?.tunedModelId;
   if (!tunedModelId) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.eval_tunedmodel,
-      RerankTrainErrEnum.evalModelNotFound,
-      RerankTrainSuggestionEnum.evalModelNotFound
+      RerankTrainErrEnum.rerankEvalModelNotFound,
+      RerankTrainSuggestionEnum.rerankEvalModelNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const tunedModelEvalResult = await evaluateModel(
+  const tunedModelEvalResult = await evaluateRerankModelHelper(
     String(task._id),
     evalDatasetId,
     tunedModelId,

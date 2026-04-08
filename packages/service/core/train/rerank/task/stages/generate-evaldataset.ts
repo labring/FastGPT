@@ -7,12 +7,12 @@ import {
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
 import { sampleDataFromDataset, pLimit } from '../../utils';
-import { createEnhancedError } from '../../utils';
+import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { syntheticRerankEvalData } from '../../external';
+import { synthesizeRerankEvalData } from '../../external';
 import { getDefaultLLMModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import {
@@ -21,7 +21,7 @@ import {
   DEFAULT_DITING_TIMEOUT,
   MIN_EVAL_QA_COUNT
 } from '../../constants';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 import { MongoRerankTrainTask } from '../schema';
 import { performDatasetSearch } from '../helpers/dataset-search';
 
@@ -44,10 +44,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
   addLog.info('Run generate eval dataset (auto mode)', { taskId: String(task._id) });
 
   if (!task.datasetIds || task.datasetIds.length === 0) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.evalNoDatasetConfigured,
-      RerankTrainSuggestionEnum.evalNoDatasetConfigured
+      RerankTrainErrEnum.rerankEvalNoDatasetConfigured,
+      RerankTrainSuggestionEnum.rerankEvalNoDatasetConfigured
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -66,10 +66,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
   });
 
   if (sampledData.length === 0) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.evalNoDataAvailable,
-      RerankTrainSuggestionEnum.evalNoDataAvailable
+      RerankTrainErrEnum.rerankEvalNoDataAvailable,
+      RerankTrainSuggestionEnum.rerankEvalNoDataAvailable
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -96,7 +96,7 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
     limitedCount: limitedSampledData.length
   });
 
-  // In auto mode, there is no app reference - use the default LLM model name directly.
+  // In auto mode, use the default LLM model name directly.
   const aiModelName = getDefaultLLMModel()?.model || '';
 
   // Controlled concurrency for DiTing API calls
@@ -119,7 +119,7 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
       ditingLimit(async () => {
         const context = [sample.q, sample.a].filter(Boolean);
 
-        const response = await syntheticRerankEvalData({
+        const response = await synthesizeRerankEvalData({
           synthesizerConfig: {
             synthesizerName: 'eval_q_a_synthesizer'
           },
@@ -160,10 +160,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
     .filter((value) => value !== null);
 
   if (evalDataItems.length === 0) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.evalDitingGenerationFailed,
-      RerankTrainSuggestionEnum.evalDitingGenerationFailed
+      RerankTrainErrEnum.rerankEvalDitingGenerationFailed,
+      RerankTrainSuggestionEnum.rerankEvalDitingGenerationFailed
     );
     throw new TrainTaskRetriableError(enhancedError);
   }
@@ -174,10 +174,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
       generatedCount: evalDataItems.length,
       required: MIN_EVAL_QA_COUNT
     });
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.evalDitingGenerationFailed,
-      RerankTrainSuggestionEnum.evalDitingGenerationFailed
+      RerankTrainErrEnum.rerankEvalDitingGenerationFailed,
+      RerankTrainSuggestionEnum.rerankEvalDitingGenerationFailed
     );
     throw new TrainTaskRetriableError(enhancedError);
   }
@@ -243,10 +243,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
   });
 
   if (enrichedEvalDataItems.length === 0) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.evalDatasetSearchAllFailed,
-      RerankTrainSuggestionEnum.evalDatasetSearchAllFailed,
+      RerankTrainErrEnum.rerankEvalDatasetSearchAllFailed,
+      RerankTrainSuggestionEnum.rerankEvalDatasetSearchAllFailed,
       `All ${searchResults.length} dataset searches failed or returned empty results`
     );
     throw new TrainTaskRetriableError(enhancedError);
@@ -301,10 +301,10 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
     return String(evalCollection._id);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.evalDatabaseSaveFailed,
-      RerankTrainSuggestionEnum.evalDatabaseSaveFailed,
+      RerankTrainErrEnum.rerankEvalDatabaseSaveFailed,
+      RerankTrainSuggestionEnum.rerankEvalDatabaseSaveFailed,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);

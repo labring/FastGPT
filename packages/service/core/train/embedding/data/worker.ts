@@ -10,14 +10,14 @@ import {
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
-} from '../trainset/errors';
+} from '../../common/errors';
 import { MongoEmbeddingTrainset } from '../trainset/schema';
 import { EmbeddingTrainsetStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
 import {
   EmbeddingTrainErrEnum,
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
+import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
 import { createEmbeddingEnhancedError } from '../utils';
 
 export function initEmbeddingTrainDataWorker() {
@@ -87,8 +87,8 @@ export function initEmbeddingTrainDataWorker() {
         // Unknown error, construct basic structured error
         errorMsg = createEmbeddingEnhancedError(
           null,
-          EmbeddingTrainErrEnum.unknownError,
-          EmbeddingTrainSuggestionEnum.unknownError,
+          EmbeddingTrainErrEnum.embeddingUnknownError,
+          EmbeddingTrainSuggestionEnum.embeddingUnknownError,
           error.stack
         );
 

@@ -3,14 +3,14 @@ import type {
   RerankEvalResult
 } from '@fastgpt/global/core/train/rerank/type';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
-import { createEnhancedError } from '../../utils';
+import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import { addLog } from '../../../../../common/system/log';
-import { TrainTaskUnrecoverableError } from '../errors';
-import { evaluateModel } from '../helpers/evaluate-model';
+import { TrainTaskUnrecoverableError } from '../../../common/errors';
+import { evaluateRerankModelHelper } from '../helpers/evaluate-model';
 
 /**
  * Stage 3: Evaluate Base Model
@@ -28,15 +28,15 @@ export async function runEvalBaseModelStage(task: RerankTrainTaskSchemaType): Pr
 
   const evalDatasetId = task.checkpoint.data?.generate_evaldataset?.evalDatasetId;
   if (!evalDatasetId) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.eval_basemodel,
-      RerankTrainErrEnum.evalDatasetEmptyBeforeEval,
-      RerankTrainSuggestionEnum.evalDatasetEmptyBeforeEval
+      RerankTrainErrEnum.rerankEvalDatasetEmptyBeforeEval,
+      RerankTrainSuggestionEnum.rerankEvalDatasetEmptyBeforeEval
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const baseModelEvalResult = await evaluateModel(
+  const baseModelEvalResult = await evaluateRerankModelHelper(
     String(task._id),
     evalDatasetId,
     task.baseModelId,

@@ -47,7 +47,7 @@ export async function validateSFTBridgeAccess(): Promise<void> {
       error: errorMessage
     });
 
-    return Promise.reject(RerankTrainErrEnum.validationSftBridgeUnaccessible);
+    return Promise.reject(RerankTrainErrEnum.rerankValidationSftBridgeUnaccessible);
   }
 }
 
@@ -87,7 +87,7 @@ export async function validateDiTingAccess(): Promise<void> {
       error: errorMessage
     });
 
-    return Promise.reject(RerankTrainErrEnum.validationDitingUnaccessible);
+    return Promise.reject(RerankTrainErrEnum.rerankValidationDitingUnaccessible);
   }
 }
 

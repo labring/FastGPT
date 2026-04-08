@@ -7,6 +7,7 @@ import {
   authRerankTrainset,
   authGenerateFromDatasets
 } from '@fastgpt/service/support/permission/train/rerank/auth';
+import { createMockDoc } from './mockDoc';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -35,9 +36,9 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: vi.fn()
 }));
 
-// Mock calculateTrainsetStats
+// Mock calculateRerankTrainsetStats
 vi.mock('@fastgpt/service/core/train/rerank/data/controller', () => ({
-  calculateTrainsetStats: vi.fn()
+  calculateRerankTrainsetStats: vi.fn()
 }));
 
 describe('Rerank Trainset Controller', () => {
@@ -46,20 +47,22 @@ describe('Rerank Trainset Controller', () => {
   });
 
   describe('createRerankTrainset', () => {
-    test('应该成功创建训练集（不需要 appId）', async () => {
+    test('应该成功创建训练集', async () => {
       const { MongoRerankTrainset } = await import(
         '@fastgpt/service/core/train/rerank/trainset/schema'
       );
 
-      (MongoRerankTrainset.create as any).mockResolvedValue([{ _id: 'trainset_123' }]);
+      (MongoRerankTrainset.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'trainset_123' })
+      ]);
 
-      const trainsetId = await createRerankTrainset({
+      const trainset = await createRerankTrainset({
         teamId: 'team_123',
         tmbId: 'tmb_123',
         name: 'My Trainset'
       });
 
-      expect(trainsetId).toBe('trainset_123');
+      expect(String(trainset._id)).toBe('trainset_123');
       expect(MongoRerankTrainset.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -76,7 +79,9 @@ describe('Rerank Trainset Controller', () => {
         '@fastgpt/service/core/train/rerank/trainset/schema'
       );
 
-      (MongoRerankTrainset.create as any).mockResolvedValue([{ _id: 'trainset_123' }]);
+      (MongoRerankTrainset.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'trainset_123' })
+      ]);
 
       await createRerankTrainset({
         teamId: 'team_123',
@@ -113,12 +118,12 @@ describe('Rerank Trainset Permission', () => {
   });
 
   describe('authRerankTrainset', () => {
-    test('应该验证训练集权限并返回训练集信息（基于 teamId 鉴权，不依赖 App）', async () => {
+    test('应该验证训练集权限并返回训练集信息', async () => {
       const { MongoRerankTrainset } = await import(
         '@fastgpt/service/core/train/rerank/trainset/schema'
       );
       const { authCert } = await import('@fastgpt/service/support/permission/auth/common');
-      const { calculateTrainsetStats } = await import(
+      const { calculateRerankTrainsetStats } = await import(
         '@fastgpt/service/core/train/rerank/data/controller'
       );
 
@@ -144,7 +149,7 @@ describe('Rerank Trainset Permission', () => {
         tmbId: 'tmb_123'
       });
 
-      (calculateTrainsetStats as any).mockResolvedValue(mockStats);
+      (calculateRerankTrainsetStats as any).mockResolvedValue(mockStats);
 
       const result = await authRerankTrainset({
         trainsetId: 'trainset_123',
@@ -157,7 +162,6 @@ describe('Rerank Trainset Permission', () => {
         ...mockTrainset,
         statistics: mockStats
       });
-      // Should not call authApp anymore; ownership is verified via teamId
       expect(authCert).toHaveBeenCalled();
     });
 

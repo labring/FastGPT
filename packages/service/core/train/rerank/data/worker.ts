@@ -10,7 +10,7 @@ import {
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
-} from '../trainset/errors';
+} from '../../common/errors';
 import { MongoRerankTrainset } from '../trainset/schema';
 import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import {
@@ -18,7 +18,7 @@ import {
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
-import { createEnhancedError } from '../utils';
+import { createRerankEnhancedError } from '../utils';
 
 export function initRerankTrainDataWorker() {
   const worker = getWorker<RerankTrainDataGenerateJobData>(
@@ -85,10 +85,10 @@ export function initRerankTrainDataWorker() {
         });
       } else {
         // Unknown error, construct basic structured error
-        errorMsg = createEnhancedError(
+        errorMsg = createRerankEnhancedError(
           null,
-          RerankTrainErrEnum.unknownError,
-          RerankTrainSuggestionEnum.unknownError,
+          RerankTrainErrEnum.rerankUnknownError,
+          RerankTrainSuggestionEnum.rerankUnknownError,
           error.stack
         );
 

@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import {
   RerankTrainsetStatusEnum,
-  TrainDataSourceEnum
+  RerankTrainDataSourceEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { MongoRerankTrainsetData } from '@fastgpt/service/core/train/rerank/data/schema';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
@@ -46,7 +46,7 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
-  syntheticRerankTrainDatas: vi.fn()
+  synthesizeRerankTrainDatas: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/utils', async () => {
@@ -84,7 +84,7 @@ describe('Rerank Train Data Integration Tests', () => {
     vi.clearAllMocks();
   });
 
-  describe('Complete data generation flow (no App dependency)', () => {
+  describe('Complete data generation flow', () => {
     test('应该成功完成从 datasetIds 到训练数据的完整流程', async () => {
       // 1. Mock trainset exists
       (MongoRerankTrainset.findById as any).mockResolvedValue({
@@ -122,10 +122,10 @@ describe('Rerank Train Data Integration Tests', () => {
       (sampleDataFromDataset as any).mockResolvedValue(mockSamples);
 
       // 3. Mock external service
-      const { syntheticRerankTrainDatas } = await import(
+      const { synthesizeRerankTrainDatas } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
-      (syntheticRerankTrainDatas as any).mockResolvedValue({
+      (synthesizeRerankTrainDatas as any).mockResolvedValue({
         success: true,
         data: [
           {
@@ -166,23 +166,22 @@ describe('Rerank Train Data Integration Tests', () => {
         opts: { attempts: 1 }
       } as any);
 
-      // Verify call sequence (no longer involves MongoApp)
+      // Verify call sequence
       expect(MongoRerankTrainset.findById).toHaveBeenCalledWith(trainsetId);
       expect(sampleDataFromDataset).toHaveBeenCalledWith(
         [datasetId1, datasetId2],
         expect.any(Object)
       );
-      expect(syntheticRerankTrainDatas).toHaveBeenCalledTimes(1);
+      expect(synthesizeRerankTrainDatas).toHaveBeenCalledTimes(1);
       expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledTimes(1);
 
-      // Verify inserted data format (no appId field)
       expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             trainsetId,
             teamId: expect.any(String),
             query: expect.any(String),
-            source: TrainDataSourceEnum.dataset,
+            source: RerankTrainDataSourceEnum.dataset,
             metadata: expect.objectContaining({
               sourceInfo: expect.objectContaining({
                 datasetInfo: expect.objectContaining({
@@ -208,10 +207,10 @@ describe('Rerank Train Data Integration Tests', () => {
         { datasetId: datasetId1, dataId: 'data_001', q: 'q1', a: 'a1', indexes: [] }
       ]);
 
-      const { syntheticRerankTrainDatas } = await import(
+      const { synthesizeRerankTrainDatas } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
-      (syntheticRerankTrainDatas as any).mockResolvedValue({
+      (synthesizeRerankTrainDatas as any).mockResolvedValue({
         success: true,
         data: [
           {
@@ -262,10 +261,10 @@ describe('Rerank Train Data Integration Tests', () => {
         { datasetId: datasetId1, dataId: 'data_001', q: 'q1', a: 'a1', indexes: [] }
       ]);
 
-      const { syntheticRerankTrainDatas } = await import(
+      const { synthesizeRerankTrainDatas } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
-      (syntheticRerankTrainDatas as any).mockResolvedValue({
+      (synthesizeRerankTrainDatas as any).mockResolvedValue({
         success: false,
         error: 'DiTing service unavailable'
       });
@@ -320,7 +319,7 @@ describe('Rerank Train Data Integration Tests', () => {
           attemptsMade: 0,
           opts: { attempts: 1 }
         } as any)
-      ).rejects.toThrow('trainsetGenDatasetEmpty');
+      ).rejects.toThrow('rerankTrainsetGenDatasetEmpty');
     });
   });
 });

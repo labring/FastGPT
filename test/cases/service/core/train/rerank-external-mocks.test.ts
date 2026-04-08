@@ -5,15 +5,18 @@ vi.hoisted(() => {
   process.env.USE_DITING_MOCK = 'true';
   process.env.USE_SFT_BRIDGE_MOCK = 'true';
   // Set mock SFT endpoint env vars so completed tasks return endpoint info
-  process.env.MOCK_SFT_ENDPOINT_BASE_URL = 'http://test-sft:8080';
-  process.env.MOCK_SFT_ENDPOINT_MODEL = 'test-rerank-model';
-  process.env.MOCK_SFT_ENDPOINT_API_KEY = 'test-api-key';
+  process.env.MOCK_SFT_RERANK_ENDPOINT_BASE_URL = 'http://test-sft:8080';
+  process.env.MOCK_SFT_RERANK_ENDPOINT_MODEL = 'test-rerank-model';
+  process.env.MOCK_SFT_RERANK_ENDPOINT_API_KEY = 'test-api-key';
+  process.env.MOCK_SFT_EMBED_ENDPOINT_BASE_URL = 'http://test-sft:8080';
+  process.env.MOCK_SFT_EMBED_ENDPOINT_MODEL = 'test-embed-model';
+  process.env.MOCK_SFT_EMBED_ENDPOINT_API_KEY = 'test-api-key';
 });
 
 import {
-  syntheticRerankTrainDatas,
-  syntheticRerankEvalData,
-  evaluateRerank,
+  synthesizeRerankTrainDatas,
+  synthesizeRerankEvalData,
+  evaluateRerankModel,
   createSFTTask,
   querySFTTaskStatus,
   SFTTaskStatus
@@ -36,7 +39,7 @@ describe('Rerank Train External Mocks', () => {
 
   describe('DiTing Service Mocks', () => {
     test('应该成功生成 Rerank 训练数据', async () => {
-      const response = await syntheticRerankTrainDatas({
+      const response = await synthesizeRerankTrainDatas({
         samples: [
           {
             datasetId: 'dataset_001',
@@ -114,7 +117,7 @@ describe('Rerank Train External Mocks', () => {
     });
 
     test('应该成功评测 Rerank 模型', async () => {
-      const response = await evaluateRerank({
+      const response = await evaluateRerankModel({
         dataset: [
           {
             q: '测试问题',
@@ -171,7 +174,7 @@ describe('Rerank Train External Mocks', () => {
         temperature: 0.5
       };
 
-      const response = await syntheticRerankTrainDatas({
+      const response = await synthesizeRerankTrainDatas({
         samples: [
           {
             datasetId: 'test',
@@ -324,7 +327,7 @@ describe('Rerank Train External Mocks', () => {
         }
       ];
 
-      const response = await syntheticRerankTrainDatas({
+      const response = await synthesizeRerankTrainDatas({
         samples,
         config: {
           minNegativeSamples: 1,

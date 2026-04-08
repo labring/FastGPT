@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { deleteTrainData } from '@fastgpt/service/core/train/rerank/data/controller';
+import { deleteRerankTrainData } from '@fastgpt/service/core/train/rerank/data/controller';
 import { MongoRerankTrainsetData } from '@fastgpt/service/core/train/rerank/data/schema';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   // Get first data entry
   const firstData = await MongoRerankTrainsetData.findById(dataIds[0]).lean();
   if (!firstData) {
-    return Promise.reject(RerankTrainErrEnum.trainDataNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainDataNotExist);
   }
 
   // Authenticate permission via trainset
@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   });
 
   // Batch delete
-  const deletedCount = await deleteTrainData(dataIds);
+  const deletedCount = await deleteRerankTrainData(dataIds);
 
   return { deletedCount };
 }

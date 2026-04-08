@@ -7,11 +7,12 @@ import {
 import { embeddingTrainDataGenerateProcessor } from '@fastgpt/service/core/train/embedding/data/processor';
 import {
   EmbeddingTrainsetStatusEnum,
-  TrainDataSourceEnum
+  EmbeddingTrainDataSourceEnum
 } from '@fastgpt/global/core/train/embedding/constants';
 import { MongoEmbeddingTrainsetData } from '@fastgpt/service/core/train/embedding/data/schema';
 import { MongoEmbeddingTrainset } from '@fastgpt/service/core/train/embedding/trainset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { createMockDoc } from './mockDoc';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -90,7 +91,7 @@ describe('Embedding Train Data Generation', () => {
   });
 
   describe('embeddingTrainDataGenerateProcessor', () => {
-    test('应该成功从 datasetIds 生成训练数据（不需要 appId）', async () => {
+    test('应该成功从 datasetIds 生成训练数据', async () => {
       // Mock trainset exists
       (MongoEmbeddingTrainset.findById as any).mockResolvedValue({
         _id: trainsetId,
@@ -147,7 +148,6 @@ describe('Embedding Train Data Generation', () => {
         opts: { attempts: 1 }
       } as any);
 
-      // Verify sampling via datasetIds directly, no appId dependency
       expect(sampleDataFromDataset).toHaveBeenCalled();
     });
 
@@ -205,30 +205,34 @@ describe('Embedding Train Data Generation', () => {
       // Should delete existing data first with source filter
       expect(MongoEmbeddingTrainsetData.deleteMany).toHaveBeenCalledWith({
         trainsetId,
-        source: TrainDataSourceEnum.dataset
+        source: EmbeddingTrainDataSourceEnum.dataset
       });
     });
   });
 
   describe('createManualEmbeddingTrainData', () => {
     test('应该成功创建手动训练数据', async () => {
-      (MongoEmbeddingTrainsetData.create as any).mockResolvedValue([{ _id: 'manual_data_1' }]);
+      (MongoEmbeddingTrainsetData.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'manual_data_1' })
+      ]);
 
-      const dataId = await createManualEmbeddingTrainData({
+      const data = await createManualEmbeddingTrainData({
         trainsetId,
+        teamId,
+        tmbId,
         query: 'What is embedding?',
         positiveDocs: ['Doc 1'],
         negativeDocs: ['Doc 2', 'Doc 3'],
         reason: 'Test data'
       });
 
-      expect(dataId).toBe('manual_data_1');
+      expect(String(data._id)).toBe('manual_data_1');
       expect(MongoEmbeddingTrainsetData.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             trainsetId,
             query: 'What is embedding?',
-            source: TrainDataSourceEnum.manual
+            source: EmbeddingTrainDataSourceEnum.manual
           })
         ])
       );
@@ -283,7 +287,7 @@ describe('Embedding Train Data Generation', () => {
             _id: 'data-1',
             positiveDocs: ['doc1'],
             negativeDocs: ['doc2', 'doc3'],
-            source: TrainDataSourceEnum.dataset,
+            source: EmbeddingTrainDataSourceEnum.dataset,
             metadata: {
               sourceInfo: {
                 datasetInfo: { datasetId: datasetId1 }

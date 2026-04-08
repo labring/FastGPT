@@ -12,7 +12,7 @@ export type EmbeddingTrainDataGenerateConfig = {
 
 export type EmbeddingTrainDataGenerateJobData = {
   trainsetId: string;
-  datasetIds: string[]; // Required: knowledge base IDs (decoupled from App)
+  datasetIds: string[];
   generateConfig?: EmbeddingTrainDataGenerateConfig;
 };
 

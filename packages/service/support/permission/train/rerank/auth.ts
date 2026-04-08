@@ -5,7 +5,7 @@ import { MongoRerankTrainset } from '../../../../core/train/rerank/trainset/sche
 import { MongoRerankTrainTask } from '../../../../core/train/rerank/task/schema';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { calculateTrainsetStats } from '../../../../core/train/rerank/data/controller';
+import { calculateRerankTrainsetStats } from '../../../../core/train/rerank/data/controller';
 import { authCert } from '../../auth/common';
 
 /**
@@ -24,17 +24,17 @@ export async function authRerankTrainset({
 }) {
   const trainset = await MongoRerankTrainset.findById(trainsetId).lean();
   if (!trainset) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainsetNotExist);
   }
 
   // Validate certificate and check team ownership
   const result = await authCert(props);
   if (String(result.teamId) !== String(trainset.teamId)) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainsetNotExist);
   }
 
   // Dynamically calculate statistics
-  const statistics = await calculateTrainsetStats(trainsetId);
+  const statistics = await calculateRerankTrainsetStats(trainsetId);
 
   return {
     ...result,
@@ -84,13 +84,13 @@ export async function authRerankTrainTask({
 }) {
   const task = await MongoRerankTrainTask.findById(taskId).lean();
   if (!task) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskNotExist);
   }
 
   // Validate certificate and check team ownership
   const result = await authCert(props);
   if (String(result.teamId) !== String(task.teamId)) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskNotExist);
   }
 
   return { ...result, task };

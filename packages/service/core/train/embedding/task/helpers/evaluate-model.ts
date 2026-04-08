@@ -10,7 +10,7 @@ import { evaluateEmbeddingModel } from '../../external';
 import { getEmbeddingModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import { buildModelEndpoint } from '../../utils';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 
 /**
  * Evaluate an embedding model on the given evaluation dataset
@@ -39,8 +39,8 @@ export async function evaluateEmbeddingModelHelper(
   if (evalDataItems.length === 0) {
     const enhancedError = createEmbeddingEnhancedError(
       stage,
-      EmbeddingTrainErrEnum.evalDatasetEmptyBeforeEval,
-      EmbeddingTrainSuggestionEnum.evalDatasetEmptyBeforeEval
+      EmbeddingTrainErrEnum.embeddingEvalDatasetEmptyBeforeEval,
+      EmbeddingTrainSuggestionEnum.embeddingEvalDatasetEmptyBeforeEval
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -50,8 +50,8 @@ export async function evaluateEmbeddingModelHelper(
   if (!modelConfig) {
     const enhancedError = createEmbeddingEnhancedError(
       stage,
-      EmbeddingTrainErrEnum.evalModelNotFound,
-      EmbeddingTrainSuggestionEnum.evalModelNotFound,
+      EmbeddingTrainErrEnum.embeddingEvalModelNotFound,
+      EmbeddingTrainSuggestionEnum.embeddingEvalModelNotFound,
       modelId
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -77,8 +77,8 @@ export async function evaluateEmbeddingModelHelper(
   if (!response.success || !response.data?.runLogs?.detailed_results) {
     const enhancedError = createEmbeddingEnhancedError(
       stage,
-      EmbeddingTrainErrEnum.evalDitingEvalFailed,
-      EmbeddingTrainSuggestionEnum.evalDitingEvalFailed,
+      EmbeddingTrainErrEnum.embeddingEvalDitingEvalFailed,
+      EmbeddingTrainSuggestionEnum.embeddingEvalDitingEvalFailed,
       response.error
     );
     throw new TrainTaskRetriableError(enhancedError);

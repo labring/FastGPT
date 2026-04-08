@@ -2,12 +2,12 @@ import { MongoRerankTrainset } from './schema';
 import type { RerankTrainsetSchemaType } from '@fastgpt/global/core/train/rerank/type';
 import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
-import { calculateTrainsetStats } from '../data/controller';
+import { calculateRerankTrainsetStats } from '../data/controller';
 import type { ClientSession } from '../../../../common/mongo';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 
 /**
- * Create rerank trainset (decoupled from App)
+ * Create rerank trainset
  *
  * @param params - Trainset creation parameters
  * @returns Trainset ID
@@ -17,14 +17,14 @@ export async function createRerankTrainset(params: {
   tmbId: string;
   name?: string;
   description?: string;
-}): Promise<string> {
+}): Promise<RerankTrainsetSchemaType> {
   const { teamId, tmbId, name, description } = params;
 
-  const [{ _id }] = await MongoRerankTrainset.create([
+  const [doc] = await MongoRerankTrainset.create([
     {
       teamId,
       tmbId,
-      name: name || `Training Set - ${new Date().toLocaleDateString()}`,
+      name: name || `Rerank Training Set - ${new Date().toLocaleDateString()}`,
       description,
       status: RerankTrainsetStatusEnum.pending
     }
@@ -32,10 +32,10 @@ export async function createRerankTrainset(params: {
 
   addLog.info('Created rerank trainset', {
     teamId,
-    trainsetId: String(_id)
+    trainsetId: String(doc._id)
   });
 
-  return String(_id);
+  return doc.toObject() as RerankTrainsetSchemaType;
 }
 
 /**
@@ -56,11 +56,11 @@ export async function getRerankTrainset(
   }).lean();
 
   if (!trainset) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainsetNotExist);
   }
 
   // Dynamically calculate statistics
-  const statistics = await calculateTrainsetStats(trainsetId);
+  const statistics = await calculateRerankTrainsetStats(trainsetId);
 
   return {
     ...trainset,

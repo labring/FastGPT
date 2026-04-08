@@ -26,7 +26,7 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  // Filter by teamId (no longer relies on appId)
+  // Filter by teamId
   const query: any = { teamId };
   if (status) query.status = status;
 

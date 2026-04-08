@@ -1,29 +1,22 @@
-import type { PaginationProps, PaginationResponse } from '../../common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../../../web/common/fetch/type';
 import type {
   RerankTrainsetSchemaType,
   RerankTrainsetDataSchemaType,
   RerankTrainTaskSchemaType
 } from './type';
 import type {
-  TrainDataSourceEnum,
+  RerankTrainDataSourceEnum,
   RerankTrainTaskStatusEnum,
   RerankTrainTypeEnum
 } from './constants';
 
-// ===== Common Types =====
-export type MessageResponse = { message: string };
-export type TrainsetIdQuery = { trainsetId: string };
-export type TaskIdQuery = { taskId: string };
-export type DataIdQuery = { dataId: string };
-
-/** Sort order */
-export type SortOrder = 'asc' | 'desc';
-
-/** Sort parameters */
-export type SortParams<T extends string> = {
-  sortField?: T;
-  sortOrder?: SortOrder;
-};
+import type {
+  MessageResponse,
+  TrainsetIdQuery,
+  TaskIdQuery,
+  DataIdQuery,
+  SortParams
+} from '../common/api';
 
 // ===== Trainset API =====
 
@@ -79,7 +72,7 @@ export type CreateRerankTrainDataRequest = {
   negativeDocs: string[];
   reason?: string; // Reason for addition
 };
-export type CreateRerankTrainDataResponse = MessageResponse;
+export type CreateRerankTrainDataResponse = RerankTrainsetDataSchemaType;
 
 // Update Training Data
 export type UpdateRerankTrainDataRequest = DataIdQuery & {
@@ -93,7 +86,7 @@ export type UpdateRerankTrainDataResponse = MessageResponse;
 export type ListRerankTrainDataRequest = PaginationProps<
   {
     trainsetId: string; // Required: Trainset ID to query
-    source?: `${TrainDataSourceEnum}`;
+    source?: `${RerankTrainDataSourceEnum}`;
   } & SortParams<'createTime' | 'updateTime'>
 >;
 export type ListRerankTrainDataResponse = PaginationResponse<RerankTrainsetDataSchemaType>;
@@ -115,15 +108,12 @@ export type CreateRerankTrainTaskRequest = {
   evalDatasetId?: string; // Exact mode: existing eval dataset ID
   datasetIds?: string[]; // Auto mode: knowledge base ID list
 
-  baseModelId: string; // Base model ID (BaseModelItemType.model), replaces appId
+  baseModelId: string; // Base model ID (BaseModelItemType.model)
   newModelName?: string; // Optional name for the trained model
   name?: string;
   trainType?: `${RerankTrainTypeEnum}`; // Training type: lora or ptuning, defaults to lora
 };
-export type CreateRerankTrainTaskResponse = {
-  taskId: string;
-  status: `${RerankTrainTaskStatusEnum}`;
-};
+export type CreateRerankTrainTaskResponse = RerankTrainTaskSchemaType;
 
 // Get Task Detail
 export type RerankTrainTaskDetailRequest = TaskIdQuery;
@@ -135,7 +125,7 @@ export type RerankTrainTaskDetailResponse = RerankTrainTaskSchemaType & {
 // List Training Tasks
 export type ListRerankTrainTasksRequest = PaginationProps<
   {
-    baseModelId?: string; // Filter by base model (replaces appId)
+    baseModelId?: string; // Filter by base model
     tunedModelId?: string; // Filter by produced tuned model (triggers chain traversal)
     status?: `${RerankTrainTaskStatusEnum}`;
   } & SortParams<'createTime' | 'updateTime' | 'finishTime'>

@@ -7,7 +7,7 @@ export enum RerankTrainsetStatusEnum {
 }
 
 /** Training data source */
-export enum TrainDataSourceEnum {
+export enum RerankTrainDataSourceEnum {
   dataset = 'dataset', // Generated from dataset
   chat_log = 'chat_log', // Converted from chat logs
   manual = 'manual' // Manually added

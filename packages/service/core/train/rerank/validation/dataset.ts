@@ -28,7 +28,7 @@ async function hasReadySynthesisIndexes(datasetId: string): Promise<boolean> {
  */
 export async function validateDatasetSynthesisIndexes(datasetIds: string[]): Promise<void> {
   if (datasetIds.length === 0) {
-    return Promise.reject(RerankTrainErrEnum.validationNoDatasetConfigured);
+    return Promise.reject(RerankTrainErrEnum.rerankValidationNoDatasetConfigured);
   }
 
   addLog.info('Validating dataset synthesis indexes', {
@@ -51,7 +51,7 @@ export async function validateDatasetSynthesisIndexes(datasetIds: string[]): Pro
       invalidDatasets: invalidDatasets.length,
       invalidDatasetIds: invalidDatasets.map((d) => d.datasetId)
     });
-    return Promise.reject(RerankTrainErrEnum.validationDatasetNoSynthesisIndex);
+    return Promise.reject(RerankTrainErrEnum.rerankValidationDatasetNoSynthesisIndex);
   }
 
   addLog.info('Dataset synthesis index validation successful', {

@@ -3,7 +3,7 @@
  * @param baseFields - Additional fields to include in projection
  * @returns MongoDB aggregation pipeline stages
  */
-export function buildTrainTaskAggregationPipeline(baseFields?: Record<string, any>) {
+export function buildRerankTrainTaskAggregationPipeline(baseFields?: Record<string, any>) {
   return [
     // Lookup team member (creator) info
     {

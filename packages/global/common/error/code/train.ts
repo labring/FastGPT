@@ -4,395 +4,394 @@ import { type ErrType } from '../errorCode';
 /* train: 502000 */
 export enum RerankTrainErrEnum {
   // Trainset errors
-  trainsetNotExist = 'trainsetNotExist',
-  trainsetGenerating = 'trainsetGenerating',
-  trainsetInUse = 'trainsetInUse',
-  trainsetGenerationFailed = 'trainsetGenerationFailed',
+  rerankTrainsetNotExist = 'rerankTrainsetNotExist',
+  rerankTrainsetGenerating = 'rerankTrainsetGenerating',
+  rerankTrainsetInUse = 'rerankTrainsetInUse',
+  rerankTrainsetGenerationFailed = 'rerankTrainsetGenerationFailed',
 
   // Training data errors
-  trainDataNotExist = 'trainDataNotExist',
-  noTrainDataAvailable = 'noTrainDataAvailable',
+  rerankTrainDataNotExist = 'rerankTrainDataNotExist',
+  rerankNoTrainDataAvailable = 'rerankNoTrainDataAvailable',
 
   // Training task errors
-  taskNotExist = 'taskNotExist',
-  taskAlreadyRunning = 'taskAlreadyRunning',
-  taskCannotRetry = 'taskCannotRetry',
-  taskCannotCancel = 'taskCannotCancel',
-  taskCannotDelete = 'taskCannotDelete',
-  taskModelNotFound = 'taskModelNotFound',
-  taskBaseModelDisabled = 'taskBaseModelDisabled',
-  taskNotCompleted = 'taskNotCompleted',
-  tunedModelNotFound = 'tunedModelNotFound',
+  rerankTaskNotExist = 'rerankTaskNotExist',
+  rerankTaskAlreadyRunning = 'rerankTaskAlreadyRunning',
+  rerankTaskCannotRetry = 'rerankTaskCannotRetry',
+  rerankTaskCannotCancel = 'rerankTaskCannotCancel',
+  rerankTaskCannotDelete = 'rerankTaskCannotDelete',
+  rerankTaskModelNotFound = 'rerankTaskModelNotFound',
+  rerankTaskBaseModelDisabled = 'rerankTaskBaseModelDisabled',
+  rerankTaskNotCompleted = 'rerankTaskNotCompleted',
+  rerankTunedModelNotFound = 'rerankTunedModelNotFound',
 
   // Eval dataset errors
-  evalDatasetNotGenerated = 'evalDatasetNotGenerated',
-  evalDatasetEmpty = 'evalDatasetEmpty',
-  evalResultsNotFound = 'evalResultsNotFound',
+  rerankEvalDatasetNotGenerated = 'rerankEvalDatasetNotGenerated',
+  rerankEvalDatasetEmpty = 'rerankEvalDatasetEmpty',
+  rerankEvalResultsNotFound = 'rerankEvalResultsNotFound',
 
   // External service errors
-  ditingServiceError = 'ditingServiceError',
-  sftBridgeServiceError = 'sftBridgeServiceError',
+  rerankDitingServiceError = 'rerankDitingServiceError',
+  rerankSftBridgeServiceError = 'rerankSftBridgeServiceError',
 
   // Environment validation errors
-  validationSftBridgeUnaccessible = 'validationSftBridgeUnaccessible',
-  validationDitingUnaccessible = 'validationDitingUnaccessible',
-  validationDatasetNoSynthesisIndex = 'validationDatasetNoSynthesisIndex',
-  validationNoDatasetConfigured = 'validationNoDatasetConfigured',
+  rerankValidationSftBridgeUnaccessible = 'rerankValidationSftBridgeUnaccessible',
+  rerankValidationDitingUnaccessible = 'rerankValidationDitingUnaccessible',
+  rerankValidationDatasetNoSynthesisIndex = 'rerankValidationDatasetNoSynthesisIndex',
+  rerankValidationNoDatasetConfigured = 'rerankValidationNoDatasetConfigured',
 
   // === Preparing Stage Errors ===
-  prepareTrainsetDeleted = 'prepareTrainsetDeleted',
-  prepareDataEmpty = 'prepareDataEmpty',
-  prepareTimeout = 'prepareTimeout',
-  prepareFileSystemError = 'prepareFileSystemError',
-  prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
+  rerankPrepareTrainsetDeleted = 'rerankPrepareTrainsetDeleted',
+  rerankPrepareDataEmpty = 'rerankPrepareDataEmpty',
+  rerankPrepareTimeout = 'rerankPrepareTimeout',
+  rerankPrepareFileSystemError = 'rerankPrepareFileSystemError',
+  rerankPrepareDataEmptyAfterWrite = 'rerankPrepareDataEmptyAfterWrite',
 
   // === Finetuning Stage Errors ===
-  finetuneDataPathNotFound = 'finetuneDataPathNotFound',
-  finetuneModelConfigInvalid = 'finetuneModelConfigInvalid',
-  finetuneDataFileNotFound = 'finetuneDataFileNotFound',
-  finetuneSftBridgeCreateFailed = 'finetuneSftBridgeCreateFailed',
-  finetuneCancelled = 'finetuneCancelled',
-  finetuneDeploymentFailed = 'finetuneDeploymentFailed',
-  finetuneTrainingFailed = 'finetuneTrainingFailed',
-  finetuneTimeout = 'finetuneTimeout',
-  finetuneDeploymentNoEndpoint = 'finetuneDeploymentNoEndpoint',
+  rerankFinetuneDataPathNotFound = 'rerankFinetuneDataPathNotFound',
+  rerankFinetuneModelConfigInvalid = 'rerankFinetuneModelConfigInvalid',
+  rerankFinetuneDataFileNotFound = 'rerankFinetuneDataFileNotFound',
+  rerankFinetuneSftBridgeCreateFailed = 'rerankFinetuneSftBridgeCreateFailed',
+  rerankFinetuneCancelled = 'rerankFinetuneCancelled',
+  rerankFinetuneDeploymentFailed = 'rerankFinetuneDeploymentFailed',
+  rerankFinetuneTrainingFailed = 'rerankFinetuneTrainingFailed',
+  rerankFinetuneTimeout = 'rerankFinetuneTimeout',
+  rerankFinetuneDeploymentNoEndpoint = 'rerankFinetuneDeploymentNoEndpoint',
 
   // === Registering Stage Errors ===
-  registerEndpointNotFound = 'registerEndpointNotFound',
-  registerBaseModelNotFound = 'registerBaseModelNotFound',
-  registerAiProxyFailed = 'registerAiProxyFailed',
-  registerChannelNotAvailable = 'registerChannelNotAvailable',
+  rerankRegisterEndpointNotFound = 'rerankRegisterEndpointNotFound',
+  rerankRegisterBaseModelNotFound = 'rerankRegisterBaseModelNotFound',
+  rerankRegisterAiProxyFailed = 'rerankRegisterAiProxyFailed',
+  rerankRegisterChannelNotAvailable = 'rerankRegisterChannelNotAvailable',
 
   // === Evaluating Stage Errors ===
-  evalNoDatasetConfigured = 'evalNoDatasetConfigured',
-  evalNoDataAvailable = 'evalNoDataAvailable',
-  evalDitingGenerationFailed = 'evalDitingGenerationFailed',
-  evalDatabaseSaveFailed = 'evalDatabaseSaveFailed',
-  evalDatasetEmptyBeforeEval = 'evalDatasetEmptyBeforeEval',
-  evalDatasetSearchAllFailed = 'evalDatasetSearchAllFailed',
-  evalModelNotFound = 'evalModelNotFound',
-  evalDitingEvalFailed = 'evalDitingEvalFailed',
+  rerankEvalNoDatasetConfigured = 'rerankEvalNoDatasetConfigured',
+  rerankEvalNoDataAvailable = 'rerankEvalNoDataAvailable',
+  rerankEvalDitingGenerationFailed = 'rerankEvalDitingGenerationFailed',
+  rerankEvalDatabaseSaveFailed = 'rerankEvalDatabaseSaveFailed',
+  rerankEvalDatasetEmptyBeforeEval = 'rerankEvalDatasetEmptyBeforeEval',
+  rerankEvalDatasetSearchAllFailed = 'rerankEvalDatasetSearchAllFailed',
+  rerankEvalModelNotFound = 'rerankEvalModelNotFound',
+  rerankEvalDitingEvalFailed = 'rerankEvalDitingEvalFailed',
 
   // === Processor Internal Errors ===
-  processorTaskNotFound = 'processorTaskNotFound',
-  processorTaskLostAfterPrepare = 'processorTaskLostAfterPrepare',
-  processorTaskLostAfterFinetune = 'processorTaskLostAfterFinetune',
-  processorTaskLostAfterRegister = 'processorTaskLostAfterRegister',
-  processorModelConfigNotInCheckpoint = 'processorModelConfigNotInCheckpoint',
-  processorTaskLostAfterEvalGen = 'processorTaskLostAfterEvalGen',
-  processorTaskLostAfterEval = 'processorTaskLostAfterEval',
+  rerankProcessorTaskNotFound = 'rerankProcessorTaskNotFound',
+  rerankProcessorTaskLostAfterPrepare = 'rerankProcessorTaskLostAfterPrepare',
+  rerankProcessorTaskLostAfterFinetune = 'rerankProcessorTaskLostAfterFinetune',
+  rerankProcessorTaskLostAfterRegister = 'rerankProcessorTaskLostAfterRegister',
+  rerankProcessorModelConfigNotInCheckpoint = 'rerankProcessorModelConfigNotInCheckpoint',
+  rerankProcessorTaskLostAfterEvalGen = 'rerankProcessorTaskLostAfterEvalGen',
+  rerankProcessorTaskLostAfterEval = 'rerankProcessorTaskLostAfterEval',
 
   // === Trainset Generation Errors ===
-  trainsetGenNoDataset = 'trainsetGenNoDataset',
-  trainsetGenDatasetEmpty = 'trainsetGenDatasetEmpty',
-  trainsetGenDitingFailed = 'trainsetGenDitingFailed',
-  trainsetGenDitingNoData = 'trainsetGenDitingNoData',
-  trainsetGenDatabaseError = 'trainsetGenDatabaseError',
-  trainsetGenAlreadyGenerating = 'trainsetGenAlreadyGenerating',
-  trainsetGenNotFound = 'trainsetGenNotFound',
+  rerankTrainsetGenNoDataset = 'rerankTrainsetGenNoDataset',
+  rerankTrainsetGenDatasetEmpty = 'rerankTrainsetGenDatasetEmpty',
+  rerankTrainsetGenDitingFailed = 'rerankTrainsetGenDitingFailed',
+  rerankTrainsetGenDitingNoData = 'rerankTrainsetGenDitingNoData',
+  rerankTrainsetGenDatabaseError = 'rerankTrainsetGenDatabaseError',
+  rerankTrainsetGenAlreadyGenerating = 'rerankTrainsetGenAlreadyGenerating',
+  rerankTrainsetGenNotFound = 'rerankTrainsetGenNotFound',
 
   // === General Errors ===
-  unknownError = 'unknownError'
+  rerankUnknownError = 'rerankUnknownError'
 }
 
 /* embedding: 502100 */
 export enum EmbeddingTrainErrEnum {
   // Trainset errors
-  trainsetNotExist = 'trainsetNotExist',
-  trainsetGenerating = 'trainsetGenerating',
-  trainsetInUse = 'trainsetInUse',
-  trainsetGenerationFailed = 'trainsetGenerationFailed',
+  embeddingTrainsetNotExist = 'embeddingTrainsetNotExist',
+  embeddingTrainsetGenerating = 'embeddingTrainsetGenerating',
+  embeddingTrainsetInUse = 'embeddingTrainsetInUse',
+  embeddingTrainsetGenerationFailed = 'embeddingTrainsetGenerationFailed',
 
   // Training data errors
-  trainDataNotExist = 'trainDataNotExist',
-  noTrainDataAvailable = 'noTrainDataAvailable',
+  embeddingTrainDataNotExist = 'embeddingTrainDataNotExist',
+  embeddingNoTrainDataAvailable = 'embeddingNoTrainDataAvailable',
 
   // Training task errors
-  taskNotExist = 'taskNotExist',
-  taskAlreadyRunning = 'taskAlreadyRunning',
-  taskCannotRetry = 'taskCannotRetry',
-  taskCannotCancel = 'taskCannotCancel',
-  taskCannotDelete = 'taskCannotDelete',
-  taskModelNotFound = 'taskModelNotFound',
-  taskBaseModelDisabled = 'taskBaseModelDisabled',
-  taskNotCompleted = 'taskNotCompleted',
-  tunedModelNotFound = 'tunedModelNotFound',
+  embeddingTaskNotExist = 'embeddingTaskNotExist',
+  embeddingTaskAlreadyRunning = 'embeddingTaskAlreadyRunning',
+  embeddingTaskCannotRetry = 'embeddingTaskCannotRetry',
+  embeddingTaskCannotCancel = 'embeddingTaskCannotCancel',
+  embeddingTaskCannotDelete = 'embeddingTaskCannotDelete',
+  embeddingTaskModelNotFound = 'embeddingTaskModelNotFound',
+  embeddingTaskBaseModelDisabled = 'embeddingTaskBaseModelDisabled',
+  embeddingTaskNotCompleted = 'embeddingTaskNotCompleted',
+  embeddingTunedModelNotFound = 'embeddingTunedModelNotFound',
 
   // Eval dataset errors
-  evalDatasetNotGenerated = 'evalDatasetNotGenerated',
-  evalDatasetEmpty = 'evalDatasetEmpty',
-  evalResultsNotFound = 'evalResultsNotFound',
+  embeddingEvalDatasetNotGenerated = 'embeddingEvalDatasetNotGenerated',
+  embeddingEvalDatasetEmpty = 'embeddingEvalDatasetEmpty',
+  embeddingEvalResultsNotFound = 'embeddingEvalResultsNotFound',
 
   // External service errors
-  ditingServiceError = 'ditingServiceError',
-  sftBridgeServiceError = 'sftBridgeServiceError',
+  embeddingDitingServiceError = 'embeddingDitingServiceError',
+  embeddingSftBridgeServiceError = 'embeddingSftBridgeServiceError',
 
   // Environment validation errors
-  validationSftBridgeUnaccessible = 'validationSftBridgeUnaccessible',
-  validationDitingUnaccessible = 'validationDitingUnaccessible',
-  validationDatasetNoSynthesisIndex = 'validationDatasetNoSynthesisIndex',
-  validationNoDatasetConfigured = 'validationNoDatasetConfigured',
+  embeddingValidationSftBridgeUnaccessible = 'embeddingValidationSftBridgeUnaccessible',
+  embeddingValidationDitingUnaccessible = 'embeddingValidationDitingUnaccessible',
+  embeddingValidationDatasetNoSynthesisIndex = 'embeddingValidationDatasetNoSynthesisIndex',
+  embeddingValidationNoDatasetConfigured = 'embeddingValidationNoDatasetConfigured',
 
   // === Preparing Stage Errors ===
-  prepareTrainsetDeleted = 'prepareTrainsetDeleted',
-  prepareDataEmpty = 'prepareDataEmpty',
-  prepareTimeout = 'prepareTimeout',
-  prepareFileSystemError = 'prepareFileSystemError',
-  prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
+  embeddingPrepareTrainsetDeleted = 'embeddingPrepareTrainsetDeleted',
+  embeddingPrepareDataEmpty = 'embeddingPrepareDataEmpty',
+  embeddingPrepareTimeout = 'embeddingPrepareTimeout',
+  embeddingPrepareFileSystemError = 'embeddingPrepareFileSystemError',
+  embeddingPrepareDataEmptyAfterWrite = 'embeddingPrepareDataEmptyAfterWrite',
 
   // === Finetuning Stage Errors ===
-  finetuneDataPathNotFound = 'finetuneDataPathNotFound',
-  finetuneModelConfigInvalid = 'finetuneModelConfigInvalid',
-  finetuneDataFileNotFound = 'finetuneDataFileNotFound',
-  finetuneSftBridgeCreateFailed = 'finetuneSftBridgeCreateFailed',
-  finetuneCancelled = 'finetuneCancelled',
-  finetuneDeploymentFailed = 'finetuneDeploymentFailed',
-  finetuneTrainingFailed = 'finetuneTrainingFailed',
-  finetuneTimeout = 'finetuneTimeout',
-  finetuneDeploymentNoEndpoint = 'finetuneDeploymentNoEndpoint',
+  embeddingFinetuneDataPathNotFound = 'embeddingFinetuneDataPathNotFound',
+  embeddingFinetuneModelConfigInvalid = 'embeddingFinetuneModelConfigInvalid',
+  embeddingFinetuneDataFileNotFound = 'embeddingFinetuneDataFileNotFound',
+  embeddingFinetuneSftBridgeCreateFailed = 'embeddingFinetuneSftBridgeCreateFailed',
+  embeddingFinetuneCancelled = 'embeddingFinetuneCancelled',
+  embeddingFinetuneDeploymentFailed = 'embeddingFinetuneDeploymentFailed',
+  embeddingFinetuneTrainingFailed = 'embeddingFinetuneTrainingFailed',
+  embeddingFinetuneTimeout = 'embeddingFinetuneTimeout',
+  embeddingFinetuneDeploymentNoEndpoint = 'embeddingFinetuneDeploymentNoEndpoint',
 
   // === Registering Stage Errors ===
-  registerEndpointNotFound = 'registerEndpointNotFound',
-  registerBaseModelNotFound = 'registerBaseModelNotFound',
-  registerAiProxyFailed = 'registerAiProxyFailed',
-  registerChannelNotAvailable = 'registerChannelNotAvailable',
+  embeddingRegisterEndpointNotFound = 'embeddingRegisterEndpointNotFound',
+  embeddingRegisterBaseModelNotFound = 'embeddingRegisterBaseModelNotFound',
+  embeddingRegisterAiProxyFailed = 'embeddingRegisterAiProxyFailed',
+  embeddingRegisterChannelNotAvailable = 'embeddingRegisterChannelNotAvailable',
 
   // === Evaluating Stage Errors ===
-  evalNoDatasetConfigured = 'evalNoDatasetConfigured',
-  evalNoDataAvailable = 'evalNoDataAvailable',
-  evalDitingGenerationFailed = 'evalDitingGenerationFailed',
-  evalDatabaseSaveFailed = 'evalDatabaseSaveFailed',
-  evalDatasetEmptyBeforeEval = 'evalDatasetEmptyBeforeEval',
-  evalDatasetSearchAllFailed = 'evalDatasetSearchAllFailed',
-  evalModelNotFound = 'evalModelNotFound',
-  evalDitingEvalFailed = 'evalDitingEvalFailed',
+  embeddingEvalNoDatasetConfigured = 'embeddingEvalNoDatasetConfigured',
+  embeddingEvalNoDataAvailable = 'embeddingEvalNoDataAvailable',
+  embeddingEvalDitingGenerationFailed = 'embeddingEvalDitingGenerationFailed',
+  embeddingEvalDatabaseSaveFailed = 'embeddingEvalDatabaseSaveFailed',
+  embeddingEvalDatasetEmptyBeforeEval = 'embeddingEvalDatasetEmptyBeforeEval',
+  embeddingEvalDatasetSearchAllFailed = 'embeddingEvalDatasetSearchAllFailed',
+  embeddingEvalModelNotFound = 'embeddingEvalModelNotFound',
+  embeddingEvalDitingEvalFailed = 'embeddingEvalDitingEvalFailed',
 
   // === Processor Internal Errors ===
-  processorTaskNotFound = 'processorTaskNotFound',
-  processorTaskLostAfterPrepare = 'processorTaskLostAfterPrepare',
-  processorTaskLostAfterFinetune = 'processorTaskLostAfterFinetune',
-  processorTaskLostAfterRegister = 'processorTaskLostAfterRegister',
-  processorModelConfigNotInCheckpoint = 'processorModelConfigNotInCheckpoint',
-  processorTaskLostAfterEvalGen = 'processorTaskLostAfterEvalGen',
-  processorTaskLostAfterEval = 'processorTaskLostAfterEval',
+  embeddingProcessorTaskNotFound = 'embeddingProcessorTaskNotFound',
+  embeddingProcessorTaskLostAfterPrepare = 'embeddingProcessorTaskLostAfterPrepare',
+  embeddingProcessorTaskLostAfterFinetune = 'embeddingProcessorTaskLostAfterFinetune',
+  embeddingProcessorTaskLostAfterRegister = 'embeddingProcessorTaskLostAfterRegister',
+  embeddingProcessorModelConfigNotInCheckpoint = 'embeddingProcessorModelConfigNotInCheckpoint',
+  embeddingProcessorTaskLostAfterEvalGen = 'embeddingProcessorTaskLostAfterEvalGen',
+  embeddingProcessorTaskLostAfterEval = 'embeddingProcessorTaskLostAfterEval',
 
   // === Trainset Generation Errors ===
-  trainsetGenNoDataset = 'trainsetGenNoDataset',
-  trainsetGenDatasetEmpty = 'trainsetGenDatasetEmpty',
-  trainsetGenDitingFailed = 'trainsetGenDitingFailed',
-  trainsetGenDitingNoData = 'trainsetGenDitingNoData',
-  trainsetGenDatabaseError = 'trainsetGenDatabaseError',
-  trainsetGenAlreadyGenerating = 'trainsetGenAlreadyGenerating',
-  trainsetGenNotFound = 'trainsetGenNotFound',
+  embeddingTrainsetGenNoDataset = 'embeddingTrainsetGenNoDataset',
+  embeddingTrainsetGenDatasetEmpty = 'embeddingTrainsetGenDatasetEmpty',
+  embeddingTrainsetGenDitingFailed = 'embeddingTrainsetGenDitingFailed',
+  embeddingTrainsetGenDitingNoData = 'embeddingTrainsetGenDitingNoData',
+  embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
+  embeddingTrainsetGenAlreadyGenerating = 'embeddingTrainsetGenAlreadyGenerating',
+  embeddingTrainsetGenNotFound = 'embeddingTrainsetGenNotFound',
 
   // === General Errors ===
-  unknownError = 'unknownError'
+  embeddingUnknownError = 'embeddingUnknownError'
 }
 
 /**
  * Suggestion enum for rerank training errors
- * Uses same camelCase naming as RerankTrainErrEnum for consistency
+ * Uses same naming pattern as RerankTrainErrEnum for consistency
  */
 export enum RerankTrainSuggestionEnum {
   // Trainset errors
-  trainsetNotExist = 'trainsetNotExist',
-  trainsetGenerating = 'trainsetGenerating',
-  trainsetInUse = 'trainsetInUse',
-  trainsetGenerationFailed = 'trainsetGenerationFailed',
+  rerankTrainsetNotExist = 'rerankTrainsetNotExist',
+  rerankTrainsetGenerating = 'rerankTrainsetGenerating',
+  rerankTrainsetInUse = 'rerankTrainsetInUse',
+  rerankTrainsetGenerationFailed = 'rerankTrainsetGenerationFailed',
 
   // Training data errors
-  trainDataNotExist = 'trainDataNotExist',
-  noTrainDataAvailable = 'noTrainDataAvailable',
+  rerankTrainDataNotExist = 'rerankTrainDataNotExist',
+  rerankNoTrainDataAvailable = 'rerankNoTrainDataAvailable',
 
   // Training task errors
-  taskNotExist = 'taskNotExist',
-  taskAlreadyRunning = 'taskAlreadyRunning',
-  taskCannotRetry = 'taskCannotRetry',
-  taskCannotCancel = 'taskCannotCancel',
-  taskCannotDelete = 'taskCannotDelete',
-  taskModelNotFound = 'taskModelNotFound',
-  taskBaseModelDisabled = 'taskBaseModelDisabled',
-  taskNotCompleted = 'taskNotCompleted',
-  tunedModelNotFound = 'tunedModelNotFound',
+  rerankTaskNotExist = 'rerankTaskNotExist',
+  rerankTaskAlreadyRunning = 'rerankTaskAlreadyRunning',
+  rerankTaskCannotRetry = 'rerankTaskCannotRetry',
+  rerankTaskCannotCancel = 'rerankTaskCannotCancel',
+  rerankTaskCannotDelete = 'rerankTaskCannotDelete',
+  rerankTaskModelNotFound = 'rerankTaskModelNotFound',
+  rerankTaskBaseModelDisabled = 'rerankTaskBaseModelDisabled',
+  rerankTaskNotCompleted = 'rerankTaskNotCompleted',
+  rerankTunedModelNotFound = 'rerankTunedModelNotFound',
 
   // Eval dataset errors
-  evalDatasetNotGenerated = 'evalDatasetNotGenerated',
-  evalDatasetEmpty = 'evalDatasetEmpty',
-  evalResultsNotFound = 'evalResultsNotFound',
+  rerankEvalDatasetNotGenerated = 'rerankEvalDatasetNotGenerated',
+  rerankEvalDatasetEmpty = 'rerankEvalDatasetEmpty',
+  rerankEvalResultsNotFound = 'rerankEvalResultsNotFound',
 
   // External service errors
-  ditingServiceError = 'ditingServiceError',
-  sftBridgeServiceError = 'sftBridgeServiceError',
+  rerankDitingServiceError = 'rerankDitingServiceError',
+  rerankSftBridgeServiceError = 'rerankSftBridgeServiceError',
 
   // Environment validation errors
-  validationSftBridgeUnaccessible = 'validationSftBridgeUnaccessible',
-  validationDitingUnaccessible = 'validationDitingUnaccessible',
-  validationDatasetNoSynthesisIndex = 'validationDatasetNoSynthesisIndex',
-  validationNoDatasetConfigured = 'validationNoDatasetConfigured',
+  rerankValidationSftBridgeUnaccessible = 'rerankValidationSftBridgeUnaccessible',
+  rerankValidationDitingUnaccessible = 'rerankValidationDitingUnaccessible',
+  rerankValidationDatasetNoSynthesisIndex = 'rerankValidationDatasetNoSynthesisIndex',
+  rerankValidationNoDatasetConfigured = 'rerankValidationNoDatasetConfigured',
 
   // === Preparing Stage Errors ===
-  prepareTrainsetDeleted = 'prepareTrainsetDeleted',
-  prepareDataEmpty = 'prepareDataEmpty',
-  prepareTimeout = 'prepareTimeout',
-  prepareFileSystemError = 'prepareFileSystemError',
-  prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
+  rerankPrepareTrainsetDeleted = 'rerankPrepareTrainsetDeleted',
+  rerankPrepareDataEmpty = 'rerankPrepareDataEmpty',
+  rerankPrepareTimeout = 'rerankPrepareTimeout',
+  rerankPrepareFileSystemError = 'rerankPrepareFileSystemError',
+  rerankPrepareDataEmptyAfterWrite = 'rerankPrepareDataEmptyAfterWrite',
 
   // === Finetuning Stage Errors ===
-  finetuneDataPathNotFound = 'finetuneDataPathNotFound',
-  finetuneModelConfigInvalid = 'finetuneModelConfigInvalid',
-  finetuneDataFileNotFound = 'finetuneDataFileNotFound',
-  finetuneSftBridgeCreateFailed = 'finetuneSftBridgeCreateFailed',
-  finetuneCancelled = 'finetuneCancelled',
-  finetuneDeploymentFailed = 'finetuneDeploymentFailed',
-  finetuneTrainingFailed = 'finetuneTrainingFailed',
-  finetuneTimeout = 'finetuneTimeout',
-  finetuneDeploymentNoEndpoint = 'finetuneDeploymentNoEndpoint',
+  rerankFinetuneDataPathNotFound = 'rerankFinetuneDataPathNotFound',
+  rerankFinetuneModelConfigInvalid = 'rerankFinetuneModelConfigInvalid',
+  rerankFinetuneDataFileNotFound = 'rerankFinetuneDataFileNotFound',
+  rerankFinetuneSftBridgeCreateFailed = 'rerankFinetuneSftBridgeCreateFailed',
+  rerankFinetuneCancelled = 'rerankFinetuneCancelled',
+  rerankFinetuneDeploymentFailed = 'rerankFinetuneDeploymentFailed',
+  rerankFinetuneTrainingFailed = 'rerankFinetuneTrainingFailed',
+  rerankFinetuneTimeout = 'rerankFinetuneTimeout',
+  rerankFinetuneDeploymentNoEndpoint = 'rerankFinetuneDeploymentNoEndpoint',
 
   // === Registering Stage Errors ===
-  registerEndpointNotFound = 'registerEndpointNotFound',
-  registerBaseModelNotFound = 'registerBaseModelNotFound',
-  registerAiProxyFailed = 'registerAiProxyFailed',
-  registerChannelNotAvailable = 'registerChannelNotAvailable',
+  rerankRegisterEndpointNotFound = 'rerankRegisterEndpointNotFound',
+  rerankRegisterBaseModelNotFound = 'rerankRegisterBaseModelNotFound',
+  rerankRegisterAiProxyFailed = 'rerankRegisterAiProxyFailed',
+  rerankRegisterChannelNotAvailable = 'rerankRegisterChannelNotAvailable',
 
   // === Evaluating Stage Errors ===
-  evalNoDatasetConfigured = 'evalNoDatasetConfigured',
-  evalNoDataAvailable = 'evalNoDataAvailable',
-  evalDitingGenerationFailed = 'evalDitingGenerationFailed',
-  evalDatabaseSaveFailed = 'evalDatabaseSaveFailed',
-  evalDatasetEmptyBeforeEval = 'evalDatasetEmptyBeforeEval',
-  evalDatasetSearchAllFailed = 'evalDatasetSearchAllFailed',
-  evalModelNotFound = 'evalModelNotFound',
-  evalDitingEvalFailed = 'evalDitingEvalFailed',
+  rerankEvalNoDatasetConfigured = 'rerankEvalNoDatasetConfigured',
+  rerankEvalNoDataAvailable = 'rerankEvalNoDataAvailable',
+  rerankEvalDitingGenerationFailed = 'rerankEvalDitingGenerationFailed',
+  rerankEvalDatabaseSaveFailed = 'rerankEvalDatabaseSaveFailed',
+  rerankEvalDatasetEmptyBeforeEval = 'rerankEvalDatasetEmptyBeforeEval',
+  rerankEvalDatasetSearchAllFailed = 'rerankEvalDatasetSearchAllFailed',
+  rerankEvalModelNotFound = 'rerankEvalModelNotFound',
+  rerankEvalDitingEvalFailed = 'rerankEvalDitingEvalFailed',
 
   // === Processor Internal Errors ===
-  processorTaskNotFound = 'processorTaskNotFound',
-  processorTaskLostAfterPrepare = 'processorTaskLostAfterPrepare',
-  processorTaskLostAfterFinetune = 'processorTaskLostAfterFinetune',
-  processorTaskLostAfterRegister = 'processorTaskLostAfterRegister',
-  processorModelConfigNotInCheckpoint = 'processorModelConfigNotInCheckpoint',
-  processorTaskLostAfterEvalGen = 'processorTaskLostAfterEvalGen',
-  processorTaskLostAfterEval = 'processorTaskLostAfterEval',
+  rerankProcessorTaskNotFound = 'rerankProcessorTaskNotFound',
+  rerankProcessorTaskLostAfterPrepare = 'rerankProcessorTaskLostAfterPrepare',
+  rerankProcessorTaskLostAfterFinetune = 'rerankProcessorTaskLostAfterFinetune',
+  rerankProcessorTaskLostAfterRegister = 'rerankProcessorTaskLostAfterRegister',
+  rerankProcessorModelConfigNotInCheckpoint = 'rerankProcessorModelConfigNotInCheckpoint',
+  rerankProcessorTaskLostAfterEvalGen = 'rerankProcessorTaskLostAfterEvalGen',
+  rerankProcessorTaskLostAfterEval = 'rerankProcessorTaskLostAfterEval',
 
   // === Trainset Generation Suggestions ===
-  trainsetGenNoDataset = 'trainsetGenNoDataset',
-  trainsetGenDatasetEmpty = 'trainsetGenDatasetEmpty',
-  trainsetGenDitingFailed = 'trainsetGenDitingFailed',
-  trainsetGenDitingNoData = 'trainsetGenDitingNoData',
-  trainsetGenDatabaseError = 'trainsetGenDatabaseError',
-  trainsetGenAlreadyGenerating = 'trainsetGenAlreadyGenerating',
-  trainsetGenNotFound = 'trainsetGenNotFound',
+  rerankTrainsetGenNoDataset = 'rerankTrainsetGenNoDataset',
+  rerankTrainsetGenDatasetEmpty = 'rerankTrainsetGenDatasetEmpty',
+  rerankTrainsetGenDitingFailed = 'rerankTrainsetGenDitingFailed',
+  rerankTrainsetGenDitingNoData = 'rerankTrainsetGenDitingNoData',
+  rerankTrainsetGenDatabaseError = 'rerankTrainsetGenDatabaseError',
+  rerankTrainsetGenAlreadyGenerating = 'rerankTrainsetGenAlreadyGenerating',
+  rerankTrainsetGenNotFound = 'rerankTrainsetGenNotFound',
 
   // === General Errors ===
-  unknownError = 'unknownError'
+  rerankUnknownError = 'rerankUnknownError'
 }
 
 /**
  * Suggestion enum for embedding training errors
- * Uses same camelCase naming as EmbeddingTrainErrEnum for consistency
+ * Uses same naming pattern as EmbeddingTrainErrEnum for consistency
  */
 export enum EmbeddingTrainSuggestionEnum {
   // Trainset errors
-  trainsetNotExist = 'trainsetNotExist',
-  trainsetGenerating = 'trainsetGenerating',
-  trainsetInUse = 'trainsetInUse',
-  trainsetGenerationFailed = 'trainsetGenerationFailed',
+  embeddingTrainsetNotExist = 'embeddingTrainsetNotExist',
+  embeddingTrainsetGenerating = 'embeddingTrainsetGenerating',
+  embeddingTrainsetInUse = 'embeddingTrainsetInUse',
+  embeddingTrainsetGenerationFailed = 'embeddingTrainsetGenerationFailed',
 
   // Training data errors
-  trainDataNotExist = 'trainDataNotExist',
-  noTrainDataAvailable = 'noTrainDataAvailable',
+  embeddingTrainDataNotExist = 'embeddingTrainDataNotExist',
+  embeddingNoTrainDataAvailable = 'embeddingNoTrainDataAvailable',
 
   // Training task errors
-  taskNotExist = 'taskNotExist',
-  taskAlreadyRunning = 'taskAlreadyRunning',
-  taskCannotRetry = 'taskCannotRetry',
-  taskCannotCancel = 'taskCannotCancel',
-  taskCannotDelete = 'taskCannotDelete',
-  taskModelNotFound = 'taskModelNotFound',
-  taskBaseModelDisabled = 'taskBaseModelDisabled',
-  taskNotCompleted = 'taskNotCompleted',
-  tunedModelNotFound = 'tunedModelNotFound',
+  embeddingTaskNotExist = 'embeddingTaskNotExist',
+  embeddingTaskAlreadyRunning = 'embeddingTaskAlreadyRunning',
+  embeddingTaskCannotRetry = 'embeddingTaskCannotRetry',
+  embeddingTaskCannotCancel = 'embeddingTaskCannotCancel',
+  embeddingTaskCannotDelete = 'embeddingTaskCannotDelete',
+  embeddingTaskModelNotFound = 'embeddingTaskModelNotFound',
+  embeddingTaskBaseModelDisabled = 'embeddingTaskBaseModelDisabled',
+  embeddingTaskNotCompleted = 'embeddingTaskNotCompleted',
+  embeddingTunedModelNotFound = 'embeddingTunedModelNotFound',
 
   // Eval dataset errors
-  evalDatasetNotGenerated = 'evalDatasetNotGenerated',
-  evalDatasetEmpty = 'evalDatasetEmpty',
-  evalResultsNotFound = 'evalResultsNotFound',
+  embeddingEvalDatasetNotGenerated = 'embeddingEvalDatasetNotGenerated',
+  embeddingEvalDatasetEmpty = 'embeddingEvalDatasetEmpty',
+  embeddingEvalResultsNotFound = 'embeddingEvalResultsNotFound',
 
   // External service errors
-  ditingServiceError = 'ditingServiceError',
-  sftBridgeServiceError = 'sftBridgeServiceError',
+  embeddingDitingServiceError = 'embeddingDitingServiceError',
+  embeddingSftBridgeServiceError = 'embeddingSftBridgeServiceError',
 
   // Environment validation errors
-  validationSftBridgeUnaccessible = 'validationSftBridgeUnaccessible',
-  validationDitingUnaccessible = 'validationDitingUnaccessible',
-  validationDatasetNoSynthesisIndex = 'validationDatasetNoSynthesisIndex',
-  validationNoDatasetConfigured = 'validationNoDatasetConfigured',
+  embeddingValidationSftBridgeUnaccessible = 'embeddingValidationSftBridgeUnaccessible',
+  embeddingValidationDitingUnaccessible = 'embeddingValidationDitingUnaccessible',
+  embeddingValidationDatasetNoSynthesisIndex = 'embeddingValidationDatasetNoSynthesisIndex',
+  embeddingValidationNoDatasetConfigured = 'embeddingValidationNoDatasetConfigured',
 
   // === Preparing Stage Errors ===
-  prepareTrainsetDeleted = 'prepareTrainsetDeleted',
-  prepareDataEmpty = 'prepareDataEmpty',
-  prepareTimeout = 'prepareTimeout',
-  prepareFileSystemError = 'prepareFileSystemError',
-  prepareDataEmptyAfterWrite = 'prepareDataEmptyAfterWrite',
+  embeddingPrepareTrainsetDeleted = 'embeddingPrepareTrainsetDeleted',
+  embeddingPrepareDataEmpty = 'embeddingPrepareDataEmpty',
+  embeddingPrepareTimeout = 'embeddingPrepareTimeout',
+  embeddingPrepareFileSystemError = 'embeddingPrepareFileSystemError',
+  embeddingPrepareDataEmptyAfterWrite = 'embeddingPrepareDataEmptyAfterWrite',
 
   // === Finetuning Stage Errors ===
-  finetuneDataPathNotFound = 'finetuneDataPathNotFound',
-  finetuneModelConfigInvalid = 'finetuneModelConfigInvalid',
-  finetuneDataFileNotFound = 'finetuneDataFileNotFound',
-  finetuneSftBridgeCreateFailed = 'finetuneSftBridgeCreateFailed',
-  finetuneCancelled = 'finetuneCancelled',
-  finetuneDeploymentFailed = 'finetuneDeploymentFailed',
-  finetuneTrainingFailed = 'finetuneTrainingFailed',
-  finetuneTimeout = 'finetuneTimeout',
-  finetuneDeploymentNoEndpoint = 'finetuneDeploymentNoEndpoint',
+  embeddingFinetuneDataPathNotFound = 'embeddingFinetuneDataPathNotFound',
+  embeddingFinetuneModelConfigInvalid = 'embeddingFinetuneModelConfigInvalid',
+  embeddingFinetuneDataFileNotFound = 'embeddingFinetuneDataFileNotFound',
+  embeddingFinetuneSftBridgeCreateFailed = 'embeddingFinetuneSftBridgeCreateFailed',
+  embeddingFinetuneCancelled = 'embeddingFinetuneCancelled',
+  embeddingFinetuneDeploymentFailed = 'embeddingFinetuneDeploymentFailed',
+  embeddingFinetuneTrainingFailed = 'embeddingFinetuneTrainingFailed',
+  embeddingFinetuneTimeout = 'embeddingFinetuneTimeout',
+  embeddingFinetuneDeploymentNoEndpoint = 'embeddingFinetuneDeploymentNoEndpoint',
 
   // === Registering Stage Errors ===
-  registerEndpointNotFound = 'registerEndpointNotFound',
-  registerBaseModelNotFound = 'registerBaseModelNotFound',
-  registerAiProxyFailed = 'registerAiProxyFailed',
-  registerChannelNotAvailable = 'registerChannelNotAvailable',
+  embeddingRegisterEndpointNotFound = 'embeddingRegisterEndpointNotFound',
+  embeddingRegisterBaseModelNotFound = 'embeddingRegisterBaseModelNotFound',
+  embeddingRegisterAiProxyFailed = 'embeddingRegisterAiProxyFailed',
+  embeddingRegisterChannelNotAvailable = 'embeddingRegisterChannelNotAvailable',
 
   // === Evaluating Stage Errors ===
-  evalNoDatasetConfigured = 'evalNoDatasetConfigured',
-  evalNoDataAvailable = 'evalNoDataAvailable',
-  evalDitingGenerationFailed = 'evalDitingGenerationFailed',
-  evalDatabaseSaveFailed = 'evalDatabaseSaveFailed',
-  evalDatasetEmptyBeforeEval = 'evalDatasetEmptyBeforeEval',
-  evalDatasetSearchAllFailed = 'evalDatasetSearchAllFailed',
-  evalModelNotFound = 'evalModelNotFound',
-  evalDitingEvalFailed = 'evalDitingEvalFailed',
+  embeddingEvalNoDatasetConfigured = 'embeddingEvalNoDatasetConfigured',
+  embeddingEvalNoDataAvailable = 'embeddingEvalNoDataAvailable',
+  embeddingEvalDitingGenerationFailed = 'embeddingEvalDitingGenerationFailed',
+  embeddingEvalDatabaseSaveFailed = 'embeddingEvalDatabaseSaveFailed',
+  embeddingEvalDatasetEmptyBeforeEval = 'embeddingEvalDatasetEmptyBeforeEval',
+  embeddingEvalDatasetSearchAllFailed = 'embeddingEvalDatasetSearchAllFailed',
+  embeddingEvalModelNotFound = 'embeddingEvalModelNotFound',
+  embeddingEvalDitingEvalFailed = 'embeddingEvalDitingEvalFailed',
 
   // === Processor Internal Errors ===
-  processorTaskNotFound = 'processorTaskNotFound',
-  processorTaskLostAfterPrepare = 'processorTaskLostAfterPrepare',
-  processorTaskLostAfterFinetune = 'processorTaskLostAfterFinetune',
-  processorTaskLostAfterRegister = 'processorTaskLostAfterRegister',
-  processorModelConfigNotInCheckpoint = 'processorModelConfigNotInCheckpoint',
-  processorTaskLostAfterEvalGen = 'processorTaskLostAfterEvalGen',
-  processorTaskLostAfterEval = 'processorTaskLostAfterEval',
+  embeddingProcessorTaskNotFound = 'embeddingProcessorTaskNotFound',
+  embeddingProcessorTaskLostAfterPrepare = 'embeddingProcessorTaskLostAfterPrepare',
+  embeddingProcessorTaskLostAfterFinetune = 'embeddingProcessorTaskLostAfterFinetune',
+  embeddingProcessorTaskLostAfterRegister = 'embeddingProcessorTaskLostAfterRegister',
+  embeddingProcessorModelConfigNotInCheckpoint = 'embeddingProcessorModelConfigNotInCheckpoint',
+  embeddingProcessorTaskLostAfterEvalGen = 'embeddingProcessorTaskLostAfterEvalGen',
+  embeddingProcessorTaskLostAfterEval = 'embeddingProcessorTaskLostAfterEval',
 
   // === Trainset Generation Suggestions ===
-  trainsetGenNoDataset = 'trainsetGenNoDataset',
-  trainsetGenDatasetEmpty = 'trainsetGenDatasetEmpty',
-  trainsetGenDitingFailed = 'trainsetGenDitingFailed',
-  trainsetGenDitingNoData = 'trainsetGenDitingNoData',
-  trainsetGenDatabaseError = 'trainsetGenDatabaseError',
-  trainsetGenAlreadyGenerating = 'trainsetGenAlreadyGenerating',
-  trainsetGenNotFound = 'trainsetGenNotFound',
+  embeddingTrainsetGenNoDataset = 'embeddingTrainsetGenNoDataset',
+  embeddingTrainsetGenDatasetEmpty = 'embeddingTrainsetGenDatasetEmpty',
+  embeddingTrainsetGenDitingFailed = 'embeddingTrainsetGenDitingFailed',
+  embeddingTrainsetGenDitingNoData = 'embeddingTrainsetGenDitingNoData',
+  embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
+  embeddingTrainsetGenAlreadyGenerating = 'embeddingTrainsetGenAlreadyGenerating',
+  embeddingTrainsetGenNotFound = 'embeddingTrainsetGenNotFound',
 
   // === General Errors ===
-  unknownError = 'unknownError'
+  embeddingUnknownError = 'embeddingUnknownError'
 }
 
 /**
  * Convert RerankTrainErrEnum to i18n message key
- * Example: prepareTrainsetDeleted -> train:prepare_trainset_deleted
+ * Example: rerankTrainsetNotExist -> train:rerank_trainset_not_exist
  *
  * @param type - Error type from RerankTrainErrEnum
- * @returns i18n key with 'train:' prefix
+ * @returns i18n key pointing to train.json top-level keys
  */
-export function getTrainErrorMessageKey(type: RerankTrainErrEnum): string {
-  // Convert camelCase to snake_case
-  const snakeCase = type
+export function getRerankTrainErrorMessageKey(type: RerankTrainErrEnum): string {
+  const snakeCase = (type as string)
     .replace(/([A-Z])/g, '_$1')
     .toLowerCase()
     .replace(/^_/, '');
@@ -401,14 +400,13 @@ export function getTrainErrorMessageKey(type: RerankTrainErrEnum): string {
 
 /**
  * Convert RerankTrainSuggestionEnum to i18n suggestion key
- * Example: prepareTrainsetDeleted -> train:prepare_trainset_deleted_suggestion
+ * Example: rerankTrainsetNotExist -> train:rerank_trainset_not_exist_suggestion
  *
  * @param suggestion - Suggestion enum value
- * @returns i18n key with 'train:' prefix and '_suggestion' suffix
+ * @returns i18n key pointing to train.json top-level keys
  */
-export function getTrainErrorSuggestionKey(suggestion: RerankTrainSuggestionEnum): string {
-  // Convert camelCase to snake_case
-  const snakeCase = suggestion
+export function getRerankTrainErrorSuggestionKey(suggestion: RerankTrainSuggestionEnum): string {
+  const snakeCase = (suggestion as string)
     .replace(/([A-Z])/g, '_$1')
     .toLowerCase()
     .replace(/^_/, '');
@@ -417,14 +415,13 @@ export function getTrainErrorSuggestionKey(suggestion: RerankTrainSuggestionEnum
 
 /**
  * Convert EmbeddingTrainErrEnum to i18n message key
- * Example: prepareTrainsetDeleted -> train:prepare_trainset_deleted
+ * Example: embeddingTrainsetNotExist -> train:embedding_trainset_not_exist
  *
  * @param type - Error type from EmbeddingTrainErrEnum
- * @returns i18n key with 'train:' prefix
+ * @returns i18n key pointing to train.json top-level keys
  */
 export function getEmbeddingTrainErrorMessageKey(type: EmbeddingTrainErrEnum): string {
-  // Convert camelCase to snake_case
-  const snakeCase = type
+  const snakeCase = (type as string)
     .replace(/([A-Z])/g, '_$1')
     .toLowerCase()
     .replace(/^_/, '');
@@ -433,16 +430,15 @@ export function getEmbeddingTrainErrorMessageKey(type: EmbeddingTrainErrEnum): s
 
 /**
  * Convert EmbeddingTrainSuggestionEnum to i18n suggestion key
- * Example: prepareTrainsetDeleted -> train:prepare_trainset_deleted_suggestion
+ * Example: embeddingTrainsetNotExist -> train:embedding_trainset_not_exist_suggestion
  *
  * @param suggestion - Suggestion enum value
- * @returns i18n key with 'train:' prefix and '_suggestion' suffix
+ * @returns i18n key pointing to train.json top-level keys
  */
 export function getEmbeddingTrainErrorSuggestionKey(
   suggestion: EmbeddingTrainSuggestionEnum
 ): string {
-  // Convert camelCase to snake_case
-  const snakeCase = suggestion
+  const snakeCase = (suggestion as string)
     .replace(/([A-Z])/g, '_$1')
     .toLowerCase()
     .replace(/^_/, '');
@@ -451,44 +447,47 @@ export function getEmbeddingTrainErrorSuggestionKey(
 
 /**
  * Auto-generate trainErr array using enum values for Rerank
- * This ensures consistency and reduces manual duplication
+ * statusText directly uses enum values (which already contain module prefix)
  */
 const trainErr = Object.values(RerankTrainErrEnum).map((errType) => ({
   statusText: errType,
-  message: i18nT(getTrainErrorMessageKey(errType) as any)
+  message: i18nT(getRerankTrainErrorMessageKey(errType as any) as any)
 }));
 
 /**
  * Auto-generate embeddingTrainErr array using enum values for Embedding
- * This ensures consistency and reduces manual duplication
+ * statusText directly uses enum values (which already contain module prefix)
  */
 const embeddingTrainErr = Object.values(EmbeddingTrainErrEnum).map((errType) => ({
   statusText: errType,
-  message: i18nT(getEmbeddingTrainErrorMessageKey(errType) as any)
+  message: i18nT(getEmbeddingTrainErrorMessageKey(errType as any) as any)
 }));
 
-const rerankTrainErrorCodes = trainErr.reduce((acc, cur, index) => {
+const rerankTrainErrorCodes: ErrType<RerankTrainErrEnum> = trainErr.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {
       code: 502000 + index,
-      statusText: cur.statusText,
+      statusText: cur.statusText as RerankTrainErrEnum,
       message: cur.message,
       data: null
     }
   };
-}, {} as ErrType<`${RerankTrainErrEnum}`>);
+}, {} as ErrType<RerankTrainErrEnum>);
 
-const embeddingTrainErrorCodes = embeddingTrainErr.reduce((acc, cur, index) => {
-  return {
-    ...acc,
-    [cur.statusText]: {
-      code: 502100 + index,
-      statusText: cur.statusText,
-      message: cur.message,
-      data: null
-    }
-  };
-}, {} as ErrType<`${EmbeddingTrainErrEnum}`>);
+const embeddingTrainErrorCodes: ErrType<EmbeddingTrainErrEnum> = embeddingTrainErr.reduce(
+  (acc, cur, index) => {
+    return {
+      ...acc,
+      [cur.statusText]: {
+        code: 502100 + index,
+        statusText: cur.statusText as EmbeddingTrainErrEnum,
+        message: cur.message,
+        data: null
+      }
+    };
+  },
+  {} as ErrType<EmbeddingTrainErrEnum>
+);
 
 export default { ...rerankTrainErrorCodes, ...embeddingTrainErrorCodes };

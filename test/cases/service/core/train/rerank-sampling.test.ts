@@ -1,15 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import {
-  sampleDataFromDataset,
-  extractDatasetIdsFromApp
-} from '@fastgpt/service/core/train/rerank/utils';
+import { sampleDataFromDataset } from '@fastgpt/service/core/train/rerank/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 /** 创建含有完整 synthesis index 对的 mock 数据 */
 function createMockDocWithSynthesisIndexes(
@@ -87,133 +80,6 @@ describe('Rerank Data Sampling', () => {
   afterEach(async () => {
     // Clean up test data
     await MongoDatasetData.deleteMany({ teamId });
-  });
-
-  describe('extractDatasetIdsFromApp', () => {
-    test('应该正确从应用配置中提取数据集ID', () => {
-      const app = {
-        _id: 'app_123',
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app description',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'node_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: 'Dataset Search Node',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [
-                  { datasetId: datasetId1, name: 'Dataset 1' },
-                  { datasetId: datasetId2, name: 'Dataset 2' },
-                  { datasetId: 'invalid' }, // Invalid datasetId
-                  null, // null value
-                  { datasetId: '' }, // Empty string
-                  { datasetId: datasetId1, name: 'Dataset 1 duplicate' } // Duplicate
-                ]
-              } as any,
-              {
-                key: 'other_input',
-                value: 'some_value'
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType,
-          {
-            nodeId: 'node_2',
-            flowNodeType: FlowNodeTypeEnum.workflowStart,
-            name: 'Other Node',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'should_not_included' }] // Not a datasetSearchNode
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      } as AppSchema;
-
-      const datasetIds = extractDatasetIdsFromApp(app);
-
-      expect(datasetIds).toEqual([datasetId1, datasetId2, 'invalid', datasetId1]);
-    });
-
-    test('没有数据集搜索节点时应返回空数组', () => {
-      const app = {
-        _id: 'app_123',
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app description',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'node_1',
-            flowNodeType: FlowNodeTypeEnum.workflowStart,
-            name: 'Other Node',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: datasetId1 }]
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      } as AppSchema;
-
-      const datasetIds = extractDatasetIdsFromApp(app);
-
-      expect(datasetIds).toEqual([]);
-    });
-
-    test('数据集输入格式不正确时应过滤无效项', () => {
-      const app = {
-        _id: 'app_123',
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app description',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'node_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: 'Dataset Search Node',
-            inputs: [
-              {
-                key: 'datasets',
-                value: 'not_an_array' // Non-array format
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      } as AppSchema;
-
-      const datasetIds = extractDatasetIdsFromApp(app);
-
-      expect(datasetIds).toEqual([]);
-    });
   });
 
   describe('sampleDataFromDataset', () => {

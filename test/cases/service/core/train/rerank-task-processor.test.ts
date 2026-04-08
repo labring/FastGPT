@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { rerankTrainTaskProcessor } from '@fastgpt/service/core/train/rerank/task/processor';
 import {
-  updateTaskStatus,
-  updateCheckpointStage,
-  updateCheckpointData,
+  updateRerankTaskStatus,
+  updateRerankCheckpointStage,
+  updateRerankCheckpointData,
   getRerankTrainTask,
   deleteRerankTrainTask
 } from '@fastgpt/service/core/train/rerank/task/controller';
@@ -16,7 +16,7 @@ import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import {
   TrainTaskUnrecoverableError,
   TrainTaskRetriableError
-} from '@fastgpt/service/core/train/rerank/task/errors';
+} from '@fastgpt/service/core/train/common/errors';
 import * as fs from 'fs';
 
 // Mock dependencies
@@ -30,9 +30,9 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/task/controller', () => ({
-  updateTaskStatus: vi.fn(),
-  updateCheckpointStage: vi.fn(),
-  updateCheckpointData: vi.fn(),
+  updateRerankTaskStatus: vi.fn(),
+  updateRerankCheckpointStage: vi.fn(),
+  updateRerankCheckpointData: vi.fn(),
   getRerankTrainTask: vi.fn(),
   deleteRerankTrainTask: vi.fn()
 }));
@@ -56,6 +56,19 @@ vi.mock('@fastgpt/service/core/train/rerank/model/controller', () => ({
   deleteRerankModelConfig: vi.fn()
 }));
 
+// Mock ai/config/schema (used by register stage to query base model metadata)
+vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
+  MongoSystemModel: {
+    findOne: vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        metadata: {
+          charsPointsPrice: 0
+        }
+      })
+    })
+  }
+}));
+
 // Mock channel module
 vi.mock('@fastgpt/service/core/train/rerank/task/helpers/channel', () => ({
   createTunedModelChannel: vi.fn().mockResolvedValue(undefined)
@@ -76,7 +89,7 @@ vi.mock('@fastgpt/service/core/train/rerank/trainset/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/data/controller', () => ({
-  calculateTrainsetStats: vi.fn()
+  calculateRerankTrainsetStats: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
@@ -96,8 +109,8 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
-  syntheticRerankEvalData: vi.fn(),
-  evaluateRerank: vi.fn(),
+  synthesizeRerankEvalData: vi.fn(),
+  evaluateRerankModel: vi.fn(),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
@@ -194,7 +207,7 @@ describe('Rerank Train Task Processor', () => {
     const { MongoRerankTrainset } = await import(
       '@fastgpt/service/core/train/rerank/trainset/schema'
     );
-    const { calculateTrainsetStats } = await import(
+    const { calculateRerankTrainsetStats } = await import(
       '@fastgpt/service/core/train/rerank/data/controller'
     );
 
@@ -205,7 +218,7 @@ describe('Rerank Train Task Processor', () => {
       })
     });
 
-    (calculateTrainsetStats as any).mockResolvedValue({
+    (calculateRerankTrainsetStats as any).mockResolvedValue({
       dataCount: 10,
       positiveCount: 10,
       negativeCount: 50,
@@ -234,15 +247,19 @@ describe('Rerank Train Task Processor', () => {
 
   describe('rerankTrainTaskProcessor', () => {
     test('应该成功执行完整的训练任务流程', async () => {
-      const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
-        await import('@fastgpt/service/core/train/rerank/task/controller');
+      const {
+        updateRerankTaskStatus,
+        updateRerankCheckpointStage,
+        updateRerankCheckpointData,
+        getRerankTrainTask
+      } = await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
       );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
+      const { createSFTTask, querySFTTaskStatus, synthesizeRerankEvalData, evaluateRerankModel } =
         await import('@fastgpt/service/core/train/rerank/external');
 
       // Mock initial task
@@ -343,7 +360,7 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Mock evaluation
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -352,7 +369,7 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerank as any).mockResolvedValue({
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -401,7 +418,7 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Mock checkpoint data updates to simulate real database operations
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -424,40 +441,43 @@ describe('Rerank Train Task Processor', () => {
       } as any);
 
       // Verify status update
-      expect(updateTaskStatus).toHaveBeenCalledWith(mockTaskId, RerankTrainTaskStatusEnum.running);
+      expect(updateRerankTaskStatus).toHaveBeenCalledWith(
+        mockTaskId,
+        RerankTrainTaskStatusEnum.running
+      );
 
       // Verify stage execution order (7 stages)
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         1,
         mockTaskId,
         RerankTaskCheckpointStageEnum.generate_trainset
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         2,
         mockTaskId,
         RerankTaskCheckpointStageEnum.generate_evaldataset
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         3,
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_basemodel
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         4,
         mockTaskId,
         RerankTaskCheckpointStageEnum.finetuning
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         5,
         mockTaskId,
         RerankTaskCheckpointStageEnum.registering
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         6,
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
-      expect(updateCheckpointStage).toHaveBeenCalledTimes(6);
+      expect(updateRerankCheckpointStage).toHaveBeenCalledTimes(6);
 
       // Verify data preparation stage
       expect(fs.createWriteStream).toHaveBeenCalled();
@@ -484,8 +504,8 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Verify evaluation stage
-      expect(syntheticRerankEvalData).toHaveBeenCalled(); // called multiple times in generate_evaldataset stage (MIN_EVAL_QA_COUNT)
-      expect(evaluateRerank).toHaveBeenCalledTimes(2);
+      expect(synthesizeRerankEvalData).toHaveBeenCalled(); // called multiple times in generate_evaldataset stage (MIN_EVAL_QA_COUNT)
+      expect(evaluateRerankModel).toHaveBeenCalledTimes(2);
 
       // Verify final result saving contains complete evaluation data
       // Each stage's data is stored under the corresponding checkpointData key
@@ -516,7 +536,7 @@ describe('Rerank Train Task Processor', () => {
       );
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
-        {
+        expect.objectContaining({
           result: {
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
@@ -539,13 +559,17 @@ describe('Rerank Train Task Processor', () => {
               }
             }
           }
-        }
+        })
       );
     });
 
     test('应该正确处理重试逻辑', async () => {
-      const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
-        await import('@fastgpt/service/core/train/rerank/task/controller');
+      const {
+        updateRerankTaskStatus,
+        updateRerankCheckpointStage,
+        updateRerankCheckpointData,
+        getRerankTrainTask
+      } = await import('@fastgpt/service/core/train/rerank/task/controller');
 
       // Mock a task that completed preparing stage and should start finetuning on retry
       let taskState = createMockTask(
@@ -579,10 +603,10 @@ describe('Rerank Train Task Processor', () => {
         }
         return Promise.resolve(null);
       });
-      (updateCheckpointStage as any).mockResolvedValue(undefined);
+      (updateRerankCheckpointStage as any).mockResolvedValue(undefined);
 
       // Mock checkpoint data updates to simulate real database operations
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -606,7 +630,7 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Mock remaining stages succeed
-      const { syntheticRerankEvalData, evaluateRerank } = await import(
+      const { synthesizeRerankEvalData, evaluateRerankModel } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { createRerankModelConfig } = await import(
@@ -666,7 +690,7 @@ describe('Rerank Train Task Processor', () => {
         });
       }
 
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -675,7 +699,7 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerank as any).mockResolvedValue({
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -702,19 +726,19 @@ describe('Rerank Train Task Processor', () => {
 
       // Verify retry stage execution logic (skip completed stages, execute subsequent stages)
       // Since shouldRunStage now uses > relationship, the preparing stage will be skipped
-      expect(updateCheckpointStage).not.toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).not.toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.generate_trainset
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.finetuning
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.registering
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
@@ -725,7 +749,7 @@ describe('Rerank Train Task Processor', () => {
       );
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
-        {
+        expect.objectContaining({
           result: {
             trainDatasetId: 'trainset_1', // use existing preparing data, not regenerated
             trainDatasetFilePath: '/tmp/test.jsonl', // use existing preparing data, not regenerated
@@ -748,14 +772,13 @@ describe('Rerank Train Task Processor', () => {
               }
             }
           }
-        }
+        })
       );
     });
 
     test('应该正确处理checkpoint数据更新后重新获取任务', async () => {
-      const { updateCheckpointStage, updateCheckpointData, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
+      const { updateRerankCheckpointStage, updateRerankCheckpointData, getRerankTrainTask } =
+        await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
@@ -795,7 +818,7 @@ describe('Rerank Train Task Processor', () => {
         });
       });
 
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -807,10 +830,10 @@ describe('Rerank Train Task Processor', () => {
       );
 
       // Mock dependencies needed for generate_evaldataset stage
-      const { syntheticRerankEvalData } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: { qaPair: { question: 'Test question', answer: 'Test answer' } }
       });
@@ -851,8 +874,8 @@ describe('Rerank Train Task Processor', () => {
         requestAuth: 'test-api-key'
       });
 
-      const { evaluateRerank } = await import('@fastgpt/service/core/train/rerank/external');
-      (evaluateRerank as any).mockResolvedValue({
+      const { evaluateRerankModel } = await import('@fastgpt/service/core/train/rerank/external');
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -881,12 +904,12 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskRetriableError);
         expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.finetuneSftBridgeCreateFailed
+          RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed
         );
       }
 
       // Verify generate_trainset stage checkpoint data was written
-      expect(updateCheckpointData).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointData).toHaveBeenCalledWith(
         mockTaskId,
         'generate_trainset',
         expect.objectContaining({
@@ -933,16 +956,16 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.prepareDataEmptyAfterWrite
+          RerankTrainErrEnum.rerankPrepareDataEmptyAfterWrite
         );
       }
     });
 
     test('应该正确处理文件清理', async () => {
       const {
-        updateTaskStatus,
-        updateCheckpointStage,
-        updateCheckpointData,
+        updateRerankTaskStatus,
+        updateRerankCheckpointStage,
+        updateRerankCheckpointData,
         getRerankTrainTask,
         deleteRerankTrainTask
       } = await import('@fastgpt/service/core/train/rerank/task/controller');
@@ -989,7 +1012,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.writeFile as any).mockResolvedValue(undefined);
 
       // Mock checkpoint data updates to simulate real database operations
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -1031,7 +1054,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.unlink as any).mockResolvedValue(undefined);
 
       // Mock remaining stages
-      const { syntheticRerankEvalData, evaluateRerank } = await import(
+      const { synthesizeRerankEvalData, evaluateRerankModel } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { createRerankModelConfig } = await import(
@@ -1091,7 +1114,7 @@ describe('Rerank Train Task Processor', () => {
         });
       }
 
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -1100,7 +1123,7 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerank as any).mockResolvedValue({
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -1137,7 +1160,7 @@ describe('Rerank Train Task Processor', () => {
       );
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
-        {
+        expect.objectContaining({
           result: {
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
@@ -1160,7 +1183,7 @@ describe('Rerank Train Task Processor', () => {
               }
             }
           }
-        }
+        })
       );
     });
   });
@@ -1202,7 +1225,7 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.prepareDataEmptyAfterWrite
+          RerankTrainErrEnum.rerankPrepareDataEmptyAfterWrite
         );
       }
 
@@ -1211,9 +1234,8 @@ describe('Rerank Train Task Processor', () => {
     });
 
     test('SFT task failure should throw an error', async () => {
-      const { updateCheckpointData, updateCheckpointStage, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
+      const { updateRerankCheckpointData, updateRerankCheckpointStage, getRerankTrainTask } =
+        await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
@@ -1260,7 +1282,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
 
       // Mock checkpoint data updates
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -1297,25 +1319,24 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.finetuneTrainingFailed
+          RerankTrainErrEnum.rerankFinetuneTrainingFailed
         );
       }
 
       // Verify stage was updated to preparing
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.generate_trainset
       );
     });
 
     test('评测阶段失败应该抛出错误', async () => {
-      const { updateCheckpointData, updateCheckpointStage, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
+      const { updateRerankCheckpointData, updateRerankCheckpointStage, getRerankTrainTask } =
+        await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData } = await import(
+      const { createSFTTask, querySFTTaskStatus, synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { createRerankModelConfig } = await import(
@@ -1361,7 +1382,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
 
       // Mock checkpoint data updates
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -1389,10 +1410,8 @@ describe('Rerank Train Task Processor', () => {
       // Mock model registration success
       (createRerankModelConfig as any).mockResolvedValue('config_123');
 
-      // Mock application for dataset extraction
-
       // Mock evaluation dataset generation failure
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: false,
         error: 'Failed to connect to evaluation service'
       });
@@ -1413,12 +1432,12 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskRetriableError);
         expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.evalDitingGenerationFailed
+          RerankTrainErrEnum.rerankEvalDitingGenerationFailed
         );
       }
 
       // Verify stage was updated to generate_trainset (stage 1 complete, stage 2 failed during eval dataset generation)
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.generate_trainset
       );
@@ -1448,7 +1467,7 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.processorTaskNotFound
+          RerankTrainErrEnum.rerankProcessorTaskNotFound
         );
       }
     });
@@ -1465,8 +1484,6 @@ describe('Rerank Train Task Processor', () => {
 
       // Create mock task
       const mockTask = createMockTask() as RerankTrainTaskSchemaType;
-
-      // Create mock app config
 
       // Mock dispatchDatasetSearch return value
       (dispatchDatasetSearch as any).mockResolvedValue({
@@ -1518,9 +1535,9 @@ describe('Rerank Train Task Processor', () => {
             userChatInput: 'Test query',
             rerankModel: undefined,
             usingReRank: false,
-            // Verify actual search params from app are used
-            similarity: 0.4,
-            limit: 5000,
+            // Verify actual search params from constants are used
+            similarity: 0.1,
+            limit: 10240,
             searchMode: 'embedding'
           })
         })
@@ -1560,7 +1577,7 @@ describe('Rerank Train Task Processor', () => {
         '@fastgpt/service/core/train/rerank/task/stages/generate-evaldataset'
       );
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
-      const { syntheticRerankEvalData } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { dispatchDatasetSearch } = await import(
@@ -1594,7 +1611,7 @@ describe('Rerank Train Task Processor', () => {
       ]);
 
       // Mock DiTing generating evaluation QA pairs
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -1641,7 +1658,7 @@ describe('Rerank Train Task Processor', () => {
       expect(result.evalDatasetId).toBe('eval_collection_123');
 
       // Verify DiTing API was called using system default model
-      expect(syntheticRerankEvalData).toHaveBeenCalledWith(
+      expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
             name: 'gpt-4' // should use system default model
@@ -1680,7 +1697,7 @@ describe('Rerank Train Task Processor', () => {
         '@fastgpt/service/core/train/rerank/task/stages/generate-evaldataset'
       );
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
-      const { syntheticRerankEvalData } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { dispatchDatasetSearch } = await import(
@@ -1713,7 +1730,7 @@ describe('Rerank Train Task Processor', () => {
       ]);
 
       // Mock DiTing generating evaluation QA pairs
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -1760,7 +1777,7 @@ describe('Rerank Train Task Processor', () => {
       expect(result.evalDatasetId).toBe('eval_collection_123');
 
       // Verify system default model was used
-      expect(syntheticRerankEvalData).toHaveBeenCalledWith(
+      expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
             name: 'default-llm-model' // should use system default model
@@ -1787,7 +1804,7 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.evalNoDataAvailable
+          RerankTrainErrEnum.rerankEvalNoDataAvailable
         );
       }
     });

@@ -95,15 +95,6 @@ describe('Embedding Model Config Controller', () => {
       expect(updatedReloadSystemModel).toHaveBeenCalled();
     });
 
-    test('should not have replaceModelInApps function', async () => {
-      const modelModule = await import('@fastgpt/service/core/train/embedding/model/controller');
-
-      // Verify that replaceModelInApps does not exist in the module
-      expect(modelModule.replaceEmbeddingModelInApps).toBeUndefined();
-      // Verify that other functions exist
-      expect(modelModule.createEmbeddingModelConfig).toBeDefined();
-    });
-
     test('should verify model type is embedding', async () => {
       const { MongoSystemModel } = await import('@fastgpt/service/core/ai/config/schema');
 

@@ -107,6 +107,10 @@ export async function register() {
       const { initRerankTrainWorkers } = await import('@fastgpt/service/core/train/rerank');
       initRerankTrainWorkers();
 
+      // 初始化 Embedding 训练模块 Workers
+      const { initEmbeddingTrainWorkers } = await import('@fastgpt/service/core/train/embedding');
+      initEmbeddingTrainWorkers();
+
       startCron();
       startTrainingQueue(true);
       trackTimerProcess();

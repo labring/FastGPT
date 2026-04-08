@@ -12,7 +12,7 @@ export type RerankTrainDataGenerateConfig = {
 
 export type RerankTrainDataGenerateJobData = {
   trainsetId: string;
-  datasetIds: string[]; // Required: knowledge base IDs (decoupled from App)
+  datasetIds: string[];
   generateConfig?: RerankTrainDataGenerateConfig;
 };
 

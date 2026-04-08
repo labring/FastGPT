@@ -4,7 +4,7 @@ import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/reran
 import { MongoRerankTrainsetData } from '../../data/schema';
 import { MongoRerankTrainset } from '../../trainset/schema';
 import { addLog } from '../../../../../common/system/log';
-import { createEnhancedError, formatTrainTaskError } from '../../utils';
+import { createRerankEnhancedError, formatTrainTaskError } from '../../utils';
 import { getRerankTrainDataDir } from '../../constants';
 import {
   RerankTrainErrEnum,
@@ -14,8 +14,8 @@ import {
   RerankTaskCheckpointStageEnum,
   RerankTrainsetStatusEnum
 } from '@fastgpt/global/core/train/rerank/constants';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
-import { calculateTrainsetStats } from '../../data/controller';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
+import { calculateRerankTrainsetStats } from '../../data/controller';
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import { createRerankTrainset } from '../../trainset/controller';
 import { MongoRerankTrainTask } from '../schema';
@@ -34,7 +34,7 @@ async function waitForTrainsetReady(
 ): Promise<void> {
   let attempts = 0;
 
-  addLog.info('Waiting for trainset to be ready', {
+  addLog.info('Waiting for rerank trainset to be ready', {
     trainsetId,
     maxAttempts,
     interval
@@ -44,27 +44,27 @@ async function waitForTrainsetReady(
     const trainset = await MongoRerankTrainset.findById(trainsetId).lean();
 
     if (!trainset) {
-      const enhancedError = createEnhancedError(
+      const enhancedError = createRerankEnhancedError(
         RerankTaskCheckpointStageEnum.generate_trainset,
-        RerankTrainErrEnum.prepareTrainsetDeleted,
-        RerankTrainSuggestionEnum.prepareTrainsetDeleted
+        RerankTrainErrEnum.rerankPrepareTrainsetDeleted,
+        RerankTrainSuggestionEnum.rerankPrepareTrainsetDeleted
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
 
     // If ready, validate data count and return successfully
     if (trainset.status === RerankTrainsetStatusEnum.ready) {
-      const stats = await calculateTrainsetStats(String(trainset._id));
+      const stats = await calculateRerankTrainsetStats(String(trainset._id));
       if (stats.dataCount === 0) {
-        addLog.error('No train data available in trainset', { trainsetId });
-        const enhancedError = createEnhancedError(
+        addLog.error('No train data available in rerank trainset', { trainsetId });
+        const enhancedError = createRerankEnhancedError(
           RerankTaskCheckpointStageEnum.generate_trainset,
-          RerankTrainErrEnum.prepareDataEmpty,
-          RerankTrainSuggestionEnum.prepareDataEmpty
+          RerankTrainErrEnum.rerankPrepareDataEmpty,
+          RerankTrainSuggestionEnum.rerankPrepareDataEmpty
         );
         throw new TrainTaskUnrecoverableError(enhancedError);
       }
-      addLog.info('Trainset is ready', { trainsetId, dataCount: stats.dataCount });
+      addLog.info('Rerank trainset is ready', { trainsetId, dataCount: stats.dataCount });
       return;
     }
 
@@ -72,7 +72,7 @@ async function waitForTrainsetReady(
     if (trainset.status === RerankTrainsetStatusEnum.error) {
       const enhancedError = trainset.errorMsg as EnhancedErrorMessage;
 
-      addLog.error('Trainset generation failed', {
+      addLog.error('Rerank trainset generation failed', {
         trainsetId,
         errorType: enhancedError.type,
         errorMessage: enhancedError.message
@@ -91,7 +91,7 @@ async function waitForTrainsetReady(
       trainset.status === RerankTrainsetStatusEnum.generating ||
       trainset.status === RerankTrainsetStatusEnum.pending
     ) {
-      addLog.info('Trainset still generating', {
+      addLog.info('Rerank trainset still generating', {
         trainsetId,
         status: trainset.status,
         attempt: attempts + 1,
@@ -108,11 +108,11 @@ async function waitForTrainsetReady(
   }
 
   // Timeout
-  addLog.error('Trainset generation timeout', { trainsetId, maxAttempts });
-  const enhancedError = createEnhancedError(
+  addLog.error('Rerank trainset generation timeout', { trainsetId, maxAttempts });
+  const enhancedError = createRerankEnhancedError(
     RerankTaskCheckpointStageEnum.generate_trainset,
-    RerankTrainErrEnum.prepareTimeout,
-    RerankTrainSuggestionEnum.prepareTimeout
+    RerankTrainErrEnum.rerankPrepareTimeout,
+    RerankTrainSuggestionEnum.rerankPrepareTimeout
   );
   throw new TrainTaskRetriableError(enhancedError);
 }
@@ -171,10 +171,10 @@ async function generateTrainsetJsonl(task: RerankTrainTaskSchemaType): Promise<{
     });
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_trainset,
-      RerankTrainErrEnum.prepareFileSystemError,
-      RerankTrainSuggestionEnum.prepareFileSystemError,
+      RerankTrainErrEnum.rerankPrepareFileSystemError,
+      RerankTrainSuggestionEnum.rerankPrepareFileSystemError,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -182,15 +182,15 @@ async function generateTrainsetJsonl(task: RerankTrainTaskSchemaType): Promise<{
 
   // Double-check data count after file writing
   if (dataCount === 0) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.generate_trainset,
-      RerankTrainErrEnum.prepareDataEmptyAfterWrite,
-      RerankTrainSuggestionEnum.prepareDataEmptyAfterWrite
+      RerankTrainErrEnum.rerankPrepareDataEmptyAfterWrite,
+      RerankTrainSuggestionEnum.rerankPrepareDataEmptyAfterWrite
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  addLog.info('Prepared train data', {
+  addLog.info('Prepared rerank train data', {
     taskId: String(task._id),
     dataCount,
     trainsetId: String(task.trainsetId),
@@ -220,7 +220,7 @@ export async function runGenerateTrainsetStage(task: RerankTrainTaskSchemaType):
   trainDatasetFilePath: string;
   autoGenerated: boolean;
 }> {
-  addLog.info('Run generate trainset stage', { taskId: String(task._id) });
+  addLog.info('Run generate trainset stage (rerank)', { taskId: String(task._id) });
 
   let trainsetId = task.trainsetId ? String(task.trainsetId) : undefined;
   let autoGenerated = false;
@@ -228,19 +228,20 @@ export async function runGenerateTrainsetStage(task: RerankTrainTaskSchemaType):
   if (!trainsetId) {
     // Auto mode: create new trainset and trigger data generation
     autoGenerated = true;
-    addLog.info('Auto mode: creating new trainset', { taskId: String(task._id) });
+    addLog.info('Auto mode: creating new rerank trainset', { taskId: String(task._id) });
 
-    trainsetId = await createRerankTrainset({
+    const trainset = await createRerankTrainset({
       teamId: String(task.teamId),
       tmbId: String(task.tmbId),
       name: `Training Set - ${task.name}`,
       description: `Auto-generated for training task ${task._id}`
     });
+    trainsetId = String(trainset._id);
 
     // Write trainsetId back to task top-level field
     await MongoRerankTrainTask.updateOne({ _id: task._id }, { trainsetId });
 
-    addLog.info('Auto mode: created trainset, triggering data generation', {
+    addLog.info('Auto mode: created rerank trainset, triggering data generation', {
       taskId: String(task._id),
       trainsetId
     });
@@ -256,7 +257,7 @@ export async function runGenerateTrainsetStage(task: RerankTrainTaskSchemaType):
       await MongoRerankTrainset.updateOne({ _id: trainsetId }, { jobId: job.id });
     }
   } else {
-    addLog.info('Exact mode: using existing trainset', {
+    addLog.info('Exact mode: using existing rerank trainset', {
       taskId: String(task._id),
       trainsetId
     });

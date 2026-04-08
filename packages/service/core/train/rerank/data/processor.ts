@@ -2,73 +2,27 @@ import type { Processor } from 'bullmq';
 import type { RerankTrainDataGenerateJobData } from './mq';
 import { MongoRerankTrainsetData } from './schema';
 import { MongoRerankTrainset } from '../trainset/schema';
-import { sampleDataFromDataset } from '../utils';
 import {
-  TrainDataSourceEnum,
+  sampleDataFromDataset,
+  createRerankEnhancedError,
+  formatSynthesisIndexesToPairs
+} from '../utils';
+import {
+  RerankTrainDataSourceEnum,
   RerankTrainsetStatusEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
-import { syntheticRerankTrainDatas } from '../external';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import { synthesizeRerankTrainDatas } from '../external';
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
-} from '../trainset/errors';
-import { createEnhancedError } from '../utils';
+} from '../../common/errors';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 
-/**
- * Format synthesis indexes to pairs for DiTing API
- *
- * Extracts synthesis-type indexes and pairs them by synId into 2-element arrays.
- * Each data chunk contains 10 synthesis indexes paired into 5 groups.
- *
- * @param indexes - Raw index array (all types)
- * @returns 2D array where each pair contains two texts from the same synId
- */
-function formatSynthesisIndexesToPairs(indexes: DatasetDataIndexItemType[]): string[][] {
-  if (!indexes || !Array.isArray(indexes) || indexes.length === 0) {
-    return [];
-  }
-
-  const synthesisIndexes = indexes.filter(
-    (idx) => idx.type === DatasetDataIndexTypeEnum.synthesis && idx.synId !== undefined
-  );
-
-  const groupedBySynId = new Map<number, string[]>();
-  for (const idx of synthesisIndexes) {
-    const synId = idx.synId!;
-    if (!groupedBySynId.has(synId)) {
-      groupedBySynId.set(synId, []);
-    }
-    groupedBySynId.get(synId)!.push(idx.text);
-  }
-
-  const pairs: string[][] = [];
-  const sortedSynIds = Array.from(groupedBySynId.keys()).sort((a, b) => a - b);
-  for (const synId of sortedSynIds) {
-    const texts = groupedBySynId.get(synId)!;
-    if (texts.length === 2) {
-      pairs.push([texts[0], texts[1]]);
-    } else {
-      addLog.warn('Unexpected synthesis index count for synId', {
-        synId,
-        count: texts.length
-      });
-      if (texts.length > 0) {
-        pairs.push(texts.slice(0, 2));
-      }
-    }
-  }
-
-  return pairs;
-}
-
-/** Rerank train data generation processor (decoupled from App) */
+/** Rerank train data generation processor */
 export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerateJobData> = async (
   job
 ) => {
@@ -77,30 +31,30 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   // 1. Check if trainset exists
   const trainset = await MongoRerankTrainset.findById(trainsetId);
   if (!trainset) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenNotFound,
-      RerankTrainSuggestionEnum.trainsetGenNotFound
+      RerankTrainErrEnum.rerankTrainsetGenNotFound,
+      RerankTrainSuggestionEnum.rerankTrainsetGenNotFound
     );
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
   // 2. Check if already generating
   if (trainset.status === RerankTrainsetStatusEnum.generating) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenAlreadyGenerating,
-      RerankTrainSuggestionEnum.trainsetGenAlreadyGenerating
+      RerankTrainErrEnum.rerankTrainsetGenAlreadyGenerating,
+      RerankTrainSuggestionEnum.rerankTrainsetGenAlreadyGenerating
     );
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
-  // 3. datasetIds is now required (from job data directly, no App fallback)
+  // 3. datasetIds is now required
   if (!datasetIds?.length) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenNoDataset,
-      RerankTrainSuggestionEnum.trainsetGenNoDataset
+      RerankTrainErrEnum.rerankTrainsetGenNoDataset,
+      RerankTrainSuggestionEnum.rerankTrainsetGenNoDataset
     );
     throw new TrainsetGenerationUnrecoverableError(error);
   }
@@ -117,7 +71,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   if (generateConfig.forceRegenerate) {
     await MongoRerankTrainsetData.deleteMany({
       trainsetId,
-      source: TrainDataSourceEnum.dataset
+      source: RerankTrainDataSourceEnum.dataset
     });
   }
 
@@ -128,10 +82,10 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   });
 
   if (samples.length === 0) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenDatasetEmpty,
-      RerankTrainSuggestionEnum.trainsetGenDatasetEmpty
+      RerankTrainErrEnum.rerankTrainsetGenDatasetEmpty,
+      RerankTrainSuggestionEnum.rerankTrainsetGenDatasetEmpty
     );
     throw new TrainsetGenerationUnrecoverableError(error);
   }
@@ -139,7 +93,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   // 5. Call DiTing service to generate training data
   let ditingResponse;
   try {
-    ditingResponse = await syntheticRerankTrainDatas({
+    ditingResponse = await synthesizeRerankTrainDatas({
       samples: samples.map((s) => ({
         datasetId: s.datasetId,
         dataId: s.dataId,
@@ -150,10 +104,10 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
       config: generateConfig
     });
   } catch (ditingError) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenDitingFailed,
-      RerankTrainSuggestionEnum.trainsetGenDitingFailed,
+      RerankTrainErrEnum.rerankTrainsetGenDitingFailed,
+      RerankTrainSuggestionEnum.rerankTrainsetGenDitingFailed,
       (ditingError as Error).message
     );
     throw new TrainsetGenerationRetriableError(error);
@@ -161,10 +115,10 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
 
   // 6. Check if DiTing returned valid data
   if (!ditingResponse.success || !ditingResponse.data || ditingResponse.data.length === 0) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenDitingNoData,
-      RerankTrainSuggestionEnum.trainsetGenDitingNoData,
+      RerankTrainErrEnum.rerankTrainsetGenDitingNoData,
+      RerankTrainSuggestionEnum.rerankTrainsetGenDitingNoData,
       ditingResponse.error
     );
     throw new TrainsetGenerationRetriableError(error);
@@ -177,7 +131,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     query: item.query,
     positiveDocs: item.positive,
     negativeDocs: item.negatives,
-    source: TrainDataSourceEnum.dataset,
+    source: RerankTrainDataSourceEnum.dataset,
     metadata: {
       sourceInfo: {
         datasetInfo: {
@@ -193,10 +147,10 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   try {
     await MongoRerankTrainsetData.insertMany(trainData);
   } catch (dbError) {
-    const error = createEnhancedError(
+    const error = createRerankEnhancedError(
       null,
-      RerankTrainErrEnum.trainsetGenDatabaseError,
-      RerankTrainSuggestionEnum.trainsetGenDatabaseError,
+      RerankTrainErrEnum.rerankTrainsetGenDatabaseError,
+      RerankTrainSuggestionEnum.rerankTrainsetGenDatabaseError,
       (dbError as Error).message
     );
     throw new TrainsetGenerationRetriableError(error);

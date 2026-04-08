@@ -9,13 +9,13 @@ import {
   DEFAULT_TRAIN_TASK_CONCURRENCY,
   DEFAULT_WORKER_MAX_STALLED_COUNT
 } from '../constants';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from './errors';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../common/errors';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
-import { createEnhancedError } from '../utils';
+import { createRerankEnhancedError } from '../utils';
 
 export function initRerankTrainTaskWorker() {
   const worker = getWorker<RerankTrainTaskJobData>(
@@ -77,10 +77,10 @@ export function initRerankTrainTaskWorker() {
         });
       } else {
         // Unknown error, construct basic structured error
-        errorMsg = createEnhancedError(
+        errorMsg = createRerankEnhancedError(
           null,
-          RerankTrainErrEnum.unknownError,
-          RerankTrainSuggestionEnum.unknownError,
+          RerankTrainErrEnum.rerankUnknownError,
+          RerankTrainSuggestionEnum.rerankUnknownError,
           error.stack
         );
 

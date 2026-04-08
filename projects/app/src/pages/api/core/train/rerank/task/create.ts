@@ -11,7 +11,6 @@ import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/sc
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
 import { rerankTrainTaskQueue } from '@fastgpt/service/core/train/rerank/task/mq';
-import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type {
   CreateRerankTrainTaskRequest,
@@ -75,7 +74,7 @@ async function handler(
   }
 
   // 4. Create task (controller checks for existing running tasks internally)
-  const taskId = await createRerankTrainTask({
+  const task = await createRerankTrainTask({
     baseModelId,
     trainsetId,
     evalDatasetId,
@@ -86,8 +85,9 @@ async function handler(
     name,
     trainType
   });
+  const taskId = String(task._id);
 
-  // 6. Enqueue the task
+  // 5. Enqueue the task
   const job = await rerankTrainTaskQueue.add(
     `train-${taskId}`,
     { taskId },
@@ -97,10 +97,10 @@ async function handler(
     }
   );
 
-  // 7. Persist jobId for later retry/status tracking
+  // 6. Persist jobId for later retry/status tracking
   await MongoRerankTrainTask.updateOne({ _id: taskId }, { jobId: job.id as string });
 
-  // 8. Audit log
+  // 7. Audit log
   (async () => {
     addAuditLog({
       tmbId,
@@ -110,10 +110,7 @@ async function handler(
     });
   })();
 
-  return {
-    taskId,
-    status: RerankTrainTaskStatusEnum.pending
-  };
+  return task;
 }
 
 export default NextAPI(handler);

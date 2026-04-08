@@ -19,10 +19,10 @@ import { deleteSFTTask } from '../external';
 import { MongoSystemModel } from '../../../ai/config/schema';
 
 /**
- * Create rerank training task (decoupled from App)
+ * Create rerank training task
  *
  * Key logic:
- * 1. Accepts baseModelId directly (no App workflow extraction)
+ * 1. Accepts baseModelId directly
  * 2. Calls getRerankModel(baseModelId) to build baseModelEndpoint
  * 3. trainsetId is optional (auto mode: written by generate_trainset stage)
  * 4. evalDatasetId and datasetIds are optional based on mode
@@ -41,7 +41,7 @@ export async function createRerankTrainTask(params: {
   tmbId: string;
   name?: string;
   trainType?: string;
-}): Promise<string> {
+}): Promise<RerankTrainTaskSchemaType> {
   const {
     baseModelId,
     trainsetId,
@@ -59,12 +59,12 @@ export async function createRerankTrainTask(params: {
   // Check DB directly to detect disabled models before the fallback kicks in.
   const dbModel = await MongoSystemModel.findOne({ model: baseModelId }, 'metadata').lean();
   if (dbModel?.metadata?.isActive === false) {
-    return Promise.reject(RerankTrainErrEnum.taskBaseModelDisabled);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskBaseModelDisabled);
   }
 
   const rerankModel = getRerankModel(baseModelId);
   if (!rerankModel) {
-    return Promise.reject(RerankTrainErrEnum.taskModelNotFound);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskModelNotFound);
   }
 
   // Reject if there is already a pending/running task for the same team + base model
@@ -77,7 +77,7 @@ export async function createRerankTrainTask(params: {
   }).lean();
 
   if (runningTask) {
-    return Promise.reject(RerankTrainErrEnum.taskAlreadyRunning);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskAlreadyRunning);
   }
 
   const baseModelEndpoint = buildModelEndpoint(rerankModel);
@@ -87,7 +87,7 @@ export async function createRerankTrainTask(params: {
     baseModelEndpoint
   });
 
-  const [{ _id }] = await MongoRerankTrainTask.create([
+  const [doc] = await MongoRerankTrainTask.create([
     {
       trainsetId: trainsetId || undefined,
       evalDatasetId: evalDatasetId || undefined,
@@ -111,14 +111,14 @@ export async function createRerankTrainTask(params: {
   addLog.info('Created rerank train task', {
     baseModelId,
     trainsetId,
-    taskId: String(_id)
+    taskId: String(doc._id)
   });
 
-  return String(_id);
+  return doc.toObject() as RerankTrainTaskSchemaType;
 }
 
 /** Update task status */
-export async function updateTaskStatus(
+export async function updateRerankTaskStatus(
   taskId: string,
   status: `${RerankTrainTaskStatusEnum}`
 ): Promise<void> {
@@ -133,7 +133,8 @@ export async function updateTaskStatus(
 
   if (
     status === RerankTrainTaskStatusEnum.completed ||
-    status === RerankTrainTaskStatusEnum.cancelled
+    status === RerankTrainTaskStatusEnum.cancelled ||
+    status === RerankTrainTaskStatusEnum.failed
   ) {
     updateData.finishTime = new Date();
   }
@@ -144,7 +145,7 @@ export async function updateTaskStatus(
 }
 
 /** Update checkpoint stage and record completion time */
-export async function updateCheckpointStage(
+export async function updateRerankCheckpointStage(
   taskId: string,
   stage: `${RerankTaskCheckpointStageEnum}`
 ): Promise<void> {
@@ -172,7 +173,7 @@ export async function updateCheckpointStage(
  * @param data - Data to update
  * @param merge - Whether to merge with existing data (default: false)
  */
-export async function updateCheckpointData(
+export async function updateRerankCheckpointData(
   taskId: string,
   stage:
     | 'generate_trainset'
@@ -231,7 +232,7 @@ export async function deleteRerankTrainTask(
 ): Promise<void> {
   const task = await MongoRerankTrainTask.findById(taskId, null, { session }).lean();
   if (!task) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskNotExist);
   }
 
   const tempFilePath = task.result?.trainDatasetFilePath;
@@ -341,7 +342,7 @@ export async function deleteRerankTrainTask(
   // 6. Clean up temp files (async non-blocking)
   if (tempFilePath) {
     setImmediate(() => {
-      cleanupTempFiles(tempFilePath).catch((error) => {
+      cleanupRerankTempFiles(tempFilePath).catch((error) => {
         addLog.warn('Failed to cleanup temp files after task deletion', {
           taskId,
           tempFilePath,
@@ -356,7 +357,7 @@ export async function deleteRerankTrainTask(
 export async function cancelRerankTrainTask(taskId: string): Promise<void> {
   const task = await MongoRerankTrainTask.findById(taskId).lean();
   if (!task) {
-    return Promise.reject(RerankTrainErrEnum.taskNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskNotExist);
   }
 
   if (
@@ -364,10 +365,10 @@ export async function cancelRerankTrainTask(taskId: string): Promise<void> {
     task.status === RerankTrainTaskStatusEnum.failed ||
     task.status === RerankTrainTaskStatusEnum.cancelled
   ) {
-    return Promise.reject(RerankTrainErrEnum.taskCannotCancel);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskCannotCancel);
   }
 
-  await updateTaskStatus(taskId, RerankTrainTaskStatusEnum.cancelled);
+  await updateRerankTaskStatus(taskId, RerankTrainTaskStatusEnum.cancelled);
 
   addLog.info('Cancelled rerank train task', { taskId });
 }
@@ -378,7 +379,7 @@ export async function cancelRerankTrainTask(taskId: string): Promise<void> {
  * @param filePath - Optional temp file path to delete
  * @param taskId - Optional task ID to generate file pattern for cleanup
  */
-export async function cleanupTempFiles(filePath?: string, taskId?: string): Promise<void> {
+export async function cleanupRerankTempFiles(filePath?: string, taskId?: string): Promise<void> {
   if (!filePath && !taskId) {
     addLog.warn('Both filePath and taskId are not provided for cleanup');
     return;
@@ -416,7 +417,7 @@ export async function cleanupTempFiles(filePath?: string, taskId?: string): Prom
  * Returns tasks in order from the given tunedModelId up to the root base model.
  * Includes cycle detection and depth limit to prevent infinite loops.
  */
-export async function resolveTasksByTunedModelId(
+export async function resolveRerankTasksByTunedModelId(
   tunedModelId: string,
   teamId: string
 ): Promise<RerankTrainTaskSchemaType[]> {

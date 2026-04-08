@@ -37,7 +37,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   }).lean();
 
   if (runningTask) {
-    return Promise.reject(RerankTrainErrEnum.trainsetInUse);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainsetInUse);
   }
 
   // Cascade delete within a transaction to ensure atomicity

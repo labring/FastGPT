@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import type { RerankTrainsetDataSchemaType } from '@fastgpt/global/core/train/rerank/type';
-import { TrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
+import { RerankTrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
 
 /** Rerank trainset data schema */
 const RerankTrainsetDataSchema = new connectionMongo.Schema({
@@ -28,7 +28,7 @@ const RerankTrainsetDataSchema = new connectionMongo.Schema({
   },
   source: {
     type: String,
-    enum: Object.values(TrainDataSourceEnum),
+    enum: Object.values(RerankTrainDataSourceEnum),
     required: true
   },
   metadata: {

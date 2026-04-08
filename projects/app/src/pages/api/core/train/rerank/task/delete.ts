@@ -30,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
     task.status === RerankTrainTaskStatusEnum.pending ||
     task.status === RerankTrainTaskStatusEnum.running
   ) {
-    return Promise.reject(RerankTrainErrEnum.taskCannotDelete);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskCannotDelete);
   }
 
   await deleteRerankTrainTask(taskId);

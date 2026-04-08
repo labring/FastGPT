@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
-import { resolveTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
+import { resolveRerankTasksByTunedModelId } from '@fastgpt/service/core/train/rerank/task/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import type {
   ListRerankTrainTasksRequest,
@@ -11,13 +11,13 @@ import type {
   RerankTrainTaskListItem
 } from '@fastgpt/global/core/train/rerank/api';
 import { parsePaginationRequest, parseSortParams } from '@fastgpt/service/common/api/pagination';
-import { buildTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/rerank/task/utils';
-import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import { buildRerankTrainTaskAggregationPipeline } from '@fastgpt/service/core/train/rerank/task/utils';
 
 /**
  * Chain traversal query by tunedModelId
  * Traverses the training task chain upward from the given tuned model ID
- */ async function handler(
+ */
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ListRerankTrainTasksResponse>
 ): Promise<ListRerankTrainTasksResponse> {
@@ -38,16 +38,22 @@ import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/reran
     per: ReadPermissionVal
   });
 
-  // If tunedModelId is provided, perform chain traversal query
-  if (tunedModelId) {
-    const tasks = await resolveTasksByTunedModelId(tunedModelId, teamId);
-    return { list: tasks as RerankTrainTaskListItem[], total: tasks.length };
-  }
-
   // Build query conditions
   const matchQuery: any = { teamId: new Types.ObjectId(teamId) };
   if (baseModelId) matchQuery.baseModelId = baseModelId;
   if (status) matchQuery.status = status;
+
+  // If tunedModelId is provided, resolve the training task chain and use the task IDs
+  let taskIds: string[] | undefined;
+  if (tunedModelId) {
+    const taskChain = await resolveRerankTasksByTunedModelId(tunedModelId, teamId);
+    taskIds = taskChain.map((task) => task._id.toString());
+    if (taskIds.length === 0) {
+      // No tasks found for this tunedModelId
+      return { list: [], total: 0 };
+    }
+    matchQuery._id = { $in: taskIds.map((id) => new Types.ObjectId(id)) };
+  }
 
   // Query task list via aggregation pipeline
   const [tasks, total] = await Promise.all([
@@ -56,7 +62,7 @@ import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/reran
       { $sort: sort },
       { $skip: offset },
       { $limit: pageSize },
-      ...buildTrainTaskAggregationPipeline()
+      ...buildRerankTrainTaskAggregationPipeline()
     ]),
     MongoRerankTrainTask.countDocuments(matchQuery)
   ]);

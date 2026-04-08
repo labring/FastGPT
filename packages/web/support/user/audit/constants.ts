@@ -819,5 +819,41 @@ export const auditLogMap = {
     content: i18nT('account_team:log_cancel_rerank_train_task'),
     typeLabel: i18nT('account_team:cancel_rerank_train_task'),
     params: {} as { name?: string; taskName: string }
+  },
+  // Embedding Train
+  [AuditEventEnum.CREATE_EMBEDDING_TRAINSET]: {
+    content: i18nT('account_team:log_create_embedding_trainset'),
+    typeLabel: i18nT('account_team:create_embedding_trainset'),
+    params: {} as { name?: string; trainsetName: string }
+  },
+  [AuditEventEnum.DELETE_EMBEDDING_TRAINSET]: {
+    content: i18nT('account_team:log_delete_embedding_trainset'),
+    typeLabel: i18nT('account_team:delete_embedding_trainset'),
+    params: {} as { name?: string; trainsetName: string }
+  },
+  [AuditEventEnum.GENERATE_EMBEDDING_TRAINSET_DATA]: {
+    content: i18nT('account_team:log_generate_embedding_trainset_data'),
+    typeLabel: i18nT('account_team:generate_embedding_trainset_data'),
+    params: {} as { name?: string; trainsetName: string; datasetCount: number }
+  },
+  [AuditEventEnum.CREATE_EMBEDDING_TRAIN_TASK]: {
+    content: i18nT('account_team:log_create_embedding_train_task'),
+    typeLabel: i18nT('account_team:create_embedding_train_task'),
+    params: {} as { name?: string; taskName: string; baseModelId: string }
+  },
+  [AuditEventEnum.DELETE_EMBEDDING_TRAIN_TASK]: {
+    content: i18nT('account_team:log_delete_embedding_train_task'),
+    typeLabel: i18nT('account_team:delete_embedding_train_task'),
+    params: {} as { name?: string; taskName: string }
+  },
+  [AuditEventEnum.RETRY_EMBEDDING_TRAIN_TASK]: {
+    content: i18nT('account_team:log_retry_embedding_train_task'),
+    typeLabel: i18nT('account_team:retry_embedding_train_task'),
+    params: {} as { name?: string; taskName: string }
+  },
+  [AuditEventEnum.CANCEL_EMBEDDING_TRAIN_TASK]: {
+    content: i18nT('account_team:log_cancel_embedding_train_task'),
+    typeLabel: i18nT('account_team:cancel_embedding_train_task'),
+    params: {} as { name?: string; taskName: string }
   }
 } as const;

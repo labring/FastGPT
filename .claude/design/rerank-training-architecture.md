@@ -138,17 +138,32 @@ flowchart LR
     end
 
     GT --> GE --> EB --> FT --> RG --> ET
+```
 
 ### 3.3 各阶段详情
 
 | 阶段 | 文件 | 外部服务 | 耗时 | 产出 |
 |------|------|---------|------|------|
 | 1. generate_trainset | `stages/generate-trainset.ts` | — | ~10 min | JSONL 训练文件 |
-| 2. generate_evaldataset | `stages/generate-evaldataset.ts` | DiTing (QA 生成) | ~30 min | EvalDatasetCollection + Data |
-| 3. eval_basemodel | `stages/eval-basemodel.ts` | DiTing (评测) | ~5-10 min | RerankEvalResult |
+| 2. generate_evaldataset | `stages/generate-evaldataset.ts` | DiTing (QA 生成 + 数据集检索) | ~30 min | EvalDatasetCollection + Data（含 retrievalContextsFull） |
+| 3. eval_basemodel | `stages/eval-basemodel.ts` | DiTing (`/evaluations/rerank`) | ~5-10 min | RerankEvalResult（MRR、Precision） |
 | 4. finetuning | `stages/finetune.ts` | SFT Bridge (微调+部署) | 1-10 h | tunedModelEndpoint |
 | 5. registering | `stages/register.ts` | AI Proxy (通道创建) | ~30 s | tunedModelId (SystemModel) |
-| 6. eval_tunedmodel | `stages/eval-tunedmodel.ts` | DiTing (评测) | ~5-10 min | RerankEvalResult |
+| 6. eval_tunedmodel | `stages/eval-tunedmodel.ts` | DiTing (`/evaluations/rerank`) | ~5-10 min | RerankEvalResult |
+
+#### Stage 1：generate_trainset（两种模式）
+
+| 模式 | 流程 |
+|------|------|
+| **Exact Mode** | 等待已有 trainset 状态 → `ready`（轮询，60 min 超时），验证数据不为空后导出 JSONL |
+| **Auto Mode** | ① 创建新 trainset → ② 入队 data generate job → ③ 等待 trainset 状态 → `ready` → ④ 导出 JSONL |
+
+等待轮询已覆盖 `error` 状态（立即抛出 `TrainTaskUnrecoverableError`，不等待超时）。
+
+#### Stage 2：generate_evaldataset（与 Embedding 的关键差异）
+
+Rerank 需调用 `performDatasetSearch` 获取 `retrievalContextsFull`（排序候选列表），用于评测排序效果。
+Embedding 无此步骤，直接存储 `expectedContextIds`。
 
 ### 3.4 状态机
 
@@ -185,7 +200,7 @@ flowchart LR
         SFT["SFT Bridge<br/>模型微调 + 部署"]
     end
 
-    Proc -->|"Stage 2: 生成 QA"| DiTing
+    Proc -->|"Stage 2: 生成 QA + 检索"| DiTing
     Proc -->|"Stage 3,6: 评测模型"| DiTing
     Proc -->|"Stage 4: 创建微调任务"| SFT
     SFT -->|"返回推理端点"| Proc
@@ -200,6 +215,8 @@ flowchart LR
 | **SFT Bridge** | LoRA/P-Tuning 微调、模型部署、推理服务 | `SFT_BRIDGE_BASE_URL` |
 | **AI Proxy** | 模型通道管理、请求路由 | `AIPROXY_API_ENDPOINT` |
 
+**SFT Bridge 客户端**统一在 `packages/service/core/train/common/external/sftbridge/` 中维护，rerank 和 embedding 均从此处导入（不再各自维护副本）。
+
 ## 5. 资源管理
 
 ### 5.1 创建任务的前置校验
@@ -208,16 +225,7 @@ flowchart LR
 - `baseModelId` 对应模型已被 disable → `taskBaseModelDisabled`（防止在失败模型上继续训练）
 - 同一 team + baseModelId 已有 pending/running 任务 → `taskAlreadyRunning`
 
-## 6. 错误处理与重试
-
-### 6.1 错误分类
-
-| 类型 | 处理 | 示例 |
-|------|------|------|
-| `TrainTaskRetriableError` | 自动重试（最多 3 次，指数退避 5s） | 网络超时、服务暂时不可用 |
-| `TrainTaskUnrecoverableError` | 任务失败，不重试 | 数据丢失、模型不存在、用户取消 |
-
-### 6.2 资源清理（deleteRerankTrainTask）
+### 5.2 资源清理（deleteRerankTrainTask）
 
 ```
 1. 模型配置 + AI Proxy Channel (registering 阶段产物)
@@ -228,6 +236,24 @@ flowchart LR
 6. 临时 JSONL 文件 (async, non-blocking)
 ```
 
+## 6. 错误处理与重试
+
+### 6.1 错误分类
+
+| 类型 | 处理 | 示例 |
+|------|------|------|
+| `TrainTaskRetriableError` | 自动重试（最多 3 次，指数退避 5s） | 网络超时、服务暂时不可用 |
+| `TrainTaskUnrecoverableError` | 任务失败，不重试 | 数据丢失、模型不存在、用户取消、trainset error 状态 |
+
+错误类定义在 `packages/service/core/train/common/errors.ts`，两个模块共享。
+
+### 6.2 Trainset 生成的错误感知
+
+`waitForTrainsetReady()` 在轮询中会检测 trainset 的三种终态：
+- `ready`：继续导出 JSONL
+- `error`：立即抛出 `TrainTaskUnrecoverableError`（携带 trainset 的 errorMsg）
+- 超时（360 次 × 10s = 60 min）：抛出 `TrainTaskRetriableError`
+
 ## 7. API 接口总览
 
 ### 训练集管理
@@ -237,28 +263,28 @@ flowchart LR
 | `/api/core/train/rerank/trainset/create` | POST | 创建训练集 |
 | `/api/core/train/rerank/trainset/list` | POST | 列表查询（分页、排序、状态筛选） |
 | `/api/core/train/rerank/trainset/detail` | GET | 获取详情（含统计） |
-| `/api/core/train/rerank/trainset/delete` | POST | 删除训练集 |
+| `/api/core/train/rerank/trainset/delete` | DELETE | 删除训练集（trainsetId 在 query） |
 
 ### 训练数据管理
 
 | 路径 | 方法 | 功能 |
 |------|------|------|
 | `/api/core/train/rerank/trainset/data/create` | POST | 手动添加数据 |
-| `/api/core/train/rerank/trainset/data/list` | POST | 数据列表 |
+| `/api/core/train/rerank/trainset/data/list` | POST | 数据列表（支持 source 过滤） |
 | `/api/core/train/rerank/trainset/data/update` | POST | 更新数据 |
-| `/api/core/train/rerank/trainset/data/delete` | POST | 删除数据 |
-| `/api/core/train/rerank/trainset/data/generate` | POST | 从知识库生成 |
+| `/api/core/train/rerank/trainset/data/delete` | POST | 删除数据（dataIds 在 body） |
+| `/api/core/train/rerank/trainset/data/generate` | POST | 从知识库异步生成（返回 jobId） |
 
 ### 训练任务管理
 
 | 路径 | 方法 | 功能 |
 |------|------|------|
-| `/api/core/train/rerank/task/create` | POST | 创建训练任务 |
-| `/api/core/train/rerank/task/list` | POST | 任务列表 |
-| `/api/core/train/rerank/task/detail` | GET | 任务详情 |
-| `/api/core/train/rerank/task/retry` | POST | 重试失败任务 |
+| `/api/core/train/rerank/task/create` | POST | 创建训练任务（支持自动/精确两种模式） |
+| `/api/core/train/rerank/task/list` | POST | 任务列表（支持 baseModelId/status 过滤） |
+| `/api/core/train/rerank/task/detail` | GET | 任务详情（taskId 在 query） |
+| `/api/core/train/rerank/task/retry` | POST | 重试失败任务（仅 failed 状态） |
 | `/api/core/train/rerank/task/cancel` | POST | 取消任务 |
-| `/api/core/train/rerank/task/delete` | POST | 删除任务 |
+| `/api/core/train/rerank/task/delete` | DELETE | 删除任务（仅 completed/failed/cancelled，taskId 在 query） |
 | `/api/core/train/rerank/task/eval-dataset` | POST | 下载评测数据集 (JSONL) |
 | `/api/core/train/rerank/task/eval-report` | POST | 下载评测报告 (XLSX) |
 
@@ -267,26 +293,35 @@ flowchart LR
 ```
 packages/service/core/train/rerank/
 ├── constants.ts                        # 服务层常量
-├── utils.ts                            # 工具函数
-├── external/                           # 外部服务集成
+├── utils.ts                            # 工具函数（createRerankEnhancedError 等）
+├── index.ts                            # 模块入口
+├── external/                           # 外部服务集成（DiTing 专用）
 │   ├── index.ts                        # 统一入口（Mock/Real 切换）
-│   ├── sftbridge/client.ts             # SFT Bridge API
-│   └── diting/client.ts               # DiTing API
+│   └── diting/
+│       ├── client.ts                   # DiTing API 客户端
+│       ├── mock.ts                     # Mock 实现
+│       └── types.ts                    # 类型定义
+│   # ⚠️ SFT Bridge 客户端已统一迁移到 common/external/sftbridge/
+│   #    通过 external/index.ts 重导出，无重复代码
+├── validation/                         # 环境和数据集校验
+│   ├── index.ts
+│   ├── environment.ts                  # SFT Bridge + DiTing 可用性检查
+│   └── dataset.ts                      # 知识库合成索引校验
 ├── task/
-│   ├── controller.ts                   # 任务 CRUD
+│   ├── controller.ts                   # 任务 CRUD + 前置校验
 │   ├── processor.ts                    # BullMQ Processor（6 阶段编排）
 │   ├── worker.ts                       # Worker 初始化
-│   ├── mq.ts                           # 队列配置
+│   ├── mq.ts                           # 队列配置（attempts:3, 指数退避）
 │   ├── schema.ts                       # MongoDB Schema
-│   ├── errors.ts                       # 错误类
+│   ├── utils.ts                        # 任务工具函数
 │   ├── helpers/
 │   │   ├── channel.ts                  # AI Proxy 通道管理
 │   │   ├── evaluate-model.ts           # 模型评测共享逻辑
-│   │   ├── model.ts                    # isTunedModel 等
-│   │   └── dataset-search.ts           # 数据集搜索
+│   │   ├── model.ts                    # isTunedModel 等模型辅助
+│   │   └── dataset-search.ts           # 数据集检索（Stage 2 专用）
 │   └── stages/
-│       ├── generate-trainset.ts        # Stage 1
-│       ├── generate-evaldataset.ts     # Stage 2
+│       ├── generate-trainset.ts        # Stage 1（含 waitForTrainsetReady）
+│       ├── generate-evaldataset.ts     # Stage 2（含 performDatasetSearch）
 │       ├── eval-basemodel.ts           # Stage 3
 │       ├── finetune.ts                 # Stage 4
 │       ├── register.ts                 # Stage 5
@@ -295,15 +330,53 @@ packages/service/core/train/rerank/
 │   ├── controller.ts                   # 训练集 CRUD
 │   └── schema.ts
 ├── data/
-│   ├── controller.ts                   # 训练数据 CRUD
-│   ├── processor.ts                    # 数据生成处理器
+│   ├── controller.ts                   # 训练数据 CRUD + calculateRerankTrainsetStats
+│   ├── processor.ts                    # 数据生成处理器（DiTing 数据合成）
+│   ├── mq.ts
+│   ├── worker.ts
 │   └── schema.ts
-├── model/
-│   └── controller.ts                   # 模型配置管理 + App 引用替换
-└── validation.ts                       # 环境校验
+└── model/
+    └── controller.ts                   # 模型配置管理
+
+packages/service/core/train/common/
+├── errors.ts                           # 共享错误类（TrainTaskRetriableError/UnrecoverableError）
+├── constants.ts                        # 共享常量
+├── utils.ts                            # 共享工具函数
+└── external/
+    └── sftbridge/                      # SFT Bridge 客户端（rerank + embedding 共用）
+        ├── client.ts
+        ├── mock.ts
+        ├── types.ts
+        └── index.ts
 
 packages/global/core/train/rerank/
 ├── constants.ts                        # 枚举（状态、阶段、来源）
 ├── type.d.ts                           # Schema 类型
-└── api.d.ts                            # API 请求/响应类型
+├── api.d.ts                            # API 请求/响应类型
+└── error.ts                            # EnhancedErrorMessage 类型
+
+packages/global/common/error/code/
+└── train.ts                            # RerankTrainErrEnum + EmbeddingTrainErrEnum（各 95 个）
+
+projects/app/src/pages/api/core/train/rerank/
+├── task/
+│   ├── create.ts
+│   ├── list.ts
+│   ├── detail.ts
+│   ├── retry.ts
+│   ├── cancel.ts
+│   ├── delete.ts
+│   ├── eval-dataset.ts
+│   └── eval-report.ts
+└── trainset/
+    ├── create.ts
+    ├── list.ts
+    ├── detail.ts
+    ├── delete.ts
+    └── data/
+        ├── create.ts
+        ├── list.ts
+        ├── update.ts
+        ├── delete.ts
+        └── generate.ts
 ```

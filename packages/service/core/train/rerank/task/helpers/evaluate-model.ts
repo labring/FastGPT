@@ -1,16 +1,16 @@
 import type { RerankEvalResult } from '@fastgpt/global/core/train/rerank/type';
 import type { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { MongoEvalDatasetData } from '../../../../../core/evaluation/dataset/evalDatasetDataSchema';
-import { createEnhancedError } from '../../utils';
+import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { evaluateRerank } from '../../external';
+import { evaluateRerankModel } from '../../external';
 import { getRerankModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import { buildModelEndpoint } from '../../utils';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 
 /**
  * Evaluate a rerank model on the given evaluation dataset
@@ -23,7 +23,7 @@ import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors'
  * @param stage - Checkpoint stage enum, used for error attribution
  * @returns Full runLogs including retrieval_ranks for CSV download
  */
-export async function evaluateModel(
+export async function evaluateRerankModelHelper(
   taskId: string,
   evalDatasetId: string,
   modelId: string,
@@ -36,10 +36,10 @@ export async function evaluateModel(
   }).lean();
 
   if (evalDataItems.length === 0) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       stage,
-      RerankTrainErrEnum.evalDatasetEmptyBeforeEval,
-      RerankTrainSuggestionEnum.evalDatasetEmptyBeforeEval
+      RerankTrainErrEnum.rerankEvalDatasetEmptyBeforeEval,
+      RerankTrainSuggestionEnum.rerankEvalDatasetEmptyBeforeEval
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
@@ -47,10 +47,10 @@ export async function evaluateModel(
   const modelConfig = getRerankModel(modelId);
 
   if (!modelConfig) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       stage,
-      RerankTrainErrEnum.evalModelNotFound,
-      RerankTrainSuggestionEnum.evalModelNotFound,
+      RerankTrainErrEnum.rerankEvalModelNotFound,
+      RerankTrainSuggestionEnum.rerankEvalModelNotFound,
       modelId
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -74,7 +74,7 @@ export async function evaluateModel(
     api_key: modelEndpoint.api_key
   };
 
-  const response = await evaluateRerank({
+  const response = await evaluateRerankModel({
     dataset,
     reranker_config: rerankerConfig,
     metric_config: {
@@ -83,10 +83,10 @@ export async function evaluateModel(
   });
 
   if (!response.success || !response.data?.runLogs?.detailed_results) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       stage,
-      RerankTrainErrEnum.evalDitingEvalFailed,
-      RerankTrainSuggestionEnum.evalDitingEvalFailed,
+      RerankTrainErrEnum.rerankEvalDitingEvalFailed,
+      RerankTrainSuggestionEnum.rerankEvalDitingEvalFailed,
       response.error
     );
     throw new TrainTaskRetriableError(enhancedError);

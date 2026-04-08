@@ -1,41 +1,25 @@
-// External services
-export {
-  synthesizeEmbeddingTrainDatas,
-  synthesizeEmbeddingEvalData,
-  evaluateEmbeddingModel
-} from './external';
-export type {
-  DiTingSyntheticEmbeddingTrainDatasRequest,
-  DiTingSyntheticEmbeddingTrainDatasResponse,
-  DiTingSyntheticEmbeddingTrainDataItem,
-  DiTingSyntheticEmbeddingEvalDataRequest,
-  DiTingSyntheticEmbeddingEvalDataResponse,
-  DiTingEvaluateEmbeddingRequest,
-  DiTingEvaluateEmbeddingResponse
-} from './external';
+/** Initialize all Embedding training module workers */
+import { addLog } from '../../../common/system/log';
+import { initEmbeddingTrainDataWorker } from './data/worker';
+import { initEmbeddingTrainTaskWorker } from './task/worker';
 
-// Trainset management
-export {
-  createEmbeddingTrainset,
-  getEmbeddingTrainset,
-  deleteEmbeddingTrainset
-} from './trainset/controller';
+// Re-export all public APIs from submodules
+export * from './external';
+export * from './trainset/controller';
 export { MongoEmbeddingTrainset } from './trainset/schema';
-
-// Training data management
-export {
-  createManualEmbeddingTrainData,
-  updateEmbeddingTrainData,
-  deleteEmbeddingTrainData,
-  calculateEmbeddingTrainsetStats
-} from './data/controller';
+export * from './data/controller';
 export { MongoEmbeddingTrainsetData } from './data/schema';
 export { embeddingTrainDataGenerateQueue } from './data/mq';
 export { embeddingTrainDataGenerateProcessor } from './data/processor';
 export { initEmbeddingTrainDataWorker } from './data/worker';
-
-// Utilities
-export { createEmbeddingEnhancedError } from './utils';
-
-// Constants
+export * from './utils';
 export { getEmbeddingTrainDataDir } from './constants';
+export * from './task/controller';
+export { MongoEmbeddingTrainTask } from './task/schema';
+export { initEmbeddingTrainTaskWorker } from './task/worker';
+
+export const initEmbeddingTrainWorkers = () => {
+  addLog.info('Init Embedding Train Workers...');
+  initEmbeddingTrainDataWorker();
+  initEmbeddingTrainTaskWorker();
+};

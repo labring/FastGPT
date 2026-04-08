@@ -7,20 +7,20 @@ import type { ClientSession } from '../../../../common/mongo';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 
 /**
- * Create embedding trainset (decoupled from App)
+ * Create embedding trainset
  *
  * @param params - Trainset creation parameters
- * @returns Trainset ID
+ * @returns Created trainset document
  */
 export async function createEmbeddingTrainset(params: {
   teamId: string;
   tmbId: string;
   name?: string;
   description?: string;
-}): Promise<string> {
+}): Promise<EmbeddingTrainsetSchemaType> {
   const { teamId, tmbId, name, description } = params;
 
-  const [{ _id }] = await MongoEmbeddingTrainset.create([
+  const [doc] = await MongoEmbeddingTrainset.create([
     {
       teamId,
       tmbId,
@@ -32,10 +32,10 @@ export async function createEmbeddingTrainset(params: {
 
   addLog.info('Created embedding trainset', {
     teamId,
-    trainsetId: String(_id)
+    trainsetId: String(doc._id)
   });
 
-  return String(_id);
+  return doc.toObject() as EmbeddingTrainsetSchemaType;
 }
 
 /**
@@ -56,7 +56,7 @@ export async function getEmbeddingTrainset(
   }).lean();
 
   if (!trainset) {
-    return Promise.reject(EmbeddingTrainErrEnum.trainsetNotExist);
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingTrainsetNotExist);
   }
 
   // Dynamically calculate statistics

@@ -23,7 +23,7 @@ export async function mockSynthesizeRerankTrainDatas(
     config: request.config
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+  await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
   const minNegativeSamples = request.config.minNegativeSamples ?? 1;
   const maxNegativeSamples = request.config.maxNegativeSamples ?? 5;
@@ -164,7 +164,7 @@ export async function mockSynthesizeRerankEvalData(
     llmModel: request.llm_config.name
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+  await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
   const contextText = request.inputData.context.join('\n');
   const question = `Question based on: ${contextText.slice(0, 50)}...`;
@@ -209,7 +209,7 @@ export async function mockEvaluateRerankModel(
     rerankModel: request.reranker_config.name
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 3000 + Math.random() * 2000));
+  await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 300));
 
   const baseNdcg = 0.65 + Math.random() * 0.15;
   const baseMrr = 0.7 + Math.random() * 0.15;

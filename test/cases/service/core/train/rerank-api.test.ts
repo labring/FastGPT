@@ -2,10 +2,11 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   RerankTrainsetStatusEnum,
-  TrainDataSourceEnum
+  RerankTrainDataSourceEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { MongoRerankTrainsetData } from '@fastgpt/service/core/train/rerank/data/schema';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
+import { createMockDoc } from './mockDoc';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -60,7 +61,7 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
-  syntheticRerankTrainDatas: vi.fn().mockResolvedValue({
+  synthesizeRerankTrainDatas: vi.fn().mockResolvedValue({
     success: true,
     data: []
   })
@@ -136,10 +137,10 @@ describe('Rerank Train Data API', () => {
         }
       ]);
 
-      const { syntheticRerankTrainDatas } = await import(
+      const { synthesizeRerankTrainDatas } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
-      (syntheticRerankTrainDatas as any).mockResolvedValue({
+      (synthesizeRerankTrainDatas as any).mockResolvedValue({
         success: true,
         data: [
           {
@@ -197,7 +198,7 @@ describe('Rerank Train Data API', () => {
           opts: { attempts: 1 }
         } as any);
       } catch (error: any) {
-        expect(error.message).toContain('trainsetGenNotFound');
+        expect(error.message).toContain('rerankTrainsetGenNotFound');
       }
     });
 
@@ -225,7 +226,7 @@ describe('Rerank Train Data API', () => {
           opts: { attempts: 1 }
         } as any);
       } catch (error: any) {
-        expect(error.message).toContain('trainsetGenAlreadyGenerating');
+        expect(error.message).toContain('rerankTrainsetGenAlreadyGenerating');
       }
 
       // Verify business logic: generating trainset is checked
@@ -254,7 +255,7 @@ describe('Rerank Train Data API', () => {
           opts: { attempts: 1 }
         } as any);
       } catch (error: any) {
-        expect(error.message).toContain('trainsetGenNoDataset');
+        expect(error.message).toContain('rerankTrainsetGenNoDataset');
       }
     });
   });
@@ -279,7 +280,7 @@ describe('Rerank Train Data API', () => {
           query: 'query1',
           positiveDocs: ['positive1'],
           negativeDocs: ['negative1', 'negative2'],
-          source: TrainDataSourceEnum.dataset,
+          source: RerankTrainDataSourceEnum.dataset,
           createTime: new Date()
         }
       ];
@@ -309,17 +310,19 @@ describe('Rerank Train Data API', () => {
   });
 
   describe('Create Manual Train Data API', () => {
-    test('应该成功创建手动训练数据（不需要 appId）', async () => {
+    test('应该成功创建手动训练数据', async () => {
       vi.clearAllMocks();
 
       // Mock create training data
-      (MongoRerankTrainsetData.create as any).mockResolvedValue([{ _id: 'train_data_123' }]);
+      (MongoRerankTrainsetData.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'train_data_123' })
+      ]);
 
-      const { createManualTrainData } = await import(
+      const { createManualRerankTrainData } = await import(
         '@fastgpt/service/core/train/rerank/data/controller'
       );
 
-      const dataId = await createManualTrainData({
+      const data = await createManualRerankTrainData({
         trainsetId,
         teamId,
         tmbId,
@@ -328,7 +331,7 @@ describe('Rerank Train Data API', () => {
         negativeDocs: ['Machine Learning', 'Deep Learning']
       });
 
-      expect(dataId).toBe('train_data_123');
+      expect(String(data._id)).toBe('train_data_123');
       expect(MongoRerankTrainsetData.create).toHaveBeenCalled();
     });
 
@@ -370,12 +373,12 @@ describe('Rerank Train Data API', () => {
         }
       };
 
-      const { updateTrainData } = await import(
+      const { updateRerankTrainData } = await import(
         '@fastgpt/service/core/train/rerank/data/controller'
       );
 
       try {
-        await updateTrainData({
+        await updateRerankTrainData({
           dataId: 'train_data_123',
           query: request.body.query,
           positiveDocs: request.body.positiveDocs,
@@ -403,12 +406,12 @@ describe('Rerank Train Data API', () => {
       (MongoRerankTrainsetData.deleteMany as any).mockResolvedValue({ deletedCount: 1 });
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
-      const { deleteTrainData } = await import(
+      const { deleteRerankTrainData } = await import(
         '@fastgpt/service/core/train/rerank/data/controller'
       );
 
       try {
-        const deletedCount = await deleteTrainData(['train_data_123']);
+        const deletedCount = await deleteRerankTrainData(['train_data_123']);
         expect(deletedCount).toBe(1);
         expect(MongoRerankTrainsetData.deleteMany).toHaveBeenCalled();
       } catch (error) {
@@ -422,11 +425,13 @@ describe('Rerank Train Data API', () => {
         lean: vi.fn().mockResolvedValue(null)
       });
 
-      const { deleteTrainData } = await import(
+      const { deleteRerankTrainData } = await import(
         '@fastgpt/service/core/train/rerank/data/controller'
       );
 
-      await expect(deleteTrainData(['non_existent_data'])).rejects.toBe('trainDataNotExist');
+      await expect(deleteRerankTrainData(['non_existent_data'])).rejects.toBe(
+        'rerankTrainDataNotExist'
+      );
     });
   });
 });

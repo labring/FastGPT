@@ -27,7 +27,6 @@ async function handler(
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // datasetIds is required (no longer auto-extracted from App config)
   if (!datasetIds?.length) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
@@ -51,10 +50,10 @@ async function handler(
 
   // 3. Reject if generation is already in progress
   if (trainset.status === RerankTrainsetStatusEnum.generating) {
-    return Promise.reject(RerankTrainErrEnum.trainsetGenerating);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainsetGenerating);
   }
 
-  // 4. Enqueue async generation job (payload contains no appId)
+  // 4. Enqueue async generation job
   const job = await rerankTrainDataGenerateQueue.add(`generate-${trainset._id}-${Date.now()}`, {
     trainsetId: String(trainset._id),
     datasetIds,

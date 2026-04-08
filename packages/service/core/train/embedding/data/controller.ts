@@ -1,11 +1,14 @@
 import { MongoEmbeddingTrainsetData } from './schema';
-import { TrainDataSourceEnum } from '@fastgpt/global/core/train/embedding/constants';
+import { EmbeddingTrainDataSourceEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { addLog } from '../../../../common/system/log';
-import type { TrainsetStatistics } from '@fastgpt/global/core/train/embedding/type';
+import type {
+  EmbeddingTrainsetDataSchemaType,
+  EmbeddingTrainsetStatistics
+} from '@fastgpt/global/core/train/embedding/type';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-/** Create manual training data (decoupled from App) */
+/** Create manual training data */
 export async function createManualEmbeddingTrainData(params: {
   trainsetId: string;
   teamId: string;
@@ -14,17 +17,17 @@ export async function createManualEmbeddingTrainData(params: {
   positiveDocs: string[];
   negativeDocs: string[];
   reason?: string;
-}): Promise<string> {
+}): Promise<EmbeddingTrainsetDataSchemaType> {
   const { trainsetId, teamId, tmbId, query, positiveDocs, negativeDocs, reason } = params;
 
-  const [{ _id }] = await MongoEmbeddingTrainsetData.create([
+  const [doc] = await MongoEmbeddingTrainsetData.create([
     {
       trainsetId,
       teamId,
       query,
       positiveDocs,
       negativeDocs,
-      source: TrainDataSourceEnum.manual,
+      source: EmbeddingTrainDataSourceEnum.manual,
       metadata: {
         sourceInfo: {
           manualInfo: {
@@ -39,10 +42,10 @@ export async function createManualEmbeddingTrainData(params: {
 
   addLog.info('Created manual embedding train data', {
     trainsetId,
-    dataId: String(_id)
+    dataId: String(doc._id)
   });
 
-  return String(_id);
+  return doc.toObject() as EmbeddingTrainsetDataSchemaType;
 }
 
 /** Update training data */
@@ -76,7 +79,7 @@ export async function deleteEmbeddingTrainData(dataIds: string[]): Promise<numbe
 
   const firstData = await MongoEmbeddingTrainsetData.findById(dataIds[0]).lean();
   if (!firstData) {
-    return Promise.reject(EmbeddingTrainErrEnum.trainDataNotExist);
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingTrainDataNotExist);
   }
 
   const result = await MongoEmbeddingTrainsetData.deleteMany({
@@ -95,7 +98,7 @@ export async function deleteEmbeddingTrainData(dataIds: string[]): Promise<numbe
 /** Calculate embedding trainset statistics */
 export async function calculateEmbeddingTrainsetStats(
   trainsetId: string
-): Promise<TrainsetStatistics> {
+): Promise<EmbeddingTrainsetStatistics> {
   const trainData = await MongoEmbeddingTrainsetData.find({ trainsetId }).lean();
 
   const dataCount = trainData.length;
@@ -108,12 +111,12 @@ export async function calculateEmbeddingTrainsetStats(
   });
 
   // Use Map to store final data structure directly
-  const sourceSummary = new Map<string, TrainsetStatistics['sourceSummary'][number]>();
+  const sourceSummary = new Map<string, EmbeddingTrainsetStatistics['sourceSummary'][number]>();
 
   trainData.forEach((data) => {
     const source = data.source;
 
-    if (source === TrainDataSourceEnum.dataset) {
+    if (source === EmbeddingTrainDataSourceEnum.dataset) {
       const datasetId = data.metadata?.sourceInfo?.datasetInfo?.datasetId;
 
       if (datasetId) {
@@ -129,12 +132,12 @@ export async function calculateEmbeddingTrainsetStats(
         }
         // Type assertion needed because TypeScript can't narrow discriminated union in Map.get()
         const item = sourceSummary.get(key) as Extract<
-          TrainsetStatistics['sourceSummary'][number],
+          EmbeddingTrainsetStatistics['sourceSummary'][number],
           { type: 'dataset' }
         >;
         item.count++;
       }
-    } else if (source === TrainDataSourceEnum.chat_log) {
+    } else if (source === EmbeddingTrainDataSourceEnum.chat_log) {
       const chatId = data.metadata?.sourceInfo?.chatLogInfo?.chatId;
 
       if (chatId) {
@@ -149,12 +152,12 @@ export async function calculateEmbeddingTrainsetStats(
           });
         }
         const item = sourceSummary.get(key) as Extract<
-          TrainsetStatistics['sourceSummary'][number],
+          EmbeddingTrainsetStatistics['sourceSummary'][number],
           { type: 'chat_log' }
         >;
         item.count++;
       }
-    } else if (source === TrainDataSourceEnum.manual) {
+    } else if (source === EmbeddingTrainDataSourceEnum.manual) {
       const creator = data.metadata?.sourceInfo?.manualInfo?.creator;
 
       if (creator) {
@@ -169,7 +172,7 @@ export async function calculateEmbeddingTrainsetStats(
           });
         }
         const item = sourceSummary.get(key) as Extract<
-          TrainsetStatistics['sourceSummary'][number],
+          EmbeddingTrainsetStatistics['sourceSummary'][number],
           { type: 'manual' }
         >;
         item.count++;

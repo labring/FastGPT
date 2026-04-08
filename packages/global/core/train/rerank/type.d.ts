@@ -1,6 +1,6 @@
 import type {
   RerankTrainsetStatusEnum,
-  TrainDataSourceEnum,
+  RerankTrainDataSourceEnum,
   RerankTrainTaskStatusEnum,
   RerankTaskCheckpointStageEnum,
   RerankTrainTypeEnum
@@ -11,7 +11,7 @@ import type { EnhancedErrorMessage } from './error';
  * Detailed evaluation results from DiTing
  * Contains various ranking metrics at different k values
  */
-export interface DiTingDetailedResults {
+export interface RerankDiTingDetailedResults {
   rerank_top5_mrr?: number;
   rerank_top5_ndcg?: number;
   rerank_top5_map?: number;
@@ -38,7 +38,7 @@ export interface DiTingDetailedResults {
  * This is what gets returned by evaluation stages and stored in checkpoint/result
  */
 export interface RerankEvalResult {
-  detailed_results: DiTingDetailedResults;
+  detailed_results: RerankDiTingDetailedResults;
   mrr_scores?: Record<string, number[]>;
   ndcg_scores?: Record<string, number[]>;
   map_scores?: Record<string, number[]>;
@@ -57,7 +57,7 @@ export interface RerankEvalResult {
 }
 
 /** Trainset statistics (dynamically calculated, not stored in DB) */
-export interface TrainsetStatistics {
+export interface RerankTrainsetStatistics {
   dataCount: number;
   positiveCount: number;
   negativeCount: number;
@@ -103,7 +103,7 @@ export type RerankTrainsetSchemaType = {
   createTime: Date;
   updateTime: Date;
 
-  statistics?: TrainsetStatistics;
+  statistics?: RerankTrainsetStatistics;
 };
 
 /** Rerank training data schema */
@@ -116,7 +116,7 @@ export type RerankTrainsetDataSchemaType = {
   positiveDocs: string[];
   negativeDocs: string[];
 
-  source: `${TrainDataSourceEnum}`;
+  source: `${RerankTrainDataSourceEnum}`;
 
   metadata: {
     sourceInfo: {

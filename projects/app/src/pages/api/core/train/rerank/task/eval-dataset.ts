@@ -38,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     task.result?.evalDatasetId || task.checkpoint?.data?.generate_evaldataset?.evalDatasetId;
 
   if (!evalDatasetId) {
-    return Promise.reject(RerankTrainErrEnum.evalDatasetNotGenerated);
+    return Promise.reject(RerankTrainErrEnum.rerankEvalDatasetNotGenerated);
   }
 
   // 3. Query evaluation data (with complete fields)
@@ -55,7 +55,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     .lean();
 
   if (!evalData || evalData.length === 0) {
-    return Promise.reject(RerankTrainErrEnum.evalDatasetEmpty);
+    return Promise.reject(RerankTrainErrEnum.rerankEvalDatasetEmpty);
   }
 
   // 4. Convert to JSONL format (one JSON object per line)

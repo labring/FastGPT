@@ -1,18 +1,19 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
   createRerankTrainTask,
-  updateTaskStatus,
-  updateCheckpointStage,
-  updateCheckpointData,
+  updateRerankTaskStatus,
+  updateRerankCheckpointStage,
+  updateRerankCheckpointData,
   getRerankTrainTask,
   deleteRerankTrainTask,
   cancelRerankTrainTask,
-  resolveTasksByTunedModelId
+  resolveRerankTasksByTunedModelId
 } from '@fastgpt/service/core/train/rerank/task/controller';
 import {
   RerankTrainTaskStatusEnum,
   RerankTaskCheckpointStageEnum
 } from '@fastgpt/global/core/train/rerank/constants';
+import { createMockDoc } from './mockDoc';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -112,9 +113,9 @@ describe('Rerank Train Task Controller', () => {
       (MongoRerankTrainTask.findOne as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue(null) // no running task
       });
-      (MongoRerankTrainTask.create as any).mockResolvedValue([{ _id: 'task_123' }]);
+      (MongoRerankTrainTask.create as any).mockResolvedValue([createMockDoc({ _id: 'task_123' })]);
 
-      const taskId = await createRerankTrainTask({
+      const task = await createRerankTrainTask({
         baseModelId: 'model_123',
         trainsetId: 'trainset_123',
         teamId: 'team_123',
@@ -122,9 +123,9 @@ describe('Rerank Train Task Controller', () => {
         name: 'My Task'
       });
 
-      expect(taskId).toBe('task_123');
+      expect(String(task._id)).toBe('task_123');
 
-      // Verify the task was created with the correct model config (baseModelId instead of appId)
+      // Verify the task was created with the correct model config
       expect(MongoRerankTrainTask.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -152,16 +153,16 @@ describe('Rerank Train Task Controller', () => {
       (MongoRerankTrainTask.findOne as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue(null) // no running task
       });
-      (MongoRerankTrainTask.create as any).mockResolvedValue([{ _id: 'task_auto' }]);
+      (MongoRerankTrainTask.create as any).mockResolvedValue([createMockDoc({ _id: 'task_auto' })]);
 
-      const taskId = await createRerankTrainTask({
+      const task = await createRerankTrainTask({
         baseModelId: 'model_123',
         datasetIds: ['ds1', 'ds2'],
         teamId: 'team_123',
         tmbId: 'tmb_123'
       });
 
-      expect(taskId).toBe('task_auto');
+      expect(String(task._id)).toBe('task_auto');
       expect(MongoRerankTrainTask.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -179,7 +180,7 @@ describe('Rerank Train Task Controller', () => {
           teamId: 'team_123',
           tmbId: 'tmb_123'
         })
-      ).rejects.toBe('taskModelNotFound');
+      ).rejects.toBe('rerankTaskModelNotFound');
     });
 
     test('基础模型已禁用时应拒绝创建', async () => {
@@ -195,7 +196,7 @@ describe('Rerank Train Task Controller', () => {
           teamId: 'team_123',
           tmbId: 'tmb_123'
         })
-      ).rejects.toBe('taskBaseModelDisabled');
+      ).rejects.toBe('rerankTaskBaseModelDisabled');
     });
   });
 
@@ -207,7 +208,7 @@ describe('Rerank Train Task Controller', () => {
 
       (MongoRerankTrainTask.updateOne as any).mockResolvedValue({});
 
-      await updateTaskStatus('task_123', RerankTrainTaskStatusEnum.running);
+      await updateRerankTaskStatus('task_123', RerankTrainTaskStatusEnum.running);
 
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
@@ -224,14 +225,14 @@ describe('Rerank Train Task Controller', () => {
 
       (MongoRerankTrainTask.updateOne as any).mockResolvedValue({});
 
-      await updateTaskStatus('task_123', RerankTrainTaskStatusEnum.completed);
+      await updateRerankTaskStatus('task_123', RerankTrainTaskStatusEnum.completed);
 
       const callArgs = (MongoRerankTrainTask.updateOne as any).mock.calls[0][1];
       expect(callArgs.finishTime).toBeDefined();
     });
   });
 
-  describe('updateCheckpointStage', () => {
+  describe('updateRerankCheckpointStage', () => {
     test('应该成功更新检查点阶段', async () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
@@ -239,7 +240,10 @@ describe('Rerank Train Task Controller', () => {
 
       (MongoRerankTrainTask.updateOne as any).mockResolvedValue({});
 
-      await updateCheckpointStage('task_123', RerankTaskCheckpointStageEnum.generate_trainset);
+      await updateRerankCheckpointStage(
+        'task_123',
+        RerankTaskCheckpointStageEnum.generate_trainset
+      );
 
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: 'task_123' },
@@ -250,7 +254,7 @@ describe('Rerank Train Task Controller', () => {
     });
   });
 
-  describe('updateCheckpointData', () => {
+  describe('updateRerankCheckpointData', () => {
     test('整体更新模式应替换整个阶段数据', async () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
@@ -258,7 +262,7 @@ describe('Rerank Train Task Controller', () => {
 
       (MongoRerankTrainTask.updateOne as any).mockResolvedValue({});
 
-      await updateCheckpointData(
+      await updateRerankCheckpointData(
         'task_123',
         RerankTaskCheckpointStageEnum.generate_trainset,
         {
@@ -286,7 +290,7 @@ describe('Rerank Train Task Controller', () => {
 
       (MongoRerankTrainTask.updateOne as any).mockResolvedValue({});
 
-      await updateCheckpointData(
+      await updateRerankCheckpointData(
         'task_123',
         RerankTaskCheckpointStageEnum.generate_evaldataset,
         { evalDatasetId: 'eval_123' },
@@ -340,7 +344,7 @@ describe('Rerank Train Task Controller', () => {
   });
 
   describe('deleteRerankTrainTask', () => {
-    test('应该成功删除训练任务（无 App 版本回滚）', async () => {
+    test('应该成功删除训练任务', async () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
@@ -604,7 +608,7 @@ describe('Rerank Train Task Controller', () => {
         lean: vi.fn().mockResolvedValue(null)
       });
 
-      await expect(cancelRerankTrainTask('non_existent')).rejects.toBe('taskNotExist');
+      await expect(cancelRerankTrainTask('non_existent')).rejects.toBe('rerankTaskNotExist');
     });
 
     test('已完成的任务不能取消', async () => {
@@ -619,11 +623,11 @@ describe('Rerank Train Task Controller', () => {
         })
       });
 
-      await expect(cancelRerankTrainTask('task_123')).rejects.toBe('taskCannotCancel');
+      await expect(cancelRerankTrainTask('task_123')).rejects.toBe('rerankTaskCannotCancel');
     });
   });
 
-  describe('createRerankTrainTask - taskAlreadyRunning', () => {
+  describe('createRerankTrainTask - rerankTaskAlreadyRunning', () => {
     test('同一 baseModelId 已有进行中任务时应拒绝创建', async () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
@@ -640,7 +644,7 @@ describe('Rerank Train Task Controller', () => {
           teamId: 'team_123',
           tmbId: 'tmb_123'
         })
-      ).rejects.toBe('taskAlreadyRunning');
+      ).rejects.toBe('rerankTaskAlreadyRunning');
 
       expect(MongoRerankTrainTask.create).not.toHaveBeenCalled();
     });
@@ -654,20 +658,20 @@ describe('Rerank Train Task Controller', () => {
       (MongoRerankTrainTask.findOne as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue(null)
       });
-      (MongoRerankTrainTask.create as any).mockResolvedValue([{ _id: 'new_task' }]);
+      (MongoRerankTrainTask.create as any).mockResolvedValue([createMockDoc({ _id: 'new_task' })]);
 
-      const taskId = await createRerankTrainTask({
+      const task = await createRerankTrainTask({
         baseModelId: 'model_123',
         datasetIds: ['ds1'],
         teamId: 'team_123',
         tmbId: 'tmb_123'
       });
 
-      expect(taskId).toBe('new_task');
+      expect(String(task._id)).toBe('new_task');
     });
   });
 
-  describe('resolveTasksByTunedModelId', () => {
+  describe('resolveRerankTasksByTunedModelId', () => {
     test('正常链式溯源：按 tunedModelId 逐级向上追溯', async () => {
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
@@ -684,7 +688,7 @@ describe('Rerank Train Task Controller', () => {
         })
         .mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
 
-      const tasks = await resolveTasksByTunedModelId('model_v2', 'team_123');
+      const tasks = await resolveRerankTasksByTunedModelId('model_v2', 'team_123');
 
       expect(tasks).toHaveLength(2);
       expect(tasks[0]._id).toBe('task_v2');
@@ -700,7 +704,7 @@ describe('Rerank Train Task Controller', () => {
         lean: vi.fn().mockResolvedValue(null)
       });
 
-      const tasks = await resolveTasksByTunedModelId('model_unknown', 'team_123');
+      const tasks = await resolveRerankTasksByTunedModelId('model_unknown', 'team_123');
 
       expect(tasks).toHaveLength(0);
     });
@@ -720,7 +724,7 @@ describe('Rerank Train Task Controller', () => {
           lean: vi.fn().mockResolvedValue({ _id: 'task_b', baseModelId: 'model_a' })
         });
 
-      const tasks = await resolveTasksByTunedModelId('model_a', 'team_123');
+      const tasks = await resolveRerankTasksByTunedModelId('model_a', 'team_123');
 
       // should return collected tasks without infinite looping
       expect(tasks.length).toBeLessThanOrEqual(2);

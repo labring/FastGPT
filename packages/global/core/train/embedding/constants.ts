@@ -31,7 +31,7 @@ export enum EmbeddingTaskCheckpointStageEnum {
   eval_tunedmodel = 'eval_tunedmodel'
 }
 
-export enum TrainDataSourceEnum {
+export enum EmbeddingTrainDataSourceEnum {
   dataset = 'dataset',
   chat_log = 'chat_log',
   manual = 'manual'

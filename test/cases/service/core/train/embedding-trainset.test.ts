@@ -3,6 +3,7 @@ import {
   createEmbeddingTrainset,
   deleteEmbeddingTrainset
 } from '@fastgpt/service/core/train/embedding/trainset/controller';
+import { createMockDoc } from './mockDoc';
 
 // Mock dependencies
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -31,7 +32,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: vi.fn()
 }));
 
-// Mock calculateTrainsetStats
+// Mock calculateRerankTrainsetStats
 vi.mock('@fastgpt/service/core/train/embedding/data/controller', () => ({
   calculateEmbeddingTrainsetStats: vi.fn()
 }));
@@ -42,20 +43,22 @@ describe('Embedding Trainset Controller', () => {
   });
 
   describe('createEmbeddingTrainset', () => {
-    test('应该成功创建训练集（不需要 appId）', async () => {
+    test('应该成功创建训练集', async () => {
       const { MongoEmbeddingTrainset } = await import(
         '@fastgpt/service/core/train/embedding/trainset/schema'
       );
 
-      (MongoEmbeddingTrainset.create as any).mockResolvedValue([{ _id: 'trainset_123' }]);
+      (MongoEmbeddingTrainset.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'trainset_123' })
+      ]);
 
-      const trainsetId = await createEmbeddingTrainset({
+      const trainset = await createEmbeddingTrainset({
         teamId: 'team_123',
         tmbId: 'tmb_123',
         name: 'My Trainset'
       });
 
-      expect(trainsetId).toBe('trainset_123');
+      expect(String(trainset._id)).toBe('trainset_123');
       expect(MongoEmbeddingTrainset.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -72,7 +75,9 @@ describe('Embedding Trainset Controller', () => {
         '@fastgpt/service/core/train/embedding/trainset/schema'
       );
 
-      (MongoEmbeddingTrainset.create as any).mockResolvedValue([{ _id: 'trainset_123' }]);
+      (MongoEmbeddingTrainset.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'trainset_123' })
+      ]);
 
       await createEmbeddingTrainset({
         teamId: 'team_123',
@@ -89,16 +94,18 @@ describe('Embedding Trainset Controller', () => {
         '@fastgpt/service/core/train/embedding/trainset/schema'
       );
 
-      (MongoEmbeddingTrainset.create as any).mockResolvedValue([{ _id: 'trainset_123' }]);
+      (MongoEmbeddingTrainset.create as any).mockResolvedValue([
+        createMockDoc({ _id: 'trainset_123' })
+      ]);
 
-      const trainsetId = await createEmbeddingTrainset({
+      const trainset = await createEmbeddingTrainset({
         teamId: 'team_123',
         tmbId: 'tmb_123',
         name: 'My Trainset',
         description: 'Test description'
       });
 
-      expect(trainsetId).toBe('trainset_123');
+      expect(String(trainset._id)).toBe('trainset_123');
       expect(MongoEmbeddingTrainset.create).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({

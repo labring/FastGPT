@@ -1,29 +1,21 @@
-import type { PaginationProps, PaginationResponse } from '../../common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../../../web/common/fetch/type';
 import type {
   EmbeddingTrainsetSchemaType,
   EmbeddingTrainsetDataSchemaType,
   EmbeddingTrainTaskSchemaType
 } from './type';
 import type {
-  TrainDataSourceEnum,
+  EmbeddingTrainDataSourceEnum,
   EmbeddingTrainTaskStatusEnum,
   EmbeddingTrainTypeEnum
 } from './constants';
-
-// ===== Common Types =====
-export type MessageResponse = { message: string };
-export type TrainsetIdQuery = { trainsetId: string };
-export type TaskIdQuery = { taskId: string };
-export type DataIdQuery = { dataId: string };
-
-/** Sort order */
-export type SortOrder = 'asc' | 'desc';
-
-/** Sort parameters */
-export type SortParams<T extends string> = {
-  sortField?: T;
-  sortOrder?: SortOrder;
-};
+import type {
+  MessageResponse,
+  TrainsetIdQuery,
+  TaskIdQuery,
+  DataIdQuery,
+  SortParams
+} from '../common/api';
 
 // ===== Trainset API =====
 
@@ -79,7 +71,7 @@ export type CreateEmbeddingTrainDataRequest = {
   negativeDocs: string[];
   reason?: string; // Reason for addition
 };
-export type CreateEmbeddingTrainDataResponse = MessageResponse;
+export type CreateEmbeddingTrainDataResponse = EmbeddingTrainsetDataSchemaType;
 
 // Update Training Data
 export type UpdateEmbeddingTrainDataRequest = DataIdQuery & {
@@ -93,7 +85,7 @@ export type UpdateEmbeddingTrainDataResponse = MessageResponse;
 export type ListEmbeddingTrainDataRequest = PaginationProps<
   {
     trainsetId: string; // Required: Trainset ID to query
-    source?: `${TrainDataSourceEnum}`;
+    source?: `${EmbeddingTrainDataSourceEnum}`;
   } & SortParams<'createTime' | 'updateTime'>
 >;
 export type ListEmbeddingTrainDataResponse = PaginationResponse<EmbeddingTrainsetDataSchemaType>;
@@ -120,10 +112,7 @@ export type CreateEmbeddingTrainTaskRequest = {
   name?: string;
   trainType?: `${EmbeddingTrainTypeEnum}`; // Training type: lora or ptuning, defaults to lora
 };
-export type CreateEmbeddingTrainTaskResponse = {
-  taskId: string;
-  status: `${EmbeddingTrainTaskStatusEnum}`;
-};
+export type CreateEmbeddingTrainTaskResponse = EmbeddingTrainTaskSchemaType;
 
 // Get Task Detail
 export type EmbeddingTrainTaskDetailRequest = TaskIdQuery;

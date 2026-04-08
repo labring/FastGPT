@@ -4,7 +4,7 @@ import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/sc
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { rerankTrainTaskQueue } from '@fastgpt/service/core/train/rerank/task/mq';
 import { rerankTrainDataGenerateQueue } from '@fastgpt/service/core/train/rerank/data/mq';
-import { updateTaskStatus } from '@fastgpt/service/core/train/rerank/task/controller';
+import { updateRerankTaskStatus } from '@fastgpt/service/core/train/rerank/task/controller';
 import { authRerankTrainTask } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
@@ -34,17 +34,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
 
   // Only failed tasks can be retried
   if (task.status !== RerankTrainTaskStatusEnum.failed) {
-    return Promise.reject(RerankTrainErrEnum.taskCannotRetry);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskCannotRetry);
   }
 
   // Retrieve the failed BullMQ job by its persisted jobId
   if (!task.jobId) {
-    return Promise.reject(RerankTrainErrEnum.taskCannotRetry);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskCannotRetry);
   }
 
   const job = await rerankTrainTaskQueue.getJob(task.jobId);
   if (!job || (await job.getState()) !== 'failed') {
-    return Promise.reject(RerankTrainErrEnum.taskCannotRetry);
+    return Promise.reject(RerankTrainErrEnum.rerankTaskCannotRetry);
   }
 
   // If the trainset generation also failed, retry it first so the training task
@@ -52,7 +52,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   if (task.trainsetId) {
     const trainset = await MongoRerankTrainset.findById(task.trainsetId).lean();
     if (!trainset) {
-      return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
+      return Promise.reject(RerankTrainErrEnum.rerankTrainsetNotExist);
     }
 
     // Retry the data generation job and reset trainset status to pending
@@ -79,7 +79,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
 
   // Reset task status to pending and clear error message
   await Promise.all([
-    updateTaskStatus(taskId, RerankTrainTaskStatusEnum.pending),
+    updateRerankTaskStatus(taskId, RerankTrainTaskStatusEnum.pending),
     MongoRerankTrainTask.updateOne({ _id: taskId }, { $unset: { errorMsg: '' } })
   ]);
 

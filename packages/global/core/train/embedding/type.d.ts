@@ -1,17 +1,17 @@
 import type {
   EmbeddingTrainsetStatusEnum,
-  TrainDataSourceEnum,
+  EmbeddingTrainDataSourceEnum,
   EmbeddingTrainTaskStatusEnum,
   EmbeddingTaskCheckpointStageEnum,
   EmbeddingTrainTypeEnum
 } from './constants';
-import type { EnhancedErrorMessage } from '../rerank/error';
+import type { EnhancedErrorMessage } from './error';
 
 /**
  * Embedding evaluation result (same structure as RerankEvalResult)
  * Contains various ranking metrics at different k values
  */
-export interface DiTingDetailedResults {
+export interface EmbeddingDiTingDetailedResults {
   embed_top5_mrr?: number;
   embed_top5_precision?: number;
   embed_top10_mrr?: number;
@@ -27,7 +27,7 @@ export interface DiTingDetailedResults {
  * Embedding evaluation result (same metrics as Rerank)
  */
 export interface EmbeddingEvalResult {
-  detailed_results: DiTingDetailedResults;
+  detailed_results: EmbeddingDiTingDetailedResults;
   mrr_scores?: Record<string, number[]>;
   precision_scores?: Record<string, number[]>;
   retrieval_ranks?: number[][];
@@ -37,7 +37,7 @@ export interface EmbeddingEvalResult {
 }
 
 /** Trainset statistics (dynamically calculated, not stored in DB) */
-export interface TrainsetStatistics {
+export interface EmbeddingTrainsetStatistics {
   dataCount: number;
   positiveCount: number;
   negativeCount: number;
@@ -83,7 +83,7 @@ export type EmbeddingTrainsetSchemaType = {
   createTime: Date;
   updateTime: Date;
 
-  statistics?: TrainsetStatistics;
+  statistics?: EmbeddingTrainsetStatistics;
 };
 
 /** Embedding training data schema */
@@ -96,7 +96,7 @@ export type EmbeddingTrainsetDataSchemaType = {
   positiveDocs: string[];
   negativeDocs: string[];
 
-  source: `${TrainDataSourceEnum}`;
+  source: `${EmbeddingTrainDataSourceEnum}`;
 
   metadata: {
     sourceInfo: {

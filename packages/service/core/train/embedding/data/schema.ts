@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import type { EmbeddingTrainsetDataSchemaType } from '@fastgpt/global/core/train/embedding/type';
-import { TrainDataSourceEnum } from '@fastgpt/global/core/train/embedding/constants';
+import { EmbeddingTrainDataSourceEnum } from '@fastgpt/global/core/train/embedding/constants';
 
 /** Embedding trainset data schema */
 const EmbeddingTrainsetDataSchema = new connectionMongo.Schema({
@@ -28,7 +28,7 @@ const EmbeddingTrainsetDataSchema = new connectionMongo.Schema({
   },
   source: {
     type: String,
-    enum: Object.values(TrainDataSourceEnum),
+    enum: Object.values(EmbeddingTrainDataSourceEnum),
     required: true
   },
   metadata: {

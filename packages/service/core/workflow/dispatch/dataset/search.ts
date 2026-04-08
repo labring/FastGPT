@@ -447,7 +447,7 @@ export async function dispatchDatasetSearch(
         );
         for (let i = 0; i < needsDbLookupIds.length; i++) {
           const dsId = needsDbLookupIds[i];
-          const modelId = dbModels[i]?.vectorModel || '';
+          const modelId = getEmbeddingModel(dbModels[i]?.vectorModel).model;
           if (!modelGroupMap.has(modelId)) {
             modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
           }
