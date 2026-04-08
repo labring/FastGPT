@@ -3,6 +3,7 @@ import type {
   SandboxFileOperationResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { POST } from '@/web/common/api/request';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 /**
  * 列出目录文件
@@ -34,7 +35,7 @@ export const getSandboxFile = async (data: {
   chatId: string;
   path: string;
   preview?: boolean;
-  outLinkAuthData?: any;
+  outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   const response = await fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
@@ -56,7 +57,7 @@ export const downloadSandbox = async (data: {
   appId: string;
   chatId: string;
   path?: string;
-  outLinkAuthData?: any;
+  outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   const response = await fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
@@ -81,7 +82,7 @@ export const downloadSandbox = async (data: {
   a.download = fileName;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
+  a.remove();
   window.URL.revokeObjectURL(url);
 };
 
@@ -91,5 +92,5 @@ export const downloadSandbox = async (data: {
 export const checkSandboxExist = async (data: {
   appId: string;
   chatId: string;
-  outLinkAuthData?: any;
+  outLinkAuthData?: OutLinkChatAuthProps;
 }) => POST<{ exists: boolean }>('/core/ai/sandbox/checkExist', data);

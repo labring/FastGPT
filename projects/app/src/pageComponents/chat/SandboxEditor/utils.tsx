@@ -45,66 +45,65 @@ export const getIconByFilename = (filename: string): IconNameType => {
   return 'core/app/sandbox/default';
 };
 
+const extensionToLang: Record<string, string[]> = {
+  python: ['py'],
+  javascript: ['js', 'jsx', 'mjs', 'cjs'],
+  typescript: ['ts', 'tsx'],
+  json: ['json', 'jsonc', 'json5'],
+  markdown: ['md', 'markdown'],
+  html: ['html', 'htm'],
+  css: ['css'],
+  scss: ['scss'],
+  sass: ['sass'],
+  less: ['less'],
+  shell: ['sh', 'bash', 'zsh', 'fish'],
+  yaml: ['yml', 'yaml'],
+  xml: ['xml'],
+  sql: ['sql'],
+  go: ['go'],
+  rust: ['rs'],
+  java: ['java'],
+  c: ['c', 'h'],
+  cpp: ['cpp', 'cc', 'cxx', 'hpp', 'hxx'],
+  csharp: ['cs'],
+  php: ['php'],
+  ruby: ['rb'],
+  swift: ['swift'],
+  kotlin: ['kt'],
+  scala: ['scala'],
+  lua: ['lua'],
+  r: ['r'],
+  toml: ['toml'],
+  ini: ['ini'],
+  plaintext: ['conf', 'config', 'txt', 'log'],
+  image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico'],
+  svg: ['svg'],
+  pdf: ['pdf'],
+  audio: ['mp3', 'wav', 'm4a', 'flac', 'ogg'],
+  video: ['avi', 'mp4', 'webm', 'mov', 'm4v']
+};
+
+const langMap = Object.entries(extensionToLang).reduce(
+  (acc, [lang, extensions]) => {
+    extensions.forEach((ext) => {
+      acc[ext] = lang;
+    });
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
 // 获取文件语言
 export const getLanguageByFileName = (fileName: string): string => {
-  const extensionToLang: Record<string, string[]> = {
-    python: ['py'],
-    javascript: ['js', 'jsx', 'mjs', 'cjs'],
-    typescript: ['ts', 'tsx'],
-    json: ['json', 'jsonc', 'json5'],
-    markdown: ['md', 'markdown'],
-    html: ['html', 'htm'],
-    css: ['css'],
-    scss: ['scss'],
-    sass: ['sass'],
-    less: ['less'],
-    shell: ['sh', 'bash', 'zsh', 'fish'],
-    yaml: ['yml', 'yaml'],
-    xml: ['xml'],
-    sql: ['sql'],
-    go: ['go'],
-    rust: ['rs'],
-    java: ['java'],
-    c: ['c', 'h'],
-    cpp: ['cpp', 'cc', 'cxx', 'hpp', 'hxx'],
-    csharp: ['cs'],
-    php: ['php'],
-    ruby: ['rb'],
-    swift: ['swift'],
-    kotlin: ['kt'],
-    scala: ['scala'],
-    lua: ['lua'],
-    r: ['r'],
-    toml: ['toml'],
-    ini: ['ini'],
-    plaintext: ['conf', 'config', 'txt', 'log'],
-    image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico'],
-    svg: ['svg'],
-    pdf: ['pdf'],
-    audio: ['mp3', 'wav', 'm4a', 'flac', 'ogg'],
-    video: ['avi', 'mp4', 'webm', 'mov', 'm4v']
-  };
-
-  const langMap = Object.entries(extensionToLang).reduce(
-    (acc, [lang, extensions]) => {
-      extensions.forEach((ext) => {
-        acc[ext] = lang;
-      });
-      return acc;
-    },
-    {} as Record<string, string>
-  );
-
   const ext = fileName.split('.').at(-1)?.toLocaleLowerCase();
-  return langMap[ext || ''] ?? 'unknown';
+  return langMap[ext || ''] ?? 'plaintext';
 };
 
 /**
  * 判断语言是否属于二进制
  */
 export const getIsBinaryByLanguage = (language: string) => {
-  if (language === 'unknown') return true;
-  return ['image', 'audio', 'video', 'pdf'].includes(language);
+  return ['image', 'audio', 'video'].includes(language);
 };
 
 // Update tree node

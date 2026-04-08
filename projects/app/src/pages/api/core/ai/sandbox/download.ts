@@ -51,7 +51,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     const fileName = encodeURIComponent(`${rawFileName}-${Date.now()}.zip`);
 
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
+    );
 
     const archive = archiver('zip', {
       zlib: { level: 9 }
@@ -85,7 +88,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     } else {
       // 下载逻辑
       res.setHeader('Content-Type', 'application/octet-stream');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
+      );
     }
 
     res.send(Buffer.from(result.content));

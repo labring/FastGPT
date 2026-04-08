@@ -41,6 +41,20 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
     return openedFiles.find((f) => f.path === activeFilePath);
   }, [openedFiles, activeFilePath]);
 
+  // Clean up blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      setOpenedFiles((prev) => {
+        prev.forEach((file) => {
+          if (file.isBinary && file.content.startsWith('blob:')) {
+            URL.revokeObjectURL(file.content);
+          }
+        });
+        return prev;
+      });
+    };
+  }, []);
+
   // 加载目录 - 改为普通异步函数,避免 useRequest 的并发问题
   const { runAsync: loadDirectory } = useRequest(
     async (path: string, level: number) => {

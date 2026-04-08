@@ -13,13 +13,6 @@ export const SandboxFileOperationBodySchema = z.union([
     outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
   }),
   z.object({
-    action: z.literal('read'),
-    appId: z.string(),
-    chatId: z.string(),
-    path: z.string().describe('文件路径'),
-    outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-  }),
-  z.object({
     action: z.literal('write'),
     appId: z.string(),
     chatId: z.string(),
@@ -50,10 +43,6 @@ export const SandboxFileOperationResponseSchema = z.union([
   z.object({
     action: z.literal('list'),
     files: z.array(SandboxFileItemSchema)
-  }),
-  z.object({
-    action: z.literal('read'),
-    content: z.string().describe('文件内容')
   }),
   z.object({
     action: z.literal('write'),
