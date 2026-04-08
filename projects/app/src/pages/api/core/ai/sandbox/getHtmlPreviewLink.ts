@@ -12,7 +12,7 @@ import { addMinutes } from 'date-fns';
 const GetHtmlPreviewLinkBodySchema = z.object({
   appId: z.string(),
   chatId: z.string(),
-  content: z.string(),
+  content: z.string().max(5 * 1024 * 1024, 'Content exceeds 5MB limit'),
   outLinkAuthData: OutLinkChatAuthSchema.optional()
 });
 

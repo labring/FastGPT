@@ -23,8 +23,8 @@ type Props = {
   openedFiles: OpenedFile[];
   editorRef: React.MutableRefObject<EditorInstance | undefined>;
   isUpdatingRef: React.MutableRefObject<boolean>;
-  appId?: string;
-  chatId?: string;
+  appId: string;
+  chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 };
 
@@ -48,7 +48,7 @@ const EditorContent = ({
   const [generatingLink, setGeneratingLink] = useState(false);
 
   const handleHtmlPreview = async () => {
-    if (!activeFile || !appId || !chatId) return;
+    if (!activeFile) return;
 
     try {
       setGeneratingLink(true);

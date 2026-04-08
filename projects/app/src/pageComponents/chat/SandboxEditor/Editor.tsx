@@ -6,7 +6,7 @@ import type Editor from '@monaco-editor/react';
 import { listSandboxFiles, writeSandboxFile, downloadSandbox, getSandboxFile } from './api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useMount } from 'ahooks';
+import { useMount, useLatest } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
@@ -41,16 +41,15 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
     return openedFiles.find((f) => f.path === activeFilePath);
   }, [openedFiles, activeFilePath]);
 
+  const openedFilesRef = useLatest(openedFiles);
+
   // Clean up blob URLs when component unmounts
   useEffect(() => {
     return () => {
-      setOpenedFiles((prev) => {
-        prev.forEach((file) => {
-          if (file.isBinary && file.content.startsWith('blob:')) {
-            URL.revokeObjectURL(file.content);
-          }
-        });
-        return prev;
+      openedFilesRef.current?.forEach((file) => {
+        if (file.isBinary && file.content.startsWith('blob:')) {
+          URL.revokeObjectURL(file.content);
+        }
       });
     };
   }, []);
@@ -246,7 +245,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
         setLoadingDirs((prev) => {
           const next = new Set(prev);
           next.add(node.path);
-          console.log('Add loading:', node.path, next);
+
           return next;
         });
 
@@ -268,7 +267,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
             setLoadingDirs((prev) => {
               const next = new Set(prev);
               next.delete(node.path);
-              console.log('Remove loading:', node.path, next);
+
               return next;
             });
           });
