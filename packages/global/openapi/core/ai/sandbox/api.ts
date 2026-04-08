@@ -4,7 +4,7 @@ import { z } from 'zod';
 /**
  * 文件操作 - 统一请求体
  */
-export const SandboxFileOperationBodySchema = z.discriminatedUnion('action', [
+export const SandboxFileOperationBodySchema = z.union([
   z.object({
     action: z.literal('list'),
     appId: z.string(),

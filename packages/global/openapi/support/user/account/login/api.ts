@@ -2,6 +2,26 @@ import { z } from 'zod';
 import { OAuthEnum } from '../../../../../support/user/constant';
 import { TrackRegisterParamsSchema } from '../../../../../support/marketing/type';
 import { LanguageSchema } from '../../../../../common/i18n/type';
+import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
+import { UserSchema } from '../../../../../support/user/type';
+
+const OpenAPITeamTmbItemSchema = TeamTmbItemSchema.omit({
+  permission: true
+}).extend({
+  permission: z.any().meta({
+    description: '团队权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
+  })
+});
+
+export const OpenAPIUserSchema = UserSchema.omit({
+  team: true,
+  permission: true
+}).extend({
+  team: OpenAPITeamTmbItemSchema,
+  permission: z.any().meta({
+    description: '用户权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
+  })
+});
 
 export const LoginSuccessResponseSchema = z.object({
   user: z.any().meta({

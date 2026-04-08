@@ -76,7 +76,7 @@ export const CreateExtractDatasetBillSchema = z
     discountCouponId: z.string().optional().meta({ description: '优惠券 ID（未使用）' })
   })
   .meta({ description: '额外数据集存储订单创建参数' });
-export const CreateBillPropsSchema = z.discriminatedUnion('type', [
+export const CreateBillPropsSchema = z.union([
   CreateStandPlanBillSchema,
   CreateExtractPointsBillSchema,
   CreateExtractDatasetBillSchema
