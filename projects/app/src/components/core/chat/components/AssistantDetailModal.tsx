@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
-import { Box, Flex, useDisclosure, ModalBody } from '@chakra-ui/react';
+import { Box, Flex, useDisclosure, ModalBody, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,6 +11,7 @@ import {
 } from '@/web/core/chat/api';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DatasetRetrievalModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import ChunkInfoCard from './ChunkInfoCard';
@@ -351,17 +352,80 @@ const KnowledgeRecallNode = ({
   );
 };
 
+// 多轮智能检索节点（agentic 模式专用）
+const AgenticSearchNode = ({ data }: { data?: ChatHistoryItemResType }) => {
+  const { t } = useTranslation();
+  const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
+
+  const reasoningText = useMemo(() => {
+    return data?.agenticSearchResult?.reasoningText || '';
+  }, [data]);
+
+  const retrievalTime = useMemo(() => {
+    const time = data?.retrievalTime || 0;
+    return Number(time.toFixed(2));
+  }, [data]);
+
+  return (
+    <Box>
+      <Flex
+        alignItems={'center'}
+        justifyContent={'space-between'}
+        cursor={'pointer'}
+        onClick={onToggle}
+      >
+        <Flex alignItems={'center'} flex={1}>
+          <MyIcon
+            name={isOpen ? 'common/solidChevronDown' : 'common/solidChevronRight'}
+            w={'16px'}
+            h={'16px'}
+            color={'myGray.500'}
+            mr={2}
+          />
+          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+            {t('chat:agentic_search')}
+          </Box>
+        </Flex>
+        <Box fontSize={'xs'} color={'myGray.500'}>
+          {retrievalTime}s
+        </Box>
+      </Flex>
+
+      {isOpen && (
+        <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
+          {reasoningText ? (
+            <Box
+              borderRadius={'6px'}
+              border={'1px solid'}
+              borderColor={'borderColor.low'}
+              p={'12px 16px'}
+            >
+              <Markdown source={reasoningText} />
+            </Box>
+          ) : (
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              -
+            </Box>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 // 知识重排节点
 const KnowledgeRerankNode = ({
   data,
   quoteList,
   rawQuoteList,
-  isLoading
+  isLoading,
+  isAgenticMode
 }: {
   data?: ChatHistoryItemResType;
   quoteList?: AssistantDatasetCiteItemType[];
   rawQuoteList?: SearchDataResponseItemType[];
   isLoading?: boolean;
+  isAgenticMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
@@ -418,8 +482,12 @@ const KnowledgeRerankNode = ({
   // 判断是否使用重排:从 data 中获取 searchUsingReRank
   const searchUsingReRank = data?.searchUsingReRank || false;
 
-  // 当未使用重排时，隐藏知识重排节点
-  if (!searchUsingReRank && !hasError) return null;
+  const maxCount = 5;
+  const [isShowAll, setIsShowAll] = useState(false);
+  const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
+
+  // 当未使用重排时，隐藏知识重排节点（agentic 模式始终显示）
+  if (!isAgenticMode && !searchUsingReRank && !hasError) return null;
 
   return (
     <Box>
@@ -444,15 +512,18 @@ const KnowledgeRerankNode = ({
             display={'flex'}
             alignItems={'center'}
           >
-            {t('chat:knowledge_rerank')}
+            {isAgenticMode ? t('chat:summarize_retrieval_results') : t('chat:knowledge_rerank')}
             {hasError && (
               <MyIcon name={'common/error'} w={'16px'} h={'16px'} color={'red.600'} ml={1} />
             )}
           </Box>
         </Flex>
-        <Box fontSize={'xs'} color={'myGray.500'}>
-          {rerankTime}s
-        </Box>
+        {/* 多轮智能检索不显示汇总时间 */}
+        {!isAgenticMode && (
+          <Box fontSize={'xs'} color={'myGray.500'}>
+            {rerankTime}s
+          </Box>
+        )}
       </Flex>
 
       {isOpen && (
@@ -467,63 +538,75 @@ const KnowledgeRerankNode = ({
                 ) : (
                   <>
                     {mergedList.length > 0 ? (
-                      <Flex flexDirection={'column'} gap={3}>
-                        {mergedList.map((item, index) => {
-                          // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
-                          const descriptionList = [];
+                      <>
+                        <Flex flexDirection={'column'} gap={3}>
+                          {displayList.map((item, index) => {
+                            // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
+                            const descriptionList = [];
 
-                          // 从 score 数组中提取分数信息，按固定顺序添加
-                          if (item.score && Array.isArray(item.score)) {
-                            const rrfScore = item.score.find((s) => s.type === 'rrf');
-                            const reRankScore = item.score.find((s) => s.type === 'reRank');
+                            // 从 score 数组中提取分数信息，按固定顺序添加
+                            if (item.score && Array.isArray(item.score)) {
+                              const rrfScore = item.score.find((s) => s.type === 'rrf');
+                              const reRankScore = item.score.find((s) => s.type === 'reRank');
 
-                            if (rrfScore) {
-                              descriptionList.push(
-                                `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
-                              );
+                              if (rrfScore) {
+                                descriptionList.push(
+                                  `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
+                                );
+                              }
+                              if (reRankScore) {
+                                descriptionList.push(
+                                  `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
+                                );
+                              }
                             }
-                            if (reRankScore) {
-                              descriptionList.push(
-                                `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
-                              );
+
+                            // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
+                            let recallRank = '-';
+                            if (item.retrievalRank !== undefined) {
+                              recallRank = `${item.retrievalRank + 1}`;
                             }
-                          }
+                            descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
-                          // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
-                          let recallRank = '-';
-                          if (item.retrievalRank !== undefined) {
-                            recallRank = `${item.retrievalRank + 1}`;
-                          }
-                          descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
+                            // 使用 TOP1、TOP2 格式作为标题
+                            const title = `TOP${index + 1}`;
 
-                          // 使用 TOP1、TOP2 格式作为标题
-                          const title = `TOP${index + 1}`;
+                            // 计算 linkText 和 linkUrl
+                            let linkText = '';
+                            let linkUrl = '';
 
-                          // 计算 linkText 和 linkUrl
-                          let linkText = '';
-                          let linkUrl = '';
+                            if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                              linkText = `${item.sourceName || ''} / #${item.index}`;
+                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
+                            } else if (item.sourceType === 'sql') {
+                              linkText = item.sourceName || '';
+                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                            }
 
-                          if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                            linkText = `${item.sourceName || ''} / #${item.index}`;
-                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
-                          } else if (item.sourceType === 'sql') {
-                            linkText = item.sourceName || '';
-                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
-                          }
-
-                          return (
-                            <ChunkInfoCard
-                              key={item._id || index}
-                              title={title}
-                              descriptionList={descriptionList}
-                              linkText={linkText}
-                              linkUrl={linkUrl}
-                              q={item.q}
-                              a={item.a}
-                            />
-                          );
-                        })}
-                      </Flex>
+                            return (
+                              <ChunkInfoCard
+                                key={item._id || index}
+                                title={title}
+                                descriptionList={descriptionList}
+                                linkText={linkText}
+                                linkUrl={linkUrl}
+                                q={item.q}
+                                a={item.a}
+                              />
+                            );
+                          })}
+                        </Flex>
+                        {!isShowAll && mergedList.length > maxCount && (
+                          <Button
+                            mt={3}
+                            onClick={() => setIsShowAll(true)}
+                            w="100%"
+                            variant={'primaryOutline'}
+                          >
+                            {t('chat:view_all_knowledge', { count: mergedList.length })}
+                          </Button>
+                        )}
+                      </>
                     ) : (
                       <Box fontSize={'sm'} color={'myGray.600'}>
                         {t('chat:no_rerank_passed')}
@@ -763,6 +846,17 @@ const ChatDetailModal = ({
     return retrievalType === 'correction' || retrievalType === 'faq';
   }, [workflowNodes]);
 
+  // 判断是否为 agentic 模式
+  const isAgenticMode = useMemo(() => {
+    const datasetSearchNode = workflowNodes.find(
+      (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+    );
+    return (
+      datasetSearchNode?.retrievalMode === DatasetRetrievalModeEnum.agentic &&
+      datasetSearchNode.agenticSearchResult
+    );
+  }, [workflowNodes]);
+
   // 提取 datasetDataIdList 和 collectionIdList 的辅助函数
   const extractIds = useCallback((list: SearchDataResponseItemType[]) => {
     const datasetDataIdList = list.map((item) => item.id).filter((v): v is string => !!v);
@@ -901,23 +995,46 @@ const ChatDetailModal = ({
                   (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
                 )}
               />
-              <KnowledgeRecallNode
-                data={workflowNodes.find(
-                  (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
-                )}
-                retrievalResultsList={isCorrectionOrFaq ? rerankQuoteList : retrievalResultsList}
-                rawRetrievalResults={isCorrectionOrFaq ? quoteList : retrievalResults}
-                isLoading={isCorrectionOrFaq ? rerankLoading : retrievalLoading}
-              />
-              {!isCorrectionOrFaq && (
-                <KnowledgeRerankNode
-                  data={workflowNodes.find(
-                    (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+              {isAgenticMode ? (
+                <>
+                  <AgenticSearchNode
+                    data={workflowNodes.find(
+                      (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+                    )}
+                  />
+                  <KnowledgeRerankNode
+                    data={workflowNodes.find(
+                      (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+                    )}
+                    quoteList={rerankQuoteList}
+                    rawQuoteList={quoteList}
+                    isLoading={rerankLoading}
+                    isAgenticMode
+                  />
+                </>
+              ) : (
+                <>
+                  <KnowledgeRecallNode
+                    data={workflowNodes.find(
+                      (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+                    )}
+                    retrievalResultsList={
+                      isCorrectionOrFaq ? rerankQuoteList : retrievalResultsList
+                    }
+                    rawRetrievalResults={isCorrectionOrFaq ? quoteList : retrievalResults}
+                    isLoading={isCorrectionOrFaq ? rerankLoading : retrievalLoading}
+                  />
+                  {!isCorrectionOrFaq && (
+                    <KnowledgeRerankNode
+                      data={workflowNodes.find(
+                        (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode
+                      )}
+                      quoteList={rerankQuoteList}
+                      rawQuoteList={quoteList}
+                      isLoading={rerankLoading}
+                    />
                   )}
-                  quoteList={rerankQuoteList}
-                  rawQuoteList={quoteList}
-                  isLoading={rerankLoading}
-                />
+                </>
               )}
               <FinalAnswerNode
                 data={workflowNodes.find((node) => node.moduleType === FlowNodeTypeEnum.answerNode)}

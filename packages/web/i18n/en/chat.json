@@ -202,6 +202,8 @@
   "question_rewrite": "Question rewrite",
   "knowledge_recall": "Knowledge recall",
   "knowledge_rerank": "Knowledge rerank",
+  "agentic_search": "Multi-round Intelligent Retrieval",
+  "summarize_retrieval_results": "Summarization of Retrieval Results",
   "final_answer": "Final answer",
   "no_recall_content": "No content recalled",
   "fallback_reply": "Fallback reply",
@@ -223,5 +225,9 @@
   "combined_score": "Combined score: ",
   "rerank_score": "Rerank score: ",
   "recall_rank": "Recall rank: ",
-  "run_preview": "Run preview"
+  "run_preview": "Run preview",
+  "retrieval_mode": "Retrieval Mode",
+  "retrieval_process": "Retrieval Process",
+  "retrieval_results": "Retrieval Results",
+  "view_all_knowledge": "View all {{count}} knowledge"
 }

@@ -186,6 +186,7 @@ export type ChatSiteItemType = ChatItemMergeType & {
     dataIds: string[];
     isExpanded: boolean;
   };
+  agenticSearchResult?: any;
 } & ChatBoxInputType &
   ResponseTagItemType;
 
