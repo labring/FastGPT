@@ -273,4 +273,3 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   );
 };
 export default CollectionPageContextProvider;
-

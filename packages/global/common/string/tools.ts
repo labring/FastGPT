@@ -107,7 +107,14 @@ export function replaceVariable(
 }
 
 /* replace sensitive text */
-export const replaceSensitiveText = (text: string) => {
+export const replaceSensitiveText = (text: any): string => {
+  if (typeof text !== 'string') {
+    try {
+      text = JSON.stringify(text);
+    } catch {
+      text = String(text);
+    }
+  }
   // 1. http link
   text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
   // 2. nx-xxx 全部替换成xxx

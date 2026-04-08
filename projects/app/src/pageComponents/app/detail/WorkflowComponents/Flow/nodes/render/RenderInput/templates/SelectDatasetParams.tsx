@@ -137,7 +137,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           agenticSearchLLMModel: input.value || prev.agenticSearchLLMModel
         }));
       }
-      if (input.key === NodeInputKeyEnum.datasetagenticSearchReasoning) {
+      if (input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning) {
         setAgenticSearchConfig((prev) => ({
           ...prev,
           agenticSearchReasoning: input.value ?? prev.agenticSearchReasoning
@@ -239,13 +239,13 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
             // 更新 agenticSearchReasoning
             const outputThinkingInput = inputs.find(
-              (input) => input.key === NodeInputKeyEnum.datasetagenticSearchReasoning
+              (input) => input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning
             );
             if (outputThinkingInput) {
               onChangeNode({
                 nodeId,
                 type: 'updateInput',
-                key: NodeInputKeyEnum.datasetagenticSearchReasoning,
+                key: NodeInputKeyEnum.datasetAgenticSearchReasoning,
                 value: { ...outputThinkingInput, value: config.agenticSearchReasoning }
               });
             }

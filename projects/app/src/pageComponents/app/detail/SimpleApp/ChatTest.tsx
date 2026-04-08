@@ -77,7 +77,9 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
               {t('app:chat_debug')}
             </Box>
           )}
-          {!isVariableVisible && !isAssistantType && <VariablePopover chatType={ChatTypeEnum.test} />}
+          {!isVariableVisible && !isAssistantType && (
+            <VariablePopover chatType={ChatTypeEnum.test} />
+          )}
           <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton

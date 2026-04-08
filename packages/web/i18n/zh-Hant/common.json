@@ -873,6 +873,7 @@
   "date_6_months": "6個月",
   "day": "日",
   "deep_rag_search": "深度搜尋",
+  "agentic_search": "智慧檢索",
   "delete_api": "確認刪除此 API 金鑰？\n刪除後該金鑰將立即失效，對應的對話記錄不會被刪除，請確認！",
   "delete_failed": "刪除失敗",
   "delete_folder": "刪除資料夾",

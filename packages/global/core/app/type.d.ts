@@ -107,11 +107,14 @@ export type AppDatasetSearchParamsType = {
   // database
   generateSqlModel?: string;
 
-  // retrieval mode
+  // 新增：检索模式（单轮/多轮）
   retrievalMode?: `${DatasetRetrievalModeEnum}`;
+  // 新增：多轮智能检索使用的 LLM 模型
   agenticSearchLLMModel?: string;
-  agenticSearchReasoning?: boolean;
+  // 新增：多轮智能检索使用的 RERANK 模型
   agenticSearchRerankModel?: string;
+  // 新增：是否输出思考过程
+  agenticSearchReasoning?: boolean;
 };
 export type AppSimpleEditFormType = {
   // templateId: string;

@@ -882,6 +882,7 @@
   "date_6_months": "6 months",
   "day": "Day",
   "deep_rag_search": "Deep search",
+  "agentic_search": "Agentic search",
   "delete_api": "Are you sure you want to delete the API key? The key will become invalid immediately, but the corresponding chat logs will not be deleted. Would you like to proceed?",
   "delete_failed": "Deletion failed.",
   "delete_folder": "Delete folder",
