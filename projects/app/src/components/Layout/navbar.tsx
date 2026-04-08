@@ -135,7 +135,7 @@ const Navbar = ({ unread }: { unread: number }) => {
     >
       {/* logo */}
       <Box flex={'0 0 auto'} mb={3}>
-        <MyImage w={9} h={9} src={LOGO_ICON} />
+        <MyImage w={9} h={9} src={feConfigs?.systemLogo ? feConfigs.systemLogo : LOGO_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
