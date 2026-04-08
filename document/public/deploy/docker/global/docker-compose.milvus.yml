@@ -193,7 +193,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.14.10.1 
+    image: ghcr.io/labring/fastgpt:v4.14.10.2 
     ports:
       - 3000:3000
     networks:
