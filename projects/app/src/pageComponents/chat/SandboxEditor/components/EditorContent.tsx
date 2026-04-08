@@ -97,17 +97,18 @@ const EditorContent = ({
         );
       }
       if (language === 'svg') {
+        const svgUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`;
         return (
-          <Center h="full" bg="myGray.50" borderRadius="md" overflow="auto">
-            <Box
-              dangerouslySetInnerHTML={{ __html: content }}
-              sx={{
-                svg: {
-                  maxW: '100%',
-                  maxH: '100%'
-                }
-              }}
-            />
+          <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
+            <Box position="relative" maxW="100%" maxH="100%">
+              <MyPhotoView
+                src={svgUri}
+                alt={activeFile.name}
+                maxW="100%"
+                maxH="100%"
+                objectFit="contain"
+              />
+            </Box>
           </Center>
         );
       }
