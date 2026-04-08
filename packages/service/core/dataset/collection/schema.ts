@@ -135,6 +135,12 @@ const DatasetCollectionSchema = new Schema({
 
   forbid: Boolean,
 
+  // Soft delete
+  deleteTime: {
+    type: Date,
+    default: null
+  },
+
   // Parse settings
   customPdfParse: Boolean,
   apiFileParentId: String,
@@ -197,6 +203,9 @@ try {
     teamId: 1,
     'metadata.relatedImgId': 1
   });
+
+  // Soft delete cleanup
+  DatasetCollectionSchema.index({ deleteTime: 1 });
 } catch (error) {
   console.log(error);
 }

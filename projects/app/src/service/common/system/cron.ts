@@ -8,6 +8,7 @@ import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronRefreshModels } from '@fastgpt/service/core/ai/config/utils';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/controller';
+import { collectionCleanup } from '@fastgpt/service/core/dataset/collection/delete/processor';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -63,6 +64,20 @@ const scheduleTriggerAppCron = () => {
   getScheduleTriggerApp();
 };
 
+// 每天凌晨2点检查孤儿软删除 collection（deleteTime 超过24小时但未被物理删除）
+const collectionCleanupCron = () => {
+  setCron('0 2 * * *', async () => {
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.collectionCleanup,
+        lockMinuted: 23 * 60 // 23小时内不重复执行
+      })
+    ) {
+      await collectionCleanup();
+    }
+  });
+};
+
 export const startCron = () => {
   setTrainingQueueCron();
   setClearTmpUploadFilesCron();
@@ -70,4 +85,5 @@ export const startCron = () => {
   scheduleTriggerAppCron();
   cronRefreshModels();
   clearExpiredS3FilesCron();
+  collectionCleanupCron();
 };

@@ -212,6 +212,9 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
 
   // Database table schema (for database type collections)
   tableSchema?: TableSchemaType;
+
+  // Soft delete
+  deleteTime?: Date | null;
 };
 
 export type DatasetCollectionTagsSchemaType = {
