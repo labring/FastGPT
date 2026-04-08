@@ -59,11 +59,9 @@ export const HelperBotCompletionsParamsSchema = z.object({
       name: z.string()
     })
   ),
-  metadata: z.discriminatedUnion('type', [
-    z.object({
-      type: z.literal(HelperBotTypeEnum.topAgent),
-      data: topAgentParamsSchema
-    })
-  ])
+  metadata: z.object({
+    type: z.literal(HelperBotTypeEnum.topAgent),
+    data: topAgentParamsSchema
+  })
 });
 export type HelperBotCompletionsParamsType = z.infer<typeof HelperBotCompletionsParamsSchema>;

@@ -6,6 +6,21 @@ import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
 import { z } from 'zod';
+import { FlowNodeOutputItemTypeSchema } from '../../../../core/workflow/type/io';
+
+const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
+  invalidCondition: true
+}).extend({
+  invalidCondition: z.any().optional().meta({
+    description: 'Internal editor validation function. This field is not expected in API payloads.'
+  })
+});
+
+const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
+  outputs: true
+}).extend({
+  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
+});
 
 /* Get App Permission */
 export const GetAppPermissionQuerySchema = z.object({
@@ -14,6 +29,7 @@ export const GetAppPermissionQuerySchema = z.object({
     description: '应用 ID'
   })
 });
+
 export type GetAppPermissionQueryType = z.infer<typeof GetAppPermissionQuerySchema>;
 
 export const GetAppPermissionResponseSchema = z.object({
@@ -58,7 +74,7 @@ export const CreateAppBodySchema = z
       example: AppTypeEnum.workflow,
       description: '应用类型'
     }),
-    modules: z.array(StoreNodeItemTypeSchema).meta({
+    modules: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
       example: [],
       description: '应用节点配置'
     }),

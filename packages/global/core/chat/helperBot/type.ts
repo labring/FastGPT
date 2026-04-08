@@ -49,7 +49,7 @@ const AIChatItemSchema = z.object({
 });
 export type AIChatItemType = z.infer<typeof AIChatItemSchema>;
 
-const HelperBotChatRoleSchema = z.discriminatedUnion('obj', [
+const HelperBotChatRoleSchema = z.union([
   UserChatItemSchema,
   SystemChatItemSchema,
   AIChatItemSchema
