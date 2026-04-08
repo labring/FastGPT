@@ -9,21 +9,14 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useLatest } from 'ahooks';
 
 type Props = {
-  defaultModel?: string;
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
 };
 
-const SettingLLMModel = ({
-  defaultModel,
-  defaultData,
-  onChange,
-  ...props
-}: AIChatSettingsModalProps & Props) => {
+const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
@@ -38,18 +31,20 @@ const SettingLLMModel = ({
     };
   }, [llmModelList]);
 
-  // Set default model
-  const lastDefaultModel = useLatest(defaultModel);
+  // Reset undefined model
   useEffect(() => {
-    if (modelSet.size === 0) return;
-    if (!modelSet.has(model)) {
-      const defaultLLM = lastDefaultModel.current || defaultLLMModel;
-      if (defaultLLM && modelSet.has(defaultLLM)) {
+    if (model) {
+      if (modelSet.size > 0 && !modelSet.has(model) && defaultLLMModel) {
         onChange({
           ...defaultData,
-          model: defaultLLM
+          model: defaultLLMModel
         });
       }
+    } else if (defaultLLMModel) {
+      onChange({
+        ...defaultData,
+        model: defaultLLMModel
+      });
     }
   }, [model, defaultData, modelSet, defaultLLMModel]);
 

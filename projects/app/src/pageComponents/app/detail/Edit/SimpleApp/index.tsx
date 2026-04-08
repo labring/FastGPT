@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-
 import Header from '../FormComponent/Header';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../../context';
@@ -25,22 +23,16 @@ const SimpleEdit = () => {
     appDetail._id
   );
 
-  const [appForm, setAppForm] = useState(getDefaultAppForm());
-
-  // Init app form
-  useMount(() => {
+  const [appForm, setAppForm] = useState(() => {
     if (appDetail.version !== 'v2') {
-      return setAppForm(
-        appWorkflow2Form({
-          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
-          chatConfig: appDetail.chatConfig
-        })
-      );
+      return appWorkflow2Form({
+        nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
+        chatConfig: appDetail.chatConfig
+      });
     }
 
-    // 初始化snapshot
     if (past.length === 0) {
-      const appForm = appWorkflow2Form({
+      return appWorkflow2Form({
         nodes: appDetail.modules,
         chatConfig: {
           ...appDetail.chatConfig,
@@ -50,14 +42,20 @@ const SimpleEdit = () => {
           }
         }
       });
+    }
+    return past[0].appForm;
+  });
+
+  // Init app form
+  useMount(() => {
+    // 初始化snapshot
+    if (past.length === 0) {
       saveSnapshot({
         appForm,
         title: t('app:initial_form'),
         isSaved: true
       });
       setAppForm(appForm);
-    } else {
-      setAppForm(past[0].appForm);
     }
   });
 
