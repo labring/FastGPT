@@ -158,15 +158,14 @@ export type SqliteConfigType = DativeDBConfigType & {
   db_path?: string;
 };
 
-export type DuckDBMongoStoreType = {
-  type: 'mongo';
+export type DuckDBS3StoreType = {
+  type: 's3';
   kid: string;
-  bucket: string;
 };
 
 export type DuckDBStoreConfigType = {
   type: DatabaseTypeEnum.duckdb;
-  store: DuckDBMongoStoreType;
+  store: DuckDBS3StoreType;
 };
 
 // databse source config type
@@ -221,7 +220,7 @@ export type DativeExcelUploadResponse = {
 
 export interface ExcelUploadSourceConfig {
   type: string;
-  bucket: BucketNameEnum | string;
+  bucket?: BucketNameEnum | string;
   kid: string;
   metadata?: {
     teamId: string;
@@ -263,4 +262,3 @@ export type SqlQueryResponse = {
 
 /*-------Database Metadata Types-------*/
 export type DatabaseMetadataRequest = DativeSourceConfigType;
-

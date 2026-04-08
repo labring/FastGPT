@@ -1,4 +1,3 @@
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   DuckDBStoreConfigType,
@@ -20,8 +19,7 @@ export function getDuckDBStoreConfig(datasetId: string) {
   return {
     type: DatabaseTypeEnum.duckdb,
     store: {
-      type: 'mongo',
-      bucket: BucketNameEnum.dataset,
+      type: 's3',
       kid: datasetId
     }
   } as DuckDBStoreConfigType;
@@ -33,8 +31,7 @@ export function createBucketSourceConfig(
   tmbId: string
 ): ExcelUploadSourceConfig {
   return {
-    type: 'mongo',
-    bucket: BucketNameEnum.dataset,
+    type: 's3',
     kid: datasetId,
     metadata: {
       teamId,
