@@ -1,16 +1,16 @@
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
-import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
+import type { EmbeddingTrainTaskSchemaType } from '@fastgpt/global/core/train/embedding/type';
 import {
-  RerankTrainTaskStatusEnum,
-  RerankTaskCheckpointStageEnum,
-  RerankTrainTypeEnum
-} from '@fastgpt/global/core/train/rerank/constants';
+  EmbeddingTrainTaskStatusEnum,
+  EmbeddingTaskCheckpointStageEnum,
+  EmbeddingTrainTypeEnum
+} from '@fastgpt/global/core/train/embedding/constants';
 
-/** Rerank training task schema */
-const RerankTrainTaskSchema = new connectionMongo.Schema({
+/** Embedding training task schema */
+const EmbeddingTrainTaskSchema = new connectionMongo.Schema({
   trainsetId: {
     type: connectionMongo.Schema.Types.ObjectId,
-    ref: 'rerank_trainset',
+    ref: 'embedding_trainset',
     required: false // optional: exact mode passes at create; auto mode written by generate_trainset stage
   },
   teamId: {
@@ -62,20 +62,20 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
   },
   trainType: {
     type: String,
-    enum: Object.values(RerankTrainTypeEnum),
-    default: RerankTrainTypeEnum.lora,
+    enum: Object.values(EmbeddingTrainTypeEnum),
+    default: EmbeddingTrainTypeEnum.lora,
     required: false // defaults to lora for backward compatibility
   },
   status: {
     type: String,
-    enum: Object.values(RerankTrainTaskStatusEnum),
-    default: RerankTrainTaskStatusEnum.pending
+    enum: Object.values(EmbeddingTrainTaskStatusEnum),
+    default: EmbeddingTrainTaskStatusEnum.pending
   },
   checkpoint: {
     type: {
       stage: {
         type: String,
-        enum: [...Object.values(RerankTaskCheckpointStageEnum), null],
+        enum: [...Object.values(EmbeddingTaskCheckpointStageEnum), null],
         default: null
       },
       data: {
@@ -151,16 +151,16 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
 });
 
 // Indexes
-RerankTrainTaskSchema.index({ baseModelId: 1, status: 1, createTime: -1 }); // Replaced appId indexes
-RerankTrainTaskSchema.index({ trainsetId: 1, createTime: -1 }); // Support querying tasks by trainset
-RerankTrainTaskSchema.index({ teamId: 1, status: 1 });
-RerankTrainTaskSchema.index({ status: 1, updateTime: 1 });
-RerankTrainTaskSchema.index({ jobId: 1 });
-RerankTrainTaskSchema.index({ 'checkpoint.stage': 1, status: 1 });
-RerankTrainTaskSchema.index({ teamId: 1, status: 1, createTime: -1 });
-RerankTrainTaskSchema.index({ 'checkpoint.data.registering.tunedModelId': 1 }); // For chain traversal in list API
+EmbeddingTrainTaskSchema.index({ baseModelId: 1, status: 1, createTime: -1 });
+EmbeddingTrainTaskSchema.index({ trainsetId: 1, createTime: -1 });
+EmbeddingTrainTaskSchema.index({ teamId: 1, status: 1 });
+EmbeddingTrainTaskSchema.index({ status: 1, updateTime: 1 });
+EmbeddingTrainTaskSchema.index({ jobId: 1 });
+EmbeddingTrainTaskSchema.index({ 'checkpoint.stage': 1, status: 1 });
+EmbeddingTrainTaskSchema.index({ teamId: 1, status: 1, createTime: -1 });
+EmbeddingTrainTaskSchema.index({ 'checkpoint.data.registering.tunedModelId': 1 });
 
-export const MongoRerankTrainTask = getMongoModel<RerankTrainTaskSchemaType>(
-  'rerank_train_task',
-  RerankTrainTaskSchema
+export const MongoEmbeddingTrainTask = getMongoModel<EmbeddingTrainTaskSchemaType>(
+  'embedding_train_task',
+  EmbeddingTrainTaskSchema
 );

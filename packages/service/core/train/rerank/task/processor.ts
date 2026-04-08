@@ -19,8 +19,6 @@ import { runEvalBaseModelStage } from './stages/eval-basemodel';
 import { runFinetuneStage } from './stages/finetune';
 import { runRegisterStage } from './stages/register';
 import { runEvalTunedModelStage } from './stages/eval-tunedmodel';
-// @deprecated - apply stage removed from pipeline, keeping import for reference
-// import { runApplyingStage } from './stages/apply';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
@@ -38,7 +36,6 @@ import { TrainTaskUnrecoverableError } from './errors';
  * 4. finetuning        - Model fine-tuning via SFT Bridge
  * 5. registering       - Model registration in FastGPT
  * 6. eval_tunedmodel   - Evaluate fine-tuned model
- * 7. applying          - Decide to keep or roll back; integrated cleanup
  */
 export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async (job) => {
   const { taskId } = job.data;
@@ -176,35 +173,13 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
       await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.eval_tunedmodel);
     }
 
-    // Stage 7: applying — @deprecated, no longer executed in pipeline
-    // The apply stage has been removed from the pipeline.
-    // Trained models are now applied to apps via separate manual workflows.
-    // if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.applying)) {
-    //   const taskBeforeApply = await getRerankTrainTask(taskId);
-    //   if (!taskBeforeApply) {
-    //     const enhancedError = createEnhancedError(
-    //       RerankTaskCheckpointStageEnum.applying,
-    //       RerankTrainErrEnum.processorTaskLostAfterEval,
-    //       RerankTrainSuggestionEnum.processorTaskLostAfterEval
-    //     );
-    //     throw new TrainTaskUnrecoverableError(enhancedError);
-    //   }
-    //
-    //   const applyResult = await runApplyingStage(taskBeforeApply);
-    //   await updateCheckpointData(taskId, 'applying', {
-    //     newModelIsBetter: applyResult.newModelIsBetter,
-    //     updatedAppCount: applyResult.updatedAppCount
-    //   });
-    //   await updateCheckpointStage(taskId, RerankTaskCheckpointStageEnum.applying);
-    // }
-
     // Write final result
     const finalTask = await getRerankTrainTask(taskId);
     if (!finalTask) {
       const enhancedError = createEnhancedError(
         null,
-        RerankTrainErrEnum.processorTaskLostAfterApply,
-        RerankTrainSuggestionEnum.processorTaskLostAfterApply
+        RerankTrainErrEnum.processorTaskLostAfterEval,
+        RerankTrainSuggestionEnum.processorTaskLostAfterEval
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
@@ -257,7 +232,6 @@ function shouldRunStage(
     RerankTaskCheckpointStageEnum.finetuning,
     RerankTaskCheckpointStageEnum.registering,
     RerankTaskCheckpointStageEnum.eval_tunedmodel
-    // RerankTaskCheckpointStageEnum.applying — @deprecated, removed from pipeline
   ];
 
   const currentStageEnum = currentStage as RerankTaskCheckpointStageEnum;

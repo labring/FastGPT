@@ -2,7 +2,7 @@ import { MongoSystemModel } from '../../../ai/config/schema';
 import { updatedReloadSystemModel } from '../../../ai/config/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getModelProvider } from '../../../app/provider/controller';
 import {
   deleteTunedModelChannel,
@@ -11,11 +11,14 @@ import {
 } from '../task/helpers/channel';
 
 /**
- * Create rerank model configuration (idempotent)
+ * Create embedding model configuration (idempotent)
  *
  * Integrates with FastGPT model management system to create model configuration and AI Proxy channel.
  * Architecture: Model config contains metadata only, channel contains access credentials.
  * Order: 1) Create model config first, 2) Create channel second, 3) Poll until channel is available.
+ *
+ * Key difference from rerank: No replaceModelInApps function (embedding models don't need to be
+ * replicated across apps in the same way as rerank models).
  *
  * @param params - Model configuration parameters
  * @param params.name - Model alias name
@@ -28,7 +31,7 @@ import {
  * @returns Model configuration object ID
  * @throws {Error} When model config or channel creation fails, or channel does not become available within timeout
  */
-export async function createRerankModelConfig(params: {
+export async function createEmbeddingModelConfig(params: {
   name: string;
   endpoint: {
     base_url: string;
@@ -44,7 +47,7 @@ export async function createRerankModelConfig(params: {
 
   // Step 1: Create or update model configuration in database (idempotent with upsert)
   // Model config contains metadata only, no credentials
-  const modelConfig: RerankModelItemType = {
+  const modelConfig: EmbeddingModelItemType = {
     provider: getModelProvider('Sangfor AICP').id,
     model,
     name,
@@ -52,7 +55,7 @@ export async function createRerankModelConfig(params: {
     isCustom: true,
     isTuned: true, // Mark as fine-tuned model created by training module
     // Do NOT store requestUrl and requestAuth - these are in the channel
-    type: ModelTypeEnum.rerank,
+    type: ModelTypeEnum.embedding,
     charsPointsPrice
   };
 
@@ -74,7 +77,7 @@ export async function createRerankModelConfig(params: {
 
   const objectId = String(result._id);
 
-  addLog.info('Created or updated rerank model config', {
+  addLog.info('Created or updated embedding model config', {
     model,
     name,
     objectId,
@@ -101,18 +104,18 @@ export async function createRerankModelConfig(params: {
 }
 
 /**
- * Delete rerank model configuration
+ * Delete embedding model configuration
  *
  * Deletes model from AI Proxy channel and FastGPT system.
- * SFT Bridge resource cleanup is handled separately by deleteRerankTrainTask.
+ * SFT Bridge resource cleanup is handled separately by deleteEmbeddingTrainTask.
  * Order: 1) Delete channel first, 2) Delete model config + reload.
  *
  * @param modelConfigId - Model configuration ID (same as endpoint.model)
  * @returns Promise that resolves when deletion is complete
  * @throws {Error} When channel or model deletion fails
  */
-export async function deleteRerankModelConfig(modelConfigId: string): Promise<void> {
-  addLog.info('Deleting rerank model config', { modelConfigId });
+export async function deleteEmbeddingModelConfig(modelConfigId: string): Promise<void> {
+  addLog.info('Deleting embedding model config', { modelConfigId });
 
   // Step 1: Delete AI Proxy channel first (contains access credentials)
   await deleteTunedModelChannel(modelConfigId);
@@ -124,7 +127,7 @@ export async function deleteRerankModelConfig(modelConfigId: string): Promise<vo
   if (deleteResult.deletedCount === 0) {
     addLog.warn('No model config found to delete in FastGPT', { modelConfigId });
   } else {
-    addLog.info('Deleted rerank model config from FastGPT', {
+    addLog.info('Deleted embedding model config from FastGPT', {
       modelConfigId,
       deletedCount: deleteResult.deletedCount
     });

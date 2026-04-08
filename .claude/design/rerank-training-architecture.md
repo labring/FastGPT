@@ -4,10 +4,12 @@
 
 ## 1. 系统总览
 
-Rerank 训练平台通过 7 阶段流水线，实现从数据准备到模型微调、评测、自动应用的全流程自动化。支持两种模式：
+Rerank 训练平台通过 **6 阶段流水线**，实现从数据准备到模型微调、评测的全流程自动化。支持两种模式：
 
 - **精确模式（Exact Mode）**：用户提供训练集 + 评测集，系统跳过生成阶段
 - **自动模式（Auto Mode）**：用户提供知识库 IDs，系统自动生成训练集和评测集
+
+**注：** 训练任务仅负责生成微调模型。模型应用（更新 App 中的 rerank 模型引用）由用户通过独立工作流手动触发。
 
 ## 2. 数据模型关系
 
@@ -96,7 +98,7 @@ erDiagram
 
 ## 3. 训练任务执行流程
 
-### 3.1 七阶段流水线
+### 3.1 六阶段流水线
 
 ```mermaid
 flowchart TD
@@ -109,13 +111,8 @@ flowchart TD
     S3 --> S4["Stage 4: finetuning<br/>SFT Bridge 微调"]
     S4 --> S5["Stage 5: registering<br/>注册模型 + 创建 Channel"]
     S5 --> S6["Stage 6: eval_tunedmodel<br/>评测微调模型"]
-    S6 --> S7["Stage 7: applying<br/>对比决策 + 自动应用"]
 
-    S7 --> Better{"MRR 和 Precision<br/>都提升？"}
-    Better -->|是| Apply["替换 App 引用<br/>disable 旧 tuned model"]
-    Better -->|否| Disable["disable 新 tuned model<br/>保留原模型"]
-    Apply --> Done["status → completed"]
-    Disable --> Done
+    S6 --> Done["status → completed"]
 
     style S1 fill:#e1f5fe
     style S2 fill:#e1f5fe
@@ -123,7 +120,6 @@ flowchart TD
     style S4 fill:#fce4ec
     style S5 fill:#f3e5f5
     style S6 fill:#fff3e0
-    style S7 fill:#e8f5e9
 ```
 
 ### 3.2 检查点（Checkpoint）结构
@@ -139,11 +135,9 @@ flowchart LR
         FT["finetuning<br/>sftTaskId<br/>tunedModelEndpoint"]
         RG["registering<br/>tunedModelId"]
         ET["eval_tunedmodel<br/>tunedModelEvalResult"]
-        AP["applying<br/>newModelIsBetter<br/>updatedAppCount"]
     end
 
-    GT --> GE --> EB --> FT --> RG --> ET --> AP
-```
+    GT --> GE --> EB --> FT --> RG --> ET
 
 ### 3.3 各阶段详情
 
@@ -155,7 +149,6 @@ flowchart LR
 | 4. finetuning | `stages/finetune.ts` | SFT Bridge (微调+部署) | 1-10 h | tunedModelEndpoint |
 | 5. registering | `stages/register.ts` | AI Proxy (通道创建) | ~30 s | tunedModelId (SystemModel) |
 | 6. eval_tunedmodel | `stages/eval-tunedmodel.ts` | DiTing (评测) | ~5-10 min | RerankEvalResult |
-| 7. applying | `stages/apply.ts` | — | ~30 s | 决策 + App 更新 |
 
 ### 3.4 状态机
 
@@ -166,7 +159,7 @@ stateDiagram-v2
     pending --> running: Processor 取出
     pending --> cancelled: 用户取消
 
-    running --> completed: 7 阶段全部完成
+    running --> completed: 6 阶段全部完成
     running --> failed: 不可恢复错误
     running --> cancelled: 用户取消 (Stage 4 检测)
 
@@ -207,56 +200,9 @@ flowchart LR
 | **SFT Bridge** | LoRA/P-Tuning 微调、模型部署、推理服务 | `SFT_BRIDGE_BASE_URL` |
 | **AI Proxy** | 模型通道管理、请求路由 | `AIPROXY_API_ENDPOINT` |
 
-## 5. 连续训练与模型链
+## 5. 资源管理
 
-### 5.1 核心不变式
-
-> **一条训练链路中有且仅有一个 tuned model 是 active 的，它是当前最佳模型，被 apps 引用。**
-
-### 5.2 连续训练流程
-
-```mermaid
-flowchart TD
-    A["A (原始基模)<br/>isActive=true<br/>isTuned=false"] -->|"训练任务 1"| B["B (tuned)<br/>isActive=true<br/>isTuned=true"]
-
-    B -->|"auto-apply: B > A"| ApplyB["Apps: A → B<br/>A 是原始模型不 disable"]
-
-    B -->|"训练任务 2"| C["C (tuned)<br/>isActive=true<br/>isTuned=true"]
-    C -->|"auto-apply: C > B"| ApplyC["Apps: B → C<br/>disable B"]
-
-    C -->|"训练任务 3"| D["D (tuned)<br/>效果 < C"]
-    D -->|"auto-apply: D < C"| DisableD["disable D<br/>Apps 保持引用 C"]
-
-    style A fill:#e8f5e9,stroke:#4caf50
-    style B fill:#fff3e0,stroke:#ff9800
-    style C fill:#e8f5e9,stroke:#4caf50
-    style D fill:#ffebee,stroke:#f44336
-    style ApplyB fill:#e3f2fd
-    style ApplyC fill:#e3f2fd
-    style DisableD fill:#fce4ec
-```
-
-### 5.3 Auto-apply vs 手动 Apply
-
-| 维度 | Auto-apply (Stage 7) | 手动 Apply (API) |
-|------|---------------------|------------------|
-| 触发 | 训练流水线自动执行 | 用户调用 `POST /api/.../apply-task` |
-| 性能对比 | 比较 MRR + Precision，决策是否应用 | 无条件应用 |
-| 模型替换 | `replaceRerankModelInApps(baseModelId, tunedModelId)` | `replaceRerankModelInApps(findBestModelInChain(), tunedModelId)` |
-| 适用场景 | 正常训练完成后的自动决策 | 用户想手动应用一个被 disable 的模型 |
-
-手动 Apply 通过 `findBestModelInChain()` 沿训练链向上遍历，找到当前 active 的祖先模型（即 apps 当前引用的模型），然后替换。
-
-```mermaid
-flowchart LR
-    subgraph "findBestModelInChain(D)"
-        D["D (disabled)"] -->|"base=C"| C["C (disabled)"]
-        C -->|"base=B"| B["B (disabled)"]
-        B -->|"base=A"| A["A (active) ← 返回"]
-    end
-```
-
-### 5.4 创建任务的前置校验
+### 5.1 创建任务的前置校验
 
 - `baseModelId` 不存在 → `taskModelNotFound`
 - `baseModelId` 对应模型已被 disable → `taskBaseModelDisabled`（防止在失败模型上继续训练）
@@ -313,7 +259,6 @@ flowchart LR
 | `/api/core/train/rerank/task/retry` | POST | 重试失败任务 |
 | `/api/core/train/rerank/task/cancel` | POST | 取消任务 |
 | `/api/core/train/rerank/task/delete` | POST | 删除任务 |
-| `/api/core/train/rerank/task/apply-task` | POST | 手动应用模型 |
 | `/api/core/train/rerank/task/eval-dataset` | POST | 下载评测数据集 (JSONL) |
 | `/api/core/train/rerank/task/eval-report` | POST | 下载评测报告 (XLSX) |
 
@@ -329,7 +274,7 @@ packages/service/core/train/rerank/
 │   └── diting/client.ts               # DiTing API
 ├── task/
 │   ├── controller.ts                   # 任务 CRUD
-│   ├── processor.ts                    # BullMQ Processor（7 阶段编排）
+│   ├── processor.ts                    # BullMQ Processor（6 阶段编排）
 │   ├── worker.ts                       # Worker 初始化
 │   ├── mq.ts                           # 队列配置
 │   ├── schema.ts                       # MongoDB Schema
@@ -345,8 +290,7 @@ packages/service/core/train/rerank/
 │       ├── eval-basemodel.ts           # Stage 3
 │       ├── finetune.ts                 # Stage 4
 │       ├── register.ts                 # Stage 5
-│       ├── eval-tunedmodel.ts          # Stage 6
-│       └── apply.ts                    # Stage 7
+│       └── eval-tunedmodel.ts          # Stage 6
 ├── trainset/
 │   ├── controller.ts                   # 训练集 CRUD
 │   └── schema.ts

@@ -1,55 +1,35 @@
 import type {
-  RerankTrainsetStatusEnum,
+  EmbeddingTrainsetStatusEnum,
   TrainDataSourceEnum,
-  RerankTrainTaskStatusEnum,
-  RerankTaskCheckpointStageEnum,
-  RerankTrainTypeEnum
+  EmbeddingTrainTaskStatusEnum,
+  EmbeddingTaskCheckpointStageEnum,
+  EmbeddingTrainTypeEnum
 } from './constants';
-import type { EnhancedErrorMessage } from './error';
+import type { EnhancedErrorMessage } from '../rerank/error';
 
 /**
- * Detailed evaluation results from DiTing
+ * Embedding evaluation result (same structure as RerankEvalResult)
  * Contains various ranking metrics at different k values
  */
 export interface DiTingDetailedResults {
-  rerank_top5_mrr?: number;
-  rerank_top5_ndcg?: number;
-  rerank_top5_map?: number;
-  rerank_top5_precision?: number;
-  rerank_top10_mrr?: number;
-  rerank_top10_ndcg?: number;
-  rerank_top10_map?: number;
-  rerank_top10_precision?: number;
-  rerank_top10_recall?: number;
-  rerank_top15_mrr?: number;
-  rerank_top15_ndcg?: number;
-  rerank_top15_map?: number;
-  rerank_top15_precision?: number;
+  embed_top5_mrr?: number;
+  embed_top5_precision?: number;
+  embed_top10_mrr?: number;
+  embed_top10_precision?: number;
+  embed_top15_mrr?: number;
+  embed_top15_precision?: number;
   overall_mrr?: number;
-  overall_ndcg?: number;
-  overall_map?: number;
   overall_precision?: number;
   [key: string]: any;
 }
 
 /**
- * Rerank evaluation result
- * Contains the complete runLogs structure from DiTing evaluation response
- * This is what gets returned by evaluation stages and stored in checkpoint/result
+ * Embedding evaluation result (same metrics as Rerank)
  */
-export interface RerankEvalResult {
+export interface EmbeddingEvalResult {
   detailed_results: DiTingDetailedResults;
   mrr_scores?: Record<string, number[]>;
-  ndcg_scores?: Record<string, number[]>;
-  map_scores?: Record<string, number[]>;
-  /**
-   * Retrieval ranks for each case (case-by-case)
-   * Outer array: each evaluation case
-   * Inner array: ranks of each retrieved document (position in original retrieval list)
-   * Example: [[1, 3, 2, 5, 4], [2, 1, 4, 3, 5]]
-   *   - Case 1: expected doc was at position 1, 3, etc. in retrieval list
-   *   - Case 2: expected doc was at position 2, 1, etc. in retrieval list
-   */
+  precision_scores?: Record<string, number[]>;
   retrieval_ranks?: number[][];
   column_stats?: Record<string, any>;
   total_rows?: number;
@@ -86,8 +66,8 @@ export interface TrainsetStatistics {
   >;
 }
 
-/** Rerank trainset schema */
-export type RerankTrainsetSchemaType = {
+/** Embedding trainset schema */
+export type EmbeddingTrainsetSchemaType = {
   _id: string;
   teamId: string;
   tmbId: string;
@@ -95,7 +75,7 @@ export type RerankTrainsetSchemaType = {
   name: string;
   description?: string;
 
-  status: `${RerankTrainsetStatusEnum}`;
+  status: `${EmbeddingTrainsetStatusEnum}`;
   errorMsg?: EnhancedErrorMessage;
 
   jobId?: string;
@@ -106,8 +86,8 @@ export type RerankTrainsetSchemaType = {
   statistics?: TrainsetStatistics;
 };
 
-/** Rerank training data schema */
-export type RerankTrainsetDataSchemaType = {
+/** Embedding training data schema */
+export type EmbeddingTrainsetDataSchemaType = {
   _id: string;
   trainsetId: string;
   teamId: string;
@@ -149,8 +129,8 @@ export type RerankTrainsetDataSchemaType = {
   createTime: Date;
 };
 
-/** Rerank training task schema */
-export type RerankTrainTaskSchemaType = {
+/** Embedding training task schema */
+export type EmbeddingTrainTaskSchemaType = {
   _id: string;
   trainsetId?: string;
   teamId: string;
@@ -166,7 +146,7 @@ export type RerankTrainTaskSchemaType = {
   };
 
   /** Training type: lora or ptuning, defaults to lora */
-  trainType?: `${RerankTrainTypeEnum}`;
+  trainType?: `${EmbeddingTrainTypeEnum}`;
 
   /** Eval dataset ID (exact mode: passed at create; auto mode: written by generate_evaldataset stage) */
   evalDatasetId?: string;
@@ -175,10 +155,10 @@ export type RerankTrainTaskSchemaType = {
   /** Optional name for the trained model */
   newModelName?: string;
 
-  status: RerankTrainTaskStatusEnum;
+  status: EmbeddingTrainTaskStatusEnum;
 
   checkpoint: {
-    stage: `${RerankTaskCheckpointStageEnum}` | null;
+    stage: `${EmbeddingTaskCheckpointStageEnum}` | null;
     data?: {
       generate_trainset?: {
         trainDatasetId: string;
@@ -194,7 +174,7 @@ export type RerankTrainTaskSchemaType = {
       };
 
       eval_basemodel?: {
-        baseModelEvalResult: RerankEvalResult;
+        baseModelEvalResult: EmbeddingEvalResult;
       };
 
       finetuning?: {
@@ -211,7 +191,7 @@ export type RerankTrainTaskSchemaType = {
       };
 
       eval_tunedmodel?: {
-        tunedModelEvalResult: RerankEvalResult;
+        tunedModelEvalResult: EmbeddingEvalResult;
       };
     };
     stageEndTime?: {
@@ -229,8 +209,8 @@ export type RerankTrainTaskSchemaType = {
     trainDatasetFilePath: string;
     tunedModelId: string;
     evalDatasetId: string;
-    baseModelEvalResult: RerankEvalResult;
-    tunedModelEvalResult: RerankEvalResult;
+    baseModelEvalResult: EmbeddingEvalResult;
+    tunedModelEvalResult: EmbeddingEvalResult;
   };
 
   errorMsg?: EnhancedErrorMessage;

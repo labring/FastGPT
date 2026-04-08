@@ -361,7 +361,5 @@
   "retry_rerank_train_task": "重试 Rerank 训练任务",
   "log_retry_rerank_train_task": "【{{name}}】重试了训练任务【{{taskName}}】",
   "cancel_rerank_train_task": "取消 Rerank 训练任务",
-  "log_cancel_rerank_train_task": "【{{name}}】取消了训练任务【{{taskName}}】",
-  "apply_rerank_train_task_to_apps": "应用训练结果到应用",
-  "log_apply_rerank_train_task_to_apps": "【{{name}}】将训练任务【{{taskName}}】的模型【{{tunedModelId}}】应用到了 {{appCount}} 个应用"
+  "log_cancel_rerank_train_task": "【{{name}}】取消了训练任务【{{taskName}}】"
 }

@@ -819,10 +819,5 @@ export const auditLogMap = {
     content: i18nT('account_team:log_cancel_rerank_train_task'),
     typeLabel: i18nT('account_team:cancel_rerank_train_task'),
     params: {} as { name?: string; taskName: string }
-  },
-  [AuditEventEnum.APPLY_RERANK_TRAIN_TASK_TO_APPS]: {
-    content: i18nT('account_team:log_apply_rerank_train_task_to_apps'),
-    typeLabel: i18nT('account_team:apply_rerank_train_task_to_apps'),
-    params: {} as { name?: string; taskName: string; appCount: number; tunedModelId: string }
   }
 } as const;

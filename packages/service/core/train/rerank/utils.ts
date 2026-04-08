@@ -648,8 +648,7 @@ const STAGE_NAME_MAP: Record<RerankTaskCheckpointStageEnum, string> = {
   [RerankTaskCheckpointStageEnum.eval_basemodel]: 'Evaluate Base Model',
   [RerankTaskCheckpointStageEnum.finetuning]: 'Model Finetuning',
   [RerankTaskCheckpointStageEnum.registering]: 'Model Registration',
-  [RerankTaskCheckpointStageEnum.eval_tunedmodel]: 'Evaluate Tuned Model',
-  [RerankTaskCheckpointStageEnum.applying]: 'Apply Decision'
+  [RerankTaskCheckpointStageEnum.eval_tunedmodel]: 'Evaluate Tuned Model'
 };
 
 /**

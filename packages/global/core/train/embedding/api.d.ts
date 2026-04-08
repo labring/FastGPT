@@ -1,13 +1,13 @@
 import type { PaginationProps, PaginationResponse } from '../../common/fetch/type';
 import type {
-  RerankTrainsetSchemaType,
-  RerankTrainsetDataSchemaType,
-  RerankTrainTaskSchemaType
+  EmbeddingTrainsetSchemaType,
+  EmbeddingTrainsetDataSchemaType,
+  EmbeddingTrainTaskSchemaType
 } from './type';
 import type {
   TrainDataSourceEnum,
-  RerankTrainTaskStatusEnum,
-  RerankTrainTypeEnum
+  EmbeddingTrainTaskStatusEnum,
+  EmbeddingTrainTypeEnum
 } from './constants';
 
 // ===== Common Types =====
@@ -28,32 +28,32 @@ export type SortParams<T extends string> = {
 // ===== Trainset API =====
 
 // Create Trainset
-export type CreateRerankTrainsetRequest = {
+export type CreateEmbeddingTrainsetRequest = {
   name?: string;
   description?: string;
 };
-export type CreateRerankTrainsetResponse = RerankTrainsetSchemaType;
+export type CreateEmbeddingTrainsetResponse = EmbeddingTrainsetSchemaType;
 
 // Get Trainset Detail
-export type RerankTrainsetDetailRequest = TrainsetIdQuery;
-export type RerankTrainsetDetailResponse = RerankTrainsetSchemaType;
+export type EmbeddingTrainsetDetailRequest = TrainsetIdQuery;
+export type EmbeddingTrainsetDetailResponse = EmbeddingTrainsetSchemaType;
 
 // List Trainsets
-export type ListRerankTrainsetsRequest = PaginationProps<
+export type ListEmbeddingTrainsetsRequest = PaginationProps<
   {
     status?: string;
   } & SortParams<'createTime' | 'updateTime' | 'name'>
 >;
-export type ListRerankTrainsetsResponse = PaginationResponse<RerankTrainsetSchemaType>;
+export type ListEmbeddingTrainsetsResponse = PaginationResponse<EmbeddingTrainsetSchemaType>;
 
 // Delete Trainset
-export type DeleteRerankTrainsetRequest = TrainsetIdQuery;
-export type DeleteRerankTrainsetResponse = MessageResponse;
+export type DeleteEmbeddingTrainsetRequest = TrainsetIdQuery;
+export type DeleteEmbeddingTrainsetResponse = MessageResponse;
 
 // ===== Training Data API =====
 
 // Generate Training Data (from dataset chunks)
-export type GenerateRerankTrainDataRequest = {
+export type GenerateEmbeddingTrainDataRequest = {
   trainsetId: string; // Required: Target trainset ID
   datasetIds: string[]; // Required: Knowledge base IDs to generate data from
   generateConfig?: {
@@ -66,48 +66,48 @@ export type GenerateRerankTrainDataRequest = {
     includeOriginalQ?: boolean; // Whether to include original question, default true
   };
 };
-export type GenerateRerankTrainDataResponse = {
+export type GenerateEmbeddingTrainDataResponse = {
   jobId: string;
   status: 'pending';
 };
 
 // Create Training Data (manual)
-export type CreateRerankTrainDataRequest = {
+export type CreateEmbeddingTrainDataRequest = {
   trainsetId: string; // Required: Target trainset ID
   query: string; // Single query
   positiveDocs: string[];
   negativeDocs: string[];
   reason?: string; // Reason for addition
 };
-export type CreateRerankTrainDataResponse = MessageResponse;
+export type CreateEmbeddingTrainDataResponse = MessageResponse;
 
 // Update Training Data
-export type UpdateRerankTrainDataRequest = DataIdQuery & {
+export type UpdateEmbeddingTrainDataRequest = DataIdQuery & {
   query?: string; // Single query
   positiveDocs?: string[];
   negativeDocs?: string[];
 };
-export type UpdateRerankTrainDataResponse = MessageResponse;
+export type UpdateEmbeddingTrainDataResponse = MessageResponse;
 
 // List Training Data
-export type ListRerankTrainDataRequest = PaginationProps<
+export type ListEmbeddingTrainDataRequest = PaginationProps<
   {
     trainsetId: string; // Required: Trainset ID to query
     source?: `${TrainDataSourceEnum}`;
   } & SortParams<'createTime' | 'updateTime'>
 >;
-export type ListRerankTrainDataResponse = PaginationResponse<RerankTrainsetDataSchemaType>;
+export type ListEmbeddingTrainDataResponse = PaginationResponse<EmbeddingTrainsetDataSchemaType>;
 
 // Delete Training Data
-export type DeleteRerankTrainDataRequest = {
+export type DeleteEmbeddingTrainDataRequest = {
   dataIds: string[];
 };
-export type DeleteRerankTrainDataResponse = MessageResponse;
+export type DeleteEmbeddingTrainDataResponse = MessageResponse;
 
 // ===== Training Task API =====
 
 // Create Training Task (supports exact mode and auto mode)
-export type CreateRerankTrainTaskRequest = {
+export type CreateEmbeddingTrainTaskRequest = {
   // Exact mode: pass trainsetId + evalDatasetId
   // Auto mode: pass datasetIds (generate_trainset/generate_evaldataset stages auto-generate)
   // Validation rule: (trainsetId && evalDatasetId) || datasetIds, otherwise missingParams
@@ -115,49 +115,49 @@ export type CreateRerankTrainTaskRequest = {
   evalDatasetId?: string; // Exact mode: existing eval dataset ID
   datasetIds?: string[]; // Auto mode: knowledge base ID list
 
-  baseModelId: string; // Base model ID (BaseModelItemType.model), replaces appId
+  baseModelId: string; // Base model ID (BaseModelItemType.model)
   newModelName?: string; // Optional name for the trained model
   name?: string;
-  trainType?: `${RerankTrainTypeEnum}`; // Training type: lora or ptuning, defaults to lora
+  trainType?: `${EmbeddingTrainTypeEnum}`; // Training type: lora or ptuning, defaults to lora
 };
-export type CreateRerankTrainTaskResponse = {
+export type CreateEmbeddingTrainTaskResponse = {
   taskId: string;
-  status: `${RerankTrainTaskStatusEnum}`;
+  status: `${EmbeddingTrainTaskStatusEnum}`;
 };
 
 // Get Task Detail
-export type RerankTrainTaskDetailRequest = TaskIdQuery;
-export type RerankTrainTaskDetailResponse = RerankTrainTaskSchemaType & {
+export type EmbeddingTrainTaskDetailRequest = TaskIdQuery;
+export type EmbeddingTrainTaskDetailResponse = EmbeddingTrainTaskSchemaType & {
   creatorName?: string;
   creatorAvatar?: string;
 };
 
 // List Training Tasks
-export type ListRerankTrainTasksRequest = PaginationProps<
+export type ListEmbeddingTrainTasksRequest = PaginationProps<
   {
-    baseModelId?: string; // Filter by base model (replaces appId)
+    baseModelId?: string; // Filter by base model
     tunedModelId?: string; // Filter by produced tuned model (triggers chain traversal)
-    status?: `${RerankTrainTaskStatusEnum}`;
+    status?: `${EmbeddingTrainTaskStatusEnum}`;
   } & SortParams<'createTime' | 'updateTime' | 'finishTime'>
 >;
 
-export type RerankTrainTaskListItem = RerankTrainTaskSchemaType & {
+export type EmbeddingTrainTaskListItem = EmbeddingTrainTaskSchemaType & {
   creatorName?: string;
   creatorAvatar?: string;
 };
-export type ListRerankTrainTasksResponse = PaginationResponse<RerankTrainTaskListItem>;
+export type ListEmbeddingTrainTasksResponse = PaginationResponse<EmbeddingTrainTaskListItem>;
 
 // Retry Training Task
-export type RetryRerankTrainTaskRequest = TaskIdQuery;
-export type RetryRerankTrainTaskResponse = {
+export type RetryEmbeddingTrainTaskRequest = TaskIdQuery;
+export type RetryEmbeddingTrainTaskResponse = {
   success: true;
   jobId: string;
 };
 
 // Cancel Training Task
-export type CancelRerankTrainTaskRequest = TaskIdQuery;
-export type CancelRerankTrainTaskResponse = MessageResponse;
+export type CancelEmbeddingTrainTaskRequest = TaskIdQuery;
+export type CancelEmbeddingTrainTaskResponse = MessageResponse;
 
 // Delete Training Task
-export type DeleteRerankTrainTaskRequest = TaskIdQuery;
-export type DeleteRerankTrainTaskResponse = MessageResponse;
+export type DeleteEmbeddingTrainTaskRequest = TaskIdQuery;
+export type DeleteEmbeddingTrainTaskResponse = MessageResponse;

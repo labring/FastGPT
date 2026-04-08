@@ -180,8 +180,7 @@ export async function updateCheckpointData(
     | 'eval_basemodel'
     | 'finetuning'
     | 'registering'
-    | 'eval_tunedmodel'
-    | 'applying',
+    | 'eval_tunedmodel',
   data: Record<string, unknown>,
   merge: boolean = false
 ): Promise<void> {

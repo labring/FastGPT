@@ -358,7 +358,5 @@
   "retry_rerank_train_task": "Retry Rerank Train Task",
   "log_retry_rerank_train_task": "{{name}} retried the train task ({{taskName}}).",
   "cancel_rerank_train_task": "Cancel Rerank Train Task",
-  "log_cancel_rerank_train_task": "{{name}} cancelled the train task ({{taskName}}).",
-  "apply_rerank_train_task_to_apps": "Apply Train Result to Apps",
-  "log_apply_rerank_train_task_to_apps": "{{name}} applied the model ({{tunedModelId}}) from train task ({{taskName}}) to {{appCount}} apps."
+  "log_cancel_rerank_train_task": "{{name}} cancelled the train task ({{taskName}})."
 }
