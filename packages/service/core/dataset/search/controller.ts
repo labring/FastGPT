@@ -830,6 +830,8 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
    * 若不传，则降级为使用 datasetIds（分组 ID）进行同义词检索。
    */
   synonymDatasetIds?: string[];
+  appId?: string; // 用于校正数据检索
+  faqAnswerMode?: 'quote' | 'llm-summary'; // FAQ 回答模式
   /** dispatch 层预计算的 queryExtension 结果，存在时跳过内部 LLM 调用，避免重复执行 */
   preComputedQueryExtension?: Awaited<ReturnType<typeof datasetSearchQueryExtension>>;
 };
@@ -839,6 +841,8 @@ export const defaultSearchDatasetData = async ({
   datasetSearchExtensionBg,
   isAssistant,
   synonymDatasetIds,
+  appId,
+  faqAnswerMode,
   preComputedQueryExtension,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
