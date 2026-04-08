@@ -9,7 +9,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 
-const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) => {
+const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const [defaultModel, setDefaultModel] = useLocalStorageState<string>(
@@ -46,7 +46,7 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
 
   const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
-      model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ?? '',
+      model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ?? defaultModel,
       maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
       temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
       isResponseAnswerText: inputs.find(
@@ -64,16 +64,10 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
       aiChatJsonSchema: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatJsonSchema)
         ?.value
     }),
-    [inputs]
+    [inputs, defaultModel]
   );
 
-  return (
-    <SettingLLMModel
-      defaultModel={defaultModel}
-      defaultData={llmModelData}
-      onChange={onChangeModel}
-    />
-  );
+  return <SettingLLMModel defaultData={llmModelData} onChange={onChangeModel} />;
 };
 
 export default React.memo(SelectAiModelRender);
