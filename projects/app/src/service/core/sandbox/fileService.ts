@@ -1,0 +1,98 @@
+import { type SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import type archiver from 'archiver';
+import mime from 'mime';
+
+export type SandboxFileEntry = {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  size?: number;
+};
+
+export type SandboxFileContent = {
+  content: Buffer;
+  contentType: string;
+  fileName: string;
+};
+
+export async function listSandboxDirectory(
+  sandbox: SandboxClient,
+  path: string
+): Promise<SandboxFileEntry[]> {
+  const entries = await sandbox.provider.listDirectory(path);
+  return entries.map((entry) => ({
+    name: entry.name,
+    path: entry.path,
+    type: entry.isDirectory ? ('directory' as const) : ('file' as const),
+    size: entry.isFile ? entry.size : undefined
+  }));
+}
+
+export async function writeSandboxFile(
+  sandbox: SandboxClient,
+  path: string,
+  content: string
+): Promise<void> {
+  const results = await sandbox.provider.writeFiles([{ path, data: content }]);
+  const result = results[0];
+  if (result.error) {
+    return Promise.reject(result.error);
+  }
+}
+
+export async function isSandboxPathDirectory(
+  sandbox: SandboxClient,
+  path: string
+): Promise<boolean> {
+  const fileInfoMap = await sandbox.provider.getFileInfo([path]);
+  const fileInfo = fileInfoMap.get(path);
+  return fileInfo?.isDirectory ?? (path === '.' || path === '' || path.endsWith('/'));
+}
+
+export async function getSandboxFileContent(
+  sandbox: SandboxClient,
+  path: string,
+  preview?: boolean
+): Promise<SandboxFileContent> {
+  const results = await sandbox.provider.readFiles([path]);
+  const result = results[0];
+
+  if (result.error) {
+    return Promise.reject('Failed to read file');
+  }
+
+  const fileName = path.split('/').pop() || 'file';
+  const contentType = preview
+    ? mime.getType(path) ?? 'application/octet-stream'
+    : 'application/octet-stream';
+
+  return {
+    content: Buffer.from(result.content),
+    contentType,
+    fileName
+  };
+}
+
+export async function addDirectoryToArchive(
+  sandbox: SandboxClient,
+  archive: archiver.Archiver,
+  dirPath: string,
+  archivePath: string
+): Promise<void> {
+  const entries = await sandbox.provider.listDirectory(dirPath);
+
+  for (const entry of entries) {
+    const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory) {
+      await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath);
+    } else {
+      const results = await sandbox.provider.readFiles([entry.path]);
+      const result = results[0];
+
+      if (!result.error) {
+        archive.append(Buffer.from(result.content), { name: entryArchivePath });
+      }
+    }
+  }
+}

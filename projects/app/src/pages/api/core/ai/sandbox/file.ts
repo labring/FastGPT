@@ -7,6 +7,7 @@ import {
   SandboxFileOperationBodySchema,
   type SandboxFileOperationResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { listSandboxDirectory, writeSandboxFile } from '@/service/core/sandbox/fileService';
 
 async function handler(
   req: ApiRequestProps,
@@ -39,31 +40,12 @@ async function handler(
     // 根据 action 分类执行
     switch (action) {
       case 'list': {
-        const entries = await sandbox.provider.listDirectory(body.path);
-
-        const files = entries.map((entry) => ({
-          name: entry.name,
-          path: entry.path,
-          type: entry.isDirectory ? ('directory' as const) : ('file' as const),
-          size: entry.isFile ? entry.size : undefined
-        }));
-
+        const files = await listSandboxDirectory(sandbox, body.path);
         return { action: 'list', files };
       }
 
       case 'write': {
-        const results = await sandbox.provider.writeFiles([
-          {
-            path: body.path,
-            data: body.content
-          }
-        ]);
-        const result = results[0];
-
-        if (result.error) {
-          return Promise.reject(result.error);
-        }
-
+        await writeSandboxFile(sandbox, body.path, body.content);
         return { action: 'write', success: true };
       }
 
