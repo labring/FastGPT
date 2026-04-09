@@ -31,3 +31,24 @@ export const LLMRequestRecordSchema = z.object({
 });
 
 export type LLMRequestRecordSchemaType = z.infer<typeof LLMRequestRecordSchema>;
+
+/* ============================================================================
+ * 共享 Schema
+ * ============================================================================ */
+
+export const ChatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system', 'tool', 'function']).meta({
+    example: 'user',
+    description: '消息角色'
+  }),
+  content: z
+    .union([z.string(), z.array(z.object())])
+    .optional()
+    .meta({
+      example: '你好',
+      description: '消息内容'
+    }),
+  name: z.string().optional().meta({ description: '发送者名称' }),
+  tool_calls: z.array(z.object()).optional().meta({ description: '工具调用' }),
+  tool_call_id: z.string().optional().meta({ description: '工具调用 ID' })
+});

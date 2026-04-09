@@ -1,12 +1,9 @@
 import type { NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
@@ -17,53 +14,47 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import {
+  CreateQuestionGuideBodySchema,
+  CreateQuestionGuideResponseSchema,
+  type CreateQuestionGuideResponseType
+} from '@fastgpt/global/openapi/core/ai/agent/api';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 
 async function handler(
-  req: ApiRequestProps<
-    OutLinkChatAuthProps & {
-      messages: ChatCompletionMessageParam[];
-    }
-  >,
-  res: NextApiResponse<any>
-) {
-  try {
-    const { messages } = req.body;
+  req: ApiRequestProps,
+  _res: NextApiResponse
+): Promise<CreateQuestionGuideResponseType> {
+  const { messages } = CreateQuestionGuideBodySchema.parse(req.body);
 
-    const { tmbId, teamId } = await authChatCert({
-      req,
-      authToken: true,
-      authApiKey: true
-    });
+  const { tmbId, teamId } = await authChatCert({
+    req,
+    authToken: true,
+    authApiKey: true
+  });
 
-    const qgModel = getDefaultLLMModel();
+  const qgModel = getDefaultLLMModel();
 
-    const { result, inputTokens, outputTokens } = await createQuestionGuide({
-      messages,
-      model: qgModel.model
-    });
+  const { result, inputTokens, outputTokens } = await createQuestionGuide({
+    messages: messages as ChatCompletionMessageParam[],
+    model: qgModel.model
+  });
 
-    jsonRes(res, {
-      data: result
-    });
+  pushQuestionGuideUsage({
+    model: qgModel.model,
+    inputTokens,
+    outputTokens,
+    teamId,
+    tmbId
+  });
 
-    pushQuestionGuideUsage({
-      model: qgModel.model,
-      inputTokens,
-      outputTokens,
-      teamId,
-      tmbId
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  return CreateQuestionGuideResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);
 
-/* 
+/*
   Abandoned
   Different chat source
   1. token (header)
