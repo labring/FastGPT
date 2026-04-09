@@ -40,14 +40,15 @@ const Chat = () => {
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
 
   return (
-    <Flex h={'100%'}>
+    <Flex h={'100%'} background={'linear-gradient(180deg, #F2F8FF 0%, #F5F8FC 10%)'}>
       {/* Side bar */}
       {isPc && (
         <Box
           flexGrow={0}
           flexShrink={0}
-          w={collapse ? '72px' : '220px'}
+          w={collapse ? '72px' : '226px'}
           overflow={'hidden'}
+          py={[6, 0]}
           transition={'width 0.1s ease-in-out'}
         >
           <ChatSlider activeAppId={appId} />
@@ -129,7 +130,7 @@ const ChatContent = (props: ChatPageProps) => {
   if (!isInitedUser) {
     return (
       <PageContainer isLoading flex={'1'} p={4}>
-        <NextHead title={feConfigs?.systemTitle} />
+        <NextHead title={feConfigs?.systemTitle} icon={feConfigs?.favicon} />
       </PageContainer>
     );
   }

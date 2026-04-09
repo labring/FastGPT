@@ -117,7 +117,8 @@ const ChatContextProvider = ({
     pageSize: 20,
     params,
     refreshDeps: [params],
-    showErrorToast: false
+    showErrorToast: false,
+    showNoMore: false
   });
 
   const onChangeChatId = useCallback(

@@ -217,22 +217,25 @@ const ActionButton: React.FC<{
 }> = ({ icon, text, isActive = false, isCollapsed, onClick }) => {
   return (
     <Flex
-      p={2}
-      flex={1}
+      p={isCollapsed ? '8px' : 2}
+      flex={isCollapsed ? undefined : 1}
       cursor={'pointer'}
       borderRadius={'8px'}
+      lineHeight={'28px'}
       alignItems={'center'}
       justifyContent={isCollapsed ? 'center' : 'flex-start'}
+      role="group"
       {...(isActive
         ? {
-            bg: 'primary.100',
+            bg: 'primary.1',
             color: 'primary.600'
           }
         : {
             bg: 'transparent',
             color: 'myGray.500',
             _hover: {
-              bg: isCollapsed ? 'myGray.200' : 'primary.100'
+              bg: 'primary.1',
+              color: 'primary.600'
             }
           })}
       onClick={onClick}
@@ -276,7 +279,7 @@ const NavigationSection = () => {
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
-    <Flex mt={4} flexDirection={'column'} gap={1} px={4}>
+    <Flex mt={4} flexDirection={'column'} gap={1} px={isCollapsed ? 2 : 3}>
       <AnimatedSection show={isCollapsed}>
         <ActionButton isCollapsed icon="core/chat/sidebar/expand" onClick={onTriggerCollapse} />
       </AnimatedSection>
@@ -373,72 +376,27 @@ const BottomSection = () => {
   const onSettingClick = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
-    <MotionBox mt={'auto'} px={3} py={4} layout={false}>
-      <MotionFlex
+    <Box mt={'auto'} p={3}>
+      <Flex
         flexDirection={isCollapsed ? 'column' : 'row'}
         alignItems={'center'}
         justifyContent={isCollapsed ? 'center' : 'space-between'}
         gap={isCollapsed ? 3 : 0}
-        layout={false}
-        h={isCollapsed ? 'auto' : '40px'}
-        minH="40px"
+        minH="36px"
       >
-        {isAdmin && isProVersion && !isShare && (
-          <MotionBox
-            order={isCollapsed ? 1 : 2}
-            layout={false}
-            w="40px"
-            h="40px"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Flex
-              _hover={{ bg: 'myGray.200' }}
-              bg={isSettingActive ? 'myGray.200' : 'transparent'}
-              borderRadius={'8px'}
-              p={2}
-              cursor={'pointer'}
-              w="40px"
-              h="40px"
-              alignItems="center"
-              justifyContent="center"
-              onClick={() => onSettingClick(ChatSidebarPaneEnum.SETTING)}
-            >
-              <MyIcon
-                w={'20px'}
-                h={'20px'}
-                name={'common/setting'}
-                fill={isSettingActive ? 'primary.500' : 'myGray.400'}
-              />
-            </Flex>
-          </MotionBox>
-        )}
-
-        <MotionBox
-          order={isCollapsed ? 2 : 1}
-          layout={false}
-          w={isCollapsed ? '40px' : '100%'}
-          h="40px"
-          display="flex"
+        {/* 用户头像区 */}
+        <Flex
           alignItems="center"
-          justifyContent={'flex-start'}
-          maxW={isCollapsed ? 'fit-content' : 'calc(100% - 52px)'}
+          overflow="hidden"
+          maxW={isCollapsed ? 'fit-content' : 'calc(100% - 36px)'}
         >
           {isLoggedIn ? (
             <UserAvatarPopover
               isCollapsed={isCollapsed}
               placement={isCollapsed ? 'right-start' : 'top-end'}
             >
-              <Flex
-                alignItems="center"
-                gap={2}
-                w="100%"
-                h="40px"
-                minW={'40px'}
-                justifyContent={'center'}
-              >
-                <Avatar src={avatar} bg="myGray.200" borderRadius="50%" w={8} h={8} />
+              <Flex alignItems="center" gap={2} h="36px" minW={'36px'}>
+                <Avatar src={avatar} bg="myGray.200" borderRadius="50%" w="36px" h="36px" />
                 <AnimatedText
                   show={!isCollapsed}
                   className="textEllipsis"
@@ -455,16 +413,15 @@ const BottomSection = () => {
             <Flex
               alignItems="center"
               gap={2}
-              w="100%"
-              h="40px"
-              minW={isCollapsed ? '40px' : 'auto'}
+              h="36px"
+              minW={isCollapsed ? '36px' : 'auto'}
               justifyContent={isCollapsed ? 'center' : 'flex-start'}
               cursor="pointer"
               _hover={{ bg: 'myGray.100' }}
               borderRadius="md"
-              p={2}
+              px={2}
             >
-              <Avatar bg="myGray.200" borderRadius="50%" w={8} h={8} />
+              <Avatar bg="myGray.200" borderRadius="50%" w="36px" h="36px" />
               <AnimatedText
                 show={!isCollapsed}
                 flexGrow={1}
@@ -479,9 +436,32 @@ const BottomSection = () => {
               </AnimatedText>
             </Flex>
           )}
-        </MotionBox>
-      </MotionFlex>
-    </MotionBox>
+        </Flex>
+
+        {/* 设置按钮（管理员 + Plus） */}
+        {isAdmin && isProVersion && !isShare && (
+          <Flex
+            w="28px"
+            h="28px"
+            flexShrink={0}
+            borderRadius={'8px'}
+            alignItems="center"
+            justifyContent="center"
+            cursor={'pointer'}
+            _hover={{ bg: 'myGray.200' }}
+            bg={isSettingActive ? 'myGray.200' : 'transparent'}
+            onClick={() => onSettingClick(ChatSidebarPaneEnum.SETTING)}
+          >
+            <MyIcon
+              w={'20px'}
+              h={'20px'}
+              name={'common/setting'}
+              fill={isSettingActive ? 'primary.500' : 'myGray.400'}
+            />
+          </Flex>
+        )}
+      </Flex>
+    </Box>
   );
 };
 
@@ -531,21 +511,21 @@ const ChatSlider = ({ activeAppId }: Props) => {
           </Box>
         </HStack>
 
-        <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={4} position={'relative'}>
+        <MyBox flex={'1 0 0'} h={0} overflow={'overlay'} px={3} position={'relative'}>
           {myApps.map((item) => (
             <Flex
               key={item.appId}
-              py={2}
+              py={2.5}
               px={2}
-              mb={3}
+              mb={2}
               cursor={'pointer'}
               borderRadius={'md'}
               alignItems={'center'}
               fontSize={'sm'}
               {...(pane === ChatSidebarPaneEnum.RECENTLY_USED_APPS && item.appId === activeAppId
-                ? { bg: 'primary.100', color: 'primary.600' }
+                ? { bg: 'primary.1', color: 'primary.600' }
                 : {
-                    _hover: { bg: 'primary.100' },
+                    _hover: { bg: 'primary.1' },
                     onClick: () =>
                       handlePaneChange(ChatSidebarPaneEnum.RECENTLY_USED_APPS, item.appId)
                   })}
