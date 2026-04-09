@@ -1,6 +1,7 @@
 import { cloneDeep } from 'lodash';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -127,6 +128,11 @@ export type ParallelTaskResult =
 /**
  * Parse a successful runWorkflow response into a ParallelTaskResult.
  * Interactive responses are silently treated as failure (per design §3.5).
+ *
+ * Note: runWorkflow always resolves (never rejects), so node-level errors are
+ * detected here by checking whether the nestedEnd node was actually reached.
+ * If nestedEnd is absent from flowResponses, the sub-workflow terminated early
+ * (e.g. a node threw an error), and the task is considered failed.
  */
 export const parseTaskResponse = (params: {
   index: number;
@@ -139,11 +145,22 @@ export const parseTaskResponse = (params: {
     return { success: false, index };
   }
 
-  const output = response.flowResponses.find(
+  const loopEndResponse = response.flowResponses.find(
     (r) => r.moduleType === FlowNodeTypeEnum.nestedEnd
-  )?.loopOutputValue;
+  );
 
-  return { success: true, index, data: output, response };
+  // nestedEnd was not reached → sub-workflow terminated with an error
+  if (!loopEndResponse) {
+    const errorResponse = response.flowResponses.find((r) => r.error);
+    const err = errorResponse?.error;
+    return {
+      success: false,
+      index,
+      error: getErrText(err, 'Sub-workflow did not reach the end node')
+    };
+  }
+
+  return { success: true, index, data: loopEndResponse.loopOutputValue, response };
 };
 
 /**

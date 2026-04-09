@@ -9,6 +9,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '../../../../context';
@@ -61,20 +62,36 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     if (!valueType) return;
 
     const parentNode = getNodeById(parentNodeId);
-    const parentNodeOutput = parentNode?.outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.nestedArrayResult
-    );
+    if (!parentNode) return;
 
-    if (parentNode && parentNodeOutput) {
-      onChangeNode({
-        nodeId: parentNode.nodeId,
-        type: 'updateOutput',
-        key: NodeOutputKeyEnum.nestedArrayResult,
-        value: {
-          ...parentNodeOutput,
-          valueType: typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny
-        }
-      });
+    const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
+
+    if (parentNode.flowNodeType === FlowNodeTypeEnum.parallelRun) {
+      // For parallelRun parent: update parallelSuccessResults output type
+      const successOutput = parentNode.outputs.find(
+        (output) => output.key === NodeOutputKeyEnum.parallelSuccessResults
+      );
+      if (successOutput && successOutput.valueType !== newArrayType) {
+        onChangeNode({
+          nodeId: parentNode.nodeId,
+          type: 'updateOutput',
+          key: NodeOutputKeyEnum.parallelSuccessResults,
+          value: { ...successOutput, valueType: newArrayType }
+        });
+      }
+    } else {
+      // For loop parent: update nestedArrayResult output type
+      const parentNodeOutput = parentNode.outputs.find(
+        (output) => output.key === NodeOutputKeyEnum.nestedArrayResult
+      );
+      if (parentNodeOutput && parentNodeOutput.valueType !== newArrayType) {
+        onChangeNode({
+          nodeId: parentNode.nodeId,
+          type: 'updateOutput',
+          key: NodeOutputKeyEnum.nestedArrayResult,
+          value: { ...parentNodeOutput, valueType: newArrayType }
+        });
+      }
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 

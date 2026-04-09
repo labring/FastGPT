@@ -19,7 +19,6 @@ import RenderOutput from '../render/RenderOutput';
 import {
   ArrayTypeMap,
   NodeInputKeyEnum,
-  NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -101,7 +100,7 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   }, [appDetail.chatConfig, getNodeById, nestedInputArray, nodeIds, systemConfigNode]);
 
   useEffect(() => {
-    if (!nestedInputArray) return;
+    if (!nestedInputArray || nestedInputArray.valueType === newValueType) return;
     onChangeNode({
       nodeId,
       type: 'updateInput',
@@ -112,23 +111,6 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       }
     });
   }, [nestedInputArray, newValueType, nodeId, onChangeNode]);
-
-  // Auto-update parallelSuccessResults output valueType to match input array element type
-  useEffect(() => {
-    const successOutput = outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.parallelSuccessResults
-    );
-    if (!successOutput || successOutput.valueType === newValueType) return;
-    onChangeNode({
-      nodeId,
-      type: 'updateOutput',
-      key: NodeOutputKeyEnum.parallelSuccessResults,
-      value: {
-        ...successOutput,
-        valueType: newValueType
-      }
-    });
-  }, [newValueType, nodeId, onChangeNode, outputs]);
 
   // Update childrenNodeIdList
   const childrenNodeIdList = useMemoEnhance(() => {
