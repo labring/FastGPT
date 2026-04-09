@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { ChatSourceEnum } from '../../../../core/chat/constants';
+import { ChatGernateStatusEnum, ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 
 // Get chat histories schema
@@ -21,7 +21,9 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(
     appId: z.string(),
     customTitle: z.string().optional(),
     title: z.string(),
-    top: z.boolean().optional()
+    top: z.boolean().optional(),
+    chatGenerateStatus: z.enum(ChatGernateStatusEnum).optional(),
+    hasBeenRead: z.boolean().optional()
   })
 );
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;

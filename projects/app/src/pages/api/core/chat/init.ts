@@ -36,6 +36,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
 
+    if (chat?.hasBeenRead === false) {
+      await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+      chat.hasBeenRead = true;
+    }
+
     // get app and history
     const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
     const pluginInputs =

@@ -118,13 +118,24 @@ const ChatContextProvider = ({
 
   const onChangeChatId = useCallback(
     (changeChatId = getNanoid(24), forbid = false) => {
+      setHistories((state) =>
+        state.map((item) =>
+          item.chatId === changeChatId
+            ? {
+                ...item,
+                hasBeenRead: true
+              }
+            : item
+        )
+      );
+
       if (chatId !== changeChatId) {
         forbidLoadChat.current = forbid;
         setChatId(changeChatId);
       }
       onCloseSlider();
     },
-    [chatId, onCloseSlider, setChatId]
+    [chatId, onCloseSlider, setChatId, setHistories]
   );
 
   const onChangeAppId = useCallback(

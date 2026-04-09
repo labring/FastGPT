@@ -52,6 +52,7 @@
   "file_input": "系统文件",
   "file_input_tip": "可通过【插件开始】节点的“文件链接”获取对应文件的链接",
   "history_slider.home.title": "聊天",
+  "history_generating": "思考中",
   "home.chat_app": "首页聊天",
   "home.select_tools": "选择工具",
   "home.tools": "工具：{{num}}",

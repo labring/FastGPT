@@ -1,6 +1,10 @@
 import { SearchDataResponseItemSchema } from '../dataset/type';
-import type { ChatGernateStatusEnum, ChatSourceEnum } from './constants';
-import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
+import {
+  ChatGernateStatusEnum,
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  type ChatSourceEnum
+} from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import { AppSchemaTypeSchema, type AppSchemaType, type VariableItemType } from '../app/type';
@@ -293,7 +297,9 @@ export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
 
 export const ChatHistoryItemSchema = HistoryItemSchema.extend({
   appId: z.string(),
-  top: z.boolean().optional()
+  top: z.boolean().optional(),
+  chatGenerateStatus: z.nativeEnum(ChatGernateStatusEnum).optional(),
+  hasBeenRead: z.boolean().optional()
 });
 export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;
 

@@ -170,7 +170,8 @@ const handleStreamMessage = ({
     event === SseResponseEventEnum.toolResponse ||
     event === SseResponseEventEnum.interactive ||
     event === SseResponseEventEnum.plan ||
-    event === SseResponseEventEnum.stepTitle
+    event === SseResponseEventEnum.stepTitle ||
+    event === SseResponseEventEnum.skillCall
   ) {
     pushDataToQueue({
       responseValueId,
@@ -211,6 +212,11 @@ const handleStreamMessage = ({
     onMessage({
       event,
       ...rest
+    });
+  } else if (event === SseResponseEventEnum.sandboxStatus) {
+    onMessage({
+      event,
+      sandboxStatus: rest
     });
   }
 };
@@ -327,7 +333,7 @@ const runStreamRequest = ({
             }
           }
         },
-        onmessage: ({ event, data }) =>
+        onmessage: ({ event, data }) => {
           handleStreamMessage({
             event,
             data,
@@ -336,103 +342,7 @@ const runStreamRequest = ({
             setErrMsg: (err) => {
               errMsg = err;
             }
-          })();
-
-          if (typeof parseJson !== 'object') return;
-          const { responseValueId, stepId, ...rest } = parseJson;
-
-          // console.log(parseJson, event);
-          if (event === SseResponseEventEnum.answer) {
-            const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
-            pushDataToQueue({
-              responseValueId,
-              stepId,
-              event,
-              reasoningText
-            });
-
-            const text = rest.choices?.[0]?.delta?.content || '';
-            for (const item of text) {
-              pushDataToQueue({
-                responseValueId,
-                stepId,
-                event,
-                text: item
-              });
-            }
-          } else if (event === SseResponseEventEnum.fastAnswer) {
-            const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
-            pushDataToQueue({
-              responseValueId,
-              stepId,
-              event,
-              reasoningText
-            });
-
-            const text = rest.choices?.[0]?.delta?.content || '';
-            pushDataToQueue({
-              responseValueId,
-              stepId,
-              event,
-              text
-            });
-          } else if (
-            event === SseResponseEventEnum.toolCall ||
-            event === SseResponseEventEnum.toolParams ||
-            event === SseResponseEventEnum.toolResponse ||
-            event === SseResponseEventEnum.interactive ||
-            event === SseResponseEventEnum.plan ||
-            event === SseResponseEventEnum.stepTitle ||
-            event === SseResponseEventEnum.skillCall
-          ) {
-            pushDataToQueue({
-              responseValueId,
-              stepId,
-              event,
-              ...rest
-            });
-          } else if (event === SseResponseEventEnum.flowNodeResponse) {
-            onMessage({
-              event,
-              nodeResponse: rest
-            });
-          } else if (event === SseResponseEventEnum.updateVariables) {
-            onMessage({
-              event,
-              variables: rest
-            });
-          } else if (event === SseResponseEventEnum.collectionForm) {
-            onMessage({
-              event,
-              collectionForm: rest
-            });
-          } else if (event === SseResponseEventEnum.topAgentConfig) {
-            // Directly call onMessage for formData, no need to queue
-            onMessage({
-              event,
-              formData: rest
-            });
-          } else if (event === SseResponseEventEnum.error) {
-            if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
-              useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
-            }
-            errMsg = getErrText(rest, '流响应错误');
-          } else if (
-            [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
-              event as any
-            )
-          ) {
-            onMessage({
-              event,
-              ...rest
-            });
-          } else if (event === SseResponseEventEnum.sandboxStatus) {
-            // Wrap the flat sandbox status fields into a nested sandboxStatus object
-            onMessage({
-              event,
-              sandboxStatus: rest
-            });
-          }
+          });
         },
         onclose() {
           finished = true;

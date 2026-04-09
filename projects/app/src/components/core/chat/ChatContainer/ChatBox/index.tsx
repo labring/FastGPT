@@ -162,6 +162,22 @@ const isAbortByLeave = (reason: unknown) => {
   return reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
 };
 
+const shouldCreateResumeAiPlaceholder = (event: SseResponseEventEnum) => {
+  return [
+    SseResponseEventEnum.flowNodeResponse,
+    SseResponseEventEnum.flowNodeStatus,
+    SseResponseEventEnum.answer,
+    SseResponseEventEnum.fastAnswer,
+    SseResponseEventEnum.toolCall,
+    SseResponseEventEnum.toolParams,
+    SseResponseEventEnum.toolResponse,
+    SseResponseEventEnum.interactive,
+    SseResponseEventEnum.plan,
+    SseResponseEventEnum.stepTitle,
+    SseResponseEventEnum.workflowDuration
+  ].includes(event);
+};
+
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
     isReady: boolean;
@@ -660,6 +676,32 @@ const ChatBox = ({
     });
   });
 
+  const appendResumeAiPlaceholder = useMemoizedFn((responseChatId: string) => {
+    setChatRecords((state) => {
+      const lastItem = state[state.length - 1];
+      if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
+        return state;
+      }
+
+      return [
+        ...state,
+        {
+          id: responseChatId,
+          dataId: responseChatId,
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              text: {
+                content: ''
+              }
+            }
+          ],
+          status: ChatStatusEnum.loading
+        }
+      ];
+    });
+  });
+
   /**
    * user confirm send prompt
    */
@@ -785,6 +827,16 @@ const ChatBox = ({
             chat: currentHumanChat
           });
 
+          setChatBoxData((state) =>
+            state.chatId === chatId
+              ? {
+                  ...state,
+                  chatGenerateStatus: ChatGernateStatusEnum.generating,
+                  hasBeenRead: true
+                }
+              : state
+          );
+
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
             interactive
@@ -879,6 +931,15 @@ const ChatBox = ({
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
             clearPendingResumeHumanChat({ appId, chatId });
+            setChatBoxData((state) =>
+              state.chatId === chatId
+                ? {
+                    ...state,
+                    chatGenerateStatus: ChatGernateStatusEnum.done,
+                    hasBeenRead: true
+                  }
+                : state
+            );
           } catch (err: any) {
             console.log('Chat error', err);
             toast({
@@ -909,6 +970,16 @@ const ChatBox = ({
             if (!isPageLeavingRef.current && !isAbortByLeave(abortSignal.signal.reason)) {
               clearPendingResumeHumanChat({ appId, chatId });
             }
+
+            setChatBoxData((state) =>
+              state.chatId === chatId
+                ? {
+                    ...state,
+                    chatGenerateStatus: ChatGernateStatusEnum.error,
+                    hasBeenRead: true
+                  }
+                : state
+            );
           }
 
           autoTTSResponse && finishSegmentedAudio();
@@ -1208,23 +1279,9 @@ const ChatBox = ({
         next.push(pendingHumanChat);
       }
 
-      next.push({
-        id: responseChatId,
-        dataId: responseChatId,
-        obj: ChatRoleEnum.AI,
-        value: [
-          {
-            text: {
-              content: ''
-            }
-          }
-        ],
-        status: ChatStatusEnum.loading
-      });
-
       return next;
     });
-    scrollToBottom('auto');
+    pendingHumanChat && scrollToBottom('auto');
 
     (async () => {
       try {
@@ -1232,7 +1289,12 @@ const ChatBox = ({
           appId,
           chatId,
           abortCtrl: controller,
-          onMessage: generatingMessage
+          onMessage: (message) => {
+            if (shouldCreateResumeAiPlaceholder(message.event)) {
+              appendResumeAiPlaceholder(responseChatId);
+            }
+            generatingMessage(message);
+          }
         });
 
         if (completedChat) {
@@ -1247,6 +1309,14 @@ const ChatBox = ({
         }
 
         setChatRecords((state) => {
+          const currentLastItem = state[state.length - 1];
+          if (
+            currentLastItem?.dataId !== responseChatId ||
+            currentLastItem.obj !== ChatRoleEnum.AI
+          ) {
+            return state;
+          }
+
           const next = state.map((item, index) => {
             if (index !== state.length - 1) return item;
             return {
@@ -1257,10 +1327,10 @@ const ChatBox = ({
             };
           });
 
-          const lastItem = next[next.length - 1];
+          const updatedLastItem = next[next.length - 1];
           if (
-            lastItem?.dataId === responseChatId &&
-            !hasMeaningfulAiOutput(lastItem) &&
+            updatedLastItem?.dataId === responseChatId &&
+            !hasMeaningfulAiOutput(updatedLastItem) &&
             !responseText
           ) {
             return next.slice(0, -1);
@@ -1274,6 +1344,14 @@ const ChatBox = ({
         if (controller.signal.aborted) return;
 
         setChatRecords((state) => {
+          const currentLastItem = state[state.length - 1];
+          if (
+            currentLastItem?.dataId !== responseChatId ||
+            currentLastItem.obj !== ChatRoleEnum.AI
+          ) {
+            return state;
+          }
+
           const next = state.map((item, index) => {
             if (index !== state.length - 1) return item;
             return {
@@ -1283,8 +1361,11 @@ const ChatBox = ({
             };
           });
 
-          const lastItem = next[next.length - 1];
-          if (lastItem?.dataId === responseChatId && !hasMeaningfulAiOutput(lastItem)) {
+          const updatedLastItem = next[next.length - 1];
+          if (
+            updatedLastItem?.dataId === responseChatId &&
+            !hasMeaningfulAiOutput(updatedLastItem)
+          ) {
             return next.slice(0, -1);
           }
 
