@@ -21,7 +21,7 @@ const GetHtmlPreviewLinkBodySchema = z.object({
 // 在 <head> 中注入 CSP，禁止外部脚本加载，仅允许 inline（沙箱预览场景）
 function injectCspMetaTag(html: string): string {
   const cspMeta =
-    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self' data: blob:; script-src 'unsafe-inline'; style-src 'unsafe-inline' 'self' data:;\">";
+    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self' data: blob:; script-src 'none'; style-src 'unsafe-inline' 'self' data:;\">";
 
   if (/<head[^>]*>/i.test(html)) {
     return html.replace(/(<head[^>]*>)/i, `$1${cspMeta}`);

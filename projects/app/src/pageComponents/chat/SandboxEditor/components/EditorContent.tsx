@@ -248,7 +248,7 @@ const EditorContent = ({
                 { label: t('chat:sandbox_preview'), value: 'preview' }
               ]}
               value={viewMode}
-              onChange={(v) => setViewMode(v as any)}
+              onChange={(v) => setViewMode(v as 'source' | 'preview')}
               py="1"
               px="2"
               fontSize="xs"

@@ -109,7 +109,7 @@ const FileTree = ({
             noOfLines={1}
             overflow="hidden"
             textOverflow="ellipsis"
-            fontWeight={isActive ? '500' : '500'}
+            fontWeight={isActive ? '600' : '400'}
             letterSpacing="0.5px"
           >
             {node.name}
