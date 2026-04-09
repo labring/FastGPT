@@ -58,7 +58,7 @@ export async function getSandboxFileContent(
   const result = results[0];
 
   if (result.error) {
-    return Promise.reject(result.error);
+    return Promise.reject(new Error(`Failed to read file: ${result.error.message}`));
   }
 
   const fileName = path.split('/').pop() || 'file';

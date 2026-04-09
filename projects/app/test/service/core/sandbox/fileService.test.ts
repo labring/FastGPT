@@ -249,7 +249,9 @@ describe('getSandboxFileContent', () => {
         .fn()
         .mockResolvedValue([makeReadResult('/file.txt', '', new Error('not found'))])
     });
-    await expect(getSandboxFileContent(sandbox, '/file.txt')).rejects.toBe('Failed to read file');
+    await expect(getSandboxFileContent(sandbox, '/file.txt')).rejects.toThrow(
+      'Failed to read file: not found'
+    );
   });
 
   it('正确提取 fileName（路径最后一段）', async () => {
