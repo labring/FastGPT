@@ -122,6 +122,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       customPdfParse,
       usageId,
       getFormatText,
+      filename,
       imageKeyOptions: {
         prefix: fileParsedPrefix
       }
