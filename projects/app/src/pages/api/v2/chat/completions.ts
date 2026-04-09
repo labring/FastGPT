@@ -575,17 +575,26 @@ const authTeamSpaceChat = async ({
   teamToken: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { uid } = await authTeamSpaceToken({
+  const { uid, tags } = await authTeamSpaceToken({
     teamId,
     teamToken
   });
 
-  const app = await MongoApp.findById(appId).lean();
+  const [app, chat] = await Promise.all([
+    MongoApp.findOne({
+      _id: appId,
+      teamId,
+      $or: [
+        { teamTags: { $size: 0 } },
+        { teamTags: { $exists: false } },
+        { teamTags: { $in: tags } }
+      ]
+    }).lean(),
+    MongoChat.findOne({ appId, chatId }).lean()
+  ]);
   if (!app) {
-    return Promise.reject('app is empty');
+    return Promise.reject(ChatErrEnum.unAuthChat);
   }
-
-  const chat = await MongoChat.findOne({ appId, chatId }).lean();
 
   if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);

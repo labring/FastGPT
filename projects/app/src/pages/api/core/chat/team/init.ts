@@ -22,7 +22,7 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     return Promise.reject('teamId, appId, teamToken are required');
   }
 
-  const { uid } = await authTeamSpaceToken({
+  const { uid, tags } = await authTeamSpaceToken({
     teamId,
     teamToken
   });
@@ -30,7 +30,15 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
   const [team, chat, app] = await Promise.all([
     MongoTeam.findById(teamId, 'name avatar').lean(),
     MongoChat.findOne({ appId, chatId }).lean(),
-    MongoApp.findById(appId).lean()
+    MongoApp.findOne({
+      _id: appId,
+      teamId,
+      $or: [
+        { teamTags: { $size: 0 } },
+        { teamTags: { $exists: false } },
+        { teamTags: { $in: tags } }
+      ]
+    }).lean()
   ]);
 
   if (!app) {
