@@ -6,7 +6,7 @@
   thereby further updating the width and height properties of this node.
 */
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
@@ -16,13 +16,23 @@ import RenderInput from '../render/RenderInput';
 import { Box } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RenderOutput from '../render/RenderOutput';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  ArrayTypeMap,
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   Input_Template_Children_Node_List,
   Input_Template_NESTED_NODE_OFFSET
 } from '@fastgpt/global/core/workflow/template/input';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { AppContext } from '../../../../context';
+import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
+import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useSize } from 'ahooks';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowLayoutContext } from '../../../context/workflowComputeContext';
@@ -31,8 +41,12 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
-  const { nodeAmount, getNodeList } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { nodeAmount, getNodeList, nodeIds, getNodeById, systemConfigNode } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const resetParentNodeSizeAndPosition = useContextSelector(
     WorkflowLayoutContext,
     (v) => v.resetParentNodeSizeAndPosition
@@ -46,15 +60,75 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       nodeHeight: Math.round(
         Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value) || 500
       ),
+      nestedInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.nestedInputArray),
       loopNodeInputHeight: inputs.find(
         (input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight
       )
     };
   }, [inputs]);
+  const nestedInputArray = useMemoEnhance(
+    () => computedResult.nestedInputArray,
+    [computedResult.nestedInputArray]
+  );
   const nodeWidth = computedResult.nodeWidth;
   const nodeHeight = computedResult.nodeHeight;
   const loopNodeInputHeight =
     computedResult.loopNodeInputHeight ?? Input_Template_NESTED_NODE_OFFSET;
+
+  // Auto-infer valueType from referenced array output (mirrors NodeLoop behaviour)
+  const newValueType = useMemo(() => {
+    if (!nestedInputArray) return WorkflowIOValueTypeEnum.arrayAny;
+    const value = nestedInputArray.value as ReferenceArrayValueType;
+
+    if (!value || value.length === 0 || !isValidArrayReferenceValue(value, nodeIds))
+      return WorkflowIOValueTypeEnum.arrayAny;
+
+    const globalVariables = getWorkflowGlobalVariables({
+      systemConfigNode,
+      chatConfig: appDetail.chatConfig
+    });
+
+    const valueType = ((ref) => {
+      if (ref?.[0] === VARIABLE_NODE_ID) {
+        return globalVariables.find((item) => item.key === ref[1])?.valueType;
+      } else {
+        const node = getNodeById(ref?.[0]);
+        const output = node?.outputs.find((output) => output.id === ref?.[1]);
+        return output?.valueType;
+      }
+    })(value[0]);
+    return ArrayTypeMap[valueType as keyof typeof ArrayTypeMap] ?? WorkflowIOValueTypeEnum.arrayAny;
+  }, [appDetail.chatConfig, getNodeById, nestedInputArray, nodeIds, systemConfigNode]);
+
+  useEffect(() => {
+    if (!nestedInputArray) return;
+    onChangeNode({
+      nodeId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.nestedInputArray,
+      value: {
+        ...nestedInputArray,
+        valueType: newValueType
+      }
+    });
+  }, [nestedInputArray, newValueType, nodeId, onChangeNode]);
+
+  // Auto-update parallelSuccessResults output valueType to match input array element type
+  useEffect(() => {
+    const successOutput = outputs.find(
+      (output) => output.key === NodeOutputKeyEnum.parallelSuccessResults
+    );
+    if (!successOutput || successOutput.valueType === newValueType) return;
+    onChangeNode({
+      nodeId,
+      type: 'updateOutput',
+      key: NodeOutputKeyEnum.parallelSuccessResults,
+      value: {
+        ...successOutput,
+        valueType: newValueType
+      }
+    });
+  }, [newValueType, nodeId, onChangeNode, outputs]);
 
   // Update childrenNodeIdList
   const childrenNodeIdList = useMemoEnhance(() => {
