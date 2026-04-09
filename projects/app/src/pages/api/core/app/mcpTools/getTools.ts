@@ -9,11 +9,14 @@ import {
   type GetMcpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(
   req: ApiRequestProps<GetMcpToolsBodyType>,
   _res: ApiResponseType<any>
 ): Promise<GetMcpToolsResponseType> {
+  await authCert({ req, authToken: true });
+
   const { url, headerSecret } = GetMcpToolsBodySchema.parse(req.body);
 
   if (await isInternalAddress(url)) {
