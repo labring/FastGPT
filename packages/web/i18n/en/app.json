@@ -594,6 +594,7 @@
   "workflow.select_description_placeholder": "Example:\nIs there any tomato in the refrigerator?",
   "workflow.select_description_tip": "Add a description to explain to users the definition of each option.",
   "workflow.select_result": "Select variable name",
+  "workflow.select_options_mode_label": "Options",
   "workflow.user_file_input": "File link",
   "workflow.user_file_input_desc": "File and image link uploaded by users",
   "workflow.user_select": "User selection",
