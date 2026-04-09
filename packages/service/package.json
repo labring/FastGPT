@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^11.7.2",
-    "@fastgpt-sdk/sandbox-adapter": "^0.0.34",
+    "@fastgpt-sdk/sandbox-adapter": "^0.0.35",
     "@fastgpt-sdk/otel": "catalog:",
     "@fastgpt-sdk/storage": "catalog:",
     "@fastgpt/global": "workspace:*",
