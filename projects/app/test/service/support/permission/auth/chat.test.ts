@@ -157,6 +157,27 @@ describe('authChatCrud', () => {
       });
     });
 
+    it('should reject if app does not belong to team or tags mismatch', async () => {
+      vi.mocked(authTeamSpaceToken).mockResolvedValue({
+        uid: 'user1',
+        tmbId: 'tmb1',
+        tags: ['tag1']
+      });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve(null)
+      } as any);
+
+      await expect(
+        authChatCrud({
+          appId: 'app1',
+          teamId: 'team1',
+          teamToken: 'token1',
+          req: {} as any,
+          authToken: true
+        })
+      ).rejects.toBe(ChatErrEnum.unAuthChat);
+    });
+
     it('should auth with teamId and teamToken with valid chatId', async () => {
       const mockChat = {
         appId: 'app1',

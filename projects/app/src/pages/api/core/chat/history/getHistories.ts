@@ -58,7 +58,7 @@ export async function handler(
           { teamTags: { $in: tags } }
         ]
       }).lean();
-      if (!app) return { list: [], total: 0 };
+      if (!app) return undefined;
 
       return {
         appId,

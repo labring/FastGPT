@@ -113,7 +113,8 @@ export async function authChatCrud({
       };
     }
 
-    if (chat.outLinkUid !== uid) return Promise.reject(ChatErrEnum.unAuthChat);
+    if (String(chat.teamId) !== spaceTeamId || chat.outLinkUid !== uid)
+      return Promise.reject(ChatErrEnum.unAuthChat);
 
     return {
       teamId: spaceTeamId,
