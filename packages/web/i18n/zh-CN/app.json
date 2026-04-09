@@ -734,6 +734,7 @@
   "application": "应用",
   "smart_qa": "智能问答",
   "create_new": "新建",
+  "create_new_app": "新建应用",
   "smart_qa_desc": "内置最佳实践配置，关联知识库即可快速构建智能问答应用",
   "agent_desc": "关联所需工具及Skill，可实现 AI 自主调用与规划",
   "workflow_desc": "可通过流程编排，实现多系统交互、多分支逻辑、多 Agent 调用等复杂业务流",

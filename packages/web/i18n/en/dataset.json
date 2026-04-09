@@ -41,7 +41,7 @@
   "common.dataset.data.Input Error Tip": "Error occurred while processing the image dataset:",
   "common.error.unKnow": "Unknown error.",
   "common_dataset": "General",
-  "common_dataset_desc": "通过导入文件、网页链接形式构建知识库",
+  "common_dataset_desc": "Build a knowledge base by importing files or web links.",
   "condition": "Condition",
   "config_sync_schedule": "Scheduled sync",
   "confirm_delete_collection": "Confirm to delete {{num }} files?",
@@ -492,10 +492,10 @@
   "synonym_example_synonyms1": "return,chargeback,reimbursement,money back",
   "synonym_example_standard2": "order",
   "synonym_example_synonyms2": "purchase order,order number,transaction,invoice",
-  "add_chunk_btn": "新增",
-  "add_chunk_modal_title": "新增分块",
-  "add_faq_modal_title": "新增 FAQ",
-  "add_success_toast": "新增成功（#{{index}}）",
-  "rebuilding_edit_tip": "索引生成中",
-  "training_cannot_edit": "正在处理中，无法编辑"
+  "add_chunk_btn": "Add",
+  "add_chunk_modal_title": "Add chunk",
+  "add_faq_modal_title": "Add FAQ",
+  "add_success_toast": "Added successfully (#{{index}})",
+  "rebuilding_edit_tip": "Generating indexes",
+  "training_cannot_edit": "Processing, cannot edit"
 }
