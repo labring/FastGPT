@@ -1,6 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getMCPChildren } from '@fastgpt/service/core/app/mcp';
@@ -11,6 +10,8 @@ import {
   type GetMcpChildrenQueryType,
   type GetMcpChildrenResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(
   req: ApiRequestProps<{}, GetMcpChildrenQueryType>,
@@ -18,9 +19,7 @@ async function handler(
 ): Promise<GetMcpChildrenResponseType> {
   const { id, searchKey } = GetMcpChildrenQuerySchema.parse(req.query);
 
-  const app = await MongoApp.findOne({ _id: id }).lean();
-
-  if (!app) return Promise.reject(new UserError('No Mcp Toolset found'));
+  const { app } = await authApp({ req, authToken: true, appId: id, per: ReadPermissionVal });
 
   if (app.type !== AppTypeEnum.mcpToolSet)
     return Promise.reject(new UserError('the parent is not a mcp toolset'));
