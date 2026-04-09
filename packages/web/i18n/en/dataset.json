@@ -193,7 +193,7 @@
   "status_error": "Running error occurred.",
   "sync_collection_failed": "Error occurred while syncing the collection. Please check whether the source file is accessible.",
   "sync_schedule": "Auto sync",
-  "sync_schedule_tip": "Only existing collections will be synced, including link collections and all collections in the API knowledge base. The update time is not fixed because collections are updated based on round-robin scheduling.",
+  "sync_schedule_tip": "Once enabled, the first automatic synchronization of the selected content will take place within 1 to 5 hours, with subsequent automatic synchronizations occurring every 24 hours thereafter.",
   "tag.Add_new_tag": "Add tag",
   "tag.Edit_tag": "Edit tag",
   "tag.add": "Add tag",
