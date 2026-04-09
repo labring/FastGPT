@@ -70,6 +70,10 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { getDatasetDataBatchPermission } from '@/web/core/dataset/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -168,6 +172,38 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+
+  // 批量查询数据集权限（所有消息只发一次请求）
+  const [datasetReadPerMap, setDatasetReadPerMap] = useState<Record<string, boolean>>({});
+  const uniqueDatasetIds = useMemo(() => {
+    return Array.from(
+      new Set(
+        chatRecords
+          .filter((record) => record.obj === ChatRoleEnum.AI)
+          .flatMap((record) => {
+            const { totalQuoteList = [] } = addStatisticalDataToHistoryItem(record);
+            return totalQuoteList
+              .filter((item) => !isDatabaseSource(item.sourceId) && item.datasetId)
+              .map((item) => item.datasetId);
+          })
+      )
+    );
+  }, [chatRecords]);
+  useEffect(() => {
+    if (uniqueDatasetIds.length === 0) return;
+    getDatasetDataBatchPermission(uniqueDatasetIds)
+      .then((resultMap) => {
+        setDatasetReadPerMap(
+          Object.fromEntries(
+            uniqueDatasetIds.map((id) => [id, resultMap[id]?.permission?.hasReadPer ?? false])
+          )
+        );
+      })
+      .catch(() => {
+        setDatasetReadPerMap(Object.fromEntries(uniqueDatasetIds.map((id) => [id, false])));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueDatasetIds.join(',')]);
 
   // Workflow running, there are user input or selection
   const lastInteractive = useMemo(() => getInteractiveByHistories(chatRecords), [chatRecords]);
@@ -1254,6 +1290,7 @@ const ChatBox = ({
                         chat={item}
                         isLastChild={index === processedRecords.length - 1}
                         hideCiteIcon={isAssistantType}
+                        datasetReadPerMap={datasetReadPerMap}
                         {...{
                           showVoiceIcon,
                           statusBoxData,

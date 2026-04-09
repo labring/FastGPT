@@ -65,6 +65,7 @@ type BasicProps = {
   questionGuides?: string[];
   children?: React.ReactNode;
   hideCiteIcon?: boolean;
+  datasetReadPerMap?: Record<string, boolean>;
 } & ChatControllerProps;
 
 type Props = BasicProps & {
@@ -157,7 +158,8 @@ const ChatItem = (props: Props) => {
     isLastChild,
     questionGuides = [],
     chat,
-    hideCiteIcon
+    hideCiteIcon,
+    datasetReadPerMap = {}
   } = props;
 
   const { t } = useTranslation();
@@ -389,6 +391,7 @@ const ChatItem = (props: Props) => {
                     showTags={!isLastChild || !isChatting}
                     historyItem={chat}
                     onOpenCiteModal={onOpenCiteModal}
+                    datasetReadPerMap={datasetReadPerMap}
                   />
                 )}
               </>

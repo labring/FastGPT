@@ -36,10 +36,12 @@ const AssistantDetailModal = dynamic(() => import('../../../components/Assistant
 const ResponseTags = ({
   showTags,
   historyItem,
-  onOpenCiteModal
+  onOpenCiteModal,
+  datasetReadPerMap = {}
 }: {
   showTags: boolean;
   historyItem: ChatSiteItemType;
+  datasetReadPerMap?: Record<string, boolean>;
   onOpenCiteModal: (e?: {
     collectionId?: string;
     sourceId?: string;
@@ -162,12 +164,10 @@ const ResponseTags = ({
 
   const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
 
-  const TODO = { list: true };
-
   return !showTags ? null : (
     <>
       {/* quote */}
-      <SimpleCitationDisplay historyItem={historyItem} datasetReadPerMap={TODO} />
+      <SimpleCitationDisplay historyItem={historyItem} datasetReadPerMap={datasetReadPerMap} />
 
       {isOpenWholeModal && isAssistantType && (
         <AssistantDetailModal
