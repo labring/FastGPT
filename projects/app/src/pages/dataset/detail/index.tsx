@@ -8,7 +8,6 @@ import dynamic from 'next/dynamic';
 import PageContainer from '@/components/PageContainer';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
-import MetaDataCard from '@/pageComponents/dataset/detail/MetaDataCard';
 import NavBar from '@/pageComponents/dataset/detail/NavBar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
@@ -20,11 +19,8 @@ import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import {
-  DashboardNavbar,
-  SIDEBAR_EXPANDED_WIDTH,
-  SIDEBAR_COLLAPSED_WIDTH
-} from '@/pageComponents/dashboard/Container';
+import { DashboardNavbar, SIDEBAR_COLLAPSED_WIDTH } from '@/pageComponents/dashboard/Container';
+import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 const CollectionCard = dynamic(
   () => import('@/pageComponents/dataset/detail/RefinedCollectionCard/index')
@@ -78,7 +74,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
       <NextHead title={datasetDetail?.name} icon={datasetDetail?.avatar} />
 
       {isPc ? (
-        <Flex h={'100%'} py={3} pl={1} pr={3} gap={2}>
+        <Flex h={'100%'} py={3} pl={4} pr={3} gap={2}>
           <Flex flex={1} w={0} bg={'white'} flexDir={'column'} boxShadow={'2'} borderRadius={'md'}>
             {![TabEnum.import, TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab) && (
               <NavBar currentTab={currentTab} />
@@ -135,19 +131,19 @@ const Detail = ({ datasetId, currentTab }: Props) => {
 
 const Render = (data: Props) => {
   const { isPc } = useSystem();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+  const [isCollapsed] = useState(true);
 
   return (
     <>
-      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} />}
       <Box
         h={'100%'}
-        pl={isPc ? sidebarWidth : 0}
+        pl={isPc ? SIDEBAR_COLLAPSED_WIDTH : 0}
         position={'relative'}
-        bg={'white'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
         transition="padding-left 0.2s ease"
       >
+        <BgDecoration />
         <DatasetPageContextProvider datasetId={data.datasetId}>
           <Detail {...data} />
         </DatasetPageContextProvider>

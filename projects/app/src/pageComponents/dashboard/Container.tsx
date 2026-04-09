@@ -2,6 +2,7 @@
 'use client';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Collapse, Flex, Text, VStack, useDisclosure } from '@chakra-ui/react';
+import BgDecoration from './BgDecoration';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -517,7 +518,10 @@ export const DashboardNavbar = ({
               icon="navbar/appBuildNew"
               label={t('common:navbar.app_build')}
               collapsedLabel={t('common:navbar.app_build')}
-              isActive={appBuildItems.some((item) => pathname.startsWith(item.path))}
+              isActive={
+                isCollapsed &&
+                isActivePrefix([...appBuildItems.map((item) => item.path), '/app/detail'])
+              }
               isCollapsed={isCollapsed}
               isExpanded={expandedKeys.includes('app-build')}
               onToggle={() => {
@@ -558,7 +562,10 @@ export const DashboardNavbar = ({
               icon="navbar/settingNew"
               label={t('common:Setting')}
               collapsedLabel={t('common:Setting')}
-              isActive={settingsItems.some((item) => item.path && pathname.startsWith(item.path))}
+              isActive={
+                isCollapsed &&
+                settingsItems.some((item) => item.path && pathname.startsWith(item.path))
+              }
               isCollapsed={isCollapsed}
               isExpanded={expandedKeys.includes('settings')}
               onToggle={() => {
@@ -695,9 +702,17 @@ const DashboardContainer = ({
         h={'100%'}
         pl={isPc ? sidebarWidth : 0}
         position={'relative'}
-        bg={'white'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
         transition="padding-left 0.2s ease"
       >
+        {[
+          '/dashboard/agent',
+          '/dashboard/tool',
+          '/dashboard/systemTool',
+          '/dashboard/templateMarket',
+          '/dashboard/evaluation',
+          '/dashboard/mcpServer'
+        ].includes(router.pathname) && <BgDecoration />}
         {children({
           templateTags,
           templateList,

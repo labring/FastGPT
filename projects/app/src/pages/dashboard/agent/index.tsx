@@ -1,7 +1,7 @@
 // @file 应用工作台（Agent）页面，展示智能问答和工作流应用列表
 'use client';
 import React, { useMemo, useState } from 'react';
-import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -35,6 +35,7 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import CreateModal from '@/pages/dashboard/create/CreateModal';
 import type { CreateAppType } from '@/pages/dashboard/create/CreateModal';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -110,91 +111,58 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      {/* 顶部类型 Tabs */}
-      {isPc && paths.length === 0 && (
-        <Flex
-          align="center"
-          justify="center"
-          py={3}
-          borderBottom="1px solid"
-          borderColor="myGray.100"
-          flexShrink={0}
-        >
-          <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} p={1}>
-            {agentTabList.map((tab) => {
-              const isActive = activeAgentTab === tab.value;
-              return (
-                <Box
-                  key={tab.value}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor={isActive ? 'default' : 'pointer'}
-                  px={6}
-                  h={8}
-                  fontSize={'13px'}
-                  fontWeight={'medium'}
-                  userSelect={'none'}
-                  {...(isActive
-                    ? {
-                        bg: 'white',
-                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                        color: 'myGray.900',
-                        borderRadius: '4px'
-                      }
-                    : {
-                        color: 'myGray.500',
-                        onClick: () =>
-                          router.push({
-                            pathname: '/dashboard/agent',
-                            query: { type: tab.value }
-                          })
-                      })}
-                >
-                  {tab.label}
-                </Box>
-              );
-            })}
-          </HStack>
-        </Flex>
-      )}{' '}
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
+          pr={folderDetail ? 4 : 4}
+          pl={4}
           pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
-              <Box>
-                <FolderPath
-                  paths={paths}
-                  hoverStyle={{ bg: 'myGray.200' }}
-                  forbidLastClick
-                  onClick={(parentId) => {
+          <Flex alignItems={'center'} position={'relative'}>
+            <Flex flex={1} alignItems={'center'}>
+              {!isPc ? (
+                MenuIcon
+              ) : paths.length > 0 ? (
+                <Box>
+                  <FolderPath
+                    paths={paths}
+                    hoverStyle={{ bg: 'myGray.200' }}
+                    forbidLastClick
+                    onClick={(parentId) => {
+                      router.push({
+                        query: {
+                          ...router.query,
+                          parentId
+                        }
+                      });
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+                  {t('app:application')}
+                </Box>
+              )}
+            </Flex>
+            {isPc && paths.length === 0 && (
+              <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+                <MyTabs
+                  tabs={agentTabList}
+                  value={activeAgentTab}
+                  onChange={(value) => {
                     router.push({
-                      query: {
-                        ...router.query,
-                        parentId
-                      }
+                      pathname: '/dashboard/agent',
+                      query: { type: value }
                     });
                   }}
                 />
               </Box>
-            ) : (
-              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-                {t('app:application')}
-              </Box>
             )}
-            <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
+            <Flex flex={1} justifyContent={'flex-end'} alignItems={'center'} gap={3}>
               {isPc && (
                 <SearchInput
                   maxW={['auto', '250px']}

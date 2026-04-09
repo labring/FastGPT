@@ -169,9 +169,8 @@ const DatasetCard = React.memo(function DatasetCard({
         cursor={'pointer'}
         borderWidth={1.5}
         border={'base'}
-        boxShadow={'2'}
         bg={'white'}
-        borderRadius={'lg'}
+        borderRadius={'8px'}
         position={'relative'}
         minH={'150px'}
         onMouseEnter={() => setIsHovered(true)}
@@ -182,7 +181,6 @@ const DatasetCard = React.memo(function DatasetCard({
         })}
         _hover={{
           borderColor: 'primary.300',
-          boxShadow: '1.5',
           '& .time': {
             display: ['flex', 'none']
           }

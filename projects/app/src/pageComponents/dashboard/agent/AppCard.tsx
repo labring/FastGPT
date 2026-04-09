@@ -261,7 +261,7 @@ const AppCard = React.memo(function AppCard({
         cursor={'pointer'}
         border={'base'}
         bg={'white'}
-        borderRadius={'10px'}
+        borderRadius={'8px'}
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
@@ -272,7 +272,6 @@ const AppCard = React.memo(function AppCard({
         onMouseLeave={() => setIsHovered(false)}
         _hover={{
           borderColor: 'primary.300',
-          boxShadow: '1.5',
           '& .time': {
             display: ['flex', 'none']
           }

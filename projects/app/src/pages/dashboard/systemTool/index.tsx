@@ -1,3 +1,4 @@
+// @file 系统工具市场页面，展示可安装的系统工具列表
 'use client';
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -5,7 +6,7 @@ import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plu
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid, HStack, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo, useState, useReducer, useRef } from 'react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -23,6 +24,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getTeamToolDetail } from '@/web/core/plugin/team/api';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -155,53 +157,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   return (
     <Flex flexDirection={'column'} h={'full'}>
-      {/* 顶部类型 Tabs */}
-      {isPc && (
-        <Flex
-          align="center"
-          justify="center"
-          py={3}
-          borderBottom="1px solid"
-          borderColor="myGray.100"
-          flexShrink={0}
-        >
-          <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} p={1}>
-            {toolTabList.map((tab) => {
-              const isActive = tab.value === 'system';
-              return (
-                <Box
-                  key={tab.value}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor={isActive ? 'default' : 'pointer'}
-                  px={6}
-                  h={8}
-                  fontSize={'13px'}
-                  fontWeight={'medium'}
-                  userSelect={'none'}
-                  {...(isActive
-                    ? {
-                        bg: 'white',
-                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                        color: 'myGray.900',
-                        borderRadius: '4px'
-                      }
-                    : {
-                        color: 'myGray.500',
-                        onClick: () => router.push(tab.path)
-                      })}
-                >
-                  {tab.label}
-                </Box>
-              );
-            })}
-          </HStack>
-        </Flex>
-      )}
-      <Box flex={'1 0 0'} h={0}>
+      <Box flex={'1 0 0'} h={0} px={4} pb={4}>
         <MyBox
-          bg={'white'}
           h={'full'}
           rounded={'8px'}
           position={'relative'}
@@ -209,42 +166,46 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flexDirection={'column'}
           isLoading={loadingTools && displayTools.length === 0}
         >
-          <Box px={8} flexShrink={0}>
+          <Box px={4} flexShrink={0}>
             {isPc && (
-              <Flex alignItems={'center'}>
-                <Box
-                  mt={8}
-                  mb={4}
-                  fontSize={'20px'}
-                  fontWeight={'medium'}
-                  color={'myGray.900'}
-                  flex={'1 0 0'}
-                >
+              <Flex alignItems={'center'} position={'relative'} mt={8} mb={4}>
+                <Box fontSize={'20px'} fontWeight={'medium'} color={'myGray.900'} flex={1}>
                   {t('app:core.module.template.System Tools')}
                 </Box>
-                {feConfigs?.docUrl && (
-                  <Button
-                    mr={4}
-                    onClick={() =>
-                      window.open(
-                        getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
-                        '_blank'
-                      )
-                    }
-                  >
-                    {t('app:toolkit_contribute_resource')}
-                  </Button>
-                )}
-                {feConfigs?.submitPluginRequestUrl && (
-                  <Button
-                    variant={'whiteBase'}
-                    onClick={() => {
-                      window.open(feConfigs.submitPluginRequestUrl);
+                <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+                  <MyTabs
+                    tabs={toolTabList}
+                    value="system"
+                    onChange={(value) => {
+                      const tab = toolTabList.find((t) => t.value === value);
+                      if (tab) router.push(tab.path);
                     }}
-                  >
-                    {t('app:toolkit_marketplace_submit_request')}
-                  </Button>
-                )}
+                  />
+                </Box>
+                <Flex flex={1} justifyContent={'flex-end'} gap={4}>
+                  {feConfigs?.docUrl && (
+                    <Button
+                      onClick={() =>
+                        window.open(
+                          getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
+                          '_blank'
+                        )
+                      }
+                    >
+                      {t('app:toolkit_contribute_resource')}
+                    </Button>
+                  )}
+                  {feConfigs?.submitPluginRequestUrl && (
+                    <Button
+                      variant={'whiteBase'}
+                      onClick={() => {
+                        window.open(feConfigs.submitPluginRequestUrl);
+                      }}
+                    >
+                      {t('app:toolkit_marketplace_submit_request')}
+                    </Button>
+                  )}
+                </Flex>
               </Flex>
             )}
             {/* Tags */}
@@ -375,7 +336,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             </Flex>
           </Box>
 
-          <Box flex={1} overflowY={'auto'} px={8} pb={6}>
+          <Box flex={1} overflowY={'auto'} px={4} pb={6}>
             {displayTools.length > 0 ? (
               <Grid
                 gridTemplateColumns={[
@@ -385,7 +346,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   'repeat(3,1fr)',
                   'repeat(4,1fr)'
                 ]}
-                gridGap={5}
+                gridGap={3}
                 alignItems={'stretch'}
               >
                 {displayTools.map((tool) => {

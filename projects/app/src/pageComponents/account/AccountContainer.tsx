@@ -13,6 +13,7 @@ import {
   SIDEBAR_EXPANDED_WIDTH,
   SIDEBAR_COLLAPSED_WIDTH
 } from '@/pageComponents/dashboard/Container';
+import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 export enum TabEnum {
   'info' = 'info',
@@ -167,8 +168,10 @@ const AccountContainer = ({
         h={'100%'}
         pl={isPc ? sidebarWidth : 0}
         position={'relative'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
         transition="padding-left 0.2s ease"
       >
+        <BgDecoration />
         <PageContainer isLoading={isLoading}>
           <Flex flexDirection={'column'} h={'100%'} pt={[4, 0]}>
             {!isPc && (

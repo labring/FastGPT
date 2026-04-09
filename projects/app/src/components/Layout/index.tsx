@@ -86,9 +86,13 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     [router.pathname, router.query]
   );
   const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
-  // Dashboard 页面使用新版侧边导航栏，不需要旧版 Navbar
+  // Dashboard/dataset/account/app/detail 页面使用新版侧边导航栏，不需要旧版 Navbar
   const isDashboardPage = useMemo(
-    () => router.pathname.startsWith('/dashboard'),
+    () =>
+      router.pathname.startsWith('/dashboard') ||
+      router.pathname.startsWith('/dataset') ||
+      router.pathname.startsWith('/account') ||
+      router.pathname === '/app/detail',
     [router.pathname]
   );
 
