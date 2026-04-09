@@ -1,20 +1,7 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-
-/* ============================================================================
- * 共享 Schema
- * ============================================================================ */
-
-export const DatasetCiteItemSchema = z.object({
-  _id: z.string().meta({ description: '数据 ID' }),
-  q: z.string().meta({ description: '问题/主文本' }),
-  a: z.string().optional().meta({ description: '回答/补充文本' }),
-  imagePreivewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
-  updateTime: z.any().meta({ description: '更新时间' }),
-  index: z.number().optional().meta({ description: 'chunk 序号' }),
-  updated: z.boolean().optional().meta({ description: '是否已更新' })
-});
+import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 
 /* ============================================================================
  * API: 获取对话引用数据
@@ -51,9 +38,7 @@ export const GetQuoteBodySchema = OutLinkChatAuthSchema.extend({
 });
 export type GetQuoteBodyType = z.infer<typeof GetQuoteBodySchema>;
 
-export const GetQuoteResponseSchema = z.array(DatasetCiteItemSchema).meta({
-  description: '引用数据列表'
-});
+export const GetQuoteResponseSchema = z.array(DatasetCiteItemSchema);
 export type GetQuoteResponseType = z.infer<typeof GetQuoteResponseSchema>;
 
 /* ============================================================================

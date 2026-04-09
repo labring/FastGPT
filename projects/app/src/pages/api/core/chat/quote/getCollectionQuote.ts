@@ -12,18 +12,12 @@ import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/con
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import {
   GetCollectionQuoteBodySchema,
-  type GetCollectionQuoteBodyType,
   type GetCollectionQuoteResType
 } from '@fastgpt/global/openapi/core/chat/quote/api';
 
-export type GetCollectionQuoteProps = GetCollectionQuoteBodyType;
-export type GetCollectionQuoteRes = GetCollectionQuoteResType;
-
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
-async function handler(
-  req: ApiRequestProps<GetCollectionQuoteProps>
-): Promise<GetCollectionQuoteRes> {
+async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType> {
   const {
     initialId,
     prevId,
@@ -111,7 +105,7 @@ async function handleInitialLoad({
   pageSize: number;
   chatTime: Date;
   baseMatch: BaseMatchType;
-}): Promise<GetCollectionQuoteRes> {
+}): Promise<GetCollectionQuoteResType> {
   const centerNode = await MongoDatasetData.findOne(
     {
       _id: new Types.ObjectId(initialId)
@@ -178,7 +172,7 @@ async function handlePaginatedLoad({
   pageSize: number;
   chatTime: Date;
   baseMatch: BaseMatchType;
-}): Promise<GetCollectionQuoteRes> {
+}): Promise<GetCollectionQuoteResType> {
   const { list, hasMore } = prevId
     ? await getPrevNodes(prevId, nextAnchor, pageSize, baseMatch)
     : await getNextNodes(nextId!, nextAnchor, pageSize, baseMatch);

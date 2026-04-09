@@ -16,11 +16,11 @@ import type {
   GetQuoteBodyType,
   GetQuoteResponseType
 } from '@fastgpt/global/openapi/core/chat/quote/api';
-import type {
-  GetCollectionQuoteProps,
-  GetCollectionQuoteRes
-} from '@/pages/api/core/chat/quote/getCollectionQuote';
 import type { ChatSettingModelType, ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import type {
+  GetCollectionQuoteBodyType,
+  GetCollectionQuoteResType
+} from '@fastgpt/global/openapi/core/chat/quote/api';
 import type {
   GetChatFavouriteListParamsType,
   UpdateFavouriteAppParamsType
@@ -63,8 +63,8 @@ export const delChatRecordById = (data: DeleteChatItemProps) =>
 export const getQuoteDataList = (data: GetQuoteBodyType) =>
   POST<GetQuoteResponseType>(`/core/chat/quote/getQuote`, data);
 
-export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
-  POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
+export const getCollectionQuote = (data: GetCollectionQuoteBodyType) =>
+  POST<GetCollectionQuoteResType>(`/core/chat/quote/getCollectionQuote`, data);
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => GET<ChatSettingType>('/proApi/core/chat/setting/detail');
