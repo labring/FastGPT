@@ -45,9 +45,10 @@ export const buildOpenSandboxCreateConfig = (
   opts: {
     volumes?: OpenSandboxConfigType['volumes'];
     resourceLimits?: OpenSandboxConfigType['resourceLimits'];
+    createConfig?: OpenSandboxConfigType;
   } = {}
 ): OpenSandboxConfigType => {
-  if (!env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO) {
+  if (!env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO && !opts.createConfig?.image) {
     throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required for opensandbox provider');
   }
   return {
@@ -56,6 +57,7 @@ export const buildOpenSandboxCreateConfig = (
       tag: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     },
     ...(opts.resourceLimits ? { resourceLimits: opts.resourceLimits } : {}),
+    ...opts.createConfig,
     ...(opts.volumes ? { volumes: opts.volumes } : {})
   };
 };

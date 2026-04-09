@@ -8,7 +8,7 @@
  * - releaseAgentSandbox：断开 SDK 连接，不销毁容器
  */
 
-import type { ISandbox, OpenSandboxVolume } from '@fastgpt-sdk/sandbox-adapter';
+import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import type { HydratedDocument } from 'mongoose';
 import { MongoAgentSkills } from '../../../../../../agentSkills/schema';
 import { MongoSandboxInstance } from '../../../../../../ai/sandbox/schema';
@@ -19,16 +19,12 @@ import {
   getSandboxProviderConfig,
   getSandboxDefaults,
   validateSandboxConfig,
-  buildSandboxAdapter,
-  connectToProviderSandbox,
   disconnectFromProviderSandbox,
-  getVolumeManagerConfig,
-  ensureSessionVolume,
-  buildVolumeConfig,
   buildBaseContainerEnv
 } from '../../../../../../agentSkills/sandboxConfig';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
 import { env } from '../../../../../../../env';
 import type {
   AgentSkillSchemaType,
@@ -202,21 +198,11 @@ export async function createAgentSandbox(
     });
 
     onProgress?.({ sandboxId: sessionId, phase: 'connecting', isWarmStart: true });
-    const sandbox = await connectToProviderSandbox(providerConfig, existingInstance.sandboxId);
 
-    if (existingInstance.status === SandboxStatusEnum.stopped) {
-      logger.info('[Agent Sandbox] Resuming stopped sandbox', {
-        sessionId,
-        providerSandboxId: existingInstance.sandboxId
-      });
-      await sandbox.start();
-      await sandbox.waitUntilReady(60000);
-    }
-
-    await MongoSandboxInstance.updateOne(
-      { _id: existingInstance._id },
-      { lastActiveAt: new Date() }
-    );
+    // getSandboxClient internally calls ensureAvailable():
+    //   - updates DB status=running, lastActiveAt
+    //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
+    const client = await getSandboxClient({ sandboxId: existingInstance.sandboxId });
 
     const reusedSkillIds = existingInstance.metadata?.skillIds
       ? existingInstance.metadata.skillIds.map(String)
@@ -227,10 +213,9 @@ export async function createAgentSandbox(
     const mergedSkills = skills.map((skill) =>
       mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id)))
     );
-    // Dynamically discover deployed skills instead of reconstructing from DB name assumptions
-    const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
+    const deployedSkills = await discoverSkillsInSandbox(client.provider, defaults.workDirectory);
     return {
-      sandbox,
+      sandbox: client.provider,
       providerSandboxId: existingInstance.sandboxId,
       sessionId,
       skills: mergedSkills,
@@ -284,46 +269,35 @@ export async function createAgentSandbox(
     }
   }
 
-  // Step 3: Create sandbox container, inject SESSION_ID
-  let sandbox: ISandbox | null = null;
+  // Step 3: Create sandbox container via getSandboxClient (handles volumes internally)
+  let sandboxClient: SandboxClient | null = null;
 
   try {
-    const createEntrypoint = defaults.entrypoint;
-
-    let volumes: OpenSandboxVolume[] | undefined;
-    if (providerConfig.provider === 'opensandbox' && env.AGENT_SANDBOX_ENABLE_VOLUME) {
-      const vmConfig = getVolumeManagerConfig();
-      const claimName = await ensureSessionVolume(sessionId, vmConfig);
-      volumes = [
-        buildVolumeConfig(providerConfig.runtime, sessionId, claimName, vmConfig.mountPath)
-      ];
-    }
-
-    const createConfig = {
-      image: image ?? defaults.defaultImage,
-      entrypoint: [entrypoint ?? createEntrypoint],
-      env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
-      volumes,
-      metadata: {
-        teamId,
-        tmbId,
-        sandboxType: SandboxTypeEnum.sessionRuntime,
-        skillIds: skillIds.join('-'),
-        sessionId
-      }
-    };
-
-    sandbox = buildSandboxAdapter(providerConfig, {
-      providerSandboxId: sessionId,
-      createConfig
-    });
-
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer', isWarmStart: false });
-    await sandbox.create();
 
-    await sandbox.waitUntilReady(60000);
+    // getSandboxClient handles volumes internally (via getVolumeManagerConfig) and calls
+    // provider.ensureRunning() which creates the container when it doesn't exist
+    const client = await getSandboxClient(
+      { sandboxId: sessionId },
+      {
+        createConfig: {
+          image: image ?? defaults.defaultImage,
+          entrypoint: [entrypoint ?? defaults.entrypoint],
+          env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
+          // volumes: handled internally by getSandboxClient via getVolumeManagerConfig
+          metadata: {
+            teamId,
+            tmbId,
+            sandboxType: SandboxTypeEnum.sessionRuntime,
+            skillIds: skillIds.join('-'),
+            sessionId
+          }
+        }
+      }
+    );
+    sandboxClient = client;
 
-    const sandboxInfo = await sandbox.getInfo();
+    const sandboxInfo = await client.provider.getInfo();
     if (!sandboxInfo) throw new Error('Failed to get sandbox info after creation');
 
     logger.info('[Agent Sandbox] Sandbox created', {
@@ -334,7 +308,7 @@ export async function createAgentSandbox(
     // Step 4: Deploy skill packages (only when skills are configured)
     if (hasSkills) {
       await deploySkillsToSandbox(
-        sandbox,
+        client.provider,
         deployableSkills,
         versionMap,
         defaults.workDirectory,
@@ -343,41 +317,43 @@ export async function createAgentSandbox(
       );
     }
     const deployedSkills = hasSkills
-      ? await discoverSkillsInSandbox(sandbox, defaults.workDirectory)
+      ? await discoverSkillsInSandbox(client.provider, defaults.workDirectory)
       : [];
 
-    // Step 5: Persist to MongoDB
-    await MongoSandboxInstance.create({
-      provider: providerConfig.provider,
-      sandboxId: sandboxInfo.id,
-      appId: teamId, // session-runtime uses teamId as appId
-      userId: tmbId,
-      chatId: sessionId,
-      status: SandboxStatusEnum.running,
-      lastActiveAt: new Date(),
-      createdAt: new Date(),
-      metadata: {
-        sandboxType: SandboxTypeEnum.sessionRuntime,
-        teamId,
-        tmbId,
-        sessionId,
-        skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
-        provider: providerConfig.provider,
-        image: sandboxInfo.image,
-        providerStatus: {
-          state: sandboxInfo.status.state,
-          message: sandboxInfo.status.message,
-          reason: sandboxInfo.status.reason
-        },
-        providerCreatedAt: sandboxInfo.createdAt
+    // Step 5: Enrich the DB record created by getSandboxClient.ensureAvailable() with full metadata.
+    // Use sessionId (the client-side key) because ensureAvailable() stores the record with
+    // sandboxId=sessionId, not with the provider-assigned sandboxInfo.id.
+    await MongoSandboxInstance.findOneAndUpdate(
+      { sandboxId: sessionId },
+      {
+        $set: {
+          appId: teamId, // session-runtime uses teamId as appId
+          userId: tmbId,
+          chatId: sessionId,
+          metadata: {
+            sandboxType: SandboxTypeEnum.sessionRuntime,
+            teamId,
+            tmbId,
+            sessionId,
+            skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
+            provider: providerConfig.provider,
+            image: sandboxInfo.image,
+            providerStatus: {
+              state: sandboxInfo.status.state,
+              message: sandboxInfo.status.message,
+              reason: sandboxInfo.status.reason
+            },
+            providerCreatedAt: sandboxInfo.createdAt
+          }
+        }
       }
-    });
+    );
 
     logger.info('[Agent Sandbox] Sandbox info saved to MongoDB', { sessionId });
 
     onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: false });
     return {
-      sandbox,
+      sandbox: client.provider,
       providerSandboxId: sandboxInfo.id,
       sessionId,
       skills: hasSkills
@@ -392,13 +368,14 @@ export async function createAgentSandbox(
   } catch (error) {
     logger.error('[Agent Sandbox] Failed to create sandbox', { error });
 
-    if (sandbox) {
+    if (sandboxClient) {
       try {
-        await sandbox.delete();
+        // sandboxClient.delete() cleans up: provider container + session volume + DB record
+        await sandboxClient.delete();
       } catch (cleanupError) {
         logger.error('[Agent Sandbox] Cleanup failed after creation error', { cleanupError });
       }
-      await disconnectFromProviderSandbox(sandbox);
+      await disconnectFromProviderSandbox(sandboxClient.provider);
     }
 
     throw error;
@@ -436,9 +413,7 @@ export async function connectEditDebugSandbox(
   params: ConnectEditDebugSandboxParams
 ): Promise<AgentSandboxContext> {
   const { skillId, teamId } = params;
-  const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
-  validateSandboxConfig(providerConfig);
 
   const instanceDoc = await MongoSandboxInstance.findOne({
     appId: skillId,
@@ -458,9 +433,10 @@ export async function connectEditDebugSandbox(
     throw new Error('Skill not found');
   }
 
-  const sandbox = await connectToProviderSandbox(providerConfig, instanceDoc.sandboxId);
-
-  await MongoSandboxInstance.updateOne({ _id: instanceDoc._id }, { lastActiveAt: new Date() });
+  // getSandboxClient internally calls ensureAvailable():
+  //   - updates DB status=running, lastActiveAt
+  //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
+  const client = await getSandboxClient({ sandboxId: instanceDoc.sandboxId });
 
   logger.info('[Agent Sandbox] Connected to edit-debug sandbox', {
     skillId,
@@ -468,10 +444,10 @@ export async function connectEditDebugSandbox(
   });
 
   // Dynamically discover deployed skills instead of reading from persisted metadata
-  const deployedSkills = await discoverSkillsInSandbox(sandbox, defaults.workDirectory);
+  const deployedSkills = await discoverSkillsInSandbox(client.provider, defaults.workDirectory);
 
   return {
-    sandbox,
+    sandbox: client.provider,
     providerSandboxId: instanceDoc.sandboxId,
     sessionId: String(instanceDoc._id), // editDebug sandbox uses its own _id as sessionId
     skills: [skill.toJSON()],
