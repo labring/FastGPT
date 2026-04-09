@@ -39,10 +39,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   });
 
   const knowledgeTypeConfig = useMemo(() => {
-    const nodeList = getNodeList();
-    const datasetList = (nodeList.find((node) => node.nodeId === nodeId)?.inputs || []).filter(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    );
+    const datasetList = inputs.filter((input) => input.key === NodeInputKeyEnum.datasetSelectList);
     const knowledgeInfoList = datasetList
       .map((dataset) => dataset.value)
       .flat()
@@ -50,20 +47,15 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
     // 引用变量场景展示全部
     if (datasetList.some((v) => v.selectedTypeIndex == 1)) {
-      setData((e) => ({
-        ...e,
-        searchMode:
-          e.searchMode === DatasetSearchModeEnum.database
-            ? DatasetSearchModeEnum.embedding
-            : e.searchMode
-      }));
       return {
+        isVariableRef: true,
         hasDatabaseKnowledge: true,
         hasOtherKnowledge: true
       };
     }
 
     return {
+      isVariableRef: false,
       hasDatabaseKnowledge: knowledgeInfoList.some(
         (item) => item.datasetType && isDatabaseDataset(item.datasetType)
       ),
@@ -73,7 +65,19 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
         ) || knowledgeInfoList.length === 0
     };
-  }, [getNodeList, nodeAmount, nodeId]);
+  }, [inputs]);
+
+  useEffect(() => {
+    if (knowledgeTypeConfig.isVariableRef) {
+      setData((e) => ({
+        ...e,
+        searchMode:
+          e.searchMode === DatasetSearchModeEnum.database
+            ? DatasetSearchModeEnum.embedding
+            : e.searchMode
+      }));
+    }
+  }, [knowledgeTypeConfig.isVariableRef]);
 
   const tokenLimit = useMemo(() => {
     let maxTokens = 0;
