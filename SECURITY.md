@@ -5,8 +5,7 @@
 If you discover a security vulnerability in FastGPT, please follow the steps below to report it:
 
 1. **How to Report**
-   Send an email to: archer@fastgpt.io
-   Please include the version number and your GitHub account.
+   You can submit a report at https://github.com/labring/FastGPT/security/advisories.
 
 2. **Response Time**
    - We will acknowledge receipt of your report within 48 hours.
