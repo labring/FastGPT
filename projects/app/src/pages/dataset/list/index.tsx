@@ -30,6 +30,11 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import {
+  DashboardNavbar,
+  SIDEBAR_EXPANDED_WIDTH,
+  SIDEBAR_COLLAPSED_WIDTH
+} from '@/pageComponents/dashboard/Container';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -342,10 +347,25 @@ export async function getServerSideProps(content: any) {
 }
 
 function DatasetContextWrapper() {
+  const { isPc } = useSystem();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+
   return (
-    <DatasetContextProvider>
-      <Dataset />
-    </DatasetContextProvider>
+    <>
+      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+      <Box
+        h={'100%'}
+        pl={isPc ? sidebarWidth : 0}
+        position={'relative'}
+        bg={'white'}
+        transition="padding-left 0.2s ease"
+      >
+        <DatasetContextProvider>
+          <Dataset />
+        </DatasetContextProvider>
+      </Box>
+    </>
   );
 }
 

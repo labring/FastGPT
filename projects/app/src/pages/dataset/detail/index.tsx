@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -20,6 +20,11 @@ import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import {
+  DashboardNavbar,
+  SIDEBAR_EXPANDED_WIDTH,
+  SIDEBAR_COLLAPSED_WIDTH
+} from '@/pageComponents/dashboard/Container';
 
 const CollectionCard = dynamic(
   () => import('@/pageComponents/dataset/detail/RefinedCollectionCard/index')
@@ -128,11 +133,28 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   );
 };
 
-const Render = (data: Props) => (
-  <DatasetPageContextProvider datasetId={data.datasetId}>
-    <Detail {...data} />
-  </DatasetPageContextProvider>
-);
+const Render = (data: Props) => {
+  const { isPc } = useSystem();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+
+  return (
+    <>
+      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+      <Box
+        h={'100%'}
+        pl={isPc ? sidebarWidth : 0}
+        position={'relative'}
+        bg={'white'}
+        transition="padding-left 0.2s ease"
+      >
+        <DatasetPageContextProvider datasetId={data.datasetId}>
+          <Detail {...data} />
+        </DatasetPageContextProvider>
+      </Box>
+    </>
+  );
+};
 export default Render;
 
 export async function getServerSideProps(context: any) {

@@ -1,6 +1,7 @@
+// @file 应用工作台（Agent）页面，展示智能问答和工作流应用列表
 'use client';
-import React, { useState } from 'react';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Box, Button, Flex, HStack, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -95,8 +96,68 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const [createAppType, setCreateAppType] = useState<CreateAppType>();
 
+  const agentTabList = useMemo(
+    () => [
+      { label: t('app:smart_qa'), value: AppTypeEnum.assistant },
+      { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow }
+    ],
+    [t]
+  );
+
+  // 当 type 为 'all'（默认）时，视觉上默认激活"智能问答"
+  const activeAgentTab =
+    !appType || appType === 'all' ? AppTypeEnum.assistant : (appType as string);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
+      {/* 顶部类型 Tabs */}
+      {isPc && paths.length === 0 && (
+        <Flex
+          align="center"
+          justify="center"
+          py={3}
+          borderBottom="1px solid"
+          borderColor="myGray.100"
+          flexShrink={0}
+        >
+          <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} p={1}>
+            {agentTabList.map((tab) => {
+              const isActive = activeAgentTab === tab.value;
+              return (
+                <Box
+                  key={tab.value}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor={isActive ? 'default' : 'pointer'}
+                  px={6}
+                  h={8}
+                  fontSize={'13px'}
+                  fontWeight={'medium'}
+                  userSelect={'none'}
+                  {...(isActive
+                    ? {
+                        bg: 'white',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        color: 'myGray.900',
+                        borderRadius: '4px'
+                      }
+                    : {
+                        color: 'myGray.500',
+                        onClick: () =>
+                          router.push({
+                            pathname: '/dashboard/agent',
+                            query: { type: tab.value }
+                          })
+                      })}
+                >
+                  {tab.label}
+                </Box>
+              );
+            })}
+          </HStack>
+        </Flex>
+      )}{' '}
       <Flex gap={5} flex={'1 0 0'} h={0}>
         <Flex
           flex={'1 0 0'}
@@ -160,7 +221,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         variant={'primary'}
                         leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
                       >
-                        {t('新建应用')}
+                        {t('app:new_app')}
                       </Button>
                     }
                     menuList={[
@@ -270,7 +331,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           </Box>
         )}
       </Flex>
-
       {!!editFolder && (
         <EditFolderModal
           {...editFolder}
@@ -309,7 +369,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user', 'skill']))
+      ...(await serviceSideProps(content, ['app', 'user', 'skill', 'account']))
     }
   };
 }

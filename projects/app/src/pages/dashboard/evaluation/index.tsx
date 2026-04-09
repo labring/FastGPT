@@ -64,7 +64,8 @@ export async function getServerSideProps(content: any) {
         'evaluation',
         'dataset',
         'app',
-        'common'
+        'common',
+        'account'
       ]))
     }
   };
