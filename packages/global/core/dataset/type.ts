@@ -174,7 +174,7 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  chunkIndex: z.int().positive().meta({ description: '块索引' }),
+  chunkIndex: z.int().min(0).meta({ description: '块索引' }),
   updateTime: z.date().meta({ description: '更新时间' }),
   history: z.array(DatasetDataHistorySchema).optional().meta({ description: '历史版本' }),
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
