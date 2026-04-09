@@ -56,43 +56,54 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   );
 
   // batchRun: per-task lazy clone — peak memory = concurrency * subgraph size
+  const MAX_RETRY_ATTEMPTS = 3;
+
   const taskResults = await batchRun(
     loopInputArray,
     async (item: any, index: number) => {
-      const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
-        runtimeNodes,
-        runtimeEdges,
-        childrenNodeIdList,
-        item,
-        index
-      });
+      let lastResult: Awaited<ReturnType<typeof parseTaskResponse>> | undefined;
 
-      try {
-        const response = await runWorkflow({
-          ...props,
-          // TC0034: isolate variables — see cloneTaskVariables JSDoc
-          variables: cloneTaskVariables(props.variables),
-          runtimeNodes: taskRuntimeNodes,
-          runtimeEdges: taskRuntimeEdges
+      for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+        const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
+          runtimeNodes,
+          runtimeEdges,
+          childrenNodeIdList,
+          item,
+          index
         });
 
-        // Push usage per task immediately (mirror runLoop pattern)
-        const itemUsagePoint = response.flowUsages.reduce(
-          (acc, usage) => acc + usage.totalPoints,
-          0
-        );
-        props.usagePush([
-          {
-            totalPoints: itemUsagePoint,
-            moduleName: `${name}-${index}`
-          }
-        ]);
+        try {
+          const response = await runWorkflow({
+            ...props,
+            // TC0034: isolate variables — see cloneTaskVariables JSDoc
+            variables: cloneTaskVariables(props.variables),
+            runtimeNodes: taskRuntimeNodes,
+            runtimeEdges: taskRuntimeEdges
+          });
 
-        return parseTaskResponse({ index, response });
-      } catch (err) {
-        return parseTaskError(index, err);
+          // Push usage per attempt (resources were consumed regardless of success)
+          const itemUsagePoint = response.flowUsages.reduce(
+            (acc, usage) => acc + usage.totalPoints,
+            0
+          );
+          props.usagePush([
+            {
+              totalPoints: itemUsagePoint,
+              moduleName: `${name}-${index}`
+            }
+          ]);
+
+          const result = parseTaskResponse({ index, response });
+          if (result.success) return result;
+
+          lastResult = result;
+        } catch (err) {
+          lastResult = parseTaskError(index, err);
+        }
+        // taskRuntimeNodes / taskRuntimeEdges go out of scope → GC
       }
-      // taskRuntimeNodes / taskRuntimeEdges go out of scope → GC
+
+      return lastResult!;
     },
     concurrency
   );
