@@ -12,7 +12,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -39,11 +39,12 @@ const makeNode = (
   outputs: []
 });
 
-const makeEdge = (source: string, target: string): StoreEdgeItemType => ({
+const makeEdge = (source: string, target: string): RuntimeEdgeItemType => ({
   source,
   sourceHandle: `${source}-right`,
   target,
-  targetHandle: `${target}-left`
+  targetHandle: `${target}-left`,
+  status: 'waiting'
 });
 
 const makeDispatchFlowResponse = (
@@ -106,8 +107,8 @@ describe('parallelRun/service', () => {
       expect(clampParallelConcurrency(10.9, 20)).toBe(10);
     });
 
-    it('env 上限 3（<5）→ 自动提升到最小 5', () => {
-      expect(clampParallelConcurrency(5, 3)).toBe(5);
+    it('env 上限 3（<5）→ 用户输入 5 被 clamp 到 3（尊重管理员配置）', () => {
+      expect(clampParallelConcurrency(5, 3)).toBe(3);
     });
 
     it('env 上限 150（>100）→ 压缩到 100', () => {
@@ -131,12 +132,12 @@ describe('parallelRun/service', () => {
     const outsideNode = makeNode('outside', FlowNodeTypeEnum.chatNode);
 
     const runtimeNodes = [startNode, endNode, outsideNode];
-    const storeEdges: StoreEdgeItemType[] = [makeEdge('start', 'end')];
+    const runtimeEdges: RuntimeEdgeItemType[] = [makeEdge('start', 'end')];
 
     it('克隆后修改 taskRuntimeNodes 不影响原始 runtimeNodes（深拷贝验证）', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: storeEdges,
+        runtimeEdges,
         childrenNodeIdList,
         item: 'test',
         index: 0
@@ -152,7 +153,7 @@ describe('parallelRun/service', () => {
     it('nestedStart 子节点 isEntry 被设为 true', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: storeEdges,
+        runtimeEdges,
         childrenNodeIdList,
         item: 'hello',
         index: 0
@@ -165,7 +166,7 @@ describe('parallelRun/service', () => {
     it('nestedStart 的 nestedStartInput 被设为当前 item', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: storeEdges,
+        runtimeEdges,
         childrenNodeIdList,
         item: 'my-item',
         index: 0
@@ -181,7 +182,7 @@ describe('parallelRun/service', () => {
     it('nestedStart 的 nestedStartIndex 被设为 index + 1（1-based）', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: storeEdges,
+        runtimeEdges,
         childrenNodeIdList,
         item: 'x',
         index: 2
@@ -197,7 +198,7 @@ describe('parallelRun/service', () => {
     it('不在 childrenNodeIdList 中的节点不被设为 entry', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: storeEdges,
+        runtimeEdges,
         childrenNodeIdList,
         item: 'x',
         index: 0
@@ -207,21 +208,21 @@ describe('parallelRun/service', () => {
       expect(outsideClone?.isEntry).toBe(false);
     });
 
-    it('runtimeEdges 经 storeEdges2RuntimeEdges 转换后独立克隆（修改不影响原始）', () => {
+    it('runtimeEdges 独立克隆（修改克隆边不影响原始）', () => {
       const { taskRuntimeEdges } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: storeEdges,
+        runtimeEdges,
         childrenNodeIdList,
         item: 'x',
         index: 0
       });
 
-      // 转换后应有 status 字段
+      // 克隆后应保留 status 字段
       expect(taskRuntimeEdges[0]).toHaveProperty('status', 'waiting');
 
-      // 修改克隆边不影响原始 storeEdges
+      // 修改克隆边不影响原始 runtimeEdges
       (taskRuntimeEdges[0] as any).source = 'MUTATED';
-      expect(storeEdges[0].source).toBe('start');
+      expect(runtimeEdges[0].source).toBe('start');
     });
   });
 

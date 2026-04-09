@@ -19,7 +19,8 @@ const arrayTypeToElementMap: Partial<Record<WorkflowIOValueTypeEnum, WorkflowIOV
 /**
  * Read user-configured concurrency from inputs array, clamp to env max.
  * - user value: floor to integer; <1 → 1; >max → max.
- * - envMax: clamped to [5, 100] (TC0045).
+ * - envMax: upper bound capped at 100. The env value is respected as-is
+ *   (no forced minimum) so that administrators can restrict to any positive integer.
  * - Default concurrency = 5, env max default = 10.
  */
 export const resolveParallelConcurrency = (
@@ -27,7 +28,7 @@ export const resolveParallelConcurrency = (
   envMax: number | undefined
 ): number => {
   const rawMax = envMax && envMax > 0 ? envMax : 10;
-  const max = Math.max(5, Math.min(Math.floor(rawMax), 100));
+  const max = Math.min(Math.floor(rawMax), 100);
   const defaultConcurrency = 5;
 
   const input = inputs.find((i) => i.key === NodeInputKeyEnum.parallelRunMaxConcurrency);
@@ -102,7 +103,8 @@ export const validateConcurrencyInput = (
   envMax: number
 ): ValidateConcurrencyResult => {
   const num = Number(value);
-  if (isNaN(num) || typeof value === 'string') {
+  // Rely solely on isNaN: Number("5") === 5, so numeric strings are accepted.
+  if (isNaN(num)) {
     return { valid: false, error: 'not a number' };
   }
   if (num < 1) {

@@ -6,7 +6,7 @@ import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+
 import { env } from '../../../../env';
 import { runWorkflow } from '..';
 import {
@@ -61,7 +61,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     async (item: any, index: number) => {
       const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
         runtimeNodes,
-        runtimeEdges: runtimeEdges as unknown as StoreEdgeItemType[], // RuntimeEdgeItemType ⊃ StoreEdgeItemType
+        runtimeEdges,
         childrenNodeIdList,
         item,
         index

@@ -90,11 +90,11 @@ describe('parallelRun.utils', () => {
       expect(resolveParallelConcurrency(inputs, 20)).toBe(10);
     });
 
-    it('envMax=3（<5）→ 自动提升到最小 5', () => {
+    it('envMax=3（<5）→ 用户输入 5 被 clamp 到 3（尊重管理员配置）', () => {
       const inputs: FlowNodeInputItemType[] = [
         makeInput(NodeInputKeyEnum.parallelRunMaxConcurrency, 5)
       ];
-      expect(resolveParallelConcurrency(inputs, 3)).toBe(5);
+      expect(resolveParallelConcurrency(inputs, 3)).toBe(3);
     });
 
     it('envMax=150（>100）→ 压缩到 100', () => {
@@ -183,6 +183,11 @@ describe('parallelRun.utils', () => {
     it('非数字（字符串）→ valid=false', () => {
       const result = validateConcurrencyInput('abc', 10);
       expect(result.valid).toBe(false);
+    });
+
+    it('字符串数字（"5"）→ valid=true（修复：不应被拒绝）', () => {
+      const result = validateConcurrencyInput('5', 10);
+      expect(result.valid).toBe(true);
     });
 
     it('0 → valid=false', () => {

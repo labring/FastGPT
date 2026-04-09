@@ -2,12 +2,8 @@ import { cloneDeep } from 'lodash';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type {
-  StoreEdgeItemType,
-  RuntimeEdgeItemType
-} from '@fastgpt/global/core/workflow/type/edge';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '../type';
@@ -17,17 +13,20 @@ import type { DispatchFlowResponse } from '../type';
 /**
  * Clamp user-specified concurrency to env max.
  * - userInput: floor to integer; <1 → 1; >max → max.
- * - envMax: clamped to [5, 100] to satisfy config constraints
- *   (TC0045: env upper bound must be ≥5 and ≤ array max length 100).
- * - Defaults: user default=5, env default=10.
+ * - envMax: upper bound, capped at 100 to prevent extreme resource usage.
+ *   The env value is respected as-is (including values < 5) so that
+ *   administrators can restrict concurrency to any positive integer.
+ *   If envMax is absent/zero, defaults to 10.
+ * - Defaults: user default=5.
  */
 export const clampParallelConcurrency = (
   userInput: number | undefined,
   envMax: number | undefined
 ): number => {
   const rawMax = envMax && envMax > 0 ? envMax : 10;
-  // Enforce env bounds: [5, 100]
-  const max = Math.max(5, Math.min(Math.floor(rawMax), 100));
+  // Cap env upper bound at 100 to prevent runaway memory usage,
+  // but do NOT enforce a minimum — respect the admin's configuration.
+  const max = Math.min(Math.floor(rawMax), 100);
   const defaultConcurrency = 5;
 
   if (userInput === undefined || userInput === null || Number.isNaN(userInput)) {
@@ -42,7 +41,13 @@ export const clampParallelConcurrency = (
 
 type BuildTaskRuntimeContextParams = {
   runtimeNodes: RuntimeNodeItemType[];
-  runtimeEdges: StoreEdgeItemType[];
+  /**
+   * Accepts RuntimeEdgeItemType[] (already converted by the caller) rather than
+   * StoreEdgeItemType[], so that the call-site does not need a type assertion.
+   * These edges are deep-cloned directly — no second storeEdges2RuntimeEdges
+   * conversion is applied.
+   */
+  runtimeEdges: RuntimeEdgeItemType[];
   childrenNodeIdList: string[];
   item: any;
   index: number;
@@ -54,9 +59,13 @@ type TaskRuntimeContext = {
 };
 
 /**
- * Per-task lazy clone: deep-clone runtimeNodes & convert+clone edges,
+ * Per-task lazy clone: deep-clone runtimeNodes & edges,
  * then inject entry node info for the current iteration.
  * Called inside batchRun fn — clone lives exactly one task's lifetime.
+ *
+ * Edges are expected to already be RuntimeEdgeItemType[] (the caller's
+ * props.runtimeEdges). They are cloned directly without a second
+ * storeEdges2RuntimeEdges pass.
  */
 export const buildTaskRuntimeContext = (
   params: BuildTaskRuntimeContextParams
@@ -64,7 +73,7 @@ export const buildTaskRuntimeContext = (
   const { runtimeNodes, runtimeEdges, childrenNodeIdList, item, index } = params;
 
   const taskRuntimeNodes = cloneDeep(runtimeNodes);
-  const taskRuntimeEdges = cloneDeep(storeEdges2RuntimeEdges(runtimeEdges));
+  const taskRuntimeEdges = cloneDeep(runtimeEdges);
 
   taskRuntimeNodes.forEach((node) => {
     if (!childrenNodeIdList.includes(node.nodeId)) return;
