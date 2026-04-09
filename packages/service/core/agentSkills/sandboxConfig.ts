@@ -340,6 +340,39 @@ export function buildVolumeConfig(
 }
 
 /**
+ * Poll the sandbox endpoint until the service inside the container is accepting connections.
+ *
+ * Uses HTTP HEAD to avoid triggering application logic; any HTTP response
+ * (including 4xx/5xx) means the port is open and the service is ready.
+ * Retries on network errors (ECONNREFUSED / fetch failure) until timeout.
+ */
+export async function waitForEndpointReady(
+  endpoint: SkillSandboxEndpointType,
+  options?: { timeoutMs?: number; intervalMs?: number }
+): Promise<void> {
+  const timeoutMs = options?.timeoutMs ?? 30_000;
+  const intervalMs = options?.intervalMs ?? 500;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      await fetch(endpoint.url, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3_000)
+      });
+      return; // any response means port is open
+    } catch {
+      // ECONNREFUSED or timeout — service not ready yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(
+    `Sandbox endpoint ${endpoint.url} did not become ready within ${timeoutMs / 1000}s`
+  );
+}
+
+/**
  * Build container env vars for the sandbox process.
  */
 export function buildBaseContainerEnv(

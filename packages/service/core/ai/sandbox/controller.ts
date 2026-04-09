@@ -9,7 +9,8 @@ import {
   createSandbox,
   type ExecuteResult,
   type ISandbox,
-  type ResourceLimits
+  type ResourceLimits,
+  type OpenSandboxConfigType
 } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getOpenSandboxConnectionConfig,
@@ -49,6 +50,7 @@ export class SandboxClient {
     private readonly opts: {
       resourceLimits?: ResourceLimits;
       vmConfig?: VolumeManagerResult | undefined;
+      createConfig?: OpenSandboxConfigType;
     }
   ) {
     this.sandboxId = props.sandboxId;
@@ -62,14 +64,17 @@ export class SandboxClient {
       const config = getSealosConnectionConfig(this.sandboxId);
       this.provider = createSandbox('sealosdevbox', config, undefined);
     } else if (providerName === 'opensandbox') {
-      // volumes 在 ensureAvailable 中异步获取后重建 provider，此处用基础 createConfig
+      // volumes always come from vmConfig (ensures PVC binding is correct);
+      // custom createConfig takes priority for image/entrypoint/env/metadata
       this.provider = createSandbox(
         'opensandbox',
         getOpenSandboxConnectionConfig({ sessionId: this.sandboxId }),
-        buildOpenSandboxCreateConfig({
-          resourceLimits: opts?.resourceLimits,
-          volumes: opts?.vmConfig?.volumes
-        })
+        opts?.createConfig
+          ? { ...opts.createConfig, volumes: opts?.vmConfig?.volumes }
+          : buildOpenSandboxCreateConfig({
+              resourceLimits: opts?.resourceLimits,
+              volumes: opts?.vmConfig?.volumes
+            })
       );
     } else if (providerName === 'e2b') {
       if (!env.AGENT_SANDBOX_E2B_API_KEY) {
@@ -170,6 +175,7 @@ export const getSandboxClient = async (
     | UnionIdType,
   opts: {
     resourceLimits?: ResourceLimits;
+    createConfig?: OpenSandboxConfigType;
   } = {}
 ) => {
   const sandboxId = (() => {
