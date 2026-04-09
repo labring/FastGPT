@@ -14,6 +14,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 /* 
   检查chat的权限：
@@ -69,7 +70,28 @@ export async function authChatCrud({
   if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
 
   if (spaceTeamId && teamToken) {
-    const { uid, tmbId } = await authTeamSpaceToken({ teamId: spaceTeamId, teamToken });
+    const { uid, tmbId, tags } = await authTeamSpaceToken({
+      teamId: spaceTeamId,
+      teamToken
+    });
+
+    // Verify app belongs to the authenticated team and tag-based access
+    const app = await MongoApp.findOne(
+      {
+        _id: appId,
+        teamId: spaceTeamId,
+        $or: [
+          { teamTags: { $size: 0 } },
+          { teamTags: { $exists: false } },
+          { teamTags: { $in: tags } }
+        ]
+      },
+      'teamId'
+    ).lean();
+    if (!app) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+
     if (!chatId) {
       return {
         teamId: spaceTeamId,
@@ -91,7 +113,8 @@ export async function authChatCrud({
       };
     }
 
-    if (chat.outLinkUid !== uid) return Promise.reject(ChatErrEnum.unAuthChat);
+    if (String(chat.teamId) !== spaceTeamId || chat.outLinkUid !== uid)
+      return Promise.reject(ChatErrEnum.unAuthChat);
 
     return {
       teamId: spaceTeamId,

@@ -16,14 +16,15 @@ export async function authTeamSpaceToken({
   teamId: string;
   teamToken: string;
 }) {
-  // get outLink and app
-  const [{ uid }, member] = await Promise.all([
+  // authenticate the team token, get uid/tags, and load the owner member
+  const [{ uid, tags }, member] = await Promise.all([
     authTeamTagToken({ teamId, teamToken }),
     MongoTeamMember.findOne({ teamId, role: TeamMemberRoleEnum.owner }, 'tmbId').lean()
   ]);
 
   return {
     uid,
-    tmbId: member?._id!
+    tmbId: member?._id!,
+    tags
   };
 }

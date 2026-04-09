@@ -602,17 +602,21 @@ const authTeamSpaceChat = async ({
   teamToken: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { uid } = await authTeamSpaceToken({
+  const { uid, tags } = await authTeamSpaceToken({
     teamId,
     teamToken
   });
 
-  const app = await MongoApp.findById(appId).lean();
+  const app = await MongoApp.findOne({
+    _id: appId,
+    teamId,
+    $or: [{ teamTags: { $size: 0 } }, { teamTags: { $exists: false } }, { teamTags: { $in: tags } }]
+  }).lean();
   if (!app) {
-    return Promise.reject('app is empty');
+    return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  const chat = await MongoChat.findOne({ appId, chatId }).lean();
+  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
 
   if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);
@@ -660,7 +664,7 @@ const authHeaderRequest = async ({
           'Key is error. You need to use the app key rather than the account key.'
         );
       }
-      const app = await MongoApp.findById(currentAppId);
+      const app = await MongoApp.findOne({ _id: currentAppId, teamId });
 
       if (!app) {
         return Promise.reject('app is empty');
