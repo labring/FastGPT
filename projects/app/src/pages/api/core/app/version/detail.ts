@@ -24,7 +24,7 @@ async function handler(
     appId,
     per: WritePermissionVal
   });
-  const result = await MongoAppVersion.findById(versionId).lean();
+  const result = await MongoAppVersion.findOne({ _id: versionId, appId }).lean();
 
   if (!result) {
     return Promise.reject('version not found');

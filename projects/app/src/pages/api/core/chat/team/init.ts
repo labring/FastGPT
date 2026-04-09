@@ -27,9 +27,8 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     teamToken
   });
 
-  const [team, chat, app] = await Promise.all([
+  const [team, app] = await Promise.all([
     MongoTeam.findById(teamId, 'name avatar').lean(),
-    MongoChat.findOne({ appId, chatId }).lean(),
     MongoApp.findOne({
       _id: appId,
       teamId,
@@ -45,8 +44,10 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     return Promise.reject(AppErrEnum.unExist);
   }
 
+  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
+
   // auth chat permission
-  if (chat && chat.outLinkUid !== uid) {
+  if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 

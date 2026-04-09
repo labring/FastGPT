@@ -9,6 +9,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -34,6 +35,16 @@ vi.mock('@fastgpt/service/core/chat/chatItemResponseSchema', () => ({
     find: vi.fn()
   }
 }));
+
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/schema')>();
+  return {
+    ...actual,
+    MongoApp: {
+      findOne: vi.fn()
+    }
+  };
+});
 
 vi.mock('@fastgpt/service/support/permission/app/auth');
 vi.mock('@/service/support/permission/auth/outLink');
@@ -118,8 +129,12 @@ describe('authChatCrud', () => {
     it('should auth with teamId and teamToken without chatId', async () => {
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
 
       const result = await authChatCrud({
         appId: 'app1',
@@ -151,8 +166,12 @@ describe('authChatCrud', () => {
 
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(mockChat)
       } as any);
@@ -183,8 +202,12 @@ describe('authChatCrud', () => {
     it('should handle missing chat for teamDomain auth', async () => {
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(null)
       } as any);
@@ -220,8 +243,12 @@ describe('authChatCrud', () => {
 
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(mockChat)
       } as any);

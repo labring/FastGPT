@@ -13,6 +13,7 @@ import {
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 /* get chat histories list */
 export async function handler(
@@ -46,7 +47,19 @@ export async function handler(
       };
     }
     if (appId && teamId && teamToken) {
-      const { uid } = await authTeamSpaceToken({ teamId, teamToken });
+      const { uid, tags } = await authTeamSpaceToken({ teamId, teamToken });
+
+      const app = await MongoApp.findOne({
+        _id: appId,
+        teamId,
+        $or: [
+          { teamTags: { $size: 0 } },
+          { teamTags: { $exists: false } },
+          { teamTags: { $in: tags } }
+        ]
+      }).lean();
+      if (!app) return { list: [], total: 0 };
+
       return {
         appId,
         outLinkUid: uid,
