@@ -69,12 +69,11 @@ export class SandboxClient {
       this.provider = createSandbox(
         'opensandbox',
         getOpenSandboxConnectionConfig({ sessionId: this.sandboxId }),
-        opts?.createConfig
-          ? { ...opts.createConfig, volumes: opts?.vmConfig?.volumes }
-          : buildOpenSandboxCreateConfig({
-              resourceLimits: opts?.resourceLimits,
-              volumes: opts?.vmConfig?.volumes
-            })
+        buildOpenSandboxCreateConfig({
+          resourceLimits: opts?.resourceLimits,
+          volumes: opts?.vmConfig?.volumes,
+          createConfig: opts?.createConfig
+        })
       );
     } else if (providerName === 'e2b') {
       if (!env.AGENT_SANDBOX_E2B_API_KEY) {
