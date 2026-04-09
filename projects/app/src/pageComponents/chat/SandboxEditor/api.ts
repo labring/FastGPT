@@ -1,6 +1,8 @@
 import type {
-  SandboxFileOperationBody,
-  SandboxFileOperationResponse
+  SandboxListBody,
+  SandboxListResponse,
+  SandboxWriteBody,
+  SandboxWriteResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { POST } from '@/web/common/api/request';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -9,38 +11,29 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
  * 列出目录文件
  */
 export const listSandboxFiles = async (
-  data: Omit<Extract<SandboxFileOperationBody, { action: 'list' }>, 'action'>
-) =>
-  POST<Extract<SandboxFileOperationResponse, { action: 'list' }>>('/core/ai/sandbox/file', {
-    ...data,
-    action: 'list' as const
-  });
+  data: Omit<SandboxListBody, 'outLinkAuthData'> & { outLinkAuthData?: OutLinkChatAuthProps }
+) => POST<SandboxListResponse>('/core/ai/sandbox/list', data);
 
 /**
  * 写入文件内容
  */
 export const writeSandboxFile = async (
-  data: Omit<Extract<SandboxFileOperationBody, { action: 'write' }>, 'action'>
-) =>
-  POST<Extract<SandboxFileOperationResponse, { action: 'write' }>>('/core/ai/sandbox/file', {
-    ...data,
-    action: 'write' as const
-  });
+  data: Omit<SandboxWriteBody, 'outLinkAuthData'> & { outLinkAuthData?: OutLinkChatAuthProps }
+) => POST<SandboxWriteResponse>('/core/ai/sandbox/write', data);
 
 /**
- * 获取文件内容或预览数据
+ * 读取文件内容（内联预览）
  */
 export const getSandboxFile = async (data: {
   appId: string;
   chatId: string;
   path: string;
-  preview?: boolean;
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
-  const response = await fetch('/api/core/ai/sandbox/download', {
+  const response = await fetch('/api/core/ai/sandbox/read', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...data, preview: data.preview ?? true })
+    body: JSON.stringify(data)
   });
 
   if (!response.ok) {
@@ -51,7 +44,7 @@ export const getSandboxFile = async (data: {
 };
 
 /**
- * 下载文件或目录
+ * 下载文件或目录（强制下载）
  */
 export const downloadSandbox = async (data: {
   appId: string;
@@ -62,7 +55,7 @@ export const downloadSandbox = async (data: {
   const response = await fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...data, preview: false })
+    body: JSON.stringify(data)
   });
 
   if (!response.ok) {
@@ -74,7 +67,6 @@ export const downloadSandbox = async (data: {
   const a = document.createElement('a');
   a.href = url;
 
-  // 解析文件名
   const contentDisposition = response.headers.get('Content-Disposition') || '';
   const match = contentDisposition.match(/filename="?([^";]+)"?/i);
   const fileName = match ? decodeURIComponent(match[1]) : `download-${Date.now()}.zip`;
