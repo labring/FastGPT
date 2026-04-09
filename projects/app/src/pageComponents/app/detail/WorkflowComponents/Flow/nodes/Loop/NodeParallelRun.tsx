@@ -30,6 +30,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useSize } from 'ahooks';
@@ -46,6 +47,7 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const { feConfigs } = useSystemStore();
   const resetParentNodeSizeAndPosition = useContextSelector(
     WorkflowLayoutContext,
     (v) => v.resetParentNodeSizeAndPosition
@@ -131,6 +133,17 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     resetParentNodeSizeAndPosition(nodeId);
   }, [childrenNodeIdList, nodeId, onChangeNode, resetParentNodeSizeAndPosition]);
 
+  // Inject max into parallelRunMaxConcurrency input from feConfigs
+  const concurrencyMax = feConfigs?.limit?.workflowParallelRunMaxConcurrency;
+  const patchedInputs = useMemo(() => {
+    if (!concurrencyMax) return inputs;
+    return inputs.map((input) =>
+      input.key === NodeInputKeyEnum.parallelRunMaxConcurrency
+        ? { ...input, max: concurrencyMax }
+        : input
+    );
+  }, [inputs, concurrencyMax]);
+
   // Update node offset value
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const size = useSize(inputBoxRef);
@@ -160,7 +173,7 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <IOTitle text={t('common:Input')} />
 
         <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
-          <RenderInput nodeId={nodeId} flowInputList={inputs} />
+          <RenderInput nodeId={nodeId} flowInputList={patchedInputs} />
         </Box>
 
         <>

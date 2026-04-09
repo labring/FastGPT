@@ -14,9 +14,8 @@ import type { DispatchFlowResponse } from '../type';
 /**
  * Clamp user-specified concurrency to env max.
  * - userInput: floor to integer; <1 → 1; >max → max.
- * - envMax: upper bound, capped at 100 to prevent extreme resource usage.
- *   The env value is respected as-is (including values < 5) so that
- *   administrators can restrict concurrency to any positive integer.
+ * - envMax: upper bound from WORKFLOW_PARALLEL_MAX_CONCURRENCY.
+ *   Startup validation ensures envMax <= WORKFLOW_MAX_LOOP_TIMES.
  *   If envMax is absent/zero, defaults to 10.
  * - Defaults: user default=5.
  */
@@ -24,10 +23,7 @@ export const clampParallelConcurrency = (
   userInput: number | undefined,
   envMax: number | undefined
 ): number => {
-  const rawMax = envMax && envMax > 0 ? envMax : 10;
-  // Cap env upper bound at 100 to prevent runaway memory usage,
-  // but do NOT enforce a minimum — respect the admin's configuration.
-  const max = Math.min(Math.floor(rawMax), 100);
+  const max = envMax && envMax > 0 ? Math.floor(envMax) : 10;
   const defaultConcurrency = 5;
 
   if (userInput === undefined || userInput === null || Number.isNaN(userInput)) {

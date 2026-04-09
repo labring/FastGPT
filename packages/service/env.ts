@@ -66,7 +66,7 @@ export const env = createEnv({
       .optional()
       .default(100)
       .meta({ description: '循环节点最大循环次数' }),
-    /** Env upper bound for parallelRun concurrency (further clamped to [5, 100]). */
+    /** Env upper bound for parallelRun concurrency. Must not exceed WORKFLOW_MAX_LOOP_TIMES. */
     WORKFLOW_PARALLEL_MAX_CONCURRENCY: NumSchema.int()
       .min(1)
       .optional()
@@ -87,3 +87,9 @@ export const env = createEnv({
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);
   }
 });
+
+if (env.WORKFLOW_PARALLEL_MAX_CONCURRENCY > env.WORKFLOW_MAX_LOOP_TIMES) {
+  throw new Error(
+    `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${env.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${env.WORKFLOW_MAX_LOOP_TIMES})`
+  );
+}
