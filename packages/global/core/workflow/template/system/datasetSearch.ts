@@ -13,7 +13,11 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_UserChatInput } from '../input';
-import { DatasetSearchModeEnum, RerankMethodEnum } from '../../../dataset/constants';
+import {
+  DatasetRetrievalModeEnum,
+  DatasetSearchModeEnum,
+  RerankMethodEnum
+} from '../../../dataset/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { Output_Template_Error_Message } from '../output';
 
@@ -150,6 +154,36 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.generateSqlModel,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: i18nT('common:search_model'),
+      value: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+
+    // 检索模式（单轮标准检索 / 多轮智能检索）
+    {
+      key: NodeInputKeyEnum.datasetRetrievalMode,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: DatasetRetrievalModeEnum.standard,
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.datasetagenticSearchReasoning,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      value: true,
+      valueType: WorkflowIOValueTypeEnum.boolean
+    },
+    {
+      key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
       value: '',
       valueType: WorkflowIOValueTypeEnum.string
     }

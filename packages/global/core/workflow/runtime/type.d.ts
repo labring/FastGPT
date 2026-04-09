@@ -31,7 +31,7 @@ import type {
 import type { SearchDataResponseItemType } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import type { SqlResultWithDatasetId } from '../../../core/dataset/database/api.d';
-import type { RerankMethodEnum } from '../../../core/dataset/constants';
+import type { RerankMethodEnum, DatasetRetrievalModeEnum } from '../../../core/dataset/constants';
 import { type UserChatItemValueItemType } from '../../chat/type';
 
 export type ExternalProviderType = {
@@ -212,6 +212,9 @@ export type DispatchNodeResponseType = {
   };
   // text2sql result
   sqlResult?: SqlResultWithDatasetId[];
+  // agentic search result
+  agenticSearchResult?: any;
+  retrievalMode?: `${DatasetRetrievalModeEnum}`;
   // correction search result
   correctSearchResult?: {
     correctionId: string;

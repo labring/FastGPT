@@ -192,6 +192,13 @@ export enum NodeInputKeyEnum {
   datasetDeepSearchMaxTimes = 'datasetDeepSearchMaxTimes',
   datasetDeepSearchBg = 'datasetDeepSearchBg',
 
+  // 检索模式（单轮/多轮）
+  datasetRetrievalMode = 'retrievalMode',
+  // 多轮智能检索专用
+  datasetAgenticSearchLLMModel = 'agenticSearchLLMModel',
+  datasetagenticSearchReasoning = 'agenticSearchReasoning',
+  datasetAgenticSearchRerankModel = 'agenticSearchRerankModel',
+
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',
 

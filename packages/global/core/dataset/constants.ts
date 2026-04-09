@@ -325,6 +325,11 @@ export enum DatasetSearchModeEnum {
   database = 'database'
 }
 
+export enum DatasetRetrievalModeEnum {
+  standard = 'standard', // 单轮标准检索
+  agentic = 'agentic' // 多轮智能检索
+}
+
 export const DatasetSearchModeMap = {
   [DatasetSearchModeEnum.embedding]: {
     icon: 'core/dataset/modeEmbedding',

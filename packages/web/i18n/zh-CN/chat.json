@@ -202,6 +202,8 @@
   "question_rewrite": "问题改写",
   "knowledge_recall": "知识召回",
   "knowledge_rerank": "知识重排",
+  "agentic_search": "多轮智能检索",
+  "summarize_retrieval_results": "汇总检索结果",
   "final_answer": "最终回答",
   "no_recall_content": "未召回内容",
   "fallback_reply": "兜底回复",
@@ -223,5 +225,9 @@
   "combined_score": "综合分数：",
   "rerank_score": "重排分数：",
   "recall_rank": "召回排名：",
-  "run_preview": "运行预览"
+  "run_preview": "运行预览",
+  "retrieval_mode": "检索策略",
+  "retrieval_process": "检索过程",
+  "retrieval_results": "检索结果",
+  "view_all_knowledge": "查看全部 {{count}} 个知识"
 }

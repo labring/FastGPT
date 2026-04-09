@@ -1,20 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Flex, useDisclosure } from '@chakra-ui/react';
+import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum, RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetRetrievalModeEnum,
+  DatasetSearchModeEnum,
+  RerankMethodEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import RetrievalModeSelector from './RetrievalModeSelector';
+import MultipleRetrievalModal from './MultipleRetrievalModal';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -36,6 +43,15 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     datasetSearchExtensionModel: defaultModels.llm?.model,
     datasetSearchExtensionBg: '',
     generateSqlModel: defaultModels.llm?.model
+  });
+
+  const [retrievalMode, setRetrievalMode] = useState<`${DatasetRetrievalModeEnum}`>(
+    DatasetRetrievalModeEnum.standard
+  );
+  const [agenticSearchConfig, setAgenticSearchConfig] = useState({
+    agenticSearchLLMModel: defaultModels.llm?.model || '',
+    agenticSearchRerankModel: defaultModels.rerank?.model || '',
+    agenticSearchReasoning: true
   });
 
   const knowledgeTypeConfig = useMemo(() => {
@@ -92,6 +108,11 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   }, [getNodeList, nodeAmount]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isAgenticModalOpen,
+    onOpen: onAgenticModalOpen,
+    onClose: onAgenticModalClose
+  } = useDisclosure();
 
   useEffect(() => {
     inputs.forEach((input) => {
@@ -103,39 +124,66 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           [input.key]: input.value ?? state[input.key]
         }));
       }
+      if (input.key === NodeInputKeyEnum.datasetRetrievalMode) {
+        setRetrievalMode(input.value || DatasetRetrievalModeEnum.standard);
+      }
+      if (input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModel) {
+        setAgenticSearchConfig((prev) => ({
+          ...prev,
+          agenticSearchLLMModel: input.value || prev.agenticSearchLLMModel
+        }));
+      }
+      if (input.key === NodeInputKeyEnum.datasetagenticSearchReasoning) {
+        setAgenticSearchConfig((prev) => ({
+          ...prev,
+          agenticSearchReasoning: input.value ?? prev.agenticSearchReasoning
+        }));
+      }
+      if (input.key === NodeInputKeyEnum.datasetAgenticSearchRerankModel) {
+        setAgenticSearchConfig((prev) => ({
+          ...prev,
+          agenticSearchRerankModel: input.value || prev.agenticSearchRerankModel
+        }));
+      }
     });
   }, [inputs]);
 
   const Render = useMemo(() => {
     return (
       <>
-        {/* label */}
         <Flex alignItems={'center'} mb={3} fontWeight={'medium'} color={'myGray.600'}>
-          {t('common:core.dataset.search.Params Setting')}
-          <MyIcon
-            name={'common/settingLight'}
-            ml={2}
-            w={'16px'}
-            cursor={'pointer'}
-            _hover={{
-              color: 'primary.600'
-            }}
-            onClick={onOpen}
-          />
+          {t('app:retrieval_config')}
+          <QuestionTip ml={1} label={t('app:retrieval_mode_tooltip')} />
         </Flex>
-        <SearchParamsTip
-          searchMode={data.searchMode}
-          similarity={data.similarity}
-          limit={data.limit}
-          generateSqlModel={data.generateSqlModel}
-          usingReRank={data.usingReRank}
-          usingExtensionQuery={data.datasetSearchUsingExtensionQuery}
-          queryExtensionModel={data.datasetSearchExtensionModel}
-          {...knowledgeTypeConfig}
-        />
+        <Box mb={3}>
+          <RetrievalModeSelector
+            value={retrievalMode}
+            onChange={(mode) => {
+              setRetrievalMode(mode);
+              const item = inputs.find(
+                (input) => input.key === NodeInputKeyEnum.datasetRetrievalMode
+              );
+              if (item) {
+                onChangeNode({
+                  nodeId,
+                  type: 'updateInput',
+                  key: NodeInputKeyEnum.datasetRetrievalMode,
+                  value: { ...item, value: mode }
+                });
+              }
+            }}
+            onConfigClick={(mode) => {
+              if (mode === DatasetRetrievalModeEnum.standard) {
+                onOpen();
+              } else {
+                onAgenticModalOpen();
+              }
+            }}
+          />
+        </Box>
       </>
     );
-  }, [data, onOpen, t, knowledgeTypeConfig]);
+  }, [retrievalMode, inputs, nodeId, onChangeNode, onOpen, onAgenticModalOpen, t]);
 
   return (
     <>
@@ -160,6 +208,54 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                   //@ts-ignore
                   value: e[key]
                 }
+              });
+            }
+          }}
+        />
+      )}
+      {isAgenticModalOpen && (
+        <MultipleRetrievalModal
+          defaultValues={agenticSearchConfig}
+          onClose={onAgenticModalClose}
+          onSuccess={(config: any) => {
+            setAgenticSearchConfig(config);
+
+            // 更新 agenticSearchLLMModel
+            const llmModelInput = inputs.find(
+              (input) => input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModel
+            );
+            if (llmModelInput) {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+                value: { ...llmModelInput, value: config.agenticSearchLLMModel }
+              });
+            }
+
+            // 更新 agenticSearchReasoning
+            const outputThinkingInput = inputs.find(
+              (input) => input.key === NodeInputKeyEnum.datasetagenticSearchReasoning
+            );
+            if (outputThinkingInput) {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.datasetagenticSearchReasoning,
+                value: { ...outputThinkingInput, value: config.agenticSearchReasoning }
+              });
+            }
+
+            // 更新 rerankModel
+            const rerankModelInput = inputs.find(
+              (input) => input.key === NodeInputKeyEnum.datasetAgenticSearchRerankModel
+            );
+            if (rerankModelInput) {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+                value: { ...rerankModelInput, value: config.agenticSearchRerankModel }
               });
             }
           }}
