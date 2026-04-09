@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.loopEndInput]: any;
+  [NodeInputKeyEnum.nestedEndInput]: any;
 }>;
 type Response = DispatchNodeResultType<{}>;
 

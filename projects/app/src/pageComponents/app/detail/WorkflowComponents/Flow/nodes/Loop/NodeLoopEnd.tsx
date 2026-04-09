@@ -33,7 +33,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
 
   const inputItem = useMemoEnhance(
-    () => inputs.find((input) => input.key === NodeInputKeyEnum.loopEndInput),
+    () => inputs.find((input) => input.key === NodeInputKeyEnum.nestedEndInput),
     [inputs]
   );
 
@@ -62,14 +62,14 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
     const parentNode = getNodeById(parentNodeId);
     const parentNodeOutput = parentNode?.outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.loopArray
+      (output) => output.key === NodeOutputKeyEnum.nestedArrayResult
     );
 
     if (parentNode && parentNodeOutput) {
       onChangeNode({
         nodeId: parentNode.nodeId,
         type: 'updateOutput',
-        key: NodeOutputKeyEnum.loopArray,
+        key: NodeOutputKeyEnum.nestedArrayResult,
         value: {
           ...parentNodeOutput,
           valueType: typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny

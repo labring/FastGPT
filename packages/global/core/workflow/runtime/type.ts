@@ -296,6 +296,12 @@ export const DispatchNodeResponseSchema = z
     loopInputValue: z.any().optional().meta({ description: '循环输入值' }),
     loopOutputValue: z.any().optional().meta({ description: '循环输出值' }),
 
+    // parallel run
+    parallelInput: z.array(z.any()).optional().meta({ description: '并行输入' }),
+    parallelResult: z.array(z.any()).optional().meta({ description: '并行结果' }),
+    parallelRunDetail: z.array(z.any()).optional().meta({ description: '并行详情' }),
+    parallelDetail: z.array(z.any()).optional().meta({ description: '并行详情' }),
+    
     childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
 
     // Tools

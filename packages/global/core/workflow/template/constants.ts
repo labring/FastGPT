@@ -30,6 +30,7 @@ import { LafModule } from './system/laf';
 import { LoopNode } from './system/loop/loop';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { LoopStartNode } from './system/loop/loopStart';
+import { ParallelRunNode } from './system/parallelRun/parallelRun';
 import { ReadFilesNode } from './system/readFiles';
 import { RunToolNode } from './system/runTool';
 import { RunToolSetNode } from './system/runToolSet';
@@ -57,7 +58,8 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
-  LoopNode
+  LoopNode,
+  ParallelRunNode
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [

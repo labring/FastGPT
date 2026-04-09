@@ -110,7 +110,7 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
       const targetNodeHeight = (loopNode.height ?? 0) + diffHeight;
 
       const offsetHeight =
-        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight)
           ?.value ?? 83;
 
       return {

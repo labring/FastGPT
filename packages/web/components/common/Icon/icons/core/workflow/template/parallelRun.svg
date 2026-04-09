@@ -1,0 +1,12 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<rect width="24" height="24" rx="4" fill="url(#paint0_linear_parallel)"/>
+<path d="M7 5H9V19H7V5Z" fill="white"/>
+<path d="M11 5H13V19H11V5Z" fill="white"/>
+<path d="M15 5H17V19H15V5Z" fill="white"/>
+<defs>
+<linearGradient id="paint0_linear_parallel" x1="12" y1="0" x2="4" y2="24" gradientUnits="userSpaceOnUse">
+<stop stop-color="#36BFFA"/>
+<stop offset="1" stop-color="#1570EF"/>
+</linearGradient>
+</defs>
+</svg>

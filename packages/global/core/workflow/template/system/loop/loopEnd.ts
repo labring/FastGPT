@@ -8,9 +8,9 @@ import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant'
 import { type FlowNodeTemplateType } from '../../../type/node';
 
 export const LoopEndNode: FlowNodeTemplateType = {
-  id: FlowNodeTypeEnum.loopEnd,
+  id: FlowNodeTypeEnum.nestedEnd,
   templateType: FlowNodeTemplateTypeEnum.systemInput,
-  flowNodeType: FlowNodeTypeEnum.loopEnd,
+  flowNodeType: FlowNodeTypeEnum.nestedEnd,
   showSourceHandle: false,
   showTargetHandle: true,
   unique: true,
@@ -22,7 +22,7 @@ export const LoopEndNode: FlowNodeTemplateType = {
   showStatus: false,
   inputs: [
     {
-      key: NodeInputKeyEnum.loopEndInput,
+      key: NodeInputKeyEnum.nestedEndInput,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',

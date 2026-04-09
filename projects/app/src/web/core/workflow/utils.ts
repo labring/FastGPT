@@ -620,7 +620,7 @@ export const checkWorkflowNodeAndConnection = ({
     };
     dfsFromStart(startNode.data.nodeId);
     nodes.forEach((node) => {
-      if (node.data.flowNodeType === FlowNodeTypeEnum.loopStart) {
+      if (node.data.flowNodeType === FlowNodeTypeEnum.nestedStart) {
         dfsFromStart(node.data.nodeId);
       }
     });
@@ -646,7 +646,7 @@ export const checkWorkflowNodeAndConnection = ({
       const isStartNode = [
         FlowNodeTypeEnum.workflowStart,
         FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.loopStart
+        FlowNodeTypeEnum.nestedStart
       ].includes(nodeType);
 
       // Check if node is reachable from start
@@ -775,8 +775,8 @@ export const compareSnapshot = (
             key: input.key,
             selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
-            // set to arrayAny for loopInputArray to skip valueType comparison
-            // valueType: input.key === NodeInputKeyEnum.loopInputArray ? 'arrayAny' : input.valueType,
+            // set to arrayAny for nestedInputArray to skip valueType comparison
+            // valueType: input.key === NodeInputKeyEnum.nestedInputArray ? 'arrayAny' : input.valueType,
             value: input.value ?? undefined
           })),
           outputs: node.data.outputs.map((item: FlowNodeOutputItemType) => ({
