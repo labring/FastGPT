@@ -129,41 +129,8 @@ export async function createEditDebugSandbox(
     'metadata.sandboxType': SandboxTypeEnum.editDebug
   });
 
-  if (existingInstance?.status === SandboxStatusEnum.running) {
-    // Reuse running sandbox - return stored endpoint directly
-    addLog.info('[Sandbox] Found running sandbox instance, reusing', {
-      instanceId: existingInstance._id,
-      sandboxId: existingInstance.sandboxId
-    });
-
-    const endpointInfo = existingInstance.metadata!.endpoint!;
-
-    await MongoSandboxInstance.updateOne(
-      { _id: existingInstance._id },
-      { lastActiveAt: new Date() }
-    );
-
-    onProgress?.({
-      sandboxId: skillId,
-      phase: 'ready',
-      endpoint: endpointInfo,
-      providerSandboxId: existingInstance.sandboxId
-    });
-
-    return {
-      sandboxId: existingInstance._id.toString(),
-      providerSandboxId: existingInstance.sandboxId,
-      endpoint: endpointInfo,
-      status: {
-        state: existingInstance.status
-        // message: existingInstance.metadata!.providerStatus.message
-      }
-    };
-  }
-
-  if (existingInstance?.status === SandboxStatusEnum.stopped) {
-    // Resume stopped sandbox
-    addLog.info('[Sandbox] Found stopped sandbox instance, resuming', {
+  if (existingInstance) {
+    addLog.info('[Sandbox] Found existing sandbox instance, ensuring running', {
       instanceId: existingInstance._id,
       sandboxId: existingInstance.sandboxId
     });
@@ -173,7 +140,7 @@ export async function createEditDebugSandbox(
 
       // getSandboxClient internally calls ensureAvailable():
       //   - updates DB status=running, lastActiveAt
-      //   - calls provider.ensureRunning() to ensure container is running
+      //   - calls provider.ensureRunning() to handle both running and stopped containers
       // Pass skill-specific createConfig so the container is rebuilt with the
       // correct image/entrypoint/env/metadata if it was accidentally deleted.
       const client = await getSandboxClient(
@@ -199,7 +166,7 @@ export async function createEditDebugSandbox(
       // sending the ready SSE event — prevents ECONNREFUSED in the client iframe.
       await waitForEndpointReady(endpointInfo);
 
-      // Update endpoint and other sandbox metadata to DB
+      // Update endpoint and sandbox metadata in DB
       await MongoSandboxInstance.updateOne(
         { _id: existingInstance._id },
         {
@@ -222,7 +189,7 @@ export async function createEditDebugSandbox(
         status: { state: 'Running' }
       };
     } catch (error) {
-      addLog.error('[Sandbox] Failed to resume stopped sandbox', { error });
+      addLog.error('[Sandbox] Failed to ensure sandbox running', { error });
       throw error;
     }
   }
