@@ -9,6 +9,8 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { getHtmlPreviewLink } from '../api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
 
@@ -44,6 +46,7 @@ const EditorContent = ({
   outLinkAuthData
 }: Props) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'source' | 'preview'>('source');
   const [generatingLink, setGeneratingLink] = useState(false);
 
@@ -55,12 +58,16 @@ const EditorContent = ({
       const url = await getHtmlPreviewLink({
         appId,
         chatId,
-        content: activeFile.content,
+        filePath: activeFile.path,
         outLinkAuthData
       });
       window.open(url, '_blank');
     } catch (error) {
-      console.error(error);
+      toast({
+        title: t('chat:sandbox_html_preview_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
     } finally {
       setGeneratingLink(false);
     }

@@ -111,6 +111,7 @@
   "sandox.files": "虚拟机文件",
   "sandbox_source": "原文",
   "sandbox_preview": "预览",
+  "sandbox_html_preview_failed": "预览链接生成失败",
   "search_results": "搜索结果",
   "select": "选择",
   "select_file": "上传文件",

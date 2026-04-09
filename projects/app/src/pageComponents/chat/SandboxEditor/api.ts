@@ -101,6 +101,6 @@ export const checkSandboxExist = async (data: {
 export const getHtmlPreviewLink = (data: {
   appId: string;
   chatId: string;
-  content: string;
+  filePath: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => POST<string>('/core/ai/sandbox/getHtmlPreviewLink', data);

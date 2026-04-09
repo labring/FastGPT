@@ -102,6 +102,7 @@
   "sandbox_entry_tooltip": "查看虛擬機器文件",
   "sandbox_source": "原文",
   "sandbox_preview": "預覽",
+  "sandbox_html_preview_failed": "預覽連結產生失敗",
   "sandbox_files": "虛擬機器文件",
   "sandbox_no_file": "虛擬機器裡還沒有文件",
   "sandbox_binary_file_no_preview": "無法預覽該文件，請直接下載查看",

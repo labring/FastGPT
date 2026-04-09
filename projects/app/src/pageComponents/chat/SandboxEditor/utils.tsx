@@ -95,7 +95,7 @@ const langMap = Object.entries(extensionToLang).reduce(
 
 // 获取文件语言
 export const getLanguageByFileName = (fileName: string): string => {
-  const ext = fileName.split('.').at(-1)?.toLocaleLowerCase();
+  const ext = fileName.split('.').at(-1)?.toLowerCase();
   return langMap[ext || ''] ?? 'plaintext';
 };
 

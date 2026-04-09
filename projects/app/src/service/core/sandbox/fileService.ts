@@ -58,10 +58,12 @@ export async function getSandboxFileContent(
   const result = results[0];
 
   if (result.error) {
-    return Promise.reject('Failed to read file');
+    return Promise.reject(result.error);
   }
 
   const fileName = path.split('/').pop() || 'file';
+  // 注意：preview 模式下 contentType 由文件路径决定，可能返回 text/html / image/svg+xml 等危险类型。
+  // 若未来有任何代码让浏览器直接导航到 download 端点（iframe / window.open 等），需确保这类内容不被同源渲染，否则会造成存储型 XSS。
   const contentType = preview
     ? mime.getType(path) ?? 'application/octet-stream'
     : 'application/octet-stream';
