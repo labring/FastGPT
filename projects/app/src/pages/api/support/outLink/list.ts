@@ -6,12 +6,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
-export const ApiMetadata = {
-  name: '获取应用内所有 Outlink',
-  author: 'Finley',
-  version: '0.1.0'
-};
-
 export type OutLinkListQuery = {
   appId: string; // 应用 ID
   type: `${PublishChannelEnum}`;
