@@ -1,12 +1,13 @@
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
 import {
   delClearChatHistories,
   delChatHistoryById,
   putChatHistory,
-  getChatHistories
+  getChatHistories,
+  getChatHistoryStatus
 } from '../history/api';
 import { type ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
 import { type BoxProps, useDisclosure } from '@chakra-ui/react';
@@ -14,6 +15,7 @@ import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
+import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -47,7 +49,7 @@ type ChatContextType = {
   onUpdateHistoryTitle: ({ chatId, newTitle }: { chatId: string; newTitle: string }) => void;
 };
 
-/* 
+/*
   主要存放历史记录数据。
   同时还存放外部链接鉴权信息，不会在 chatTest 下使用
 */
@@ -123,7 +125,8 @@ const ChatContextProvider = ({
           item.chatId === changeChatId
             ? {
                 ...item,
-                hasBeenRead: true
+                hasBeenRead:
+                  item.chatGenerateStatus === ChatGernateStatusEnum.generating ? false : true
               }
             : item
         )
@@ -231,6 +234,77 @@ const ChatContextProvider = ({
     },
     [histories, loadHistories, setHistories]
   );
+
+  const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
+  const historiesRef = useRef(histories);
+  historiesRef.current = histories;
+
+  /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
+  const hasGeneratingInSidebar = useMemo(
+    () => histories.some((h) => h.chatGenerateStatus === ChatGernateStatusEnum.generating),
+    [histories]
+  );
+
+  // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
+  // 条件轮询：仅当列表里至少有一条 generating 时挂 interval；否则每次依赖变化仍会先 poll 一次，且切回标签页会再拉一次。
+  useEffect(() => {
+    if (!historiesRef.current.length) return;
+
+    const poll = () => {
+      const chatIds = historiesRef.current.map((h) => h.chatId);
+      getChatHistoryStatus({
+        ...(appId ? { appId } : {}),
+        chatIds,
+        ...outLinkAuthData
+      })
+        .then((res) => {
+          const map = new Map(res.list.map((i) => [i.chatId, i]));
+          setHistories((prev) =>
+            prev.map((item) => {
+              const s = map.get(item.chatId);
+              if (!s) return item;
+              const nextGen = s.chatGenerateStatus ?? item.chatGenerateStatus;
+              const nextRead =
+                nextGen === ChatGernateStatusEnum.generating
+                  ? false
+                  : s.hasBeenRead ?? item.hasBeenRead;
+              return {
+                ...item,
+                chatGenerateStatus: nextGen,
+                hasBeenRead: nextRead,
+                updateTime: s.updateTime ?? item.updateTime
+              };
+            })
+          );
+        })
+        .catch(() => {});
+    };
+
+    poll();
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    if (!hasGeneratingInSidebar) {
+      return () => {
+        document.removeEventListener('visibilitychange', onVisibility);
+      };
+    }
+
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        poll();
+      }
+    };
+    const timer = window.setInterval(tick, 4000);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [appId, historyChatIdsKey, hasGeneratingInSidebar, outLinkAuthData, setHistories]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

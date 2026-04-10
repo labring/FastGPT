@@ -28,6 +28,30 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(
 );
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;
 
+export const GetHistoryStatusBodySchema = OutLinkChatAuthSchema.extend({
+  appId: ObjectIdSchema.optional().describe('应用ID'),
+  chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的对话 ID 列表')
+});
+export type GetHistoryStatusBodyType = z.infer<typeof GetHistoryStatusBodySchema>;
+
+export const GetHistoryStatusResponseSchema = z.object({
+  list: z.array(
+    z.object({
+      chatId: z.string(),
+      updateTime: z.date(),
+      chatGenerateStatus: z.enum(ChatGernateStatusEnum).optional(),
+      hasBeenRead: z.boolean().optional()
+    })
+  )
+});
+export type GetHistoryStatusResponseType = z.infer<typeof GetHistoryStatusResponseSchema>;
+
+export const MarkChatReadBodySchema = OutLinkChatAuthSchema.extend({
+  appId: ObjectIdSchema.describe('应用ID'),
+  chatId: z.string().min(1).describe('对话ID')
+});
+export type MarkChatReadBodyType = z.infer<typeof MarkChatReadBodySchema>;
+
 // Update chat history schema
 export const UpdateHistoryBodySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.describe('应用ID'),

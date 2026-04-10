@@ -138,7 +138,8 @@ const ChatSliderList = () => {
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
-                {item.hasBeenRead === false ? (
+                {item.hasBeenRead === false &&
+                item.chatGenerateStatus !== ChatGernateStatusEnum.generating ? (
                   <Box
                     className="unreadDot"
                     w={'8px'}

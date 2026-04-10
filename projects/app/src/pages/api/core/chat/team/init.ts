@@ -15,6 +15,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
+import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { z } from 'zod';
 
 const QuerySchema = z.object({
@@ -56,7 +57,10 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  if (chat?.hasBeenRead === false) {
+  if (
+    chat?.hasBeenRead === false &&
+    chat?.chatGenerateStatus !== ChatGernateStatusEnum.generating
+  ) {
     await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
     chat.hasBeenRead = true;
   }

@@ -18,6 +18,7 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
+  ensurePendingChatRoundItems,
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
@@ -286,8 +287,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         })
       : undefined;
 
-    if (mirror) {
-      await mirror.reset();
+    if (!interactive) {
+      await ensurePendingChatRoundItems({
+        chatId: saveChatId,
+        appId: runningAppId,
+        teamId,
+        tmbId: String(tmbId),
+        userContent: userQuestion,
+        responseChatItemId
+      });
     }
 
     const workflowResponseWrite = getWorkflowResponseWrite({
@@ -432,6 +440,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       await mirror?.flush();
+      await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -548,6 +557,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (stream) {
       sseErrRes(res, err);
       await mirror?.flush();
+      await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
       jsonRes(res, {

@@ -165,7 +165,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId: String(app._id),
       chatId
     });
-    await streamResumeMirror.reset();
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
@@ -278,6 +277,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     await streamResumeMirror.flush();
+    await streamResumeMirror.shrinkTTLAfterComplete();
   } catch (err: any) {
     if (appId && chatId) {
       await updateChatGenerateStatus({
@@ -289,6 +289,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(500);
     sseErrRes(res, err);
     await streamResumeMirror?.flush();
+    await streamResumeMirror?.shrinkTTLAfterComplete();
   } finally {
     streamResumeMirror?.restore();
   }

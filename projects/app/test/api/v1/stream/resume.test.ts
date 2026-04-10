@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 import { ChatGernateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -15,6 +15,7 @@ import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
   mirrorChatStream,
   getStreamResumeRedisKeys,
+  STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   STREAM_RESUME_TTL_SECONDS,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@/service/core/chat/resume';
@@ -50,7 +51,6 @@ type StreamEntry = [string, string[]];
 const teamId = '507f1f77bcf86cd799439011';
 const appId = '507f1f77bcf86cd799439012';
 const chatId = 'chat-test';
-const keyOfCursor = `stream:resume:cursor:${teamId}:${appId}:${chatId}`;
 const keyOfStream = `stream:resume:data:${teamId}:${appId}:${chatId}`;
 const rawKeyOfStream = `${FASTGPT_REDIS_PREFIX}${keyOfStream}`;
 
@@ -265,11 +265,6 @@ describe('stream resume api', () => {
     expect(blockingRedis.quit).toHaveBeenCalledTimes(1);
     expect(blockingRedis.disconnect).not.toHaveBeenCalled();
 
-    expect(redis.set).toHaveBeenCalledWith(keyOfCursor, '50-0');
-    expect(redis.set).toHaveBeenCalledWith(keyOfCursor, '51-0');
-    expect(redis.set).toHaveBeenCalledWith(keyOfCursor, '52-0');
-    expect(await redis.get(keyOfCursor)).toBe('52-0');
-
     expect(res.end).toHaveBeenCalledTimes(1);
     expect(closeHandler).toBeDefined();
     expect(res.writableEnded).toBe(true);
@@ -448,6 +443,10 @@ describe('stream resume helpers', () => {
     redis.call = vi.fn(async () => '1-0');
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should mirror raw response writes to redis stream in order and throttle ttl refreshes', async () => {
     vi.useFakeTimers();
     try {
@@ -455,6 +454,8 @@ describe('stream resume helpers', () => {
       const res = {
         write: vi.fn(() => true)
       } as any;
+
+      const delSpy = vi.spyOn(redis, 'del').mockResolvedValue(1);
 
       const mirror = mirrorChatStream({
         res,
@@ -468,10 +469,14 @@ describe('stream resume helpers', () => {
 
       await mirror.flush();
 
+      const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
+      const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
+
+      expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
       expect(redis.call).toHaveBeenNthCalledWith(
         1,
         'XADD',
-        `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfStream}`,
+        rawStream,
         '*',
         'raw',
         'event: answer\n'
@@ -479,41 +484,49 @@ describe('stream resume helpers', () => {
       expect(redis.call).toHaveBeenNthCalledWith(
         2,
         'XADD',
-        `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfStream}`,
+        rawStream,
         '*',
         'raw',
         'data: hello\n\n'
       );
 
-      expect(redis.expire).toHaveBeenCalledWith(
-        getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfStream,
-        STREAM_RESUME_TTL_SECONDS
-      );
-      expect(redis.expire).toHaveBeenCalledWith(
-        getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfCursor,
-        STREAM_RESUME_TTL_SECONDS
-      );
-      expect(redis.expire).toHaveBeenCalledTimes(2);
+      expect(redis.expire).toHaveBeenCalledWith(keys.keyOfStream, STREAM_RESUME_TTL_SECONDS);
+      expect(redis.expire).toHaveBeenCalledTimes(1);
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
       res.write('event: done\ndata: [DONE]\n\n');
       await mirror.flush();
 
-      expect(redis.expire).toHaveBeenCalledTimes(4);
+      expect(redis.expire).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('should clear old stream data before a new generation starts', async () => {
+  it('should set short ttl after shrinkTTLAfterComplete', async () => {
     const redis = getGlobalRedisConnection() as any;
-    const { keyOfCursor, keyOfStream } = getStreamResumeRedisKeys({
+    const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
+    const res = { write: vi.fn(() => true) } as any;
+    const mirror = mirrorChatStream({ res, teamId, appId, chatId });
+    res.write('data: x\n\n');
+    await mirror.flush();
+    redis.expire.mockClear?.();
+    await mirror.shrinkTTLAfterComplete();
+    expect(redis.expire).toHaveBeenCalledWith(
+      keys.keyOfStream,
+      STREAM_RESUME_POST_COMPLETE_TTL_SECONDS
+    );
+    expect(redis.expire).toHaveBeenCalledTimes(1);
+  });
+
+  it('should clear old redis mirror when mirror starts (before first chunk)', async () => {
+    const redis = getGlobalRedisConnection() as any;
+    const { keyOfStream } = getStreamResumeRedisKeys({
       teamId,
       appId,
       chatId
     });
 
-    await redis.set(keyOfCursor, '10-0');
     await redis.set(keyOfStream, 'legacy');
 
     const mirror = mirrorChatStream({
@@ -525,10 +538,9 @@ describe('stream resume helpers', () => {
       chatId
     });
 
-    await mirror.reset();
+    await mirror.flush();
 
-    expect(await redis.get(keyOfCursor)).toBe('');
-    expect(await redis.get(keyOfStream)).toBeNull();
+    expect(await redis.get(keyOfStream)).toBeFalsy();
   });
 
   it('should restore the original response write after cleanup', async () => {
@@ -561,6 +573,8 @@ describe('stream resume helpers', () => {
       destroyed: false
     } as any;
 
+    const delSpy = vi.spyOn(redis, 'del').mockResolvedValue(1);
+
     const mirror = mirrorChatStream({
       res,
       teamId,
@@ -575,22 +589,12 @@ describe('stream resume helpers', () => {
 
     await mirror.flush();
 
+    const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
+    const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
+
     expect(originalWrite).toHaveBeenCalledTimes(1);
-    expect(redis.call).toHaveBeenNthCalledWith(
-      1,
-      'XADD',
-      `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfStream}`,
-      '*',
-      'raw',
-      'event: answer\n'
-    );
-    expect(redis.call).toHaveBeenNthCalledWith(
-      2,
-      'XADD',
-      `${FASTGPT_REDIS_PREFIX}${getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfStream}`,
-      '*',
-      'raw',
-      'data: hello\n\n'
-    );
+    expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
+    expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
+    expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
 });

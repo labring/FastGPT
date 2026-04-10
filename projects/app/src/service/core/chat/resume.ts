@@ -1,11 +1,15 @@
 import type { NextApiResponse } from 'next';
+import { env } from '@fastgpt/service/env';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 import { StreamResumeMirrorActive } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
-export const STREAM_RESUME_TTL_SECONDS = 60 * 60;
+/** 生成中：定期续期（见 env `STREAM_RESUME_TTL_SECONDS`） */
+export const STREAM_RESUME_TTL_SECONDS = env.STREAM_RESUME_TTL_SECONDS;
+/** 流结束后短 TTL（见 env `STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`） */
+export const STREAM_RESUME_POST_COMPLETE_TTL_SECONDS = env.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 
@@ -20,7 +24,6 @@ export const getStreamResumeRedisKeys = ({
   appId,
   chatId
 }: StreamResumeRedisKeysParams) => ({
-  keyOfCursor: `stream:resume:cursor:${teamId}:${appId}:${chatId}`,
   keyOfStream: `stream:resume:data:${teamId}:${appId}:${chatId}`
 });
 
@@ -29,29 +32,29 @@ type StreamResumeKeys = ReturnType<typeof getStreamResumeRedisKeys>;
 const getRawRedisKey = (key: string) => `${FASTGPT_REDIS_PREFIX}${key}`;
 
 const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
-  rawKeyOfCursor: getRawRedisKey(keys.keyOfCursor),
   rawKeyOfStream: getRawRedisKey(keys.keyOfStream)
 });
 
-const touchStreamResumeTTL = async ({ keyOfCursor, keyOfStream }: StreamResumeKeys) => {
+const touchStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
   const redis = getGlobalRedisConnection();
-
-  await Promise.all([
-    redis.expire(keyOfStream, STREAM_RESUME_TTL_SECONDS),
-    redis.expire(keyOfCursor, STREAM_RESUME_TTL_SECONDS)
-  ]);
+  await redis.expire(keyOfStream, STREAM_RESUME_TTL_SECONDS);
 };
 
-const initStreamResumeCursor = async ({ keyOfCursor }: StreamResumeKeys) => {
+const shrinkStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
   const redis = getGlobalRedisConnection();
-
-  await redis.set(keyOfCursor, '', 'EX', STREAM_RESUME_TTL_SECONDS);
+  await redis.expire(keyOfStream, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS);
 };
 
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
   if (typeof chunk === 'string') return chunk;
   if (Buffer.isBuffer(chunk)) return chunk.toString(encoding || 'utf8');
   return Buffer.from(chunk).toString(encoding || 'utf8');
+};
+
+/** 新一轮流式开始前清空 Redis 镜像，否则 XADD 会接在旧 Stream 后面，续传会重复历史 */
+const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
+  const redis = getGlobalRedisConnection();
+  await redis.del(keys.keyOfStream);
 };
 
 export const mirrorChatStream = ({
@@ -69,7 +72,10 @@ export const mirrorChatStream = ({
 
   const _write_stash = res.write;
   const _write_fn = res.write.bind(res);
-  let queue = Promise.resolve();
+  /** 先清空上一轮镜像，再顺序 XADD；首个 chunk 一定排在清空之后 */
+  let queue: Promise<void> = clearStreamResumeMirrorKeys(keys).catch((error) => {
+    logger.error('Failed to clear stream resume redis keys before mirror', { params, error });
+  });
   let lastTouchedAt = 0;
   let _res = res as NextApiResponse & {
     write: typeof res.write;
@@ -117,20 +123,16 @@ export const mirrorChatStream = ({
 
   return {
     ...keys,
-    reset: async () => {
-      try {
-        await Promise.all([
-          redis.del(keys.keyOfStream, keys.keyOfCursor),
-          // Clean up legacy keys written before we switched raw stream commands to use the prefixed key.
-          redis.call('DEL', keys.keyOfStream, keys.keyOfCursor)
-        ]);
-        await initStreamResumeCursor(keys);
-      } catch (error) {
-        logger.error('Failed to reset stream resume redis keys', { params, error });
-      }
-    },
     flush: async () => {
       await queue;
+    },
+    /** 队列刷完后调用：把续期从「生成中长 TTL」改为「结束后短 TTL」，否则最后一次 touch 仍会长留 30min */
+    shrinkTTLAfterComplete: async () => {
+      try {
+        await shrinkStreamResumeTTL(keys);
+      } catch (error) {
+        logger.error('Failed to shrink stream resume redis ttl', { params, error });
+      }
     },
     restore: () => {
       delete _res[StreamResumeMirrorActive];
@@ -188,6 +190,11 @@ type ResumeBaseParams = StreamResumeRedisKeysParams & {
 
 type XRangeResponse = [string, string[]][];
 
+/**
+ * Replay the mirrored stream from the beginning for this HTTP connection only.
+ * Does not read or write the shared Redis cursor key so multiple tabs / refresh-during-resume
+ * each receive the full buffered stream, then pass `lastStreamId` to `_resume` for live tail.
+ */
 export const catchUpAllHistoryItems = async ({
   res,
   maxReplayLength = 50,
@@ -197,10 +204,10 @@ export const catchUpAllHistoryItems = async ({
   const keys = getStreamResumeRedisKeys(params);
   const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
 
-  let cursor = (await redis.get(keys.keyOfCursor)) || '';
+  let lastStreamId = '';
 
   while (!res.writableEnded && !res.destroyed) {
-    const rangeStart = cursor ? `(${cursor}` : '-';
+    const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
 
     const historyItems = (await redis.call(
       'XRANGE',
@@ -212,11 +219,11 @@ export const catchUpAllHistoryItems = async ({
     )) as XRangeResponse;
 
     if (historyItems.length === 0) {
-      return cursor;
+      return lastStreamId;
     }
 
     for (const [streamId, rawFields] of historyItems) {
-      cursor = streamId;
+      lastStreamId = streamId;
       const fields = parseRedisStreamFields(rawFields);
 
       writeRedisStreamFields({
@@ -229,18 +236,13 @@ export const catchUpAllHistoryItems = async ({
       }
     }
 
-    if (cursor) {
-      await redis.set(keys.keyOfCursor, cursor);
-      await touchStreamResumeTTL(keys);
-    }
-
     if (historyItems.length < maxReplayLength || res.writableEnded || res.destroyed) {
-      return cursor;
+      return lastStreamId;
     }
 
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
-  return cursor;
+  return lastStreamId;
 };
 
 type XReadResponse = [string, [string, string[]][]][] | null;
@@ -256,7 +258,7 @@ export const _resume = async ({
   const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
 
   try {
-    let cursor = initialCursor ?? ((await redis.get(keys.keyOfCursor)) || '');
+    let cursor = initialCursor ?? '';
 
     if (cursor) {
       const currentItem = (await redis.call(
@@ -309,9 +311,6 @@ export const _resume = async ({
           res,
           fields
         });
-
-        await redis.set(keys.keyOfCursor, cursor);
-        await touchStreamResumeTTL(keys);
 
         if (isTerminalRedisStreamFields(fields) || res.writableEnded || res.destroyed) {
           return cursor;

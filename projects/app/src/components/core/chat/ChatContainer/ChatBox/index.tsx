@@ -27,6 +27,7 @@ import {
   updateFeedbackReadStatus
 } from '@/web/core/chat/feedback/api';
 import { delChatRecordById } from '@/web/core/chat/record/api';
+import { postMarkChatRead } from '@/web/core/chat/history/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
@@ -56,6 +57,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -64,7 +66,7 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep } from 'lodash';
 import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -84,79 +86,6 @@ enum FeedbackTypeEnum {
 }
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
-type PendingResumeHumanChatType = Pick<
-  HumanChatSiteItemType,
-  'id' | 'dataId' | 'obj' | 'value' | 'hideInUI' | 'time'
->;
-
-const getPendingResumeHumanChatKey = (appId: string, chatId: string) => {
-  return `chatPendingHuman_${appId}_${chatId}`;
-};
-
-const savePendingResumeHumanChat = ({
-  appId,
-  chatId,
-  chat
-}: {
-  appId: string;
-  chatId: string;
-  chat: HumanChatSiteItemType;
-}) => {
-  if (!appId || !chatId || typeof window === 'undefined') return;
-
-  const payload: PendingResumeHumanChatType = {
-    id: chat.id,
-    dataId: chat.dataId,
-    obj: chat.obj,
-    value: chat.value,
-    hideInUI: chat.hideInUI,
-    time: chat.time
-  };
-
-  sessionStorage.setItem(getPendingResumeHumanChatKey(appId, chatId), JSON.stringify(payload));
-};
-
-const getPendingResumeHumanChat = ({
-  appId,
-  chatId
-}: {
-  appId: string;
-  chatId: string;
-}): HumanChatSiteItemType | undefined => {
-  if (!appId || !chatId || typeof window === 'undefined') return;
-
-  const raw = sessionStorage.getItem(getPendingResumeHumanChatKey(appId, chatId));
-  if (!raw) return;
-
-  try {
-    const payload = JSON.parse(raw) as PendingResumeHumanChatType;
-    if (payload.obj !== ChatRoleEnum.Human) {
-      sessionStorage.removeItem(getPendingResumeHumanChatKey(appId, chatId));
-      return;
-    }
-
-    return {
-      ...payload,
-      status: ChatStatusEnum.finish,
-      time: payload.time ? new Date(payload.time) : undefined
-    };
-  } catch (error) {
-    sessionStorage.removeItem(getPendingResumeHumanChatKey(appId, chatId));
-    return;
-  }
-};
-
-const clearPendingResumeHumanChat = ({ appId, chatId }: { appId: string; chatId: string }) => {
-  if (!appId || !chatId || typeof window === 'undefined') return;
-  sessionStorage.removeItem(getPendingResumeHumanChatKey(appId, chatId));
-};
-
-const isSameHumanChat = (current?: ChatSiteItemType, pending?: HumanChatSiteItemType) => {
-  if (!current || !pending) return false;
-  if (current.obj !== ChatRoleEnum.Human || pending.obj !== ChatRoleEnum.Human) return false;
-
-  return current.hideInUI === pending.hideInUI && isEqual(current.value, pending.value);
-};
 
 const isAbortByLeave = (reason: unknown) => {
   return reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
@@ -222,7 +151,6 @@ const ChatBox = ({
   const pluginController = useRef(new AbortController());
   const resumeController = useRef<AbortController>();
   const resumedChatIdRef = useRef<string>();
-  const isPageLeavingRef = useRef(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -257,6 +185,41 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+
+  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
+  const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
+
+  const syncSidebarChatGenerateStatus = useMemoizedFn(
+    (status: ChatGernateStatusEnum, options?: { hasBeenRead?: boolean }) => {
+      if (!chatId) return;
+      setHistories((prev) => {
+        const idx = prev.findIndex((h) => h.chatId === chatId);
+        if (idx === -1) {
+          queueMicrotask(loadHistories);
+          return prev;
+        }
+        return prev.map((h) =>
+          h.chatId === chatId
+            ? {
+                ...h,
+                chatGenerateStatus: status,
+                ...(options?.hasBeenRead !== undefined ? { hasBeenRead: options.hasBeenRead } : {})
+              }
+            : h
+        );
+      });
+    }
+  );
+
+  const resumeTargetAiDataId = useMemo(() => {
+    for (let i = chatRecords.length - 1; i >= 0; i--) {
+      const row = chatRecords[i];
+      if (row.obj === ChatRoleEnum.AI && row.dataId) {
+        return row.dataId as string;
+      }
+    }
+    return undefined;
+  }, [chatRecords]);
 
   // Workflow running, there are user input or selection
   const { interactive: lastInteractive, canSendQuery } = useMemo(
@@ -821,21 +784,18 @@ const ChatBox = ({
             }
           ];
 
-          savePendingResumeHumanChat({
-            appId,
-            chatId,
-            chat: currentHumanChat
-          });
+          resumedChatIdRef.current = chatId;
 
           setChatBoxData((state) =>
             state.chatId === chatId
               ? {
                   ...state,
                   chatGenerateStatus: ChatGernateStatusEnum.generating,
-                  hasBeenRead: true
+                  hasBeenRead: false
                 }
               : state
           );
+          syncSidebarChatGenerateStatus(ChatGernateStatusEnum.generating, { hasBeenRead: false });
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
@@ -930,7 +890,6 @@ const ChatBox = ({
 
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
-            clearPendingResumeHumanChat({ appId, chatId });
             setChatBoxData((state) =>
               state.chatId === chatId
                 ? {
@@ -940,6 +899,15 @@ const ChatBox = ({
                   }
                 : state
             );
+            void postMarkChatRead({
+              appId,
+              chatId,
+              ...outLinkAuthData
+            })
+              .catch(() => {})
+              .finally(() => {
+                syncSidebarChatGenerateStatus(ChatGernateStatusEnum.done, { hasBeenRead: true });
+              });
           } catch (err: any) {
             console.log('Chat error', err);
             toast({
@@ -967,10 +935,6 @@ const ChatBox = ({
               setChatRecords(newChatList.slice(0, newChatList.length - 2));
             }
 
-            if (!isPageLeavingRef.current && !isAbortByLeave(abortSignal.signal.reason)) {
-              clearPendingResumeHumanChat({ appId, chatId });
-            }
-
             setChatBoxData((state) =>
               state.chatId === chatId
                 ? {
@@ -980,6 +944,15 @@ const ChatBox = ({
                   }
                 : state
             );
+            void postMarkChatRead({
+              appId,
+              chatId,
+              ...outLinkAuthData
+            })
+              .catch(() => {})
+              .finally(() => {
+                syncSidebarChatGenerateStatus(ChatGernateStatusEnum.error, { hasBeenRead: true });
+              });
           }
 
           autoTTSResponse && finishSegmentedAudio();
@@ -1208,24 +1181,6 @@ const ChatBox = ({
     };
   }, [chatRecords, isChatting, t]);
 
-  useEffect(() => {
-    isPageLeavingRef.current = false;
-  }, [appId, chatId]);
-
-  useEffect(() => {
-    const markPageLeaving = () => {
-      isPageLeavingRef.current = true;
-    };
-
-    window.addEventListener('beforeunload', markPageLeaving);
-    window.addEventListener('pagehide', markPageLeaving);
-
-    return () => {
-      window.removeEventListener('beforeunload', markPageLeaving);
-      window.removeEventListener('pagehide', markPageLeaving);
-    };
-  }, []);
-
   // page change and abort request
   useEffect(() => {
     setQuestionGuide([]);
@@ -1233,22 +1188,6 @@ const ChatBox = ({
     resumedChatIdRef.current = undefined;
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
-
-  useEffect(() => {
-    if (!appId || !chatId || !isChatRecordsLoaded) return;
-    if (chatBoxData.appId !== appId || chatBoxData.chatId !== chatId) return;
-    if (chatBoxData.chatGenerateStatus === undefined) return;
-    if (chatBoxData.chatGenerateStatus === ChatGernateStatusEnum.generating) return;
-
-    clearPendingResumeHumanChat({ appId, chatId });
-  }, [
-    appId,
-    chatId,
-    isChatRecordsLoaded,
-    chatBoxData.appId,
-    chatBoxData.chatId,
-    chatBoxData.chatGenerateStatus
-  ]);
 
   useEffect(() => {
     if (
@@ -1266,30 +1205,18 @@ const ChatBox = ({
 
     resumedChatIdRef.current = chatId;
 
-    const responseChatId = getNanoid(24);
+    const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
     const controller = new AbortController();
     resumeController.current = controller;
-    const pendingHumanChat = getPendingResumeHumanChat({ appId, chatId });
-
-    setChatRecords((state) => {
-      const next = [...state];
-      const lastChat = next[next.length - 1];
-
-      if (pendingHumanChat && !isSameHumanChat(lastChat, pendingHumanChat)) {
-        next.push(pendingHumanChat);
-      }
-
-      return next;
-    });
-    pendingHumanChat && scrollToBottom('auto');
+    scrollToBottom('auto');
 
     (async () => {
       try {
         const { responseText, completedChat } = await streamResumeFetch({
           appId,
           chatId,
-          abortCtrl: controller,
-          onMessage: (message) => {
+          controller,
+          onmessage: (message) => {
             if (shouldCreateResumeAiPlaceholder(message.event)) {
               appendResumeAiPlaceholder(responseChatId);
             }
@@ -1298,7 +1225,6 @@ const ChatBox = ({
         });
 
         if (completedChat) {
-          clearPendingResumeHumanChat({ appId, chatId });
           setChatRecords(
             completedChat.records.list.map((item) => ({
               ...item,
@@ -1338,8 +1264,6 @@ const ChatBox = ({
 
           return next;
         });
-
-        clearPendingResumeHumanChat({ appId, chatId });
       } catch (error) {
         if (controller.signal.aborted) return;
 
@@ -1382,6 +1306,15 @@ const ChatBox = ({
               }
             : state)
         }));
+        void postMarkChatRead({
+          appId,
+          chatId,
+          ...outLinkAuthData
+        })
+          .catch(() => {})
+          .finally(() => {
+            syncSidebarChatGenerateStatus(ChatGernateStatusEnum.done, { hasBeenRead: true });
+          });
       }
     })();
   }, [
@@ -1394,9 +1327,13 @@ const ChatBox = ({
     chatBoxData.chatGenerateStatus,
     generatingMessage,
     hasMeaningfulAiOutput,
+    outLinkAuthData,
+    resumeTargetAiDataId,
     scrollToBottom,
     setChatBoxData,
-    setChatRecords
+    setChatRecords,
+    syncSidebarChatGenerateStatus,
+    appendResumeAiPlaceholder
   ]);
 
   const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;

@@ -7,12 +7,10 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import {
-  // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
   EventStreamContentType,
-  fetchEventSource
+  fetchEventSource,
+  type FetchEventSourceInit
 } from '@fortaine/fetch-event-source';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { useSystemStore } from '../system/useSystemStore';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
@@ -87,200 +85,187 @@ type ResponseQueueItemType = CommonResponseType &
       }
   );
 
-class FatalError extends Error {}
-
-const handleStreamMessage = ({
-  event,
-  data,
-  onMessage,
-  pushDataToQueue,
-  setErrMsg,
-  splitAnswerTextByCharacter = true
-}: {
+type HandleEventSourceDataParams = {
   event: string;
   data: string;
-  onMessage: StartChatFnProps['generatingMessage'];
-  pushDataToQueue: (data: ResponseQueueItemType) => void;
-  setErrMsg: (err: string) => void;
+  onmessage: StartChatFnProps['generatingMessage'];
+  enqueue: (data: ResponseQueueItemType) => void;
+  onerror: (err: string) => void;
   splitAnswerTextByCharacter?: boolean;
-}) => {
+};
+function handleEventSourceData(params: HandleEventSourceDataParams) {
+  const { event, data, onmessage, enqueue, onerror, splitAnswerTextByCharacter = true } = params;
+
   if (data === '[DONE]') {
     return;
   }
 
-  const parseJson = (() => {
-    try {
-      return JSON.parse(data);
-    } catch (error) {
-      return;
-    }
-  })();
+  try {
+    const parsed: any = JSON.parse(data);
+    if (typeof parsed !== 'object') throw new Error('Invalid JSON');
 
-  if (typeof parseJson !== 'object') return;
-  const { responseValueId, stepId, ...rest } = parseJson;
+    const { responseValueId, stepId, ...obj } = parsed;
 
-  if (event === SseResponseEventEnum.answer) {
-    const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
-    pushDataToQueue({
-      responseValueId,
-      stepId,
-      event,
-      reasoningText
-    });
-
-    const text = rest.choices?.[0]?.delta?.content || '';
-    if (!splitAnswerTextByCharacter) {
-      if (text) {
-        pushDataToQueue({
-          responseValueId,
-          stepId,
-          event,
-          text
-        });
+    switch (event) {
+      case SseResponseEventEnum.toolCall:
+      case SseResponseEventEnum.toolParams:
+      case SseResponseEventEnum.toolResponse:
+      case SseResponseEventEnum.interactive:
+      case SseResponseEventEnum.plan:
+      case SseResponseEventEnum.stepTitle:
+      case SseResponseEventEnum.skillCall: {
+        enqueue({ responseValueId, stepId, event, ...obj });
+        break;
       }
-    } else {
-      for (const item of text) {
-        pushDataToQueue({
-          responseValueId,
-          stepId,
-          event,
-          text: item
-        });
+
+      case SseResponseEventEnum.answer: {
+        const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
+        enqueue({ responseValueId, stepId, event, reasoningText });
+
+        const content = obj.choices?.[0]?.delta?.content || '';
+
+        if (splitAnswerTextByCharacter) {
+          for (const item of content) {
+            enqueue({ responseValueId, stepId, event, text: item });
+          }
+        } else {
+          enqueue({ responseValueId, stepId, event, text: content });
+        }
+
+        break;
+      }
+
+      case SseResponseEventEnum.fastAnswer: {
+        const reasoningText = obj.choices?.[0]?.delta?.reasoning_content || '';
+        enqueue({ responseValueId, stepId, event, reasoningText });
+
+        const text = obj.choices?.[0]?.delta?.content || '';
+        enqueue({ responseValueId, stepId, event, text });
+
+        break;
+      }
+
+      case SseResponseEventEnum.flowNodeResponse: {
+        onmessage({ event, nodeResponse: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.updateVariables: {
+        onmessage({ event, variables: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.collectionForm: {
+        onmessage({ event, collectionForm: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.topAgentConfig: {
+        onmessage({ event, formData: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.sandboxStatus: {
+        onmessage({ event, sandboxStatus: obj });
+        break;
+      }
+
+      case SseResponseEventEnum.error: {
+        const error = getErrText(obj, '流响应错误');
+        onerror(error);
+        break;
+      }
+
+      case SseResponseEventEnum.workflowDuration: {
+        onmessage({ event, ...obj });
+        break;
+      }
+
+      case SseResponseEventEnum.flowNodeStatus: {
+        onmessage({ event, ...obj });
+        break;
+      }
+
+      default: {
+        throw new Error(`Unsupported event: ${event}`);
       }
     }
-  } else if (event === SseResponseEventEnum.fastAnswer) {
-    const reasoningText = rest.choices?.[0]?.delta?.reasoning_content || '';
-    pushDataToQueue({
-      responseValueId,
-      stepId,
-      event,
-      reasoningText
-    });
-
-    const text = rest.choices?.[0]?.delta?.content || '';
-    pushDataToQueue({
-      responseValueId,
-      stepId,
-      event,
-      text
-    });
-  } else if (
-    event === SseResponseEventEnum.toolCall ||
-    event === SseResponseEventEnum.toolParams ||
-    event === SseResponseEventEnum.toolResponse ||
-    event === SseResponseEventEnum.interactive ||
-    event === SseResponseEventEnum.plan ||
-    event === SseResponseEventEnum.stepTitle ||
-    event === SseResponseEventEnum.skillCall
-  ) {
-    pushDataToQueue({
-      responseValueId,
-      stepId,
-      event,
-      ...rest
-    });
-  } else if (event === SseResponseEventEnum.flowNodeResponse) {
-    onMessage({
-      event,
-      nodeResponse: rest
-    });
-  } else if (event === SseResponseEventEnum.updateVariables) {
-    onMessage({
-      event,
-      variables: rest
-    });
-  } else if (event === SseResponseEventEnum.collectionForm) {
-    onMessage({
-      event,
-      collectionForm: rest
-    });
-  } else if (event === SseResponseEventEnum.topAgentConfig) {
-    onMessage({
-      event,
-      formData: rest
-    });
-  } else if (event === SseResponseEventEnum.error) {
-    if (rest.statusText === TeamErrEnum.aiPointsNotEnough) {
-      useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
-    }
-    setErrMsg(getErrText(rest, '流响应错误'));
-  } else if (
-    [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
-      event as any
-    )
-  ) {
-    onMessage({
-      event,
-      ...rest
-    });
-  } else if (event === SseResponseEventEnum.sandboxStatus) {
-    onMessage({
-      event,
-      sandboxStatus: rest
-    });
+  } catch {
+    // NOOP
   }
-};
+}
 
-const runStreamRequest = ({
-  url,
-  requestInit,
-  onMessage,
-  abortCtrl
-}: {
+/** FetchEventSourceInit 将 headers 收窄为 Record；RequestInit 为 HeadersInit，需先归一化 */
+function headersInitToRecord(headers: HeadersInit | undefined): Record<string, string> | undefined {
+  if (headers === undefined) return undefined;
+  if (headers instanceof Headers) {
+    const out: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      out[key] = value;
+    });
+    return out;
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return headers;
+}
+
+type SSEFetchParams = {
   url: string;
-  requestInit: {
-    method?: string;
-    headers?: Record<string, string>;
-    body?: string;
-  };
-  onMessage: StartChatFnProps['generatingMessage'];
-  abortCtrl: AbortController;
-}) =>
-  new Promise<StreamResponseType>(async (resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      abortCtrl.abort('Time out');
+  requestInit: RequestInit;
+  onmessage: StartChatFnProps['generatingMessage'];
+  abortController: AbortController;
+};
+function $ssefetch(params: SSEFetchParams) {
+  const { url, requestInit, onmessage, abortController } = params;
+  const signal = abortController.signal;
+  const { headers: initHeaders, ...restRequestInit } = requestInit;
+
+  return new Promise<StreamResponseType>(async (resolve, reject) => {
+    const timer = setTimeout(() => {
+      abortController.abort('Timeout');
     }, 60000);
 
     let responseText = '';
     let responseQueue: ResponseQueueItemType[] = [];
-    let errMsg: string | undefined;
+    let error: string | undefined;
     let finished = false;
 
-    const finish = () => {
-      if (errMsg !== undefined) {
-        return failedFinish();
-      }
-      return resolve({
-        responseText
-      });
-    };
-    const failedFinish = (err?: any) => {
+    const onfailed = (err?: any) => {
       finished = true;
-      reject({
-        message: getErrText(err, errMsg ?? '响应过程出现异常~'),
-        responseText
-      });
+      reject({ message: getErrText(err, error ?? '响应过程出现异常~'), responseText });
     };
 
-    const isAnswerEvent = (event: SseResponseEventEnum) =>
-      event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
+    const onfinish = () => {
+      if (error !== undefined) {
+        return onfailed();
+      }
 
-    function animateResponseText() {
-      if (abortCtrl.signal.aborted) {
+      return resolve({ responseText });
+    };
+
+    const isAnswerEvent = (event: SseResponseEventEnum) => {
+      return event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
+    };
+
+    function animateResponseLoop() {
+      if (signal.aborted) {
         responseQueue.forEach((item) => {
-          onMessage(item);
+          onmessage(item);
           if (isAnswerEvent(item.event) && 'text' in item && item.text) {
             responseText += item.text;
           }
         });
-        return finish();
+
+        return onfinish();
       }
 
       if (responseQueue.length > 0) {
         const fetchCount = Math.max(1, Math.round(responseQueue.length / 30));
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
-          onMessage(item);
+          onmessage(item);
           if (isAnswerEvent(item.event) && 'text' in item && item.text) {
             responseText += item.text;
           }
@@ -290,138 +275,130 @@ const runStreamRequest = ({
       }
 
       if (finished && responseQueue.length === 0) {
-        return finish();
+        return onfinish();
       }
 
-      requestAnimationFrame(animateResponseText);
+      requestAnimationFrame(animateResponseLoop);
     }
-    animateResponseText();
 
-    const pushDataToQueue = (data: ResponseQueueItemType) => {
+    animateResponseLoop();
+
+    const enqueue = (data: ResponseQueueItemType) => {
       responseQueue.push(data);
 
       if (document.hidden) {
-        animateResponseText();
+        animateResponseLoop();
       }
     };
 
     try {
-      await fetchEventSource(getWebReqUrl(url), {
-        ...requestInit,
-        signal: abortCtrl.signal,
+      const fetchEventSourceOptions: FetchEventSourceInit = {
+        ...restRequestInit,
+        headers: headersInitToRecord(initHeaders),
+        signal,
         async onopen(res) {
-          clearTimeout(timeoutId);
+          clearTimeout(timer);
           const contentType = res.headers.get('content-type');
 
           if (contentType?.startsWith('text/plain')) {
-            return failedFinish(await res.clone().text());
+            return onfailed(await res.clone().text());
           }
 
-          if (
-            !res.ok ||
-            (res.headers.get('content-type') &&
-              !res.headers.get('content-type')?.startsWith(EventStreamContentType)) ||
-            res.status !== 200
-          ) {
+          if (!res.ok || !contentType?.startsWith(EventStreamContentType) || res.status !== 200) {
             try {
-              failedFinish(await res.clone().json());
+              onfailed(await res.clone().json());
             } catch {
-              const errText = await res.clone().text();
-              if (!errText.startsWith('event: error')) {
-                failedFinish();
+              const error = await res.clone().text();
+              if (!error.startsWith('event: error')) {
+                onfailed();
               }
             }
           }
         },
         onmessage: ({ event, data }) => {
-          handleStreamMessage({
+          handleEventSourceData({
             event,
             data,
-            onMessage,
-            pushDataToQueue,
-            setErrMsg: (err) => {
-              errMsg = err;
-            }
+            onmessage,
+            enqueue,
+            onerror: (err) => void (error = err)
           });
         },
         onclose() {
           finished = true;
         },
         onerror(err) {
-          console.log(err, 'fetch error');
-          clearTimeout(timeoutId);
-          failedFinish(getErrText(err));
+          clearTimeout(timer);
+          const error = getErrText(err);
+          onfailed(error);
+
           throw new Error(err);
         },
         openWhenHidden: true
-      });
-    } catch (err: any) {
-      clearTimeout(timeoutId);
+      };
 
-      if (abortCtrl.signal.aborted) {
+      await fetchEventSource(getWebReqUrl(url), fetchEventSourceOptions);
+    } catch (err: unknown) {
+      clearTimeout(timer);
+
+      if (abortController.signal.aborted) {
         finished = true;
         return;
       }
-      console.log(err, 'fetch error');
 
-      failedFinish(err);
+      const error = getErrText(err);
+      onfailed(error);
     }
   });
+}
 
-function runEventSourceRequest({
-  url,
-  onMessage,
-  abortCtrl
-}: {
+type ResumeSSEFetchParams = {
   url: string;
-  onMessage: StartChatFnProps['generatingMessage'];
-  abortCtrl: AbortController;
-}) {
-  return new Promise<ResumeStreamResponseType>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      abortCtrl.abort('Time out');
+  onmessage: StartChatFnProps['generatingMessage'];
+  controller: AbortController;
+};
+function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
+  const signal = controller.signal;
+
+  return new Promise<ResumeStreamResponseType>(async (resolve, reject) => {
+    const timer = setTimeout(() => {
+      controller.abort('Timeout');
     }, 60000);
 
     let responseText = '';
     let responseQueue: ResponseQueueItemType[] = [];
-    let errMsg: string | undefined;
+    let error: string | undefined;
     let finished = false;
-    let receivedTerminalEvent = false;
-    let closeEventSource = () => {};
     let resumePhase: StreamResumePhaseEnum = StreamResumePhaseEnum.catchup;
     let completedChat: StreamNoNeedToBeResumeType | undefined;
 
-    const finish = () => {
-      if (errMsg !== undefined) {
-        return failedFinish();
+    const onfinish = () => {
+      if (error !== undefined) {
+        return onfailed();
       }
-      return resolve({
-        responseText,
-        completedChat
-      });
+      return resolve({ responseText, completedChat });
     };
-    const failedFinish = (err?: any) => {
+    const onfailed = (err?: any) => {
       finished = true;
-      reject({
-        message: getErrText(err, errMsg ?? '响应过程出现异常~'),
-        responseText
-      });
+      const message = getErrText(err, error ?? '响应过程出现异常~');
+      reject({ message, responseText });
     };
 
-    const isAnswerEvent = (event: SseResponseEventEnum) =>
-      event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
+    const isAnswerEvent = (event: SseResponseEventEnum) => {
+      return event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
+    };
 
     const applyMessageItem = (item: ResponseQueueItemType) => {
-      onMessage(item);
+      onmessage(item);
       if (isAnswerEvent(item.event) && 'text' in item && item.text) {
         responseText += item.text;
       }
     };
 
-    function animateResponseText() {
-      if (abortCtrl.signal.aborted) {
+    function animateResponseLoop() {
+      if (signal.aborted) {
         responseQueue.forEach(applyMessageItem);
-        return finish();
+        return onfinish();
       }
 
       if (responseQueue.length > 0) {
@@ -435,14 +412,15 @@ function runEventSourceRequest({
       }
 
       if (finished && responseQueue.length === 0) {
-        return finish();
+        return onfinish();
       }
 
-      requestAnimationFrame(animateResponseText);
+      requestAnimationFrame(animateResponseLoop);
     }
-    animateResponseText();
 
-    const pushDataToQueue = (data: ResponseQueueItemType) => {
+    animateResponseLoop();
+
+    const enqueue = (data: ResponseQueueItemType) => {
       if (resumePhase === StreamResumePhaseEnum.catchup) {
         applyMessageItem(data);
         return;
@@ -451,89 +429,90 @@ function runEventSourceRequest({
       responseQueue.push(data);
 
       if (document.hidden) {
-        animateResponseText();
+        animateResponseLoop();
       }
     };
 
-    const stopStream = () => {
-      closeEventSource();
-    };
+    try {
+      const req = new Request(getWebReqUrl(url));
 
-    const stream = $esfetch({
-      url,
-      events: [
-        ...Object.values(SseResponseEventEnum),
-        StreamResumePhaseEvent,
-        StreamResumeCompletedEvent
-      ],
-      signal: abortCtrl.signal,
-      onopen: () => {
-        clearTimeout(timeoutId);
-      },
-      onmessage: ({ event, data }) => {
-        if (event === StreamResumePhaseEvent) {
-          if (data === StreamResumePhaseEnum.catchup || data === StreamResumePhaseEnum.live) {
-            resumePhase = data;
+      await fetchEventSource(req, {
+        signal: signal,
+        async onopen(res) {
+          clearTimeout(timer);
+          const contentType = res.headers.get('content-type');
+
+          if (contentType?.startsWith('text/plain')) {
+            return onfailed(await res.clone().text());
           }
-          return;
-        }
 
-        if (event === StreamResumeCompletedEvent) {
-          try {
-            completedChat = JSON.parse(data) as StreamNoNeedToBeResumeType;
-          } catch (error) {
-            errMsg = getErrText(error, '恢复完成态数据解析失败');
+          if (!res.ok || !contentType?.startsWith(EventStreamContentType) || res.status !== 200) {
+            try {
+              onfailed(await res.clone().json());
+            } catch {
+              const error = await res.clone().text();
+              if (!error.startsWith('event: error')) {
+                onfailed();
+              }
+            }
           }
-          return;
-        }
+        },
+        onmessage: ({ event, data }) => {
+          if (event === StreamResumePhaseEvent) {
+            if (data === StreamResumePhaseEnum.catchup || data === StreamResumePhaseEnum.live) {
+              resumePhase = data;
+            }
+            return;
+          }
 
-        if (data === '[DONE]') {
-          receivedTerminalEvent = true;
-          return;
-        }
+          if (event === StreamResumeCompletedEvent) {
+            try {
+              completedChat = JSON.parse(data) as StreamNoNeedToBeResumeType;
+            } catch (error) {
+              error = getErrText(error, '恢复完成态数据解析失败');
+            }
+            return;
+          }
 
-        handleStreamMessage({
-          event,
-          data,
-          onMessage,
-          pushDataToQueue,
-          setErrMsg: (err) => {
-            errMsg = err;
-          },
-          splitAnswerTextByCharacter: resumePhase === StreamResumePhaseEnum.live
-        });
+          if (data === '[DONE]') {
+            return;
+          }
 
-        if (event === SseResponseEventEnum.error) {
-          receivedTerminalEvent = true;
-        }
-      },
-      onerror: (event) => {
-        clearTimeout(timeoutId);
-
-        if (abortCtrl.signal.aborted || finished) {
-          return;
-        }
-
-        stopStream();
-        if (receivedTerminalEvent || errMsg !== undefined) {
+          handleEventSourceData({
+            event,
+            data,
+            onmessage: onmessage,
+            enqueue: enqueue,
+            onerror: (e) => void (error = e),
+            splitAnswerTextByCharacter: resumePhase === StreamResumePhaseEnum.live
+          });
+        },
+        onclose() {
           finished = true;
-          return;
-        }
+        },
+        onerror(err) {
+          clearTimeout(timer);
 
-        failedFinish(getErrText(event));
-      }
-    });
+          if (controller.signal.aborted || finished) {
+            return;
+          }
 
-    closeEventSource = stream.close;
+          const error = getErrText(err);
+          onfailed(error);
+          throw new Error(error);
+        },
+        openWhenHidden: true
+      });
+    } catch (err: unknown) {
+      clearTimeout(timer);
 
-    abortCtrl.signal.addEventListener(
-      'abort',
-      () => {
+      if (controller.signal.aborted) {
         finished = true;
-        stopStream();
-      },
-      { once: true }
-    );
+        return;
+      }
+
+      onfailed(err);
+    }
   });
 }
 
@@ -542,53 +521,48 @@ export const streamFetch = ({
   data,
   onMessage,
   abortCtrl
-}: StreamFetchProps) =>
-  (() => {
-    const variables = data?.variables || {};
-    variables.cTime = formatTime2YMDHMW(new Date());
+}: StreamFetchProps) => {
+  const rawVars = data?.variables;
+  const variables = {
+    ...(rawVars && typeof rawVars === 'object' && !Array.isArray(rawVars)
+      ? (rawVars as Record<string, unknown>)
+      : {}),
+    cTime: formatTime2YMDHMW(new Date())
+  };
 
-    return runStreamRequest({
-      url,
-      requestInit: {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...data,
-          variables,
-          detail: true,
-          stream: true,
-          retainDatasetCite: data.retainDatasetCite ?? true
-        })
+  return $ssefetch({
+    url,
+    requestInit: {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      onMessage,
-      abortCtrl
-    });
-  })();
-
-export const streamResumeFetch = ({
-  appId,
-  chatId,
-  onMessage,
-  abortCtrl
-}: {
-  appId: string;
-  chatId: string;
-  onMessage: StartChatFnProps['generatingMessage'];
-  abortCtrl: AbortController;
-}) => {
-  const query = new URLSearchParams({
-    appId,
-    chatId
-  });
-
-  return runEventSourceRequest({
-    url: `/api/v1/stream/resume?${query.toString()}`,
-    onMessage,
-    abortCtrl
+      body: JSON.stringify({
+        ...data,
+        variables,
+        detail: true,
+        stream: true,
+        retainDatasetCite: data.retainDatasetCite ?? true
+      })
+    },
+    onmessage: onMessage,
+    abortController: abortCtrl
   });
 };
+
+type StreamResumeFetchParams = {
+  appId: string;
+  chatId: string;
+  onmessage: StartChatFnProps['generatingMessage'];
+  controller: AbortController;
+};
+export function streamResumeFetch(params: StreamResumeFetchParams) {
+  const { appId, chatId, onmessage, controller } = params;
+  const query = new URLSearchParams({ appId, chatId });
+  const url = `/api/v1/stream/resume?${query}`;
+
+  return $resumefetch({ url, onmessage, controller });
+}
 
 export const onOptimizePrompt = async ({
   originalPrompt,
@@ -638,101 +612,39 @@ export const onOptimizeCode = async ({
   });
 };
 
-type EsFetchParams = {
-  url: string;
-  events?: string[];
-  signal?: AbortSignal;
-  onopen?: () => void;
-  onmessage: (event: { event: string; data: string }) => void;
-  onerror?: (event: Event) => void;
-};
-
-export const $esfetch = ({
-  url,
-  events = [],
-  signal,
-  onopen,
-  onmessage,
-  onerror
-}: EsFetchParams) => {
-  const es = new EventSource(getWebReqUrl(url));
-  const listeners: Array<{ event: string; handler: EventListener }> = [];
-
-  const _bind = (event: string) => {
-    const handler: EventListener = ((evt: MessageEvent<string>) => {
-      onmessage({
-        event,
-        data: evt.data
-      });
-    }) as EventListener;
-
-    es.addEventListener(event, handler);
-    listeners.push({ event, handler });
-  };
-
-  es.onopen = () => {
-    onopen?.();
-  };
-
-  es.onmessage = (event: MessageEvent<string>) => {
-    onmessage({
-      event: 'message',
-      data: event.data
-    });
-  };
-
-  events.forEach(_bind);
-
-  if (signal) {
-    signal.addEventListener(
-      'abort',
-      () => {
-        es.close();
-      },
-      { once: true }
-    );
-  }
-
-  if (onerror) {
-    es.onerror = onerror;
-  }
-
-  const close = () => {
-    listeners.forEach(({ event, handler }) => {
-      es.removeEventListener(event, handler);
-    });
-    es.close();
-  };
-
-  return {
-    close
-  };
-};
-
 export const resumeChatStream = (params: ResumeStreamParams) => {
   const search = new URLSearchParams(params);
   const url = `/api/v1/stream/resume?${search.toString()}`;
 
-  return new Promise<void>((resolve, reject) => {
-    const { close } = $esfetch({
-      url: url,
-      events: [...Object.values(SseResponseEventEnum), StreamResumePhaseEvent],
-      onmessage: ({ event, data }) => {
-        if (event === SseResponseEventEnum.error) {
-          close();
-          reject(new Error('Failed to resume chat stream'));
-          return;
-        }
+  return new Promise<void>(async (resolve, reject) => {
+    const controller = new AbortController();
+    const signal = controller.signal;
 
-        if (data === '[DONE]') {
-          close();
-          resolve();
-        }
-      },
-      onerror: (event) => {
-        close();
-        reject(new Error('Failed to resume chat stream', { cause: event }));
-      }
-    });
+    try {
+      await fetchEventSource(new Request(getWebReqUrl(url)), {
+        signal: signal,
+        onmessage: ({ event, data }) => {
+          if (event === SseResponseEventEnum.error) {
+            controller.abort();
+            reject(new Error('Failed to resume chat stream'));
+            return;
+          }
+
+          if (data === '[DONE]') {
+            controller.abort();
+            resolve();
+          }
+        },
+        onerror(err) {
+          controller.abort();
+          reject(new Error('Failed to resume chat stream', { cause: err }));
+          throw err;
+        },
+        openWhenHidden: true
+      });
+    } catch (error) {
+      if (signal.aborted) return;
+      reject(error);
+    }
   });
 };

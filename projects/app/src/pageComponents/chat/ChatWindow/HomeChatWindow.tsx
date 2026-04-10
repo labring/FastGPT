@@ -202,6 +202,10 @@ const HomeChatWindow = () => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
+      if (!appId) {
+        return Promise.reject('appId is empty');
+      }
+
       const histories = messages.slice(-1);
 
       // using original workflow of quick app
@@ -458,7 +462,7 @@ const HomeChatWindow = () => {
           <ChatBox
             appId={appId}
             chatId={chatId}
-            isReady={!loading}
+            isReady={!loading && !!appId}
             enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
