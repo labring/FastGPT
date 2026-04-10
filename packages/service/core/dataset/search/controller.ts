@@ -1329,8 +1329,8 @@ export async function searchFAQData({
       datasetIds,
       vector: queryVector,
       limit: 100,
-      forbidCollectionIdList: [],
-      filterCollectionIdList: [] // 全局搜索，不限制 collection
+      forbidCollectionIdList: []
+      // 不传 filterCollectionIdList，即不限制 collection（传 [] 会被向量存储当作"过滤到空集"，直接返回空结果）
     });
 
     if (!recallResult.results || recallResult.results.length === 0) {
