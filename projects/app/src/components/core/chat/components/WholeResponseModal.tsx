@@ -25,6 +25,7 @@ import { isEmpty } from 'lodash';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -190,8 +191,26 @@ export const WholeResponseContent = ({
     [activeModule]
   );
 
+  const isDataSearch = useMemo(
+    () => activeModule.moduleType === FlowNodeTypeEnum.datasetSearchNode,
+    [activeModule]
+  );
+
   const quoteListDom = useMemo(() => {
-    if (!activeModule.quoteList || activeModule.quoteList.length === 0) return null;
+    const isEmpty = !activeModule.quoteList || activeModule.quoteList.length === 0;
+    if (isEmpty && isDataSearch) {
+      return (
+        <Row
+          label={
+            hasDatabase && hasOtherKnowledgeBase
+              ? t('chat:other_knowledge_base_search_results')
+              : t('chat:search_results')
+          }
+          value={t('chat:no_matching_knowledge')}
+        />
+      );
+    }
+    if (isEmpty) return null;
     return (
       <>
         {hasDatabase && (
@@ -230,7 +249,7 @@ export const WholeResponseContent = ({
         )}
         {hasCorrectionRecord && (
           <Row
-            label={t('chat:response_search_results', { len: activeModule.quoteList.length })}
+            label={t('chat:response_search_results', { len: activeModule.quoteList?.length ?? 0 })}
             rawDom={
               <QuoteList
                 chatItemDataId={dataId}
@@ -255,7 +274,8 @@ export const WholeResponseContent = ({
     appId,
     chatId,
     t,
-    Row
+    Row,
+    isDataSearch
   ]);
 
   return activeModule ? (
