@@ -6,9 +6,13 @@ import {
   SandboxWriteBodySchema,
   SandboxWriteResponseSchema,
   SandboxReadBodySchema,
+  SandboxReadResponseSchema,
   SandboxDownloadBodySchema,
+  SandboxDownloadResponseSchema,
   SandboxCheckExistBodySchema,
-  SandboxCheckExistResponseSchema
+  SandboxCheckExistResponseSchema,
+  SandboxGetHtmlPreviewLinkBodySchema,
+  SandboxGetHtmlPreviewLinkResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
@@ -76,13 +80,9 @@ export const SandboxPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '文件内容流',
           content: {
             '*/*': {
-              schema: {
-                type: 'string',
-                format: 'binary'
-              }
+              schema: SandboxReadResponseSchema
             }
           }
         }
@@ -104,13 +104,34 @@ export const SandboxPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '文件流或 ZIP 包',
           content: {
             'application/octet-stream': {
-              schema: {
-                type: 'string',
-                format: 'binary'
-              }
+              schema: SandboxDownloadResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/getHtmlPreviewLink': {
+    post: {
+      summary: '获取 HTML 文件预览链接',
+      description: '返回用于在浏览器中预览 HTML 文件的链接（S3 托管）',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxGetHtmlPreviewLinkBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'HTML 预览链接',
+          content: {
+            'application/json': {
+              schema: SandboxGetHtmlPreviewLinkResponseSchema
             }
           }
         }

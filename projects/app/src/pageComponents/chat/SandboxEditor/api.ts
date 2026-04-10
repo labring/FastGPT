@@ -2,34 +2,32 @@ import type {
   SandboxListBody,
   SandboxListResponse,
   SandboxWriteBody,
-  SandboxWriteResponse
+  SandboxWriteResponse,
+  SandboxReadBody,
+  SandboxDownloadBody,
+  SandboxCheckExistBody,
+  SandboxCheckExistResponse,
+  SandboxGetHtmlPreviewLinkBody,
+  SandboxGetHtmlPreviewLinkResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { POST } from '@/web/common/api/request';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 /**
  * 列出目录文件
  */
-export const listSandboxFiles = async (
-  data: Omit<SandboxListBody, 'outLinkAuthData'> & { outLinkAuthData?: OutLinkChatAuthProps }
-) => POST<SandboxListResponse>('/core/ai/sandbox/list', data);
+export const listSandboxFiles = async (data: SandboxListBody) =>
+  POST<SandboxListResponse>('/core/ai/sandbox/list', data);
 
 /**
  * 写入文件内容
  */
-export const writeSandboxFile = async (
-  data: Omit<SandboxWriteBody, 'outLinkAuthData'> & { outLinkAuthData?: OutLinkChatAuthProps }
-) => POST<SandboxWriteResponse>('/core/ai/sandbox/write', data);
+export const writeSandboxFile = async (data: SandboxWriteBody) =>
+  POST<SandboxWriteResponse>('/core/ai/sandbox/write', data);
 
 /**
  * 读取文件内容（内联预览）
  */
-export const getSandboxFile = async (data: {
-  appId: string;
-  chatId: string;
-  path: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
-}) => {
+export const getSandboxFile = async (data: SandboxReadBody) => {
   const response = await fetch('/api/core/ai/sandbox/read', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,12 +44,7 @@ export const getSandboxFile = async (data: {
 /**
  * 下载文件或目录（强制下载）
  */
-export const downloadSandbox = async (data: {
-  appId: string;
-  chatId: string;
-  path?: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
-}) => {
+export const downloadSandbox = async (data: SandboxDownloadBody) => {
   const response = await fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -81,18 +74,11 @@ export const downloadSandbox = async (data: {
 /**
  * 检查沙盒是否存在
  */
-export const checkSandboxExist = async (data: {
-  appId: string;
-  chatId: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
-}) => POST<{ exists: boolean }>('/core/ai/sandbox/checkExist', data);
+export const checkSandboxExist = async (data: SandboxCheckExistBody) =>
+  POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', data);
 
 /**
  * 获取 HTML 预览链接 (S3 托管)
  */
-export const getHtmlPreviewLink = (data: {
-  appId: string;
-  chatId: string;
-  filePath: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
-}) => POST<string>('/core/ai/sandbox/getHtmlPreviewLink', data);
+export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkBody) =>
+  POST<SandboxGetHtmlPreviewLinkResponse>('/core/ai/sandbox/getHtmlPreviewLink', data);

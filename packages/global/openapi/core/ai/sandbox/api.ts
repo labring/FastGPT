@@ -50,26 +50,40 @@ export const SandboxReadBodySchema = SandboxBaseSchema.extend({
 });
 export type SandboxReadBody = z.infer<typeof SandboxReadBodySchema>;
 
+export const SandboxReadResponseSchema = z
+  .string()
+  .openapi({ format: 'binary', description: '文件内容流' });
+
 /**
  * 下载文件或目录 - 请求体（响应为文件流或 ZIP）
  */
 export const SandboxDownloadBodySchema = SandboxBaseSchema.extend({
-  path: z.string().default('.').describe('要下载的路径(文件或目录)')
+  path: z.string().optional().default('.').describe('要下载的路径(文件或目录)')
 });
 export type SandboxDownloadBody = z.infer<typeof SandboxDownloadBodySchema>;
+
+export const SandboxDownloadResponseSchema = z
+  .string()
+  .openapi({ format: 'binary', description: '文件流或 ZIP 包' });
 
 /**
  * 检查沙盒是否存在
  */
-export const SandboxCheckExistBodySchema = z.object({
-  appId: z.string(),
-  chatId: z.string(),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-});
-
+export const SandboxCheckExistBodySchema = SandboxBaseSchema;
 export const SandboxCheckExistResponseSchema = z.object({
   exists: z.boolean().describe('沙盒是否存在')
 });
-
 export type SandboxCheckExistBody = z.infer<typeof SandboxCheckExistBodySchema>;
 export type SandboxCheckExistResponse = z.infer<typeof SandboxCheckExistResponseSchema>;
+
+/**
+ * 获取 HTML 预览链接 - 请求/响应
+ */
+export const SandboxGetHtmlPreviewLinkBodySchema = SandboxBaseSchema.extend({
+  filePath: z.string().describe('文件路径')
+});
+export const SandboxGetHtmlPreviewLinkResponseSchema = z.string().describe('HTML 预览链接');
+export type SandboxGetHtmlPreviewLinkBody = z.infer<typeof SandboxGetHtmlPreviewLinkBodySchema>;
+export type SandboxGetHtmlPreviewLinkResponse = z.infer<
+  typeof SandboxGetHtmlPreviewLinkResponseSchema
+>;
