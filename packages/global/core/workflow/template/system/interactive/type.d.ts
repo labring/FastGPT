@@ -79,10 +79,8 @@ export type UserInputFormItemType = {
   // numberInput
   max?: number;
   min?: number;
-  // select & multipleSelect
+  // select
   list?: { label: string; value: string }[];
-  listInputType?: FlowNodeInputTypeEnum.reference | FlowNodeInputTypeEnum.custom;
-  listReference?: [string, string] | [string, string][];
 
   // File
   canLocalUpload?: boolean;

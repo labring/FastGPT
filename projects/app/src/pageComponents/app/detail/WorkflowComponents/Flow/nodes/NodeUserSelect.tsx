@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { type NodeProps, Position, useViewport } from 'reactflow';
 import { Box, Button, HStack, Input } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
@@ -24,11 +24,6 @@ import DndDrag, {
 } from '@fastgpt/web/components/common/DndDrag';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
-const defaultManualOptions: UserSelectOptionItemType[] = [
-  { value: 'Confirm', key: 'option1' },
-  { value: 'Cancel', key: 'option2' }
-];
-
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
@@ -37,13 +32,9 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const CustomComponent = useMemo(
     () => ({
-      // selectedTypeIndex=0 (custom) 时渲染拖拽选项列表（手动输入模式）
-      // selectedTypeIndex=1 (reference) 时由 RenderInput 内置 Reference 组件接管
       [NodeInputKeyEnum.userSelectOptions]: (v: FlowNodeInputItemType) => {
         const { key: optionKey, value, ...props } = v;
-        const rawOptions = value as UserSelectOptionItemType[];
-        // value 为 undefined/null（初始状态或从引用模式切回）时才使用默认选项，空数组表示用户主动删除了所有选项
-        const options = rawOptions ?? defaultManualOptions;
+        const options = value as UserSelectOptionItemType[];
 
         return (
           <Box>
@@ -150,22 +141,7 @@ const OptionItem = ({
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { key: optionKey, value, ...props } = itemValue;
-  const options = (value as UserSelectOptionItemType[]) ?? defaultManualOptions;
-
-  const updateOptionValue = useCallback(
-    (newValue: string) => {
-      const newVal = options.map((val) =>
-        val.key === item.key ? { ...val, value: newValue } : val
-      );
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: optionKey,
-        value: { ...props, key: optionKey, value: newVal }
-      });
-    },
-    [item.key, nodeId, onChangeNode, optionKey, options, props]
-  );
+  const options = value as UserSelectOptionItemType[];
 
   return (
     <Box
@@ -206,10 +182,29 @@ const OptionItem = ({
       </HStack>
       <Box position={'relative'} mt={1}>
         <Input
-          value={item.value}
+          defaultValue={item.value}
           bg={'white'}
           fontSize={'sm'}
-          onChange={(e) => updateOptionValue(e.target.value)}
+          onChange={(e) => {
+            const newVal = options.map((val) =>
+              val.key === item.key
+                ? {
+                    ...val,
+                    value: e.target.value
+                  }
+                : val
+            );
+            onChangeNode({
+              nodeId,
+              type: 'updateInput',
+              key: optionKey,
+              value: {
+                ...props,
+                key: optionKey,
+                value: newVal
+              }
+            });
+          }}
         />
         {!snapshot.isDragging && (
           <MySourceHandle

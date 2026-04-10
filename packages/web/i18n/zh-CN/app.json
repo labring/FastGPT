@@ -596,7 +596,6 @@
   "workflow.select_description_placeholder": "例如: \n冰箱里是否有西红柿？",
   "workflow.select_description_tip": "你可以添加一段说明文字，用以向用户说明每个选项代表的含义。",
   "workflow.select_result": "选择结果",
-  "workflow.select_options_mode_label": "选项",
   "workflow.user_file_input": "文件链接",
   "workflow.user_file_input_desc": "用户上传的文档和图片链接",
   "workflow.user_select": "用户选择",

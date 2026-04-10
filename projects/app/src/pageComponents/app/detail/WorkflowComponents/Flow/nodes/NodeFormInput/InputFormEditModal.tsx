@@ -34,14 +34,12 @@ const InputFormEditModal = ({
   defaultValue,
   onClose,
   onSubmit,
-  keys,
-  nodeId
+  keys
 }: {
   defaultValue: UserInputFormItemType;
   onClose: () => void;
   onSubmit: (data: UserInputFormItemType) => void;
   keys: string[];
-  nodeId: string;
 }) => {
   const isEdit = !!defaultValue.key;
   const { t } = useTranslation();
@@ -125,7 +123,6 @@ const InputFormEditModal = ({
             onTypeChange={(type) => {
               setValue('type', type as FlowNodeInputTypeEnum);
               setValue('defaultValue', '');
-              setValue('listReference', undefined);
             }}
           />
         </Stack>
@@ -134,7 +131,6 @@ const InputFormEditModal = ({
           type={'formInput'}
           isEdit={isEdit}
           inputType={inputType}
-          nodeId={nodeId}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}

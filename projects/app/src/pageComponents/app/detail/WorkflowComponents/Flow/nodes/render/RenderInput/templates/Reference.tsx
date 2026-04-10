@@ -52,7 +52,6 @@ type CommonSelectProps = {
   }[];
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
-  listLayout?: 'grid' | 'wrap';
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
@@ -245,8 +244,7 @@ const MultipleReferenceSelector = ({
   value,
   list = [],
   onSelect,
-  popDirection,
-  listLayout = 'grid'
+  popDirection
 }: SelectProps<true>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -292,21 +290,13 @@ const MultipleReferenceSelector = ({
   }, [formatList, onSelect, value]);
 
   const ArraySelector = useMemo(() => {
-    const isWrap = listLayout === 'wrap';
-    const ContainerTag = isWrap ? Flex : Grid;
-    const containerProps = isWrap
-      ? { flexWrap: 'wrap' as const, w: 'full' }
-      : { gridTemplateColumns: '1fr 1fr' };
-    const itemProps = isWrap ? { flex: '0 1 auto', maxW: '100%', minW: 0 } : { w: '100%' };
-    const innerFlexProps = isWrap ? { flex: '1 1 0', minW: 0 } : { flex: '1 0 0' };
-
     return (
       <MultipleRowArraySelect
         label={
           invalidList.length > 0 ? (
-            <ContainerTag
+            <Grid
               py={3}
-              {...containerProps}
+              gridTemplateColumns={'1fr 1fr'}
               gap={2}
               fontSize={'sm'}
               _hover={{
@@ -319,7 +309,7 @@ const MultipleReferenceSelector = ({
                 return (
                   <Flex
                     key={index}
-                    {...itemProps}
+                    w={'100%'}
                     alignItems={'center'}
                     bg={'primary.50'}
                     color={'myGray.900'}
@@ -327,7 +317,7 @@ const MultipleReferenceSelector = ({
                     px={1.5}
                     rounded={'sm'}
                   >
-                    <Flex alignItems={'center'} {...innerFlexProps} className="textEllipsis">
+                    <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
                       {nodeName}
                       <MyIcon
                         name={'common/rightArrowLight'}
@@ -356,7 +346,7 @@ const MultipleReferenceSelector = ({
                   </Flex>
                 );
               })}
-            </ContainerTag>
+            </Grid>
           ) : (
             <Box fontSize={'sm'} color={'myGray.400'}>
               {placeholder}
@@ -371,7 +361,7 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [invalidList, list, listLayout, onSelect, placeholder, popDirection, value]);
+  }, [invalidList, list, onSelect, placeholder, popDirection, value]);
 
   return ArraySelector;
 };
