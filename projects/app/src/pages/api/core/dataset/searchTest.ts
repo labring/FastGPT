@@ -1,4 +1,3 @@
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
 import {
@@ -10,14 +9,22 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
+import {
+  SearchDatasetTestBodySchema,
+  SearchDatasetTestResponseSchema,
+  type SearchDatasetTestBody,
+  type SearchDatasetTestResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
+
+async function handler(
+  req: ApiRequestProps<SearchDatasetTestBody>
+): Promise<SearchDatasetTestResponse> {
   const {
     datasetId,
     text,
@@ -38,11 +45,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     datasetDeepSearchModel,
     datasetDeepSearchMaxTimes,
     datasetDeepSearchBg
-  } = req.body;
-
-  if (!datasetId || !text) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+  } = SearchDatasetTestBodySchema.parse(req.body);
 
   const start = Date.now();
 
@@ -142,13 +145,13 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     });
   })();
 
-  return {
+  return SearchDatasetTestResponseSchema.parse({
     list: searchRes,
     duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
     queryExtensionModel: queryExtensionResult?.llmModel,
     usingReRank: searchUsingReRank,
     ...result
-  };
+  });
 }
 
 export default NextAPI(useIPFrequencyLimit({ id: 'search-test', seconds: 1, limit: 15 }), handler);

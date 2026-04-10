@@ -29,8 +29,11 @@ export const TagsMap = {
   chatInputGuide: '对话输入引导',
 
   // Dataset
-  datasetCollection: '集合',
-  datasetData: '数据',
+  datasetCommon: '知识库管理',
+  datasetCollection: '集合管理',
+  datasetCollectionController: '集合操作',
+  datasetData: '数据管理',
+  datasetTraining: '训练管理',
 
   // Plugin
   pluginToolTag: '工具标签',

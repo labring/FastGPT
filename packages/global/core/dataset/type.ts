@@ -206,6 +206,7 @@ export type DatasetDataTextSchemaType = z.infer<typeof DatasetDataTextSchema>;
 /* ===== Training ===== */
 export const DatasetTrainingSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '训练 ID' }),
+  userId: ObjectIdSchema.meta({ description: '用户 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),

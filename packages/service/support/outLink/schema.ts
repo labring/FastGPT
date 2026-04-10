@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
-import { type OutLinkSchemaType as SchemaType } from '@fastgpt/global/support/outLink/type';
+import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -8,7 +8,7 @@ import {
 import { AppCollectionName } from '../../core/app/schema';
 import { getLogger, LogCategories } from '../../common/logger';
 
-const OutLinkSchemaType = new Schema({
+const OutLinkSchema = new Schema({
   shareId: {
     type: String,
     required: true
@@ -102,7 +102,7 @@ const OutLinkSchemaType = new Schema({
   showRawSource: Boolean
 });
 
-OutLinkSchemaType.virtual('associatedApp', {
+OutLinkSchema.virtual('associatedApp', {
   ref: AppCollectionName,
   localField: 'appId',
   foreignField: '_id',
@@ -111,16 +111,12 @@ OutLinkSchemaType.virtual('associatedApp', {
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-try {
-  OutLinkSchemaType.index({ shareId: -1 });
-  OutLinkSchemaType.index({ teamId: 1, tmbId: 1, appId: 1 });
-  // Wechat polling recovery: find online channels on startup
-  OutLinkSchemaType.index(
-    { type: 1, 'app.status': 1 },
-    { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
-  );
-} catch (error) {
-  logger.error('Failed to build outlink indexes', { error });
-}
+OutLinkSchema.index({ shareId: -1 });
+OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
+// Wechat polling recovery: find online channels on startup
+OutLinkSchema.index(
+  { type: 1, 'app.status': 1 },
+  { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
+);
 
-export const MongoOutLink = getMongoModel<SchemaType>('outlinks', OutLinkSchemaType);
+export const MongoOutLink = getMongoModel<OutLinkSchemaType>('outlinks', OutLinkSchema);

@@ -25,7 +25,7 @@ export const InitChatResponseSchema = z.object({
   chatId: z.string().optional().describe('对话ID'),
   appId: ObjectIdSchema.describe('应用ID'),
   userAvatar: z.string().optional().describe('用户头像'),
-  title: z.string().optional().describe('对话标题'),
+  title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
   app: z
     .object({

@@ -8,9 +8,8 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
@@ -18,15 +17,13 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import {
+  GetDatasetListBodySchema,
+  type GetDatasetListResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 
-export type GetDatasetListBody = {
-  parentId: ParentIdType;
-  type?: DatasetTypeEnum;
-  searchKey?: string;
-};
-
-async function handler(req: ApiRequestProps<GetDatasetListBody>) {
-  const { parentId, type, searchKey } = req.body;
+async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
+  const { parentId, type, searchKey } = GetDatasetListBodySchema.parse(req.body);
 
   // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([

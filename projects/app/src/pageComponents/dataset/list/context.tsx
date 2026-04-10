@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
+import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
@@ -36,7 +36,7 @@ export type DatasetContextType = {
   editedDataset?: EditResourceInfoFormType;
   setEditedDataset: (data?: EditResourceInfoFormType) => void;
   onDelDataset: (id: string) => Promise<void>;
-  onUpdateDataset: (data: DatasetUpdateBody) => Promise<void>;
+  onUpdateDataset: (data: UpdateDatasetBody) => Promise<void>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
 };
@@ -56,7 +56,7 @@ export const DatasetsContext = createContext<DatasetContextType>({
   refetchFolderDetail: function (): Promise<DatasetItemType | undefined> {
     throw new Error('Function not implemented.');
   },
-  onUpdateDataset: function (_data: DatasetUpdateBody): Promise<void> {
+  onUpdateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
   myDatasets: [],
