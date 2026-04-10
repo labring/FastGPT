@@ -61,6 +61,7 @@ async function handler(
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
+    deleteTime: null,
     parentId: parentId ? new Types.ObjectId(parentId) : null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
