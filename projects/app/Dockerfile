@@ -71,6 +71,8 @@ WORKDIR /app
 
 ARG proxy
 ARG base_url
+ARG SHOW_SKILL=false
+ENV SHOW_SKILL=$SHOW_SKILL
 
 # create user and use it
 RUN addgroup --system --gid 1001 nodejs
@@ -112,6 +114,4 @@ EXPOSE 3000
 
 USER nextjs
 
-ENV serverPath=./projects/app/server-proxy.js
-
-ENTRYPOINT ["sh","-c","node --max-old-space-size=4096 ${serverPath}"]
+ENTRYPOINT ["sh","-c","if [ \"$SHOW_SKILL\" = \"true\" ]; then node --max-old-space-size=4096 ./projects/app/server-proxy.js; else node --max-old-space-size=4096 ./projects/app/server.js; fi"]
