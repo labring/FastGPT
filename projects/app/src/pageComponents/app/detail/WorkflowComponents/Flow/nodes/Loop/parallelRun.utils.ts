@@ -1,7 +1,6 @@
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
@@ -12,37 +11,6 @@ const arrayTypeToElementMap: Partial<Record<WorkflowIOValueTypeEnum, WorkflowIOV
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
   [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
   [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
-};
-
-// ─── resolveParallelConcurrency ───────────────────────────────────────────────
-
-/**
- * Read user-configured concurrency from inputs array, clamp to env max.
- * - user value: floor to integer; <1 → 1; >max → max.
- * - envMax: upper bound capped at 100. The env value is respected as-is
- *   (no forced minimum) so that administrators can restrict to any positive integer.
- * - Default concurrency = 5, env max default = 10.
- */
-export const resolveParallelConcurrency = (
-  inputs: FlowNodeInputItemType[],
-  envMax: number | undefined
-): number => {
-  const rawMax = envMax && envMax > 0 ? envMax : 10;
-  const max = Math.min(Math.floor(rawMax), 100);
-  const defaultConcurrency = 5;
-
-  const input = inputs.find((i) => i.key === NodeInputKeyEnum.parallelRunMaxConcurrency);
-  const rawValue = input?.value;
-
-  if (rawValue === undefined || rawValue === null) {
-    return Math.min(defaultConcurrency, max);
-  }
-
-  const value = Number(rawValue);
-  if (isNaN(value)) return Math.min(defaultConcurrency, max);
-  const floored = Math.floor(value);
-  if (floored < 1) return 1;
-  return Math.min(floored, max);
 };
 
 // ─── resolveArrayItemValueType ────────────────────────────────────────────────
@@ -85,37 +53,4 @@ export const resolveArrayItemValueType = ({
   })();
 
   return arrayTypeToElementMap[valueType as WorkflowIOValueTypeEnum] ?? WorkflowIOValueTypeEnum.any;
-};
-
-// ─── validateConcurrencyInput ─────────────────────────────────────────────────
-
-type ValidateConcurrencyResult =
-  | { valid: true }
-  | { valid: false; error?: string; clamped?: number };
-
-/**
- * Validate user input for concurrency field.
- * Returns { valid: true } or { valid: false, clamped?, error? }.
- * Non-integer values are floored.
- */
-export const validateConcurrencyInput = (
-  value: unknown,
-  envMax: number
-): ValidateConcurrencyResult => {
-  const num = Number(value);
-  // Rely solely on isNaN: Number("5") === 5, so numeric strings are accepted.
-  if (isNaN(num)) {
-    return { valid: false, error: 'not a number' };
-  }
-  if (num < 1) {
-    return { valid: false, clamped: 1, error: 'must be >= 1' };
-  }
-  const floored = Math.floor(num);
-  if (floored !== num) {
-    return { valid: false, clamped: floored, error: 'must be integer' };
-  }
-  if (floored > envMax) {
-    return { valid: false, clamped: envMax, error: `exceeds max ${envMax}` };
-  }
-  return { valid: true };
 };

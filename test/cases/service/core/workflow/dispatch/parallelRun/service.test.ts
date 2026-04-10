@@ -111,8 +111,8 @@ describe('parallelRun/service', () => {
       expect(clampParallelConcurrency(5, 3)).toBe(3);
     });
 
-    it('env 上限 150（>100）→ 压缩到 100', () => {
-      expect(clampParallelConcurrency(120, 150)).toBe(100);
+    it('env 上限 150 → 用户 120 被 clamp 到 120（完全依赖 env）', () => {
+      expect(clampParallelConcurrency(120, 150)).toBe(120);
     });
 
     it('用户 NaN → 使用默认值 5', () => {
@@ -297,15 +297,15 @@ describe('parallelRun/service', () => {
       expect(result.index).toBe(1);
     });
 
-    it('无 nestedEnd 响应 → success=true，data=undefined', () => {
+    it('无 nestedEnd 响应 → success=false（子工作流未到达终点）', () => {
       const response = makeDispatchFlowResponse({
         flowResponses: [{ moduleType: FlowNodeTypeEnum.chatNode, id: 'llm' } as any]
       });
 
       const result = parseTaskResponse({ index: 2, response });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toBeUndefined();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toContain('end node');
       }
     });
   });

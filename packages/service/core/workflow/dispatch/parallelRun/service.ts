@@ -93,26 +93,20 @@ export const buildTaskRuntimeContext = (
 // ─── 3. cloneTaskVariables ───────────────────────────────────────────────────
 
 /**
- * Shallow-clone variables for a parallel task.
+ * Deep-clone variables for a parallel task.
  *
  * Rationale (TC0034): variable updates inside the parallel subgraph must NOT
  * leak to the outer workflow. We rely on TWO guarantees to achieve this:
  *
- *   1. Each task receives its own top-level variables object via this clone,
- *      so direct assignments like `variables.foo = 'x'` in one task do not
- *      mutate `props.variables` (and therefore do not affect sibling tasks
- *      or the parent run).
+ *   1. Each task receives its own deep-cloned variables object, so any
+ *      mutation (top-level or nested) in one task does not affect sibling
+ *      tasks or the parent run.
  *   2. The parallelRun dispatcher deliberately does NOT merge
  *      `response.newVariables` back into `props.variables` — any variable
  *      update that happens inside a task is discarded at task boundary.
- *
- * Note: this is a shallow clone. Nested object/array values are still shared
- * references — so tasks should not mutate nested structures either. In
- * practice the `variable_update` node replaces values at the top level, so
- * shallow cloning is sufficient for the isolation guarantee.
  */
 export const cloneTaskVariables = (variables: Record<string, any>): Record<string, any> => {
-  return { ...variables };
+  return cloneDeep(variables);
 };
 
 // ─── 4. parseTaskResponse & parseTaskError ────────────────────────────────────

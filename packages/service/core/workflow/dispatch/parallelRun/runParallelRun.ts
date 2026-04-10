@@ -96,6 +96,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           const result = parseTaskResponse({ index, response });
           if (result.success) return result;
 
+          // Non-retryable: interactive response will never succeed on retry
+          if (response.workflowInteractiveResponse) return result;
+
           lastResult = result;
         } catch (err) {
           lastResult = parseTaskError(index, err);
