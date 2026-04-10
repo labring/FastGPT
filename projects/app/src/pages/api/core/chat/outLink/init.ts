@@ -47,7 +47,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return {
     chatId,
     appId: app._id,
-    title: chat?.title,
+    title: chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
     app: {

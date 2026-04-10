@@ -48,5 +48,3 @@ import { UserType } from '@fastgpt/global/core/user/type';
 - ✅ 类型文件使用 `.d.ts` 扩展名
 - ✅ 复杂类型放在独立的类型文件
 - ✅ 使用 `export type` 导出类型
-
----

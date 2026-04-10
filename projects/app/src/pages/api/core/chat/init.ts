@@ -51,7 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
     return {
       chatId,
       appId,
-      title: chat?.title,
+      title: chat?.title || '',
       userAvatar: undefined,
       variables,
       app: {

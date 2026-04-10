@@ -65,17 +65,21 @@ export const YourComponent = React.memo(function YourComponent({
 ## 3.4 国际化
 
 **审查要点**:
-- ✅ 所有用户可见文本使用 `i18nT`
+- ✅ 所有用户可见文本使用 `t`, 服务端使用`i18nT`
 - ✅ 翻译 key 使用命名空间
 - ✅ 动态文本使用插值
 
 **示例**:
 ```typescript
 import { i18nT } from '@fastgpt/web/i18n/utils';
-
 const message = i18nT('user:welcome', { name: userName });
 ```
 
+```typescript
+import { useTranslation } from 'next-i18next';
+const { t } = useTranslation();
+const message = t('user:welcome', { name: userName });
+```
 ## 3.5 性能优化
 
 **审查要点**:
@@ -84,5 +88,3 @@ const message = i18nT('user:welcome', { name: userName });
 - ✅ 避免在渲染中创建新对象/函数
 - ✅ 使用 `useMemo` 缓存计算结果
 - ✅ 使用 `useCallback` 缓存函数
-
----

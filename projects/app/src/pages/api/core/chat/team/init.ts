@@ -72,7 +72,7 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     data: {
       chatId,
       appId,
-      title: chat?.title,
+      title: chat?.title || '',
       userAvatar: team?.avatar,
       variables,
       app: {
