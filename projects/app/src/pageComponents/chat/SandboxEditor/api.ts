@@ -35,7 +35,8 @@ export const getSandboxFile = async (data: SandboxReadBody) => {
   });
 
   if (!response.ok) {
-    throw new Error('Fetch file failed');
+    const errText = await response.text().catch(() => '');
+    throw new Error(errText || `Fetch file failed: ${response.status}`);
   }
 
   return response;

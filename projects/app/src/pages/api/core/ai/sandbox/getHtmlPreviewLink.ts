@@ -3,20 +3,12 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { z } from 'zod';
-import { OutLinkChatAuthSchema } from '@fastgpt/global/support/permission/chat';
+import { SandboxGetHtmlPreviewLinkBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
-
-const GetHtmlPreviewLinkBodySchema = z.object({
-  appId: z.string(),
-  chatId: z.string(),
-  filePath: z.string().min(1),
-  outLinkAuthData: OutLinkChatAuthSchema.optional()
-});
 
 // 在 <head> 中注入 CSP，禁止外部脚本加载，仅允许 inline（沙箱预览场景）
 function injectCspMetaTag(html: string): string {
@@ -31,7 +23,9 @@ function injectCspMetaTag(html: string): string {
 }
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { appId, chatId, filePath, outLinkAuthData } = GetHtmlPreviewLinkBodySchema.parse(req.body);
+  const { appId, chatId, filePath, outLinkAuthData } = SandboxGetHtmlPreviewLinkBodySchema.parse(
+    req.body
+  );
 
   // 1. 鉴权
   const { teamId, uid } = await authChatCrud({

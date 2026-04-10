@@ -378,4 +378,16 @@ describe('addDirectoryToArchive', () => {
     await addDirectoryToArchive(sandbox, archive, '/w', '');
     expect(archive.append).toHaveBeenCalledWith(expect.any(Buffer), { name: 'a/b/c.txt' });
   });
+
+  it('超过最大深度限制时停止递归', async () => {
+    const archive = makeArchive();
+    const listDirectory = vi
+      .fn()
+      .mockResolvedValue([makeDirectoryEntry('sub', { isDirectory: true, path: '/w/sub' })]);
+    const sandbox = makeSandbox({ listDirectory });
+    // depth=21 超过 MAX_ARCHIVE_DEPTH(20)，应直接返回不做任何操作
+    await addDirectoryToArchive(sandbox, archive, '/w', '', 21);
+    expect(listDirectory).not.toHaveBeenCalled();
+    expect(archive.append).not.toHaveBeenCalled();
+  });
 });

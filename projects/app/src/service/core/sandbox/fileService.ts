@@ -75,19 +75,24 @@ export async function getSandboxFileContent(
   };
 }
 
+const MAX_ARCHIVE_DEPTH = 20;
+
 export async function addDirectoryToArchive(
   sandbox: SandboxClient,
   archive: archiver.Archiver,
   dirPath: string,
-  archivePath: string
+  archivePath: string,
+  depth: number = 0
 ): Promise<void> {
+  if (depth > MAX_ARCHIVE_DEPTH) return;
+
   const entries = await sandbox.provider.listDirectory(dirPath);
 
   for (const entry of entries) {
     const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;
 
     if (entry.isDirectory) {
-      await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath);
+      await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath, depth + 1);
     } else {
       const results = await sandbox.provider.readFiles([entry.path]);
       const result = results[0];

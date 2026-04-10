@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Flex, IconButton, Center } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Editor from '@monaco-editor/react';
 import { useTranslation } from 'next-i18next';
+import { useLatest } from 'ahooks';
 import type { OpenedFile } from './FileTabs';
 import Markdown from '@fastgpt/web/components/common/Markdown';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { getHtmlPreviewLink } from '../api';
+import { getSupportsPreviewToggle } from '../utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -49,6 +51,14 @@ const EditorContent = ({
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'source' | 'preview'>('source');
   const [generatingLink, setGeneratingLink] = useState(false);
+  const openedFilesRef = useLatest(openedFiles);
+
+  // 切换文件时，如果新文件不支持预览模式，重置为 source
+  useEffect(() => {
+    if (!getSupportsPreviewToggle(activeFile?.language) && viewMode === 'preview') {
+      setViewMode('source');
+    }
+  }, [activeFilePath]);
 
   const handleHtmlPreview = async () => {
     if (!activeFile) return;
@@ -79,9 +89,8 @@ const EditorContent = ({
     // 二进制文件预览 (图片/音频/视频)
     if (activeFile.isBinary) {
       const { language, content, name } = activeFile;
-      if (!content.startsWith('blob:')) return null;
 
-      if (language === 'image') {
+      if (content.startsWith('blob:') && language === 'image') {
         return (
           <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
             <Box position="relative" maxW="100%" maxH="100%">
@@ -91,7 +100,7 @@ const EditorContent = ({
         );
       }
 
-      if (language === 'audio') {
+      if (content.startsWith('blob:') && language === 'audio') {
         return (
           <Center h="full" bg="myGray.50" borderRadius="md">
             <audio controls src={content}>
@@ -101,7 +110,7 @@ const EditorContent = ({
         );
       }
 
-      if (language === 'video') {
+      if (content.startsWith('blob:') && language === 'video') {
         return (
           <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
             <video controls src={content} style={{ maxWidth: '100%', maxHeight: '100%' }}>
@@ -111,6 +120,7 @@ const EditorContent = ({
         );
       }
 
+      // 无渲染器的二进制文件（如 PDF）
       return t('chat:sandbox_binary_file_no_preview');
     }
 
@@ -182,7 +192,7 @@ const EditorContent = ({
           editor.addCommand(
             monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
             () => {
-              openedFiles.forEach((file) => {
+              openedFilesRef.current?.forEach((file) => {
                 if (file.isDirty) {
                   saveFile(file.path);
                 }
@@ -240,8 +250,8 @@ const EditorContent = ({
               variant="whiteBase"
             />
           )}
-          {/* MD/SVG Toggle Preview Switch */}
-          {(activeFile?.language === 'markdown' || activeFile?.language === 'svg') && (
+          {/* Source/Preview Toggle Switch */}
+          {getSupportsPreviewToggle(activeFile?.language) && (
             <FillRowTabs
               list={[
                 { label: t('chat:sandbox_source'), value: 'source' },
