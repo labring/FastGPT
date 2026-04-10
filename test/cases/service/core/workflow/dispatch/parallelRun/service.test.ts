@@ -468,22 +468,22 @@ describe('parallelRun/service', () => {
       expect(fullResultsArray[0]).toEqual({ success: false, message: '', data: null });
     });
 
-    it('全部成功 → status = allSuccess', () => {
+    it('全部成功 → status = success', () => {
       const { status } = aggregateParallelResults([successResult0, successResult2]);
 
-      expect(status).toBe(ParallelRunStatusEnum.allSuccess);
+      expect(status).toBe(ParallelRunStatusEnum.success);
     });
 
-    it('混合成功/失败 → status = partialFailure', () => {
+    it('混合成功/失败 → status = partial_success', () => {
       const { status } = aggregateParallelResults([successResult0, failResult1, successResult2]);
 
-      expect(status).toBe(ParallelRunStatusEnum.partialFailure);
+      expect(status).toBe(ParallelRunStatusEnum.partial_success);
     });
 
-    it('全部失败 → status = allFailure', () => {
+    it('全部失败 → status = failed', () => {
       const { status } = aggregateParallelResults([failResult1]);
 
-      expect(status).toBe(ParallelRunStatusEnum.allFailure);
+      expect(status).toBe(ParallelRunStatusEnum.failed);
     });
 
     it('乱序输入 → 输出按输入 index 排序', () => {

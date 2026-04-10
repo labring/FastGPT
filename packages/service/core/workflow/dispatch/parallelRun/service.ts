@@ -101,7 +101,7 @@ export const cloneTaskVariables = (variables: Record<string, any>): Record<strin
 
 export type ParallelTaskResult =
   | { success: true; index: number; data: any; response: DispatchFlowResponse }
-  | { success: false; index: number; error?: string };
+  | { success: false; index: number; error?: string; response?: DispatchFlowResponse };
 
 /**
  * Parse a successful runWorkflow response into a ParallelTaskResult.
@@ -120,7 +120,7 @@ export const parseTaskResponse = (params: {
 
   // Interactive node: silently ignore
   if (response.workflowInteractiveResponse) {
-    return { success: false, index };
+    return { success: false, index, response };
   }
 
   const loopEndResponse = response.flowResponses.find(
@@ -134,7 +134,8 @@ export const parseTaskResponse = (params: {
     return {
       success: false,
       index,
-      error: getErrText(err, 'Sub-workflow did not reach the end node')
+      error: getErrText(err, 'Sub-workflow did not reach the end node'),
+      response
     };
   }
 
@@ -209,20 +210,22 @@ export const aggregateParallelResults = (
       filteredArray.push(result.data);
       fullResultsArray.push({ success: true, message: '', data: result.data });
       fullDetail.push({ success: true, index: result.index, data: result.data });
+    } else {
+      fullResultsArray.push({ success: false, message: result.error ?? '', data: null });
+      fullDetail.push({ success: false, index: result.index, error: result.error });
+    }
 
+    if (result.response) {
       const response = result.response;
       const points = response.flowUsages.reduce((acc, u) => acc + u.totalPoints, 0);
       totalPoints += points;
       responseDetails.push(...response.flowResponses);
-      assistantResponses.push(...response[DispatchNodeResponseKeyEnum.assistantResponses]);
+      assistantResponses.push(...(response[DispatchNodeResponseKeyEnum.assistantResponses] || []));
 
       const feedbacks = response[DispatchNodeResponseKeyEnum.customFeedbacks];
       if (feedbacks && feedbacks.length > 0) {
         customFeedbacks.push(...feedbacks);
       }
-    } else {
-      fullResultsArray.push({ success: false, message: result.error ?? '', data: null });
-      fullDetail.push({ success: false, index: result.index, error: result.error });
     }
   }
 
