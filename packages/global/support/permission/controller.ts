@@ -137,4 +137,7 @@ export class Permission {
   }
 }
 
-export const PermissionSchema = z.instanceof(Permission).meta({ description: '权限 类' });
+// 仅用于 TypeScript 类型推导，运行时不做实例验证
+export const PermissionSchema = z
+  .custom<Permission>(() => true)
+  .meta({ description: '权限对象（Permission 类实例）' });
