@@ -318,7 +318,6 @@ describe('debugChat handler — parameter validation', () => {
         skillId,
         provider: 'opensandbox',
         image: { repository: 'test-image', tag: 'latest' },
-        providerStatus: { state: 'running' },
         providerCreatedAt: new Date()
       }
     });

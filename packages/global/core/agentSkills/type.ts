@@ -192,7 +192,6 @@ export const SandboxInstanceDetailSchema = z.object({
   skillIds: z.array(z.string()).optional(),
   provider: z.string(),
   image: SandboxImageConfigSchema,
-  providerStatus: SandboxProviderStatusSchema,
   providerCreatedAt: z.date(),
   endpoint: SkillSandboxEndpointSchema.optional(),
   storage: SandboxStorageSchema.optional(),
