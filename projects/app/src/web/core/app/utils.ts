@@ -348,7 +348,7 @@ export function form2AppWorkflow(
           value: formData.dataset.retrievalMode
         },
         {
-          key: NodeInputKeyEnum.datasetagenticSearchReasoning,
+          key: NodeInputKeyEnum.datasetAgenticSearchReasoning,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,

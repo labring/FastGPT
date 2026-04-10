@@ -1216,14 +1216,19 @@ const getSystemVariables = async ({
 /* Merge consecutive text messages into one */
 const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
   const result: AIChatItemValueItemType[] = [];
-  // 合并连续的text
+  // 合并连续的text和连续的reasoning
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
+    const lastItem = result[result.length - 1];
     if (item.type === ChatItemValueTypeEnum.text) {
       let text = item.text?.content || '';
-      const lastItem = result[result.length - 1];
       if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
         lastItem.text.content += text;
+        continue;
+      }
+    } else if (item.type === ChatItemValueTypeEnum.reasoning) {
+      if (lastItem && lastItem.type === ChatItemValueTypeEnum.reasoning && lastItem.reasoning) {
+        lastItem.reasoning.content += item.reasoning?.content || '';
         continue;
       }
     }

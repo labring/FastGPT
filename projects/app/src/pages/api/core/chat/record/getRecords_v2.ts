@@ -16,14 +16,15 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType, type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 
 export type getChatRecordsQuery = {};
 
-// Local type extension to carry rewriteStandardizedQuery without modifying global ChatItemType
+// Local type extension to carry rewriteStandardizedQuery and agenticSearchResult without modifying global ChatItemType
 type ChatItemWithRewrite = ChatItemType & {
   rewriteStandardizedQuery?: string;
+  agenticSearchResult?: ChatHistoryItemResType['agenticSearchResult'];
 };
 
 export type getChatRecordsBody = LinkedPaginationProps<GetChatRecordsProps> & {
@@ -131,6 +132,7 @@ async function handler(
   }
 
   // Add rewriteStandardizedQuery to Human messages from adjacent AI response data
+  // Add agenticSearchResult to AI messages from responseData
   const historiesWithRewrite = result.histories as ChatItemWithRewrite[];
   historiesWithRewrite.forEach((item, index) => {
     if (item.obj === ChatRoleEnum.Human) {
@@ -147,6 +149,14 @@ async function handler(
         const standardizedQuery = findStandardizedQuery(nextItem.responseData);
         if (standardizedQuery) {
           item.rewriteStandardizedQuery = standardizedQuery;
+        }
+      }
+    }
+    if (item.obj === ChatRoleEnum.AI && item.responseData) {
+      for (const response of item.responseData) {
+        if (response.agenticSearchResult) {
+          item.agenticSearchResult = response.agenticSearchResult;
+          break;
         }
       }
     }

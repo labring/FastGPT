@@ -172,6 +172,7 @@ export type DispatchNodeResponseType = {
   finishReason?: CompletionFinishReason;
 
   // dataset search
+  retrievalMode?: `${DatasetRetrievalModeEnum}`;
   embeddingModel?: string;
   embeddingTokens?: number;
   similarity?: number;
@@ -283,6 +284,19 @@ export type DispatchNodeResponseType = {
   toolParamsResult?: Record<string, any>;
 
   toolRes?: any;
+
+  // agentic search
+  agenticSearchResult?: {
+    reasoningText: string;
+    searchCount: number;
+    toolCallCount: number;
+    llmModel?: string;
+    llmInputTokens: number;
+    llmOutputTokens: number;
+    playbook?: string;
+    executionPath?: string[];
+    confidence?: number;
+  };
 
   // abandon
   extensionModel?: string;

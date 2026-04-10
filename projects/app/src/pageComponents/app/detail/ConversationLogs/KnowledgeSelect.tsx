@@ -35,11 +35,11 @@ const popoverMarkdownStyles = {
   '& .markdown': { fontSize: '13px' },
   '& .markdown p': { fontSize: '13px', lineHeight: '1.5', margin: '6px 0' },
   '& .markdown h1, & .markdown h2, & .markdown h3, & .markdown h4, & .markdown h5, & .markdown h6':
-  {
-    fontSize: '14px',
-    lineHeight: '1.5',
-    margin: '8px 0 6px'
-  },
+    {
+      fontSize: '14px',
+      lineHeight: '1.5',
+      margin: '8px 0 6px'
+    },
   '& .markdown ul, & .markdown ol': { fontSize: '13px', paddingLeft: '18px', margin: '6px 0' },
   '& .markdown li': { margin: '3px 0' },
   '& .markdown code': { fontSize: '12px', padding: '2px 4px' },
@@ -450,158 +450,158 @@ const KnowledgeSelect = ({
             <ScrollData h="230px" p={3}>
               <VStack spacing={1.5} align="stretch">
                 {knowledgeList.map((knowledge) => {
-                    const isDisabled = isKnowledgeDisabled(knowledge);
-                    const knowledgeItem = (
-                      <Popover
-                        key={knowledge.datasetDataId}
-                        isOpen={hoveredKnowledgeId === knowledge.datasetDataId}
-                        placement="right"
-                        closeOnBlur={false}
-                        isLazy
-                        lazyBehavior="unmount"
-                        returnFocusOnClose={false}
-                        autoFocus={false}
-                      >
-                        <PopoverTrigger>
-                          <Box
-                            p={4}
-                            border="1px solid"
-                            borderColor={
-                              selectedKnowledgeIds.includes(knowledge.datasetDataId)
-                                ? 'primary.500'
-                                : 'myGray.200'
-                            }
-                            borderRadius="md"
-                            bg={
-                              selectedKnowledgeIds.includes(knowledge.datasetDataId)
-                                ? 'primary.50'
-                                : 'white'
-                            }
-                            cursor={isDisabled ? 'not-allowed' : 'pointer'}
-                            opacity={isDisabled ? 0.5 : 1}
-                            _hover={
-                              isDisabled
-                                ? {}
-                                : {
+                  const isDisabled = isKnowledgeDisabled(knowledge);
+                  const knowledgeItem = (
+                    <Popover
+                      key={knowledge.datasetDataId}
+                      isOpen={hoveredKnowledgeId === knowledge.datasetDataId}
+                      placement="right"
+                      closeOnBlur={false}
+                      isLazy
+                      lazyBehavior="unmount"
+                      returnFocusOnClose={false}
+                      autoFocus={false}
+                    >
+                      <PopoverTrigger>
+                        <Box
+                          p={4}
+                          border="1px solid"
+                          borderColor={
+                            selectedKnowledgeIds.includes(knowledge.datasetDataId)
+                              ? 'primary.500'
+                              : 'myGray.200'
+                          }
+                          borderRadius="md"
+                          bg={
+                            selectedKnowledgeIds.includes(knowledge.datasetDataId)
+                              ? 'primary.50'
+                              : 'white'
+                          }
+                          cursor={isDisabled ? 'not-allowed' : 'pointer'}
+                          opacity={isDisabled ? 0.5 : 1}
+                          _hover={
+                            isDisabled
+                              ? {}
+                              : {
                                   borderColor: selectedKnowledgeIds.includes(
                                     knowledge.datasetDataId
                                   )
                                     ? 'primary.600'
                                     : 'myGray.300'
                                 }
-                            }
-                            onClick={() => !isDisabled && handleKnowledgeToggle(knowledge)}
-                            onMouseEnter={() =>
-                              !isDisabled && handleMouseEnter(knowledge.datasetDataId)
-                            }
-                            onMouseLeave={handleMouseLeave}
-                          >
-                            <Flex align={'flex-start'} gap={3}>
-                              <Box onClick={(e) => e.stopPropagation()}>
-                                <Checkbox
-                                  isChecked={selectedKnowledgeIds.includes(knowledge.datasetDataId)}
-                                  onChange={() => !isDisabled && handleKnowledgeToggle(knowledge)}
-                                  isDisabled={isDisabled}
-                                  mt={0.5}
-                                />
-                              </Box>
-                              <VStack align={'stretch'} spacing={2} flex={1}>
-                                {knowledge.a ? (
-                                  <>
-                                    <Text
-                                      fontSize={'12px'}
-                                      color={'myGray.500'}
-                                      className={'textEllipsis'}
-                                    >
-                                      <HighlightText
-                                        rawText={knowledge.q}
-                                        matchText={searchKeyword}
-                                        mode={'text'}
-                                      />
-                                    </Text>
-                                    <Box h="1px" bg="myGray.200" my="4px" />
-                                    <Text
-                                      fontSize={'12px'}
-                                      color={'myGray.500'}
-                                      className={'textEllipsis2'}
-                                    >
-                                      <HighlightText
-                                        rawText={knowledge.a}
-                                        matchText={searchKeyword}
-                                        mode={'text'}
-                                      />
-                                    </Text>
-                                  </>
-                                ) : (
+                          }
+                          onClick={() => !isDisabled && handleKnowledgeToggle(knowledge)}
+                          onMouseEnter={() =>
+                            !isDisabled && handleMouseEnter(knowledge.datasetDataId)
+                          }
+                          onMouseLeave={handleMouseLeave}
+                        >
+                          <Flex align={'flex-start'} gap={3}>
+                            <Box onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                isChecked={selectedKnowledgeIds.includes(knowledge.datasetDataId)}
+                                onChange={() => !isDisabled && handleKnowledgeToggle(knowledge)}
+                                isDisabled={isDisabled}
+                                mt={0.5}
+                              />
+                            </Box>
+                            <VStack align={'stretch'} spacing={2} flex={1}>
+                              {knowledge.a ? (
+                                <>
                                   <Text
                                     fontSize={'12px'}
                                     color={'myGray.500'}
-                                    className={'textEllipsis3'}
+                                    className={'textEllipsis'}
                                   >
                                     <HighlightText
-                                      rawText={knowledge.extractiveText || knowledge.q}
+                                      rawText={knowledge.q}
                                       matchText={searchKeyword}
                                       mode={'text'}
                                     />
                                   </Text>
-                                )}
-                                <Flex align="center" gap={1}>
-                                  <MyIcon
-                                    name={
-                                      getSourceNameIcon({
-                                        sourceName: knowledge.sourceName || ''
-                                      }) as any
-                                    }
-                                    w="14px"
-                                  />
-                                  <Text fontSize={'12px'} color="#000">
-                                    {knowledge.sourceName}
+                                  <Box h="1px" bg="myGray.200" my="4px" />
+                                  <Text
+                                    fontSize={'12px'}
+                                    color={'myGray.500'}
+                                    className={'textEllipsis2'}
+                                  >
+                                    <HighlightText
+                                      rawText={knowledge.a}
+                                      matchText={searchKeyword}
+                                      mode={'text'}
+                                    />
                                   </Text>
-                                </Flex>
-                              </VStack>
-                            </Flex>
-                          </Box>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          border="1px solid"
-                          borderColor="myGray.200"
-                          borderRadius="md"
-                          boxShadow="0px 4px 12px rgba(0, 0, 0, 0.15)"
-                          bg="white"
-                          onMouseEnter={handlePopoverMouseEnter}
-                          onMouseLeave={handlePopoverMouseLeave}
-                        >
-                          <PopoverBody p={3} maxH="400px" overflowY="auto">
-                            <VStack align="stretch" spacing={2}>
-                              {knowledge.a ? (
-                                <>
-                                  <Box fontSize="xs" sx={popoverMarkdownStyles}>
-                                    <Markdown source={knowledge.q} />
-                                    <Markdown source={knowledge.a} />
-                                  </Box>
                                 </>
                               ) : (
+                                <Text
+                                  fontSize={'12px'}
+                                  color={'myGray.500'}
+                                  className={'textEllipsis3'}
+                                >
+                                  <HighlightText
+                                    rawText={knowledge.extractiveText || knowledge.q}
+                                    matchText={searchKeyword}
+                                    mode={'text'}
+                                  />
+                                </Text>
+                              )}
+                              <Flex align="center" gap={1}>
+                                <MyIcon
+                                  name={
+                                    getSourceNameIcon({
+                                      sourceName: knowledge.sourceName || ''
+                                    }) as any
+                                  }
+                                  w="14px"
+                                />
+                                <Text fontSize={'12px'} color="#000">
+                                  {knowledge.sourceName}
+                                </Text>
+                              </Flex>
+                            </VStack>
+                          </Flex>
+                        </Box>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        border="1px solid"
+                        borderColor="myGray.200"
+                        borderRadius="md"
+                        boxShadow="0px 4px 12px rgba(0, 0, 0, 0.15)"
+                        bg="white"
+                        onMouseEnter={handlePopoverMouseEnter}
+                        onMouseLeave={handlePopoverMouseLeave}
+                      >
+                        <PopoverBody p={3} maxH="400px" overflowY="auto">
+                          <VStack align="stretch" spacing={2}>
+                            {knowledge.a ? (
+                              <>
                                 <Box fontSize="xs" sx={popoverMarkdownStyles}>
                                   <Markdown source={knowledge.q} />
+                                  <Markdown source={knowledge.a} />
                                 </Box>
-                              )}
-                            </VStack>
-                          </PopoverBody>
-                        </PopoverContent>
-                      </Popover>
-                    );
+                              </>
+                            ) : (
+                              <Box fontSize="xs" sx={popoverMarkdownStyles}>
+                                <Markdown source={knowledge.q} />
+                              </Box>
+                            )}
+                          </VStack>
+                        </PopoverBody>
+                      </PopoverContent>
+                    </Popover>
+                  );
 
-                    // 如果被禁用，用 MyTooltip 包裹
-                    if (isDisabled) {
-                      return (
-                        <MyTooltip
-                          key={knowledge.datasetDataId}
-                          label={t('app:knowledge_faq_limit_tip')}
-                        >
-                          {knowledgeItem}
-                        </MyTooltip>
-                      );
-                    }
+                  // 如果被禁用，用 MyTooltip 包裹
+                  if (isDisabled) {
+                    return (
+                      <MyTooltip
+                        key={knowledge.datasetDataId}
+                        label={t('app:knowledge_faq_limit_tip')}
+                      >
+                        {knowledgeItem}
+                      </MyTooltip>
+                    );
+                  }
 
                   return knowledgeItem;
                 })}

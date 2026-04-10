@@ -883,6 +883,7 @@
   "date_6_months": "6个月",
   "day": "日",
   "deep_rag_search": "深度搜索",
+  "agentic_search": "智能检索",
   "delete_api": "确认删除该API密钥？删除后该密钥立即失效，对应的对话日志不会删除，请确认！",
   "delete_failed": "删除失败",
   "delete_folder": "删除文件夹",
