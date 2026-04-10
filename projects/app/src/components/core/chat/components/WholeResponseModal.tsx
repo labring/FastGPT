@@ -228,6 +228,7 @@ export const WholeResponseContent = ({
         />
       );
     }
+
     return (
       <>
         {hasDatabase && (
