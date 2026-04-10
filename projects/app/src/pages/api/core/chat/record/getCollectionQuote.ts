@@ -13,7 +13,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import {
   GetCollectionQuoteBodySchema,
   type GetCollectionQuoteResType
-} from '@fastgpt/global/openapi/core/chat/quote/api';
+} from '@fastgpt/global/openapi/core/chat/record/api';
 
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 

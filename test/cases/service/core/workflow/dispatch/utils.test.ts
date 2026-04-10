@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   SseResponseEventEnum,
@@ -359,7 +359,7 @@ describe('filterToolNodeIdByEdges', () => {
 });
 
 describe('getHistories', () => {
-  const MockHistories: ChatItemType[] = [
+  const MockHistories: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [

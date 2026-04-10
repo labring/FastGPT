@@ -18,8 +18,7 @@ import {
   defaultWhisperConfig
 } from '@fastgpt/global/core/app/constants';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChatResData } from '@/web/core/chat/api';
+import { getChatResData } from '@/web/core/chat/record/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';

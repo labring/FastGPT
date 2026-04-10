@@ -8,7 +8,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
-import type { CreateDatasetParams } from '@/global/core/dataset/api';
+import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
@@ -47,7 +47,7 @@ const CreateModal = ({
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 
-  const form = useForm<CreateDatasetParams>({
+  const form = useForm<CreateDatasetBody>({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
@@ -75,7 +75,7 @@ const CreateModal = ({
 
   /* create a new kb and router to it */
   const { runAsync: onclickCreate, loading: creating } = useRequest(
-    async (data: CreateDatasetParams) => await postCreateDataset(data),
+    async (data: CreateDatasetBody) => await postCreateDataset(data),
     {
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed'),

@@ -9,6 +9,8 @@ const SERVICE_LOCAL_HOST =
     : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
 export const isInternalAddress = async (url: string): Promise<boolean> => {
+  if (isDevEnv) return false;
+
   const isInternalIPv6 = (ip: string): boolean => {
     // 移除 IPv6 地址中的方括号（如果有）
     const cleanIp = ip.replace(/^\[|\]$/g, '');

@@ -4,25 +4,16 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-
-export type getResDataQuery = OutLinkChatAuthProps & {
-  chatId?: string;
-  dataId: string;
-  appId: string;
-};
-
-export type getResDataBody = {};
-
-export type getResDataResponse = ChatHistoryItemResType[] | [];
+import { GetResDataQuerySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 
 export async function handler(
-  req: ApiRequestProps<getResDataBody, getResDataQuery>,
+  req: ApiRequestProps,
   res: ApiResponseType<any>
-): Promise<getResDataResponse> {
-  const { appId, chatId, dataId, shareId } = req.query;
+): Promise<ChatHistoryItemResType[]> {
+  const { appId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } =
+    GetResDataQuerySchema.parse(req.query);
   if (!appId || !chatId || !dataId) {
     return [];
   }
@@ -32,7 +23,12 @@ export async function handler(
       req,
       authToken: true,
       authApiKey: true,
-      ...req.query
+      appId,
+      chatId,
+      shareId,
+      outLinkUid,
+      teamId,
+      teamToken
     }),
     MongoChatItem.findOne(
       {
@@ -55,7 +51,7 @@ export async function handler(
   }
 
   const flowResponses = chatData.responseData?.length ? chatData.responseData : nodeResponses;
-  return req.query.shareId
+  return shareId
     ? filterPublicNodeResponseData({
         responseDetail: showCite,
         nodeRespones: flowResponses

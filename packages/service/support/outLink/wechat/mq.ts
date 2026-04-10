@@ -2,7 +2,7 @@ import { getWorker, getQueue, QueueNames, type Job } from '../../../common/bullm
 import { getLogger, LogCategories } from '../../../common/logger';
 import { ILinkClient } from './ilinkClient';
 import type { WechatPollJobData } from './type';
-import type { OutLinkSchema, WechatAppType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
 import { setRedisCache, getRedisCache } from '../../../common/redis/cache';
@@ -23,7 +23,7 @@ async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<void> 
   // 1. 获取渠道配置
   const outLink = (await MongoOutLink.findOne({
     shareId
-  }).lean()) as unknown as OutLinkSchema<WechatAppType>;
+  }).lean()) as unknown as OutLinkSchemaType<WechatAppType>;
   if (!outLink || !outLink.app) {
     logger.warn('OutLink not found, stop polling', { shareId });
     return;
@@ -111,7 +111,7 @@ async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<void> 
 /* ============ 处理单个用户分组 ============ */
 
 async function processUserGroup(
-  outLink: OutLinkSchema<WechatAppType>,
+  outLink: OutLinkSchemaType<WechatAppType>,
   group: ParsedMessageGroup
 ): Promise<void> {
   const app = outLink.app;

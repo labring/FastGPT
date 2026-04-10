@@ -15,7 +15,7 @@ import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -54,10 +54,10 @@ vi.mock('@fastgpt/global/core/chat/utils', () => ({
 }));
 
 const buildOutLinkConfig = (
-  overrides: Partial<OutLinkSchema> = {},
-  omitKeys: (keyof OutLinkSchema)[] = []
-): OutLinkSchema => {
-  const config: OutLinkSchema = {
+  overrides: Partial<OutLinkSchemaType> = {},
+  omitKeys: (keyof OutLinkSchemaType)[] = []
+): OutLinkSchemaType => {
+  const config: OutLinkSchemaType = {
     _id: 'outLink1',
     shareId: 'share1',
     teamId: 'team1',
@@ -78,7 +78,7 @@ const buildOutLinkConfig = (
   };
 
   omitKeys.forEach((key) => {
-    delete (config as Partial<OutLinkSchema>)[key];
+    delete (config as Partial<OutLinkSchemaType>)[key];
   });
 
   return config;

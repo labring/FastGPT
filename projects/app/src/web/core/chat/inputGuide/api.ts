@@ -1,46 +1,42 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type {
   ChatInputGuideListBodyType,
-  ChatInputGuideListResponseType
+  ChatInputGuideListResponseType,
+  CountChatInputGuideTotalQueryType,
+  CountChatInputGuideTotalResponseType,
+  CreateChatInputGuideBodyType,
+  CreateChatInputGuideResponseType,
+  UpdateChatInputGuideBodyType,
+  DeleteChatInputGuideBodyType,
+  QueryChatInputGuideBodyType,
+  QueryChatInputGuideResponseType,
+  DeleteAllChatInputGuideBodyType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
-import type {
-  countChatInputGuideTotalQuery,
-  countChatInputGuideTotalResponse
-} from '@/pages/api/core/chat/inputGuide/countTotal';
-import type {
-  createInputGuideBody,
-  createInputGuideResponse
-} from '@/pages/api/core/chat/inputGuide/create';
-import type { updateInputGuideBody } from '@/pages/api/core/chat/inputGuide/update';
-import type { deleteInputGuideBody } from '@/pages/api/core/chat/inputGuide/delete';
-import type {
-  QueryChatInputGuideBody,
-  QueryChatInputGuideResponse
-} from '@/pages/api/core/chat/inputGuide/query';
-import type { deleteAllInputGuideBody } from '@/pages/api/core/chat/inputGuide/deleteAll';
 
-export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery) =>
-  GET<countChatInputGuideTotalResponse>(`/core/chat/inputGuide/countTotal`, data);
+export const getCountChatInputGuideTotal = (data: CountChatInputGuideTotalQueryType) =>
+  GET<CountChatInputGuideTotalResponseType>(`/core/chat/inputGuide/countTotal`, data);
 /**
  * Get chat input guide list
  */
 export const getChatInputGuideList = (data: ChatInputGuideListBodyType) =>
   POST<ChatInputGuideListResponseType>(`/core/chat/inputGuide/list`, data);
 
-export const queryChatInputGuideList = (data: QueryChatInputGuideBody, url?: string) => {
+export const queryChatInputGuideList = (data: QueryChatInputGuideBodyType, url?: string) => {
   if (url) {
-    return GET<QueryChatInputGuideResponse>(url, data, {
+    return GET<QueryChatInputGuideResponseType>(url, data, {
       withCredentials: !url
     });
   }
-  return POST<QueryChatInputGuideResponse>(`/core/chat/inputGuide/query`, data);
+  return POST<QueryChatInputGuideResponseType>(`/core/chat/inputGuide/query`, data, {
+    maxQuantity: 1
+  });
 };
 
-export const postChatInputGuides = (data: createInputGuideBody) =>
-  POST<createInputGuideResponse>(`/core/chat/inputGuide/create`, data);
-export const putChatInputGuide = (data: updateInputGuideBody) =>
+export const postChatInputGuides = (data: CreateChatInputGuideBodyType) =>
+  POST<CreateChatInputGuideResponseType>(`/core/chat/inputGuide/create`, data);
+export const putChatInputGuide = (data: UpdateChatInputGuideBodyType) =>
   PUT(`/core/chat/inputGuide/update`, data);
-export const delChatInputGuide = (data: deleteInputGuideBody) =>
+export const delChatInputGuide = (data: DeleteChatInputGuideBodyType) =>
   POST(`/core/chat/inputGuide/delete`, data);
-export const delAllChatInputGuide = (data: deleteAllInputGuideBody) =>
+export const delAllChatInputGuide = (data: DeleteAllChatInputGuideBodyType) =>
   POST(`/core/chat/inputGuide/deleteAll`, data);

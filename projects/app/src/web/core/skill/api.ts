@@ -27,10 +27,10 @@ import type {
   SwitchSkillVersionBody,
   UpdateSkillVersionBody
 } from '@fastgpt/global/core/agentSkills/api';
-import type { getChatRecordsResponse } from '@/pages/api/core/chat/record/getRecords_v2';
 import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/agentSkills/api';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
@@ -162,7 +162,7 @@ export const delSkillDebugChatItem = (data: SkillDebugDeleteChatItemBody) =>
 
 /** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
 export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>
-  POST<getChatRecordsResponse>('/core/agentSkills/debugSession/records', data);
+  POST<GetRecordsV2ResponseType>('/core/agentSkills/debugSession/records', data);
 
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>

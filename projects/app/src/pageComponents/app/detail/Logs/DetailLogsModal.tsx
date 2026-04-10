@@ -11,7 +11,7 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { PcHeader } from '@/pageComponents/chat/ChatHeader';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
   ChatRecordContext

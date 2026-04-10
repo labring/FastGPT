@@ -4,7 +4,7 @@ import { ChatRoleEnum, ChatSourceEnum } from './constants';
 import {
   type AIChatItemValueItemType,
   type ChatHistoryItemResType,
-  type ChatItemType,
+  type ChatItemMiniType,
   type UserChatItemValueItemType
 } from './type';
 import { sliceStrStartEnd } from '../../common/string/tools';
@@ -96,7 +96,7 @@ ${stepText}`;
 };
 
 // Concat 2 -> 1, and sort by role
-export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
+export const concatHistories = (histories1: ChatItemMiniType[], histories2: ChatItemMiniType[]) => {
   const newHistories = [...histories1, ...histories2];
   return newHistories.sort((a, b) => {
     if (a.obj === ChatRoleEnum.System) {
@@ -106,7 +106,10 @@ export const concatHistories = (histories1: ChatItemType[], histories2: ChatItem
   });
 };
 
-export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
+export const getChatTitleFromChatMessage = (
+  message?: ChatItemMiniType,
+  defaultValue = '新对话'
+) => {
   // @ts-ignore
   const textMsg = message?.value.find((item) => 'text' in item && item.text);
 
@@ -119,11 +122,11 @@ export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue
 
 // Keep the first n and last n characters
 export const getHistoryPreview = (
-  completeMessages: ChatItemType[],
+  completeMessages: ChatItemMiniType[],
   size = 100,
   useVision = false
 ): {
-  obj: `${ChatRoleEnum}`;
+  obj: ChatRoleEnum;
   value: string;
 }[] => {
   return completeMessages.map((item, i) => {

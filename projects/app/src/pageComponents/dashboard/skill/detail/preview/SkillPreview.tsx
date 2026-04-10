@@ -11,8 +11,8 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import { useSkillChatTest } from './useSkillChatTest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSkillDebugRecords } from '@/web/core/skill/api';
-import type { LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
-import type { GetChatRecordsProps } from '@/global/core/chat/api';
+import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
+import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: () => void }) => {
   const { t } = useTranslation();
@@ -101,7 +101,7 @@ const Render = () => {
   }, [skillId]);
 
   const skillFetchFn = useCallback(
-    (data: LinkedPaginationProps<GetChatRecordsProps>) =>
+    (data: LinkedPaginationProps<GetPaginationRecordsBodyType>) =>
       getSkillDebugRecords({
         skillId,
         chatId: data.chatId!,

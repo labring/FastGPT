@@ -11,7 +11,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { type SearchTestResponse } from '@/global/core/dataset/api';
+import { type SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
@@ -96,7 +96,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     ({ inputText, searchParams }: FormType) =>
       postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
     {
-      onSuccess(res: SearchTestResponse) {
+      onSuccess(res: SearchDatasetTestResponse) {
         if (!res || res.list.length === 0) {
           return toast({
             status: 'warning',

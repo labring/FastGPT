@@ -1,6 +1,6 @@
 import type {
   AIChatItemValueItemType,
-  ChatItemType,
+  ChatItemMiniType,
   ChatItemValueItemType,
   RuntimeUserPromptType,
   SystemChatItemValueItemType,
@@ -46,7 +46,7 @@ export const chats2GPTMessages = ({
   reserveId,
   reserveTool = false
 }: {
-  messages: ChatItemType[];
+  messages: ChatItemMiniType[];
   reserveId: boolean;
   reserveTool?: boolean;
 }): ChatCompletionMessageParam[] => {
@@ -218,7 +218,7 @@ export const GPTMessages2Chats = ({
   reserveTool?: boolean;
   reserveReason?: boolean;
   getToolInfo?: (name: string) => { name: string; avatar: string };
-}): ChatItemType[] => {
+}): ChatItemMiniType[] => {
   const chatMessages = messages
     .map((item) => {
       const obj = GPT2Chat[item.role];
@@ -402,7 +402,7 @@ export const GPTMessages2Chats = ({
     .filter((item) => item.value.length > 0);
 
   // Merge data with the same dataId（Sequential obj merging）
-  const result = chatMessages.reduce((result: ChatItemType[], currentItem) => {
+  const result = chatMessages.reduce((result: ChatItemMiniType[], currentItem) => {
     const lastItem = result[result.length - 1];
 
     if (lastItem && lastItem.dataId === currentItem.dataId && lastItem.obj === currentItem.obj) {
@@ -455,7 +455,7 @@ export const runtimePrompt2ChatsValue = (prompt: {
   return value;
 };
 
-export const getSystemPrompt_ChatItemType = (prompt?: string): ChatItemType[] => {
+export const getSystemPrompt_ChatItemType = (prompt?: string): ChatItemMiniType[] => {
   if (!prompt) return [];
   return [
     {

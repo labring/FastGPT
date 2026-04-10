@@ -17,17 +17,23 @@ export const TagsMap = {
   appPer: '应用权限',
   mcpTools: 'MCP 工具管理',
 
-  // Chat - home
+  /* ===== Chat ===== */
   chatPage: '对话页面通用',
   chatHistory: '历史记录管理',
-  chatController: '对话操作',
   chatFeedback: '对话反馈',
+  chatFile: '文件操作',
+  chatRecord: '对话记录管理',
+  chatController: '对话操作',
   chatSetting: '门户页配置',
+  // 辅助功能
   chatInputGuide: '对话输入引导',
 
   // Dataset
-  datasetCollection: '集合',
-  datasetData: '数据',
+  datasetCommon: '知识库管理',
+  datasetCollection: '集合管理',
+  datasetCollectionController: '集合操作',
+  datasetData: '数据管理',
+  datasetTraining: '训练管理',
 
   // Plugin
   pluginToolTag: '工具标签',

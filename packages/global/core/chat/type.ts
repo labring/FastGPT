@@ -1,14 +1,22 @@
-import type { SearchDataResponseItemType } from '../dataset/type';
-import type { ChatSourceEnum, ChatStatusEnum } from './constants';
+import { SearchDataResponseItemSchema } from '../dataset/type';
+import type { ChatSourceEnum } from './constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
-import type { FlowNodeTypeEnum } from '../workflow/node/constant';
-import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import type { AppSchemaType, VariableItemType } from '../app/type';
-import type { DispatchNodeResponseType } from '../workflow/runtime/type';
+import { FlowNodeTypeEnum } from '../workflow/node/constant';
+import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
+import { AppSchemaTypeSchema, type AppSchemaType, type VariableItemType } from '../app/type';
+import { DispatchNodeResponseSchema } from '../workflow/runtime/type';
 import { WorkflowInteractiveResponseTypeSchema } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';
 import z from 'zod';
 import { AgentPlanSchema } from '../ai/agent/type';
+
+export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
+  nodeId: z.string(),
+  id: z.string(),
+  moduleType: z.enum(FlowNodeTypeEnum),
+  moduleName: z.string()
+});
+export type ChatHistoryItemResType = z.infer<typeof ChatHistoryItemResSchema>;
 
 /* One tool run response  */
 export type ToolRunResponseItemType = any;
@@ -200,43 +208,51 @@ export const AIChatItemValueSchema = z.object({
 
 export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;
 
-// TODO 待迁移成 zod
-export type AIChatItemType = {
-  obj: ChatRoleEnum.AI;
-  value: AIChatItemValueItemType[];
-  memories?: Record<string, any>;
-  userGoodFeedback?: string;
-  userBadFeedback?: string;
-  customFeedbacks?: string[];
-  adminFeedback?: AdminFbkType;
-  isFeedbackRead?: boolean;
+export const AIChatItemSchema = z.object({
+  obj: z.literal(ChatRoleEnum.AI),
+  value: z.array(AIChatItemValueSchema),
+  memories: z.record(z.string(), z.any()).optional(),
+  userGoodFeedback: z.string().optional(),
+  userBadFeedback: z.string().optional(),
+  customFeedbacks: z.array(z.string()).optional(),
+  adminFeedback: AdminFbkSchema.optional(),
+  isFeedbackRead: z.boolean().optional(),
+  durationSeconds: z.number().optional(),
+  errorMsg: z.string().optional(),
+  citeCollectionIds: z.array(z.string()).optional(),
+  [DispatchNodeResponseKeyEnum.nodeResponse]: z.array(ChatHistoryItemResSchema).optional().meta({
+    description: '节点响应'
+  })
+});
+export type AIChatItemType = z.infer<typeof AIChatItemSchema>;
 
-  durationSeconds?: number;
-  errorMsg?: string;
-  citeCollectionIds?: string[];
+export const ChatItemValueItemSchema = z.union([
+  UserChatItemValueItemSchema,
+  SystemChatItemValueItemSchema,
+  AIChatItemValueSchema
+]);
+export type ChatItemValueItemType = z.infer<typeof ChatItemValueItemSchema>;
 
-  /**
-   * 不再存储在 chatItemSchema 里，分别存储到 chatItemResponseSchema
-   */
-  [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType[];
-};
+export const ChatItemObjItemSchema = z.union([
+  UserChatItemSchema,
+  SystemChatItemSchema,
+  AIChatItemSchema
+]);
+export type ChatItemObjItemType = z.infer<typeof ChatItemObjItemSchema>;
 
-export type ChatItemValueItemType =
-  | UserChatItemValueItemType
-  | SystemChatItemValueItemType
-  | AIChatItemValueItemType;
-export type ChatItemObjItemType = UserChatItemType | SystemChatItemType | AIChatItemType;
-
-export type ChatItemSchemaType = ChatItemObjItemType & {
-  dataId: string;
-  chatId: string;
-  userId: string;
-  teamId: string;
-  tmbId: string;
-  appId: string;
-  time: Date;
-  deleteTime?: Date | null;
-};
+export const ChatItemDBSchema = ChatItemObjItemSchema.and(
+  z.object({
+    dataId: z.string(),
+    chatId: z.string(),
+    userId: z.string(),
+    teamId: z.string(),
+    tmbId: z.string(),
+    appId: z.string(),
+    time: z.date(),
+    deleteTime: z.date().nullish()
+  })
+);
+export type ChatItemDBSchemaType = z.infer<typeof ChatItemDBSchema>;
 
 // Client error show
 const ErrorTextItemSchema = z.object({
@@ -245,63 +261,55 @@ const ErrorTextItemSchema = z.object({
 });
 export type ErrorTextItemType = z.infer<typeof ErrorTextItemSchema>;
 
-export type ResponseTagItemType = {
-  useAgentSandbox?: boolean;
-  totalQuoteList?: SearchDataResponseItemType[];
-  toolCiteLinks?: ToolCiteLinksType[];
-  errorText?: ErrorTextItemType;
-
-  /** @deprecated */
-  llmModuleAccount?: number;
-  /** @deprecated */
-  historyPreviewLength?: number;
-};
-
-export type ChatItemType = ChatItemObjItemType & {
-  dataId?: string;
-} & ResponseTagItemType;
-
 /* --------- chat item response ---------- */
-export type ChatItemResponseSchemaType = {
-  teamId: string;
-  appId: string;
-  chatId: string;
-  chatItemDataId: string;
-  data: ChatHistoryItemResType;
-};
+export const ChatItemResponseSchema = z.object({
+  teamId: z.string(),
+  appId: z.string(),
+  chatId: z.string(),
+  chatItemDataId: z.string(),
+  data: ChatHistoryItemResSchema
+});
+export type ChatItemResponseSchemaType = z.infer<typeof ChatItemResponseSchema>;
 
 /* --------- team chat --------- */
-export type ChatAppListSchema = {
-  apps: AppSchemaType[];
-  teamInfo: any;
-  uid?: string;
-};
+export const ChatAppListSchema = z.object({
+  apps: z.array(AppSchemaTypeSchema),
+  teamInfo: z.any(),
+  uid: z.string().optional()
+});
+export type ChatAppListSchemaType = z.infer<typeof ChatAppListSchema>;
 
 /* ---------- history ------------- */
-export type HistoryItemType = {
-  chatId: string;
-  updateTime: Date;
-  customTitle?: string;
-  title: string;
-};
-export type ChatHistoryItemType = HistoryItemType & {
-  appId: string;
-  top?: boolean;
-};
+export const HistoryItemSchema = z.object({
+  chatId: z.string(),
+  updateTime: z.date(),
+  customTitle: z.string().optional(),
+  title: z.string()
+});
+export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
+
+export const ChatHistoryItemSchema = HistoryItemSchema.extend({
+  appId: z.string(),
+  top: z.boolean().optional()
+});
+export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;
 
 /* ------- response data ------------ */
-export type ChatHistoryItemResType = DispatchNodeResponseType & {
-  nodeId: string;
-  id: string;
-  moduleType: FlowNodeTypeEnum;
-  moduleName: string;
-};
-
 export const ToolCiteLinksSchema = z.object({
   name: z.string(),
   url: z.string()
 });
 export type ToolCiteLinksType = z.infer<typeof ToolCiteLinksSchema>;
+
+export const ResponseTagItemSchema = z.object({
+  useAgentSandbox: z.boolean().optional(),
+  totalQuoteList: z.array(SearchDataResponseItemSchema).optional(),
+  toolCiteLinks: z.array(ToolCiteLinksSchema).optional(),
+  errorText: ErrorTextItemSchema.optional(),
+  llmModuleAccount: z.number().optional().meta({ deprecated: true }),
+  historyPreviewLength: z.number().optional().meta({ deprecated: true })
+});
+export type ResponseTagItemType = z.infer<typeof ResponseTagItemSchema>;
 
 /* dispatch run time */
 export const RuntimeUserPromptSchema = z.object({
@@ -309,3 +317,10 @@ export const RuntimeUserPromptSchema = z.object({
   text: z.string()
 });
 export type RuntimeUserPromptType = z.infer<typeof RuntimeUserPromptSchema>;
+
+export const ChatItemMiniSchema = ChatItemObjItemSchema.and(
+  z.object({
+    dataId: z.string().optional()
+  })
+).and(ResponseTagItemSchema);
+export type ChatItemMiniType = z.infer<typeof ChatItemMiniSchema>;

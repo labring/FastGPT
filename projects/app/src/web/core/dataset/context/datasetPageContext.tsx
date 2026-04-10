@@ -12,7 +12,7 @@ import {
   putDatasetById
 } from '../api';
 import { defaultDatasetDetail } from '../constants';
-import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
+import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
@@ -24,7 +24,7 @@ type DatasetPageContextType = {
   datasetId: string;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
-  updateDataset: (data: DatasetUpdateBody) => Promise<void>;
+  updateDataset: (data: UpdateDatasetBody) => Promise<void>;
 
   searchDatasetTagsResult: DatasetTagType[];
   allDatasetTags: DatasetTagType[];
@@ -54,7 +54,7 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   loadDatasetDetail: function (id: string): Promise<DatasetItemType> {
     throw new Error('Function not implemented.');
   },
-  updateDataset: function (data: DatasetUpdateBody): Promise<void> {
+  updateDataset: function (data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
   searchDatasetTagsResult: [],
@@ -95,7 +95,7 @@ export const DatasetPageContextProvider = ({
     setDatasetDetail(data);
     return data;
   };
-  const updateDataset = async (data: DatasetUpdateBody) => {
+  const updateDataset = async (data: UpdateDatasetBody) => {
     await putDatasetById(data);
 
     if (datasetId === data.id) {

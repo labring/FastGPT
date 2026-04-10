@@ -128,10 +128,10 @@ export type WechatPollJobData = { shareId: string };
 
 ```typescript
 // packages/service/support/outLink/schema.ts
-OutLinkSchema.index({ shareId: -1 });
-OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
+OutLinkSchemaType.index({ shareId: -1 });
+OutLinkSchemaType.index({ teamId: 1, tmbId: 1, appId: 1 });
 // 条件索引: 仅索引 wechat online 渠道，用于服务重启恢复
-OutLinkSchema.index(
+OutLinkSchemaType.index(
   { type: 1, 'app.status': 1 },
   { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
 );

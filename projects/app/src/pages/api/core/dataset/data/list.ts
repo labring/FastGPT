@@ -6,7 +6,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type DatasetDataListItemType } from '@/global/core/dataset/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 
 export type GetDatasetDataListProps = {
   searchText?: string;

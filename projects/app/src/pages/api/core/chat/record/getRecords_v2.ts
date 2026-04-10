@@ -1,6 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type GetChatRecordsProps } from '@/global/core/chat/api';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -13,10 +12,13 @@ import {
   filterPublicNodeResponseData,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
-import type { ChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
+import {
+  GetRecordsV2BodySchema,
+  type GetRecordsV2ResponseType
+} from '@fastgpt/global/openapi/core/chat/record/api';
 
 /**
  * Reorder AI response value array: insert skill records after their corresponding tool by matching id.
@@ -80,29 +82,21 @@ export function reorderAIResponseValue(
   return result;
 }
 
-export type getChatRecordsQuery = {};
-
-export type getChatRecordsBody = LinkedPaginationProps<GetChatRecordsProps>;
-
-export type getChatRecordsResponse = LinkedListResponse<ChatItemType> & {
-  total: number;
-};
-
 async function handler(
-  req: ApiRequestProps<getChatRecordsBody, getChatRecordsQuery>,
+  req: ApiRequestProps,
   _res: ApiResponseType<any>
-): Promise<getChatRecordsResponse> {
+): Promise<GetRecordsV2ResponseType> {
   const {
     appId,
     chatId,
-    loadCustomFeedbacks,
+    loadCustomFeedbacks = false,
     type = GetChatTypeEnum.normal,
     pageSize,
     initialId,
     nextId,
     prevId,
     includeDeleted = false
-  } = req.body;
+  } = GetRecordsV2BodySchema.parse(req.body);
 
   if (!appId || !chatId) {
     return {

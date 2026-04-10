@@ -3,24 +3,17 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
-import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-
-export type OutLinkListQuery = {
-  appId: string; // 应用 ID
-  type: `${PublishChannelEnum}`;
-};
+import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import { OutLinkListQuerySchema } from '@fastgpt/global/openapi/support/outLink/api';
 
 export type OutLinkListBody = {};
 
 // 应用内全部 Outlink 列表
-export type OutLinkListResponse = OutLinkSchema[];
+export type OutLinkListResponse = OutLinkSchemaType[];
 
 // 查询应用的所有 OutLink
-export async function handler(
-  req: ApiRequestProps<OutLinkListBody, OutLinkListQuery>
-): Promise<OutLinkListResponse> {
-  const { appId, type } = req.query;
+export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse> {
+  const { appId, type } = OutLinkListQuerySchema.parse(req.query);
   await authApp({
     req,
     authToken: true,

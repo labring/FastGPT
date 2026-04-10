@@ -1,35 +1,12 @@
-import type { ChunkSettingsType, DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import type { ChunkSettingsType, DatasetDataIndexItemType } from './type';
 import type { DatasetCollectionTypeEnum, DatasetCollectionDataProcessModeEnum } from './constants';
 import type { ParentIdType } from '../../common/parentFolder/type';
 import type { APIFileItemType } from './apiDataset/type';
 
-/* ================= dataset ===================== */
-export type DatasetUpdateBody = {
-  id: string;
-
-  apiDatasetServer?: DatasetSchemaType['apiDatasetServer'];
-
-  parentId?: ParentIdType;
-  name?: string;
-  avatar?: string;
-  intro?: string;
-
-  agentModel?: string;
-  vlmModel?: string;
-
-  websiteConfig?: DatasetSchemaType['websiteConfig'];
-  externalReadUrl?: DatasetSchemaType['externalReadUrl'];
-  defaultPermission?: DatasetSchemaType['defaultPermission'];
-  chunkSettings?: DatasetSchemaType['chunkSettings'];
-
-  // sync schedule
-  autoSync?: boolean;
-};
-
 /* ================= collection ===================== */
 // Input + store params
 type DatasetCollectionStoreDataType = ChunkSettingsType & {
-  parentId?: string;
+  parentId?: ParentIdType;
   metadata?: Record<string, any>;
 
   customPdfParse?: boolean;

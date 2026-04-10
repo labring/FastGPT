@@ -446,7 +446,7 @@ interface DebugDataType {
   runtimeEdges: RuntimeEdgeItemType[];
   entryNodeIds: string[];
   variables: Record<string, any>;
-  history?: ChatItemType[];
+  history?: ChatItemMiniType[];
   query?: UserChatItemValueItemType[];
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;
 }

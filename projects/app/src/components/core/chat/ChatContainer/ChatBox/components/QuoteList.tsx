@@ -8,7 +8,7 @@ import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { getQuoteDataList } from '@/web/core/chat/api';
+import { getQuoteDataList } from '@/web/core/chat/record/api';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemDataId = '',

@@ -16,7 +16,7 @@ import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import CollectionQuoteItem from './CollectionQuoteItem';
 import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getCollectionQuote } from '@/web/core/chat/api';
+import { getCollectionQuote } from '@/web/core/chat/record/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';

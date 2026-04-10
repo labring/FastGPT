@@ -11,7 +11,7 @@ import {
   GetQuoteBodySchema,
   GetQuoteResponseSchema,
   type GetQuoteResponseType
-} from '@fastgpt/global/openapi/core/chat/quote/api';
+} from '@fastgpt/global/openapi/core/chat/record/api';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   const {

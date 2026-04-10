@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 
 describe('GPT2Chat mapping', () => {
@@ -68,7 +68,7 @@ describe('simpleUserContentPart', () => {
 
 describe('chats2GPTMessages', () => {
   it('should convert system message', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.System,
         value: [{ text: { content: 'You are a helpful assistant' } }]
@@ -83,7 +83,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should skip system message with empty content', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.System,
         value: [{ text: { content: '' } }]
@@ -96,7 +96,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should convert human message with text', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [{ text: { content: 'Hello' } }]
@@ -111,7 +111,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should convert human message with image', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [
@@ -138,7 +138,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should convert human message with file', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [
@@ -163,7 +163,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should convert AI message with text', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'Hello, how can I help?' } }]
@@ -178,7 +178,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should concat multiple AI text values', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'Part 1' } }, { text: { content: ' Part 2' } }]
@@ -192,7 +192,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should preserve dataId when reserveId is true', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         dataId: 'test-data-id',
         obj: ChatRoleEnum.Human,
@@ -206,7 +206,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should not include dataId when reserveId is false', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         dataId: 'test-data-id',
         obj: ChatRoleEnum.Human,
@@ -220,7 +220,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should handle AI message with tool calls when reserveTool is true', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
@@ -247,7 +247,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should skip empty AI text values when there are multiple values', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: '' } }, { text: { content: 'Valid content' } }]
@@ -261,7 +261,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should handle human message with mixed text and files', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [
@@ -287,7 +287,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should preserve hideInUI property', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [{ text: { content: 'Hidden message' } }],
@@ -301,7 +301,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should handle interactive agentPlanAskQuery', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
@@ -323,7 +323,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should handle interactive agentPlanAskUserForm', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
@@ -349,7 +349,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should handle plan with reserveTool true', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
@@ -389,7 +389,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should skip duplicate plan with same planId', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [
@@ -422,7 +422,7 @@ describe('chats2GPTMessages', () => {
   });
 
   it('should not process plan when reserveTool is false', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [

@@ -48,7 +48,7 @@ export const useAudioPlay = (
       setAudioLoading(true);
       audioController.current = new AbortController();
 
-      const response = await fetch(getWebReqUrl('/api/core/chat/item/getSpeech'), {
+      const response = await fetch(getWebReqUrl('/api/core/chat/record/getSpeech'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

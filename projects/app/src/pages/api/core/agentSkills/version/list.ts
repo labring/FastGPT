@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/agentSkills/version/schema';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';

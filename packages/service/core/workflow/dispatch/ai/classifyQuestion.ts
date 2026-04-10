@@ -1,5 +1,5 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -21,7 +21,7 @@ const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
-  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
@@ -110,7 +110,7 @@ const completions = async ({
   lastMemory,
   params: { agents, systemPrompt = '', userChatInput }
 }: ActionProps) => {
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [

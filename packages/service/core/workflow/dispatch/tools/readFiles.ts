@@ -10,7 +10,7 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { parseUrlToFileType } from '../../utils/context';
 import { readFileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
@@ -105,7 +105,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   }
 };
 
-export const getHistoryFileLinks = (histories: ChatItemType[]) => {
+export const getHistoryFileLinks = (histories: ChatItemMiniType[]) => {
   return histories
     .filter((item) => {
       if (item.obj === ChatRoleEnum.Human) {

@@ -1,4 +1,4 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -25,14 +25,14 @@ import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
-  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-  [NodeOutputKeyEnum.history]: ChatItemType[];
+  [NodeOutputKeyEnum.history]: ChatItemMiniType[];
 }>;
 
 export const dispatchRunAppNode = async (props: Props): Promise<Response> => {

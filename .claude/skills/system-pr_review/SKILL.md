@@ -3,258 +3,182 @@ name: pr-review
 description: 当用户传入一个 review 的 pr 链接时候，触发该 skill，对 pr 进行代码审查。
 ---
 
-# When to Use This Skill
-
-用户传入一个 review 的 pr 链接
-
 # PR Review 代码审查技能
 
-> 全面审查 Pull Request 的代码质量、安全性、性能和架构设计,提供专业的改进建议
+> 按阶段对 Pull Request 进行系统性审查，先验证需求理解与逻辑正确性，再并行进行多维度质量检测，最后提交审查报告。
 
-## 快速开始
+---
 
-```bash
-# 审查当前分支的 PR
-gh pr view
-
-# 审查指定 PR
-gh pr view 6324
-
-# 查看变更内容
-gh pr diff 6324
-```
-
-## 工具集成
-
-### 使用 gh CLI 加速审查
-
-```bash
-# 查看并审查 PR
-gh pr view <number> && gh pr diff <number>
-
-# 添加审查评论
-gh pr review <number> --comment -b "我的审查意见"
-
-# 批准 PR
-gh pr review <number> --approve
-
-# 请求修改
-gh pr review <number> --request-changes
-```
-
-### 本地测试 PR
+## 步骤 0：拉取代码
 
 ```bash
 # 检出 PR 分支到本地
 gh pr checkout <number>
 
-# 运行测试
-pnpm test
+# 获取 PR 基本信息
+gh pr view --json number,title,body,author,state,headRefName,baseRefName,additions,deletions,files
 
-# 运行 lint
-pnpm lint
-
-# 类型检查
-pnpm tsc --noEmit
-
-# 启动开发服务器验证
-pnpm dev
-```
-
-### 常见命令参考
-
-```bash
-# PR 信息查看
-gh pr view --json title,body,author,state,files,additions,deletions
-
-# PR diff 查看
+# 获取完整 diff
 gh pr diff
-gh pr diff <number> > /tmp/pr.diff  # 保存到文件
 
-# PR commits 查看
+# 查看 commit 历史
 gh pr view --json commits --jq '.commits[].messageHeadline'
 
-# PR checks 状态
-gh pr checks
-
-# PR 评论
-gh pr comment <number> --body "评论内容"
-
-# PR 审查提交
-gh pr review <number> --approve
-gh pr review <number> --request-changes
-gh pr review <number> --comment -b "评论内容"
-
-# PR 操作
-gh pr merge <number> --squash  # Squash merge
-gh pr close <number>           # 关闭 PR
-```
-
-## 审查流程
-
-### 1. 信息收集阶段
-
-自动执行以下步骤:
-
-```bash
-# 1. 获取 PR 基本信息
-gh pr view --json title,body,author,state,headRefName,baseRefName,additions,deletions,files
-
-# 2. 获取 PR 变更 diff
-gh pr diff
-
-# 3. 获取 PR 的 commit 历史
-gh pr view --json commits
-
-# 4. 检查 CI/CD 状态
+# 检查 CI 状态
 gh pr checks
 ```
 
-### 2. 多维度代码审查
+---
 
-按照以下三个维度进行系统性审查:
+## 第一阶段：需求理解与逻辑验证
 
-#### 维度 1: 基本代码质量标准 📐
+**目标**：理解本次 PR 的意图，并通过阅读代码来推理测试用例是否能通过。
 
-通用的代码质量标准,适用于所有项目:
+### 1.1 需求总结
 
-- **安全性**: 输入验证、权限检查、注入防护、敏感信息保护
-- **正确性**: 错误处理、边界条件、类型安全
-- **性能**: 算法复杂度、数据库优化、内存管理
-- **可测试性**: 测试覆盖、测试质量、Mock 使用
+阅读 PR 标题、描述和 diff，用自己的语言总结：
+- 本次 PR 的核心目的是什么？
+- 改动了哪些关键模块？
+- 对外部接口或数据结构是否有变更？
 
-📖 **详细指南**: [code-quality-standards.md](./code-quality-standards.md)
+### 1.2 测试推理
 
-#### 维度 2: FastGPT 风格规范 🎨
+充当测试角色，针对 PR 的核心改动，**提出 3~5 个关键测例**，然后在代码中找到对应逻辑进行推理校验：
 
-FastGPT 项目特定的代码规范和约定:
+- 正常路径：主流程是否按预期运行？
+- 边界条件：空值、极大值、并发等边界是否被处理？
+- 异常路径：错误输入或依赖失败时行为是否正确？
 
-- **API 路由开发**: 路由定义、权限验证、错误处理: [API 路由开发规范](./style/api.md)
-- **前端组件开发**: TypeScript + React、Chakra UI、状态管理: [前端组件开发规范](./style/front.md)
-- **数据库操作**: Model 定义、查询优化、索引设计: [数据库操作规范](./style/db.md)
-- **包结构与依赖**: 依赖方向、导入规范、类型导出: [包结构与依赖规范](./style/package.md)
-- **日志与可观测性**: 统一日志分类、结构化字段、敏感信息、OTEL 导出等审查标准: [日志review 标准](./style/logger.md)
+**校验方式**：直接阅读相关代码，推理每个测例的执行路径，确认逻辑能通过。如果代码中存在对应单元测试，也一并检查。
 
-#### 维度 3: 常见问题检查清单 🔍
+### ⚠️ 阶段门控
 
-快速识别和修复常见问题模式:
+如果第一阶段发现**需求理解存在严重歧义**或**核心逻辑存在明显错误**（如测例推理无法通过），**立即跳过后续阶段，直接进入"提交评论"步骤**，在报告中标明阻塞原因，请求作者澄清或修复后再继续审查。
 
-- **TypeScript 问题**: any 类型滥用、类型定义不完整、不安全断言
-- **异步错误处理**: 未处理 Promise、错误信息丢失、静默失败
-- **React 性能**: 不必要的重渲染、渲染中创建对象、缺少 memoization
-- **安全漏洞**: 注入攻击、XSS、文件上传漏洞
+---
 
-📖 **详细清单**: [common-issues-checklist.md](./common-issues-checklist.md)
+## 第二到第六阶段：并行深度审查
 
-### 3. 生成并提交审查报告
+第一阶段通过后，**以下五个阶段可以并行执行**，彼此独立，互不依赖。
 
-PR 审查输出分为两个部分:
-1. **整体审查报告**: 提交为 PR 顶部的总体评论
-2. **行级代码评论**: 直接在代码行的位置添加具体评论
+---
 
-#### 步骤 1: 分析代码并准备评论
+### 第二阶段：后端代码质量 🔒
 
-在审查过程中,需要为每个问题记录:
-- **文件路径**: 如 `packages/service/core/workflow/dispatch.ts`
-- **行号**: 如 `L142-L150`
-- **问题类型**: 🔴严重 / 🟡改进 / 🟢优化
-- **评论内容**: 具体的问题描述和建议
+聚焦后端（`packages/service/`、`projects/app/src/pages/api/`、`projects/app/src/service/`）的质量问题，完成以下检查清单：
 
+- [] [后端安全](./backend-quality/security.md)
+- [] [后端错误处理](./backend-quality/error-handling.md)
+- [] [后端性能](./backend-quality/performance.md)
 
-#### 步骤 2: 提交代码审查评论
+---
 
-GitHub CLI 的 `gh pr review` 命令不支持直接提交行级评论，需要使用 GitHub API。
+### 第三阶段：前端代码质量 🎨
+
+聚焦前端（`projects/app/src/`、`packages/web/`）的质量问题，完成以下检查清单：
+
+- [] [React 性能](./frontend-quality/react-performance.md)
+- [] [前端安全](./frontend-quality/security.md)
+- [] [TypeScript 质量](./frontend-quality/typescript.md)
+
+### 第四阶段：代码风格规范 📐
+
+对照 FastGPT 各项规范逐一检查，完成以下检查清单：
+
+- [] [API 路由开发规范](../../design/api/index.md)
+- [] [前端组件规范](./style/front.md)
+- [] [数据库规范](./style/db.md)
+- [] [包结构规范](./style/package.md)
+- [] [日志规范](./style/logger.md)
+- [] [Service 解耦规范](./style/service-decoupling.md)
+
+---
+
+### 第五阶段：测试覆盖 🧪
+
+- 新增的核心业务逻辑是否有对应单元测试（`test/` 或 `projects/*/test/`）？
+- 测试是否覆盖了正常路径、边界条件和错误路径？
+- 如果没有测试，评估缺失测试的风险等级（高风险逻辑无测试应标记为 🔴）。
+
+---
+
+### 第六阶段：回归风险检测 🔄
+
+- **接口兼容性**：对外 API 是否有 breaking change（字段删除、类型变更、行为变更）？
+- **数据库兼容性**：schema 变更是否向后兼容？旧数据是否需要迁移？
+- **依赖影响**：修改的公共模块（`packages/global/`、`packages/service/`）是否会影响其他调用方？
+- **配置变更**：是否新增了必填配置项，且未提供默认值或迁移说明？
+
+---
+
+## 最终步骤：提交审查报告
+
+### 收集所有阶段的问题
+
+汇总各阶段发现的问题，按严重程度分类：
+- 🔴 **严重**（必须修复才能合并）
+- 🟡 **建议**（改进代码质量）
+- 🟢 **可选**（优化建议）
+
+### 提交行级代码评论
+
+GitHub CLI 不支持行级评论，需通过 GitHub API 提交：
 
 ```bash
-# 1. 获取仓库信息
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
-# 2. 准备 review 数据（包含行级评论）
 cat > /tmp/review-data.json << 'EOF'
 {
-  "body": "## 📊 代码审查总结\n\n详细的审查意见请查看下方的行级评论。",
+  "body": "## 📊 代码审查总结\n\n详细意见请查看下方行级评论。",
   "event": "COMMENT",
   "comments": [
     {
-      "path": "packages/service/core/workflow/dispatch.ts",
-      "line": 142,
-      "body": "🔴 **严重问题**: 这里缺少错误处理,如果 runtimeNode 为 null 会导致运行时错误。\n\n**建议**:\n```typescript\nif (!runtimeNode) {\n  throw new Error(`Runtime node not found: ${nodeId}`);\n}\n```"
-    },
-    {
-      "path": "packages/service/core/workflow/dispatch.ts",
-      "line": 150,
-      "body": "🟡 **性能优化**: 建议将此正则表达式编译提取到函数外部,避免每次调用都重新编译。\n\n**建议**:\n```typescript\nconst NODE_ID_PATTERN = /^node_([a-f0-9]+)$/; // 在模块顶部定义\n```"
+      "path": "文件路径",
+      "line": 行号,
+      "body": "🔴 **问题描述**\n\n**建议**:\n```typescript\n// 修复示例\n```"
     }
   ]
 }
 EOF
 
-# 3. 使用 GitHub API 提交 review
 gh api repos/$REPO/pulls/<number>/reviews \
   --method POST \
   --input /tmp/review-data.json
 ```
 
-
-#### 步骤 3: 生成整体审查报告
+### 审查报告模板
 
 ```markdown
 # PR Review: {PR Title}
 
-## 📊 变更概览
-- **PR 编号**: #{number}
-- **作者**: @author
-- **分支**: {baseRefName} ← {headRefName}
-- **变更统计**: +{additions} -{deletions} 行
-- **涉及文件**: {files.length} 个文件
+## 📋 需求理解
+{第一阶段总结：PR 的核心目的与改动范围}
 
-## ✅ 优点
-{列出做得好的地方}
+## 🧪 逻辑验证
+{列出提出的测例及推理结果，标明是否通过}
 
 ## ⚠️ 问题汇总
 
-### 🔴 严重问题 ({count} 个,必须修复)
-{简要列出每个严重问题,并在下方添加行级评论}
+### 🔴 严重问题（{count} 个，必须修复）
+{问题列表，行级评论已标注}
 
-### 🟡 建议改进 ({count} 个)
-{简要列出每个建议}
+### 🟡 建议改进（{count} 个）
+{问题列表}
 
-### 🟢 可选优化 ({count} 个)
-{简要列出优化建议}
+### 🟢 可选优化（{count} 个）
+{问题列表}
 
-## 🧪 测试建议
-{建议的测试方法}
-
-## 💬 总体评价
-- **代码质量**: ⭐⭐⭐⭐☆ (4/5)
-- **安全性**: ⭐⭐⭐⭐⭐ (5/5)
-- **性能**: ⭐⭐⭐⭐☆ (4/5)
-- **可维护性**: ⭐⭐⭐⭐☆ (4/5)
+## ✅ 做得好的地方
+{列出值得肯定的实现}
 
 ## 🚀 审查结论
-{建议: 通过/需修改/拒绝}
-
----
-
-## 📍 详细代码评论
-已在以下位置添加了具体的行级评论:
-{列出所有添加了行级评论的位置}
+{通过 / 需修改 / 阻塞（说明原因）}
 ```
 
-#### 步骤 4: 提交整体审查报告
-
-通过 GitHub CLI 提交整体审查报告到评论区。
-
-#### 审查命令快速参考:
+### 命令参考
 
 | 场景 | 命令 |
 |------|------|
+| 请求修改 | `gh pr review <number> --request-changes --body-file /tmp/review.md` |
 | 批准 PR | `gh pr review <number> --approve` |
-| 请求修改 | `gh pr review <number> --request-changes` |
-| 一般评论 | `gh pr review <number> --comment` |
-| 从文件提交 | `gh pr review <number> --body-file /tmp/review.md` |
-| 添加普通评论 | `gh pr comment <number> --body "内容"` |
-| 撤销审查 | `gh pr review <number> --dismiss` |
-
-
-
+| 仅评论 | `gh pr review <number> --comment --body-file /tmp/review.md` |

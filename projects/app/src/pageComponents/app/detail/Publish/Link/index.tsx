@@ -31,7 +31,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
-import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -56,7 +56,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
-  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
+  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchemaType>();
   const { toast } = useToast();
   const { ConfirmModal, openConfirm } = useConfirm({
     content: t('common:support.outlink.Delete link tip'),
@@ -155,7 +155,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
-                    onClick={() => setSelectedLinkData(item as OutLinkSchema)}
+                    onClick={() => setSelectedLinkData(item as OutLinkSchemaType)}
                     size={'sm'}
                     mr={3}
                     variant={'whitePrimary'}

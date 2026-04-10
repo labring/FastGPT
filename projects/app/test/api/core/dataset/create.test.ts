@@ -1,4 +1,8 @@
-import * as createapi from '@/pages/api/core/dataset/create';
+import createHandler from '@/pages/api/core/dataset/create';
+import type {
+  CreateDatasetBody,
+  CreateDatasetResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -16,11 +20,7 @@ describe('create dataset', () => {
       tmbId: users.members[0].tmbId,
       permission: TeamDatasetCreatePermissionVal
     });
-    const res = await Call<
-      createapi.DatasetCreateBody,
-      createapi.DatasetCreateQuery,
-      createapi.DatasetCreateResponse
-    >(createapi.default, {
+    const res = await Call<CreateDatasetBody, {}, CreateDatasetResponse>(createHandler, {
       auth: users.members[0],
       body: {
         name: 'folder',
@@ -33,11 +33,7 @@ describe('create dataset', () => {
     expect(res.code).toBe(200);
     const folderId = res.data as string;
 
-    const res2 = await Call<
-      createapi.DatasetCreateBody,
-      createapi.DatasetCreateQuery,
-      createapi.DatasetCreateResponse
-    >(createapi.default, {
+    const res2 = await Call<CreateDatasetBody, {}, CreateDatasetResponse>(createHandler, {
       auth: users.members[0],
       body: {
         name: 'test',

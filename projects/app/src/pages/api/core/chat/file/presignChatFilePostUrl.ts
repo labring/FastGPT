@@ -5,13 +5,11 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
-import type { PresignChatFilePostUrlParams } from '@fastgpt/global/openapi/core/chat/controler/api';
+import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
-async function handler(
-  req: ApiRequestProps<PresignChatFilePostUrlParams>
-): Promise<CreatePostPresignedUrlResult> {
-  const { filename, appId, chatId, outLinkAuthData } = req.body;
+async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResult> {
+  const { filename, appId, chatId, outLinkAuthData } = PresignChatFilePostUrlSchema.parse(req.body);
 
   const { teamId, uid } = await authChatCrud({
     req,

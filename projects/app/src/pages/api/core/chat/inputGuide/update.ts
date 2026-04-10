@@ -1,24 +1,20 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-
-export type updateChatInputGuideQuery = {};
-
-export type updateInputGuideBody = {
-  appId: string;
-  dataId: string;
-  text: string;
-};
-
-export type updateInputGuideResponse = {};
+import {
+  UpdateChatInputGuideBodySchema,
+  UpdateChatInputGuideResponseSchema,
+  type UpdateChatInputGuideResponseType
+} from '@fastgpt/global/openapi/core/chat/inputGuide/api';
 
 async function handler(
-  req: ApiRequestProps<updateInputGuideBody, updateChatInputGuideQuery>,
-  res: ApiResponseType<any>
-): Promise<updateInputGuideResponse> {
-  const { appId, dataId, text } = req.body;
+  req: ApiRequestProps,
+  _res: NextApiResponse
+): Promise<UpdateChatInputGuideResponseType> {
+  const { appId, dataId, text } = UpdateChatInputGuideBodySchema.parse(req.body);
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   await MongoChatInputGuide.findOneAndUpdate(
@@ -31,7 +27,7 @@ async function handler(
     }
   );
 
-  return {};
+  return UpdateChatInputGuideResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

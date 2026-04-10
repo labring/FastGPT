@@ -1,7 +1,10 @@
 import type { NextApiRequest } from 'next';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { NextAPI } from '@/service/middleware/entry';
 
@@ -33,7 +36,7 @@ export async function getDatasetCollectionPaths({
 }: {
   parentId?: string;
 }): Promise<ParentTreePathItemType[]> {
-  async function find(parentId?: string): Promise<ParentTreePathItemType[]> {
+  async function find(parentId: ParentIdType): Promise<ParentTreePathItemType[]> {
     if (!parentId) {
       return [];
     }

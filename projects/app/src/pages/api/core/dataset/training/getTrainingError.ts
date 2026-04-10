@@ -6,7 +6,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/global/openapi/api';
 
 export type getTrainingErrorBody = PaginationProps<{
   collectionId: string;

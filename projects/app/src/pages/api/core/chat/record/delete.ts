@@ -1,12 +1,21 @@
 import type { NextApiResponse } from 'next';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import type { DeleteChatItemProps } from '@/global/core/chat/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  DeleteChatRecordBodySchema,
+  DeleteChatRecordResponseSchema,
+  type DeleteChatRecordResponseType
+} from '@fastgpt/global/openapi/core/chat/record/api';
 
-async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiResponse) {
-  const { appId, chatId, contentId } = req.body;
+async function handler(
+  req: ApiRequestProps,
+  _res: NextApiResponse
+): Promise<DeleteChatRecordResponseType> {
+  const { appId, chatId, contentId, delFile, ...authProps } = DeleteChatRecordBodySchema.parse(
+    req.query
+  );
 
   if (!contentId || !chatId) {
     return Promise.reject('contentId or chatId is empty');
@@ -16,7 +25,9 @@ async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiRe
     req,
     authToken: true,
     authApiKey: true,
-    ...req.body
+    appId,
+    chatId,
+    ...authProps
   });
 
   await MongoChatItem.updateOne(
@@ -30,7 +41,7 @@ async function handler(req: ApiRequestProps<DeleteChatItemProps>, res: NextApiRe
     }
   );
 
-  return;
+  return DeleteChatRecordResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

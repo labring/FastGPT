@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { HistoryItemType } from '../../core/chat/type';
-import type { OutLinkSchema, PlaygroundVisibilityConfigType } from './type';
+import type { OutLinkSchemaType, PlaygroundVisibilityConfigType } from './type';
 import { PlaygroundVisibilityConfigSchema } from './type';
 
 export type AuthOutLinkInitProps = {
@@ -8,7 +8,7 @@ export type AuthOutLinkInitProps = {
   tokenUrl?: string;
 };
 export type AuthOutLinkChatProps = { ip?: string | null; outLinkUid: string; question: string };
-export type AuthOutLinkLimitProps = AuthOutLinkChatProps & { outLink: OutLinkSchema };
+export type AuthOutLinkLimitProps = AuthOutLinkChatProps & { outLink: OutLinkSchemaType };
 export type AuthOutLinkResponse = {
   uid: string;
 };

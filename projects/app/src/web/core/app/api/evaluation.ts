@@ -6,7 +6,7 @@ import type {
   updateEvalItemBody
 } from '@fastgpt/global/core/app/evaluation/api';
 import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 export const postCreateEvaluation = ({
   file,

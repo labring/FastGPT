@@ -401,7 +401,7 @@ export async function downloadAndStoreMedia(params: {
 
 ```typescript
 async function processUserGroup(
-  outLink: OutLinkSchema<WechatAppType>,
+  outLink: OutLinkSchemaType<WechatAppType>,
   group: ParsedMessageGroup
 ): Promise<void> {
   const app = outLink.app;

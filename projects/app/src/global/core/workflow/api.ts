@@ -2,7 +2,7 @@ import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import type {
   ChatHistoryItemResType,
   UserChatItemValueItemType,
-  ChatItemType
+  ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -20,7 +20,7 @@ export type PostWorkflowDebugProps = {
   variables: Record<string, any>;
   appId: string;
   query?: UserChatItemValueItemType[];
-  history?: ChatItemType[];
+  history?: ChatItemMiniType[];
   chatConfig?: AppSchemaType['chatConfig'];
   usageId?: string;
 };

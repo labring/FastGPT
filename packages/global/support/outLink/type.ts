@@ -58,7 +58,7 @@ export type OutlinkAppType =
   | WechatAppType
   | undefined;
 
-export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
+export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = {
   _id: string;
   shareId: string;
   teamId: string;
@@ -108,16 +108,16 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
   _id?: string;
   name: string;
-  showCite?: OutLinkSchema<T>['showCite'];
-  showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
-  showSkillReferences?: OutLinkSchema<T>['showSkillReferences'];
-  showFullText?: OutLinkSchema<T>['showFullText'];
-  canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
+  showCite?: OutLinkSchemaType<T>['showCite'];
+  showRunningStatus?: OutLinkSchemaType<T>['showRunningStatus'];
+  showSkillReferences?: OutLinkSchemaType<T>['showSkillReferences'];
+  showFullText?: OutLinkSchemaType<T>['showFullText'];
+  canDownloadSource?: OutLinkSchemaType<T>['canDownloadSource'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation
   defaultResponse?: string;
-  limit?: OutLinkSchema<T>['limit'];
+  limit?: OutLinkSchemaType<T>['limit'];
 
   // config for specific platform
   app?: T;

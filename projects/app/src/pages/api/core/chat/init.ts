@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import type { InitChatResponse } from '@/global/core/chat/api';
+import type { InitChatResponseType } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
@@ -15,7 +15,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
 
-async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponse> {
+async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponseType> {
   const { appId, chatId } = InitChatQuerySchema.parse(req.query);
 
   try {
@@ -51,7 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
     return {
       chatId,
       appId,
-      title: chat?.title,
+      title: chat?.title || '',
       userAvatar: undefined,
       variables,
       app: {

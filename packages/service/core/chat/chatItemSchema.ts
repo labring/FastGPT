@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
-import { type ChatItemSchemaType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemDBSchemaType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
@@ -103,7 +103,7 @@ ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
 // Query by role (AI/Human), get latest chat item, permission check
 ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
 
-export const MongoChatItem = getMongoModel<ChatItemSchemaType>(
+export const MongoChatItem = getMongoModel<ChatItemDBSchemaType>(
   ChatItemCollectionName,
   ChatItemSchema
 );

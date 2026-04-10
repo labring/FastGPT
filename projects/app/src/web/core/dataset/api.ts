@@ -16,7 +16,6 @@ import type {
   ApiDatasetCreateDatasetCollectionV2Params,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
-  DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   reTrainingDatasetFileCollectionParams,
@@ -25,8 +24,17 @@ import type {
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api';
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api';
-import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api';
+import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
+import type {
+  CreateDatasetBody,
+  CreateDatasetWithFilesBody,
+  CreateDatasetWithFilesResponse,
+  GetDatasetListBody,
+  UpdateDatasetBody,
+  CreateDatasetFolderBody,
+  SearchDatasetTestBody,
+  SearchDatasetTestResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
@@ -41,15 +49,13 @@ import type {
   readCollectionSourceBody,
   readCollectionSourceResponse
 } from '@/pages/api/core/dataset/collection/read';
-import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
-import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
+import type { UpdateDatasetCollectionBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import type {
   GetDatasetDataListProps,
   GetDatasetDataListRes
 } from '@/pages/api/core/dataset/data/v2/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
-import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 import type {
   listExistIdQuery,
@@ -79,10 +85,7 @@ import type {
   GetApiDatasetPathResponse
 } from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
-import type {
-  DatasetCreateWithFilesBody,
-  DatasetCreateWithFilesResponse
-} from '@/pages/api/core/dataset/createWithFiles';
+
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ======================== dataset ======================= */
@@ -91,9 +94,6 @@ export const getDatasets = (data: GetDatasetListBody) =>
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
-/**
- * get type=dataset list
- */
 
 export const getDatasetPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve([]);
@@ -102,13 +102,13 @@ export const getDatasetPaths = (data: GetPathProps) => {
 
 export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/dataset/detail?id=${id}`);
 
-export const postCreateDataset = (data: CreateDatasetParams) =>
+export const postCreateDataset = (data: CreateDatasetBody) =>
   POST<string>(`/core/dataset/create`, data);
 
-export const postCreateDatasetWithFiles = (data: DatasetCreateWithFilesBody) =>
-  POST<DatasetCreateWithFilesResponse>(`/core/dataset/createWithFiles`, data);
+export const postCreateDatasetWithFiles = (data: CreateDatasetWithFilesBody) =>
+  POST<CreateDatasetWithFilesResponse>(`/core/dataset/createWithFiles`, data);
 
-export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/dataset/update`, data);
+export const putDatasetById = (data: UpdateDatasetBody) => PUT<void>(`/core/dataset/update`, data);
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
@@ -117,15 +117,16 @@ export const postDatasetSync = (data: PostDatasetSyncParams) =>
     timeout: 600000
   }).catch();
 
-export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
+export const postCreateDatasetFolder = (data: CreateDatasetFolderBody) =>
   POST(`/core/dataset/folder/create`, data);
 
 export const resumeInheritPer = (datasetId: string) =>
-  GET(`/core/dataset/resumeInheritPermission`, { datasetId });
+  PUT(`/core/dataset/resumeInheritPermission`, { datasetId });
 
 export const postChangeOwner = (data: { ownerId: string; datasetId: string }) =>
   POST(`/proApi/core/dataset/changeOwner`, data);
 
+/* ============================= collection ==================================== */
 export const postBackupDatasetCollection = ({
   file,
   percentListen,
@@ -174,8 +175,8 @@ export const postTemplateDatasetCollection = ({
 };
 
 /* =========== search test ============ */
-export const postSearchText = (data: SearchTestProps) =>
-  POST<SearchTestResponse>(`/core/dataset/searchTest`, data);
+export const postSearchText = (data: SearchDatasetTestBody) =>
+  POST<SearchDatasetTestResponse>(`/core/dataset/searchTest`, data);
 
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
@@ -216,7 +217,7 @@ export const postCreateDatasetApiDatasetCollection = (
     timeout: 360000
   });
 
-export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
+export const putDatasetCollectionById = (data: UpdateDatasetCollectionBodyType) =>
   POST(`/core/dataset/collection/update`, data);
 export const delDatasetCollectionById = (params: DelCollectionBody) =>
   POST(`/core/dataset/collection/delete`, params);

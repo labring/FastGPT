@@ -32,7 +32,7 @@ import type {
   StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
 describe('extractDeepestInteractive', () => {
   it('should return the same interactive when no childrenResponse', () => {
@@ -627,7 +627,7 @@ describe('valueTypeFormat', () => {
 
 describe('getLastInteractiveValue', () => {
   it('should return undefined when no AI message', () => {
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.Human,
         value: [{ text: { content: 'hello' } }]
@@ -637,7 +637,7 @@ describe('getLastInteractiveValue', () => {
   });
 
   it('should return undefined when AI message has no interactive', () => {
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' } }]
@@ -655,7 +655,7 @@ describe('getLastInteractiveValue', () => {
       params: { childrenResponse: {} }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -676,7 +676,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -698,7 +698,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -719,7 +719,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -741,7 +741,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -761,7 +761,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -782,7 +782,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -800,7 +800,7 @@ describe('getLastInteractiveValue', () => {
       params: {}
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -818,7 +818,7 @@ describe('getLastInteractiveValue', () => {
       params: { confirmed: true }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -836,7 +836,7 @@ describe('getLastInteractiveValue', () => {
       params: { content: 'What do you want?' }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -857,7 +857,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]
@@ -878,7 +878,7 @@ describe('getLastInteractiveValue', () => {
       }
     } as WorkflowInteractiveResponseType;
 
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'response' }, interactive }]

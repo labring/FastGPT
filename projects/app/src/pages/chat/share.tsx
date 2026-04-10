@@ -20,7 +20,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';

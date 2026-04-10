@@ -10,20 +10,24 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { z } from 'zod';
+
+const BodySchema = z.object({
+  pageNum: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(100).default(10),
+  datasetId: z.string(),
+  parentId: z.string().nullable().optional().default(null),
+  searchText: z.string().optional().default(''),
+  selectFolder: z.boolean().optional().default(false),
+  filterTags: z.array(z.string()).optional().default([]),
+  simple: z.boolean().optional().default(false)
+});
 
 async function handler(req: NextApiRequest) {
-  let {
-    pageNum = 1,
-    pageSize = 10,
-    datasetId,
-    parentId = null,
-    searchText = '',
-    selectFolder = false,
-    filterTags = [],
-    simple = false
-  } = req.body as any;
-  searchText = searchText?.replace(/'/g, '');
-  pageSize = Math.min(pageSize, 100);
+  const { pageNum, pageSize, datasetId, parentId, searchText, selectFolder, filterTags, simple } =
+    BodySchema.parse(req.body);
+  const regexText = searchText ? replaceRegChars(searchText) : '';
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({
@@ -38,9 +42,9 @@ async function handler(req: NextApiRequest) {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
-    ...(searchText
+    ...(regexText
       ? {
-          name: new RegExp(searchText, 'i')
+          name: new RegExp(regexText, 'i')
         }
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null

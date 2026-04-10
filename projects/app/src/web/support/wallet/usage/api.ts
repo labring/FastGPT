@@ -6,7 +6,7 @@ import type {
   GetUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
 import type { UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 
 export const getUserUsages = (data: PaginationProps<GetUsageProps>) =>
   POST<PaginationResponse<UsageListItemType>>(`/proApi/support/wallet/usage/getUsage`, data);

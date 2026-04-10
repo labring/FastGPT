@@ -19,7 +19,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTeamMembers, putTransferTeamOwnership } from '@/web/support/user/team/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from './context';

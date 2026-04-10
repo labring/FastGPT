@@ -28,7 +28,7 @@ type DatasetSearchParams = {
     datasets: SelectedDatasetType[];
     similarity: number;
     maxTokens: number;
-    searchMode: `${DatasetSearchModeEnum}`;
+    searchMode: DatasetSearchModeEnum;
     embeddingWeight?: number;
     usingReRank: boolean;
     rerankModel?: string;

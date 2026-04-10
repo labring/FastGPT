@@ -39,16 +39,22 @@ export const openAPIDocument = createDocument({
       tags: [TagsMap.aiSkill, TagsMap.sandbox]
     },
     {
-      name: '对话',
-      tags: [TagsMap.chatSetting, TagsMap.chatPage]
+      name: '对话模块配置',
+      tags: [TagsMap.chatSetting, TagsMap.chatPage, TagsMap.chatInputGuide]
     },
     {
-      name: '对话管理',
-      tags: [TagsMap.chatHistory, TagsMap.chatController, TagsMap.chatFeedback]
+      name: '对话模块使用',
+      tags: [
+        TagsMap.chatHistory,
+        TagsMap.chatFeedback,
+        TagsMap.chatFile,
+        TagsMap.chatRecord,
+        TagsMap.chatController
+      ]
     },
     {
       name: '知识库',
-      tags: [TagsMap.datasetCollection]
+      tags: [TagsMap.datasetCommon, TagsMap.datasetCollection]
     },
     {
       name: '插件系统',

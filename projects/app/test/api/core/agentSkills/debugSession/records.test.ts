@@ -7,7 +7,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import type { getChatRecordsResponse } from '@/pages/api/core/chat/record/getRecords_v2';
+import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 // Helper: create a human chat item
 async function createHumanItem({
@@ -124,7 +124,7 @@ describe('debugSession/records', () => {
 
   // ── Empty result ──────────────────────────────
   it('should return empty list when no chat items exist', async () => {
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId }
     });
@@ -153,7 +153,7 @@ describe('debugSession/records', () => {
       text: 'pong'
     });
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId }
     });
@@ -172,7 +172,7 @@ describe('debugSession/records', () => {
       text: 'test message'
     });
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId }
     });
@@ -194,7 +194,7 @@ describe('debugSession/records', () => {
       tmbId: testUser.tmbId
     });
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId }
     });
@@ -217,7 +217,7 @@ describe('debugSession/records', () => {
       tmbId: testUser.tmbId
     });
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId }
     });
@@ -236,7 +236,7 @@ describe('debugSession/records', () => {
     });
     await MongoChatItem.updateOne({ _id: doc._id }, { $set: { deleteTime: new Date() } });
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId }
     });
@@ -258,7 +258,7 @@ describe('debugSession/records', () => {
       });
     }
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId, pageSize: 3 }
     });
@@ -285,7 +285,7 @@ describe('debugSession/records', () => {
     // Use the last item's dataId as initialId to anchor at the end
     const lastDataId = items[items.length - 1].dataId;
 
-    const res = await Call<any, any, getChatRecordsResponse>(handler, {
+    const res = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId, pageSize: 3, initialId: lastDataId }
     });
@@ -309,7 +309,7 @@ describe('debugSession/records', () => {
     }
 
     // First page: get 2 items
-    const page1 = await Call<any, any, getChatRecordsResponse>(handler, {
+    const page1 = await Call<any, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,
       body: { skillId, chatId, pageSize: 2 }
     });
@@ -319,7 +319,7 @@ describe('debugSession/records', () => {
     if (page1.data.hasMoreNext && page1.data.list.length > 0) {
       // Navigate to next page
       const lastId = page1.data.list[page1.data.list.length - 1].dataId;
-      const page2 = await Call<any, any, getChatRecordsResponse>(handler, {
+      const page2 = await Call<any, any, GetRecordsV2ResponseType>(handler, {
         auth: testUser,
         body: { skillId, chatId, pageSize: 2, nextId: lastId }
       });

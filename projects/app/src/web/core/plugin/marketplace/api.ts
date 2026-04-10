@@ -8,7 +8,7 @@ import type {
   GetSystemInstalledPluginsQueryType,
   GetSystemInstalledPluginsResponseType
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 export const getSystemInstalledPlugins = (data: GetSystemInstalledPluginsQueryType) =>
   GET<GetSystemInstalledPluginsResponseType>('/core/plugin/admin/marketplace/installed', data);

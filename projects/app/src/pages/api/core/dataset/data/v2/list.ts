@@ -5,7 +5,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';

@@ -11,7 +11,7 @@ import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
 import type {
   UserChatItemFileItemType,
-  ChatItemType,
+  ChatItemMiniType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -152,8 +152,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       .filter(Boolean)
       .join('\n\n===---===---===\n\n');
 
-    const messages: ChatItemType[] = (() => {
-      const value: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = (() => {
+      const value: ChatItemMiniType[] = [
         ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
         // Add file input prompt to histories
         ...chatHistories.map((item) => {
@@ -319,7 +319,7 @@ const getMultiInput = async ({
   uId
 }: {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   fileLinks?: string[];
   requestOrigin?: string;
   maxFiles: number;

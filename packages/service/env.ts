@@ -57,6 +57,9 @@ export const env = createEnv({
     APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
     DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
 
+    // ===== Security =====
+    CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
+
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)
     SHOW_SKILL: BoolSchema.default(false)

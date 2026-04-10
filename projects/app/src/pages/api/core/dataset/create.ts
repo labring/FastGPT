@@ -1,7 +1,11 @@
-import type { CreateDatasetParams } from '@/global/core/dataset/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  CreateDatasetBodySchema,
+  CreateDatasetResponseSchema,
+  type CreateDatasetResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -13,6 +17,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   getDatasetModel,
   getDefaultEmbeddingModel,
+  getDefaultVLMModel,
   getEmbeddingModel,
   getLLMModel
 } from '@fastgpt/service/core/ai/model';
@@ -27,13 +32,7 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
-export type DatasetCreateQuery = {};
-export type DatasetCreateBody = CreateDatasetParams;
-export type DatasetCreateResponse = string;
-
-async function handler(
-  req: ApiRequestProps<DatasetCreateBody, DatasetCreateQuery>
-): Promise<DatasetCreateResponse> {
+async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
     parentId,
     name,
@@ -42,9 +41,9 @@ async function handler(
     avatar,
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDatasetModel()?.model,
-    vlmModel,
+    vlmModel = getDefaultVLMModel()?.model,
     apiDatasetServer
-  } = req.body;
+  } = CreateDatasetBodySchema.parse(req.body);
 
   // auth
   const { teamId, tmbId, userId } = parentId
@@ -127,6 +126,6 @@ async function handler(
     });
   })();
 
-  return datasetId;
+  return CreateDatasetResponseSchema.parse(datasetId);
 }
 export default NextAPI(handler);

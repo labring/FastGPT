@@ -1,7 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
-import { type GetChatSpeechProps } from '@/global/core/chat/api';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
@@ -9,15 +8,16 @@ import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { getTTSModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 
-/* 
+/*
 1. get tts from chatItem store
 2. get tts from ai
 4. push bill
 */
-async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiResponse) {
+async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
-    const { ttsConfig, input } = req.body;
+    const { ttsConfig, input } = GetChatSpeechBodySchema.parse(req.body);
 
     if (!ttsConfig.model || !ttsConfig.voice) {
       throw new Error('model or voice not found');

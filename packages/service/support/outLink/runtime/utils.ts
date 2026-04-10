@@ -7,7 +7,7 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { OutlinkAppType, OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
@@ -69,7 +69,7 @@ export const resetChat = ({ appId, chatId }: { appId: string; chatId: string }) 
 };
 
 export type outLinkInvokeChatProps<T extends OutlinkAppType> = {
-  outLinkConfig: OutLinkSchema<T>;
+  outLinkConfig: OutLinkSchemaType<T>;
   chatId: string; // specific chat
   query: UserChatItemValueItemType[];
   res?: NextApiResponse;
