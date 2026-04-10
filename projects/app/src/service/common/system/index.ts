@@ -150,6 +150,11 @@ export async function initSystemConfig() {
       ...fileRes?.feConfigs,
       ...defaultFeConfigs,
       ...(fastgptConfig.feConfigs || {}),
+      limit: {
+        ...fileRes?.feConfigs?.limit,
+        ...defaultFeConfigs.limit,
+        ...(fastgptConfig.feConfigs?.limit || {})
+      },
       isPlus: !!licenseData,
       hideChatCopyrightSetting: process.env.HIDE_CHAT_COPYRIGHT_SETTING === 'true',
       show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
