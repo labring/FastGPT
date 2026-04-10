@@ -137,7 +137,7 @@
   "parallel_full_results": "Full Results",
   "parallel_full_results_desc": "Array of the same length as the input, each item is {success, message, data}: on success success=true, message is empty, data is the output; on failure success=false, message contains the error, data is null.",
   "parallel_status": "Completion Status",
-  "parallel_status_desc": "Overall run status: allSuccess, partialFailure, or allFailure.",
+  "parallel_status_desc": "Overall run status: success, partial_success, or failed.",
   "max_dialog_rounds": "Maximum Number of Dialog Rounds",
   "max_tokens": "Maximum Tokens",
   "mouse_priority": "Mouse first\n- Press the left button to drag the canvas\n- Hold down shift and left click to select batches",

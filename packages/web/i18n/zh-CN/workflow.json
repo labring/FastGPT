@@ -137,7 +137,7 @@
   "parallel_full_results": "完整结果",
   "parallel_full_results_desc": "与输入数组等长的结果数组，每项形如 {success, message, data}：成功时 success=true、message 为空、data 为输出值；失败时 success=false、message 为错误信息、data 为 null。",
   "parallel_status": "完成状态",
-  "parallel_status_desc": "整体执行状态：allSuccess（全部成功）、partialFailure（部分失败）、allFailure（全部失败）。",
+  "parallel_status_desc": "整体执行状态：success（全部成功）、partial_success（部分失败）、failed（全部失败）。",
   "max_dialog_rounds": "最多携带多少轮对话记录",
   "max_tokens": "最大 Tokens",
   "mouse_priority": "鼠标优先\n- 左键按下后可拖动画布\n- 按住 shift 后左键可批量选择",

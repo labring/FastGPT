@@ -229,10 +229,10 @@ export const aggregateParallelResults = (
   const total = sorted.length;
   const status: ParallelRunStatusEnum =
     successCount === total
-      ? ParallelRunStatusEnum.allSuccess
+      ? ParallelRunStatusEnum.success
       : successCount === 0
-        ? ParallelRunStatusEnum.allFailure
-        : ParallelRunStatusEnum.partialFailure;
+        ? ParallelRunStatusEnum.failed
+        : ParallelRunStatusEnum.partial_success;
 
   return {
     filteredArray,

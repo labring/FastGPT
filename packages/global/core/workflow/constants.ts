@@ -331,9 +331,9 @@ export enum NodeOutputKeyEnum {
 }
 
 export enum ParallelRunStatusEnum {
-  allSuccess = 'allSuccess',
-  partialFailure = 'partialFailure',
-  allFailure = 'allFailure'
+  success = 'success',
+  partial_success = 'partial_success',
+  failed = 'failed'
 }
 
 export enum VariableInputEnum {
