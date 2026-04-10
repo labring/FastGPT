@@ -134,6 +134,7 @@
   "setting.favourite.delete_app_confirm": "確定要移除該精選應用嗎？",
   "setting.favourite.delete_app_confirm_button": "確定",
   "setting.favourite.delete_app_title": "刪除應用",
+  "setting.favourite.goto_add": "去配置",
   "setting.favourite.manage_categories_button": "分類管理",
   "setting.favourite.save_category_for_app_button": "保存",
   "setting.favourite.search_placeholder": "搜索應用",
