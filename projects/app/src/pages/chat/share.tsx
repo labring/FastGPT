@@ -105,10 +105,23 @@ const OutLink = (props: Props) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const isNoneWelcomeAndVariable = useContextSelector(
+    ChatItemContext,
+    (v) => v.isNoneWelcomeAndVariable
+  );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
+
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+
+  const isShowHeader = useMemo(
+    () =>
+      (!isNoneWelcomeAndVariable || (isChatRecordsLoaded && chatRecords.length !== 0)) &&
+      showHead === '1',
+    [chatBoxData, isChatRecordsLoaded, chatRecords, showHead]
+  );
 
   const initSign = useRef(false);
   const { data, loading } = useRequest(
@@ -312,7 +325,7 @@ const OutLink = (props: Props) => {
                 flexDirection={'column'}
               >
                 {/* header */}
-                {showHead === '1' ? (
+                {isShowHeader ? (
                   <ChatHeader
                     chatSettings={undefined}
                     pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}

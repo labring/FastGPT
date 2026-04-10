@@ -11,7 +11,7 @@ type Props = {
   isShareMode?: boolean;
 };
 
-const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText, isShareMode }: Props) => {
+const ChatHistorySidebar = ({ title, banner, isShareMode }: Props) => {
   const shareModeStyles = isShareMode
     ? {
         background:
@@ -35,8 +35,8 @@ const ChatHistorySidebar = ({ title, banner, menuConfirmButtonText, isShareMode 
       whiteSpace={'nowrap'}
     >
       <ChatSliderHeader title={title} banner={banner} />
-      <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />
-      <ChatSliderList />
+      <ChatSliderMenu />
+      <ChatSliderList isShareMode={isShareMode} />
     </MyBox>
   );
 };

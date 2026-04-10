@@ -84,6 +84,15 @@ const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'))
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
+const AppChatEmptyBox = dynamic(() => import('./components/AppChatEmptyBox'));
+
+const sx = {
+  borderRadius: '12px',
+  borderImage:
+    'conic-gradient(from 180deg at 50% 50%, rgba(50, 170, 255, 0.6) -42deg, rgba(119, 226, 57, 0.6) 19deg, rgba(38, 219, 131, 0.6) 50deg, rgba(81, 155, 252, 0.6) 133deg, rgba(36, 131, 255, 0.6) 151deg, rgba(118, 105, 253, 0.6) 225deg, rgba(237, 125, 214, 0.6) 244deg, rgba(50, 170, 255, 0.6) 318deg, rgba(119, 226, 57, 0.6) 379deg) 1',
+  boxShadow: '0px 2px 6px 0px rgba(0, 78, 212, 0.06)',
+  background: 'linear-gradient(180deg, rgba(240, 246, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%)'
+};
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -152,6 +161,10 @@ const ChatBox = ({
   const isAssistantType = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
+  );
+  const isNoneWelcomeAndVariable = useContextSelector(
+    ChatItemContext,
+    (v) => v.isNoneWelcomeAndVariable
   );
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
@@ -1147,6 +1160,16 @@ const ChatBox = ({
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
+  // 非 home type, and no chat records and no var
+  const isAppChatEmptyRender = useMemo(() => {
+    return (
+      chatType !== ChatTypeEnum.home &&
+      chatRecords.length === 0 &&
+      !chatStartedWatch &&
+      isNoneWelcomeAndVariable
+    );
+  }, [chatType, chatRecords.length, chatStartedWatch, isNoneWelcomeAndVariable]);
+
   const toggleDeletedGroup = useCallback((dataIds: string[]) => {
     setExpandedDeletedGroups((prev) => {
       const newSet = new Set(prev);
@@ -1184,7 +1207,7 @@ const ChatBox = ({
       const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
       const nextIsDeleted =
         index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
-      console.log(isDeleted, 2323);
+
       if (isDeleted && !prevIsDeleted) {
         // 开始新的删除组
         currentGroup = {
@@ -1414,7 +1437,7 @@ const ChatBox = ({
       <>
         <WelcomeHomeBox />
 
-        <Box mt={5} w={'100%'}>
+        <Box mt={16} w={'100%'}>
           <QuickApps />
         </Box>
       </>
@@ -1458,6 +1481,41 @@ const ChatBox = ({
             )}
           </Flex>
         </MyBox>
+      ) : isAppChatEmptyRender ? (
+        <MyBox
+          isLoading={isLoadingRecords}
+          flex={'1 0 0'}
+          h={0}
+          w="100%"
+          position="relative"
+          overflow="hidden"
+          bg="linear-gradient(180deg, #FAFCFF, #FFFFFF)"
+        >
+          {/* 右上角装饰区域 */}
+          {/* <BgDecoration /> */}
+
+          {/* 居中区域：标题 + 输入框 */}
+          <Flex
+            h="100%"
+            flexDir="column"
+            justifyContent="center"
+            alignItems="center"
+            position="relative"
+            zIndex={1}
+            px={[2, 4]}
+          >
+            <AppChatEmptyBox />
+            <Box w={'100%'} maxW={['100%', 'min(738px, 100%)']} sx={sx}>
+              <ChatInput
+                onSendMessage={sendPrompt}
+                onStop={() => abortRequest('stop')}
+                TextareaDom={TextareaDom}
+                resetInputVal={resetInputVal}
+                chatForm={chatForm}
+              />
+            </Box>
+          </Flex>
+        </MyBox>
       ) : (
         <>
           {AppChatRenderBox}
@@ -1466,14 +1524,7 @@ const ChatBox = ({
               m={['0 auto 10px', '10px auto']}
               w={'100%'}
               maxW={['100%', 'min(738px, 100%)']}
-              sx={{
-                borderRadius: '12px',
-                borderImage:
-                  'conic-gradient(from 180deg at 50% 50%, rgba(50, 170, 255, 0.6) -42deg, rgba(119, 226, 57, 0.6) 19deg, rgba(38, 219, 131, 0.6) 50deg, rgba(81, 155, 252, 0.6) 133deg, rgba(36, 131, 255, 0.6) 151deg, rgba(118, 105, 253, 0.6) 225deg, rgba(237, 125, 214, 0.6) 244deg, rgba(50, 170, 255, 0.6) 318deg, rgba(119, 226, 57, 0.6) 379deg) 1',
-                boxShadow: '0px 2px 6px 0px rgba(0, 78, 212, 0.06)',
-                background:
-                  'linear-gradient(180deg, rgba(240, 246, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%)'
-              }}
+              sx={sx}
             >
               {showWorkorder && <WorkorderEntrance />}
 

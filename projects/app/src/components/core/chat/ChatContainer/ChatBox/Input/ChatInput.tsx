@@ -306,7 +306,7 @@ const ChatInput = ({
                 }}
               >
                 <MyTooltip label={selectFileLabel}>
-                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
+                  <MyIcon name={selectFileIcon as any} w="18px" h="18px" color={'#707070'} />
                 </MyTooltip>
                 <File onSelect={(files) => onSelectFile({ files })} />
               </Flex>
@@ -329,7 +329,7 @@ const ChatInput = ({
                 }}
               >
                 <MyTooltip label={t('common:core.chat.Record')}>
-                  <MyIcon name={'core/chat/recordFill'} {...iconSize} color={'#707070'} />
+                  <MyIcon name={'core/chat/recordFill'} w="18px" h="18px" color={'#707070'} />
                 </MyTooltip>
               </Flex>
             )}

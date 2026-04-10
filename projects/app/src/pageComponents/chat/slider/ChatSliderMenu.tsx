@@ -38,6 +38,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
         h={'100%'}
         mx={1}
         color="#3E4A59"
+        border="1px solid #EBEDF0"
         boxShadow={'none'}
         borderRadius={'8px'}
         leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}

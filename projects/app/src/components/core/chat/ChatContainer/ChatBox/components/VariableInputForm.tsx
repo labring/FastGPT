@@ -1,10 +1,8 @@
 import React, { useMemo } from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Card, Flex } from '@chakra-ui/react';
-import ChatAvatar from './ChatAvatar';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { ChatTypeEnum } from '../constants';
-import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type ChatBoxInputFormType } from '../type';
@@ -27,7 +25,6 @@ const VariableInputForm = ({
 }) => {
   const { t } = useTranslation();
 
-  const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variables = useContextSelector(
     ChatItemContext,
@@ -82,17 +79,42 @@ const VariableInputForm = ({
 
   return !hasVariables || isAssistantType ? null : (
     <Box py={3}>
-      <ChatAvatar src={appAvatar} type={'AI'} />
       {internalVariableList.length > 0 && (
-        <Box textAlign={'left'}>
-          <Card
-            order={2}
-            mt={2}
-            w={'400px'}
-            {...MessageCardStyle}
-            bg={'white'}
-            boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
+        <Box textAlign={'left'} mt={2}>
+          <Flex
+            color={'primary.600'}
+            bg={'primary.100'}
+            mb={3}
+            px={3}
+            py={1.5}
+            gap={1}
+            fontSize={'mini'}
+            rounded={'sm'}
           >
+            <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+            {t('chat:internal_variables_tip')}
+          </Flex>
+          <Box>
+            {internalVariableList.map((item) => {
+              return (
+                <LabelAndFormRender
+                  {...item}
+                  isUnChange={isUnChange}
+                  key={item.key}
+                  placeholder={item.description}
+                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                  form={variablesForm}
+                  fieldName={`variables.${item.key}`}
+                />
+              );
+            })}
+          </Box>
+        </Box>
+      )}
+
+      {externalVariableList.length > 0 && (
+        <Box textAlign={'left'} mt={2}>
+          {chatType !== ChatTypeEnum.chat && (
             <Flex
               color={'primary.600'}
               bg={'primary.100'}
@@ -104,51 +126,10 @@ const VariableInputForm = ({
               rounded={'sm'}
             >
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-              {t('chat:internal_variables_tip')}
+              {t('chat:variable_invisable_in_share')}
             </Flex>
-            {internalVariableList.map((item) => {
-              return (
-                <LabelAndFormRender
-                  {...item}
-                  isUnChange={isUnChange}
-                  key={item.key}
-                  placeholder={item.description}
-                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
-                  form={variablesForm}
-                  fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
-                />
-              );
-            })}
-          </Card>
-        </Box>
-      )}
-
-      {externalVariableList.length > 0 && (
-        <Box textAlign={'left'}>
-          <Card
-            order={2}
-            mt={2}
-            w={'400px'}
-            {...MessageCardStyle}
-            bg={'white'}
-            boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
-          >
-            {chatType !== ChatTypeEnum.chat && (
-              <Flex
-                color={'primary.600'}
-                bg={'primary.100'}
-                mb={3}
-                px={3}
-                py={1.5}
-                gap={1}
-                fontSize={'mini'}
-                rounded={'sm'}
-              >
-                <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-                {t('chat:variable_invisable_in_share')}
-              </Flex>
-            )}
+          )}
+          <Box>
             {externalVariableList.map((item) => {
               return (
                 <LabelAndFormRender
@@ -159,38 +140,35 @@ const VariableInputForm = ({
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
                 />
               );
             })}
-            {!chatStarted && commonVariableList.length === 0 && (
-              <Button
-                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-                size={'sm'}
-                maxW={'100px'}
-                mt={4}
-                isDisabled={fileUploading}
-                onClick={variablesForm.handleSubmit(() => {
-                  chatForm.setValue('chatStarted', true);
-                })}
-              >
-                {t('chat:start_chat')}
-              </Button>
-            )}
-          </Card>
+          </Box>
+          {!chatStarted && commonVariableList.length === 0 && (
+            <Button
+              leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+              mt={4}
+              h={'36px'}
+              px={'14px'}
+              pl={'10px'}
+              borderRadius={'6px'}
+              bg={'primary.600'}
+              color={'white'}
+              _hover={{ bg: 'primary.700' }}
+              isDisabled={fileUploading}
+              onClick={variablesForm.handleSubmit(() => {
+                chatForm.setValue('chatStarted', true);
+              })}
+            >
+              {t('chat:start_chat')}
+            </Button>
+          )}
         </Box>
       )}
 
       {commonVariableList.length > 0 && (
-        <Box textAlign={'left'}>
-          <Card
-            order={2}
-            mt={2}
-            w={'400px'}
-            {...MessageCardStyle}
-            bg={'white'}
-            boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
-          >
+        <Box textAlign={'left'} mt={2}>
+          <Box>
             {commonVariableList.map((item) => {
               return (
                 <LabelAndFormRender
@@ -199,27 +177,31 @@ const VariableInputForm = ({
                   key={item.key}
                   placeholder={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
-                  bg={'myGray.50'}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                 />
               );
             })}
-            {!chatStarted && (
-              <Button
-                leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-                size={'sm'}
-                maxW={'100px'}
-                mt={4}
-                isDisabled={fileUploading}
-                onClick={variablesForm.handleSubmit(() => {
-                  chatForm.setValue('chatStarted', true);
-                })}
-              >
-                {t('chat:start_chat')}
-              </Button>
-            )}
-          </Card>
+          </Box>
+          {!chatStarted && (
+            <Button
+              leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+              mt={4}
+              h={'36px'}
+              px={'14px'}
+              pl={'10px'}
+              borderRadius={'6px'}
+              bg={'primary.600'}
+              color={'white'}
+              _hover={{ bg: 'primary.700' }}
+              isDisabled={fileUploading}
+              onClick={variablesForm.handleSubmit(() => {
+                chatForm.setValue('chatStarted', true);
+              })}
+            >
+              {t('chat:start_chat')}
+            </Button>
+          )}
         </Box>
       )}
     </Box>

@@ -13,7 +13,11 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
-const ChatSliderList = () => {
+type Props = {
+  isShareMode?: boolean;
+};
+
+const ChatSliderList = ({ isShareMode }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
@@ -83,12 +87,9 @@ const ChatSliderList = () => {
             fontSize={'13px'}
             lineHeight={'36px'}
             _hover={{
-              bg: 'myGray.50',
+              bg: isShareMode ? '#EBEDF0' : 'myGray.50',
               '& .more': {
                 display: 'block'
-              },
-              '& .time': {
-                display: isPc ? 'none' : 'block'
               }
             }}
             bg={item.top ? '#E6F6F6 !important' : ''}

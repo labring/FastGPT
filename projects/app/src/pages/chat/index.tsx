@@ -56,7 +56,7 @@ const Chat = () => {
       )}
 
       {(!datasetCiteData || isPc) && (
-        <PageContainer flex="1 0 0" w={0} position="relative">
+        <PageContainer flex="1 0 0" w={0} position="relative" insertProps={{ borderRadius: '8px' }}>
           {/* home chat window */}
           {pane === ChatSidebarPaneEnum.HOME && <HomeChatWindow />}
 
