@@ -88,3 +88,10 @@ export enum ChatStatusEnum {
   running = 'running',
   finish = 'finish'
 }
+
+export enum GetChatTypeEnum {
+  normal = 'normal',
+  outLink = 'outLink',
+  team = 'team',
+  home = 'home'
+}

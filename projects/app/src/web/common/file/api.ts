@@ -2,7 +2,7 @@ import { POST, PUT } from '@/web/common/api/request';
 import type {
   PresignChatFileGetUrlParams,
   PresignChatFilePostUrlParams
-} from '@fastgpt/global/openapi/core/chat/controler/api';
+} from '@fastgpt/global/openapi/core/chat/file/api';
 import type { CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 
 export const getUploadAvatarPresignedUrl = (params: {

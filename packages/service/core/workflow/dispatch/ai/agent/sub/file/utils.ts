@@ -3,7 +3,7 @@ import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseUrlToFileType } from '../../../../../utils/context';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { getHistoryFileLinks } from '../../../../tools/readFiles';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import z from 'zod';
 
@@ -41,7 +41,7 @@ export const formatFileInput = ({
   fileUrls?: string[];
   requestOrigin?: string;
   maxFiles: number;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   useSkill: boolean;
 }): {
   filesMap: Record<string, string>;

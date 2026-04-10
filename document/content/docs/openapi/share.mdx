@@ -243,7 +243,7 @@ type ResponseType = {
   temperature?: number; // 温度
   maxToken?: number; // 模型的最大token
   quoteList?: SearchDataResponseItemType[]; // 引用列表
-  historyPreview?: ChatItemType[]; // 上下文预览（历史记录会被裁剪）
+  historyPreview?: ChatItemMiniType[]; // 上下文预览（历史记录会被裁剪）
 
   similarity?: number; // 最低相关度
   limit?: number; // 引用上限token

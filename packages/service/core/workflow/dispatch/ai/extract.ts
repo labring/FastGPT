@@ -1,6 +1,6 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -34,7 +34,7 @@ import { createLLMResponse } from '../../../ai/llm/request';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemType[];
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[];
   [NodeInputKeyEnum.contextExtractInput]: string;
   [NodeInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [NodeInputKeyEnum.description]: string;
@@ -188,7 +188,7 @@ const toolChoice = async (props: ActionProps) => {
     lastMemory
   } = props;
 
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [
@@ -293,7 +293,7 @@ const completions = async (props: ActionProps) => {
     params: { content, description }
   } = props;
 
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [

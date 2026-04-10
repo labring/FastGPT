@@ -28,7 +28,7 @@ import { MongoDatasetCollectionTags } from '../tag/schema';
 import { computeFilterIntersection } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -41,7 +41,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 export type SearchDatasetDataProps = {
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   teamId: string;
   uid?: string;
   tmbId?: string;

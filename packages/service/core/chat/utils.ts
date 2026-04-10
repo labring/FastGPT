@@ -1,5 +1,5 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -8,10 +8,10 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { clone, cloneDeep } from 'lodash';
 
 export const addPreviewUrlToChatItems = async (
-  histories: ChatItemType[],
+  histories: ChatItemMiniType[],
   type: 'chatFlow' | 'workflowTool'
 ) => {
-  async function addToChatflow(item: ChatItemType) {
+  async function addToChatflow(item: ChatItemMiniType) {
     for await (const value of item.value) {
       if ('file' in value && value.file && value.file.key) {
         const { url } = await s3ChatSource.createGetChatFileURL({
@@ -23,7 +23,7 @@ export const addPreviewUrlToChatItems = async (
     }
   }
 
-  async function addToWorkflowTool(item: ChatItemType) {
+  async function addToWorkflowTool(item: ChatItemMiniType) {
     if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) return;
 
     for (let j = 0; j < item.value.length; j++) {

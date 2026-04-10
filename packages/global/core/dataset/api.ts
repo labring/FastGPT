@@ -29,7 +29,7 @@ export type DatasetUpdateBody = {
 /* ================= collection ===================== */
 // Input + store params
 type DatasetCollectionStoreDataType = ChunkSettingsType & {
-  parentId?: string;
+  parentId?: ParentIdType;
   metadata?: Record<string, any>;
 
   customPdfParse?: boolean;

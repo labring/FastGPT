@@ -3,24 +3,12 @@ import type {
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api';
 import type {
-  APIFileServer,
-  FeishuServer,
-  YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset/type';
-import type {
   DatasetSearchModeEnum,
   DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import {
-  DatasetSourceReadTypeEnum,
-  ImportDataSourceEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 /* ================= dataset ===================== */
 export type CreateDatasetParams = {

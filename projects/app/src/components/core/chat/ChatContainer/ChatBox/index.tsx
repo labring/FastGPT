@@ -14,7 +14,7 @@ import type {
 import type { ChatSiteItemType } from './type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
+import { Box, Checkbox, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -26,7 +26,7 @@ import {
   updateChatUserFeedback,
   updateFeedbackReadStatus
 } from '@/web/core/chat/feedback/api';
-import { delChatRecordById } from '@/web/core/chat/api';
+import { delChatRecordById } from '@/web/core/chat/record/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';

@@ -42,14 +42,14 @@ import type {
   readCollectionSourceResponse
 } from '@/pages/api/core/dataset/collection/read';
 import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
-import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
+import type { UpdateDatasetCollectionBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import type {
   GetDatasetDataListProps,
   GetDatasetDataListRes
 } from '@/pages/api/core/dataset/data/v2/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 import type {
   listExistIdQuery,
@@ -216,7 +216,7 @@ export const postCreateDatasetApiDatasetCollection = (
     timeout: 360000
   });
 
-export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
+export const putDatasetCollectionById = (data: UpdateDatasetCollectionBodyType) =>
   POST(`/core/dataset/collection/update`, data);
 export const delDatasetCollectionById = (params: DelCollectionBody) =>
   POST(`/core/dataset/collection/delete`, params);

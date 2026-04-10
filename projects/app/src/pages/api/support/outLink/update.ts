@@ -16,7 +16,7 @@ export type OutLinkUpdateQuery = {};
 // responseDetail?: boolean; // 是否开启详细回复
 // immediateResponse?: string; // 立即回复的内容
 // defaultResponse?: string; // 默认回复的内容
-// limit?: OutLinkSchema<T>['limit']; // 限制
+// limit?: OutLinkSchemaType<T>['limit']; // 限制
 // app?: T; // 平台的配置
 // }
 export type OutLinkUpdateBody = OutLinkEditType;

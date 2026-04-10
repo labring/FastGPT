@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   transformPreviewHistories,
   addStatisticalDataToHistoryItem
@@ -16,7 +16,7 @@ const mockResponseData = {
 
 describe('transformPreviewHistories', () => {
   it('should transform histories correctly with responseDetail=true', () => {
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'test response' } }],
@@ -43,7 +43,7 @@ describe('transformPreviewHistories', () => {
   });
 
   it('should transform histories correctly with responseDetail=false', () => {
-    const histories: ChatItemType[] = [
+    const histories: ChatItemMiniType[] = [
       {
         obj: ChatRoleEnum.AI,
         value: [{ text: { content: 'test response' } }],
@@ -72,7 +72,7 @@ describe('transformPreviewHistories', () => {
 
 describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if obj is not AI', () => {
-    const item: ChatItemType = {
+    const item: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
       value: [{ text: { content: 'test response' } }]
     };
@@ -81,7 +81,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('should return original item if totalQuoteList is already defined', () => {
-    const item: ChatItemType = {
+    const item: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       totalQuoteList: []
@@ -91,7 +91,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('should return original item if responseData is undefined', () => {
-    const item: ChatItemType = {
+    const item: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }]
     };
@@ -101,7 +101,7 @@ describe('addStatisticalDataToHistoryItem', () => {
 
   it('should calculate statistics correctly', () => {
     const quoteId = '507f1f77bcf86cd799439011'; // Valid 24-bit hex ID
-    const item: ChatItemType = {
+    const item: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: `test response with citation [${quoteId}](CITE)` } }],
       responseData: [
@@ -170,7 +170,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('should handle empty arrays and undefined values', () => {
-    const item: ChatItemType = {
+    const item: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       responseData: [
@@ -193,7 +193,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   });
 
   it('should handle nested plugin and loop details', () => {
-    const item: ChatItemType = {
+    const item: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
       value: [{ text: { content: 'test response' } }],
       responseData: [

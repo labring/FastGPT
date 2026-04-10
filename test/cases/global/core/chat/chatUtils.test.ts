@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { ChatItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   concatHistories,
   getChatTitleFromChatMessage,
@@ -24,10 +24,10 @@ import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 describe('concatHistories', () => {
   it('should concat two history arrays', () => {
-    const histories1: ChatItemType[] = [
+    const histories1: ChatItemMiniType[] = [
       { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Hello' } }] }
     ];
-    const histories2: ChatItemType[] = [
+    const histories2: ChatItemMiniType[] = [
       { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Hi there' } }] }
     ];
 
@@ -37,10 +37,10 @@ describe('concatHistories', () => {
   });
 
   it('should sort system messages first', () => {
-    const histories1: ChatItemType[] = [
+    const histories1: ChatItemMiniType[] = [
       { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Hello' } }] }
     ];
-    const histories2: ChatItemType[] = [
+    const histories2: ChatItemMiniType[] = [
       { obj: ChatRoleEnum.System, value: [{ text: { content: 'System prompt' } }] }
     ];
 
@@ -52,7 +52,7 @@ describe('concatHistories', () => {
 
 describe('getChatTitleFromChatMessage', () => {
   it('should extract title from text content', () => {
-    const message: ChatItemType = {
+    const message: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
       value: [{ text: { content: 'This is a long message that should be truncated' } }]
     };
@@ -70,7 +70,7 @@ describe('getChatTitleFromChatMessage', () => {
   });
 
   it('should return default value when no text content', () => {
-    const message: ChatItemType = {
+    const message: ChatItemMiniType = {
       obj: ChatRoleEnum.Human,
       value: []
     };
@@ -89,7 +89,7 @@ describe('getChatTitleFromChatMessage', () => {
 
 describe('getHistoryPreview', () => {
   it('should return preview of messages', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Hello' } }] },
       { obj: ChatRoleEnum.AI, value: [{ text: { content: 'Hi there' } }] }
     ];
@@ -102,7 +102,7 @@ describe('getHistoryPreview', () => {
   });
 
   it('should handle system messages', () => {
-    const messages: ChatItemType[] = [
+    const messages: ChatItemMiniType[] = [
       { obj: ChatRoleEnum.System, value: [{ text: { content: 'System prompt' } }] }
     ];
 
@@ -167,7 +167,6 @@ describe('filterPublicNodeResponseData', () => {
             collectionId: 'col1',
             sourceName: 'source1',
             chunkIndex: 0,
-            updateTime: new Date(),
             score: []
           }
         ]

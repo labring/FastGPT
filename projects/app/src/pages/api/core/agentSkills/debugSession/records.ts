@@ -7,16 +7,20 @@ import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type { SkillDebugRecordsBody } from '@fastgpt/global/core/agentSkills/api';
-import type { getChatRecordsResponse } from '@/pages/api/core/chat/record/getRecords_v2';
+import {
+  SkillDebugRecordsBodySchema,
+  type SkillDebugRecordsBody
+} from '@fastgpt/global/core/agentSkills/api';
+import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
 
 async function handler(
   req: ApiRequestProps<SkillDebugRecordsBody>,
   _res: ApiResponseType<any>
-): Promise<getChatRecordsResponse> {
-  const { skillId, chatId, pageSize, initialId, nextId, prevId } = req.body;
+): Promise<GetRecordsV2ResponseType> {
+  const { skillId, chatId, pageSize, initialId, nextId, prevId } =
+    SkillDebugRecordsBodySchema.parse(req.body);
 
   if (!skillId) throw new UserError('skillId is required');
   if (!chatId) throw new UserError('chatId is required');

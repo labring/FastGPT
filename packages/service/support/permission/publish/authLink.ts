@@ -1,5 +1,5 @@
 import { type AppDetailType } from '@fastgpt/global/core/app/type';
-import { type OutlinkAppType, type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { type OutlinkAppType, type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -17,7 +17,7 @@ export async function authOutLinkCrud({
 }): Promise<
   AuthResponseType & {
     app: AppDetailType;
-    outLink: OutLinkSchema;
+    outLink: OutLinkSchemaType;
   }
 > {
   const result = await parseHeaderCert(props);
@@ -62,7 +62,7 @@ export async function authOutLinkValid<T extends OutlinkAppType = any>({
   if (!shareId) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
-  const outLinkConfig = await MongoOutLink.findOne({ shareId }).lean<OutLinkSchema<T>>();
+  const outLinkConfig = await MongoOutLink.findOne({ shareId }).lean<OutLinkSchemaType<T>>();
 
   if (!outLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);

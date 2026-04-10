@@ -1,5 +1,5 @@
 import { queryExtension } from '../../ai/functions/queryExtension';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 
@@ -28,7 +28,7 @@ export const datasetSearchQueryExtension = async ({
   llmModel?: string;
   embeddingModel?: string;
   extensionBg?: string;
-  histories?: ChatItemType[];
+  histories?: ChatItemMiniType[];
 }) => {
   const filterSamQuery = (queries: string[]) => {
     const set = new Set<string>();

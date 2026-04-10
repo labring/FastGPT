@@ -1,6 +1,6 @@
 import type { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import type {
-  ChatItemType,
+  ChatItemMiniType,
   ToolRunResponseItemType,
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -10,24 +10,24 @@ import type { StoreNodeItemType } from '../type/node';
 import type { DispatchNodeResponseKeyEnum } from './constants';
 import type { NodeInputKeyEnum } from '../constants';
 import { NodeOutputKeyEnum } from '../constants';
-import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
+import { ClassifyQuestionAgentItemSchema } from '../template/system/classifyQuestion/type';
 import type { NextApiResponse } from 'next';
 import type { AppSchemaType } from '../../app/type';
 import type { RuntimeEdgeItemType } from '../type/edge';
-import { type ReadFileNodeResponseType } from '../template/system/readFiles/type';
+import { ReadFileNodeResponseSchema } from '../template/system/readFiles/type';
 import type { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
-import type { CompletionFinishReason } from '../../ai/type';
+import { CompletionFinishReasonSchema } from '../../ai/type';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
-import type { SearchDataResponseItemType } from '../../dataset/type';
+import { SearchDataResponseItemSchema } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import { type UserChatItemValueItemType } from '../../chat/type';
-import type { DatasetSearchModeEnum } from '../../dataset/constants';
-import type { ChatRoleEnum } from '../../chat/constants';
+import { DatasetSearchModeEnum } from '../../dataset/constants';
+import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
 
 /*
@@ -75,7 +75,7 @@ export type ChatDispatchProps = {
 
   chatId: string;
   responseChatItemId?: string;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   variables: Record<string, any>; // global variable
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchemaType['chatConfig'];
@@ -112,7 +112,7 @@ export type SystemVariablesType = {
   appId: string;
   chatId?: string;
   responseChatItemId?: string;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   cTime: string;
 };
 
@@ -141,280 +141,181 @@ export type RuntimeNodeItemType = {
 };
 
 // 知识库未 schema 改造，这里用不了
-// export const DispatchNodeResponseSchema = z.object({
-//   // common
-//   moduleLogo: z.string().nullish(),
-//   runningTime: z.number().nullish(),
-//   query: z.string().nullish(),
-//   textOutput: z.string().nullish(),
+export const DispatchNodeResponseSchema = z
+  .object({
+    // common
+    moduleLogo: z.string().optional().meta({ description: '模块 logo' }),
+    runningTime: z.number().optional().meta({ description: '运行时间: 毫秒' }),
+    query: z.string().optional().meta({ description: '查询语句' }),
+    textOutput: z.string().optional().meta({ description: '文本输出' }),
 
-//   error: z.record(z.string(), z.any()).nullish(), // Client will toast
-//   errorText: z.string().nullish(), // Just show
+    llmRequestIds: z.array(z.string()).optional().meta({ description: 'LLM 请求追踪 ID 列表' }),
 
-//   customInputs: z.record(z.string(), z.any()).nullish(),
-//   customOutputs: z.record(z.string(), z.any()).nullish(),
-//   nodeInputs: z.record(z.string(), z.any()).nullish(),
-//   nodeOutputs: z.record(z.string(), z.any()).nullish(),
-//   mergeSignId: z.string().nullish(),
+    error: z
+      .union([z.record(z.string(), z.any()), z.string()])
+      .optional()
+      .meta({ description: '错误信息' }),
+    errorText: z.string().optional().meta({ description: '错误文本' }), // Just show
 
-//   llmRequestIds: z.array(z.string()).nullish(), // LLM 请求追踪 ID 列表
+    customInputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输入' }),
+    customOutputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输出' }),
+    nodeInputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输入' }),
+    nodeOutputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输出' }),
+    mergeSignId: z.string().optional().meta({ description: '合并签名 ID' }),
 
-//   // bill
-//   inputTokens: z.number().nullish(),
-//   outputTokens: z.number().nullish(),
-//   model: z.string().nullish(),
-//   contextTotalLen: z.number().nullish(),
-//   totalPoints: z.string().nullish(),
-//   childTotalPoints: z.string().nullish(),
+    // bill
+    tokens: z.number().optional().meta({ description: '总 token' }),
+    inputTokens: z.number().optional().meta({ description: '输入 token' }),
+    outputTokens: z.number().optional().meta({ description: '输出 token' }),
+    model: z.string().optional().meta({ description: '模型' }),
+    contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
+    totalPoints: z.number().optional().meta({ description: '总积分' }),
+    childTotalPoints: z.number().optional().meta({ description: '子节点总积分' }),
 
-//   // chat
-//   temperature: z.number().nullish(),
-//   maxToken: z.number().nullish(),
-//   quoteList: z.array(SearchDataResponseItemTypeSchema).nullish(),
-//   reasoningText: z.string().nullish(),
-//   historyPreview: z
-//     .array(
-//       z.object({
-//         obj: z.enum(Object.values(ChatRoleEnum)),
-//         value: z.string()
-//       })
-//     )
-//     .nullish(), // completion context array. history will slice
-//   finishReason: z.enum(Object.values(CompletionFinishReason)).nullish(),
+    // LLM chat
+    temperature: z.number().optional().meta({ description: '温度' }),
+    maxToken: z.number().optional().meta({ description: '最大 token' }),
+    quoteList: z
+      .array(SearchDataResponseItemSchema)
+      .optional()
+      .meta({ description: '知识库引用列表' }),
+    reasoningText: z.string().optional().meta({ description: '思考文本' }),
+    historyPreview: z
+      .array(
+        z.object({
+          obj: z.enum(ChatRoleEnum),
+          value: z.string()
+        })
+      )
+      .optional()
+      .meta({ description: '上下文预览' }), // completion context array. history will slice
+    finishReason: CompletionFinishReasonSchema.optional(),
 
-//   // dataset search
-//   embeddingModel: z.string().nullish(),
-//   embeddingTokens: z.number().nullish(),
-//   similarity: z.number().nullish(),
-//   limit: z.number().nullish(),
-//   searchMode: z.enum(Object.values(DatasetSearchModeEnum)).nullish(),
-//   embeddingWeight: z.number().nullish(),
-//   rerankModel: z.string().nullish(),
-//   rerankWeight: z.number().nullish(),
-//   reRankInputTokens: z.number().nullish(),
-//   searchUsingReRank: z.boolean().nullish(),
-//   queryExtensionResult: z
-//     .object({
-//       model: z.string(),
-//       inputTokens: z.number(),
-//       outputTokens: z.number(),
-//       query: z.string()
-//     })
-//     .nullish(),
-//   deepSearchResult: z
-//     .object({
-//       model: z.string(),
-//       inputTokens: z.number(),
-//       outputTokens: z.number()
-//     })
-//     .nullish(),
+    // dataset search
+    embeddingModel: z.string().optional().meta({ description: '嵌入模型' }),
+    embeddingTokens: z.number().optional().meta({ description: '嵌入 token' }),
+    similarity: z.number().optional().meta({ description: '相似度' }),
+    limit: z.number().optional().meta({ description: '限制' }),
+    searchMode: z.enum(DatasetSearchModeEnum).optional().meta({ description: '搜索模式' }),
+    embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
+    rerankModel: z.string().optional().meta({ description: '重排模型' }),
+    rerankWeight: z.number().optional().meta({ description: '重排权重' }),
+    reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
+    searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
+    queryExtensionResult: z
+      .object({
+        model: z.string().meta({ description: '模型' }),
+        inputTokens: z.number().meta({ description: '输入 token' }),
+        outputTokens: z.number().meta({ description: '输出 token' }),
+        query: z.string().meta({ description: '查询内容' })
+      })
+      .optional()
+      .meta({ description: '查询扩展结果' }),
+    deepSearchResult: z
+      .object({
+        model: z.string().meta({ description: '模型' }),
+        inputTokens: z.number().meta({ description: '输入 token' }),
+        outputTokens: z.number().meta({ description: '输出 token' })
+      })
+      .optional(),
 
-//   // dataset concat
-//   concatLength: z.number().nullish(),
+    // dataset concat
+    concatLength: z.number().optional(),
 
-//   // cq
-//   cqList: z.array(ClassifyQuestionAgentItemTypeSchema).nullish(),
-//   cqResult: z.string().nullish(),
+    // cq
+    cqList: z
+      .array(ClassifyQuestionAgentItemSchema)
+      .optional()
+      .meta({ description: '分类问题列表' }),
+    cqResult: z.string().optional().meta({ description: '分类结果' }),
 
-//   // content extract
-//   extractDescription: z.string().nullish(),
-//   extractResult: z.record(z.string(), z.any()).nullish(),
+    // content extract
+    extractDescription: z.string().optional().meta({ description: '提取描述' }),
+    extractResult: z.record(z.string(), z.any()).optional().meta({ description: '提取结果' }),
 
-//   // http
-//   params: z.record(z.string(), z.any()).nullish(),
-//   body: z.record(z.string(), z.any()).nullish(),
-//   headers: z.record(z.string(), z.any()).nullish(),
-//   httpResult: z.record(z.string(), z.any()).nullish(),
+    // http
+    params: z.record(z.string(), z.any()).optional().meta({ description: '请求参数' }),
+    body: z
+      .union([z.record(z.string(), z.any()), z.string()])
+      .optional()
+      .meta({ description: '请求体' }),
+    headers: z.record(z.string(), z.any()).optional().meta({ description: '请求头' }),
+    httpResult: z.record(z.string(), z.any()).optional().meta({ description: '请求结果' }),
 
-//   // Tool
-//   toolInput: z.record(z.string(), z.any()).nullish(),
-//   pluginOutput: z.record(z.string(), z.any()).nullish(),
-//   pluginDetail: z.array(ChatHistoryItemResTypeSchema).nullish(),
+    // Tool
+    toolInput: z.record(z.string(), z.any()).optional().meta({ description: '工具输入' }),
+    pluginOutput: z.record(z.string(), z.any()).optional().meta({ description: '插件输出' }),
+    pluginDetail: z.array(z.any()).optional(),
+    toolParamsResult: z
+      .record(z.string(), z.any())
+      .optional()
+      .meta({ description: '工具参数结果' }),
+    toolRes: z.any().optional().meta({ description: '工具响应' }),
 
-//   // if-else
-//   ifElseResult: z.string().nullish(),
+    // if-else
+    ifElseResult: z.string().optional().meta({ description: '判断器结果' }),
 
-//   // tool call
-//   toolCallInputTokens: z.number().nullish(),
-//   toolCallOutputTokens: z.number().nullish(),
-//   toolDetail: z.array(ChatHistoryItemResTypeSchema).nullish(),
-//   toolStop: z.boolean().nullish(),
+    // tool call
+    toolCallInputTokens: z.number().optional().meta({ description: '工具调用输入 token' }),
+    toolCallOutputTokens: z.number().optional().meta({ description: '工具调用输出 token' }),
+    toolDetail: z.array(z.any()).optional(),
+    toolStop: z.boolean().optional(),
 
-//   // code
-//   codeLog: z.string().nullish(),
+    // Agent call
+    stepQuery: z.string().optional().meta({ description: '步骤查询' }),
 
-//   // read files
-//   readFilesResult: z.string().nullish(),
-//   readFiles: ReadFileNodeResponseSchema.nullish(),
+    // Compress chunk
+    compressTextAgent: z
+      .object({
+        inputTokens: z.number().meta({ description: '输入 token' }),
+        outputTokens: z.number().meta({ description: '输出 token' }),
+        totalPoints: z.number().meta({ description: '总积分' })
+      })
+      .optional()
+      .meta({ description: '压缩文本Agent' }),
 
-//   // user select
-//   userSelectResult: z.string().nullish(),
+    // code
+    codeLog: z.string().optional().meta({ description: '代码日志' }),
 
-//   // update var
-//   updateVarResult: z.array(z.any()).nullish(),
+    // read files
+    readFilesResult: z.string().optional().meta({ description: '文件读取结果' }),
+    readFiles: ReadFileNodeResponseSchema.optional(),
 
-//   // loop
-//   loopResult: z.array(z.any()).nullish(),
-//   loopInput: z.array(z.any()).nullish(),
-//   loopDetail: z.array(ChatHistoryItemResTypeSchema).nullish(),
-//   loopInputValue: z.any().nullish(),
-//   loopOutputValue: z.any().nullish(),
+    // user select
+    userSelectResult: z.string().optional().meta({ description: '用户选择结果' }),
+    // form input
+    formInputResult: z.record(z.string(), z.any()).optional().meta({ description: '表单输入结果' }),
 
-//   // form input
-//   formInputResult: z.record(z.string(), z.any()).nullish(),
+    // update var
+    updateVarResult: z.array(z.any()).optional().meta({ description: '更新变量结果' }),
 
-//   // tool params
-//   toolParamsResult: z.record(z.string(), z.any()).nullish(),
+    // loop
+    loopResult: z.array(z.any()).optional().meta({ description: '循环结果' }),
+    loopInput: z.array(z.any()).optional().meta({ description: '循环输入' }),
+    loopDetail: z.array(z.any()).optional().meta({ description: '循环详情' }),
+    loopInputValue: z.any().optional().meta({ description: '循环输入值' }),
+    loopOutputValue: z.any().optional().meta({ description: '循环输出值' }),
 
-//   toolRes: z.any().nullish(),
+    childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
 
-//   // @deprecated
-//   extensionModel: z.string().nullish(),
-//   extensionResult: z.string().nullish(),
-//   extensionTokens: z.number().nullish(),
-//   tokens: z.number().nullish()
-// });
-export type DispatchNodeResponseType = {
-  // common
-  moduleLogo?: string;
-  runningTime?: number;
-  query?: string;
-  textOutput?: string;
-  // LLM request tracking
-  llmRequestIds?: string[]; // LLM 请求追踪 ID 列表
+    // Tools
+    toolId: z.string().optional().meta({ description: '工具 ID' }),
 
-  // Client will toast
-  error?: Record<string, any> | string;
-  // Just show
-  errorText?: string;
+    extensionModel: z.string().optional().meta({ description: '扩展模型', deprecated: true }),
+    extensionResult: z.string().optional().meta({ description: '扩展结果', deprecated: true }),
+    extensionTokens: z.number().optional().meta({ description: '扩展 token', deprecated: true })
+  })
+  .meta({ description: '节点响应' });
 
-  customInputs?: Record<string, any>;
-  customOutputs?: Record<string, any>;
-  nodeInputs?: Record<string, any>;
-  nodeOutputs?: Record<string, any>;
-  mergeSignId?: string;
-
-  // bill
-  tokens?: number; // deprecated
-  inputTokens?: number;
-  outputTokens?: number;
-  model?: string;
-  contextTotalLen?: number;
-  totalPoints?: number;
-  childTotalPoints?: number;
-
-  // chat
-  temperature?: number;
-  maxToken?: number;
-  quoteList?: SearchDataResponseItemType[];
-  reasoningText?: string;
-  historyPreview?: {
-    obj: `${ChatRoleEnum}`;
-    value: string;
-  }[]; // completion context array. history will slice
-  finishReason?: CompletionFinishReason;
-
-  // dataset search
-  embeddingModel?: string;
-  embeddingTokens?: number;
-  similarity?: number;
-  limit?: number;
-  searchMode?: `${DatasetSearchModeEnum}`;
-  embeddingWeight?: number;
-  rerankModel?: string;
-  rerankWeight?: number;
-  reRankInputTokens?: number;
-  searchUsingReRank?: boolean;
-  queryExtensionResult?: {
-    model: string;
-    inputTokens: number;
-    outputTokens: number;
-    query: string;
-  };
-  deepSearchResult?: {
-    model: string;
-    inputTokens: number;
-    outputTokens: number;
-  };
-
-  // dataset concat
-  concatLength?: number;
-
-  // cq
-  cqList?: ClassifyQuestionAgentItemType[];
-  cqResult?: string;
-
-  // content extract
-  extractDescription?: string;
-  extractResult?: Record<string, any>;
-
-  // http
-  params?: Record<string, any>;
-  body?: Record<string, any> | string;
-  headers?: Record<string, any>;
-  httpResult?: Record<string, any>;
-
-  // Tool
-  toolInput?: Record<string, any>;
-  pluginOutput?: Record<string, any>;
-  pluginDetail?: ChatHistoryItemResType[];
-  toolParamsResult?: Record<string, any>;
-  toolRes?: any;
-
-  // if-else
-  ifElseResult?: string;
-
-  // tool call
-  toolCallInputTokens?: number;
-  toolCallOutputTokens?: number;
-  toolDetail?: ChatHistoryItemResType[];
-  toolStop?: boolean;
-  // Agent call
-  stepQuery?: string;
-  // Compress chunk
-  compressTextAgent?: {
-    inputTokens: number;
-    outputTokens: number;
-    totalPoints: number;
-  };
-
-  // code
-  codeLog?: string;
-
-  // read files
-  readFilesResult?: string;
-  readFiles?: ReadFileNodeResponseType;
-
-  // user select
-  userSelectResult?: string;
-
-  // update var
-  updateVarResult?: any[];
-
-  // loop
-  loopResult?: any[];
-  loopInput?: any[];
-  loopDetail?: ChatHistoryItemResType[];
-  // loop start
-  loopInputValue?: any;
-  // loop end
-  loopOutputValue?: any;
-
-  // form input
-  formInputResult?: Record<string, any>;
-
-  // Children node responses
-  childrenResponses?: ChatHistoryItemResType[];
-
-  // Tools
-  toolId?: string;
-
-  /** @deprecated */
-  extensionModel?: string;
-  /** @deprecated */
-  extensionResult?: string;
-  /** @deprecated */
-  extensionTokens?: number;
+type Tmp_DispatchNodeResponseType = z.infer<typeof DispatchNodeResponseSchema>;
+export type DispatchNodeResponseType = Omit<
+  Tmp_DispatchNodeResponseType,
+  'childrenResponses' | 'loopDetail' | 'pluginDetail' | 'toolDetail'
+> & {
+  childrenResponses?: DispatchNodeResponseType[];
+  loopDetail?: DispatchNodeResponseType[];
+  pluginDetail?: DispatchNodeResponseType[];
+  toolDetail?: DispatchNodeResponseType[];
 };
 
 export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]?: string }> = {
@@ -426,7 +327,7 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
   [DispatchNodeResponseKeyEnum.childrenResponses]?: DispatchNodeResultType[]; // Children node response
   [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType; // Tool response
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
-  [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemType[];
+  [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemMiniType[];
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;

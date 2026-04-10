@@ -1,7 +1,7 @@
 import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
@@ -228,7 +228,10 @@ export const filterToolNodeIdByEdges = ({
     .map((edge) => edge.target);
 };
 
-export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
+export const getHistories = (
+  history?: ChatItemMiniType[] | number,
+  histories: ChatItemMiniType[] = []
+) => {
   if (!history) return [];
   // Select reference history
   if (Array.isArray(history)) return history;

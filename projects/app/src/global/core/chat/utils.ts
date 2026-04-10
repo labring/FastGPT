@@ -1,7 +1,7 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   ChatHistoryItemResType,
-  ChatItemType,
+  ChatItemMiniType,
   ToolCiteLinksType,
   ErrorTextItemType
 } from '@fastgpt/global/core/chat/type';
@@ -14,9 +14,9 @@ export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 export function transformPreviewHistories(
-  histories: ChatItemType[],
+  histories: ChatItemMiniType[],
   responseDetail: boolean
-): ChatItemType[] {
+): ChatItemMiniType[] {
   return histories.map((item) => {
     return {
       ...addStatisticalDataToHistoryItem(item),
@@ -47,7 +47,7 @@ const extractCitationIdsFromText = (text: string): string[] => {
   return Array.from(new Set(ids));
 };
 
-export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
+export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined)
     return historyItem;

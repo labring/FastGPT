@@ -1,5 +1,5 @@
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -44,7 +44,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
     [NodeInputKeyEnum.userChatInput]?: string;
-    [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+    [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
     [NodeInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
@@ -52,7 +52,7 @@ export type ChatResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.answerText]: string;
     [NodeOutputKeyEnum.reasoningText]?: string;
-    [NodeOutputKeyEnum.history]: ChatItemType[];
+    [NodeOutputKeyEnum.history]: ChatItemMiniType[];
   },
   {
     [NodeOutputKeyEnum.errorText]: string;
@@ -339,7 +339,7 @@ async function getMultiInput({
   usageId,
   runningUserInfo
 }: {
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   inputFiles: UserChatItemFileItemType[];
   fileLinks?: string[];
   stringQuoteText?: string; // file quote
@@ -421,7 +421,7 @@ async function getChatMessages({
   version?: string;
 
   useDatasetQuote: boolean;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   systemPrompt: string;
   userChatInput: string;
 
@@ -465,7 +465,7 @@ async function getChatMessages({
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
 
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...histories,
     {

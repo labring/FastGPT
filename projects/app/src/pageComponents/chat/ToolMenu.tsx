@@ -1,6 +1,6 @@
 import React from 'react';
 import { useChatBox } from '@/components/core/chat/ChatContainer/ChatBox/hooks/useChatBox';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -16,7 +16,7 @@ const ToolMenu = ({
   history,
   reserveSpace
 }: {
-  history: ChatItemType[];
+  history: ChatItemMiniType[];
   reserveSpace?: boolean;
 }) => {
   const { t } = useTranslation();

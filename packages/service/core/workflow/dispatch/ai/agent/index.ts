@@ -11,7 +11,7 @@ import { getNodeErrResponse, getHistories } from '../../utils';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
-  ChatItemType
+  ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -47,7 +47,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import { env } from '../../../../../env';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemType[];
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[];
   [NodeInputKeyEnum.userChatInput]: string;
 
   [NodeInputKeyEnum.aiChatVision]?: boolean;

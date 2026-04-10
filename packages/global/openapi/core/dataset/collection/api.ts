@@ -1,7 +1,33 @@
+import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
 
+// ============= Scroll Collections =============
+export const ScrollCollectionsBodySchema = z.object({
+  datasetId: z.string(),
+  parentId: z.string().nullable().optional().default(null),
+  searchText: z.string().optional().default(''),
+  selectFolder: z.boolean().optional().default(false),
+  filterTags: z.array(z.string()).optional().default([]),
+  simple: z.boolean().optional().default(false)
+});
+export type ScrollCollectionsBodyType = z.infer<typeof ScrollCollectionsBodySchema>;
+
+// ============= Update Collection =============
+export const UpdateDatasetCollectionBodySchema = z.object({
+  id: ObjectIdSchema.optional().describe('集合ID，与 datasetId+externalFileId 二选一'),
+  parentId: ParentIdSchema.describe('父级目录ID'),
+  name: z.string().optional().describe('集合名称'),
+  tags: z.array(z.string()).optional().describe('标签列表（标签名称，非ID）'),
+  forbid: z.boolean().optional().describe('是否禁用'),
+  createTime: z.coerce.date().optional().describe('创建时间'),
+  datasetId: z.string().optional().describe('数据集ID，配合 externalFileId 使用'),
+  externalFileId: z.string().optional().describe('外部文件ID，配合 datasetId 使用')
+});
+export type UpdateDatasetCollectionBodyType = z.infer<typeof UpdateDatasetCollectionBodySchema>;
+
+// ============= Export Collection =============
 // Schema 1: Basic collection export with authentication
 const BasicExportSchema = z
   .object({

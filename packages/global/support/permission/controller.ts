@@ -13,6 +13,7 @@ import {
   OwnerPermissionVal,
   OwnerRoleVal
 } from './constant';
+import z from 'zod';
 
 export type PerConstructPros = {
   role?: RoleValueType;
@@ -135,3 +136,5 @@ export class Permission {
     this.updatePermissionCallback?.();
   }
 }
+
+export const PermissionSchema = z.instanceof(Permission).meta({ description: '权限 类' });

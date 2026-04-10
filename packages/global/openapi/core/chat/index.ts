@@ -7,18 +7,22 @@ import { GetRecentlyUsedAppsResponseSchema } from './api';
 import { TagsMap } from '../../tag';
 import { ChatControllerPath } from './controler';
 import { HelperBotPath } from './helperBot';
-import { ChatQuotePath } from './quote/index';
 import { ChatInputGuidePath } from './inputGuide/index';
+import { OutLinkChatPath } from './outLink/index';
+import { ChatRecordPath } from './record/index';
+import { ChatFilePath } from './file';
 
 export const ChatPath: OpenAPIPath = {
+  ...ChatFeedbackPath,
+  ...ChatFilePath,
   ...ChatSettingPath,
   ...ChatFavouriteAppPath,
-  ...ChatFeedbackPath,
   ...ChatHistoryPath,
   ...ChatControllerPath,
   ...HelperBotPath,
-  ...ChatQuotePath,
   ...ChatInputGuidePath,
+  ...OutLinkChatPath,
+  ...ChatRecordPath,
 
   '/core/chat/recentlyUsed': {
     get: {

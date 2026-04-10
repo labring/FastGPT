@@ -10,6 +10,7 @@ import type {
 } from 'openai/resources';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { Stream } from 'openai/streaming';
+import z from 'zod';
 
 // Extension of ChatCompletionMessageParam, Add file url type
 export type ChatCompletionContentPartFile = {
@@ -74,16 +75,14 @@ export type ChatCompletion = SdkChatCompletion & {
   error?: any;
 };
 
-export type CompletionFinishReason =
-  | 'error'
-  | 'close'
-  | 'stop'
-  | 'length'
-  | 'tool_calls'
-  | 'content_filter'
-  | 'function_call'
-  | null
-  | undefined;
+export const CompletionFinishReasonSchema = z
+  .union([
+    z.enum(['error', 'close', 'stop', 'length', 'tool_calls', 'content_filter', 'function_call']),
+    z.literal(null),
+    z.undefined()
+  ])
+  .meta({ description: '模型完成原因' });
+export type CompletionFinishReason = z.infer<typeof CompletionFinishReasonSchema>;
 
 export type { Stream };
 

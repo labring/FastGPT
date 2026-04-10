@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/support/outLink/api';
 import { axios } from '../../../common/api/axios';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import type { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { addMinutes } from 'date-fns';
 import { S3_KEY_PATH_INVALID_CHARS } from '../../../common/s3/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -49,7 +49,7 @@ export const authOutLinkInit = async ({
   return { uid };
 };
 
-const authIpLimit = async ({ ip, outLink }: { ip: string; outLink: OutLinkSchema }) => {
+const authIpLimit = async ({ ip, outLink }: { ip: string; outLink: OutLinkSchemaType }) => {
   if (!outLink.limit || !outLink.limit.QPM) {
     return;
   }
