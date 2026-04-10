@@ -1,5 +1,6 @@
 import { isIP, isIPv6 } from 'net';
 import dns from 'dns/promises';
+import { env } from '../../env';
 
 const isDevEnv = process.env.NODE_ENV === 'development';
 const SERVICE_LOCAL_PORT = `${process.env.PORT || 3000}`;
@@ -9,6 +10,8 @@ const SERVICE_LOCAL_HOST =
     : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
 export const isInternalAddress = async (url: string): Promise<boolean> => {
+  if (isDevEnv) return false;
+
   const isInternalIPv6 = (ip: string): boolean => {
     // 移除 IPv6 地址中的方括号（如果有）
     const cleanIp = ip.replace(/^\[|\]$/g, '');
@@ -145,7 +148,7 @@ export const isInternalAddress = async (url: string): Promise<boolean> => {
     }
 
     // 3. 只有显式设置 CHECK_INTERNAL_IP=true 时才启用私有 IP 检查
-    if (process.env.CHECK_INTERNAL_IP !== 'true') {
+    if (!env.CHECK_INTERNAL_IP) {
       return false;
     }
 

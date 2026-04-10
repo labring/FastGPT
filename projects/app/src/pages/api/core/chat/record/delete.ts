@@ -14,7 +14,7 @@ async function handler(
   _res: NextApiResponse
 ): Promise<DeleteChatRecordResponseType> {
   const { appId, chatId, contentId, delFile, ...authProps } = DeleteChatRecordBodySchema.parse(
-    req.body
+    req.query
   );
 
   if (!contentId || !chatId) {

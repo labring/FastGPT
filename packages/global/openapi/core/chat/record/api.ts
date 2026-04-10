@@ -29,13 +29,13 @@ export type GetResDataQueryType = z.infer<typeof GetResDataQuerySchema>;
  * ============================================================================ */
 
 export const DeleteChatRecordBodySchema = OutLinkChatAuthSchema.extend({
-  appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
+  appId: ObjectIdSchema.meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
   chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({
     example: 'content123',
     description: '要删除的消息 ID'
   }),
-  delFile: z.boolean().optional().meta({
+  delFile: z.coerce.boolean().optional().meta({
     example: false,
     description: '是否同时删除关联文件'
   })

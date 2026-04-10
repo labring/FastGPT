@@ -216,12 +216,12 @@ export const DatasetTrainingSchema = z.object({
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
   dataId: z.string().optional().meta({ description: '数据 ID' }),
   q: z.string().meta({ description: '问题/主文本' }),
-  a: z.string().optional().meta({ description: '回答/补充文本' }),
+  a: z.string().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexSize: z.number().optional().meta({ description: '索引大小' }),
-  weight: z.number().optional().meta({ description: '权重' }),
+  weight: z.number().meta({ description: '权重' }),
   indexes: z
     .array(DatasetDataIndexItemSchema.omit({ dataId: true }))
     .meta({ description: '向量索引' }),

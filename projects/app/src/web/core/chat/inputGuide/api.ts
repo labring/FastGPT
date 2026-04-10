@@ -27,7 +27,9 @@ export const queryChatInputGuideList = (data: QueryChatInputGuideBodyType, url?:
       withCredentials: !url
     });
   }
-  return POST<QueryChatInputGuideResponseType>(`/core/chat/inputGuide/query`, data);
+  return POST<QueryChatInputGuideResponseType>(`/core/chat/inputGuide/query`, data, {
+    maxQuantity: 1
+  });
 };
 
 export const postChatInputGuides = (data: CreateChatInputGuideBodyType) =>
