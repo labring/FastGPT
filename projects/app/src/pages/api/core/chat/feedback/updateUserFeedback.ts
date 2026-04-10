@@ -89,8 +89,7 @@ async function handler(
           }
         },
         {
-          sort: { createTime: -1 },
-          session
+          sort: { createTime: -1 }
         }
       );
     }
