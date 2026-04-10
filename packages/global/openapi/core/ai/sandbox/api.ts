@@ -60,7 +60,7 @@ export const SandboxReadResponseSchema = z
 export const SandboxDownloadBodySchema = SandboxBaseSchema.extend({
   path: z.string().optional().default('.').describe('要下载的路径(文件或目录)')
 });
-export type SandboxDownloadBody = z.infer<typeof SandboxDownloadBodySchema>;
+export type SandboxDownloadBody = z.input<typeof SandboxDownloadBodySchema>;
 
 export const SandboxDownloadResponseSchema = z
   .string()
