@@ -43,7 +43,7 @@
     "jsonwebtoken": "^9.0.2",
     "lodash": "catalog:",
     "mammoth": "^1.11.0",
-    "mime": "^4.1.0",
+    "mime": "catalog:",
     "minio": "catalog:",
     "mongoose": "^8.10.1",
     "multer": "2.1.0",

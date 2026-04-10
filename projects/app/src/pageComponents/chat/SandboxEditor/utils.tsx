@@ -45,55 +45,123 @@ export const getIconByFilename = (filename: string): IconNameType => {
   return 'core/app/sandbox/default';
 };
 
+const extensionToLang: Record<string, string[]> = {
+  python: ['py'],
+  javascript: ['js', 'jsx', 'mjs', 'cjs'],
+  typescript: ['ts', 'tsx'],
+  json: ['json', 'jsonc', 'json5'],
+  markdown: ['md', 'markdown'],
+  html: ['html', 'htm'],
+  css: ['css'],
+  scss: ['scss'],
+  sass: ['sass'],
+  less: ['less'],
+  shell: ['sh', 'bash', 'zsh', 'fish'],
+  yaml: ['yml', 'yaml'],
+  xml: ['xml'],
+  sql: ['sql'],
+  go: ['go'],
+  rust: ['rs'],
+  java: ['java'],
+  c: ['c', 'h'],
+  cpp: ['cpp', 'cc', 'cxx', 'hpp', 'hxx'],
+  csharp: ['cs'],
+  php: ['php'],
+  ruby: ['rb'],
+  swift: ['swift'],
+  kotlin: ['kt'],
+  scala: ['scala'],
+  lua: ['lua'],
+  r: ['r'],
+  toml: ['toml'],
+  ini: ['ini'],
+  plaintext: ['conf', 'config', 'txt', 'log'],
+  image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico'],
+  svg: ['svg'],
+  pdf: ['pdf'],
+  audio: ['mp3', 'wav', 'm4a', 'flac', 'ogg'],
+  video: ['avi', 'mp4', 'webm', 'mov', 'm4v']
+};
+
+const langMap = Object.entries(extensionToLang).reduce(
+  (acc, [lang, extensions]) => {
+    extensions.forEach((ext) => {
+      acc[ext] = lang;
+    });
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
 // 获取文件语言
-export const getLanguageByExtension = (ext?: string): string => {
-  const langMap: Record<string, string> = {
-    py: 'python',
-    js: 'javascript',
-    ts: 'typescript',
-    jsx: 'javascript',
-    tsx: 'typescript',
-    json: 'json',
-    jsonc: 'json',
-    json5: 'json',
-    md: 'markdown',
-    markdown: 'markdown',
-    html: 'html',
-    htm: 'html',
-    css: 'css',
-    scss: 'scss',
-    sass: 'sass',
-    less: 'less',
-    sh: 'shell',
-    bash: 'shell',
-    zsh: 'shell',
-    fish: 'shell',
-    yml: 'yaml',
-    yaml: 'yaml',
-    xml: 'xml',
-    sql: 'sql',
-    go: 'go',
-    rs: 'rust',
-    java: 'java',
-    c: 'c',
-    cpp: 'cpp',
-    cc: 'cpp',
-    cxx: 'cpp',
-    h: 'c',
-    hpp: 'cpp',
-    hxx: 'cpp',
-    cs: 'csharp',
-    php: 'php',
-    rb: 'ruby',
-    swift: 'swift',
-    kt: 'kotlin',
-    scala: 'scala',
-    lua: 'lua',
-    r: 'r',
-    toml: 'toml',
-    ini: 'ini',
-    conf: 'plaintext',
-    config: 'plaintext'
-  };
-  return langMap[ext?.toLowerCase() || ''] || 'plaintext';
+export const getLanguageByFileName = (fileName: string): string => {
+  const ext = fileName.split('.').at(-1)?.toLowerCase();
+  return langMap[ext || ''] ?? 'plaintext';
+};
+
+/**
+ * 判断语言是否属于二进制
+ */
+export const getIsBinaryByLanguage = (language: string) => {
+  return ['image', 'audio', 'video'].includes(language);
+};
+
+/**
+ * 支持源码/预览切换的语言列表
+ */
+const previewableLanguages = ['markdown', 'svg'];
+
+export const getSupportsPreviewToggle = (language?: string) => {
+  return !!language && previewableLanguages.includes(language);
+};
+
+// Update tree node
+export const updateTreeNode = <
+  T extends {
+    type: 'file' | 'directory';
+    name: string;
+    path: string;
+    children?: T[];
+    loaded?: boolean;
+  }
+>(
+  tree: T[],
+  targetPath: string,
+  children: T[],
+  loaded: boolean = false
+): T[] => {
+  return tree.map((node) => {
+    if (node.path === targetPath) {
+      return { ...node, children, loaded } as T;
+    }
+    if (node.children) {
+      return { ...node, children: updateTreeNode(node.children, targetPath, children, loaded) };
+    }
+    return node;
+  });
+};
+
+// Filter tree
+export const filterTree = <
+  T extends { type: 'file' | 'directory'; name: string; path: string; children?: T[] }
+>(
+  nodes: T[],
+  query: string
+): T[] => {
+  if (!query) return nodes;
+
+  return nodes
+    .map((node) => {
+      if (node.type === 'file' && node.name.toLowerCase().includes(query.toLowerCase())) {
+        return node;
+      }
+      if (node.children) {
+        const filteredChildren = filterTree(node.children, query);
+        if (filteredChildren.length > 0) {
+          return { ...node, children: filteredChildren } as T;
+        }
+      }
+      return null;
+    })
+    .filter((node): node is T => node !== null);
 };

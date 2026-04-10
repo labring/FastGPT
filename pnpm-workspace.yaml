@@ -40,6 +40,7 @@ catalog:
   js-yaml: ^4.1.1
   json5: ^2.2.3
   lodash: 4.17.23
+  mime: ^4.1.0
   minio: 8.0.7
   next: 16.2.1
   next-i18next: 15.4.2
