@@ -50,50 +50,42 @@ export default function InputGuideBox({
 
   return filterData.length ? (
     <Box
-      bg={'white'}
-      boxShadow={'lg'}
-      borderWidth={'1px'}
-      borderColor={'borderColor.base'}
-      p={2}
-      borderRadius={'md'}
+      bg={'#FFFFFF'}
+      borderRadius={'6px'}
+      border={'1px solid #EBEDF0'}
+      boxShadow={'0px 4px 10px 0px rgba(19, 51, 107, 0.1), 0px 0px 1px 0px rgba(19, 51, 107, 0.1)'}
       position={'absolute'}
       top={-3}
       w={'100%'}
+      p={'6px'}
       zIndex={150}
       transform={'translateY(-100%)'}
+      overflow={'hidden'}
     >
-      <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'} gap={2} mb={2} px={2}>
-        <MyIcon name={'union'} />
-        <Box>{t('chat:input_guide')}</Box>
-      </Flex>
       {data.map((item) => (
         <Flex
           alignItems={'center'}
           as={'li'}
           key={item}
-          px={4}
-          py={3}
-          borderRadius={'sm'}
+          px={'8px'}
+          py={'6px'}
+          h={'32px'}
+          borderRadius={'4px'}
           cursor={'pointer'}
-          overflow={'auto'}
-          _notLast={{
-            mb: 1
-          }}
-          bg={'myGray.50'}
-          color={'myGray.600'}
+          overflow={'hidden'}
+          color={'#333333'}
           _hover={{
-            bg: 'primary.50',
-            color: 'primary.600',
+            bg: 'rgba(50, 136, 250, 0.06)',
             '.send-icon': {
               display: 'block'
             }
           }}
           onClick={() => onSelect(item)}
         >
-          <Box fontSize={'sm'} flex={'1 0 0'}>
-            <HighlightText rawText={item} matchText={text} />
+          <Box fontSize={'12px'} lineHeight={'20px'} flex={'1 0 0'}>
+            <HighlightText rawText={item} matchText={text} color={'#1770E6'} />
           </Box>
-          <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
+          {/* <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
             <MyIcon
               className="send-icon"
               display={'none'}
@@ -108,7 +100,7 @@ export default function InputGuideBox({
                 onSend(item);
               }}
             />
-          </MyTooltip>
+          </MyTooltip> */}
         </Flex>
       ))}
     </Box>

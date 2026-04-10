@@ -62,7 +62,7 @@ type Props = BasicProps & {
 };
 
 // 轻量级引用展示组件
-const SimpleCitationDisplay = React.memo(
+export const SimpleCitationDisplay = React.memo(
   function SimpleCitationDisplay({
     historyItem,
     datasetReadPerMap
@@ -124,7 +124,7 @@ const SimpleCitationDisplay = React.memo(
       <>
         {/* 引用头部 */}
         <Flex
-          mt={3}
+          mt={2}
           height={'24px'}
           alignItems={'center'}
           cursor={'pointer'}
@@ -146,9 +146,10 @@ const SimpleCitationDisplay = React.memo(
         {isExpanded && (
           <Box
             mt={2}
-            background={'#FAFBFC'}
+            background={'#FAFBFC'} /* Blue Gray/L70 ------------ #FAFBFC */
             borderRadius={'4px'}
-            p={3}
+            py={'16px'}
+            px={'12px'}
             gap={2}
             display="flex"
             flexDirection="column"
@@ -161,7 +162,7 @@ const SimpleCitationDisplay = React.memo(
                 <Flex
                   height={'16px'}
                   alignItems={'center'}
-                  pl={'12px'}
+                  gap={'4px'}
                   cursor={item.noPermission ? 'not-allowed' : 'pointer'}
                   opacity={item.noPermission ? 0.5 : 1}
                   onClick={() => {
@@ -192,9 +193,9 @@ const SimpleCitationDisplay = React.memo(
                   <Box
                     className="citation-file-name"
                     fontSize={'12px'}
-                    lineHeight={'14px'}
-                    color={item.noPermission ? '#909499' : '#1A7EFF'}
-                    ml={1}
+                    lineHeight={'16px'}
+                    color={item.noPermission ? '#909499' : '#156AD9'}
+                    noOfLines={1}
                   >
                     {item.displayText}
                   </Box>

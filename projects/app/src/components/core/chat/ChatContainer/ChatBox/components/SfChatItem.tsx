@@ -1,6 +1,6 @@
 import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
 import React, { useMemo, useState } from 'react';
-import ChatController, { type ChatControllerProps } from './ChatController';
+import ChatController, { type ChatControllerProps } from './SfChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { formatChatValue2InputType } from '../utils';
@@ -24,8 +24,8 @@ import {
   type AIChatItemValueItemType,
   type ChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
+import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
@@ -39,7 +39,7 @@ import { useMemoizedFn } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
-const ResponseTags = dynamic(() => import('./ResponseTags'));
+const ResponseTags = dynamic(() => import('./SfResponseTags'));
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -65,6 +65,7 @@ type BasicProps = {
   questionGuides?: string[];
   children?: React.ReactNode;
   hideCiteIcon?: boolean;
+  datasetReadPerMap?: Record<string, boolean>;
 } & ChatControllerProps;
 
 type Props = BasicProps & {
@@ -73,10 +74,25 @@ type Props = BasicProps & {
 
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
   return (
-    <Markdown
-      source={`\`\`\`${CodeClassNameEnum.questionguide}
-${JSON.stringify(questionGuides)}`}
-    />
+    <Flex flexDirection="column" alignItems="flex-start" gap={2} mt={4} ml={4}>
+      {questionGuides.map((text) => (
+        <Flex
+          key={text}
+          display="inline-flex"
+          alignItems="center"
+          bg="#F7F8FA"
+          borderRadius="8px"
+          px="12px"
+          h="32px"
+          fontSize="sm"
+          color="#596A80"
+          cursor="pointer"
+          onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+        >
+          {text}
+        </Flex>
+      ))}
+    </Flex>
   );
 };
 
@@ -99,7 +115,8 @@ const AIContentCard = React.memo(function AIContentCard({
   isChatting,
   questionGuides,
   onOpenCiteModal,
-  hideCiteIcon
+  hideCiteIcon,
+  durationSeconds
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
@@ -108,6 +125,7 @@ const AIContentCard = React.memo(function AIContentCard({
   questionGuides: string[];
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
+  durationSeconds?: number;
 }) {
   return (
     <Flex flexDirection={'column'} gap={2}>
@@ -123,12 +141,10 @@ const AIContentCard = React.memo(function AIContentCard({
             isChatting={isChatting}
             onOpenCiteModal={onOpenCiteModal}
             hideCiteIcon={hideCiteIcon}
+            durationSeconds={durationSeconds}
           />
         );
       })}
-      {isLastChild && questionGuides.length > 0 && (
-        <RenderQuestionGuide questionGuides={questionGuides} />
-      )}
     </Flex>
   );
 });
@@ -142,7 +158,8 @@ const ChatItem = (props: Props) => {
     isLastChild,
     questionGuides = [],
     chat,
-    hideCiteIcon
+    hideCiteIcon,
+    datasetReadPerMap = {}
   } = props;
 
   const { t } = useTranslation();
@@ -158,14 +175,14 @@ const ChatItem = (props: Props) => {
             borderRadius: '8px 0 8px 8px',
             justifyContent: 'flex-end',
             textAlign: 'right',
-            bg: 'primary.100'
+            bg: '#E6F1FF'
           }
         : {
             order: 1,
             borderRadius: '0 8px 8px 8px',
             justifyContent: 'flex-start',
             textAlign: 'left',
-            bg: 'myGray.50'
+            bg: 'transparent'
           }),
       fontSize: 'mini',
       fontWeight: '400',
@@ -306,59 +323,6 @@ const ChatItem = (props: Props) => {
         }
       }}
     >
-      {/* control icon */}
-      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
-          <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            {chat.time && (isPc || isChatLog) && (
-              <Box
-                order={type === ChatRoleEnum.AI ? 2 : 0}
-                className={'time-label'}
-                fontSize={styleMap.fontSize}
-                color={styleMap.color}
-                fontWeight={styleMap.fontWeight}
-                display={isChatLog ? 'block' : 'none'}
-              >
-                {t(formatTimeToChatItemTime(chat.time) as any, {
-                  time: dayjs(chat.time).format('HH:mm')
-                }).replace('#', ':')}
-              </Box>
-            )}
-            <ChatController
-              {...props}
-              isLastChild={isLastChild}
-              showFeedbackContent={showFeedbackContent}
-              onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
-            />
-          </Flex>
-        )}
-        {/* <ChatAvatar src={avatar} type={type} /> */}
-
-        {/* Workflow status */}
-        {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
-          <Flex
-            alignItems={'center'}
-            px={3}
-            py={'1.5px'}
-            borderRadius="md"
-            bg={chatStatusMap.bg}
-            fontSize={'sm'}
-          >
-            <Box
-              className={styles.statusAnimation}
-              bg={chatStatusMap.color}
-              w="8px"
-              h="8px"
-              borderRadius={'50%'}
-              mt={'1px'}
-            />
-            <Box ml={2} color={'myGray.600'}>
-              {statusBoxData.name}
-            </Box>
-          </Flex>
-        )}
-      </Flex>
-
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
         showFeedbackContent &&
@@ -407,6 +371,7 @@ const ChatItem = (props: Props) => {
             bg={styleMap.bg}
             borderRadius={styleMap.borderRadius}
             textAlign={'left'}
+            {...(type === ChatRoleEnum.AI && { display: 'block', w: '100%', maxW: '100%', pr: 0 })}
           >
             {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
             {type === ChatRoleEnum.AI && (
@@ -419,12 +384,14 @@ const ChatItem = (props: Props) => {
                   questionGuides={questionGuides}
                   onOpenCiteModal={onOpenCiteModal}
                   hideCiteIcon={hideCiteIcon}
+                  durationSeconds={chat.durationSeconds}
                 />
                 {i === splitAiResponseResults.length - 1 && (
                   <ResponseTags
                     showTags={!isLastChild || !isChatting}
                     historyItem={chat}
                     onOpenCiteModal={onOpenCiteModal}
+                    datasetReadPerMap={datasetReadPerMap}
                   />
                 )}
               </>
@@ -444,35 +411,46 @@ const ChatItem = (props: Props) => {
                 {children}
               </>
             )}
-            {/* 对话框底部的复制按钮 */}
-            {type == ChatRoleEnum.AI &&
-              value[0]?.type !== 'interactive' &&
-              (!isChatting || (isChatting && !isLastChild)) && (
-                <Box
-                  className="footer-copy"
-                  display={['block', 'none']}
-                  position={'absolute'}
-                  bottom={0}
-                  right={0}
-                  transform={'translateX(100%)'}
-                >
-                  <MyTooltip label={t('common:Copy')}>
-                    <MyIcon
-                      w={'1rem'}
-                      cursor="pointer"
-                      p="5px"
-                      bg="white"
-                      name={'copy'}
-                      color={'myGray.500'}
-                      _hover={{ color: 'primary.600' }}
-                      onClick={() => copyData(formatChatValue2InputType(value).text ?? '')}
-                    />
-                  </MyTooltip>
-                </Box>
-              )}
           </Card>
         </Box>
       ))}
+
+      <Flex
+        w={'100%'}
+        alignItems={'center'}
+        gap={2}
+        justifyContent={styleMap.justifyContent}
+        mt={2}
+        ml={type === ChatRoleEnum.AI ? 4 : 0}
+      >
+        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+          <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
+            {chat.time && (isPc || isChatLog) && (
+              <Box
+                order={type === ChatRoleEnum.AI ? 2 : 0}
+                className={'time-label'}
+                fontSize={styleMap.fontSize}
+                color={styleMap.color}
+                fontWeight={styleMap.fontWeight}
+                display={isChatLog ? 'block' : 'none'}
+              >
+                {t(formatTimeToChatItemTime(chat.time) as any, {
+                  time: dayjs(chat.time).format('HH:mm')
+                }).replace('#', ':')}
+              </Box>
+            )}
+            <ChatController
+              {...props}
+              isLastChild={isLastChild}
+              showFeedbackContent={showFeedbackContent}
+              onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
+            />
+          </Flex>
+        )}
+      </Flex>
+      {isLastChild && questionGuides.length > 0 && (
+        <RenderQuestionGuide questionGuides={questionGuides} />
+      )}
     </Box>
   );
 };

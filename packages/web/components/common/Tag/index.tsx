@@ -11,7 +11,8 @@ type ColorSchemaType =
   | 'purple'
   | 'adora'
   | 'orange'
-  | 'pink';
+  | 'pink'
+  | 'lightBlue';
 
 export type TagProps = FlexProps & {
   children: React.ReactNode | React.ReactNode[];
@@ -78,6 +79,11 @@ const colorMap: Record<
     borderColor: '#FFE0EC',
     bg: '#FFF1F6',
     color: '#E82F72'
+  },
+  lightBlue: {
+    borderColor: '#B3D4FF',
+    bg: 'rgba(230, 241, 255, 0.6)',
+    color: '#1770E6'
   }
 };
 

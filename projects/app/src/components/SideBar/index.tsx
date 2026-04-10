@@ -9,7 +9,7 @@ interface Props extends BoxProps {
 
 const SideBar = (e?: Props) => {
   const {
-    w = ['100%', '0 0 250px', '0 0 250px', '0 0 270px', '0 0 290px'],
+    w = ['100%', '0 0 250px', '0 0 256px', '0 0 256px', '0 0 256px'],
     children,
     externalTrigger,
     ...props
@@ -55,7 +55,7 @@ const SideBar = (e?: Props) => {
         w={'36px'}
         h={'50px'}
         borderRadius={'10px'}
-        bg={'rgba(0,0,0,0.5)'}
+        bg={'#F0F2F5'}
         cursor={'pointer'}
         transition={'0.2s'}
         {...(isFolded
@@ -72,7 +72,7 @@ const SideBar = (e?: Props) => {
           name={'common/backLight'}
           transform={isFolded ? 'rotate(180deg)' : ''}
           w={'14px'}
-          color={'white'}
+          color={'#485264'}
         />
       </Flex>
       <Box position={'relative'} h={'100%'} overflow={isFolded ? 'hidden' : 'visible'}>

@@ -6,6 +6,7 @@
   "Previous": "上一個",
   "ai_reasoning": "思考過程",
   "back_to_text": "返回輸入",
+  "ai_reasoning_done": "已深度思考（用时 {{seconds}} 秒）",
   "balance_not_enough_pause": "由於 AI 積分不足，暫停運行工作流",
   "chat.quote.No Data": "找不到該文件",
   "chat.quote.deleted": "該資料已被刪除～",
