@@ -14,7 +14,8 @@ import {
 import { useContextSelector } from 'use-context-selector';
 import {
   FlowNodeInputMap,
-  FlowNodeInputTypeEnum
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import Container from '../components/Container';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -41,7 +42,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useMemoizedFn } from 'ahooks';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
-  const { inputs = [], nodeId } = data;
+  const { inputs = [], nodeId, parentNodeId } = data;
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -50,6 +51,14 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     (v) => v
   );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+
+  // 若节点位于并行执行容器内，记录容器的 nodeId，用于过滤"选择变量"选择器：
+  // 并行任务使用克隆变量，任务结束后变量修改会被丢弃，因此只允许选择同一容器内的节点输出。
+  const parallelRunParentId = useMemo(() => {
+    if (!parentNodeId) return undefined;
+    const parent = getNodeById(parentNodeId);
+    return parent?.flowNodeType === FlowNodeTypeEnum.parallelRun ? parentNodeId : undefined;
+  }, [parentNodeId, getNodeById]);
 
   const menuList = useRef([
     {
@@ -198,6 +207,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             <VariableSelector
               nodeId={nodeId}
               variable={updateItem.variable}
+              filterToParentId={parallelRunParentId}
               onSelect={(value) => {
                 onUpdateList(
                   updateList.map((update, i) => {
@@ -356,24 +366,43 @@ const VariableSelector = ({
   nodeId,
   variable,
   valueType,
+  filterToParentId,
   onSelect
 }: {
   nodeId: string;
   variable?: ReferenceValueType;
   valueType?: WorkflowIOValueTypeEnum;
+  /**
+   * 当节点位于并行执行容器内时传入容器的 nodeId。
+   * 此时过滤掉全局变量和容器外部的节点，只保留同一容器内的节点输出——
+   * 因为并行任务使用克隆变量，对外部变量的修改会在任务结束后被丢弃。
+   */
+  filterToParentId?: string;
   onSelect: (e?: ReferenceValueType) => void;
 }) => {
   const { t } = useTranslation();
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
 
   const { referenceList } = useReference({
     nodeId,
     valueType
   });
 
+  const filteredList = useMemo(() => {
+    if (!filterToParentId) return referenceList;
+    return referenceList.filter((item) => {
+      // 排除全局变量节点
+      if (item.value === VARIABLE_NODE_ID) return false;
+      // 只保留同一并行容器内的节点
+      const node = getNodeById(item.value as string);
+      return node?.parentNodeId === filterToParentId;
+    });
+  }, [referenceList, filterToParentId, getNodeById]);
+
   return (
     <ReferSelector
       placeholder={t('common:select_reference_variable')}
-      list={referenceList}
+      list={filteredList}
       value={variable}
       onSelect={onSelect}
       isArray={valueType?.includes('array')}

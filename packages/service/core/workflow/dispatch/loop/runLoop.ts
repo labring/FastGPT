@@ -1,5 +1,4 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -14,6 +13,12 @@ import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 import { env } from '../../../../env';
+import {
+  injectNestedStartInputs,
+  getNestedEndOutputValue,
+  pushSubWorkflowUsage,
+  collectResponseFeedbacks
+} from './service';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -74,21 +79,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         }
       });
     } else {
-      runtimeNodes.forEach((node) => {
-        if (!childrenNodeIdList.includes(node.nodeId)) return;
-
-        // Init interactive response
-        if (node.flowNodeType === FlowNodeTypeEnum.nestedStart) {
-          node.isEntry = true;
-          node.inputs.forEach((input) => {
-            if (input.key === NodeInputKeyEnum.nestedStartInput) {
-              input.value = item;
-            } else if (input.key === NodeInputKeyEnum.nestedStartIndex) {
-              input.value = index + 1;
-            }
-          });
-        }
-      });
+      injectNestedStartInputs(runtimeNodes, childrenNodeIdList, item, index);
     }
 
     index++;
@@ -103,30 +94,16 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       )
     });
 
-    const loopOutputValue = response.flowResponses.find(
-      (res) => res.moduleType === FlowNodeTypeEnum.nestedEnd
-    )?.loopOutputValue;
-
     // Concat runtime response
     if (!response.workflowInteractiveResponse) {
-      outputValueArr.push(loopOutputValue);
+      outputValueArr.push(getNestedEndOutputValue(response));
     }
     loopResponseDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
 
-    const itemUsagePoint = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
-    totalPoints += itemUsagePoint;
-    props.usagePush([
-      {
-        totalPoints: itemUsagePoint,
-        moduleName: `${name}-${index}`
-      }
-    ]);
+    totalPoints += pushSubWorkflowUsage(props.usagePush, response, name, index);
 
-    // Collect custom feedbacks
-    if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
-      customFeedbacks.push(...response[DispatchNodeResponseKeyEnum.customFeedbacks]);
-    }
+    collectResponseFeedbacks(response, customFeedbacks);
 
     // Concat new variables
     newVariables = {

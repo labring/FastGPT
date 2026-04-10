@@ -129,6 +129,8 @@
   "intro_parallel_run": "输入一个数组，并行执行工作流中的每一个数组元素，最后将结果汇总输出。",
   "parallel_run_max_concurrency": "最大并发数",
   "parallel_run_max_concurrency_tip": "同时并行执行的最大任务数，范围 1～系统上限（默认 5）。",
+  "parallel_run_max_retry_times": "单轮报错重试次数",
+  "parallel_run_max_retry_times_tip": "单个任务失败后的最大重试次数，范围 0～5（默认 3）。设为 0 表示失败不重试。",
   "can_not_parallel": "该节点不支持在并行执行节点中使用",
   "parallel_success_results": "成功结果",
   "parallel_success_results_desc": "所有执行成功的任务输出，按输入顺序排列（仅包含成功项）。",

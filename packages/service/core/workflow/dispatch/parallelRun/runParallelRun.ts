@@ -23,6 +23,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
   [NodeInputKeyEnum.parallelRunMaxConcurrency]?: number;
+  [NodeInputKeyEnum.parallelRunMaxRetryTimes]?: number;
 }>;
 
 type Response = DispatchNodeResultType<{
@@ -37,7 +38,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   const {
     loopInputArray = [],
     childrenNodeIdList = [],
-    parallelRunMaxConcurrency: userConcurrency
+    parallelRunMaxConcurrency: userConcurrency,
+    parallelRunMaxRetryTimes: userRetryTimes
   } = params;
 
   // Input validation
@@ -56,14 +58,18 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   );
 
   // batchRun: per-task lazy clone — peak memory = concurrency * subgraph size
-  const MAX_RETRY_ATTEMPTS = 3;
+  // Clamp retry times: floor to int, min 0, max 5; default 3 when unset
+  const maxRetryAttempts =
+    userRetryTimes !== undefined && !Number.isNaN(userRetryTimes)
+      ? Math.min(Math.max(Math.floor(userRetryTimes), 0), 5)
+      : 3;
 
   const taskResults = await batchRun(
     loopInputArray,
     async (item: any, index: number) => {
       let lastResult: Awaited<ReturnType<typeof parseTaskResponse>> | undefined;
 
-      for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+      for (let attempt = 0; attempt < maxRetryAttempts + 1; attempt++) {
         const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
           runtimeNodes,
           runtimeEdges,

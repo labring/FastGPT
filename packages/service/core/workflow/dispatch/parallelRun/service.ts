@@ -1,6 +1,7 @@
 import { cloneDeep } from 'lodash';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { injectNestedStartInputs } from '../loop/service';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -72,20 +73,7 @@ export const buildTaskRuntimeContext = (
   const taskRuntimeNodes = cloneDeep(runtimeNodes);
   const taskRuntimeEdges = cloneDeep(runtimeEdges);
 
-  taskRuntimeNodes.forEach((node) => {
-    if (!childrenNodeIdList.includes(node.nodeId)) return;
-
-    if (node.flowNodeType === FlowNodeTypeEnum.nestedStart) {
-      node.isEntry = true;
-      node.inputs.forEach((input) => {
-        if (input.key === NodeInputKeyEnum.nestedStartInput) {
-          input.value = item;
-        } else if (input.key === NodeInputKeyEnum.nestedStartIndex) {
-          input.value = index + 1; // 1-based
-        }
-      });
-    }
-  });
+  injectNestedStartInputs(taskRuntimeNodes, childrenNodeIdList, item, index);
 
   return { taskRuntimeNodes, taskRuntimeEdges };
 };

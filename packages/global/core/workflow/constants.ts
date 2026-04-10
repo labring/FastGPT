@@ -251,6 +251,7 @@ export enum NodeInputKeyEnum {
   nestedEndInput = 'loopEndInput',
   // parallel run
   parallelRunMaxConcurrency = 'parallelRunMaxConcurrency',
+  parallelRunMaxRetryTimes = 'parallelRunMaxRetryTimes',
 
   // form input
   userInputForms = 'userInputForms',

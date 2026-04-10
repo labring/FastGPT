@@ -68,7 +68,7 @@ export const env = createEnv({
       .meta({ description: '循环节点最大循环次数' }),
     /** Env upper bound for parallelRun concurrency. Must not exceed WORKFLOW_MAX_LOOP_TIMES. */
     WORKFLOW_PARALLEL_MAX_CONCURRENCY: NumSchema.int()
-      .min(1)
+      .min(5)
       .max(1000)
       .optional()
       .default(10)
