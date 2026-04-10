@@ -39,7 +39,7 @@ const formatIndexes = async ({
   indexPrefix?: string;
 }): Promise<
   {
-    type: `${DatasetDataIndexTypeEnum}`;
+    type: DatasetDataIndexTypeEnum;
     text: string;
     dataId?: string;
   }[]

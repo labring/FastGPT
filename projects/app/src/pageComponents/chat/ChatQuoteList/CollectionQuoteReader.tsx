@@ -1,8 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
-import {
-  type DatasetCiteItemType,
-  type SearchDataResponseItemType
-} from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -110,7 +107,7 @@ const CollectionReader = ({
 
   const formatedDataList = useMemo(
     () =>
-      datasetDataList.map((item: DatasetCiteItemType) => {
+      datasetDataList.map((item) => {
         const isCurrentSelected = currentQuoteItem?.id === item._id;
         const quoteIndex = filterResults.findIndex((res) => res.id === item._id);
 

@@ -2,9 +2,11 @@ import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
 import { GetLLMRequestRecordParamsSchema, LLMRequestRecordSchema } from './api';
 import { SandboxPath } from './sandbox';
+import { AgentPath } from './agent';
 
 export const AIPath: OpenAPIPath = {
   ...SandboxPath,
+  ...AgentPath,
 
   '/core/ai/record/getRecord': {
     get: {

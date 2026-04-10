@@ -1,15 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
-import {
-  type DatasetCiteItemType,
-  type DatasetDataSchemaType
-} from '@fastgpt/global/core/dataset/type';
+import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import {
-  type LinkedListResponse,
-  type LinkedPaginationProps
-} from '@fastgpt/web/common/fetch/type';
 import { type FilterQuery, Types } from 'mongoose';
 import { quoteDataFieldSelector } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
@@ -17,27 +10,14 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getFormatDatasetCiteList } from '@fastgpt/service/core/dataset/data/controller';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-
-export type GetCollectionQuoteProps = LinkedPaginationProps<{}, number> & {
-  chatId: string;
-  chatItemDataId: string;
-
-  collectionId: string;
-
-  appId: string;
-  shareId?: string;
-  outLinkUid?: string;
-  teamId?: string;
-  teamToken?: string;
-};
-
-export type GetCollectionQuoteRes = LinkedListResponse<DatasetCiteItemType, number>;
+import {
+  GetCollectionQuoteBodySchema,
+  type GetCollectionQuoteResType
+} from '@fastgpt/global/openapi/core/chat/quote/api';
 
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
-async function handler(
-  req: ApiRequestProps<GetCollectionQuoteProps>
-): Promise<GetCollectionQuoteRes> {
+async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType> {
   const {
     initialId,
     prevId,
@@ -52,10 +32,10 @@ async function handler(
     outLinkUid,
     teamId,
     teamToken,
-    pageSize = 15
-  } = req.body;
+    pageSize
+  } = GetCollectionQuoteBodySchema.parse(req.body);
 
-  const limitedPageSize = Math.min(pageSize, 30);
+  const limitedPageSize = pageSize;
 
   const [collection, { chat, showFullText }, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
@@ -125,7 +105,7 @@ async function handleInitialLoad({
   pageSize: number;
   chatTime: Date;
   baseMatch: BaseMatchType;
-}): Promise<GetCollectionQuoteRes> {
+}): Promise<GetCollectionQuoteResType> {
   const centerNode = await MongoDatasetData.findOne(
     {
       _id: new Types.ObjectId(initialId)
@@ -192,7 +172,7 @@ async function handlePaginatedLoad({
   pageSize: number;
   chatTime: Date;
   baseMatch: BaseMatchType;
-}): Promise<GetCollectionQuoteRes> {
+}): Promise<GetCollectionQuoteResType> {
   const { list, hasMore } = prevId
     ? await getPrevNodes(prevId, nextAnchor, pageSize, baseMatch)
     : await getNextNodes(nextId!, nextAnchor, pageSize, baseMatch);

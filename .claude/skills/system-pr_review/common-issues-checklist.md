@@ -7,10 +7,8 @@
 - [1. TypeScript 问题](#1-typescript-问题)
 - [2. 异步错误处理问题](#2-异步错误处理问题)
 - [3. React 性能问题](#3-react-性能问题)
-- [4. 工作流节点问题](#4-工作流节点问题)
-- [5. 安全漏洞问题](#5-安全漏洞问题)
-- [6. 代码重复问题](#6-代码重复问题)
-- [7. 环境配置问题](#7-环境配置问题)
+- [4. 安全漏洞问题](#4-安全漏洞问题)
+- [5. 环境配置问题](#5-环境配置问题)
 
 ---
 
@@ -377,169 +375,96 @@ const ExpensiveList = ({ items }: { items: Item[] }) => {
 
 ---
 
-## 4. 工作流节点问题
 
-### 🔴 4.1 isEntry 标志未重置
+## 4. 安全漏洞问题
 
-**问题识别**:
-- 交互节点执行逻辑中第二阶段没有设置 `node.isEntry = false`
-- 节点可能重复执行
-- 交互节点功能异常
+### 🔴 4.1 NoSQL 注入 (接口入参风险)
 
-**快速修复**:
-```typescript
-// ❌ 问题代码
-export const dispatchInteractiveNode = async (props: Props) => {
-  const { isEntry } = props.node;
+**核心风险**: MongoDB 查询操作符 (`$gt`、`$where`、`$regex`、`$ne` 等) 可以通过 HTTP 请求体注入。当接口直接将入参透传到数据库查询时,攻击者可以构造恶意对象绕过权限校验或泄露数据。
 
-  if (!isEntry) {
-    return { interactive: { ... } };
-  }
-
-  // 处理用户输入
-  return { data: { ... } };
-  // 忘记重置 isEntry!
-};
-
-// ✅ 修复方案
-export const dispatchInteractiveNode = async (props: Props) => {
-  const { node, lastInteractive } = props;
-  const { isEntry } = node;
-
-  // 第一阶段: 返回交互请求
-  if (!isEntry || lastInteractive?.type !== 'interactiveType') {
-    return {
-      [DispatchNodeResponseKeyEnum.interactive]: {
-        type: 'interactiveType',
-        params: { /* ... */ }
-      }
-    };
-  }
-
-  // 第二阶段: 处理用户输入
-  node.isEntry = false;  // 🔴 必须: 重置入口标志
-
-  return {
-    data: { /* ... */ },
-    [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2)
-  };
-};
+**典型攻击场景**:
+```
+// 攻击者发送的请求体
+POST /api/login
+{ "username": { "$gt": "" }, "password": { "$gt": "" } }
+// → MongoDB 查询变为 { username: { $gt: "" }, password: { $gt: "" } }
+// → 匹配所有用户,绕过密码校验
 ```
 
-**审查建议**: 🔴 严重问题,必须修复
-
----
-
-### 🔴 4.2 交互历史未清理
-
 **问题识别**:
-- 交互节点返回值中没有 `rewriteHistories`
-- 用户会看到交互过程中产生的临时消息
+- 接口入参未经 zod/类型校验直接传入查询条件
+- 查询字段类型声明为 `any` 或 `object`
+- 使用 `req.body.xxx` 直接拼入 `find()`、`findOne()`、`updateOne()` 等
+- 动态构建查询对象时未限制字段类型为原始值
 
-**快速修复**:
+**高危模式**:
 ```typescript
-// ❌ 问题代码
-export const dispatchInteractiveNode = async (props: Props) => {
-  // 处理用户输入后
-  return {
-    data: { result: userInput }
-    // 忘记清理交互对话的历史记录
-  };
-};
+// ❌ 危险: 入参直接作为查询字段值
+const { username, password } = req.body;
+await db.users.findOne({ username, password });
 
-// ✅ 修复方案
-export const dispatchInteractiveNode = async (props: Props) => {
-  const { histories } = props;
-
-  // 处理用户输入后
-  return {
-    data: { result: userInput },
-    // 移除交互对话的历史记录 (用户问题 + 系统响应 = 2条)
-    [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2)
-  };
-};
-```
-
-**审查建议**: 🔴 严重问题,必须修复
-
----
-
-### 🔴 4.3 isEntry 白名单遗漏
-
-**问题识别**:
-- 新增交互节点但未更新 isEntry 白名单
-- 节点在恢复时 isEntry 被重置,导致流程错误
-
-**快速修复**:
-```typescript
-// ❌ 问题代码
-// packages/service/core/workflow/dispatch/index.ts
-
-runtimeNodes.forEach((item) => {
-  if (
-    item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
-    item.flowNodeType !== FlowNodeTypeEnum.formInput
-    // 新的交互节点类型未添加到白名单
-  ) {
-    item.isEntry = false;
-  }
-});
-
-// ✅ 修复方案
-runtimeNodes.forEach((item) => {
-  if (
-    item.flowNodeType !== FlowNodeTypeEnum.userSelect &&
-    item.flowNodeType !== FlowNodeTypeEnum.formInput &&
-    item.flowNodeType !== FlowNodeTypeEnum.yourNodeType  // 新增
-  ) {
-    item.isEntry = false;
-  }
-});
-```
-
-**审查建议**: 🔴 严重问题,必须修复
-
----
-
-## 5. 安全漏洞问题
-
-### 🔴 5.1 SQL/NoSQL 注入
-
-**问题识别**:
-- 用户输入直接用于数据库查询
-- 没有输入验证和清理
-- 使用字符串拼接构建查询
-
-**快速修复**:
-```typescript
-// ❌ 问题代码
-async function searchUsers(query: string) {
-  return await db.users.find({ name: query });
-  // 如果 query = { "$gt": "" },会返回所有用户
+// ❌ 危险: 对象字段透传进查询
+async function getUser({ filter }: { filter: object }) {
+  return db.users.findOne(filter);  // filter 可以是任意操作符
 }
 
-// ✅ 修复方案
-async function searchUsers(query: string): Promise<User[]> {
-  if (!query || query.length > 100) {
+// ❌ 危险: updateOne 条件字段未校验
+await db.collection.updateOne(
+  { _id: req.body.id },           // id 可能是 { $gt: "" }
+  { $set: req.body.update }       // update 可能注入 $where 等
+);
+```
+
+**快速修复**:
+```typescript
+// ✅ 方案 1: zod schema 严格约束入参类型(推荐)
+import { z } from 'zod';
+
+const LoginSchema = z.object({
+  username: z.string().min(1).max(50),
+  password: z.string().min(1).max(100)
+});
+
+async function login(req: Request) {
+  // parse 失败直接抛出,不会进入查询逻辑
+  const { username, password } = LoginSchema.parse(req.body);
+  return db.users.findOne({ username, password });
+}
+
+// ✅ 方案 2: 显式提取原始值,拒绝对象类型
+async function searchUsers(query: unknown): Promise<User[]> {
+  if (typeof query !== 'string' || query.length > 100) {
     throw new Error('Invalid query');
   }
-
-  const sanitizedQuery = query.replace(/[^\w\s]/g, '');
-
-  return await db.users.find({
-    name: {
-      $regex: sanitizedQuery,
-      $options: 'i'
-    }
+  return db.users.find({
+    name: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
   }).limit(10).toArray();
 }
+
+// ✅ 方案 3: 动态查询条件使用白名单字段
+const ALLOWED_FILTER_FIELDS = ['status', 'type', 'teamId'] as const;
+
+function buildSafeFilter(raw: Record<string, unknown>) {
+  return ALLOWED_FILTER_FIELDS.reduce((acc, key) => {
+    if (raw[key] !== undefined && typeof raw[key] === 'string') {
+      acc[key] = raw[key];
+    }
+    return acc;
+  }, {} as Record<string, string>);
+}
 ```
+
+**审查重点**:
+- [ ] 所有接口入参是否经过 zod schema 或等效校验
+- [ ] 查询条件字段是否均为原始类型 (`string`、`number`、`boolean`)
+- [ ] 是否存在将 `req.body` 的对象字段直接传入 MongoDB 操作符位置的情况
+- [ ] `_id` 字段是否使用 `new Types.ObjectId(id)` 强制转换
 
 **审查建议**: 🔴 严重问题,必须修复
 
 ---
 
-### 🔴 5.2 XSS 攻击
+### 🔴 4.2 XSS 攻击
 
 **问题识别**:
 - 使用 `dangerouslySetInnerHTML`
@@ -587,7 +512,7 @@ const UserProfile = ({ user }: { user: User }) => {
 
 ---
 
-### 🔴 5.3 文件上传漏洞
+### 🔴 4.3 文件上传漏洞
 
 **问题识别**:
 - 没有文件类型验证
@@ -640,99 +565,10 @@ app.post('/upload', async (req, res) => {
 
 ---
 
-## 6. 代码重复问题
 
-### 🟡 6.1 重复的逻辑
+## 5. 环境配置问题
 
-**问题识别**:
-- 相同或相似的代码出现在多处
-- 复制粘贴的代码
-- 修改 bug 时需要改多处
-
-**快速修复**:
-```typescript
-// ❌ 问题代码
-function validateEmail1(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function validateEmail2(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// ✅ 修复方案
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function validateEmail(email: string): boolean {
-  return EMAIL_REGEX.test(email);
-}
-```
-
-**审查建议**: 🟡 建议改进
-
----
-
-### 🟡 6.2 重复的组件结构
-
-**问题识别**:
-- 多个组件有相似的结构和布局
-- 只有细微差别
-- 可以抽取共享逻辑或样式
-
-**快速修复**:
-```typescript
-// ❌ 问题代码
-const UserList1 = ({ users }: { users: User[] }) => {
-  return (
-    <Box p={4} borderWidth="1px" borderRadius="md">
-      <VStack spacing={3}>
-        {users.map(user => (
-          <Box key={user.id} p={3} bg="gray.100">
-            <Text>{user.name}</Text>
-          </Box>
-        ))}
-      </VStack>
-    </Box>
-  );
-};
-
-// ✅ 修复方案
-interface ListProps<T> {
-  items: T[];
-  renderItem: (item: T) => React.ReactNode;
-}
-
-const GenericList = <T,>({ items, renderItem }: ListProps<T>) => {
-  return (
-    <Box p={4} borderWidth="1px" borderRadius="md">
-      <VStack spacing={3}>
-        {items.map((item, index) => (
-          <Box key={index} p={3} bg="gray.100">
-            {renderItem(item)}
-          </Box>
-        ))}
-      </VStack>
-    </Box>
-  );
-};
-
-const UserList = ({ users }: { users: User[] }) => {
-  return (
-    <GenericList
-      items={users}
-      renderItem={(user) => <Text>{user.name}</Text>}
-    />
-  );
-};
-```
-
-**审查建议**: 🟡 建议改进
-
----
-
-## 7. 环境配置问题
-
-### 🔴 7.1 硬编码配置
+### 🔴 5.1 硬编码配置
 
 **问题识别**:
 - 配置值直接写在代码中
@@ -758,7 +594,7 @@ if (!API_KEY) {
 
 ---
 
-### 🟡 7.2 环境变量未验证
+### 🟡 5.2 环境变量未验证
 
 **问题识别**:
 - 直接使用环境变量而不验证
@@ -806,7 +642,6 @@ const config = getConfig();
 
 - [ ] 滥用 `any` 类型
 - [ ] 未处理的 Promise rejection
-- [ ] 工作流节点 `isEntry` 未重置
 - [ ] 硬编码敏感信息
 - [ ] SQL/NoSQL 注入漏洞
 - [ ] XSS 攻击漏洞
@@ -818,7 +653,6 @@ const config = getConfig();
 - [ ] 错误信息丢失
 - [ ] React 不必要的重渲染
 - [ ] 环境变量未验证
-- [ ] 代码重复
 
 ### 🟢 可选优化 (锦上添花)
 

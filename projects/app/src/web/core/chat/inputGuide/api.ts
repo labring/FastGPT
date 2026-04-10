@@ -1,8 +1,8 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type {
-  ChatInputGuideProps,
-  ChatInputGuideResponse
-} from '@/pages/api/core/chat/inputGuide/list';
+  ChatInputGuideListBodyType,
+  ChatInputGuideListResponseType
+} from '@fastgpt/global/openapi/core/chat/inputGuide/api';
 import type {
   countChatInputGuideTotalQuery,
   countChatInputGuideTotalResponse
@@ -24,8 +24,8 @@ export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery)
 /**
  * Get chat input guide list
  */
-export const getChatInputGuideList = (data: ChatInputGuideProps) =>
-  POST<ChatInputGuideResponse>(`/core/chat/inputGuide/list`, data);
+export const getChatInputGuideList = (data: ChatInputGuideListBodyType) =>
+  POST<ChatInputGuideListResponseType>(`/core/chat/inputGuide/list`, data);
 
 export const queryChatInputGuideList = (data: QueryChatInputGuideBody, url?: string) => {
   if (url) {

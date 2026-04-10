@@ -21,8 +21,10 @@ import type {
   YuqueServer
 } from './apiDataset/type';
 import type { SourceMemberType } from '../../support/user/type';
-import type { DatasetDataIndexTypeEnum } from './data/constants';
+import { DatasetDataIndexTypeEnum } from './data/constants';
 import type { ParentIdType } from '../../common/parentFolder/type';
+import z from 'zod';
+import { ObjectIdSchema } from '../../common/type/mongo';
 
 export type ChunkSettingsType = {
   trainingType?: DatasetCollectionDataProcessModeEnum;
@@ -146,35 +148,42 @@ export type DatasetCollectionTagsSchemaType = {
   tag: string;
 };
 
-export type DatasetDataIndexItemType = {
-  type: `${DatasetDataIndexTypeEnum}`;
-  dataId: string; // pg data id
-  text: string;
-};
+export const DatasetDataIndexItemSchema = z.object({
+  type: z.enum(DatasetDataIndexTypeEnum).meta({ description: '索引类型' }),
+  dataId: z.string().meta({ description: 'vectorDB ID' }),
+  text: z.string().meta({ description: '索引文本' })
+});
+export type DatasetDataIndexItemType = z.infer<typeof DatasetDataIndexItemSchema>;
 
-export type DatasetDataFieldType = {
-  q: string; // large chunks or question
-  a?: string; // answer or custom content
-  imageId?: string;
-};
-export type DatasetDataSchemaType = DatasetDataFieldType & {
-  _id: string;
-  userId: string;
-  teamId: string;
-  tmbId: string;
-  datasetId: string;
-  collectionId: string;
-  chunkIndex: number;
-  updateTime: Date;
-  history?: (DatasetDataFieldType & {
-    updateTime: Date;
-  })[];
-  forbid?: boolean;
-  fullTextToken: string;
-  indexes: DatasetDataIndexItemType[];
-  rebuilding?: boolean;
-  imageDescMap?: Record<string, string>;
-};
+export const DatasetDataFieldSchema = z.object({
+  q: z.string().meta({ description: '问题/主文本' }),
+  a: z.string().optional().meta({ description: '回答/补充文本' }),
+  imageId: z.string().optional().meta({ description: '图片 ID' })
+});
+export type DatasetDataFieldType = z.infer<typeof DatasetDataFieldSchema>;
+
+export const DatasetDataHistorySchema = DatasetDataFieldSchema.extend({
+  updateTime: z.date().meta({ description: '更新时间' })
+});
+export type DatasetDataHistoryType = z.infer<typeof DatasetDataHistorySchema>;
+
+export const DatasetDataSchema = DatasetDataFieldSchema.extend({
+  _id: ObjectIdSchema.meta({ description: '数据 ID' }),
+  userId: ObjectIdSchema.meta({ description: '用户 ID' }),
+  teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
+  tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
+  datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  chunkIndex: z.int().min(0).meta({ description: '块索引' }),
+  updateTime: z.date().meta({ description: '更新时间' }),
+  history: z.array(DatasetDataHistorySchema).optional().meta({ description: '历史版本' }),
+  forbid: z.boolean().optional().meta({ description: '是否禁用' }),
+  fullTextToken: z.string().meta({ description: '全文 token' }),
+  indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
+  rebuilding: z.boolean().optional().meta({ description: '重建中' }),
+  imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' })
+});
+export type DatasetDataSchemaType = z.infer<typeof DatasetDataSchema>;
 
 export type DatasetDataTextSchemaType = {
   _id: string;
@@ -308,13 +317,18 @@ export type SearchDataResponseItemType = Omit<
   // score: number;
 };
 
-export type DatasetCiteItemType = {
-  _id: string;
-  q: string;
-  a?: string;
-  imagePreivewUrl?: string;
-  history?: DatasetDataSchemaType['history'];
-  updateTime: DatasetDataSchemaType['updateTime'];
-  index: DatasetDataSchemaType['chunkIndex'];
-  updated?: boolean;
-};
+export const DatasetCiteItemSchema = z
+  .object({
+    _id: ObjectIdSchema.meta({ description: '数据 ID' }),
+    q: z.string().meta({ description: '问题/主文本' }),
+    a: z.string().optional().meta({ description: '回答/补充文本' }),
+    imagePreivewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
+    history: DatasetDataSchema.shape.history.optional(),
+    updateTime: DatasetDataSchema.shape.updateTime,
+    index: DatasetDataSchema.shape.chunkIndex,
+    updated: z.boolean().optional().meta({ description: '是否已更新' })
+  })
+  .meta({
+    description: '知识库引用数据列表'
+  });
+export type DatasetCiteItemType = z.infer<typeof DatasetCiteItemSchema>;

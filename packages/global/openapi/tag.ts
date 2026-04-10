@@ -23,6 +23,7 @@ export const TagsMap = {
   chatController: '对话操作',
   chatFeedback: '对话反馈',
   chatSetting: '门户页配置',
+  chatInputGuide: '对话输入引导',
 
   // Dataset
   datasetCollection: '集合',

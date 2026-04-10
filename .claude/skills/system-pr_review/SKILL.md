@@ -142,7 +142,6 @@ FastGPT 项目特定的代码规范和约定:
 - **TypeScript 问题**: any 类型滥用、类型定义不完整、不安全断言
 - **异步错误处理**: 未处理 Promise、错误信息丢失、静默失败
 - **React 性能**: 不必要的重渲染、渲染中创建对象、缺少 memoization
-- **工作流节点**: isEntry 未重置、交互历史未清理、白名单遗漏
 - **安全漏洞**: 注入攻击、XSS、文件上传漏洞
 
 📖 **详细清单**: [common-issues-checklist.md](./common-issues-checklist.md)

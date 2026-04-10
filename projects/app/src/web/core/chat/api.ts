@@ -12,12 +12,15 @@ import type {
   getChatRecordsBody,
   getChatRecordsResponse
 } from '@/pages/api/core/chat/record/getRecords_v2';
-import type { GetQuoteProps, GetQuotesRes } from '@/pages/api/core/chat/quote/getQuote';
 import type {
-  GetCollectionQuoteProps,
-  GetCollectionQuoteRes
-} from '@/pages/api/core/chat/quote/getCollectionQuote';
+  GetQuoteBodyType,
+  GetQuoteResponseType
+} from '@fastgpt/global/openapi/core/chat/quote/api';
 import type { ChatSettingModelType, ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
+import type {
+  GetCollectionQuoteBodyType,
+  GetCollectionQuoteResType
+} from '@fastgpt/global/openapi/core/chat/quote/api';
 import type {
   GetChatFavouriteListParamsType,
   UpdateFavouriteAppParamsType
@@ -57,11 +60,11 @@ export const getChatRecords = (data: getChatRecordsBody) =>
 export const delChatRecordById = (data: DeleteChatItemProps) =>
   POST(`/core/chat/item/delete`, data);
 
-export const getQuoteDataList = (data: GetQuoteProps) =>
-  POST<GetQuotesRes>(`/core/chat/quote/getQuote`, data);
+export const getQuoteDataList = (data: GetQuoteBodyType) =>
+  POST<GetQuoteResponseType>(`/core/chat/quote/getQuote`, data);
 
-export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
-  POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
+export const getCollectionQuote = (data: GetCollectionQuoteBodyType) =>
+  POST<GetCollectionQuoteResType>(`/core/chat/quote/getCollectionQuote`, data);
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => GET<ChatSettingType>('/proApi/core/chat/setting/detail');
