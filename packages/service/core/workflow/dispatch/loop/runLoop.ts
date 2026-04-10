@@ -1,3 +1,4 @@
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type DispatchNodeResultType,
