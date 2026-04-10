@@ -22,7 +22,6 @@ export const simpleText = (text = '') => {
   text = text.replace(/\n{3,}/g, '\n\n');
   text = text.replace(/[\s&&[^\n]]{2,}/g, ' ');
   text = text.replace(/[\x00-\x08]/g, ' ');
-
   return text;
 };
 

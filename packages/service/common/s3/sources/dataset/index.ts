@@ -92,6 +92,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       customPdfParse,
       sourceId: fileId
     });
+
     if (rawTextBuffer) {
       return {
         rawText: rawTextBuffer.text,
@@ -108,26 +109,26 @@ export class S3DatasetSource extends S3PrivateBucket {
     const extension = fileMetadata?.extension || '';
 
     const start = Date.now();
-    const buffer = await streamConsumer.buffer(downloadResponse.body);
-    addLog.debug('get dataset file buffer', { time: Date.now() - start });
-
-    const encoding = detectFileEncoding(buffer);
     const { fileParsedPrefix } = getFileS3Key.s3Key(fileId);
-    const { rawText } = await readS3FileContentByBuffer({
-      teamId,
-      tmbId,
-      extension,
-      buffer,
-      encoding,
-      customPdfParse,
-      usageId,
-      getFormatText,
-      filename,
-      imageKeyOptions: {
-        prefix: fileParsedPrefix
-      }
-    });
-
+    const { rawText } = await (async () => {
+      const buffer = await streamConsumer.buffer(downloadResponse.body);
+      addLog.debug('get dataset file buffer', { time: Date.now() - start });
+      const encoding = detectFileEncoding(buffer);
+      return readS3FileContentByBuffer({
+        teamId,
+        tmbId,
+        extension,
+        buffer,
+        encoding,
+        customPdfParse,
+        usageId,
+        getFormatText,
+        filename,
+        imageKeyOptions: {
+          prefix: fileParsedPrefix
+        }
+      });
+    })();
     this.rawTextSource.addRawTextBuffer({
       sourceId: fileId,
       sourceName: filename,
