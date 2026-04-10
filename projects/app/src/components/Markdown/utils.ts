@@ -47,3 +47,19 @@ export const mdTextFormat = (text: string) => {
 
   return text;
 };
+
+/**
+ * 将 Markdown 图片语法转换为 HTML img 标签
+ * 修复图片在 HTML 块（如 <table>、<div>）内无法渲染的问题：
+ * remark 不处理原始 HTML 块内的内联 Markdown 语法，
+ * 转换为 <img> 后 rehype-raw 可以正确解析。
+ * 代码块内的图片语法会被跳过。
+ */
+export const convertMdImagesToHtml = (text: string): string => {
+  const pattern = /(```[\s\S]*?```|`[^`]+`)|(!\[([^\]]*)\]\(([^)]+)\))/g;
+  return text.replace(pattern, (match, codeBlock, _imageMatch, alt, src) => {
+    if (codeBlock) return codeBlock;
+    const escapedAlt = (alt || '').replace(/"/g, '&quot;');
+    return `<img src="${src}" alt="${escapedAlt}">`;
+  });
+};
