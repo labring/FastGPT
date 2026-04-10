@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let packageBuffer: Buffer;
     try {
       packageBuffer = await packageSkillInSandbox({
-        providerSandboxId: sandboxInfo.sandboxId
+        providerSandboxId: sandboxInfo.metadata?.providerSandboxId ?? sandboxInfo.sandboxId
       });
     } catch (error: any) {
       return jsonRes(res, {

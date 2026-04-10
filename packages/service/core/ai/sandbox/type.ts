@@ -48,6 +48,7 @@ export const SandboxMetadataSchema = z.object({
 
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
+  providerSandboxId: z.string().optional(), // real provider sandbox ID (different from sessionId)
   skillIds: z.array(z.string()).optional(),
   image: SandboxImageSchema,
   endpoint: SandboxEndpointSchema.optional()

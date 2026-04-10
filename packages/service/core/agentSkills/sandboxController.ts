@@ -161,6 +161,7 @@ export async function createEditDebugSandbox(
       );
 
       const endpointInfo = await getProviderSandboxEndpoint(client.provider, defaults.targetPort);
+      const sandboxInfo = await client.provider.getInfo();
 
       // Wait for the HTTP service inside the container to bind its port before
       // sending the ready SSE event — prevents ECONNREFUSED in the client iframe.
@@ -171,7 +172,8 @@ export async function createEditDebugSandbox(
         { _id: existingInstance._id },
         {
           'metadata.endpoint': endpointInfo,
-          'metadata.providerStatus': { state: 'Running' }
+          'metadata.providerStatus': { state: 'Running' },
+          ...(sandboxInfo?.id && { 'metadata.providerSandboxId': sandboxInfo.id })
         }
       );
 
@@ -311,6 +313,8 @@ export async function createEditDebugSandbox(
             teamId,
             tmbId,
             skillId,
+            sessionId,
+            providerSandboxId: sandboxInfo.id, // real sandbox ID for save-deploy connection
             provider: providerConfig.provider,
             image: sandboxInfo.image,
             providerStatus: {
@@ -351,7 +355,7 @@ export async function createEditDebugSandbox(
 
     return {
       sandboxId: newSandboxDoc._id.toString(),
-      providerSandboxId: sandboxInfo.id,
+      providerSandboxId: sessionId,
       endpoint: endpointInfo,
       status: {
         state: sandboxInfo.status.state,
@@ -543,6 +547,9 @@ export async function packageSkillInSandbox(params: {
     addLog.info('[Sandbox] Package read successfully', {
       size: files[0].content.length
     });
+
+    // Clean up the zip file after reading to free sandbox storage
+    await newSandbox.execute(`rm -f "${zipFilePath}"`);
 
     const content = files[0].content;
     return Buffer.from(content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8'));
