@@ -19,6 +19,17 @@ export const mdTextFormat = (text: string) => {
     return match.replace(/\\/g, '\\\\');
   });
 
+  // 修复图片 alt 文本中含有未闭合的 [ 导致 CommonMark 解析失败的问题。
+  // CommonMark 规则：alt 文本中的 [ 会打开嵌套层级，若对应的 ] 被转义为 \]，
+  // 则嵌套永远无法关闭，导致图片整体解析失败（渲染为纯文本而非图片）。
+  // 修复方式：将 alt 文本中未转义的 [ 替换为 \[，使其在 Markdown 中作为字面字符处理。
+  // 注意：此步骤需在 LaTeX 转换之前执行，以便后续 \[...\] → $$...$$ 正常工作。
+  text = text.replace(/!\[([^!]*?)\]\((https?:\/\/[^)\s]+)\)/g, (match, alt, url) => {
+    if (!alt.includes('[')) return match;
+    const fixedAlt = alt.replace(/(?<!\\)\[/g, '\\[');
+    return `![${fixedAlt}](${url})`;
+  });
+
   // NextChat function - Format latex to $$
   const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g;
   text = text.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {
