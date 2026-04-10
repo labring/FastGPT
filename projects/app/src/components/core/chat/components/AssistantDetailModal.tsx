@@ -23,9 +23,12 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import Markdown from '@/components/Markdown';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 // 兜底回复切换节点 ID（用于判断是否走了 LLM 回复分支）
 const FALLBACK_REPLY_SWITCH_NODE_ID = 'ekVOtsUJMYWg4col';
+
+const maxCount = 5;
 
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
@@ -195,6 +198,14 @@ const KnowledgeRecallNode = ({
   // 判断是否使用 FaqContentCard：只有当 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq' 时
   const shouldUseFaqCard = data?.retrievalType === 'correction' || data?.retrievalType === 'faq';
 
+  const [isShowAll, setIsShowAll] = useState(false);
+  const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
+
+  // 判断检索模式是否为 agentic（不要求 agenticSearchResult 存在，用于无结果时的标题显示）
+  const isAgenticRetrievalMode = useMemo(() => {
+    return data?.retrievalMode === DatasetRetrievalModeEnum.agentic;
+  }, [data]);
+
   // 统计不同 sourceType 的数量
   const sourceTypeStats = useMemo(() => {
     const stats = {
@@ -252,7 +263,7 @@ const KnowledgeRecallNode = ({
             mr={2}
           />
           <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('chat:knowledge_recall')}
+            {isAgenticRetrievalMode ? t('chat:agentic_search') : t('chat:knowledge_recall')}
           </Box>
         </Flex>
         <Box fontSize={'xs'} color={'myGray.500'}>
@@ -274,7 +285,7 @@ const KnowledgeRecallNode = ({
                       </Box>
                     )}
                     <Flex flexDirection={'column'} gap={3}>
-                      {mergedList.map((item, index) => {
+                      {displayList.map((item, index) => {
                         // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
                         if (shouldUseFaqCard) {
                           return (
@@ -337,6 +348,16 @@ const KnowledgeRecallNode = ({
                         );
                       })}
                     </Flex>
+                    {!isShowAll && mergedList.length > maxCount && (
+                      <Button
+                        mt={3}
+                        onClick={() => setIsShowAll(true)}
+                        w="100%"
+                        variant={'primaryOutline'}
+                      >
+                        {t('chat:view_all_knowledge', { count: mergedList.length })}
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <Box fontSize={'sm'} color={'myGray.600'}>
@@ -482,7 +503,6 @@ const KnowledgeRerankNode = ({
   // 判断是否使用重排:从 data 中获取 searchUsingReRank
   const searchUsingReRank = data?.searchUsingReRank || false;
 
-  const maxCount = 5;
   const [isShowAll, setIsShowAll] = useState(false);
   const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
 
@@ -512,7 +532,16 @@ const KnowledgeRerankNode = ({
             display={'flex'}
             alignItems={'center'}
           >
-            {isAgenticMode ? t('chat:summarize_retrieval_results') : t('chat:knowledge_rerank')}
+            {isAgenticMode ? (
+              <Flex>
+                <Box>{t('chat:summarize_retrieval_results')} </Box>
+                <MyTag ml={1}>
+                  {t('chat:summarize_retrieval_results_count', { count: mergedList.length })}
+                </MyTag>
+              </Flex>
+            ) : (
+              t('chat:knowledge_rerank')
+            )}
             {hasError && (
               <MyIcon name={'common/error'} w={'16px'} h={'16px'} color={'red.600'} ml={1} />
             )}
@@ -566,7 +595,9 @@ const KnowledgeRerankNode = ({
                             if (item.retrievalRank !== undefined) {
                               recallRank = `${item.retrievalRank + 1}`;
                             }
-                            descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
+                            // 多轮智能检索不显示
+                            !isAgenticMode &&
+                              descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
                             // 使用 TOP1、TOP2 格式作为标题
                             const title = `TOP${index + 1}`;

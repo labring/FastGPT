@@ -449,7 +449,7 @@
   "core.chat.response.module historyPreview": "记录预览（仅展示部分内容）",
   "core.chat.response.module http result": "响应体",
   "core.chat.response.module if else Result": "判断器结果",
-  "core.chat.response.module limit": "单次搜索上限",
+  "core.chat.response.module limit": "单次检索上限",
   "core.chat.response.module maxToken": "最大响应 tokens",
   "core.chat.response.module model": "模型",
   "core.chat.response.module name": "节点名",
