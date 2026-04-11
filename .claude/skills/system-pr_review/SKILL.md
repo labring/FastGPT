@@ -91,6 +91,7 @@ gh pr checks
 - [] [包结构规范](./style/package.md)
 - [] [日志规范](./style/logger.md)
 - [] [Service 解耦规范](./style/service-decoupling.md)
+- [] [语法风格规范](./style/syntax.md)
 
 ---
 
