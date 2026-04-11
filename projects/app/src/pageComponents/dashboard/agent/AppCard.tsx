@@ -302,7 +302,7 @@ const AppCard = React.memo(function AppCard({
       >
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-          <Box color={'myGray.900'} fontWeight={'medium'} minWidth={0} overflow="hidden" h="100%">
+          <Box color={'myGray.900'} fontWeight={'medium'} minWidth={0} overflow="hidden">
             <Box className={'textEllipsis'}>{app.name}</Box>
           </Box>
           <Box justifySelf="end" mr={-5}>
