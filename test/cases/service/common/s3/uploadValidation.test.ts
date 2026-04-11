@@ -193,4 +193,69 @@ describe('validateUploadFile', () => {
       })
     ).rejects.toThrow('UploadFileTypeMismatch');
   });
+
+  it('accepts AVI when mime-types says video/x-msvideo but file-type says video/vnd.avi', async () => {
+    const miniAvi = Buffer.alloc(12);
+    miniAvi.write('RIFF', 0, 'ascii');
+    miniAvi.writeUInt32LE(256, 4);
+    miniAvi.write('AVI ', 8, 'ascii');
+
+    await expect(
+      validateUploadFile({
+        buffer: miniAvi,
+        filename: 'clip.avi',
+        uploadConstraints: {
+          defaultContentType: 'video/x-msvideo',
+          allowedExtensions: ['.avi']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'clip.avi',
+      contentType: 'video/vnd.avi'
+    });
+  });
+
+  it('accepts MPEG when mime-types says video/mpeg but file-type says video/MP2P', async () => {
+    const miniMpeg = Buffer.from([
+      0, 0, 1, 0xba, 0x44, 0x00, 0x04, 0x00, 0x04, 0x01, 0x00, 0x01, 0xe0, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0xe0, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    ]);
+
+    await expect(
+      validateUploadFile({
+        buffer: miniMpeg,
+        filename: 'clip.mpeg',
+        uploadConstraints: {
+          defaultContentType: 'video/mpeg',
+          allowedExtensions: ['.mpeg']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'clip.mpeg',
+      contentType: 'video/MP2P'
+    });
+  });
+
+  it('accepts MPEG-1 PS when mime-types says video/mpeg but file-type says video/MP1S', async () => {
+    const mpeg1Ps = Buffer.alloc(32);
+    mpeg1Ps[0] = 0;
+    mpeg1Ps[1] = 0;
+    mpeg1Ps[2] = 1;
+    mpeg1Ps[3] = 0xba;
+    mpeg1Ps[4] = 0x21;
+
+    await expect(
+      validateUploadFile({
+        buffer: mpeg1Ps,
+        filename: 'clip.mpeg',
+        uploadConstraints: {
+          defaultContentType: 'video/mpeg',
+          allowedExtensions: ['.mpeg']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'clip.mpeg',
+      contentType: 'video/MP1S'
+    });
+  });
 });

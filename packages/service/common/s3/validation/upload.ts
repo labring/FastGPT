@@ -77,6 +77,29 @@ const isTextLikeMime = (mime: string) => {
 const getOfficeZipFormatByExtension = (extension: string) =>
   officeZipFormats.find((format) => format.extension === extension);
 
+/**
+ * mime-types（按扩展名）与 file-type（按魔数）对同一容器可能给出不同登记名，例如 .avi：
+ * lookup → video/x-msvideo，file-type → video/vnd.avi。.mpeg：lookup → video/mpeg，file-type 可能为
+ * video/MP1S（MPEG-1 PS）、video/MP2P（MPEG-2 PS）或 video/mpeg（模糊检测）。
+ * 比较前统一小写（忽略参数、大小写差异）。
+ */
+const MIME_EQUIVALENCE_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
+  new Set(['video/x-msvideo', 'video/vnd.avi', 'video/avi', 'video/msvideo']),
+  new Set(['video/mpeg', 'video/mp1s', 'video/mp2p'])
+];
+
+const normalizeMimeForCompare = (mime: string) => mime.split(';')[0]?.trim().toLowerCase() || '';
+
+const mimesMatchForUpload = (expected: string, detected: string): boolean => {
+  const e = normalizeMimeForCompare(expected);
+  const d = normalizeMimeForCompare(detected);
+  if (e === d) return true;
+  for (const group of MIME_EQUIVALENCE_GROUPS) {
+    if (group.has(e) && group.has(d)) return true;
+  }
+  return false;
+};
+
 const detectOfficeDocumentMime = ({
   buffer,
   detectedMime
@@ -132,7 +155,7 @@ export async function validateUploadFile({
   const detectedMime = officeFormat?.mime || detected?.mime;
 
   if (detectedMime) {
-    if (expectedMime !== DEFAULT_CONTENT_TYPE && detectedMime !== expectedMime) {
+    if (expectedMime !== DEFAULT_CONTENT_TYPE && !mimesMatchForUpload(expectedMime, detectedMime)) {
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
     return {

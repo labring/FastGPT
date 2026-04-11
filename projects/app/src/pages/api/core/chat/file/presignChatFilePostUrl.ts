@@ -58,8 +58,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
     filename,
     uId: uid,
     allowedExtensions,
-    maxFileSize:
-      planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
   });
 }
 

@@ -36,7 +36,7 @@ async function handler(
   const result = await getS3DatasetSource().createUploadDatasetFileURL({
     datasetId,
     filename,
-    maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
   });
 
   return PresignDatasetFilePostUrlResponseSchema.parse(result);
