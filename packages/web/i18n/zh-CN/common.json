@@ -742,6 +742,7 @@
   "error.s3_upload_timeout": "上传超时",
   "error.send_auth_code_too_frequently": "请勿频繁获取验证码",
   "error.too_many_request": "请求太频繁了，请稍后重试",
+  "error.upload_file_interval_limit": "短时间内上传次数过多或已达本轮上限，请稍后再试",
   "error.tool_not_exist": "工具已删除",
   "error.unKnow": "出现了点意外~",
   "error.upload_file_error_filename": "{{name}} 上传失败",

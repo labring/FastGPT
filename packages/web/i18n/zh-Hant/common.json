@@ -736,6 +736,7 @@
   "error.s3_upload_timeout": "上傳超時",
   "error.send_auth_code_too_frequently": "請勿頻繁取得驗證碼",
   "error.too_many_request": "請求太頻繁了，請稍後重試",
+  "error.upload_file_interval_limit": "短時間內上傳次數過多或已達本輪上限，請稍後再試",
   "error.tool_not_exist": "工具已刪除",
   "error.unKnow": "發生未預期的錯誤",
   "error.upload_file_error_filename": "{{name}} 上傳失敗",

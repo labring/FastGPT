@@ -742,6 +742,7 @@
   "error.s3_upload_timeout": "Upload timed out",
   "error.send_auth_code_too_frequently": "Please do not obtain verification code frequently",
   "error.too_many_request": "Too many request",
+  "error.upload_file_interval_limit": "Too many uploads in a short time or the current round limit was reached. Please try again later.",
   "error.tool_not_exist": "Tool deleted",
   "error.unKnow": "An Unexpected Error Occurred",
   "error.upload_file_error_filename": "{{name}} Upload Failed",
