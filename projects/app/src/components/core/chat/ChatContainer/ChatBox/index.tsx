@@ -74,6 +74,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { getDatasetDataBatchPermission } from '@/web/core/dataset/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -1419,7 +1420,7 @@ const ChatBox = ({
         px={[4, 0]}
         pb={6}
       >
-        <Box maxW={['100%', 'min(720px, 100%)']} h={'100%'} mx={'auto'}>
+        <Box maxW={['100%', 'min(738px, 92%)']} h={'100%'} mx={'auto'}>
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1450,6 +1451,7 @@ const ChatBox = ({
       display={'flex'}
       flexDirection={'column'}
       h={'100%'}
+      className="chatBox"
       position={'relative'}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
@@ -1492,7 +1494,7 @@ const ChatBox = ({
           bg="linear-gradient(180deg, #FAFCFF, #FFFFFF)"
         >
           {/* 右上角装饰区域 */}
-          {/* <BgDecoration /> */}
+          <BgDecoration showBg={false} />
 
           {/* 居中区域：标题 + 输入框 */}
           <Flex
@@ -1505,7 +1507,7 @@ const ChatBox = ({
             px={[2, 4]}
           >
             <AppChatEmptyBox />
-            <Box w={'100%'} maxW={['100%', 'min(738px, 100%)']} sx={sx}>
+            <Box w={'100%'} maxW={['100%', 'min(738px, 92%)']} sx={sx}>
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}
@@ -1523,7 +1525,7 @@ const ChatBox = ({
             <Box
               m={['0 auto 10px', '10px auto']}
               w={'100%'}
-              maxW={['100%', 'min(738px, 100%)']}
+              maxW={['100%', 'min(738px, 92%)']}
               sx={sx}
             >
               {showWorkorder && <WorkorderEntrance />}

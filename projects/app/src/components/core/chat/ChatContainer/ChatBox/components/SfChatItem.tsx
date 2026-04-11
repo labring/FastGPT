@@ -323,6 +323,31 @@ const ChatItem = (props: Props) => {
         }
       }}
     >
+      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
+        {/* Workflow status */}
+        {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
+          <Flex
+            alignItems={'center'}
+            px={3}
+            py={'1.5px'}
+            borderRadius="md"
+            bg={chatStatusMap.bg}
+            fontSize={'sm'}
+          >
+            <Box
+              className={styles.statusAnimation}
+              bg={chatStatusMap.color}
+              w="8px"
+              h="8px"
+              borderRadius={'50%'}
+              mt={'1px'}
+            />
+            <Box ml={2} color={'myGray.600'}>
+              {statusBoxData.name}
+            </Box>
+          </Flex>
+        )}
+      </Flex>
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
         showFeedbackContent &&
@@ -371,6 +396,7 @@ const ChatItem = (props: Props) => {
             bg={styleMap.bg}
             borderRadius={styleMap.borderRadius}
             textAlign={'left'}
+            pb={0}
             {...(type === ChatRoleEnum.AI && { display: 'block', w: '100%', maxW: '100%', pr: 0 })}
           >
             {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}

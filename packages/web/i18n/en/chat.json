@@ -224,5 +224,6 @@
   "combined_score": "Combined score: ",
   "rerank_score": "Rerank score: ",
   "recall_rank": "Recall rank: ",
-  "run_preview": "Run preview"
+  "run_preview": "Run preview",
+  "greeting_with_name": "HI，我是{{appName}}"
 }

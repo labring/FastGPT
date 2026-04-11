@@ -98,6 +98,7 @@ export const iconPaths = {
   'common/paused': () => import('./icons/common/paused.svg'),
   'common/playFill': () => import('./icons/common/playFill.svg'),
   'common/playLight': () => import('./icons/common/playLight.svg'),
+  'common/chat': () => import('./icons/common/chat.svg'),
   'common/publishFill': () => import('./icons/common/publishFill.svg'),
   'common/refresh': () => import('./icons/common/refresh.svg'),
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
