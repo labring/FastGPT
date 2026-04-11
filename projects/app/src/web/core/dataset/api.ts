@@ -56,11 +56,6 @@ import type {
 } from '@/pages/api/core/dataset/data/v2/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
-import type { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
-import type {
-  listExistIdQuery,
-  listExistIdResponse
-} from '@/pages/api/core/dataset/apiDataset/listExistId';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
 import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
@@ -74,16 +69,7 @@ import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
-import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
-import type {
-  GetApiDatasetCataLogResponse,
-  GetApiDatasetCataLogProps
-} from '@/pages/api/core/dataset/apiDataset/getCatalog';
-import type {
-  GetApiDatasetPathBody,
-  GetApiDatasetPathResponse
-} from '@/pages/api/core/dataset/apiDataset/getPathNames';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
 
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -288,12 +274,6 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
     datasetId
   });
 
-export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
-  POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {
-    maxQuantity: 1,
-    timeout: 600000
-  });
-
 export const deleteTrainingData = (data: deleteTrainingDataBody) =>
   POST(`/core/dataset/training/deleteTrainingData`, data);
 export const updateTrainingData = (data: updateTrainingDataBody) =>
@@ -306,15 +286,3 @@ export const getTrainingError = (data: getTrainingErrorBody) =>
 /* ================== read source ======================== */
 export const getCollectionSource = (data: readCollectionSourceBody) =>
   POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);
-
-/* ================== apiDataset ======================== */
-export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
-  POST<APIFileItemType[]>('/core/dataset/apiDataset/list', data);
-export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
-  GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
-
-export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
-  POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getCatalog', data);
-
-export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
-  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);

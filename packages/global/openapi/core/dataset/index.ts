@@ -2,6 +2,7 @@ import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
 import { DatasetDataPath } from './data';
 import { DatasetCollectionPath } from './collection';
+import { ApiDatasetPath } from './apiDataset';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,
@@ -215,5 +216,6 @@ export const DatasetPath: OpenAPIPath = {
   },
 
   ...DatasetCollectionPath,
-  ...DatasetDataPath
+  ...DatasetDataPath,
+  ...ApiDatasetPath
 };

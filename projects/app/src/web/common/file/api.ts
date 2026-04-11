@@ -20,13 +20,6 @@ export const getPresignedChatFileGetUrl = (params: PresignChatFileGetUrlParams) 
   return POST<string>('/core/chat/file/presignChatFileGetUrl', params);
 };
 
-export const getUploadDatasetFilePresignedUrl = (params: {
-  filename: string;
-  datasetId: string;
-}) => {
-  return POST<CreatePostPresignedUrlResult>('/core/dataset/presignDatasetFilePostUrl', params);
-};
-
 export const getUploadTempFilePresignedUrl = (params: { filename: string }) => {
   return POST<CreatePostPresignedUrlResult>('/common/file/presignTempFilePostUrl', params);
 };
