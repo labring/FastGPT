@@ -1,3 +1,4 @@
+/** @deprecated */
 import type { NextApiRequest } from 'next';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';

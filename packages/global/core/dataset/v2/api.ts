@@ -19,12 +19,6 @@ export const PresignDatasetFileGetUrlSchema = z.union([
 ]);
 export type PresignDatasetFileGetUrlParams = z.infer<typeof PresignDatasetFileGetUrlSchema>;
 
-export const PresignDatasetFilePostUrlSchema = z.object({
-  filename: z.string().min(1),
-  datasetId: ObjectIdSchema
-});
-export type PresignDatasetFilePostUrlParams = z.infer<typeof PresignDatasetFilePostUrlSchema>;
-
 export const ShortPreviewLinkSchema = z.object({
   k: z
     .string()

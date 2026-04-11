@@ -39,12 +39,6 @@ import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/typ
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
-import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
-import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
-import type {
-  PostPreviewFilesChunksProps,
-  PreviewChunksResponse
-} from '@/pages/api/core/dataset/file/getPreviewChunks';
 import type {
   readCollectionSourceBody,
   readCollectionSourceResponse
@@ -58,17 +52,7 @@ import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/contro
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
-import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
-import type {
-  getTrainingDataDetailBody,
-  getTrainingDataDetailResponse
-} from '@/pages/api/core/dataset/training/getTrainingDataDetail';
-import type { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
 import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
-import type {
-  getTrainingErrorBody,
-  getTrainingErrorResponse
-} from '@/pages/api/core/dataset/training/getTrainingError';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
 
@@ -264,24 +248,6 @@ export const delOneDatasetDataById = (id: string) =>
 // Get quote data
 export const getQuoteData = (data: GetQuoteDataProps) =>
   POST<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, data);
-
-/* ================ training ==================== */
-export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
-  POST(`/core/dataset/training/rebuildEmbedding`, data);
-
-export const getDatasetTrainingQueue = (datasetId: string) =>
-  GET<getDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
-    datasetId
-  });
-
-export const deleteTrainingData = (data: deleteTrainingDataBody) =>
-  POST(`/core/dataset/training/deleteTrainingData`, data);
-export const updateTrainingData = (data: updateTrainingDataBody) =>
-  PUT(`/core/dataset/training/updateTrainingData`, data);
-export const getTrainingDataDetail = (data: getTrainingDataDetailBody) =>
-  POST<getTrainingDataDetailResponse>(`/core/dataset/training/getTrainingDataDetail`, data);
-export const getTrainingError = (data: getTrainingErrorBody) =>
-  POST<getTrainingErrorResponse>(`/core/dataset/training/getTrainingError`, data);
 
 /* ================== read source ======================== */
 export const getCollectionSource = (data: readCollectionSourceBody) =>

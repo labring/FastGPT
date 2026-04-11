@@ -5,16 +5,14 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import {
+  GetDatasetTrainingQueueQuerySchema,
+  GetDatasetTrainingQueueResponseSchema,
+  type GetDatasetTrainingQueueResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
 
-export type getDatasetTrainingQueueResponse = {
-  rebuildingCount: number;
-  trainingCount: number;
-};
-
-async function handler(
-  req: ApiRequestProps<any, { datasetId: string }>
-): Promise<getDatasetTrainingQueueResponse> {
-  const { datasetId } = req.query;
+async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueResponse> {
+  const { datasetId } = GetDatasetTrainingQueueQuerySchema.parse(req.query);
 
   const { teamId } = await authDataset({
     req,
@@ -39,10 +37,10 @@ async function handler(
     )
   ]);
 
-  return {
+  return GetDatasetTrainingQueueResponseSchema.parse({
     rebuildingCount,
     trainingCount
-  };
+  });
 }
 
 export default NextAPI(handler);

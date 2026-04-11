@@ -34,6 +34,8 @@ export const TagsMap = {
   datasetCollectionController: '集合操作',
   datasetData: '数据管理',
   datasetTraining: '训练管理',
+  datasetApiDataset: 'API 数据集管理',
+  datasetFile: '文件管理',
 
   // Plugin
   pluginToolTag: '工具标签',

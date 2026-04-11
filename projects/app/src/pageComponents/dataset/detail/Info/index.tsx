@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { postRebuildEmbedding } from '@/web/core/dataset/api';
+import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';

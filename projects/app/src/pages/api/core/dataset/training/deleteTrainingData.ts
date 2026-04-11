@@ -3,21 +3,14 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  DeleteTrainingDataBodySchema,
+  DeleteTrainingDataResponseSchema,
+  type DeleteTrainingDataResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
 
-export type deleteTrainingDataBody = {
-  datasetId: string;
-  collectionId: string;
-  dataId: string;
-};
-
-export type deleteTrainingDataQuery = {};
-
-export type deleteTrainingDataResponse = {};
-
-async function handler(
-  req: ApiRequestProps<deleteTrainingDataBody, deleteTrainingDataQuery>
-): Promise<deleteTrainingDataResponse> {
-  const { datasetId, collectionId, dataId } = req.body;
+async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
+  const { datasetId, collectionId, dataId } = DeleteTrainingDataBodySchema.parse(req.body);
 
   const { teamId } = await authDatasetCollection({
     req,
@@ -33,7 +26,7 @@ async function handler(
     _id: dataId
   });
 
-  return {};
+  return DeleteTrainingDataResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   PresignDatasetFileGetUrlSchema,
-  PresignDatasetFilePostUrlSchema,
   ShortPreviewLinkSchema
 } from '@fastgpt/global/core/dataset/v2/api';
+import { PresignDatasetFilePostUrlBodySchema } from '@fastgpt/global/openapi/core/dataset/file/api';
 
 describe('PresignDatasetFileGetUrlSchema', () => {
   describe('key variant', () => {
@@ -141,9 +141,9 @@ describe('PresignDatasetFileGetUrlSchema', () => {
   });
 });
 
-describe('PresignDatasetFilePostUrlSchema', () => {
+describe('PresignDatasetFilePostUrlBodySchema', () => {
   it('should accept valid filename and datasetId', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       filename: 'test-file.pdf',
       datasetId: '68ee0bd23d17260b7829b137'
     });
@@ -160,7 +160,7 @@ describe('PresignDatasetFilePostUrlSchema', () => {
     const objectId = {
       toString: () => '68ee0bd23d17260b7829b137'
     };
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       filename: 'test-file.pdf',
       datasetId: objectId
     });
@@ -174,7 +174,7 @@ describe('PresignDatasetFilePostUrlSchema', () => {
   });
 
   it('should accept filename with special characters', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       filename: '中文文件名.pdf',
       datasetId: '68ee0bd23d17260b7829b137'
     });
@@ -182,7 +182,7 @@ describe('PresignDatasetFilePostUrlSchema', () => {
   });
 
   it('should reject empty filename', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       filename: '',
       datasetId: '68ee0bd23d17260b7829b137'
     });
@@ -190,14 +190,14 @@ describe('PresignDatasetFilePostUrlSchema', () => {
   });
 
   it('should reject missing filename', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       datasetId: '68ee0bd23d17260b7829b137'
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject invalid datasetId', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       filename: 'test-file.pdf',
       datasetId: 'invalid-id'
     });
@@ -205,14 +205,14 @@ describe('PresignDatasetFilePostUrlSchema', () => {
   });
 
   it('should reject missing datasetId', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({
       filename: 'test-file.pdf'
     });
     expect(result.success).toBe(false);
   });
 
   it('should reject empty object', () => {
-    const result = PresignDatasetFilePostUrlSchema.safeParse({});
+    const result = PresignDatasetFilePostUrlBodySchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });

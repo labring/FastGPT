@@ -7,10 +7,10 @@ import {
   getDatasetById,
   getDatasetCollectionTags,
   getDatasetPaths,
-  getDatasetTrainingQueue,
   postCreateDatasetCollectionTag,
   putDatasetById
 } from '../api';
+import { getDatasetTrainingQueue } from '../api/training';
 import { defaultDatasetDetail } from '../constants';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/dataset/type';

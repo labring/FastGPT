@@ -17,18 +17,18 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api';
 import {
   deleteTrainingData,
-  getDatasetCollectionTrainingDetail,
   getTrainingDataDetail,
   getTrainingError,
   updateTrainingData
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/training';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { type getTrainingDataDetailResponse } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
+import { type GetTrainingDataDetailResponse } from '@fastgpt/global/openapi/core/dataset/training/api';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { TrainingProcess } from '@/web/core/dataset/constants';
 import { useForm } from 'react-hook-form';
@@ -301,7 +301,7 @@ const ErrorView = ({
     [TrainingModeEnum.auto]: t('dataset:process.Auto_Index')
   };
 
-  const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();
+  const [editChunk, setEditChunk] = useState<GetTrainingDataDetailResponse>();
 
   const {
     data: errorList,
@@ -449,7 +449,7 @@ const EditView = ({
   onSave
 }: {
   loading: boolean;
-  editChunk: getTrainingDataDetailResponse;
+  editChunk: GetTrainingDataDetailResponse;
   onCancel: () => void;
   onSave: (data: { q: string; a?: string }) => void;
 }) => {

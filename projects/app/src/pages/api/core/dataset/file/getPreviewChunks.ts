@@ -1,7 +1,7 @@
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   OwnerPermissionVal,
   WritePermissionVal
@@ -14,47 +14,28 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
-import type { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
-
-export type PostPreviewFilesChunksProps = ChunkSettingsType & {
-  datasetId: string;
-  type: DatasetSourceReadTypeEnum;
-  sourceId: string;
-
-  customPdfParse?: boolean;
-
-  // Chunk settings
-  overlapRatio: number;
-
-  // Read params
-  selector?: string;
-  externalFileId?: string;
-};
-export type PreviewChunksResponse = {
-  chunks: {
-    q: string;
-    a: string;
-  }[];
-  total: number;
-};
+import {
+  GetPreviewChunksBodySchema,
+  GetPreviewChunksResponseSchema,
+  type GetPreviewChunksBody,
+  type GetPreviewChunksResponse
+} from '@fastgpt/global/openapi/core/dataset/file/api';
 
 async function handler(
-  req: ApiRequestProps<PostPreviewFilesChunksProps>
-): Promise<PreviewChunksResponse> {
-  let {
+  req: ApiRequestProps<GetPreviewChunksBody>
+): Promise<GetPreviewChunksResponse> {
+  const {
     type,
     sourceId,
     customPdfParse = false,
-
     overlapRatio,
     selector,
     datasetId,
     externalFileId,
-
     ...chunkSettings
-  } = req.body;
+  } = GetPreviewChunksBodySchema.parse(req.body);
 
   if (!sourceId) {
     throw new Error('sourceId is empty');
@@ -118,9 +99,10 @@ async function handler(
     a: replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
   }));
 
-  return {
+  return GetPreviewChunksResponseSchema.parse({
     chunks: chunksWithJWT,
     total: chunks.length
-  };
+  });
 }
+
 export default NextAPI(handler);
