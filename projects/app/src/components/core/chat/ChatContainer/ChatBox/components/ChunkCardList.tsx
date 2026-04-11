@@ -18,12 +18,14 @@ const ChunkCardList = React.memo(function QuoteList({
   chatItemDataId = '',
   rawSearch = [],
   applicationId,
-  chatId
+  chatId,
+  isAgenticMode = false
 }: {
   chatItemDataId?: string;
   rawSearch: SearchDataResponseItemType[];
   applicationId?: string;
   chatId?: string;
+  isAgenticMode?: boolean;
 }) {
   const theme = useTheme();
   const { appId, outLinkAuthData } = useChatStore();
@@ -114,7 +116,7 @@ const ChunkCardList = React.memo(function QuoteList({
         if (item.retrievalRank !== undefined) {
           recallRank = `${item.retrievalRank + 1}`;
         }
-        descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
+        !isAgenticMode && descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
         // 使用 TOP1、TOP2 格式作为标题
         const title = `TOP${index + 1}`;

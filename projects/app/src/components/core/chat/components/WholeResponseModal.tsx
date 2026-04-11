@@ -211,6 +211,23 @@ export const WholeResponseContent = ({
       );
     }
     if (isEmpty) return null;
+    // 多轮智能检索逻辑
+    if (isAgenticMode) {
+      return (
+        <Row
+          label={t('chat:search_results')}
+          rawDom={
+            <QuoteList
+              chatItemDataId={dataId}
+              rawSearch={activeModule.quoteList!}
+              applicationId={appId}
+              chatId={chatId}
+              isAgenticMode={isAgenticMode}
+            />
+          }
+        />
+      );
+    }
     return (
       <>
         {hasDatabase && (
