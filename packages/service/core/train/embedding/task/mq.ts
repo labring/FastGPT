@@ -1,0 +1,18 @@
+import { getQueue, QueueNames } from '../../../../common/bullmq';
+import { DEFAULT_JOB_BACKOFF_DELAY } from '../constants';
+
+export type EmbeddingTrainTaskJobData = {
+  taskId: string;
+};
+
+export const embeddingTrainTaskQueue = getQueue<EmbeddingTrainTaskJobData>(
+  QueueNames.embeddingTrainTask,
+  {
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: DEFAULT_JOB_BACKOFF_DELAY },
+      removeOnComplete: { age: 7 * 24 * 60 * 60 },
+      removeOnFail: false // Keep failed jobs for troubleshooting
+    }
+  }
+);

@@ -33,7 +33,6 @@ export type getPaginationRecordsBody = PaginationProps &
     chatLogsFilter?: `${ChatLogsFilterEnum}`;
   };
 
-
 export type getPaginationRecordsResponse = PaginationResponse<ChatItemType> & {
   goodTotal?: number;
   badTotal?: number;
@@ -122,7 +121,7 @@ export async function handler(
     });
   }
 
-    // Add rewriteStandardizedQuery to Human messages
+  // Add rewriteStandardizedQuery to Human messages
   filteredHistories.forEach((item, index) => {
     if (item.obj === ChatRoleEnum.Human) {
       const nextIndex = index + 1;
@@ -149,9 +148,7 @@ export async function handler(
   });
 
   return {
-    list: isPlugin
-      ? filteredHistories
-      : transformPreviewHistories(filteredHistories, showCite),
+    list: isPlugin ? filteredHistories : transformPreviewHistories(filteredHistories, showCite),
     total,
     goodTotal,
     badTotal,

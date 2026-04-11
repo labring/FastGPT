@@ -7,7 +7,7 @@ export enum RerankTrainsetStatusEnum {
 }
 
 /** Training data source */
-export enum TrainDataSourceEnum {
+export enum RerankTrainDataSourceEnum {
   dataset = 'dataset', // Generated from dataset
   chat_log = 'chat_log', // Converted from chat logs
   manual = 'manual' // Manually added
@@ -22,11 +22,18 @@ export enum RerankTrainTaskStatusEnum {
   cancelled = 'cancelled'
 }
 
+/** Training type */
+export enum RerankTrainTypeEnum {
+  lora = 'lora',
+  ptuning = 'ptuning'
+}
+
 /** Training task checkpoint stage */
 export enum RerankTaskCheckpointStageEnum {
-  preparing = 'preparing',
+  generate_trainset = 'generate_trainset', // Generate training set (renamed from preparing; auto mode: create trainset + trigger data gen; exact mode: wait for ready)
+  generate_evaldataset = 'generate_evaldataset', // Generate eval dataset (moved before finetuning; auto mode: call DiTing; exact mode: skip)
+  eval_basemodel = 'eval_basemodel', // Evaluate base model to establish baseline
   finetuning = 'finetuning', // Model fine-tuning (sft bridge executes fine-tuning and auto-deploys)
   registering = 'registering', // Model registration (register configuration in FastGPT)
-  evaluating = 'evaluating',
-  applying = 'applying' // Apply update (apply fine-tuned model to app workflow)
+  eval_tunedmodel = 'eval_tunedmodel' // Evaluate fine-tuned model, compare with baseline
 }

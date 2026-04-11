@@ -718,7 +718,6 @@
   "checkpoint_stage.finetuning": "模型训练",
   "checkpoint_stage.registering": "注册模型",
   "checkpoint_stage.evaluating": "模型评测",
-  "checkpoint_stage.applying": "应用更新",
   "search_placeholder": "搜索",
   "chat_search_results": "搜索结果",
   "select_knowledge_base": "选择知识库",

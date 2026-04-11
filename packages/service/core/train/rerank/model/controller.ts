@@ -4,7 +4,6 @@ import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getModelProvider } from '../../../app/provider/controller';
-import { deleteSFTTask } from '../external';
 import {
   deleteTunedModelChannel,
   createTunedModelChannel,
@@ -14,20 +13,14 @@ import {
 /**
  * Create rerank model configuration (idempotent)
  *
- * Integrates with FastGPT model management system to create model configuration and AI Proxy channel.
  * Architecture: Model config contains metadata only, channel contains access credentials.
- * Order: 1) Create model config first, 2) Create channel second, 3) Poll until channel is available.
+ * Order: 1) Create model config, 2) Create channel, 3) Poll until channel is available.
  *
- * @param params - Model configuration parameters
- * @param params.name - Model alias name
- * @param params.endpoint - Model endpoint configuration
- * @param params.endpoint.base_url - OpenAI API base URL (stored in channel only)
- * @param params.endpoint.api_key - API key (stored in channel only)
- * @param params.endpoint.model - Model name
- * @param params.isActive - Whether to activate the model
- * @param params.charsPointsPrice - Character points price
+ * @param params.name - Display name for the tuned model
+ * @param params.endpoint - Tuned model endpoint (stored in channel, not model config)
+ * @param params.isActive - Whether to activate the model immediately
+ * @param params.charsPointsPrice - Inherited from base model
  * @returns Model configuration object ID
- * @throws {Error} When model config or channel creation fails, or channel does not become available within timeout
  */
 export async function createRerankModelConfig(params: {
   name: string;
@@ -37,24 +30,21 @@ export async function createRerankModelConfig(params: {
     model: string;
   };
   isActive: boolean;
-  charsPointsPrice: number;
+  charsPointsPrice?: number;
 }): Promise<string> {
   const { name, endpoint, isActive, charsPointsPrice } = params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 
-  // Step 1: Create or update model configuration in database (idempotent with upsert)
-  // Model config contains metadata only, no credentials
   const modelConfig: RerankModelItemType = {
     provider: getModelProvider('Sangfor AICP').id,
     model,
     name,
     isActive: isActive ?? true,
     isCustom: true,
-    isTuned: true, // Mark as fine-tuned model created by training module
-    // Do NOT store requestUrl and requestAuth - these are in the channel
+    isTuned: true,
     type: ModelTypeEnum.rerank,
-    charsPointsPrice
+    charsPointsPrice: charsPointsPrice ?? 0
   };
 
   const result = await MongoSystemModel.findOneAndUpdate(
@@ -104,19 +94,16 @@ export async function createRerankModelConfig(params: {
 /**
  * Delete rerank model configuration
  *
- * Deletes model from AI Proxy channel, FastGPT system, and SFT Bridge platform.
- * Order: 1) Delete channel first, 2) Delete model config, 3) Delete from SFT Bridge.
+ * Deletes model from AI Proxy channel and FastGPT system.
+ * SFT Bridge resource cleanup is handled separately by deleteRerankTrainTask.
+ * Order: 1) Delete channel first, 2) Delete model config + reload.
  *
  * @param modelConfigId - Model configuration ID (same as endpoint.model)
- * @param sftTaskId - Optional SFT Bridge task ID for cleanup (if available)
  * @returns Promise that resolves when deletion is complete
- * @throws {Error} When channel or model deletion fails (SFT Bridge errors are non-blocking)
+ * @throws {Error} When channel or model deletion fails
  */
-export async function deleteRerankModelConfig(
-  modelConfigId: string,
-  sftTaskId?: string
-): Promise<void> {
-  addLog.info('Deleting rerank model config', { modelConfigId, sftTaskId });
+export async function deleteRerankModelConfig(modelConfigId: string): Promise<void> {
+  addLog.info('Deleting rerank model config', { modelConfigId });
 
   // Step 1: Delete AI Proxy channel first (contains access credentials)
   await deleteTunedModelChannel(modelConfigId);
@@ -136,33 +123,5 @@ export async function deleteRerankModelConfig(
     // Reload system models after deletion
     await updatedReloadSystemModel();
     addLog.info('Reloaded system models', { modelConfigId });
-  }
-
-  // Step 3: Delete from SFT Bridge platform (async, non-blocking)
-  // Run in background to avoid blocking the main deletion flow (SFT task deletion can be slow)
-  // Only attempt deletion if sftTaskId is provided
-  if (sftTaskId) {
-    // Use setImmediate to run async without awaiting
-    setImmediate(() => {
-      deleteSFTTask({ taskId: sftTaskId })
-        .then((sftResult) => {
-          addLog.info('Successfully deleted SFT task from SFT Bridge', {
-            modelConfigId,
-            sftTaskId,
-            taskId: sftResult.task_id,
-            message: sftResult.message
-          });
-        })
-        .catch((sftError) => {
-          addLog.warn('Error calling SFT Bridge delete task API', {
-            modelConfigId,
-            sftTaskId,
-            error: sftError instanceof Error ? sftError.message : String(sftError)
-          });
-        });
-    });
-    addLog.info('Triggered async SFT task deletion', { modelConfigId, sftTaskId });
-  } else {
-    addLog.info('No sftTaskId provided, skipping SFT Bridge deletion', { modelConfigId });
   }
 }

@@ -3,11 +3,6 @@ import type { RerankTrainsetSchemaType } from '@fastgpt/global/core/train/rerank
 import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 
 const RerankTrainsetSchema = new connectionMongo.Schema({
-  appId: {
-    type: connectionMongo.Schema.Types.ObjectId,
-    ref: 'app',
-    required: true
-  },
   teamId: {
     type: connectionMongo.Schema.Types.ObjectId,
     ref: 'team',
@@ -47,7 +42,6 @@ const RerankTrainsetSchema = new connectionMongo.Schema({
 });
 
 // Indexes
-RerankTrainsetSchema.index({ appId: 1, createTime: -1 }); // Support querying all trainsets for an app, sorted by creation time
 RerankTrainsetSchema.index({ teamId: 1, updateTime: -1 });
 RerankTrainsetSchema.index({ status: 1 });
 RerankTrainsetSchema.index({ jobId: 1 });

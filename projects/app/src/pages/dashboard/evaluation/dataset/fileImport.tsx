@@ -30,9 +30,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import FileSelector, {
-  type SelectFileItemType
-} from '@/components/Select/FileSelectorBox';
+import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';

@@ -723,7 +723,6 @@
   "checkpoint_stage.finetuning": "Model training",
   "checkpoint_stage.registering": "Registering model",
   "checkpoint_stage.evaluating": "Model evaluation",
-  "checkpoint_stage.applying": "Applying updates",
   "search_placeholder": "Search",
   "chat_search_results": "Search results",
   "select_knowledge_base": "Select knowledge base",

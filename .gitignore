@@ -40,3 +40,4 @@ coverage
 document/.source
 AGENTS.md
 projects/app/worker/
+projects/app/data/train/

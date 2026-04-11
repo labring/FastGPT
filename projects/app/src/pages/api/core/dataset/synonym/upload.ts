@@ -107,4 +107,3 @@ export const config = {
 };
 
 export default NextAPI(handler);
-

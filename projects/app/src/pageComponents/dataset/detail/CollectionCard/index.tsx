@@ -274,8 +274,7 @@ const CollectionCard = () => {
             onRemoveClick={(collectionId) => {
               openDeleteConfirm({
                 onConfirm: () => onDelCollection([collectionId]),
-                customContent:
-                  t('dataset:confirm_remove_database_table')
+                customContent: t('dataset:confirm_remove_database_table')
               })();
             }}
           />
@@ -458,7 +457,7 @@ const CollectionCard = () => {
                                               onConfirm: () => {
                                                 onclickStartSync(collection._id);
                                               }
-                                          })()
+                                            })()
                                         }
                                       ]
                                     : []),

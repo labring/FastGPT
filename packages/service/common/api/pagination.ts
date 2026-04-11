@@ -1,6 +1,6 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '../../type/next';
-import type { SortOrder } from '@fastgpt/global/core/train/rerank/api';
+import type { SortOrder } from '@fastgpt/global/core/train/common/api';
 
 export const parsePaginationRequest = (req: ApiRequestProps) => {
   const {
@@ -19,7 +19,7 @@ export const parsePaginationRequest = (req: ApiRequestProps) => {
     pageSize: Number(pageSize),
     offset: offset ? Number(offset) : (Number(pageNum) - 1) * Number(pageSize)
   };
-}
+};
 
 /**
  * Parse sort parameters from request

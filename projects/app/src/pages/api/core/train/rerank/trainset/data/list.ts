@@ -27,6 +27,7 @@ async function handler(
   const { trainset } = await authRerankTrainset({
     req,
     authToken: true,
+    authApiKey: true,
     trainsetId,
     per: ReadPermissionVal
   });

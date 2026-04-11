@@ -71,7 +71,7 @@ const AutoLearn = () => {
       appId,
       sortField: 'createTime',
       sortOrder: sortOrder
-    };
+    } as const;
   }, [appId, sortOrder]);
 
   // 使用滚动分页获取训练任务数据

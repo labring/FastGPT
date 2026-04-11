@@ -187,7 +187,7 @@ export async function dispatchDatasetSearch(
     const useVectorModelDataset = datasets.find(
       (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
-    // Get vector model
+    // Get vector model for database type search (SearchDatabaseData uses this)
     const vectorModel = useVectorModelDataset
       ? getEmbeddingModel(
           (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModel').lean())
@@ -422,41 +422,149 @@ export async function dispatchDatasetSearch(
       }
     }
     if (commonDatasetIds.length > 0) {
-      const searchData = {
-        histories,
-        teamId,
-        reRankQuery: userChatInput,
-        queries: [userChatInput],
-        model: vectorModel!.model,
-        similarity,
-        limit,
-        datasetIds: commonDatasetIds,
-        searchMode,
-        embeddingWeight,
-        usingReRank,
-        rerankModel: rerankModelData,
-        rerankMethod,
-        rerankWeight,
-        collectionFilterMatch
-      };
+      // Group common datasets by their vectorModel (user-selected per dataset in node)
+      type ModelGroup = { vectorModelId: string; datasetIds: string[] };
+      const modelGroupMap = new Map<string, ModelGroup>();
+      const needsDbLookupIds: string[] = [];
 
-      commonSearchResult = datasetDeepSearch
-        ? await deepRagSearch({
-            ...searchData,
-            datasetDeepSearchModel,
-            datasetDeepSearchMaxTimes,
-            datasetDeepSearchBg
-          })
-        : await defaultSearchDatasetData({
-            ...searchData,
-            datasetSearchUsingExtensionQuery,
-            datasetSearchExtensionModel,
-            datasetSearchExtensionBg,
-            isAssistant,
-            datasetIds: datasetIds,
-            appId, // 传递 appId 用于校正数据检索
-            faqAnswerMode // 传递 faqAnswerMode 用于 FAQ 检索判断
+      for (const d of datasets) {
+        if (!commonDatasetIds.includes(d.datasetId)) continue;
+        const modelId = d.vectorModel?.model;
+        if (modelId) {
+          if (!modelGroupMap.has(modelId)) {
+            modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
+          }
+          modelGroupMap.get(modelId)!.datasetIds.push(d.datasetId);
+        } else {
+          needsDbLookupIds.push(d.datasetId);
+        }
+      }
+
+      // Fall back to DB lookup for datasets without vectorModel in SelectedDatasetType (backward compat)
+      if (needsDbLookupIds.length > 0) {
+        const dbModels = await Promise.all(
+          needsDbLookupIds.map((id) => MongoDataset.findById(id, 'vectorModel').lean())
+        );
+        for (let i = 0; i < needsDbLookupIds.length; i++) {
+          const dsId = needsDbLookupIds[i];
+          const modelId = getEmbeddingModel(dbModels[i]?.vectorModel).model;
+          if (!modelGroupMap.has(modelId)) {
+            modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
+          }
+          modelGroupMap.get(modelId)!.datasetIds.push(dsId);
+        }
+      }
+
+      addLog.debug('Dataset Search - Model grouping completed', {
+        totalDatasetIds: commonDatasetIds.length,
+        groupCount: modelGroupMap.size,
+        groups: [...modelGroupMap.entries()].map(([modelId, group]) => ({
+          vectorModelId: modelId,
+          datasetCount: group.datasetIds.length,
+          datasetIds: group.datasetIds
+        }))
+      });
+
+      // Parallel search per model group, collect results with model info for billing
+      const groupSearchResults = await Promise.all(
+        [...modelGroupMap.values()].map(async (group) => {
+          const searchData = {
+            histories,
+            teamId,
+            reRankQuery: userChatInput,
+            queries: [userChatInput],
+            model: group.vectorModelId,
+            similarity,
+            limit,
+            datasetIds: group.datasetIds,
+            searchMode,
+            embeddingWeight,
+            usingReRank,
+            rerankModel: rerankModelData,
+            rerankMethod,
+            rerankWeight,
+            collectionFilterMatch
+          };
+
+          const result = datasetDeepSearch
+            ? await deepRagSearch({
+                ...searchData,
+                datasetDeepSearchModel,
+                datasetDeepSearchMaxTimes,
+                datasetDeepSearchBg
+              })
+            : await defaultSearchDatasetData({
+                ...searchData,
+                datasetSearchUsingExtensionQuery,
+                datasetSearchExtensionModel,
+                datasetSearchExtensionBg,
+                isAssistant,
+                synonymDatasetIds: datasetIds, // 所有知识库 ID，用于同义词检索；向量检索使用 searchData.datasetIds（分组 ID）
+                appId,
+                faqAnswerMode
+              });
+
+          addLog.debug('Dataset Search - Model group search completed', {
+            vectorModelId: group.vectorModelId,
+            datasetIds: group.datasetIds,
+            resultCount: result.searchRes.length,
+            embeddingTokens: result.embeddingTokens,
+            reRankInputTokens: result.reRankInputTokens,
+            usingReRank: result.usingReRank
           });
+
+          return { result, vectorModelId: group.vectorModelId };
+        })
+      );
+
+      if (groupSearchResults.length > 0) {
+        // Merge searchRes from all groups, sorted by score descending
+        const mergedSearchRes = groupSearchResults
+          .flatMap((g) => g.result.searchRes)
+          .sort((a, b) => (b.score[0]?.value ?? 0) - (a.score[0]?.value ?? 0));
+
+        // Use first group's result as base for metadata fields
+        const baseResult = groupSearchResults[0].result as SearchDatasetDataResponse;
+        commonSearchResult = {
+          ...baseResult,
+          searchRes: mergedSearchRes,
+          embeddingTokens: groupSearchResults.reduce((s, g) => s + g.result.embeddingTokens, 0),
+          reRankInputTokens: groupSearchResults.reduce((s, g) => s + g.result.reRankInputTokens, 0)
+        };
+
+        addLog.debug('Dataset Search - Results merged from multiple models', {
+          groupCount: groupSearchResults.length,
+          totalSearchResults: mergedSearchRes.length,
+          totalEmbeddingTokens: commonSearchResult.embeddingTokens,
+          totalReRankTokens: commonSearchResult.reRankInputTokens,
+          groups: groupSearchResults.map((g) => ({
+            vectorModelId: g.vectorModelId,
+            resultCount: g.result.searchRes.length,
+            embeddingTokens: g.result.embeddingTokens,
+            reRankTokens: g.result.reRankInputTokens
+          }))
+        });
+
+        // Store per-model token counts for billing
+        const modelTokenMap = new Map<string, { modelName: string; tokens: number }>();
+        for (const { result, vectorModelId } of groupSearchResults) {
+          if (result.embeddingTokens > 0) {
+            const modelData = getEmbeddingModel(vectorModelId);
+            const key = vectorModelId;
+            const existing = modelTokenMap.get(key);
+            if (existing) {
+              existing.tokens += result.embeddingTokens;
+            } else {
+              modelTokenMap.set(key, {
+                modelName: modelData?.name || vectorModelId,
+                tokens: result.embeddingTokens
+              });
+            }
+          }
+        }
+        // Attach modelTokenMap to be used in billing below
+        (commonSearchResult as any).__modelTokenMap = modelTokenMap;
+      }
     }
 
     embeddingTokens += totalEmbeddingTokens;
@@ -507,11 +615,27 @@ export async function dispatchDatasetSearch(
 
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
-    // 1. Search vector
-    if (vectorModel) {
+    // 1. Search vector — bill per embedding model used across all groups
+    const modelTokenMap: Map<string, { modelName: string; tokens: number }> | undefined =
+      commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
+    if (modelTokenMap && modelTokenMap.size > 0) {
+      for (const { modelName, tokens } of modelTokenMap.values()) {
+        const { totalPoints, modelName: billingModelName } = formatModelChars2Points({
+          model: modelName,
+          inputTokens: tokens
+        });
+        nodeDispatchUsages.push({
+          totalPoints,
+          moduleName: node.name,
+          model: billingModelName,
+          inputTokens: tokens
+        });
+      }
+    } else if (vectorModel && embeddingTokens > 0) {
+      // Fallback: bill using the primary vectorModel (database search tokens)
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          model: vectorModel!.name,
+          model: vectorModel.name,
           inputTokens: embeddingTokens
         });
       nodeDispatchUsages.push({

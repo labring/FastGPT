@@ -100,7 +100,7 @@ describe('formatSynthesisIndexesToPairs', () => {
   });
 
   it('应该按 synId 顺序排列（0-4）', () => {
-    // 故意打乱顺序
+    // Deliberately shuffled order
     const indexes: DatasetDataIndexItemType[] = [
       { type: DatasetDataIndexTypeEnum.synthesis, text: 'Q4-1', synId: 4 } as any,
       { type: DatasetDataIndexTypeEnum.synthesis, text: 'Q0-1', synId: 0 } as any,
@@ -117,7 +117,7 @@ describe('formatSynthesisIndexesToPairs', () => {
     const result = formatSynthesisIndexesToPairs(indexes);
 
     expect(result.length).toBe(5);
-    // 结果应该按 synId 0-4 的顺序排列
+    // Result should be ordered by synId 0-4
     expect(result[0]).toEqual(['Q0-1', 'Q0-2']);
     expect(result[1]).toEqual(['Q1-1', 'Q1-2']);
     expect(result[2]).toEqual(['Q2-1', 'Q2-2']);
@@ -126,7 +126,7 @@ describe('formatSynthesisIndexesToPairs', () => {
   });
 
   it('应该处理 synthesis 索引数量不完整的情况', () => {
-    // 只有 2 对索引（synId 0 和 1）
+    // Only 2 index pairs (synId 0 and 1)
     const indexes: DatasetDataIndexItemType[] = [
       { type: DatasetDataIndexTypeEnum.synthesis, text: '问题0', synId: 0 } as any,
       { type: DatasetDataIndexTypeEnum.synthesis, text: '问题1', synId: 0 } as any,
@@ -136,7 +136,7 @@ describe('formatSynthesisIndexesToPairs', () => {
 
     const result = formatSynthesisIndexesToPairs(indexes);
 
-    // 应该只有 2 对，因为 synId 2-4 没有数据
+    // Should have only 2 pairs since synId 2-4 have no data
     expect(result.length).toBe(2);
     expect(result).toEqual([
       ['问题0', '问题1'],

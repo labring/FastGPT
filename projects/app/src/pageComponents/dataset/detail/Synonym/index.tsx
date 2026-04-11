@@ -612,4 +612,3 @@ const SynonymTab = () => {
 };
 
 export default SynonymTab;
-
