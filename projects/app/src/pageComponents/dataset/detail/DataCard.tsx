@@ -1,10 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Card, IconButton, Flex, Button, useTheme, Image } from '@chakra-ui/react';
-import {
-  getDatasetDataList,
-  delOneDatasetDataById,
-  getDatasetCollectionById
-} from '@/web/core/dataset/api';
+import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getDatasetDataList, delOneDatasetDataById } from '@/web/core/dataset/api/data';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';

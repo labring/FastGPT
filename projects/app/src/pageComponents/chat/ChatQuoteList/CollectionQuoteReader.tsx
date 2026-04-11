@@ -8,7 +8,7 @@ import DownloadButton from './DownloadButton';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useMemo, useState } from 'react';
-import { getDatasetDataPermission } from '@/web/core/dataset/api';
+import { getDatasetDataPermission } from '@/web/core/dataset/api/data';
 import ScoreTag from './ScoreTag';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';

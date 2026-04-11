@@ -1,8 +1,8 @@
 import { MongoDatasetTraining } from './schema';
 import type {
-  PushDatasetDataChunkProps,
-  PushDatasetDataResponse
-} from '@fastgpt/global/core/dataset/api';
+  PushDataChunkType,
+  PushDataResponseType
+} from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
@@ -46,7 +46,7 @@ export async function pushDataListToTrainingQueue({
   datasetId: string;
   collectionId: string;
 
-  data: PushDatasetDataChunkProps[];
+  data: PushDataChunkType[];
   mode?: TrainingModeEnum;
 
   agentModel: string;
@@ -57,7 +57,7 @@ export async function pushDataListToTrainingQueue({
 
   billId?: string;
   session?: ClientSession;
-}): Promise<PushDatasetDataResponse> {
+}): Promise<PushDataResponseType> {
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));

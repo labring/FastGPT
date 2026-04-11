@@ -1,4 +1,3 @@
-import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
 import type { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { UseFormReturn } from 'react-hook-form';

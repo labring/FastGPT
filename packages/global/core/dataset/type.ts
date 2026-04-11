@@ -157,9 +157,19 @@ export type DatasetCollectionTagsSchemaType = z.infer<typeof DatasetCollectionTa
 
 /* ===== Data ===== */
 export const DatasetDataIndexItemSchema = z.object({
-  type: z.enum(DatasetDataIndexTypeEnum).meta({ description: '索引类型' }),
+  type: z
+    .enum(DatasetDataIndexTypeEnum)
+    .optional()
+    .default(DatasetDataIndexTypeEnum.custom)
+    .meta({ description: '索引类型' }),
   dataId: z.string().meta({ description: 'vectorDB ID' }),
   text: z.string().meta({ description: '索引文本' })
+});
+const DatasetDataIndexOptionalSchema = DatasetDataIndexItemSchema.omit({ dataId: true }).extend({
+  dataId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: 'PG 数据 ID（可选）'
+  })
 });
 export type DatasetDataIndexItemType = z.infer<typeof DatasetDataIndexItemSchema>;
 
@@ -321,6 +331,50 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
   isOwner: z.boolean().meta({ description: '是否为 owner' })
 });
 export type DatasetDataItemType = z.infer<typeof DatasetDataItemSchema>;
+
+// Update dataset data
+export const UpdateDatasetDataPropsSchema = z.object({
+  dataId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据 ID'
+  }),
+  q: z.string().meta({
+    example: '什么是 FastGPT？',
+    description: '问题/主文本'
+  }),
+  a: z.string().optional().meta({
+    example: 'FastGPT 是一个 AI Agent 构建平台',
+    description: '回答/补充文本'
+  }),
+  indexes: z.array(DatasetDataIndexOptionalSchema).optional().meta({
+    description: '向量索引列表'
+  }),
+  imageId: z.string().optional().meta({
+    description: '图片 ID'
+  }),
+  indexPrefix: z.string().optional().meta({
+    description: '索引前缀标题'
+  })
+});
+export type UpdateDatasetDataPropsType = z.infer<typeof UpdateDatasetDataPropsSchema>;
+
+// Create dataset data
+export const CreateDatasetDataPropsSchema = z.object({
+  teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
+  tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
+  datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  chunkIndex: z.int().min(0).optional().meta({ description: '块索引' }),
+  q: z.string().meta({ description: '问题/主文本' }),
+  a: z.string().optional().meta({ description: '回答/补充文本' }),
+  imageId: z.string().optional().meta({ description: '图片 ID' }),
+  indexes: z
+    .array(DatasetDataIndexItemSchema.omit({ dataId: true }))
+    .optional()
+    .meta({ description: '向量索引列表' }),
+  indexPrefix: z.string().optional().meta({ description: '索引前缀标题' })
+});
+export type CreateDatasetDataPropsType = z.infer<typeof CreateDatasetDataPropsSchema>;
 
 /* --------------- file ---------------------- */
 export const DatasetFileSchema = z.object({

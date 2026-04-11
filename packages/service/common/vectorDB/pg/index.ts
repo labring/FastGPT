@@ -1,7 +1,6 @@
 /* pg vector crud */
 import { DatasetVectorTableName, VectorVQ } from '../constants';
 import { PgClient, connectPg } from './controller';
-import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
@@ -168,7 +167,11 @@ export class PgVectorCtrl implements VectorControllerType {
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
         COMMIT;`
     );
-    const rows = results?.[results.length - 2]?.rows as PgSearchRawType[];
+    const rows = results?.[results.length - 2]?.rows as {
+      id: string;
+      collection_id: string;
+      score: number;
+    }[];
 
     if (!Array.isArray(rows)) {
       return {

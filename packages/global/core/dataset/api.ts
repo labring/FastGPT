@@ -1,5 +1,5 @@
-import type { ChunkSettingsType, DatasetDataIndexItemType } from './type';
-import type { DatasetCollectionTypeEnum, DatasetCollectionDataProcessModeEnum } from './constants';
+import type { ChunkSettingsType } from './type';
+import type { DatasetCollectionTypeEnum } from './constants';
 import type { ParentIdType } from '../../common/parentFolder/type';
 import type { APIFileItemType } from './apiDataset/type';
 
@@ -95,37 +95,7 @@ export type UpdateDatasetCollectionTagParams = {
 };
 
 /* ================= data ===================== */
-export type PgSearchRawType = {
-  id: string;
-  collection_id: string;
-  score: number;
-};
-export type PushDatasetDataChunkProps = {
-  q?: string;
-  a?: string;
-  imageId?: string;
-  chunkIndex?: number;
-  indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
-};
 
 export type PostDatasetSyncParams = {
   datasetId: string;
-};
-
-export type PushDatasetDataProps = {
-  collectionId: string;
-  data: PushDatasetDataChunkProps[];
-  trainingType?: DatasetCollectionDataProcessModeEnum;
-  indexSize?: number;
-  autoIndexes?: boolean;
-  imageIndex?: boolean;
-  prompt?: string;
-
-  billId?: string;
-
-  // Abandon
-  trainingMode?: DatasetCollectionDataProcessModeEnum;
-};
-export type PushDatasetDataResponse = {
-  insertLen: number;
 };

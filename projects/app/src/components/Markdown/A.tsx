@@ -16,7 +16,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
-import { getQuoteData } from '@/web/core/dataset/api';
+import { getQuoteData } from '@/web/core/dataset/api/data';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import Markdown from '.';

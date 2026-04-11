@@ -24,7 +24,6 @@ import type {
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api';
-import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import type {
   CreateDatasetBody,
   CreateDatasetWithFilesBody,
@@ -37,25 +36,15 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
-import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import type {
   readCollectionSourceBody,
   readCollectionSourceResponse
 } from '@/pages/api/core/dataset/collection/read';
 import type { UpdateDatasetCollectionBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import type {
-  GetDatasetDataListProps,
-  GetDatasetDataListRes
-} from '@/pages/api/core/dataset/data/v2/list';
-import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
-import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
-import type { GetDatasetPermissionResponse as GetQuotePermissionResponse } from '@fastgpt/global/openapi/core/dataset/api';
 import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
-import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
-
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 /* ======================== dataset ======================= */
@@ -216,38 +205,6 @@ export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
-
-/* =============================== data ==================================== */
-/* get dataset list */
-export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST<GetDatasetDataListRes>(`/core/dataset/data/v2/list`, data);
-
-export const getDatasetDataPermission = (id?: string) =>
-  GET<GetQuotePermissionResponse>(`/core/dataset/data/getPermission`, { id });
-
-export const getDatasetDataItemById = (id: string) =>
-  GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });
-
-/**
- * insert one data to dataset (immediately insert)
- */
-export const postInsertData2Dataset = (data: InsertOneDatasetDataProps) =>
-  POST<string>(`/core/dataset/data/insertData`, data);
-
-/**
- * update one datasetData by id
- */
-export const putDatasetDataById = (data: UpdateDatasetDataProps) =>
-  PUT('/core/dataset/data/update', data);
-/**
- * 删除一条知识库数据
- */
-export const delOneDatasetDataById = (id: string) =>
-  DELETE<string>(`/core/dataset/data/delete`, { id });
-
-// Get quote data
-export const getQuoteData = (data: GetQuoteDataProps) =>
-  POST<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, data);
 
 /* ================== read source ======================== */
 export const getCollectionSource = (data: readCollectionSourceBody) =>

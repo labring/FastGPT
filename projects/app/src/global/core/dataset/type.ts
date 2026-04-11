@@ -27,18 +27,3 @@ export const DatasetCollectionsListItemSchema = z.object({
   hasError: z.boolean().optional().meta({ description: '是否错误' })
 });
 export type DatasetCollectionsListItemType = z.infer<typeof DatasetCollectionsListItemSchema>;
-
-/* ================= data ===================== */
-export const DatasetDataListItemSchema = z.object({
-  _id: ObjectIdSchema.meta({ description: '数据 ID' }),
-  datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
-  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  q: z.string().optional().meta({ description: '问题' }),
-  a: z.string().optional().meta({ description: '答案' }),
-  imageId: z.string().optional().meta({ description: '图片 ID' }),
-  imageSize: z.number().optional().meta({ description: '图片大小' }),
-  imagePreviewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
-  chunkIndex: z.number().optional().meta({ description: '块索引' }),
-  updated: z.boolean().optional().meta({ description: '是否更新' })
-});
-export type DatasetDataListItemType = z.infer<typeof DatasetDataListItemSchema>;

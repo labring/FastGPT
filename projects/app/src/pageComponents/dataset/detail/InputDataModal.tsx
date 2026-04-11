@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack, Image } from '@chakra-ui/react';
 import type { UseFormRegister } from 'react-hook-form';
 import { useFieldArray, useForm } from 'react-hook-form';
+import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
-  getDatasetCollectionById,
   getDatasetDataItemById
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/data';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
