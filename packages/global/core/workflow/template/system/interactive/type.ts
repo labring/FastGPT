@@ -1,10 +1,10 @@
 import { NodeOutputItemSchema } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from '../../../../../core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants';
-import type { ChatCompletionMessageParam } from '../../../../ai/type';
 import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schema';
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import z from 'zod';
+import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -42,21 +42,12 @@ export const ToolCallChildrenInteractiveSchema = z.object({
   params: z.object({
     childrenResponse: z.any(),
     toolParams: z.object({
-      memoryRequestMessages: z.array(z.any()), // 这轮工具中，产生的新的 messages
+      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema), // 这轮工具中，产生的新的 messages
       toolCallId: z.string() // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
     })
   })
 });
-export type ToolCallChildrenInteractive = InteractiveNodeType & {
-  type: 'toolChildrenInteractive';
-  params: {
-    childrenResponse: WorkflowInteractiveResponseType;
-    toolParams: {
-      memoryRequestMessages: ChatCompletionMessageParam[]; // 这轮工具中，产生的新的 messages
-      toolCallId: string; // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
-    };
-  };
-};
+export type ToolCallChildrenInteractive = z.infer<typeof ToolCallChildrenInteractiveSchema>;
 
 // Loop bode
 export const LoopInteractiveSchema = z.object({

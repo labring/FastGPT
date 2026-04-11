@@ -1,4 +1,4 @@
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 
 export const filterEmptyAssistantMessages = (messages: ChatCompletionMessageParam[]) => {
   return messages.filter((item) => {

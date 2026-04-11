@@ -18,7 +18,7 @@ import { ReadFileNodeResponseSchema } from '../template/system/readFiles/type';
 import type { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
-import { CompletionFinishReasonSchema } from '../../ai/type';
+import { CompletionFinishReasonSchema } from '../../ai/llm/type';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType

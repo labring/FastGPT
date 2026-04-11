@@ -1,6 +1,6 @@
 import type { I18nStringType } from '../../../common/i18n/type';
 import { hashStr } from '../../../common/string/tools';
-import type { ChatCompletionTool } from '../type';
+import type { ChatCompletionTool } from '../llm/type';
 import { z } from 'zod';
 
 // ---- 沙盒状态 ----

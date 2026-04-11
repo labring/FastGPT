@@ -2,7 +2,10 @@ import {
   parsePromptToolCall,
   promptToolCallMessageRewrite
 } from '@fastgpt/service/core/ai/llm/promptCall/index';
-import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import { describe, expect, it } from 'vitest';
 
 describe('parsePromptToolCall function tests', () => {

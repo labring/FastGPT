@@ -1,5 +1,5 @@
 import z from 'zod';
-import type { ChatCompletionTool } from '../../../ai/type';
+import type { ChatCompletionTool } from '../../../ai/llm/type';
 
 export enum SandboxToolIds {
   readFile = 'sandbox_read_file',

@@ -4,9 +4,8 @@ import type {
   ChatCompletionContentPart,
   ChatCompletionContentPartRefusal,
   ChatCompletionContentPartText,
-  ChatCompletionMessageParam,
-  SdkChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type';
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -443,5 +442,5 @@ export const loadRequestMessages = async ({
     )
   ).filter(Boolean) as ChatCompletionMessageParam[];
 
-  return loadMessages as SdkChatCompletionMessageParam[];
+  return loadMessages;
 };

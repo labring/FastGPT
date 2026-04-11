@@ -6,7 +6,7 @@ import {
   computedTemperature,
   parseReasoningContent
 } from '@fastgpt/service/core/ai/utils';
-import type { CompletionFinishReason } from '@fastgpt/global/core/ai/type';
+import type { CompletionFinishReason } from '@fastgpt/global/core/ai/llm/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 const mockModel = (maxResponse: number, maxTemperature?: number) =>

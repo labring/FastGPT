@@ -3,7 +3,7 @@ import {
   type ChatCompletionCreateParams,
   type ChatCompletionMessageParam,
   type ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { WorkerNameEnum, getWorkerController } from '../../../worker/utils';

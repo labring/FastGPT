@@ -1,5 +1,5 @@
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/type';
+import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';

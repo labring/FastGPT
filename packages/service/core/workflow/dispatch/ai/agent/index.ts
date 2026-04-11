@@ -28,7 +28,7 @@ import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent } from './sub/plan';
 
 import { formatFileInput } from './sub/file/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { masterCall } from './master/call';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import {

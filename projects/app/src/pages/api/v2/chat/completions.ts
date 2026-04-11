@@ -6,10 +6,6 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import type {
-  ChatCompletionCreateParams,
-  ChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -25,7 +21,6 @@ import {
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
-
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
@@ -43,14 +38,11 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -60,7 +52,6 @@ import {
   updateWorkflowToolInputByVariables
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
@@ -71,40 +62,12 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import type {
+  AuthResponseType} from '@fastgpt/global/openapi/core/chat/completion/api';
+import {
+  CompletionsPropsSchema
+} from '@fastgpt/global/openapi/core/chat/completion/api';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
-
-type FastGptWebChatProps = {
-  chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
-  appId?: string;
-  customUid?: string; // non-undefined: will be the priority provider for the logger.
-  metadata?: Record<string, any>;
-};
-
-export type Props = ChatCompletionCreateParams &
-  FastGptWebChatProps &
-  OutLinkChatAuthProps & {
-    messages: ChatCompletionMessageParam[];
-    responseChatItemId?: string;
-    stream?: boolean;
-    detail?: boolean;
-    retainDatasetCite?: boolean;
-    showSkillReferences?: boolean;
-    variables: Record<string, any>; // Global variables or plugin inputs
-  };
-
-type AuthResponseType = {
-  teamId: string;
-  tmbId: string;
-  app: AppSchemaType;
-  showCite?: boolean;
-  showRunningStatus?: boolean;
-  showSkillReferences?: boolean;
-  authType: `${AuthUserTypeEnum}`;
-  apikey?: string;
-  responseAllData: boolean;
-  outLinkUserId?: string;
-  sourceName?: string;
-};
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let {
@@ -118,15 +81,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamId: spaceTeamId,
     teamToken,
 
-    stream = false,
-    detail = false,
-    retainDatasetCite = false,
+    stream,
+    detail,
+    retainDatasetCite,
     showSkillReferences,
-    messages = [],
-    variables = {},
-    responseChatItemId = getNanoid(),
+    messages,
+    variables,
+    responseChatItemId,
     metadata
-  } = req.body as Props;
+  } = CompletionsPropsSchema.parse(req.body);
 
   const originIp = getIpFromRequest(req);
 

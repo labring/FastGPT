@@ -1,4 +1,4 @@
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseUrlToFileType } from '../../../../../utils/context';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';

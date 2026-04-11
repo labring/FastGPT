@@ -10,7 +10,6 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
   getChatTitleFromChatMessage,
@@ -24,8 +23,6 @@ import {
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   getLastInteractiveValue,
   getMaxHistoryLimitFromNodes,
@@ -35,7 +32,6 @@ import {
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
@@ -50,18 +46,7 @@ import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/f
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
-
-export type Props = {
-  messages: ChatCompletionMessageParam[];
-  responseChatItemId: string;
-  nodes: StoreNodeItemType[];
-  edges: StoreEdgeItemType[];
-  variables: Record<string, any>;
-  appId: string;
-  appName: string;
-  chatId: string;
-  chatConfig: AppChatConfigType;
-};
+import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let {
@@ -74,7 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     appId,
     chatConfig,
     chatId
-  } = req.body as Props;
+  } = ChatTestPropsSchema.parse(req.body);
   try {
     if (!Array.isArray(nodes)) {
       throw new Error('Nodes is not array');

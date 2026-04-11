@@ -52,7 +52,7 @@ export type SandboxReadBody = z.infer<typeof SandboxReadBodySchema>;
 
 export const SandboxReadResponseSchema = z
   .string()
-  .openapi({ format: 'binary', description: '文件内容流' });
+  .meta({ format: 'binary', description: '文件内容流' });
 
 /**
  * 下载文件或目录 - 请求体（响应为文件流或 ZIP）
@@ -64,7 +64,7 @@ export type SandboxDownloadBody = z.input<typeof SandboxDownloadBodySchema>;
 
 export const SandboxDownloadResponseSchema = z
   .string()
-  .openapi({ format: 'binary', description: '文件流或 ZIP 包' });
+  .meta({ format: 'binary', description: '文件流或 ZIP 包' });
 
 /**
  * 检查沙盒是否存在

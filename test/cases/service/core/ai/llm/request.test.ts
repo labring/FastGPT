@@ -2,8 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
-  StreamChatType
-} from '@fastgpt/global/core/ai/type';
+  StreamResponseType
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -111,11 +111,11 @@ async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T, void, unk
 }
 
 // Helper to create mock stream response
-const createMockStreamResponse = (chunks: any[]): StreamChatType => {
+const createMockStreamResponse = (chunks: any[]): StreamResponseType => {
   const generator = createAsyncGenerator(chunks);
   return Object.assign(generator, {
     controller: { abort: vi.fn() }
-  }) as unknown as StreamChatType;
+  }) as unknown as StreamResponseType;
 };
 
 describe('createLLMResponse', () => {
@@ -1006,7 +1006,7 @@ describe('createLLMResponse', () => {
 
       const mockStreamResponse = Object.assign(generator, {
         controller: { abort: vi.fn() }
-      }) as unknown as StreamChatType;
+      }) as unknown as StreamResponseType;
 
       const mockAI = {
         chat: {

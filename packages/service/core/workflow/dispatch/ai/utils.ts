@@ -14,7 +14,7 @@ import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ToolNodeItemType } from './tool/type';
 import json5 from 'json5';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
 // Assistant process
