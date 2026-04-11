@@ -211,6 +211,7 @@
   "template_import_mode_not_found": "未找到可用的模板導入模式: {{modeName}}",
   "template_mode": "模板導入",
   "template_unsupported_file_type": "不支持的文件類型，僅支持 {{types}}",
+  "template_excel_too_much_data": "QA 數據量過大，Excel 文件解析失敗，請將文件另存為 CSV 格式後重新上傳",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "資料集有索引正在訓練或重建中",
   "total_num_files": "共 {{total}} 個文件",
   "training.Error": "{{count}} 組異常",
