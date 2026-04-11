@@ -1,3 +1,4 @@
+/** @deprecated */
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';

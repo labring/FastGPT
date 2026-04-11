@@ -51,7 +51,7 @@ import type {
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
-import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
+import type { GetDatasetPermissionResponse as GetQuotePermissionResponse } from '@fastgpt/global/openapi/core/dataset/api';
 import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
 import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
