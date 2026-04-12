@@ -4,6 +4,10 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
+const datasetId = '507f1f77bcf86cd799439011';
+const collectionId = '507f1f77bcf86cd799439012';
+const dataId = '507f1f77bcf86cd799439013';
+
 vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   MongoDatasetTraining: {
     findOne: vi.fn(),
@@ -24,8 +28,8 @@ describe('updateTrainingData', () => {
 
     const req = {
       body: {
-        datasetId: 'dataset1',
-        collectionId: 'collection1'
+        datasetId,
+        collectionId
       }
     };
 
@@ -34,8 +38,8 @@ describe('updateTrainingData', () => {
     expect(MongoDatasetTraining.updateMany).toHaveBeenCalledWith(
       {
         teamId: 'team1',
-        datasetId: 'dataset1',
-        collectionId: 'collection1',
+        datasetId,
+        collectionId,
         errorMsg: { $exists: true, $ne: null }
       },
       {
@@ -57,9 +61,9 @@ describe('updateTrainingData', () => {
 
     const req = {
       body: {
-        datasetId: 'dataset1',
-        collectionId: 'collection1',
-        dataId: 'data1',
+        datasetId,
+        collectionId,
+        dataId,
         q: 'question',
         a: 'answer',
         chunkIndex: 1
@@ -71,8 +75,8 @@ describe('updateTrainingData', () => {
     expect(MongoDatasetTraining.updateOne).toHaveBeenCalledWith(
       {
         teamId: 'team1',
-        datasetId: 'dataset1',
-        _id: 'data1'
+        datasetId,
+        _id: dataId
       },
       {
         $unset: { errorMsg: '' },
@@ -95,9 +99,9 @@ describe('updateTrainingData', () => {
 
     const req = {
       body: {
-        datasetId: 'dataset1',
-        collectionId: 'collection1',
-        dataId: 'data1',
+        datasetId,
+        collectionId,
+        dataId,
         q: 'question',
         a: 'answer',
         chunkIndex: 1
@@ -109,8 +113,8 @@ describe('updateTrainingData', () => {
     expect(MongoDatasetTraining.updateOne).toHaveBeenCalledWith(
       {
         teamId: 'team1',
-        datasetId: 'dataset1',
-        _id: 'data1'
+        datasetId,
+        _id: dataId
       },
       {
         $unset: { errorMsg: '' },
@@ -132,9 +136,9 @@ describe('updateTrainingData', () => {
 
     const req = {
       body: {
-        datasetId: 'dataset1',
-        collectionId: 'collection1',
-        dataId: 'data1'
+        datasetId,
+        collectionId,
+        dataId
       }
     };
 

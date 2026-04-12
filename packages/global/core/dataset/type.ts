@@ -216,12 +216,11 @@ export type DatasetDataTextSchemaType = z.infer<typeof DatasetDataTextSchema>;
 /* ===== Training ===== */
 export const DatasetTrainingSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '训练 ID' }),
-  userId: ObjectIdSchema.meta({ description: '用户 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  billId: z.string().meta({ description: '账单 ID' }),
+  billId: z.string().optional().meta({ description: '账单 ID' }),
   expireAt: z.date().meta({ description: '过期时间' }),
   lockTime: z.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
@@ -237,7 +236,9 @@ export const DatasetTrainingSchema = z.object({
     .array(DatasetDataIndexItemSchema.omit({ dataId: true }))
     .meta({ description: '向量索引' }),
   retryCount: z.number().meta({ description: '重试次数' }),
-  errorMsg: z.string().optional().meta({ description: '错误信息' })
+  errorMsg: z.string().optional().meta({ description: '错误信息' }),
+
+  userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true })
 });
 export type DatasetTrainingSchemaType = z.infer<typeof DatasetTrainingSchema>;
 
