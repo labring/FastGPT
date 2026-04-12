@@ -13,7 +13,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<any>
 ): Promise<ParentTreePathItemType[]> {
-  const { sourceId: appId, type } = req.query as GetPathProps;
+  const { sourceId: appId, type = 'current' } = req.query as GetPathProps;
 
   if (!appId) {
     return [];

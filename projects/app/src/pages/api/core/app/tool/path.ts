@@ -18,7 +18,7 @@ async function handler(
   req: ApiRequestProps<pathBody, pathQuery>,
   res: ApiResponseType<any>
 ): Promise<pathResponse> {
-  const { sourceId: pluginId, type } = req.query;
+  const { sourceId: pluginId, type = 'current' } = req.query;
   const lang = getLocale(req);
 
   if (!pluginId) return [];

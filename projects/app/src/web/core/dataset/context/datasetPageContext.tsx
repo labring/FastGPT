@@ -2,14 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
+import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
 import {
   getAllTags,
-  getDatasetById,
   getDatasetCollectionTags,
-  getDatasetPaths,
-  postCreateDatasetCollectionTag,
-  putDatasetById
-} from '../api';
+  postCreateDatasetCollectionTag
+} from '../api/collection';
 import { getDatasetTrainingQueue } from '../api/training';
 import { defaultDatasetDetail } from '../constants';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';

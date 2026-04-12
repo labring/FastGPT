@@ -1,6 +1,21 @@
-import { ParentIdSchema } from '../../../../common/parentFolder/type';
+import {
+  GetPathPropsSchema,
+  ParentIdSchema,
+  ParentTreePathItemSchema
+} from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import {
+  DatasetCollectionSyncResultEnum,
+  DatasetCollectionTypeEnum
+} from '../../../../core/dataset/constants';
+import {
+  ChunkSettingsSchema,
+  DatasetCollectionItemSchema,
+  DatasetCollectionSchema
+} from '../../../../core/dataset/type';
+import { PermissionSchema } from '../../../../support/permission/controller';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
 
 // ============= Scroll Collections =============
@@ -62,3 +77,128 @@ const ChatExportSchema = OutLinkChatAuthSchema.extend({
 
 export const ExportCollectionBodySchema = z.union([BasicExportSchema, ChatExportSchema]);
 export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodySchema>;
+
+// ============= Create Collection =============
+export const CreateCollectionBodySchema = ChunkSettingsSchema.extend({
+  datasetId: z.string().meta({ description: '数据集 ID' }),
+  name: z.string().meta({ description: '集合名称' }),
+  type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
+  fileId: z.string().optional().meta({ description: '文件 ID' }),
+  rawLink: z.string().optional().meta({ description: '原始链接' }),
+  externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
+  externalFileUrl: z.string().optional().meta({ description: '外部文件 URL' }),
+  apiFileId: z.string().optional().meta({ description: 'API 文件 ID' }),
+  apiFileParentId: z
+    .string()
+    .optional()
+    .meta({ description: 'API 文件父级 ID（通过文件夹导入时使用）' }),
+  rawTextLength: z.number().optional().meta({ description: '原始文本长度' }),
+  hashRawText: z.string().optional().meta({ description: '文本哈希' }),
+  tags: z.array(z.string()).optional().meta({ description: '标签列表' }),
+  createTime: z.coerce.date().optional().meta({ description: '创建时间' }),
+  updateTime: z.coerce.date().optional().meta({ description: '更新时间' }),
+
+  parentId: ParentIdSchema.meta({ description: '父级目录 ID' }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' }),
+  customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' })
+});
+export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
+
+export const CreateCollectionResponseSchema = ObjectIdSchema.meta({
+  description: '新创建的集合 ID'
+});
+export type CreateCollectionResponseType = z.infer<typeof CreateCollectionResponseSchema>;
+
+// ============= Delete Collection =============
+export const DeleteCollectionQuerySchema = z.object({
+  id: z.string().optional().meta({ description: '单个集合 ID（与 body.collectionIds 二选一）' })
+});
+export type DeleteCollectionQueryType = z.infer<typeof DeleteCollectionQuerySchema>;
+
+export const DeleteCollectionBodySchema = z.object({
+  collectionIds: z.array(z.string()).optional().meta({ description: '集合 ID 列表' })
+});
+export type DeleteCollectionBodyType = z.infer<typeof DeleteCollectionBodySchema>;
+
+// ============= Get Collection Detail =============
+export const GetCollectionDetailQuerySchema = z.object({
+  id: z.string().meta({ description: '集合 ID' })
+});
+export type GetCollectionDetailQueryType = z.infer<typeof GetCollectionDetailQuerySchema>;
+
+export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.meta({
+  description: '集合详情'
+});
+export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
+
+// ============= List Collections V2 =============
+export const ListCollectionV2BodySchema = PaginationSchema.extend({
+  datasetId: z.string().meta({ description: '数据集 ID' }),
+  parentId: z.string().nullable().optional().default(null).meta({ description: '父级目录 ID' }),
+  searchText: z.string().max(100).optional().default('').meta({ description: '搜索文本' }),
+  selectFolder: z.boolean().optional().default(false).meta({ description: '只返回文件夹' }),
+  filterTags: z.array(z.string()).optional().default([]).meta({ description: '过滤标签' }),
+  simple: z.boolean().optional().default(false).meta({ description: '简单模式（不统计数量）' })
+});
+export type ListCollectionV2BodyType = z.infer<typeof ListCollectionV2BodySchema>;
+
+// ============= List Collections V2 Response =============
+export const DatasetCollectionsListItemSchema = z.object({
+  _id: ObjectIdSchema.meta({ description: '集合 ID' }),
+  parentId: DatasetCollectionSchema.shape.parentId,
+  tmbId: DatasetCollectionSchema.shape.tmbId,
+  name: DatasetCollectionSchema.shape.name,
+  type: DatasetCollectionSchema.shape.type,
+  createTime: DatasetCollectionSchema.shape.createTime,
+  updateTime: DatasetCollectionSchema.shape.updateTime,
+  forbid: DatasetCollectionSchema.shape.forbid,
+  trainingType: DatasetCollectionSchema.shape.trainingType,
+  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+
+  externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
+
+  fileId: z.string().optional().meta({ description: '文件 ID' }),
+  rawLink: z.string().optional().meta({ description: '原始链接' }),
+  permission: PermissionSchema,
+  dataAmount: z.number().meta({ description: '数据数量' }),
+  trainingAmount: z.number().meta({ description: '训练数量' }),
+  hasError: z.boolean().optional().meta({ description: '是否错误' })
+});
+export type DatasetCollectionsListItemType = z.infer<typeof DatasetCollectionsListItemSchema>;
+export const ListCollectionV2ResponseSchema = PaginationResponseSchema(
+  DatasetCollectionsListItemSchema
+);
+export type ListCollectionV2ResponseType = z.infer<typeof ListCollectionV2ResponseSchema>;
+
+// ============= Get Collection Paths =============
+export const GetCollectionPathsQuerySchema = GetPathPropsSchema;
+export type GetCollectionPathsQueryType = z.infer<typeof GetCollectionPathsQuerySchema>;
+
+export const GetCollectionPathsResponseSchema = z.array(ParentTreePathItemSchema);
+export type GetCollectionPathsResponseType = z.infer<typeof GetCollectionPathsResponseSchema>;
+
+// ============= Read Collection Source =============
+export const ReadCollectionSourceBodySchema = OutLinkChatAuthSchema.extend({
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
+  appId: ObjectIdSchema.optional().meta({ description: '应用 ID（对话中使用）' }),
+  chatId: ObjectIdSchema.optional().meta({ description: '对话 ID（对话中使用）' }),
+  chatItemDataId: z.string().optional().meta({ description: '对话消息 ID（对话中使用）' })
+});
+export type ReadCollectionSourceBodyType = z.infer<typeof ReadCollectionSourceBodySchema>;
+
+export const ReadCollectionSourceResponseSchema = z.object({
+  type: z.literal('url').meta({ description: '资源类型' }),
+  value: z.string().meta({ description: '资源 URL' })
+});
+export type ReadCollectionSourceResponseType = z.infer<typeof ReadCollectionSourceResponseSchema>;
+
+// ============= Sync Collection =============
+export const SyncCollectionBodySchema = z.object({
+  collectionId: ObjectIdSchema.meta({ description: '集合 ID' })
+});
+export type SyncCollectionBodyType = z.infer<typeof SyncCollectionBodySchema>;
+
+export const SyncCollectionResponseSchema = z.enum(DatasetCollectionSyncResultEnum).meta({
+  description: '同步结果'
+});
+export type SyncCollectionResponseType = z.infer<typeof SyncCollectionResponseSchema>;

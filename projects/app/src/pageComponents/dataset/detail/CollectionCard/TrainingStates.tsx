@@ -17,7 +17,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api';
+import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api/collection';
 import {
   deleteTrainingData,
   getTrainingDataDetail,

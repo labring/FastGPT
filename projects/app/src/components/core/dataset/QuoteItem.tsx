@@ -8,12 +8,8 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import {
-  DatasetCollectionTypeEnum,
-  SearchScoreTypeEnum,
-  SearchScoreTypeMap
-} from '@fastgpt/global/core/dataset/constants';
-import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
+import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
@@ -100,7 +96,7 @@ const QuoteItem = ({
   canDownloadSource?: boolean;
   canEditData?: boolean;
   canEditDataset?: boolean;
-} & Omit<readCollectionSourceBody, 'collectionId'>) => {
+} & Omit<ReadCollectionSourceBodyType, 'collectionId'>) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 

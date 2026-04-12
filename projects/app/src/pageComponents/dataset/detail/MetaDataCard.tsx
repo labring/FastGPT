@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, Flex, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { useRouter } from 'next/router';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';

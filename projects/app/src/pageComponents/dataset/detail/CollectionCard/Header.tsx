@@ -4,7 +4,7 @@ import {
   getDatasetCollectionPathById,
   postDatasetCollection,
   putDatasetCollectionById
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';

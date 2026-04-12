@@ -1,7 +1,4 @@
-import type { NextApiRequest } from 'next';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
-import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -9,26 +6,32 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { type PaginationResponse } from '@fastgpt/global/openapi/api';
-import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  ListCollectionV2BodySchema,
+  ListCollectionV2ResponseSchema,
+  type ListCollectionV2ResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
-async function handler(
-  req: NextApiRequest
-): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
   let {
     datasetId,
-    parentId = null,
-    searchText = '',
-    selectFolder = false,
-    filterTags = [],
-    simple = false
-  } = req.body as GetDatasetCollectionsProps;
-  let { pageSize, offset } = parsePaginationRequest(req);
-  pageSize = Math.min(pageSize, 100);
+    parentId,
+    searchText,
+    selectFolder,
+    filterTags,
+    simple,
+    pageSize: rawPageSize,
+    offset: rawOffset,
+    pageNum: rawPageNum
+  } = ListCollectionV2BodySchema.parse(req.body);
+  let pageSize = Math.min(Number(rawPageSize ?? 10), 100);
+  let offset =
+    rawOffset !== undefined ? Number(rawOffset) : (Number(rawPageNum ?? 1) - 1) * pageSize;
   searchText = searchText?.replace(/'/g, '');
 
   // auth dataset and get my role
@@ -83,7 +86,7 @@ async function handler(
       .limit(pageSize)
       .lean();
 
-    return {
+    return ListCollectionV2ResponseSchema.parse({
       list: await Promise.all(
         collections.map(async (item) => ({
           ...item,
@@ -92,14 +95,13 @@ async function handler(
             tags: item.tags
           }),
           dataAmount: 0,
-          indexAmount: 0,
           trainingAmount: 0,
           hasError: false,
           permission
         }))
       ),
       total: await MongoDatasetCollection.countDocuments(match)
-    };
+    });
   }
 
   const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
@@ -177,10 +179,7 @@ async function handler(
   );
 
   // count collections
-  return {
-    list,
-    total
-  };
+  return ListCollectionV2ResponseSchema.parse({ list, total });
 }
 
 export default NextAPI(handler);

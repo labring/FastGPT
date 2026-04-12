@@ -27,7 +27,7 @@ import {
   postCreateDatasetLinkCollection,
   postCreateDatasetTextCollection,
   postReTrainingDatasetFileCollection
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';

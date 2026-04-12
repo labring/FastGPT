@@ -2,7 +2,6 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollection } from './schema';
 import type {
   DatasetCollectionSchemaType,
@@ -33,6 +32,7 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
+import { type CreateCollectionBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -246,7 +246,7 @@ export const createCollectionAndInsertData = async ({
   return mongoSessionRun(fn);
 };
 
-export type CreateOneCollectionParams = CreateDatasetCollectionParams & {
+export type CreateOneCollectionParams = CreateCollectionBodyType & {
   teamId: string;
   tmbId: string;
   session?: ClientSession;

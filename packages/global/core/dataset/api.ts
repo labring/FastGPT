@@ -12,28 +12,6 @@ type DatasetCollectionStoreDataType = ChunkSettingsType & {
   customPdfParse?: boolean;
 };
 
-// create collection params
-export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
-  datasetId: string;
-  name: string;
-  type: DatasetCollectionTypeEnum;
-
-  fileId?: string;
-  rawLink?: string;
-  externalFileId?: string;
-  externalFileUrl?: string;
-  apiFileId?: string;
-  apiFileParentId?: string; //when file is imported by folder, the parentId is the folderId
-
-  rawTextLength?: number;
-  hashRawText?: string;
-
-  tags?: string[];
-
-  createTime?: Date;
-  updateTime?: Date;
-};
-
 export type ApiCreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   datasetId: string;
   tags?: string[];

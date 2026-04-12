@@ -1,11 +1,15 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  SyncCollectionBodySchema,
+  SyncCollectionResponseSchema,
+  type SyncCollectionResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
-/* 
+/*
   Collection sync
   1. Check collection type: link, api dataset collection
   2. Get collection and raw text
@@ -13,16 +17,8 @@ import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
   4. Create new collection
   5. Delete old collection
 */
-export type CollectionSyncBody = {
-  collectionId: string;
-};
-
-async function handler(req: ApiRequestProps<CollectionSyncBody>) {
-  const { collectionId } = req.body;
-
-  if (!collectionId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps): Promise<SyncCollectionResponseType> {
+  const { collectionId } = SyncCollectionBodySchema.parse(req.body);
 
   const { collection } = await authDatasetCollection({
     req,
@@ -32,7 +28,7 @@ async function handler(req: ApiRequestProps<CollectionSyncBody>) {
     per: WritePermissionVal
   });
 
-  return syncCollection(collection);
+  return SyncCollectionResponseSchema.parse(await syncCollection(collection));
 }
 
 export default NextAPI(handler);

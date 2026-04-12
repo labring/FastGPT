@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import DataProcess from '../commonProgress/DataProcess';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { Box } from '@chakra-ui/react';

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack, Image } from '@chakra-ui/react';
 import type { UseFormRegister } from 'react-hook-form';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
