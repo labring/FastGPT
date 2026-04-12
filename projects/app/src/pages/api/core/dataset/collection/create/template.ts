@@ -13,15 +13,10 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
-export type templateImportQuery = {};
-
-export type templateImportBody = { datasetId: string };
-
-export type templateImportResponse = {};
-
-async function handler(req: ApiRequestProps<templateImportBody, templateImportQuery>) {
+async function handler(req: ApiRequestProps) {
   const filepaths: string[] = [];
 
   try {
@@ -31,6 +26,7 @@ async function handler(req: ApiRequestProps<templateImportBody, templateImportQu
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
+    const { datasetId, parentId } = CreateTemplateCollectionFormSchema.parse(result.data);
 
     if (!isCSVFile(filename)) {
       return Promise.reject('File must be a CSV file');
@@ -41,7 +37,7 @@ async function handler(req: ApiRequestProps<templateImportBody, templateImportQu
       authToken: true,
       authApiKey: true,
       per: WritePermissionVal,
-      datasetId: result.data.datasetId
+      datasetId
     });
 
     const { rawText } = await readRawTextByLocalFile({
@@ -71,6 +67,7 @@ async function handler(req: ApiRequestProps<templateImportBody, templateImportQu
         teamId,
         tmbId,
         datasetId: dataset._id,
+        parentId,
         name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,

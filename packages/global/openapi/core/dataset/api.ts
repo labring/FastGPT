@@ -441,3 +441,11 @@ export const GetDatasetPermissionResponseSchema = z.object({
   })
 });
 export type GetDatasetPermissionResponse = z.infer<typeof GetDatasetPermissionResponseSchema>;
+
+/* ============================================================================
+ * 数据集同步入参
+ * ============================================================================ */
+export const PostDatasetSyncBodySchema = z.object({
+  datasetId: z.string().meta({ description: '数据集 ID' })
+});
+export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;

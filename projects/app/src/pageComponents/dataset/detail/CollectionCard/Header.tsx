@@ -93,7 +93,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   } = useDisclosure();
 
   const { runAsync: onCreateCollection } = useRequest(
-    async ({ name, type }: { name: string; type: DatasetCollectionTypeEnum }) => {
+    async ({
+      name,
+      type
+    }: {
+      name: string;
+      type: DatasetCollectionTypeEnum.folder | DatasetCollectionTypeEnum.virtual;
+    }) => {
       const id = await postDatasetCollection({
         parentId,
         datasetId: datasetDetail._id,

@@ -1,39 +1,23 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
-  CreateCollectionBodySchema,
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema,
   ExportCollectionBodySchema,
   GetCollectionDetailQuerySchema,
   GetCollectionPathsQuerySchema,
+  GetCollectionTrainingDetailQuerySchema,
+  GetCollectionTrainingDetailResponseSchema,
   ListCollectionV2BodySchema,
   ReadCollectionSourceBodySchema,
   ScrollCollectionsBodySchema,
   SyncCollectionBodySchema,
   UpdateDatasetCollectionBodySchema
 } from './api';
+import { DatasetCollectionCreatePath } from './createPath';
 
 export const DatasetCollectionPath: OpenAPIPath = {
-  '/core/dataset/collection/create': {
-    post: {
-      summary: '创建集合',
-      description: '创建数据集集合，支持多种类型（文件、链接、文本、API 等）',
-      tags: [TagsMap.datasetCollection],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: CreateCollectionBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回新创建的集合 ID'
-        }
-      }
-    }
-  },
+  ...DatasetCollectionCreatePath,
   '/core/dataset/collection/delete': {
     delete: {
       summary: '删除集合',
@@ -196,6 +180,26 @@ export const DatasetCollectionPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功导出并下载集合的所有数据块内容'
+        }
+      }
+    }
+  },
+  '/core/dataset/collection/trainingDetail': {
+    get: {
+      summary: '获取集合训练详情',
+      description: '获取集合的训练状态，包括排队中、训练中、错误数量及已完成的数据量',
+      tags: [TagsMap.datasetCollection],
+      requestParams: {
+        query: GetCollectionTrainingDetailQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回训练详情',
+          content: {
+            'application/json': {
+              schema: GetCollectionTrainingDetailResponseSchema
+            }
+          }
         }
       }
     }

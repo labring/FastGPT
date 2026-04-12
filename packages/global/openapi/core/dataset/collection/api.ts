@@ -7,7 +7,9 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import {
   DatasetCollectionSyncResultEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  TrainingModeEnum
 } from '../../../../core/dataset/constants';
 import {
   ChunkSettingsSchema,
@@ -77,37 +79,6 @@ const ChatExportSchema = OutLinkChatAuthSchema.extend({
 
 export const ExportCollectionBodySchema = z.union([BasicExportSchema, ChatExportSchema]);
 export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodySchema>;
-
-// ============= Create Collection =============
-export const CreateCollectionBodySchema = ChunkSettingsSchema.extend({
-  datasetId: z.string().meta({ description: '数据集 ID' }),
-  name: z.string().meta({ description: '集合名称' }),
-  type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
-  fileId: z.string().optional().meta({ description: '文件 ID' }),
-  rawLink: z.string().optional().meta({ description: '原始链接' }),
-  externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
-  externalFileUrl: z.string().optional().meta({ description: '外部文件 URL' }),
-  apiFileId: z.string().optional().meta({ description: 'API 文件 ID' }),
-  apiFileParentId: z
-    .string()
-    .optional()
-    .meta({ description: 'API 文件父级 ID（通过文件夹导入时使用）' }),
-  rawTextLength: z.number().optional().meta({ description: '原始文本长度' }),
-  hashRawText: z.string().optional().meta({ description: '文本哈希' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签列表' }),
-  createTime: z.coerce.date().optional().meta({ description: '创建时间' }),
-  updateTime: z.coerce.date().optional().meta({ description: '更新时间' }),
-
-  parentId: ParentIdSchema.meta({ description: '父级目录 ID' }),
-  metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' }),
-  customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' })
-});
-export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
-
-export const CreateCollectionResponseSchema = ObjectIdSchema.meta({
-  description: '新创建的集合 ID'
-});
-export type CreateCollectionResponseType = z.infer<typeof CreateCollectionResponseSchema>;
 
 // ============= Delete Collection =============
 export const DeleteCollectionQuerySchema = z.object({
@@ -191,6 +162,39 @@ export const ReadCollectionSourceResponseSchema = z.object({
   value: z.string().meta({ description: '资源 URL' })
 });
 export type ReadCollectionSourceResponseType = z.infer<typeof ReadCollectionSourceResponseSchema>;
+
+// ============= Training Detail =============
+export const GetCollectionTrainingDetailQuerySchema = z.object({
+  collectionId: z.string().meta({ description: '集合 ID' })
+});
+export type GetCollectionTrainingDetailQueryType = z.infer<
+  typeof GetCollectionTrainingDetailQuerySchema
+>;
+
+const TrainingCountsSchema = z
+  .record(z.enum(TrainingModeEnum), z.number())
+  .meta({ description: '各训练模式数量' });
+
+export const GetCollectionTrainingDetailResponseSchema = z.object({
+  trainingType: z
+    .enum(DatasetCollectionDataProcessModeEnum)
+    .optional()
+    .meta({ description: '训练类型' }),
+  advancedTraining: z
+    .object({
+      customPdfParse: z.boolean().meta({ description: '自定义 PDF 解析' }),
+      imageIndex: z.boolean().meta({ description: '图片索引' }),
+      autoIndexes: z.boolean().meta({ description: '自动索引' })
+    })
+    .meta({ description: '高级训练配置' }),
+  queuedCounts: TrainingCountsSchema.meta({ description: '排队中数量' }),
+  trainingCounts: TrainingCountsSchema.meta({ description: '训练中数量' }),
+  errorCounts: TrainingCountsSchema.meta({ description: '错误数量' }),
+  trainedCount: z.number().meta({ description: '已训练数据量' })
+});
+export type GetCollectionTrainingDetailResponseType = z.infer<
+  typeof GetCollectionTrainingDetailResponseSchema
+>;
 
 // ============= Sync Collection =============
 export const SyncCollectionBodySchema = z.object({

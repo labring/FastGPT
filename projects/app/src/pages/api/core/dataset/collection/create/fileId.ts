@@ -1,19 +1,19 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import {
+  CreateCollectionByFileIdBodySchema,
+  type CreateCollectionWithResultResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
-async function handler(
-  req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
-): CreateCollectionResponse {
-  const { fileId, customPdfParse, ...body } = req.body;
+async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
+  const { fileId, customPdfParse, ...body } = CreateCollectionByFileIdBodySchema.parse(req.body);
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -32,7 +32,7 @@ async function handler(
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
 
-  const { collectionId, insertResults } = await createCollectionAndInsertData({
+  return createCollectionAndInsertData({
     dataset,
     createCollectionParams: {
       ...body,
@@ -44,11 +44,6 @@ async function handler(
       customPdfParse
     }
   });
-
-  return {
-    collectionId,
-    results: insertResults
-  };
 }
 
 export default NextAPI(handler);

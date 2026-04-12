@@ -65,7 +65,7 @@ export const DatasetSchema = z
   .object({
     _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
     parentId: ParentIdSchema.meta({ description: '父级 ID' }),
-    userId: ObjectIdSchema.meta({ description: '用户 ID' }),
+    userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true }),
     teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
     updateTime: z.date().meta({ description: '更新时间' }),
@@ -143,7 +143,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '其他元数据' }),
 
   customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' }),
-  trainingType: z.enum(DatasetCollectionDataProcessModeEnum).meta({ description: '训练类型' })
+  trainingType: z
+    .enum(DatasetCollectionDataProcessModeEnum)
+    .optional()
+    .meta({ description: '训练类型' })
 });
 export type DatasetCollectionSchemaType = z.infer<typeof DatasetCollectionSchema>;
 
@@ -187,7 +190,7 @@ export type DatasetDataHistoryType = z.infer<typeof DatasetDataHistorySchema>;
 
 export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   _id: ObjectIdSchema.meta({ description: '数据 ID' }),
-  userId: ObjectIdSchema.meta({ description: '用户 ID' }),
+  userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),

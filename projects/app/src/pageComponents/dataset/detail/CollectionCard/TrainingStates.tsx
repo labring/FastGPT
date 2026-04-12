@@ -32,7 +32,7 @@ import { type GetTrainingDataDetailResponse } from '@fastgpt/global/openapi/core
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { TrainingProcess } from '@/web/core/dataset/constants';
 import { useForm } from 'react-hook-form';
-import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
+import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyImage from '@/components/MyImage';
@@ -47,7 +47,11 @@ enum TrainingStatus {
   Error = 'Error'
 }
 
-const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailResponse }) => {
+const ProgressView = ({
+  trainingDetail
+}: {
+  trainingDetail: GetCollectionTrainingDetailResponseType;
+}) => {
   const { t } = useTranslation();
 
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;

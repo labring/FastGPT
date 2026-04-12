@@ -92,7 +92,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(DatasetCollectionDataProcessModeMap[collection.trainingType]
+      ...(collection.trainingType && DatasetCollectionDataProcessModeMap[collection.trainingType]
         ? [
             {
               label: t('dataset:collection.training_type'),

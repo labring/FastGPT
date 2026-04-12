@@ -1,4 +1,7 @@
-import type { ApiDatasetCreateDatasetCollectionV2Params } from '@fastgpt/global/core/dataset/api';
+import {
+  CreateApiCollectionV2BodySchema,
+  type CreateApiCollectionV2BodyType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,
@@ -17,17 +20,19 @@ import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
-async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionV2Params>) {
+async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
+  const body = CreateApiCollectionV2BodySchema.parse(req.body);
+
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
-    datasetId: req.body.datasetId,
+    datasetId: body.datasetId,
     per: WritePermissionVal
   });
 
   return createApiDatasetCollection({
-    ...req.body,
+    ...body,
     teamId,
     tmbId,
     dataset
@@ -43,7 +48,7 @@ export const createApiDatasetCollection = async ({
   tmbId,
   dataset,
   ...body
-}: ApiDatasetCreateDatasetCollectionV2Params & {
+}: CreateApiCollectionV2BodyType & {
   teamId: string;
   tmbId: string;
   dataset: DatasetSchemaType & {

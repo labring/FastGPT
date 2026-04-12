@@ -8,7 +8,7 @@ import type {
   DatasetListItemType,
   DatasetSimpleItemType
 } from '@fastgpt/global/core/dataset/type';
-import type { PostDatasetSyncParams } from '@fastgpt/global/core/dataset/api';
+import type { PostDatasetSyncParams } from '@fastgpt/global/openapi/core/dataset/api';
 import type {
   CreateDatasetBody,
   CreateDatasetWithFilesBody,

@@ -10,7 +10,7 @@ import {
   CreateCollectionBodySchema,
   CreateCollectionResponseSchema,
   type CreateCollectionResponseType
-} from '@fastgpt/global/openapi/core/dataset/collection/api';
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseType> {
   const body = CreateCollectionBodySchema.parse(req.body);
