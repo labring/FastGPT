@@ -4,10 +4,10 @@ import { useToast } from '../../../hooks/useToast';
 import { useCallback, useRef, useTransition } from 'react';
 import { useTranslation } from 'next-i18next';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
-import type { CreatePostPresignedUrlResonseType } from '@fastgpt/global/common/file/s3/type';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
 export const useUploadAvatar = (
-  api: (params: { filename: string }) => Promise<CreatePostPresignedUrlResonseType>,
+  api: (params: { filename: string }) => Promise<CreatePostPresignedUrlResponseType>,
   {
     onSuccess,
     maxW = 300,

@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import type { CreatePostPresignedUrlResonseType } from '@fastgpt/global/common/file/s3/type';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
 export type updateAvatarQuery = {};
 
@@ -11,7 +11,7 @@ export type updateAvatarBody = {
   autoExpired?: boolean;
 };
 
-export type updateAvatarResponse = CreatePostPresignedUrlResonseType;
+export type updateAvatarResponse = CreatePostPresignedUrlResponseType;
 
 async function handler(
   req: ApiRequestProps<updateAvatarBody, updateAvatarQuery>,

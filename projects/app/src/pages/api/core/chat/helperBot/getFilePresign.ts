@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import type { GetHelperBotFilePresignParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
-import type { CreatePostPresignedUrlResonseType } from '@fastgpt/global/common/file/s3/type';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3HelperBotSource } from '../../../../../../../../packages/service/common/s3/sources/helperbot/index';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
@@ -11,7 +11,7 @@ export type getFilePresignQuery = {};
 
 export type getFilePresignBody = GetHelperBotFilePresignParamsType;
 
-export type getFilePresignResponse = CreatePostPresignedUrlResonseType;
+export type getFilePresignResponse = CreatePostPresignedUrlResponseType;
 
 const authUploadLimit = (tmbId: string) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;

@@ -6,6 +6,6 @@ export const CreatePostPresignedUrlResponseSchema = z.object({
   headers: z.record(z.string(), z.string()),
   maxSize: z.number().positive().optional() // bytes
 });
-export type CreatePostPresignedUrlResonseType = z.infer<
+export type CreatePostPresignedUrlResponseType = z.infer<
   typeof CreatePostPresignedUrlResponseSchema
 >;
