@@ -6,7 +6,7 @@ import type {
   GetHelperBotFilePresignParamsType,
   GetHelperBotFilePreviewParamsType
 } from '@fastgpt/global/openapi/core/chat/helperBot/api';
-import type { CreatePostPresignedUrlResonseType } from '@fastgpt/service/common/s3/type';
+import type { CreatePostPresignedUrlResonseType } from '@fastgpt/global/common/file/s3/type';
 
 export const getHelperBotChatRecords = (data: GetHelperBotChatRecordsParamsType) =>
   GET<GetHelperBotChatRecordsResponseType>('/core/chat/helperBot/getRecords', data);
