@@ -1,22 +1,22 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
+import {
+  UpdateTeamBodySchema,
+  UpdateTeamResponseSchema,
+  type UpdateTeamResponseType
+} from '@fastgpt/global/openapi/support/user/team/api';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { updateTeam } from '@fastgpt/service/support/user/team/controller';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-export type updateQuery = {};
-
-export type updateBody = {};
-
-export type updateResponse = {};
-
-async function handler(req: ApiRequestProps<updateBody, updateQuery>, res: ApiResponseType<any>) {
-  const body = req.body as UpdateTeamProps;
+async function handler(req: ApiRequestProps): Promise<UpdateTeamResponseType> {
+  const body = UpdateTeamBodySchema.parse(req.body);
 
   const { teamId } = await authUserPer({ req, authToken: true, per: ManagePermissionVal });
 
   await updateTeam({ teamId, ...body });
+
+  return UpdateTeamResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

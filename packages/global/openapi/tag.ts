@@ -45,6 +45,8 @@ export const TagsMap = {
   publishChannel: '发布渠道',
 
   /* Support */
+  // Team
+  teamManage: '团队管理',
   // Wallet
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',
