@@ -101,32 +101,35 @@ export const GetTrainingDataDetailBodySchema = z.object({
 });
 export type GetTrainingDataDetailBody = z.infer<typeof GetTrainingDataDetailBodySchema>;
 
-export const GetTrainingDataDetailResponseSchema = z.object({
-  _id: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a07',
-    description: '训练数据 ID'
-  }),
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  }),
-  mode: z.enum(TrainingModeEnum).meta({
-    example: TrainingModeEnum.chunk,
-    description: '训练模式'
-  }),
-  q: z.string().optional().meta({
-    example: '什么是 FastGPT？',
-    description: '问题/主文本'
-  }),
-  a: z.string().optional().meta({
-    example: 'FastGPT 是一个 AI Agent 构建平台',
-    description: '回答/补充文本'
-  }),
-  imagePreviewUrl: z.string().optional().meta({
-    example: 'https://example.com/image.png',
-    description: '图片预览 URL（S3 签名链接，有效期30分钟）'
+export const GetTrainingDataDetailResponseSchema = z
+  .object({
+    _id: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a07',
+      description: '训练数据 ID'
+    }),
+    datasetId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '知识库 ID'
+    }),
+    mode: z.enum(TrainingModeEnum).meta({
+      example: TrainingModeEnum.chunk,
+      description: '训练模式'
+    }),
+    q: z.string().optional().meta({
+      example: '什么是 FastGPT？',
+      description: '问题/主文本'
+    }),
+    a: z.string().optional().meta({
+      example: 'FastGPT 是一个 AI Agent 构建平台',
+      description: '回答/补充文本'
+    }),
+    imagePreviewUrl: z.string().optional().meta({
+      example: 'https://example.com/image.png',
+      description: '图片预览 URL（S3 签名链接，有效期30分钟）'
+    })
   })
-});
+  .nullish()
+  .meta({ description: '训练数据详情，数据不存在时为 null' });
 export type GetTrainingDataDetailResponse = z.infer<typeof GetTrainingDataDetailResponseSchema>;
 
 /* ============================================================================
@@ -141,7 +144,11 @@ export const GetTrainingErrorBodySchema = PaginationSchema.extend({
 });
 export type GetTrainingErrorBody = z.infer<typeof GetTrainingErrorBodySchema>;
 
-export const GetTrainingErrorResponseSchema = PaginationResponseSchema(DatasetTrainingSchema);
+export const GetTrainingErrorResponseSchema = PaginationResponseSchema(
+  DatasetTrainingSchema.omit({ billId: true }).extend({
+    billId: z.string().optional()
+  })
+);
 export type GetTrainingErrorResponse = z.infer<typeof GetTrainingErrorResponseSchema>;
 
 /* ============================================================================

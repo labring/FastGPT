@@ -4,6 +4,7 @@ import { authDatasetData } from '@fastgpt/service/support/permission/dataset/aut
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   GetDatasetDataDetailQuerySchema,
+  GetDatasetDataDetailResponseSchema,
   type GetDatasetDataDetailResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
@@ -18,7 +19,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataDetailRespon
     per: ReadPermissionVal
   });
 
-  return datasetData;
+  return GetDatasetDataDetailResponseSchema.parse(datasetData);
 }
 
 export default NextAPI(handler);

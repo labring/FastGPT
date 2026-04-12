@@ -266,8 +266,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     const outputTokens =
       usage?.completion_tokens || (await countGptMessagesTokens([assistantMessage]));
 
-    // 异步保存 LLM 请求追踪记录
-    saveLLMRequestRecord({
+    // 异步保存 LLM 请求追踪记录（fire-and-forget）
+    void saveLLMRequestRecord({
       requestId,
       body: requestBody,
       response: {
@@ -335,8 +335,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       completeMessages: [...requestMessages, assistantMessage]
     };
   } catch (error) {
-    // 异步保存 LLM 请求追踪记录
-    saveLLMRequestRecord({
+    // 异步保存 LLM 请求追踪记录（fire-and-forget）
+    void saveLLMRequestRecord({
       requestId,
       body: requestBody,
       response: {

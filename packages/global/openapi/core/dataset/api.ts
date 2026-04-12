@@ -424,22 +424,20 @@ export const GetDatasetPermissionQuerySchema = z.object({
 });
 export type GetDatasetPermissionQuery = z.infer<typeof GetDatasetPermissionQuerySchema>;
 
-export const GetDatasetPermissionResponseSchema = z
-  .object({
-    datasetName: z.string().meta({
-      example: '产品文档知识库',
-      description: '知识库名称'
+export const GetDatasetPermissionResponseSchema = z.object({
+  datasetName: z.string().meta({
+    example: '产品文档知识库',
+    description: '知识库名称'
+  }),
+  permission: z.object({
+    hasWritePer: z.boolean().meta({
+      example: true,
+      description: '是否有写权限'
     }),
-    permission: z.object({
-      hasWritePer: z.boolean().meta({
-        example: true,
-        description: '是否有写权限'
-      }),
-      hasReadPer: z.boolean().meta({
-        example: true,
-        description: '是否有读权限'
-      })
+    hasReadPer: z.boolean().meta({
+      example: true,
+      description: '是否有读权限'
     })
   })
-  .optional();
+});
 export type GetDatasetPermissionResponse = z.infer<typeof GetDatasetPermissionResponseSchema>;

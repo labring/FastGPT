@@ -375,9 +375,9 @@ export const loadRequestMessages = async ({
 
   const loadMessages = (
     await Promise.all(
-      mergeMessages.map(async (item, i) => {
-        delete item.dataId;
-        delete item.hideInUI;
+      mergeMessages.map(async (raw, i) => {
+        // 解构剥离系统内部字段，避免 mutate 调用方传入的 messages
+        const { dataId: _dataId, hideInUI: _hideInUI, ...item } = raw;
 
         if (item.role === ChatCompletionRequestMessageRoleEnum.System) {
           const content = parseSystemMessage(item.content);

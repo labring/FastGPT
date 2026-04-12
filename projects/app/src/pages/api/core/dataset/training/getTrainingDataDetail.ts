@@ -11,7 +11,7 @@ import {
   type GetTrainingDataDetailResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 
-async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse | undefined> {
+async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
   const { datasetId, collectionId, dataId } = GetTrainingDataDetailBodySchema.parse(req.body);
 
   const { teamId } = await authDatasetCollection({
@@ -25,7 +25,7 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailRespo
   const data = await MongoDatasetTraining.findOne({ teamId, datasetId, _id: dataId }).lean();
 
   if (!data) {
-    return undefined;
+    return GetTrainingDataDetailResponseSchema.parse(null);
   }
 
   return GetTrainingDataDetailResponseSchema.parse({

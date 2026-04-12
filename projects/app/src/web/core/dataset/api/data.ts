@@ -1,6 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import type { GetDatasetPermissionResponse as GetQuotePermissionResponse } from '@fastgpt/global/openapi/core/dataset/api';
 import type {
   GetDatasetDataListBody as GetDatasetDataListProps,
   GetDatasetDataListResponse as GetDatasetDataListRes,
@@ -12,9 +11,6 @@ import type {
 
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
   POST<GetDatasetDataListRes>(`/core/dataset/data/v2/list`, data);
-
-export const getDatasetDataPermission = (id?: string) =>
-  GET<GetQuotePermissionResponse>(`/core/dataset/data/getPermission`, { id });
 
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });

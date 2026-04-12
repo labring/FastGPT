@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { DatasetDataIndexItemSchema, DatasetDataItemSchema } from '../../../../core/dataset/type';
+import {
+  DatasetCollectionSchema,
+  DatasetDataIndexItemSchema,
+  DatasetDataItemSchema,
+  UpdateDatasetDataPropsSchema
+} from '../../../../core/dataset/type';
 import { DatasetCollectionDataProcessModeEnum } from '../../../../core/dataset/constants';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
-import { UpdateDatasetDataPropsSchema } from '../../../../core/dataset/type';
 
 const PushDataChunkSchema = z.object({
   q: z.string().optional().meta({
@@ -104,7 +108,7 @@ export const GetQuoteDataResponseSchema = z.object({
     example: 'FastGPT 是一个 AI Agent 构建平台',
     description: '回答/补充文本'
   }),
-  collection: z.any().meta({
+  collection: DatasetCollectionSchema.meta({
     description: '所属集合信息'
   })
 });

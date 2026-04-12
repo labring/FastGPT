@@ -32,7 +32,8 @@ import type {
   UpdateDatasetBody,
   CreateDatasetFolderBody,
   SearchDatasetTestBody,
-  SearchDatasetTestResponse
+  SearchDatasetTestResponse,
+  GetDatasetPermissionResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
@@ -78,6 +79,9 @@ export const postDatasetSync = (data: PostDatasetSyncParams) =>
 
 export const postCreateDatasetFolder = (data: CreateDatasetFolderBody) =>
   POST(`/core/dataset/folder/create`, data);
+
+export const getDatasetDataPermission = (id?: string) =>
+  GET<GetDatasetPermissionResponse>(`/core/dataset/getPermission`, { id });
 
 export const resumeInheritPer = (datasetId: string) =>
   PUT(`/core/dataset/resumeInheritPermission`, { datasetId });

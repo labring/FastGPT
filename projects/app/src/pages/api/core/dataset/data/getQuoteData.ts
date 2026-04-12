@@ -11,6 +11,7 @@ import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/contr
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   GetQuoteDataBodySchema,
+  GetQuoteDataResponseSchema,
   type GetQuoteDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
@@ -91,11 +92,11 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
     }
   })();
 
-  return {
+  return GetQuoteDataResponseSchema.parse({
     collection,
     q,
     a
-  };
+  });
 }
 
 export default NextAPI(handler);

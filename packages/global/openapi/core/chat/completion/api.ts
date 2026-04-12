@@ -35,9 +35,13 @@ export const CompletionsPropsSchema = OutLinkChatAuthSchema.extend(WebCompletion
     variables: z.record(z.string(), z.any()).optional().default({}).meta({
       description: '全局变量或插件输入'
     }),
-    responseChatItemId: z.string().optional().default(getNanoid()).meta({
-      description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
-    }),
+    responseChatItemId: z
+      .string()
+      .optional()
+      .default(() => getNanoid())
+      .meta({
+        description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
+      }),
     detail: z.boolean().optional().default(false).meta({
       description: '是否返回详细信息，包括 reasoning_content, tool_calls, usage 等'
     }),
