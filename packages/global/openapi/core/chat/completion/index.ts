@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
-import { CompletionsPropsSchema, CompletionsResponseSchema } from './api';
+import { ChatTestPropsSchema, CompletionsPropsSchema, CompletionsResponseSchema } from './api';
 
 /* =============== Request examples =============== */
 
@@ -418,6 +418,32 @@ ${interactiveStreamExample}
                 }
               }
             },
+            'text/event-stream': {
+              examples: {}
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/chatTest': {
+    post: {
+      tags: [TagsMap.chatController],
+      summary: '测试对话（调试）',
+      description: `调试运行 Agent / 工作流。接收完整的节点、边和聊天配置，按测试模式执行一次工作流，通过 SSE 流式返回运行结果与节点状态。仅用于 FastGPT 编排页面的调试预览，不建议作为对外接口使用。
+
+响应为 SSE 流，event 结构与 \`/v1/chat/completions\` \`detail=true, stream=true\` 一致，包括 \`answer\` / \`flowNodeStatus\` / \`flowResponses\` / \`interactive\` 等。`,
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ChatTestPropsSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'SSE 流式响应',
+          content: {
             'text/event-stream': {
               examples: {}
             }

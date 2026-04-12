@@ -179,6 +179,11 @@ export const PushDataBodySchema = z.object({
   }),
   billId: z.string().optional().meta({
     description: '账单 ID'
+  }),
+
+  trainingMode: z.enum(DatasetCollectionDataProcessModeEnum).optional().meta({
+    description: '训练类型',
+    deprecated: true
   })
 });
 export type PushDataBody = z.infer<typeof PushDataBodySchema>;

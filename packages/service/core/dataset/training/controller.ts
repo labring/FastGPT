@@ -27,7 +27,7 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
   } catch (error) {}
 };
 
-export async function pushDataListToTrainingQueue({
+export const pushDataListToTrainingQueue = async ({
   teamId,
   tmbId,
   datasetId,
@@ -55,9 +55,9 @@ export async function pushDataListToTrainingQueue({
 
   indexSize?: number;
 
-  billId?: string;
+  billId: string;
   session?: ClientSession;
-}): Promise<PushDataResponseType> {
+}): Promise<PushDataResponseType> => {
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));
@@ -209,7 +209,7 @@ export async function pushDataListToTrainingQueue({
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
     return { insertLen: insertedCount };
   }
-}
+};
 
 export const pushDatasetToParseQueue = async ({
   teamId,

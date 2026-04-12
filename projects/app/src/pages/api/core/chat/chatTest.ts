@@ -61,13 +61,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId
   } = ChatTestPropsSchema.parse(req.body);
   try {
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
-
     const originIp = getIpFromRequest(req);
 
     const chatMessages = GPTMessages2Chats({ messages });
