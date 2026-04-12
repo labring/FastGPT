@@ -9,7 +9,7 @@ import {
   InsertImagesBodySchema,
   PushDataBodySchema,
   GetDatasetDataListBodySchema,
-  GetDatasetDataListLegacyBodySchema
+  GetDatasetDataListResponseSchema
 } from './api';
 
 export const DatasetDataPath: OpenAPIPath = {
@@ -27,7 +27,12 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回分页数据列表'
+          description: '成功返回分页数据列表',
+          content: {
+            'application/json': {
+              schema: GetDatasetDataListResponseSchema
+            }
+          }
         }
       }
     }

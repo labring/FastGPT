@@ -17,7 +17,7 @@ export const GetPreviewChunksBodySchema = ChunkSettingsSchema.extend({
     example: DatasetSourceReadTypeEnum.fileLocal,
     description: '数据源读取类型'
   }),
-  sourceId: z.string().meta({
+  sourceId: z.string().nonempty().meta({
     example: '68ad85a7463006c963799a05',
     description: '数据源 ID（文件 ID / 链接 / 外部文件 / API 文件等）'
   }),

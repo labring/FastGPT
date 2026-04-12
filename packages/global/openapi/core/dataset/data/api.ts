@@ -60,7 +60,7 @@ export const DeleteDatasetDataQuerySchema = z.object({
     description: '数据 ID'
   })
 });
-export type DeleterDatasetDataQuery = z.infer<typeof DeleteDatasetDataQuerySchema>;
+export type DeleteDatasetDataQuery = z.infer<typeof DeleteDatasetDataQuerySchema>;
 
 /* ============================================================================
  * API: 获取引用数据
@@ -114,7 +114,11 @@ export type GetQuoteDataResponse = z.infer<typeof GetQuoteDataResponseSchema>;
  * API: 插入单条数据
  * Route: POST /api/core/dataset/data/insertData
  * ============================================================================ */
-export const InsertDataBodySchema = PushDataChunkSchema.extend({
+export const InsertDataBodySchema = PushDataChunkSchema.omit({ q: true }).extend({
+  q: z.string().nonempty().meta({
+    example: '什么是 FastGPT？',
+    description: '问题/主文本'
+  }),
   collectionId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a06',
     description: '集合 ID'
