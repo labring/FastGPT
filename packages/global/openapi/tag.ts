@@ -31,7 +31,7 @@ export const TagsMap = {
   // Dataset
   datasetCommon: '知识库管理',
   datasetCollection: '集合管理',
-  dastasetCollectionCreate: '知识库集合创建',
+  datasetCollectionCrteate: '知识库集合创建',
   datasetData: '数据管理',
   datasetTraining: '训练管理',
   datasetApiDataset: 'API 数据集管理',

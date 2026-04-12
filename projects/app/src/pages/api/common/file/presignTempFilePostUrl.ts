@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
+import type { CreatePostPresignedUrlResonseType } from '@fastgpt/global/common/file/s3/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
@@ -15,7 +15,7 @@ export type PresignTempFilePostUrlParams = {
 
 async function handler(
   req: ApiRequestProps<PresignTempFilePostUrlParams>
-): Promise<CreatePostPresignedUrlResult> {
+): Promise<CreatePostPresignedUrlResonseType> {
   const { filename } = req.body;
 
   const { teamId, tmbId } = await authUserPer({

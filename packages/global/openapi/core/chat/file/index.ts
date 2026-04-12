@@ -1,7 +1,7 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import { PresignChatFilePostUrlSchema, PresignChatFileGetUrlSchema } from './api';
-import { CreatePostPresignedUrlResultSchema } from '../../../../../service/common/s3/type';
+import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 import { z } from 'zod';
 
 export const ChatFilePath: OpenAPIPath = {
@@ -22,7 +22,7 @@ export const ChatFilePath: OpenAPIPath = {
           description: '成功上传对话文件预签名 URL',
           content: {
             'application/json': {
-              schema: CreatePostPresignedUrlResultSchema
+              schema: CreatePostPresignedUrlResponseSchema
             }
           }
         }

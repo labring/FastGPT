@@ -40,14 +40,6 @@ export const CreatePostPresignedUrlOptionsSchema = z.object({
 });
 export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;
 
-export const CreatePostPresignedUrlResultSchema = z.object({
-  url: z.string().nonempty(),
-  key: z.string().nonempty(),
-  headers: z.record(z.string(), z.string()),
-  maxSize: z.number().positive().optional() // bytes
-});
-export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
-
 export const CreateGetPresignedUrlParamsSchema = z.object({
   key: z.string().nonempty(),
   expiredHours: z.number().positive().optional()
