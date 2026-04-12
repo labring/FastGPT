@@ -84,7 +84,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回训练数据详情，数据不存在时返回 undefined'
+          description: '成功返回训练数据详情，数据不存在时返回空'
         }
       }
     }

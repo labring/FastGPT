@@ -53,7 +53,7 @@ export const postDatasetSync = (data: PostDatasetSyncParams) =>
 export const postCreateDatasetFolder = (data: CreateDatasetFolderBody) =>
   POST(`/core/dataset/folder/create`, data);
 
-export const getDatasetDataPermission = (id?: string) =>
+export const getDatasetPermission = (id?: string) =>
   GET<GetDatasetPermissionResponse>(`/core/dataset/getPermission`, { id });
 
 export const resumeInheritPer = (datasetId: string) =>

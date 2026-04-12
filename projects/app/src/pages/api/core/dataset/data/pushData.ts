@@ -60,6 +60,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
 
     return pushDataListToTrainingQueue({
       ...body,
+      session,
       billId: traingUsageId,
       mode, // Use collection's training mode
       teamId,
