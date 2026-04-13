@@ -13,6 +13,8 @@ vi.stubEnv('NODE_ENV', 'test');
 
 loadVectorDBEnv({ envFileNames: ['.env.test.local'] });
 
+process.env.FILE_TOKEN_KEY ??= '1234567890abcdef1234567890abcdef';
+
 beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
   await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
