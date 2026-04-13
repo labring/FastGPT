@@ -56,6 +56,18 @@ const isLikelyTextBuffer = (buffer: Buffer) => {
   return suspiciousBytes / buffer.length < 0.1;
 };
 
+const replaceFilenameExtension = (filename: string, extension: string) => {
+  const normalizedExtension = normalizeFileExtension(extension);
+  if (!normalizedExtension) return filename;
+
+  const currentExtension = normalizeFileExtension(path.extname(filename));
+  if (!currentExtension) {
+    return `${filename}${normalizedExtension}`;
+  }
+
+  return `${filename.slice(0, -currentExtension.length)}${normalizedExtension}`;
+};
+
 const resolveExpectedMime = ({
   filename,
   extension,
@@ -98,6 +110,21 @@ const mimesMatchForUpload = (expected: string, detected: string): boolean => {
     if (group.has(e) && group.has(d)) return true;
   }
   return false;
+};
+
+const resolveAllowedExtensionForMime = ({
+  allowedExtensions,
+  mime
+}: {
+  allowedExtensions: string[];
+  mime: string;
+}) => {
+  return (
+    allowedExtensions.find((extension) => {
+      const allowedMime = resolveMimeType([extension], '');
+      return Boolean(allowedMime) && mimesMatchForUpload(allowedMime, mime);
+    }) || ''
+  );
 };
 
 const detectOfficeDocumentMime = ({
@@ -156,7 +183,22 @@ export async function validateUploadFile({
 
   if (detectedMime) {
     if (expectedMime !== DEFAULT_CONTENT_TYPE && !mimesMatchForUpload(expectedMime, detectedMime)) {
-      throw new Error(S3ErrEnum.uploadFileTypeMismatch);
+      const matchedAllowedExtension = resolveAllowedExtensionForMime({
+        allowedExtensions,
+        mime: detectedMime
+      });
+
+      if (!matchedAllowedExtension) {
+        throw new Error(S3ErrEnum.uploadFileTypeMismatch);
+      }
+
+      return {
+        filename:
+          matchedAllowedExtension !== extension
+            ? replaceFilenameExtension(normalizedFileName, matchedAllowedExtension)
+            : normalizedFileName,
+        contentType: detectedMime
+      };
     }
     return {
       filename: normalizedFileName,

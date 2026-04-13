@@ -35,6 +35,7 @@ export const instrumentationCheck = async () => {
     console.error(message);
     return Promise.reject(message);
   }
+
   // pro
   if (global.feConfigs?.isPlus) {
     try {
@@ -48,6 +49,7 @@ export const instrumentationCheck = async () => {
       return Promise.reject(message);
     }
   }
+
   // sandbox
   try {
     await codeSandbox.runCode({
@@ -58,7 +60,8 @@ export const instrumentationCheck = async () => {
       variables: {}
     });
   } catch (error) {
-    console.warn(`${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
+    logger.warn(`[${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
   }
+
   logger.info('instrumentation check finish');
 };

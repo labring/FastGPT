@@ -96,7 +96,7 @@ const verifyToken = <T>(token: string, checker: (value: unknown) => value is T) 
 
 /* ==================== Payload 校验器 ==================== */
 const isS3ObjectKeyTokenPayload = (value: unknown): value is S3ObjectKeyTokenPayload => {
-  return isRecord(value) && isNonEmptyString(value.objectKey);
+  return isRecord(value) && isNonEmptyString(value.objectKey) && value.type === undefined;
 };
 
 const isS3DownloadTokenPayload = (value: unknown): value is S3DownloadTokenPayload => {

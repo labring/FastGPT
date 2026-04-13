@@ -61,6 +61,22 @@ describe('validateUploadFile', () => {
     ).rejects.toThrow('UploadFileTypeMismatch');
   });
 
+  it('accepts mismatched binary content when detected type is also allowed', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: pngBuffer,
+        filename: 'demo.jpeg',
+        uploadConstraints: {
+          defaultContentType: 'image/jpeg',
+          allowedExtensions: ['.jpg', '.jpeg', '.png']
+        }
+      })
+    ).resolves.toEqual({
+      filename: 'demo.png',
+      contentType: 'image/png'
+    });
+  });
+
   it('accepts text-like files without binary signature', async () => {
     await expect(
       validateUploadFile({

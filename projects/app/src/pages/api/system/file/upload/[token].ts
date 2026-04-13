@@ -1,5 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { Transform } from 'node:stream';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { jwtVerifyS3UploadToken } from '@fastgpt/service/common/s3/security/token';
 import type { UploadConstraints } from '@fastgpt/service/common/s3/contracts/type';
@@ -14,6 +15,8 @@ type GuardStreamOptions = {
   filename?: string;
 };
 
+type ValidatedUploadFile = Awaited<ReturnType<typeof validateUploadFile>>;
+
 const parseContentLength = (value: string | string[] | undefined) => {
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw) return undefined;
@@ -26,31 +29,64 @@ const parseContentLength = (value: string | string[] | undefined) => {
 const createUploadGuardStream = ({ maxSize, uploadConstraints, filename }: GuardStreamOptions) => {
   const inspectBytes = getUploadInspectBytes(filename);
   let uploadedBytes = 0;
-  let validated = false;
   let bufferedBytes = 0;
   const chunks: Buffer[] = [];
+  let validatedFile: ValidatedUploadFile | undefined;
+  let validationSettled = false;
+  let resolveValidatedUpload!: (value: ValidatedUploadFile) => void;
+  let rejectValidatedUpload!: (reason?: unknown) => void;
+
+  const validatedUpload = new Promise<ValidatedUploadFile>((resolve, reject) => {
+    resolveValidatedUpload = resolve;
+    rejectValidatedUpload = reject;
+  });
+
+  const settleValidation = ({
+    result,
+    error
+  }: {
+    result?: ValidatedUploadFile;
+    error?: unknown;
+  }) => {
+    if (validationSettled) return;
+    validationSettled = true;
+
+    if (error) {
+      rejectValidatedUpload(error);
+      return;
+    }
+    if (result) {
+      resolveValidatedUpload(result);
+    }
+  };
 
   const validateBuffer = async () => {
-    if (validated) return;
+    if (validatedFile) return validatedFile;
     const buffer = Buffer.concat(chunks, bufferedBytes);
 
-    await validateUploadFile({
+    const result = await validateUploadFile({
       buffer,
       filename,
       uploadConstraints
     });
-    validated = true;
+
+    validatedFile = result;
+    settleValidation({ result });
+
+    return result;
   };
 
-  return new Transform({
+  const stream = new Transform({
     transform(chunk, _, callback) {
       uploadedBytes += chunk.length;
       if (uploadedBytes > maxSize) {
-        callback(new Error('EntityTooLarge'));
+        const error = new Error('EntityTooLarge');
+        settleValidation({ error });
+        callback(error);
         return;
       }
 
-      if (validated) {
+      if (validatedFile) {
         callback(null, chunk);
         return;
       }
@@ -70,7 +106,10 @@ const createUploadGuardStream = ({ maxSize, uploadConstraints, filename }: Guard
           bufferedBytes = 0;
           callback(null, initialBuffer);
         })
-        .catch(callback);
+        .catch((error) => {
+          settleValidation({ error });
+          callback(error);
+        });
     },
     flush(callback) {
       validateBuffer()
@@ -81,9 +120,45 @@ const createUploadGuardStream = ({ maxSize, uploadConstraints, filename }: Guard
           }
           callback();
         })
-        .catch(callback);
+        .catch((error) => {
+          settleValidation({ error });
+          callback(error);
+        });
     }
   });
+
+  stream.once('error', (error) => {
+    settleValidation({ error });
+  });
+  stream.once('close', () => {
+    if (!validationSettled && !validatedFile) {
+      settleValidation({ error: new Error('UploadStreamClosed') });
+    }
+  });
+
+  return {
+    stream,
+    validatedUpload
+  };
+};
+
+const buildUploadMetadata = ({
+  metadata,
+  filename
+}: {
+  metadata?: Record<string, string>;
+  filename?: string;
+}) => {
+  if (!filename) return metadata;
+
+  return {
+    ...metadata,
+    contentDisposition: getContentDisposition({
+      filename,
+      type: 'attachment'
+    }),
+    originFilename: encodeURIComponent(filename)
+  };
 };
 
 async function handler(req: NextApiRequest) {
@@ -106,20 +181,24 @@ async function handler(req: NextApiRequest) {
   }
 
   const filename = metadata?.originFilename;
-  const guardStream = createUploadGuardStream({
+  const { stream: guardStream, validatedUpload } = createUploadGuardStream({
     maxSize,
     uploadConstraints,
     filename
   });
 
   req.pipe(guardStream);
+  const validatedFile = await validatedUpload;
 
   await bucket.client.uploadObject({
     key: objectKey,
     body: guardStream,
-    contentType: uploadConstraints.defaultContentType,
+    contentType: validatedFile.contentType,
     contentLength,
-    metadata
+    metadata: buildUploadMetadata({
+      metadata,
+      filename: validatedFile.filename
+    })
   });
 
   return { success: true };

@@ -49,8 +49,8 @@ export const CreatePostPresignedUrlParamsSchema = z.object({
 export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrlParamsSchema>;
 
 export const CreatePostPresignedUrlOptionsSchema = z.object({
-  expiredHours: z.number().positive().optional(),
-  maxFileSize: z.number().positive().optional(),
+  expiredHours: z.number().positive().optional().describe('小时'),
+  maxFileSize: z.number().positive().optional().describe('MB'),
   uploadConstraints: UploadConstraintsInputSchema.optional()
 });
 export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;
