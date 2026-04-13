@@ -98,7 +98,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     loopResponseDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
 
-    totalPoints += pushSubWorkflowUsage(props.usagePush, response, name, index);
+    totalPoints += pushSubWorkflowUsage({ usagePush: props.usagePush, response, name, index });
 
     collectResponseFeedbacks(response, customFeedbacks);
 

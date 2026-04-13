@@ -23,15 +23,20 @@ export const getNestedEndOutputValue = (response: DispatchFlowResponse): any =>
  * so the caller can keep a running total.
  *
  * Pattern shared by runLoop and runParallelRun:
- *   const pts = pushSubWorkflowUsage(props.usagePush, response, name, index);
+ *   const pts = pushSubWorkflowUsage({ usagePush: props.usagePush, response, name, index });
  *   totalPoints += pts;
  */
-export const pushSubWorkflowUsage = (
-  usagePush: (usages: ChatNodeUsageType[]) => void,
-  response: DispatchFlowResponse,
-  name: string,
-  index: number
-): number => {
+export const pushSubWorkflowUsage = ({
+  usagePush,
+  response,
+  name,
+  index
+}: {
+  usagePush: (usages: ChatNodeUsageType[]) => void;
+  response: DispatchFlowResponse;
+  name: string;
+  index: number;
+}): number => {
   const itemUsagePoint = response.flowUsages.reduce(
     (acc, usage) => acc + safePoints(usage.totalPoints),
     0

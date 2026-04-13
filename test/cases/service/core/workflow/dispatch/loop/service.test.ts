@@ -177,7 +177,7 @@ describe('loop/service', () => {
           { totalPoints: 5, moduleName: 'b' } as any
         ]
       });
-      const pts = pushSubWorkflowUsage(usagePush, response, 'myNode', 0);
+      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'myNode', index: 0 });
       expect(pts).toBe(15);
     });
 
@@ -186,7 +186,7 @@ describe('loop/service', () => {
       const response = makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 7, moduleName: 'x' } as any]
       });
-      pushSubWorkflowUsage(usagePush, response, 'loopNode', 3);
+      pushSubWorkflowUsage({ usagePush, response, name: 'loopNode', index: 3 });
       expect(usagePush).toHaveBeenCalledOnce();
       expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 7, moduleName: 'loopNode-3' }]);
     });
@@ -194,7 +194,7 @@ describe('loop/service', () => {
     it('flowUsages 为空时返回 0', () => {
       const usagePush = vi.fn();
       const response = makeDispatchFlowResponse({ flowUsages: [] });
-      const pts = pushSubWorkflowUsage(usagePush, response, 'node', 0);
+      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'node', index: 0 });
       expect(pts).toBe(0);
       expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 0, moduleName: 'node-0' }]);
     });
@@ -204,7 +204,7 @@ describe('loop/service', () => {
       const response = makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 1, moduleName: 'z' } as any]
       });
-      pushSubWorkflowUsage(usagePush, response, 'parallel', 99);
+      pushSubWorkflowUsage({ usagePush, response, name: 'parallel', index: 99 });
       expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 1, moduleName: 'parallel-99' }]);
     });
   });
