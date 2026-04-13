@@ -2,7 +2,11 @@ import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VariableInputEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
@@ -480,4 +484,43 @@ export const getNodeErrResponse = ({
       ...(typeof customErr === 'object' ? customErr : {})
     }
   };
+};
+
+/**
+ * Mutates nodes in-place: sets the nestedStart node as entry and injects the
+ * current item / 1-based index into its inputs.
+ *
+ * Shared by loop and parallelRun dispatchers.
+ */
+/**
+ * Coerce a points value to a finite number, defaulting to 0 for
+ * NaN / Infinity / null / undefined.
+ */
+export const safePoints = (val: number | undefined | null): number =>
+  Number.isFinite(val) ? (val as number) : 0;
+
+export const injectNestedStartInputs = ({
+  nodes,
+  childrenNodeIdList,
+  item,
+  index
+}: {
+  nodes: RuntimeNodeItemType[];
+  childrenNodeIdList: string[];
+  item: any;
+  index: number;
+}): void => {
+  nodes.forEach((node) => {
+    if (!childrenNodeIdList.includes(node.nodeId)) return;
+    if (node.flowNodeType === FlowNodeTypeEnum.nestedStart) {
+      node.isEntry = true;
+      node.inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.nestedStartInput) {
+          input.value = item;
+        } else if (input.key === NodeInputKeyEnum.nestedStartIndex) {
+          input.value = index + 1; // 1-based
+        }
+      });
+    }
+  });
 };

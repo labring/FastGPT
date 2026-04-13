@@ -14,12 +14,8 @@ import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 import { env } from '../../../../env';
-import {
-  injectNestedStartInputs,
-  getNestedEndOutputValue,
-  pushSubWorkflowUsage,
-  collectResponseFeedbacks
-} from './service';
+import { getNestedEndOutputValue, pushSubWorkflowUsage, collectResponseFeedbacks } from './service';
+import { injectNestedStartInputs } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -80,7 +76,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         }
       });
     } else {
-      injectNestedStartInputs(runtimeNodes, childrenNodeIdList, item, index);
+      injectNestedStartInputs({ nodes: runtimeNodes, childrenNodeIdList, item, index });
     }
 
     index++;

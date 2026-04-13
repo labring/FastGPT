@@ -1,7 +1,7 @@
 import { cloneDeep } from 'lodash';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
-import { injectNestedStartInputs } from '../loop/service';
+import { injectNestedStartInputs, safePoints } from '../utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
@@ -28,7 +28,7 @@ export const clampParallelConcurrency = (
   const max = envMax && envMax > 0 ? Math.floor(envMax) : 10;
   const defaultConcurrency = 5;
 
-  if (userInput === undefined || userInput === null || Number.isNaN(userInput)) {
+  if (userInput === undefined || userInput === null || !Number.isFinite(userInput)) {
     return Math.min(defaultConcurrency, max);
   }
   const floored = Math.floor(userInput);
@@ -36,7 +36,24 @@ export const clampParallelConcurrency = (
   return Math.min(floored, max);
 };
 
-// ─── 2. buildTaskRuntimeContext ───────────────────────────────────────────────
+// ─── 2. clampParallelRetryTimes ───────────────────────────────────────────────
+
+/**
+ * Clamp user-specified retry times to a valid range [0, 5].
+ * - Uses Number.isFinite so that NaN (e.g. Math.floor('abc')) and Infinity are
+ *   both caught and replaced with the default.
+ * - Defaults to 3 when unset or non-finite.
+ */
+export const clampParallelRetryTimes = (userInput: number | undefined): number => {
+  const DEFAULT = 3;
+  const MAX = 5;
+  if (userInput === undefined || userInput === null || !Number.isFinite(userInput)) {
+    return DEFAULT;
+  }
+  return Math.min(Math.max(Math.floor(userInput), 0), MAX);
+};
+
+// ─── 3. buildTaskRuntimeContext ───────────────────────────────────────────────
 
 type BuildTaskRuntimeContextParams = {
   runtimeNodes: RuntimeNodeItemType[];
@@ -77,28 +94,9 @@ export const buildTaskRuntimeContext = (
     runtimeEdges.filter((e) => childrenSet.has(e.source) && childrenSet.has(e.target))
   );
 
-  injectNestedStartInputs(taskRuntimeNodes, childrenNodeIdList, item, index);
+  injectNestedStartInputs({ nodes: taskRuntimeNodes, childrenNodeIdList, item, index });
 
   return { taskRuntimeNodes, taskRuntimeEdges };
-};
-
-// ─── 3. cloneTaskVariables ───────────────────────────────────────────────────
-
-/**
- * Deep-clone variables for a parallel task.
- *
- * Rationale (TC0034): variable updates inside the parallel subgraph must NOT
- * leak to the outer workflow. We rely on TWO guarantees to achieve this:
- *
- *   1. Each task receives its own deep-cloned variables object, so any
- *      mutation (top-level or nested) in one task does not affect sibling
- *      tasks or the parent run.
- *   2. The parallelRun dispatcher deliberately does NOT merge
- *      `response.newVariables` back into `props.variables` — any variable
- *      update that happens inside a task is discarded at task boundary.
- */
-export const cloneTaskVariables = (variables: Record<string, any>): Record<string, any> => {
-  return cloneDeep(variables);
 };
 
 // ─── 4. parseTaskResponse & parseTaskError ────────────────────────────────────
@@ -156,7 +154,7 @@ export const parseTaskResponse = (params: {
     };
   }
 
-  const totalPoints = response.flowResponses.reduce((acc, r) => acc + (r.totalPoints ?? 0), 0);
+  const totalPoints = response.flowResponses.reduce((acc, r) => acc + safePoints(r.totalPoints), 0);
   return { success: true, index, data: loopEndResponse.loopOutputValue, response, totalPoints };
 };
 
@@ -167,7 +165,7 @@ export const parseTaskError = (index: number, err: unknown): ParallelTaskResult 
   return { success: false, index, error: getErrText(err), totalPoints: 0 };
 };
 
-// ─── 5. aggregateParallelResults ─────────────────────────────────────────────
+// ─── 5. aggregateParallelResults ──────────────────────────────────────────────
 
 export type ParallelRunDetail = {
   success: boolean;

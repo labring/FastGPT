@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  injectNestedStartInputs,
   getNestedEndOutputValue,
   pushSubWorkflowUsage,
   collectResponseFeedbacks
 } from '@fastgpt/service/core/workflow/dispatch/loop/service';
+import { injectNestedStartInputs } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -63,27 +63,27 @@ describe('loop/service', () => {
 
     it('nestedStart 节点的 isEntry 被设为 true', () => {
       const nodes = [makeStartNode()];
-      injectNestedStartInputs(nodes, ['start'], 'item-a', 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item: 'item-a', index: 0 });
       expect(nodes[0].isEntry).toBe(true);
     });
 
     it('nestedStartInput 被设为传入的 item', () => {
       const nodes = [makeStartNode()];
-      injectNestedStartInputs(nodes, ['start'], 'hello', 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item: 'hello', index: 0 });
       const val = nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.nestedStartInput)?.value;
       expect(val).toBe('hello');
     });
 
     it('nestedStartIndex 被设为 index + 1（1-based）', () => {
       const nodes = [makeStartNode()];
-      injectNestedStartInputs(nodes, ['start'], 'x', 2);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item: 'x', index: 2 });
       const val = nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.nestedStartIndex)?.value;
       expect(val).toBe(3);
     });
 
     it('index=0 时，nestedStartIndex 被设为 1', () => {
       const nodes = [makeStartNode()];
-      injectNestedStartInputs(nodes, ['start'], 'x', 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item: 'x', index: 0 });
       const val = nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.nestedStartIndex)?.value;
       expect(val).toBe(1);
     });
@@ -91,7 +91,7 @@ describe('loop/service', () => {
     it('不在 childrenNodeIdList 中的节点不被修改', () => {
       const outsideNode = makeNode('outside', FlowNodeTypeEnum.chatNode, [], false);
       const nodes = [outsideNode];
-      injectNestedStartInputs(nodes, ['start'], 'x', 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item: 'x', index: 0 });
       expect(nodes[0].isEntry).toBe(false);
     });
 
@@ -99,7 +99,7 @@ describe('loop/service', () => {
       const startNode = makeStartNode();
       const endNode = makeNode('end', FlowNodeTypeEnum.nestedEnd);
       const nodes = [startNode, endNode];
-      injectNestedStartInputs(nodes, ['start', 'end'], 'x', 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start', 'end'], item: 'x', index: 0 });
       expect(nodes[0].isEntry).toBe(true);
       expect(nodes[1].isEntry).toBe(false); // nestedEnd 不是 entry
     });
@@ -107,7 +107,7 @@ describe('loop/service', () => {
     it('直接 mutate 原数组（不克隆）', () => {
       const nodes = [makeStartNode()];
       const ref = nodes[0];
-      injectNestedStartInputs(nodes, ['start'], 'mutated', 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item: 'mutated', index: 0 });
       // 同一引用被修改
       expect(ref.isEntry).toBe(true);
       expect(ref.inputs.find((i) => i.key === NodeInputKeyEnum.nestedStartInput)?.value).toBe(
@@ -118,7 +118,7 @@ describe('loop/service', () => {
     it('item 为对象时正确注入', () => {
       const nodes = [makeStartNode()];
       const item = { id: 1, name: 'test' };
-      injectNestedStartInputs(nodes, ['start'], item, 0);
+      injectNestedStartInputs({ nodes, childrenNodeIdList: ['start'], item, index: 0 });
       const val = nodes[0].inputs.find((i) => i.key === NodeInputKeyEnum.nestedStartInput)?.value;
       expect(val).toBe(item);
     });

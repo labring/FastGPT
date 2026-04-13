@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   clampParallelConcurrency,
   buildTaskRuntimeContext,
-  cloneTaskVariables,
   parseTaskResponse,
   parseTaskError,
   aggregateParallelResults,
@@ -226,46 +225,6 @@ describe('parallelRun/service', () => {
       // 修改克隆边不影响原始 runtimeEdges
       (taskRuntimeEdges[0] as any).source = 'MUTATED';
       expect(runtimeEdges[0].source).toBe('start');
-    });
-  });
-
-  // ────────────────────────────────────────────────────────────────────────────
-  describe('cloneTaskVariables (TC0034 — 外部变量隔离)', () => {
-    it('返回值与原对象不是同一引用', () => {
-      const original = { foo: 'bar', count: 1 };
-      const cloned = cloneTaskVariables(original);
-
-      expect(cloned).not.toBe(original);
-      expect(cloned).toEqual(original);
-    });
-
-    it('修改克隆对象的顶层 key 不影响原对象', () => {
-      const original = { foo: 'bar', count: 1 };
-      const cloned = cloneTaskVariables(original);
-
-      cloned.foo = 'MUTATED';
-      cloned.count = 999;
-
-      expect(original.foo).toBe('bar');
-      expect(original.count).toBe(1);
-    });
-
-    it('在克隆对象新增 key 不影响原对象', () => {
-      const original: Record<string, any> = { existing: 1 };
-      const cloned = cloneTaskVariables(original);
-
-      cloned.newKey = 'added';
-
-      expect(original.newKey).toBeUndefined();
-      expect(Object.keys(original)).toEqual(['existing']);
-    });
-
-    it('空变量表 → 克隆为空对象', () => {
-      const original = {};
-      const cloned = cloneTaskVariables(original);
-
-      expect(cloned).toEqual({});
-      expect(cloned).not.toBe(original);
     });
   });
 

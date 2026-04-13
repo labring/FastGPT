@@ -9,15 +9,17 @@ import {
 
 import { env } from '../../../../env';
 import { runWorkflow } from '..';
+import { cloneDeep } from 'lodash';
 import {
   clampParallelConcurrency,
+  clampParallelRetryTimes,
   buildTaskRuntimeContext,
-  cloneTaskVariables,
   parseTaskResponse,
   parseTaskError,
   aggregateParallelResults,
   type ParallelFullResultItem
 } from './service';
+import { safePoints } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -57,12 +59,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     env.WORKFLOW_PARALLEL_MAX_CONCURRENCY
   );
 
-  // batchRun: per-task lazy clone — peak memory = concurrency * subgraph size
-  // Clamp retry times: floor to int, min 0, max 5; default 3 when unset
-  const maxRetryAttempts =
-    userRetryTimes !== undefined && !Number.isNaN(userRetryTimes)
-      ? Math.min(Math.max(Math.floor(userRetryTimes), 0), 5)
-      : 3;
+  const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);
 
   const taskResults = await batchRun(
     loopInputArray,
@@ -84,15 +81,14 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         try {
           const response = await runWorkflow({
             ...props,
-            // TC0034: isolate variables — see cloneTaskVariables JSDoc
-            variables: cloneTaskVariables(props.variables),
+            variables: cloneDeep(props.variables),
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
           });
 
           // Push usage per attempt (resources were consumed regardless of success)
           const itemUsagePoint = response.flowUsages.reduce(
-            (acc, usage) => acc + usage.totalPoints,
+            (acc, usage) => acc + safePoints(usage.totalPoints),
             0
           );
           accumulatedPoints += itemUsagePoint;

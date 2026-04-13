@@ -1,44 +1,9 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../type';
 
-// ─── 1. injectNestedStartInputs ──────────────────────────────────────────────
-
-/**
- * Mutates nodes in-place: sets the nestedStart node as entry and injects the
- * current item / 1-based index into its inputs.
- *
- * Shared by two callers with different clone strategies:
- *  - runLoop   → calls directly on the shared mutable runtimeNodes (sequential,
- *                no isolation needed between iterations).
- *  - buildTaskRuntimeContext (parallelRun/service) → calls after deep-cloning,
- *                so each task has its own isolated copy.
- */
-export const injectNestedStartInputs = (
-  nodes: RuntimeNodeItemType[],
-  childrenNodeIdList: string[],
-  item: any,
-  index: number
-): void => {
-  nodes.forEach((node) => {
-    if (!childrenNodeIdList.includes(node.nodeId)) return;
-    if (node.flowNodeType === FlowNodeTypeEnum.nestedStart) {
-      node.isEntry = true;
-      node.inputs.forEach((input) => {
-        if (input.key === NodeInputKeyEnum.nestedStartInput) {
-          input.value = item;
-        } else if (input.key === NodeInputKeyEnum.nestedStartIndex) {
-          input.value = index + 1; // 1-based
-        }
-      });
-    }
-  });
-};
-
-// ─── 2. getNestedEndOutputValue ───────────────────────────────────────────────
+// ─── 1. getNestedEndOutputValue ───────────────────────────────────────────────
 
 /**
  * Extract the output value produced by the nestedEnd node in a sub-workflow
@@ -49,7 +14,7 @@ export const getNestedEndOutputValue = (response: DispatchFlowResponse): any =>
   response.flowResponses.find((res) => res.moduleType === FlowNodeTypeEnum.nestedEnd)
     ?.loopOutputValue;
 
-// ─── 3. pushSubWorkflowUsage ─────────────────────────────────────────────────
+// ─── 2. pushSubWorkflowUsage ─────────────────────────────────────────────────
 
 /**
  * Compute the total usage points for a single sub-workflow run, push the entry
@@ -71,7 +36,7 @@ export const pushSubWorkflowUsage = (
   return itemUsagePoint;
 };
 
-// ─── 4. collectResponseFeedbacks ─────────────────────────────────────────────
+// ─── 3. collectResponseFeedbacks ─────────────────────────────────────────────
 
 /**
  * Append any customFeedbacks from a sub-workflow response into the provided
