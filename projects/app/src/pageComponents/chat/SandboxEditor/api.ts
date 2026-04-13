@@ -10,6 +10,7 @@ import type {
   SandboxGetHtmlPreviewLinkBody,
   SandboxGetHtmlPreviewLinkResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
 
 /**
@@ -61,9 +62,9 @@ export const downloadSandbox = async (data: SandboxDownloadBody) => {
   const a = document.createElement('a');
   a.href = url;
 
-  const contentDisposition = response.headers.get('Content-Disposition') || '';
-  const match = contentDisposition.match(/filename="?([^";]+)"?/i);
-  const fileName = match ? decodeURIComponent(match[1]) : `download-${Date.now()}.zip`;
+  const contentDisposition = response.headers.get('Content-Disposition');
+  const fileName =
+    parseContentDispositionFilename(contentDisposition || '') || `download-${Date.now()}.zip`;
 
   a.download = fileName;
   document.body.appendChild(a);

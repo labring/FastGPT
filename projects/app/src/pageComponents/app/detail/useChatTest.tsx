@@ -101,6 +101,8 @@ export const useChatTest = ({
     appDetail.type,
     appId,
     chatConfig,
+    // 避免仅深层变更时 chatConfig 引用未换导致预览区仍用旧的 fileSelectConfig
+    JSON.stringify(chatConfig?.fileSelectConfig ?? null),
     pluginInputs,
     setChatBoxData,
     userInfo?.avatar
@@ -149,6 +151,7 @@ export const useChatTest = ({
             chatId={chatId}
             onNewChat={restartChat}
             onStartChat={startChat}
+            runtimeFileSelectConfig={chatConfig.fileSelectConfig}
           />
         </Box>
       ) : (
@@ -161,7 +164,7 @@ export const useChatTest = ({
           onStartChat={startChat}
         />
       ),
-    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
+    [appDetail.type, appId, chatId, isReady, restartChat, startChat, chatConfig]
   );
 
   return {

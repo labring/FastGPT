@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import type { GetHelperBotFilePresignParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authHelperBotChatCrud } from '@/service/support/permission/auth/chat';
 import { getS3HelperBotSource } from '../../../../../../../../packages/service/common/s3/sources/helperbot/index';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
@@ -28,7 +28,9 @@ async function handler(
 ): Promise<getFilePresignResponse> {
   const { type, chatId, filename } = req.body;
 
-  const { userId } = await authCert({
+  const { userId } = await authHelperBotChatCrud({
+    type,
+    chatId,
     req,
     authToken: true
   });

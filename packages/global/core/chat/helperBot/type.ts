@@ -1,5 +1,5 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { z } from 'zod';
+import z from 'zod';
 import { ChatRoleEnum } from '../constants';
 import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
 import { UserInputInteractiveSchema } from '../../workflow/template/system/interactive/type';

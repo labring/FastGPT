@@ -1,5 +1,5 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { z } from 'zod';
+import z from 'zod';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({

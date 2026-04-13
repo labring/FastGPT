@@ -19,6 +19,8 @@ import path from 'node:path';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
+import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -26,7 +28,8 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize,
+      allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { parentId, datasetId, collectionName } = CreateImageCollectionFormSchema.parse(

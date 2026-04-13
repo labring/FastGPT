@@ -4,6 +4,8 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { jwtVerifyS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
+import path from 'path';
 const logger = getLogger(LogCategories.INFRA.FILE);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -46,12 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (metadata?.contentLength) {
           res.setHeader('Content-Length', metadata.contentLength);
         }
-        if (metadata?.filename) {
-          res.setHeader(
-            'Content-Disposition',
-            `attachment; filename="${encodeURIComponent(metadata.filename)}"`
-          );
-        }
+        const filename = metadata?.filename || path.basename(objectKey) || 'file';
+        res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
         res.setHeader('Cache-Control', 'public, max-age=31536000');
 
         stream.pipe(res);

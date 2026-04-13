@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 
 export const AppRecordSchemaZod = z.object({
   _id: z.string(),
