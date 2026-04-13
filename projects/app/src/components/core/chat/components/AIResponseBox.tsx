@@ -113,7 +113,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
           fontSize={'xs'}
           lineHeight={'20px'}
         >
-          <Markdown source={content} showAnimation={showAnimation} />
+          <Markdown source={content} showAnimation={showAnimation} citeStyle="index" />
         </AccordionPanel>
       </AccordionItem>
     </Accordion>
@@ -153,6 +153,7 @@ const RenderText = React.memo(function RenderText({
   return (
     <Markdown
       source={source}
+      citeStyle="index"
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
       onOpenCiteModal={onOpenCiteModal}
@@ -205,6 +206,7 @@ const RenderTool = React.memo(
                   {toolParams && toolParams !== '{}' && (
                     <Box mb={3}>
                       <Markdown
+                        citeStyle="index"
                         source={`~~~json#Input
 ${toolParams}`}
                       />
@@ -212,6 +214,7 @@ ${toolParams}`}
                   )}
                   {toolResponse && (
                     <Markdown
+                      citeStyle="index"
                       source={`~~~json#Response
 ${toolResponse}`}
                     />

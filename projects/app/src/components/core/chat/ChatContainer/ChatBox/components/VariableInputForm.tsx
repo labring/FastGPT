@@ -185,7 +185,7 @@ const VariableInputForm = ({
           </Box>
           {!chatStarted && (
             <Button
-              leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+              leftIcon={<MyIcon name={'common/chat'} w={'16px'} />}
               mt={4}
               h={'36px'}
               px={'14px'}

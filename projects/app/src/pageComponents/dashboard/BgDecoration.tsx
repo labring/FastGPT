@@ -2,7 +2,8 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
 
-const BgDecoration = () => {
+const BgDecoration = (props: { showBg?: boolean }) => {
+  const { showBg = true } = props;
   return (
     <Box
       position="absolute"
@@ -13,7 +14,11 @@ const BgDecoration = () => {
       overflow="hidden"
       pointerEvents="none"
       zIndex={0}
-      background="linear-gradient(90deg, rgba(215,255,255,0.157) 46%, rgba(216,216,216,0) 140%)"
+      background={
+        showBg
+          ? 'linear-gradient(90deg, rgba(215,255,255,0.157) 46%, rgba(216,216,216,0) 140%)'
+          : ''
+      }
     >
       {/* 主装饰图 */}
       <Box

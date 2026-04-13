@@ -1,8 +1,10 @@
 import { Text } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useTranslation } from 'next-i18next';
 
 const AppChatEmptyBox = () => {
+  const { t } = useTranslation();
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.name ?? '');
 
   return (
@@ -11,11 +13,17 @@ const AppChatEmptyBox = () => {
       fontWeight="500"
       color="#000000"
       textAlign="center"
-      fontFamily="PingFang SC, sans-serif"
+      maxW={['100%', 'min(738px, 92%)']}
       lineHeight={['36px', '52px']}
       mb={8}
+      overflow="hidden"
+      style={{
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical'
+      }}
     >
-      HI，我是{appName}
+      {appName ? t('chat:greeting_with_name', { appName }) : ''}
     </Text>
   );
 };
