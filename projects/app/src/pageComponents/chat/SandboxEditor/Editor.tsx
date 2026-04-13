@@ -319,6 +319,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
           display={'flex'}
           flex={1}
           w={0}
+          minH={0}
           flexDirection="column"
           bg="myGray.25"
         >

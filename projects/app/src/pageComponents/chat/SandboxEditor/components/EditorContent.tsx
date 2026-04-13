@@ -53,9 +53,11 @@ const EditorContent = ({
   const [generatingLink, setGeneratingLink] = useState(false);
   const openedFilesRef = useLatest(openedFiles);
 
-  // 切换文件时，如果新文件不支持预览模式，重置为 source
+  // 切换文件时，如果新文件支持预览则切换到预览模式，否则重置为源码模式。
   useEffect(() => {
-    if (!getSupportsPreviewToggle(activeFile?.language) && viewMode === 'preview') {
+    if (getSupportsPreviewToggle(activeFile?.language)) {
+      setViewMode('preview');
+    } else {
       setViewMode('source');
     }
   }, [activeFilePath]);
@@ -92,17 +94,15 @@ const EditorContent = ({
 
       if (content.startsWith('blob:') && language === 'image') {
         return (
-          <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
-            <Box position="relative" maxW="100%" maxH="100%">
-              <MyPhotoView src={content} alt={name} maxW="100%" maxH="100%" objectFit="contain" />
-            </Box>
-          </Center>
+          <Box h="full" overflow="auto">
+            <MyPhotoView src={content} alt={name} maxW="100%" objectFit="contain" />
+          </Box>
         );
       }
 
       if (content.startsWith('blob:') && language === 'audio') {
         return (
-          <Center h="full" bg="myGray.50" borderRadius="md">
+          <Center h="full">
             <audio controls src={content}>
               Your browser does not support the audio element.
             </audio>
@@ -112,7 +112,7 @@ const EditorContent = ({
 
       if (content.startsWith('blob:') && language === 'video') {
         return (
-          <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
+          <Center h="full">
             <video controls src={content} style={{ maxWidth: '100%', maxHeight: '100%' }}>
               Your browser does not support the video element.
             </video>
@@ -129,7 +129,7 @@ const EditorContent = ({
       const { language, content } = activeFile;
       if (language === 'markdown') {
         return (
-          <Box h="full" overflow="auto" bg="white">
+          <Box h="full" overflowY="auto" bg="white">
             <Markdown source={content} />
           </Box>
         );
@@ -137,17 +137,9 @@ const EditorContent = ({
       if (language === 'svg') {
         const svgUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`;
         return (
-          <Center h="full" bg="myGray.50" borderRadius="md" p={4}>
-            <Box position="relative" maxW="100%" maxH="100%">
-              <MyPhotoView
-                src={svgUri}
-                alt={activeFile.name}
-                maxW="100%"
-                maxH="100%"
-                objectFit="contain"
-              />
-            </Box>
-          </Center>
+          <Box h="full" overflow="auto">
+            <MyPhotoView src={svgUri} alt={activeFile.name} maxW="100%" objectFit="contain" />
+          </Box>
         );
       }
     }
@@ -226,6 +218,8 @@ const EditorContent = ({
       flexDirection="column"
       borderRadius={'md'}
       bg={'white'}
+      minH={0}
+      h="100%"
     >
       <Flex
         align="center"
@@ -254,8 +248,8 @@ const EditorContent = ({
           {getSupportsPreviewToggle(activeFile?.language) && (
             <FillRowTabs
               list={[
-                { label: t('chat:sandbox_source'), value: 'source' },
-                { label: t('chat:sandbox_preview'), value: 'preview' }
+                { label: t('chat:sandbox_preview'), value: 'preview' },
+                { label: t('chat:sandbox_source'), value: 'source' }
               ]}
               value={viewMode}
               onChange={(v) => setViewMode(v as 'source' | 'preview')}
@@ -287,7 +281,7 @@ const EditorContent = ({
         </Flex>
       </Flex>
 
-      <Box flex={1} borderColor="myGray.200" overflow="hidden">
+      <Box flex={1} overflow="hidden" position="relative" zIndex={1} minH={0}>
         {renderFileContent()}
       </Box>
     </Flex>
