@@ -134,7 +134,8 @@ export const parseTaskResponse = (params: {
       success: false,
       index,
       error: i18nT('workflow:parallel_task_interactive_not_supported'),
-      response
+      response,
+      totalPoints: 0
     };
   }
 
@@ -150,18 +151,20 @@ export const parseTaskResponse = (params: {
       success: false,
       index,
       error: getErrText(err, i18nT('workflow:parallel_task_not_reach_end')),
-      response
+      response,
+      totalPoints: 0
     };
   }
 
-  return { success: true, index, data: loopEndResponse.loopOutputValue, response };
+  const totalPoints = response.flowResponses.reduce((acc, r) => acc + (r.totalPoints ?? 0), 0);
+  return { success: true, index, data: loopEndResponse.loopOutputValue, response, totalPoints };
 };
 
 /**
  * Wrap a caught error into a failed ParallelTaskResult.
  */
 export const parseTaskError = (index: number, err: unknown): ParallelTaskResult => {
-  return { success: false, index, error: getErrText(err) };
+  return { success: false, index, error: getErrText(err), totalPoints: 0 };
 };
 
 // ─── 5. aggregateParallelResults ─────────────────────────────────────────────
