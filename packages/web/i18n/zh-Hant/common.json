@@ -1141,6 +1141,8 @@
   "support.openapi.Copy success": "已複製 API 網址",
   "support.openapi.New api key": "新的 API 金鑰",
   "support.openapi.New api key tip": "請妥善保管您的金鑰，金鑰將不會再次顯示",
+  "support.openapi.Call example": "API 呼叫示例",
+  "support.openapi.Call example desc": "以下是使用 API 金鑰呼叫應用的 curl 指令示例，點擊複製按鈕可將指令複製到剪貼板。",
   "support.outlink.Delete link tip": "確認刪除此免登入連結？刪除後，該連結將立即失效，對話記錄仍會保留，請確認！",
   "support.outlink.Max usage points": "點數上限",
   "support.outlink.Max usage points tip": "此連結最多允許使用多少點數，超出後將無法使用。-1 代表無限制。",

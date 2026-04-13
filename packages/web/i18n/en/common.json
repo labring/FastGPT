@@ -1171,6 +1171,8 @@
   "support.openapi.Copy success": "API address copied successfully.",
   "support.openapi.New api key": "New API key",
   "support.openapi.New api key tip": "Please save your key properly. It will not be displayed again.",
+  "support.openapi.Call example": "API Call Example",
+  "support.openapi.Call example desc": "Below are curl command examples for calling the application using your API Key. Click the copy button to copy the command to your clipboard.",
   "support.outlink.Delete link tip": "Are you sure you want to delete this link? This link will immediately become invalid, but the chat history will be preserved.",
   "support.outlink.Max usage points": "Max credits",
   "support.outlink.Max usage points tip": "The maximum number of credits that can be used by this API key. -1 indicates no limit.",
