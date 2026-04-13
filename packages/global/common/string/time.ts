@@ -13,6 +13,59 @@ export const formatTime2YMDHMS = (time?: Date | number) =>
   time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '';
 export const formatTime2YMDHM = (time?: Date | number) =>
   time ? dayjs(time).format('YYYY-MM-DD HH:mm') : '';
+export const formatTime2YMDHMUtc = (time?: Date | number) =>
+  time ? dayjs.utc(time).format('YYYY-MM-DD HH:mm') : '';
+
+/**
+ * UTC 毫秒时间戳 → Date 对象（UTC 字段值填入本地字段）
+ * 用于 DateTimePicker：使其以 UTC 时间显示，而非本地时间
+ */
+export const utcTsToDisplayDate = (ts: number): Date => {
+  const d = new Date(ts);
+  return new Date(
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    d.getUTCHours(),
+    d.getUTCMinutes(),
+    0,
+    0
+  );
+};
+
+/**
+ * DateTimePicker 返回的 Date（本地字段实际表示 UTC 值）→ UTC 毫秒时间戳
+ */
+export const displayDateToUtcTs = (date: Date): number =>
+  Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    0,
+    0
+  );
+
+/**
+ * datetime-local 字符串（如 "2024-01-15T10:30"）→ UTC 毫秒时间戳
+ * 将字符串中的时间字段直接作为 UTC 值处理
+ */
+export const datetimeLocalToUtcTs = (str: string): number => {
+  const [datePart, timePart = '00:00'] = str.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [h, min] = timePart.split(':').map(Number);
+  return Date.UTC(y, m - 1, d, h, min);
+};
+
+/**
+ * UTC 毫秒时间戳 → datetime-local 字符串（如 "2024-01-15T10:30"），以 UTC 时间表示
+ */
+export const utcTsToDatetimeLocal = (ts: number): string => {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+};
 export const formatTime2YMD = (time?: Date | number) =>
   time ? dayjs(time).format('YYYY-MM-DD') : '';
 export const formatTime2HM = (time: Date = new Date()) => dayjs(time).format('HH:mm');

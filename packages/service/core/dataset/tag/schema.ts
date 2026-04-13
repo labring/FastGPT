@@ -20,6 +20,11 @@ const DatasetCollectionTagsSchema = new Schema({
   tag: {
     type: String,
     required: true
+  },
+  tagType: {
+    type: String,
+    default: 'string',
+    enum: ['string', 'number', 'datetime']
   }
 });
 

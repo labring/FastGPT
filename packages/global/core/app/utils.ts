@@ -164,6 +164,11 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.agenticSearchRerankModel =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModel) ||
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModel);
+      // 标签过滤
+      defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.collectionFilterMatch
+      );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||

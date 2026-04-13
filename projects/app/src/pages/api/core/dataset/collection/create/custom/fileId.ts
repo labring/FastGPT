@@ -18,6 +18,7 @@ import {
   logAdaptiveAdjustments
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
 import type { CustomFileImportModeType } from '@fastgpt/global/common/system/types/index.d';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
@@ -31,7 +32,7 @@ export type CustomFileIdImportBody = {
   fileId: string; // Required: Uploaded file ID
   parentId?: string; // Optional: Parent directory ID
   name?: string; // Optional: Custom name (defaults to filename)
-  tags?: string[]; // Optional: Tags
+  tags?: CollectionTagValueType[]; // Optional: Tags
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };

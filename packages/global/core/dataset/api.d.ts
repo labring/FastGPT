@@ -3,7 +3,9 @@ import type {
   DatasetDataIndexItemType,
   DatasetDataFieldType,
   DatasetSchemaType,
-  TableSchemaType
+  TableSchemaType,
+  DatasetTagTypeEnum,
+  CollectionTagValueType
 } from './type';
 import type {
   DatasetCollectionTypeEnum,
@@ -65,7 +67,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   rawTextLength?: number;
   hashRawText?: string;
 
-  tags?: string[];
+  tags?: (string | CollectionTagValueType)[];
 
   createTime?: Date;
   updateTime?: Date;
@@ -75,7 +77,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   datasetId: string;
-  tags?: string[];
+  tags?: (string | CollectionTagValueType)[];
 };
 export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
@@ -120,6 +122,7 @@ export type ImageCreateDatasetCollectionParams = ApiCreateDatasetCollectionParam
 export type CreateDatasetCollectionTagParams = {
   datasetId: string;
   tag: string;
+  tagType?: DatasetTagTypeEnum;
 };
 export type AddTagsToCollectionsParams = {
   originCollectionIds: string[];
@@ -131,6 +134,16 @@ export type UpdateDatasetCollectionTagParams = {
   datasetId: string;
   tagId: string;
   tag: string;
+  tagType?: DatasetTagTypeEnum;
+};
+export type SetCollectionTagsParams = {
+  collectionId: string;
+  tags: CollectionTagValueType[];
+};
+export type BatchSetCollectionTagsParams = {
+  collectionIds: string[];
+  tags: CollectionTagValueType[];
+  datasetId: string;
 };
 
 /* ================= data ===================== */

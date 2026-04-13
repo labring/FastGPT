@@ -11,6 +11,7 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
@@ -26,6 +27,7 @@ export type CustomTemplateImportQuery = {};
 export type CustomTemplateImportBody = {
   datasetId: string;
   parentId?: string; // Optional: Parent directory ID
+  tags?: CollectionTagValueType[]; // Optional: Tags
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
@@ -95,6 +97,8 @@ async function handler(
     const file = result.fileMetadata;
     const data = result.data;
     filePaths.push(file.path);
+
+    const { tags } = data;
 
     const extension = decodeURIComponent(file.originalname).split('.').pop()?.toLowerCase();
     if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
@@ -293,6 +297,7 @@ async function handler(
         datasetId: dataset._id,
         parentId: normalizedParentId,
         name: fileName,
+        tags,
         type: DatasetCollectionTypeEnum.file,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,

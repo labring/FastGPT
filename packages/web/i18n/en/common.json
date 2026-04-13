@@ -803,6 +803,7 @@
   "core.workflow.inputType.textarea": "Multi-line input box",
   "core.workflow.inputType.timePointSelect": "Time point",
   "core.workflow.inputType.timeRangeSelect": "Time range",
+  "core.workflow.inputType.off": "Closed",
   "core.workflow.publish.OnRevert version": "Roll back",
   "core.workflow.publish.OnRevert version confirm": "Are you sure you want to roll back to the version? Your current edits will be saved, and a new release with the configuration of the target version will be published.",
   "core.workflow.publish.histories": "Publishing records",

@@ -683,7 +683,6 @@ export async function dispatchDatasetSearch(
             agenticSearchLLMModel,
             agenticSearchRerankModel,
             agenticSearchReasoning,
-            synonymDatasetIds: commonDatasetIds,
             workflowStreamResponse,
             // 预计算结果：只在有值时传入，避免空值覆盖 diting-rag-ts 内部逻辑
             ...(preResolvedQuery ? { preResolvedQuery } : {}),
