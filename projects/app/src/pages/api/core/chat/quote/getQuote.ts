@@ -11,6 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { isDatabaseSource, isCorrectionSource } from '@fastgpt/global/core/dataset/utils';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 export type GetQuoteProps = {
@@ -63,9 +64,18 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
       { appId, chatId, dataId: chatItemDataId },
       'responseData time'
     ).lean() as Promise<{ time: Date; responseData?: ChatHistoryItemResType[] } | null>,
-    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: collectionIdList })
+    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: filterCollectionIdList })
   ]);
   if (!chat || !chatItem || !showCite) return Promise.reject(ChatErrEnum.unAuthChat);
+
+  // Concat response data（兜底：大型 responseData 可能拆分存储在 MongoChatItemResponse）
+  if (!chatItem.responseData || chatItem.responseData.length === 0) {
+    const chatItemResponses = await MongoChatItemResponse.find(
+      { appId, chatId, chatItemDataId },
+      { data: 1 }
+    ).lean();
+    chatItem.responseData = chatItemResponses.map((item) => item.data);
+  }
 
   const list = await MongoDatasetData.find(
     { _id: { $in: filterdatasetDataIdList }, collectionId: { $in: filterCollectionIdList } },
@@ -101,7 +111,6 @@ async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRe
       } as DatasetCiteItemType;
     });
   formatPreviewUrlList.push(...(sqlFormatQuoteLists || []));
-
   // Get correction search results
   const correctionFormatQuoteLists = Items?.map((item) => item.correctSearchResult)
     ?.flat()
