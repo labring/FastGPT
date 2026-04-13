@@ -403,7 +403,7 @@ const EditForm = ({
           <FormItem
             label={t('app:retrieval_mode')}
             tooltip={
-              <Box lineHeight={'24px'}>
+              <Box lineHeight={'24px'} fontSize={'12px'}>
                 <Box>
                   <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_single_title')}</span>
                   <span>{t('app:retrieval_mode_single_desc')}</span>
