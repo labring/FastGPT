@@ -54,7 +54,15 @@ export const openAPIDocument = createDocument({
     },
     {
       name: '知识库',
-      tags: [TagsMap.datasetCommon, TagsMap.datasetCollection]
+      tags: [
+        TagsMap.datasetCommon,
+        TagsMap.datasetCollection,
+        TagsMap.datasetCollectionCrteate,
+        TagsMap.datasetData,
+        TagsMap.datasetFile,
+        TagsMap.datasetTraining,
+        TagsMap.datasetApiDataset
+      ]
     },
     {
       name: '插件系统',

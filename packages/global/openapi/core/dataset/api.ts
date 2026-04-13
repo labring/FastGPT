@@ -411,3 +411,41 @@ export const ExportDatasetQuerySchema = z.object({
   })
 });
 export type ExportDatasetQuery = z.infer<typeof ExportDatasetQuerySchema>;
+
+/* ============================================================================
+ * API: 获取知识库引用权限
+ * Route: GET /api/core/dataset/getPermission
+ * ============================================================================ */
+export const GetDatasetPermissionQuerySchema = z.object({
+  id: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type GetDatasetPermissionQuery = z.infer<typeof GetDatasetPermissionQuerySchema>;
+
+export const GetDatasetPermissionResponseSchema = z.object({
+  datasetName: z.string().meta({
+    example: '产品文档知识库',
+    description: '知识库名称'
+  }),
+  permission: z.object({
+    hasWritePer: z.boolean().meta({
+      example: true,
+      description: '是否有写权限'
+    }),
+    hasReadPer: z.boolean().meta({
+      example: true,
+      description: '是否有读权限'
+    })
+  })
+});
+export type GetDatasetPermissionResponse = z.infer<typeof GetDatasetPermissionResponseSchema>;
+
+/* ============================================================================
+ * 数据集同步入参
+ * ============================================================================ */
+export const PostDatasetSyncBodySchema = z.object({
+  datasetId: z.string().meta({ description: '数据集 ID' })
+});
+export type PostDatasetSyncParams = z.infer<typeof PostDatasetSyncBodySchema>;

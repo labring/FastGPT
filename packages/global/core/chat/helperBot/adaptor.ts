@@ -1,10 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
-import type {
-  ChatCompletionContentPart,
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall,
-  ChatCompletionToolMessageParam
-} from '../../ai/type';
+import type { ChatCompletionContentPart, ChatCompletionMessageParam } from '../../ai/llm/type';
 import { ChatFileTypeEnum, ChatRoleEnum } from '../constants';
 import type { HelperBotChatItemType } from './type';
 import { simpleUserContentPart } from '../adapt';

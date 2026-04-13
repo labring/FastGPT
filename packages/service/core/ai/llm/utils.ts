@@ -4,9 +4,8 @@ import type {
   ChatCompletionContentPart,
   ChatCompletionContentPartRefusal,
   ChatCompletionContentPartText,
-  ChatCompletionMessageParam,
-  SdkChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/type';
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import { axios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -376,9 +375,9 @@ export const loadRequestMessages = async ({
 
   const loadMessages = (
     await Promise.all(
-      mergeMessages.map(async (item, i) => {
-        delete item.dataId;
-        delete item.hideInUI;
+      mergeMessages.map(async (raw, i) => {
+        // 解构剥离系统内部字段，避免 mutate 调用方传入的 messages
+        const { dataId: _dataId, hideInUI: _hideInUI, ...item } = raw;
 
         if (item.role === ChatCompletionRequestMessageRoleEnum.System) {
           const content = parseSystemMessage(item.content);
@@ -443,5 +442,5 @@ export const loadRequestMessages = async ({
     )
   ).filter(Boolean) as ChatCompletionMessageParam[];
 
-  return loadMessages as SdkChatCompletionMessageParam[];
+  return loadMessages;
 };

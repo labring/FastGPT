@@ -3,7 +3,7 @@ import type {
   ChatCompletionTool,
   ChatCompletionMessageToolCall,
   CompletionFinishReason
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ToolCallChildrenInteractive,

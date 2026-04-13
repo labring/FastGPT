@@ -31,9 +31,11 @@ export const TagsMap = {
   // Dataset
   datasetCommon: '知识库管理',
   datasetCollection: '集合管理',
-  datasetCollectionController: '集合操作',
+  datasetCollectionCrteate: '知识库集合创建',
   datasetData: '数据管理',
   datasetTraining: '训练管理',
+  datasetApiDataset: 'API 数据集管理',
+  datasetFile: '文件管理',
 
   // Plugin
   pluginToolTag: '工具标签',
@@ -43,6 +45,8 @@ export const TagsMap = {
   publishChannel: '发布渠道',
 
   /* Support */
+  // Team
+  teamManage: '团队管理',
   // Wallet
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',

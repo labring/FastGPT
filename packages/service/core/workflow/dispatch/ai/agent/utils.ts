@@ -2,7 +2,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { SubAppRuntimeType } from './type';
 import { getAgentRuntimeTools } from './sub/tool/utils';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { readFileTool } from './sub/file/utils';
 import { PlanAgentTool } from './sub/plan/constants';
 import { datasetSearchTool } from './sub/dataset/utils';

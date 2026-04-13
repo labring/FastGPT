@@ -4,7 +4,7 @@ import { calculateCompressionThresholds } from './constants';
 import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { getCompressRequestMessagesPrompt } from './prompt';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';

@@ -5,11 +5,11 @@ import { useTranslation } from 'next-i18next';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type Props = BoxProps &
-  readCollectionSourceBody & {
+  ReadCollectionSourceBodyType & {
     collectionType?: DatasetCollectionTypeEnum;
     sourceName?: string;
     sourceId?: string;

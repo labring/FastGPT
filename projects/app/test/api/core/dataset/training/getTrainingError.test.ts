@@ -36,6 +36,7 @@ describe('training error list test', () => {
         tmbId: root.tmbId,
         datasetId: dataset._id,
         collectionId: collection._id,
+        billId: 'test',
         mode: TrainingModeEnum.chunk,
         errorMsg: 'test'
       }))

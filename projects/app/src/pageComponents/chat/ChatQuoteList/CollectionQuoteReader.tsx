@@ -8,7 +8,7 @@ import DownloadButton from './DownloadButton';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useMemo, useState } from 'react';
-import { getDatasetDataPermission } from '@/web/core/dataset/api';
+import { getDatasetPermission } from '@/web/core/dataset/api';
 import ScoreTag from './ScoreTag';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';
@@ -42,7 +42,7 @@ const CollectionReader = ({
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: datasetData } = useRequest(async () => await getDatasetDataPermission(datasetId), {
+  const { data: datasetData } = useRequest(async () => await getDatasetPermission(datasetId), {
     manual: !userInfo || !datasetId,
     refreshDeps: [datasetId, userInfo]
   });

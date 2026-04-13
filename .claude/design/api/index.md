@@ -57,14 +57,14 @@ export const CreateDatasetBodySchema = z.object({
     description: '知识库名称'
   })
 });
-export type CreateDatasetBody = z.infer<typeof CreateDatasetBodySchema>;
+export type CreateDatasetBodyType = z.infer<typeof CreateDatasetBodySchema>;
 
 // 出参 Schema
 export const CreateDatasetResponseSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
   description: '新创建的知识库 ID'
 });
-export type CreateDatasetResponse = z.infer<typeof CreateDatasetResponseSchema>;
+export type CreateDatasetResponseType = z.infer<typeof CreateDatasetResponseSchema>;
 ```
 
 ### 步骤 2: 实现 API 路由
@@ -77,13 +77,13 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   CreateDatasetBodySchema,
   CreateDatasetResponseSchema,
-  type CreateDatasetResponse
+  type CreateDatasetResponseType
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 // ❌ 不要在路由文件中重导出类型别名
-// export type DatasetCreateBody = CreateDatasetBody;
+// export type DatasetCreateBodyType = CreateDatasetBodyType;
 
-async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
+async function handler(req: ApiRequestProps): Promise<CreateDatasetResponseType> {
   // 1. 入参验证
   const { parentId, name } = CreateDatasetBodySchema.parse(req.body);
 
@@ -148,10 +148,10 @@ export const DatasetPath: OpenAPIPath = {
 
 ```typescript
 // ✅ 正确: 从 openapi 导入
-import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
+import type { CreateDatasetBodyType } from '@fastgpt/global/openapi/core/dataset/api';
 
 // ❌ 错误: 从路由文件导入
-import type { DatasetCreateBody } from '@/pages/api/core/dataset/create';
+import type { DatasetCreateBodyType } from '@/pages/api/core/dataset/create';
 
 // ❌ 错误: 从旧的 global 文件导入
 import type { CreateDatasetParams } from '@/global/core/dataset/api';
@@ -164,12 +164,12 @@ import type { CreateDatasetParams } from '@/global/core/dataset/api';
 ```typescript
 import createHandler from '@/pages/api/core/dataset/create';
 import type {
-  CreateDatasetBody,
-  CreateDatasetResponse
+  CreateDatasetBodyType,
+  CreateDatasetResponseType
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { Call } from '@test/utils/request';
 
-const res = await Call<CreateDatasetBody, {}, CreateDatasetResponse>(createHandler, {
+const res = await Call<CreateDatasetBodyType, {}, CreateDatasetResponseType>(createHandler, {
   auth: users.members[0],
   body: { name: 'test', intro: 'intro', avatar: 'avatar', type: DatasetTypeEnum.dataset }
 });
@@ -304,8 +304,8 @@ grep -r "CreateDatasetParams" projects/app/src/
 ```typescript
 // ❌ 删除这些
 export type DatasetCreateQuery = {};
-export type DatasetCreateBody = CreateDatasetBody;
-export type DatasetCreateResponse = CreateDatasetResponse;
+export type DatasetCreateBodyType = CreateDatasetBodyType;
+export type DatasetCreateResponse = CreateDatasetResponseType;
 ```
 
 ## 审查检查清单

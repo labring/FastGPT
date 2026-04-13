@@ -20,7 +20,7 @@ import {
   type CreateQuestionGuideResponseType
 } from '@fastgpt/global/openapi/core/ai/agent/api';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { type ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 
 async function handler(
   req: ApiRequestProps,

@@ -2,7 +2,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import {
   getInitialPlanPrompt,

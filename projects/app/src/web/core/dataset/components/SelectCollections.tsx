@@ -2,7 +2,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FolderPath from '@/components/common/folder/Path';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
+import {
+  getDatasetCollectionPathById,
+  getDatasetCollections
+} from '@/web/core/dataset/api/collection';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';

@@ -11,7 +11,7 @@ import { MongoApp } from '../../../../../../app/schema';
 import { getMCPChildren } from '../../../../../../app/mcp';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import {

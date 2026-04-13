@@ -35,7 +35,10 @@ const TrainingDataSchema = new Schema({
     ref: DatasetColCollectionName,
     required: true
   },
-  billId: String,
+  billId: {
+    type: String,
+    required: true
+  },
   mode: {
     type: String,
     enum: Object.values(TrainingModeEnum),

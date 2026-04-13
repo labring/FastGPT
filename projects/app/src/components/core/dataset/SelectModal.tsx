@@ -6,12 +6,10 @@ import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-
-type PathItemType = {
-  parentId: ParentIdType;
-  parentName: string;
-};
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 
 const DatasetSelectContainer = ({
   isOpen,
@@ -24,7 +22,7 @@ const DatasetSelectContainer = ({
 }: {
   isOpen: boolean;
   setParentId: Dispatch<ParentIdType>;
-  paths: PathItemType[];
+  paths: ParentTreePathItemType[];
   onClose: () => void;
   tips?: string | null;
   isLoading?: boolean;

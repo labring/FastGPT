@@ -1,32 +1,19 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import type {
+import {
   DatasetCollectionDataProcessModeEnum,
-  TrainingModeEnum
+  type TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { Types } from '@fastgpt/service/common/mongo';
-
-type getTrainingDetailParams = {
-  collectionId: string;
-};
-
-export type getTrainingDetailResponse = {
-  trainingType: DatasetCollectionDataProcessModeEnum;
-  advancedTraining: {
-    customPdfParse: boolean;
-    imageIndex: boolean;
-    autoIndexes: boolean;
-  };
-  queuedCounts: Record<TrainingModeEnum, number>;
-  trainingCounts: Record<TrainingModeEnum, number>;
-  errorCounts: Record<TrainingModeEnum, number>;
-  trainedCount: number;
-};
+import {
+  GetCollectionTrainingDetailQuerySchema,
+  GetCollectionTrainingDetailResponseSchema,
+  type GetCollectionTrainingDetailResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
@@ -37,10 +24,8 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   imageParse: 0
 };
 
-async function handler(
-  req: ApiRequestProps<{}, getTrainingDetailParams>
-): Promise<getTrainingDetailResponse> {
-  const { collectionId } = req.query;
+async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
+  const { collectionId } = GetCollectionTrainingDetailQuerySchema.parse(req.query);
 
   const { collection } = await authDatasetCollection({
     req,
@@ -139,19 +124,18 @@ async function handler(
     { ...defaultCounts }
   );
 
-  return {
+  return GetCollectionTrainingDetailResponseSchema.parse({
     trainingType: collection.trainingType,
     advancedTraining: {
       customPdfParse: !!collection.customPdfParse,
       imageIndex: !!collection.imageIndex,
       autoIndexes: !!collection.autoIndexes
     },
-
     queuedCounts,
     trainingCounts,
     errorCounts,
     trainedCount
-  };
+  });
 }
 
 export default NextAPI(handler);

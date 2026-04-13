@@ -1,9 +1,12 @@
-import type { BucketNameEnum } from './constants';
+import { BucketNameEnum } from './constants';
+import { ObjectIdSchema } from '../type/mongo';
+import z from 'zod';
 
-export type FileTokenQuery = {
-  bucketName: `${BucketNameEnum}`;
-  teamId: string;
-  uid: string; // tmbId/ share uid/ teamChat uid
-  fileId: string;
-  customExpireMinutes?: number;
-};
+const FileTokenQuerySchema = z.object({
+  bucketName: z.enum(BucketNameEnum),
+  teamId: ObjectIdSchema,
+  uid: z.string().nonempty(),
+  fileId: z.string().nonempty(),
+  customExpireMinutes: z.number().optional()
+});
+export type FileTokenQuery = z.infer<typeof FileTokenQuerySchema>;

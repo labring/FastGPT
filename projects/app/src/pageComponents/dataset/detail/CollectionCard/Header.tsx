@@ -4,7 +4,7 @@ import {
   getDatasetCollectionPathById,
   postDatasetCollection,
   putDatasetCollectionById
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
@@ -93,7 +93,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   } = useDisclosure();
 
   const { runAsync: onCreateCollection } = useRequest(
-    async ({ name, type }: { name: string; type: DatasetCollectionTypeEnum }) => {
+    async ({
+      name,
+      type
+    }: {
+      name: string;
+      type: DatasetCollectionTypeEnum.folder | DatasetCollectionTypeEnum.virtual;
+    }) => {
       const id = await postDatasetCollection({
         parentId,
         datasetId: datasetDetail._id,

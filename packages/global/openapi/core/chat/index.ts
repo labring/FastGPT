@@ -11,6 +11,7 @@ import { ChatInputGuidePath } from './inputGuide/index';
 import { OutLinkChatPath } from './outLink/index';
 import { ChatRecordPath } from './record/index';
 import { ChatFilePath } from './file';
+import { ChatCompletionPath } from './completion';
 
 export const ChatPath: OpenAPIPath = {
   ...ChatFeedbackPath,
@@ -23,6 +24,7 @@ export const ChatPath: OpenAPIPath = {
   ...ChatInputGuidePath,
   ...OutLinkChatPath,
   ...ChatRecordPath,
+  ...ChatCompletionPath,
 
   '/core/chat/recentlyUsed': {
     get: {

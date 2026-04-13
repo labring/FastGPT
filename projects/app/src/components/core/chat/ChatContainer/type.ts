@@ -1,5 +1,5 @@
 import type { StreamResponseType } from '@/web/common/api/fetch';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import type {
   ChatHistoryItemResType,
   StepTitleItemType,

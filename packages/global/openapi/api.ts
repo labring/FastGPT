@@ -16,7 +16,12 @@ export type PaginationProps<T = {}> = T & {
     pageNum: number | string;
   }>;
 
-export const PaginationResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
+export const PaginationResponseSchema = <T extends z.ZodTypeAny>(
+  itemSchema: T
+): z.ZodObject<{
+  total: z.ZodDefault<z.ZodOptional<z.ZodNumber>>;
+  list: z.ZodDefault<z.ZodOptional<z.ZodArray<T>>>;
+}> =>
   z.object({
     total: z.number().optional().default(0),
     list: z.array(itemSchema).optional().default([])

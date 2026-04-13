@@ -1,18 +1,22 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
-import type { PresignDatasetFilePostUrlParams } from '@fastgpt/global/core/dataset/v2/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import {
+  PresignDatasetFilePostUrlBodySchema,
+  PresignDatasetFilePostUrlResponseSchema,
+  type PresignDatasetFilePostUrlBody,
+  type PresignDatasetFilePostUrlResponse
+} from '@fastgpt/global/openapi/core/dataset/file/api';
 
 async function handler(
-  req: ApiRequestProps<PresignDatasetFilePostUrlParams>
-): Promise<CreatePostPresignedUrlResult> {
-  const { filename, datasetId } = req.body;
+  req: ApiRequestProps<PresignDatasetFilePostUrlBody>
+): Promise<PresignDatasetFilePostUrlResponse> {
+  const { filename, datasetId } = PresignDatasetFilePostUrlBodySchema.parse(req.body);
 
   const { teamId, userId } = await authDataset({
     datasetId,
@@ -29,11 +33,13 @@ async function handler(
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
-  return await getS3DatasetSource().createUploadDatasetFileURL({
+  const result = await getS3DatasetSource().createUploadDatasetFileURL({
     datasetId,
     filename,
     maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });
+
+  return PresignDatasetFilePostUrlResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

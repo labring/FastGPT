@@ -5,7 +5,7 @@ import { Box, Button, HStack, ModalBody, ModalFooter, VStack, Flex, Link } from 
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { postTemplateDatasetCollection } from '@/web/core/dataset/api';
+import { postTemplateDatasetCollection } from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';

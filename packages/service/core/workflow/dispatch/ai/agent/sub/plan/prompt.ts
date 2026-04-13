@@ -1,4 +1,4 @@
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { AIAskTool } from './ask/constants';

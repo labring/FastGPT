@@ -14,14 +14,14 @@ import {
   getTagUsage,
   postAddTagsToCollections,
   updateDatasetCollectionTag
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
 import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();

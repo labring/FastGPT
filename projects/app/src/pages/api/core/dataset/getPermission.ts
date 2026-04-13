@@ -1,26 +1,16 @@
-import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import {
+  GetDatasetPermissionQuerySchema,
+  GetDatasetPermissionResponseSchema,
+  type GetDatasetPermissionResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 
-export type GetQuotePermissionResponse =
-  | {
-      datasetName: string;
-      permission: {
-        hasWritePer: boolean;
-        hasReadPer: boolean;
-      };
-    }
-  | undefined;
-
-async function handler(req: NextApiRequest): Promise<GetQuotePermissionResponse> {
-  const { id: datasetId } = req.query as {
-    id?: string;
-  };
-  if (!datasetId) {
-    return Promise.reject('datasetId is required');
-  }
+async function handler(req: ApiRequestProps): Promise<GetDatasetPermissionResponse> {
+  const { id: datasetId } = GetDatasetPermissionQuerySchema.parse(req.query);
 
   try {
     const { permission, dataset } = await authDataset({
@@ -31,22 +21,22 @@ async function handler(req: NextApiRequest): Promise<GetQuotePermissionResponse>
       per: ReadPermissionVal
     });
 
-    return {
+    return GetDatasetPermissionResponseSchema.parse({
       datasetName: dataset.name,
       permission: {
         hasReadPer: permission.hasReadPer,
         hasWritePer: permission.hasWritePer
       }
-    };
+    });
   } catch (error) {
     if (error === DatasetErrEnum.unAuthDataset) {
-      return {
+      return GetDatasetPermissionResponseSchema.parse({
         datasetName: '',
         permission: {
           hasWritePer: false,
           hasReadPer: false
         }
-      };
+      });
     }
 
     return Promise.reject(error);

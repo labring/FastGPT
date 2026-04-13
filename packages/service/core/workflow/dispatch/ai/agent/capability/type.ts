@@ -1,4 +1,4 @@
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 export type CapabilityToolCallResult = {

@@ -2,6 +2,9 @@ import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
 import { DatasetDataPath } from './data';
 import { DatasetCollectionPath } from './collection';
+import { ApiDatasetPath } from './apiDataset';
+import { DatasetFilePath } from './file';
+import { DatasetTrainingPath } from './training';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,
@@ -13,7 +16,8 @@ import {
   ResumeDatasetInheritPermissionBodySchema,
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
-  ExportDatasetQuerySchema
+  ExportDatasetQuerySchema,
+  GetDatasetPermissionQuerySchema
 } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -123,7 +127,6 @@ export const DatasetPath: OpenAPIPath = {
       }
     }
   },
-
   '/core/dataset/delete': {
     delete: {
       summary: '删除知识库',
@@ -177,7 +180,6 @@ export const DatasetPath: OpenAPIPath = {
       }
     }
   },
-
   '/core/dataset/searchTest': {
     post: {
       summary: '搜索测试',
@@ -197,7 +199,6 @@ export const DatasetPath: OpenAPIPath = {
       }
     }
   },
-
   '/core/dataset/exportAll': {
     get: {
       summary: '导出知识库全部数据',
@@ -213,7 +214,25 @@ export const DatasetPath: OpenAPIPath = {
       }
     }
   },
+  '/core/dataset/getPermission': {
+    get: {
+      summary: '获取知识库引用权限',
+      description: '获取当前用户对指定知识库的读写权限，鉴权失败时返回无权限结果而非报错',
+      tags: [TagsMap.datasetCommon],
+      requestParams: {
+        query: GetDatasetPermissionQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回知识库名称和读写权限，无访问权限时返回空名称和 false'
+        }
+      }
+    }
+  },
 
   ...DatasetCollectionPath,
-  ...DatasetDataPath
+  ...DatasetDataPath,
+  ...ApiDatasetPath,
+  ...DatasetFilePath,
+  ...DatasetTrainingPath
 };

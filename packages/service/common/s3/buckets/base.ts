@@ -9,10 +9,10 @@ import {
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
-  type CreatePostPresignedUrlResult,
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema
 } from '../type';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { getSystemMaxFileSize, Mimes } from '../constants';
 import path from 'node:path';
 import { MongoS3TTL } from '../schema';
@@ -131,7 +131,7 @@ export class S3BaseBucket {
   async createPresignedPutUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
-  ): Promise<CreatePostPresignedUrlResult> {
+  ): Promise<CreatePostPresignedUrlResponseType> {
     try {
       const { expiredHours, maxFileSize = getSystemMaxFileSize() } = options;
       const formatMaxFileSize = maxFileSize * 1024 * 1024;

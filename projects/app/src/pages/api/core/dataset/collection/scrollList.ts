@@ -8,7 +8,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { ScrollCollectionsBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';

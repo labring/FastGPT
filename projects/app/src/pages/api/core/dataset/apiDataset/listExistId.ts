@@ -1,22 +1,19 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-
-export type listExistIdQuery = {
-  datasetId: string;
-};
-
-export type listExistIdBody = {};
-
-export type listExistIdResponse = string[];
+import {
+  GetApiDatasetFileListExistIdQuerySchema,
+  GetApiDatasetFileListExistIdResponseSchema,
+  type GetApiDatasetFileListExistIdQuery,
+  type GetApiDatasetFileListExistIdResponse
+} from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 
 async function handler(
-  req: ApiRequestProps<listExistIdBody, listExistIdQuery>,
-  res: ApiResponseType<any>
-): Promise<listExistIdResponse> {
-  const { datasetId } = req.query;
+  req: ApiRequestProps<unknown, GetApiDatasetFileListExistIdQuery>
+): Promise<GetApiDatasetFileListExistIdResponse> {
+  const { datasetId } = GetApiDatasetFileListExistIdQuerySchema.parse(req.query);
 
   const { dataset } = await authDataset({
     req,
@@ -34,7 +31,9 @@ async function handler(
     '_id apiFileId'
   ).lean();
 
-  return collections.map((col) => col.apiFileId).filter(Boolean) as string[];
+  const existIds = collections.map((col) => col.apiFileId).filter(Boolean) as string[];
+
+  return GetApiDatasetFileListExistIdResponseSchema.parse(existIds);
 }
 
 export default NextAPI(handler);

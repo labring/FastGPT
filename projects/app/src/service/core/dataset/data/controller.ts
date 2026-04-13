@@ -1,16 +1,13 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import {
-  type CreateDatasetDataProps,
-  type PatchIndexesProps,
-  type UpdateDatasetDataProps
-} from '@fastgpt/global/core/dataset/controller';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
-import {
-  type DatasetDataIndexItemType,
-  type DatasetDataItemType
+import type {
+  UpdateDatasetDataPropsType,
+  DatasetDataIndexItemType,
+  DatasetDataItemType,
+  CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -178,7 +175,7 @@ export async function insertData2Dataset({
   embeddingModel,
   imageDescMap,
   session
-}: CreateDatasetDataProps & {
+}: CreateDatasetDataPropsType & {
   embeddingModel: string;
   indexSize?: number;
   imageDescMap?: Record<string, string>;
@@ -276,6 +273,25 @@ export async function insertData2Dataset({
  *  3. update mongo data(session run)
  *  4. delete old pg data
  */
+type PatchIndexesProps =
+  | {
+      type: 'create';
+      index: Omit<DatasetDataIndexItemType, 'dataId'> & {
+        dataId?: string;
+      };
+    }
+  | {
+      type: 'update';
+      index: DatasetDataIndexItemType;
+    }
+  | {
+      type: 'delete';
+      index: DatasetDataIndexItemType;
+    }
+  | {
+      type: 'unChange';
+      index: DatasetDataIndexItemType;
+    };
 export async function updateData2Dataset({
   dataId,
   q = '',
@@ -284,7 +300,7 @@ export async function updateData2Dataset({
   model,
   indexSize = 512,
   indexPrefix
-}: UpdateDatasetDataProps & { model: string; indexSize?: number }) {
+}: UpdateDatasetDataPropsType & { model: string; indexSize?: number }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
   }

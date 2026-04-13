@@ -6,7 +6,7 @@
  */
 
 import { createLLMResponse } from '../ai/llm/request';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import json5 from 'json5';
 

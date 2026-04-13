@@ -35,6 +35,7 @@ describe('update training data test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
+      billId: 'test',
       mode: TrainingModeEnum.chunk
     });
 

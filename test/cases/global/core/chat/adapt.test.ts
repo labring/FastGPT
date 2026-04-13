@@ -12,7 +12,7 @@ import {
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 
 describe('GPT2Chat mapping', () => {
   it('should map GPT roles to Chat roles correctly', () => {

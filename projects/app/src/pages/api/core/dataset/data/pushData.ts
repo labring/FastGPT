@@ -1,6 +1,4 @@
 /* push data to training queue */
-import type { NextApiResponse } from 'next';
-import type { PushDatasetDataProps } from '@fastgpt/global/core/dataset/api';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
@@ -9,21 +7,23 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  PushDataBodySchema,
+  type PushDataResponseType
+} from '@fastgpt/global/openapi/core/dataset/data/api';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getVlmModel } from '@fastgpt/service/core/ai/model';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
-async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiResponse<any>) {
-  const body = req.body;
-  // Adapter 4.9.0
+async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
+  const body = PushDataBodySchema.parse(req.body);
+  // Adapter 4.9.0: support legacy trainingMode field
   body.trainingType = body.trainingType || body.trainingMode;
 
-  const { collectionId, data } = body;
-
-  if (!collectionId || !Array.isArray(data)) {
-    throw new Error('collectionId or data is empty');
-  }
-
-  if (data.length > 200) {
-    throw new Error('Data is too long, max 200');
-  }
+  const { collectionId, billId, data } = body;
 
   // 凭证校验
   const { teamId, tmbId, collection } = await authDatasetCollection({
@@ -42,15 +42,34 @@ async function handler(req: ApiRequestProps<PushDatasetDataProps>, res: NextApiR
     insertLen: predictDataLimitLength(mode, data)
   });
 
-  return pushDataListToTrainingQueue({
-    ...body,
-    mode, // Use collection's training mode
-    teamId,
-    tmbId,
-    datasetId: collection.datasetId,
-    vectorModel: collection.dataset.vectorModel,
-    agentModel: collection.dataset.agentModel,
-    vlmModel: collection.dataset.vlmModel
+  return mongoSessionRun(async (session) => {
+    const traingUsageId = await (async () => {
+      if (billId) return billId;
+      const { usageId: newUsageId } = await createTrainingUsage({
+        teamId,
+        tmbId,
+        appName: collection.name,
+        billSource: UsageSourceEnum.training,
+        vectorModel: getEmbeddingModel(collection.dataset.vectorModel)?.name,
+        agentModel: getLLMModel(collection.dataset.agentModel)?.name,
+        vllmModel: getVlmModel(collection.dataset.vlmModel)?.name,
+        session
+      });
+      return newUsageId;
+    })();
+
+    return pushDataListToTrainingQueue({
+      ...body,
+      session,
+      billId: traingUsageId,
+      mode, // Use collection's training mode
+      teamId,
+      tmbId,
+      datasetId: collection.datasetId,
+      vectorModel: collection.dataset.vectorModel,
+      agentModel: collection.dataset.agentModel,
+      vlmModel: collection.dataset.vlmModel
+    });
   });
 }
 

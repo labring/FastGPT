@@ -1,5 +1,5 @@
 import { i18nT } from '../../../web/i18n/utils';
-import type { CompletionUsage } from './type';
+import type { CompletionUsage } from './llm/type';
 import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {

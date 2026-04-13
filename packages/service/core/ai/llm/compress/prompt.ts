@@ -1,5 +1,5 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { calculateCompressionThresholds } from './constants';
 
 export const getCompressRequestMessagesPrompt = async ({
