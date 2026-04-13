@@ -53,7 +53,10 @@ export async function runEvalTunedModelStage(task: EmbeddingTrainTaskSchemaType)
     String(task._id),
     evalDatasetId,
     tunedModelId,
-    EmbeddingTaskCheckpointStageEnum.eval_tunedmodel
+    EmbeddingTaskCheckpointStageEnum.eval_tunedmodel,
+    task.teamId,
+    task.tmbId,
+    task.datasetIds
   );
 
   return { tunedModelEvalResult };

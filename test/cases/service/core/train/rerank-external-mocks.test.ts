@@ -14,9 +14,7 @@ vi.hoisted(() => {
 });
 
 import {
-  synthesizeRerankTrainDatas,
   synthesizeRerankEvalData,
-  evaluateRerankModel,
   createSFTTask,
   querySFTTaskStatus,
   SFTTaskStatus
@@ -38,63 +36,13 @@ describe('Rerank Train External Mocks', () => {
   });
 
   describe('DiTing Service Mocks', () => {
-    test('应该成功生成 Rerank 训练数据', async () => {
-      const response = await synthesizeRerankTrainDatas({
-        samples: [
-          {
-            datasetId: 'dataset_001',
-            dataId: 'data_001',
-            q: '这是测试内容1',
-            a: '这是答案1',
-            // Using synthesis type string[][] format (2 pairs = 4 training samples)
-            indexes: [
-              ['索引问题1', '索引答案1'],
-              ['索引问题2', '索引答案2']
-            ]
-          },
-          {
-            datasetId: 'dataset_002',
-            dataId: 'data_002',
-            q: '这是测试内容2',
-            a: '这是答案2',
-            // 1 pair = 2 training samples
-            indexes: [['索引问题3', '索引答案3']]
-          }
-        ],
-        config: {
-          minNegativeSamples: 1,
-          maxNegativeSamples: 7,
-          includeOriginalQ: true
-        }
-      });
-
-      expect(response.success).toBe(true);
-      expect(response.data).toBeDefined();
-      expect(Array.isArray(response.data)).toBe(true);
-      // First sample has 2 pairs (4 docs), second has 1 pair (2 docs), 6 training samples total
-      expect(response.data!.length).toBe(6);
-
-      // Verify data structure
-      const firstItem = response.data![0];
-      expect(typeof firstItem.query).toBe('string'); // query is a string
-      expect(firstItem.positive).toBeInstanceOf(Array);
-      expect(firstItem.positive.length).toBe(1); // positive is typically length 1
-      expect(firstItem.negatives).toBeInstanceOf(Array);
-      expect(firstItem.negatives.length).toBeGreaterThanOrEqual(1);
-      expect(firstItem.negatives.length).toBeLessThanOrEqual(7);
-      expect(typeof firstItem.sourceId).toBe('string');
-      expect(typeof firstItem.datasetId).toBe('string');
-      expect(firstItem.originalQ).toBeDefined(); // includeOriginalQ=true
-      expect(firstItem.metadata).toBeDefined();
-    });
-
     test('应该成功生成评测数据集', async () => {
       // Directly import the underlying DiTing API mock function
-      const { mockSynthesizeRerankEvalData } = await import(
-        '@fastgpt/service/core/train/rerank/external/diting/mock'
+      const { mockSynthesizeEvalData } = await import(
+        '@fastgpt/service/core/train/common/external/diting/mock'
       );
 
-      const response = await mockSynthesizeRerankEvalData({
+      const response = await mockSynthesizeEvalData({
         synthesizerConfig: {
           synthesizerName: 'eval_q_a_synthesizer'
         },
@@ -116,88 +64,16 @@ describe('Rerank Train External Mocks', () => {
       expect(response.data?.qaPair.answer).toBeDefined();
     });
 
-    test('应该成功评测 Rerank 模型', async () => {
-      const response = await evaluateRerankModel({
-        dataset: [
-          {
-            q: '测试问题',
-            retrieval_reference_list: [
-              {
-                id: '68fecc566d93adba6a4c0207',
-                q: '什么是HCI超融合基础设施？',
-                a: '',
-                score: [
-                  {
-                    type: 'fullText',
-                    value: 1.5555555555555556,
-                    index: 0
-                  }
-                ]
-              }
-            ],
-            expected_dataid: ['68fecc566d93adba6a4c0207']
-          }
-        ],
-        reranker_config: {
-          name: 'qwen3-reranker-06b'
-        },
-        metric_config: {
-          metric_name: 'rerank_metric'
-        }
+    test('synthesizeEvalData 应通过 index.ts 路由到 mock', async () => {
+      const response = await synthesizeRerankEvalData({
+        synthesizerConfig: { synthesizerName: 'eval_q_a_synthesizer' },
+        inputData: { context: ['context1', 'context2'] },
+        llm_config: { name: 'Qwen3-32B' }
       });
 
       expect(response.success).toBe(true);
       expect(response.requestId).toBeDefined();
-      expect(response.status).toBe('success');
-      expect(response.data).toBeDefined();
-      expect(response.data?.runLogs?.detailed_results).toBeDefined();
-
-      const detailedResults = response.data!.runLogs.detailed_results;
-      expect(typeof detailedResults.rerank_top10_ndcg).toBe('number');
-      expect(typeof detailedResults.rerank_top10_mrr).toBe('number');
-      expect(typeof detailedResults.rerank_top10_precision).toBe('number');
-      expect(typeof detailedResults.rerank_top10_recall).toBe('number');
-
-      // Verify metric ranges
-      expect(detailedResults.rerank_top10_ndcg).toBeGreaterThan(0);
-      expect(detailedResults.rerank_top10_ndcg).toBeLessThanOrEqual(1);
-      expect(detailedResults.rerank_top10_mrr).toBeGreaterThan(0);
-      expect(detailedResults.rerank_top10_mrr).toBeLessThanOrEqual(1);
-    });
-
-    test('生成训练数据时应使用正确的配置', async () => {
-      const config = {
-        minNegativeSamples: 2,
-        maxNegativeSamples: 5,
-        includeOriginalQ: false,
-        model: 'test-model',
-        temperature: 0.5
-      };
-
-      const response = await synthesizeRerankTrainDatas({
-        samples: [
-          {
-            datasetId: 'test',
-            dataId: 'test',
-            q: 'test content',
-            a: 'test answer',
-            // Using synthesis format: 3 pairs = 6 docs
-            indexes: [
-              ['doc1_q', 'doc1_a'],
-              ['doc2_q', 'doc2_a'],
-              ['doc3_q', 'doc3_a']
-            ]
-          }
-        ],
-        config
-      });
-
-      expect(response.success).toBe(true);
-      expect(response.data!.length).toBe(6); // 3 index pairs = 6 docs
-      const firstItem = response.data![0];
-      expect(firstItem.negatives.length).toBeGreaterThanOrEqual(config.minNegativeSamples);
-      expect(firstItem.negatives.length).toBeLessThanOrEqual(config.maxNegativeSamples);
-      expect(firstItem.originalQ).toBeUndefined(); // includeOriginalQ=false
+      expect(response.data?.qaPair.question).toBeDefined();
     });
   });
 
@@ -304,48 +180,6 @@ describe('Rerank Train External Mocks', () => {
   });
 
   describe('Mock 数据一致性', () => {
-    test('DiTing 生成的训练数据应包含源数据 ID', async () => {
-      const samples = [
-        {
-          datasetId: 'id_1',
-          dataId: 'id_1',
-          q: 'content 1',
-          a: 'answer 1',
-          // 2 synthesis index pairs
-          indexes: [
-            ['doc_a_q', 'doc_a_a'],
-            ['doc_b_q', 'doc_b_a']
-          ]
-        },
-        {
-          datasetId: 'id_1',
-          dataId: 'id_2',
-          q: 'content 2',
-          a: 'answer 2',
-          // 1 synthesis index pair
-          indexes: [['doc_c_q', 'doc_c_a']]
-        }
-      ];
-
-      const response = await synthesizeRerankTrainDatas({
-        samples,
-        config: {
-          minNegativeSamples: 1,
-          maxNegativeSamples: 7,
-          includeOriginalQ: true
-        }
-      });
-
-      // First sample 2 pairs (4 docs), second 1 pair (2 docs), 6 training samples total
-      expect(response.data!.length).toBe(6);
-      response.data!.forEach((item) => {
-        expect(item.sourceId).toBeDefined();
-        // sourceId should come from the input samples
-        const found = samples.some((s) => s.dataId === item.sourceId);
-        expect(found).toBe(true);
-      });
-    });
-
     test('SFT 完成的任务应返回 endpoint 信息', async () => {
       const createRes = await createSFTTask({
         datasetFile: Buffer.from('test'),

@@ -96,6 +96,7 @@ vi.mock('@fastgpt/service/core/train/embedding/data/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
+  EvalDatasetCollectionName: 'eval_dataset_collections',
   MongoEvalDatasetCollection: {
     create: vi.fn()
   }
@@ -113,13 +114,20 @@ vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
   synthesizeEmbeddingEvalData: vi.fn(),
-  evaluateEmbeddingModel: vi.fn(),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
     completed: 'completed',
     failed: 'failed'
   }
+}));
+
+vi.mock('@fastgpt/service/core/train/embedding/task/helpers/evaluate-model', () => ({
+  evaluateEmbeddingModelHelper: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/workflow/dispatch/dataset/search', () => ({
+  dispatchDatasetSearch: vi.fn()
 }));
 
 vi.mock('fs', () => {
@@ -265,8 +273,11 @@ describe('Embedding Train Task Processor', () => {
       const { createEmbeddingModelConfig } = await import(
         '@fastgpt/service/core/train/embedding/model/controller'
       );
-      const { synthesizeEmbeddingEvalData, evaluateEmbeddingModel } = await import(
+      const { synthesizeEmbeddingEvalData } = await import(
         '@fastgpt/service/core/train/embedding/external'
+      );
+      const { evaluateEmbeddingModelHelper } = await import(
+        '@fastgpt/service/core/train/embedding/task/helpers/evaluate-model'
       );
       // finetune stage uses embedding external for SFT
       const { createSFTTask, querySFTTaskStatus } = await import(
@@ -375,18 +386,19 @@ describe('Embedding Train Task Processor', () => {
       });
 
       // Mock embedding evaluation (returns embed_top10_mrr etc., not rerank_top10_ndcg)
-      (evaluateEmbeddingModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              embed_top5_mrr: 0.88,
-              embed_top10_mrr: 0.9,
-              embed_top10_precision: 0.82,
-              embed_top15_mrr: 0.87
-            }
-          }
-        }
+      (evaluateEmbeddingModelHelper as any).mockResolvedValue({
+        detailed_results: {
+          embed_top5_mrr: 0.88,
+          embed_top10_mrr: 0.9,
+          embed_top10_precision: 0.82,
+          embed_top15_mrr: 0.87
+        },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       // Mock task updates with proper data evolution
@@ -496,29 +508,33 @@ describe('Embedding Train Task Processor', () => {
 
       // Verify evaluation: embedding uses synthesizeEmbeddingEvalData (no dispatchDatasetSearch)
       expect(synthesizeEmbeddingEvalData).toHaveBeenCalled();
-      expect(evaluateEmbeddingModel).toHaveBeenCalledTimes(2);
+      expect(evaluateEmbeddingModelHelper).toHaveBeenCalledTimes(2);
 
       // Verify checkpoint data uses embedding-specific metrics
       expect(checkpointData.generate_evaldataset).toBeDefined();
       expect(checkpointData.generate_evaldataset.evalDatasetId).toBe('eval_dataset_123');
       expect(checkpointData.eval_basemodel).toBeDefined();
-      expect(checkpointData.eval_basemodel.baseModelEvalResult).toEqual({
-        detailed_results: {
-          embed_top5_mrr: 0.88,
-          embed_top10_mrr: 0.9,
-          embed_top10_precision: 0.82,
-          embed_top15_mrr: 0.87
-        }
-      });
+      expect(checkpointData.eval_basemodel.baseModelEvalResult).toEqual(
+        expect.objectContaining({
+          detailed_results: {
+            embed_top5_mrr: 0.88,
+            embed_top10_mrr: 0.9,
+            embed_top10_precision: 0.82,
+            embed_top15_mrr: 0.87
+          }
+        })
+      );
       expect(checkpointData.eval_tunedmodel).toBeDefined();
-      expect(checkpointData.eval_tunedmodel.tunedModelEvalResult).toEqual({
-        detailed_results: {
-          embed_top5_mrr: 0.88,
-          embed_top10_mrr: 0.9,
-          embed_top10_precision: 0.82,
-          embed_top15_mrr: 0.87
-        }
-      });
+      expect(checkpointData.eval_tunedmodel.tunedModelEvalResult).toEqual(
+        expect.objectContaining({
+          detailed_results: {
+            embed_top5_mrr: 0.88,
+            embed_top10_mrr: 0.9,
+            embed_top10_precision: 0.82,
+            embed_top15_mrr: 0.87
+          }
+        })
+      );
 
       // Verify final result saving
       const { MongoEmbeddingTrainTask } = await import(
@@ -527,28 +543,28 @@ describe('Embedding Train Task Processor', () => {
       expect(MongoEmbeddingTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
         expect.objectContaining({
-          result: {
+          result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
             tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
-            baseModelEvalResult: {
+            baseModelEvalResult: expect.objectContaining({
               detailed_results: {
                 embed_top5_mrr: 0.88,
                 embed_top10_mrr: 0.9,
                 embed_top10_precision: 0.82,
                 embed_top15_mrr: 0.87
               }
-            },
-            tunedModelEvalResult: {
+            }),
+            tunedModelEvalResult: expect.objectContaining({
               detailed_results: {
                 embed_top5_mrr: 0.88,
                 embed_top10_mrr: 0.9,
                 embed_top10_precision: 0.82,
                 embed_top15_mrr: 0.87
               }
-            }
-          }
+            })
+          })
         })
       );
     });
@@ -617,8 +633,11 @@ describe('Embedding Train Task Processor', () => {
         }
       });
 
-      const { synthesizeEmbeddingEvalData, evaluateEmbeddingModel } = await import(
+      const { synthesizeEmbeddingEvalData } = await import(
         '@fastgpt/service/core/train/embedding/external'
+      );
+      const { evaluateEmbeddingModelHelper } = await import(
+        '@fastgpt/service/core/train/embedding/task/helpers/evaluate-model'
       );
       const { createEmbeddingModelConfig } = await import(
         '@fastgpt/service/core/train/embedding/model/controller'
@@ -673,18 +692,19 @@ describe('Embedding Train Task Processor', () => {
           }
         }
       });
-      (evaluateEmbeddingModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              embed_top5_mrr: 0.88,
-              embed_top10_mrr: 0.9,
-              embed_top10_precision: 0.82,
-              embed_top15_mrr: 0.87
-            }
-          }
-        }
+      (evaluateEmbeddingModelHelper as any).mockResolvedValue({
+        detailed_results: {
+          embed_top5_mrr: 0.88,
+          embed_top10_mrr: 0.9,
+          embed_top10_precision: 0.82,
+          embed_top15_mrr: 0.87
+        },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       await embeddingTrainTaskProcessor({
@@ -727,28 +747,28 @@ describe('Embedding Train Task Processor', () => {
       expect(MongoEmbeddingTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
         expect.objectContaining({
-          result: {
+          result: expect.objectContaining({
             trainDatasetId: 'trainset_1',
             trainDatasetFilePath: '/tmp/test.jsonl',
             tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
-            baseModelEvalResult: {
+            baseModelEvalResult: expect.objectContaining({
               detailed_results: {
                 embed_top5_mrr: 0.88,
                 embed_top10_mrr: 0.9,
                 embed_top10_precision: 0.82,
                 embed_top15_mrr: 0.87
               }
-            },
-            tunedModelEvalResult: {
+            }),
+            tunedModelEvalResult: expect.objectContaining({
               detailed_results: {
                 embed_top5_mrr: 0.88,
                 embed_top10_mrr: 0.9,
                 embed_top10_precision: 0.82,
                 embed_top15_mrr: 0.87
               }
-            }
-          }
+            })
+          })
         })
       );
     });
@@ -945,19 +965,20 @@ describe('Embedding Train Task Processor', () => {
         requestAuth: 'test-api-key'
       });
 
-      const { evaluateEmbeddingModel } = await import(
-        '@fastgpt/service/core/train/embedding/external'
+      const { evaluateEmbeddingModelHelper } = await import(
+        '@fastgpt/service/core/train/embedding/task/helpers/evaluate-model'
       );
-      (evaluateEmbeddingModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              embed_top10_mrr: 0.9,
-              embed_top10_precision: 0.82
-            }
-          }
-        }
+      (evaluateEmbeddingModelHelper as any).mockResolvedValue({
+        detailed_results: {
+          embed_top10_mrr: 0.9,
+          embed_top10_precision: 0.82
+        },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       // Mock SFT created successfully but query returns failed status

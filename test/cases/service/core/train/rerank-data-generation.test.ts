@@ -52,8 +52,8 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
-  synthesizeRerankTrainDatas: vi.fn()
+vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
+  buildFineTuneData: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/utils', async () => {
@@ -119,12 +119,11 @@ describe('Rerank Train Data Generation', () => {
       ]);
 
       // Mock external service
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: 'What is artificial intelligence?',
             positive: ['Artificial Intelligence'],
@@ -152,7 +151,7 @@ describe('Rerank Train Data Generation', () => {
         expect.arrayContaining([datasetId1, datasetId2]),
         expect.any(Object)
       );
-      expect(synthesizeRerankTrainDatas).toHaveBeenCalled();
+      expect(buildFineTuneData).toHaveBeenCalled();
     });
 
     test('训练集不存在时应抛出错误', async () => {
@@ -228,12 +227,11 @@ describe('Rerank Train Data Generation', () => {
         { datasetId: datasetId1, dataId: 'data_001', q: 'What is AI?', a: 'AI', indexes: [] }
       ]);
 
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: false,
-        error: 'DiTing service error'
+      (buildFineTuneData as any).mockReturnValue({
+        samples: []
       });
 
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
@@ -263,12 +261,11 @@ describe('Rerank Train Data Generation', () => {
         { datasetId: datasetId1, dataId: 'data_001', q: 'What is AI?', a: 'AI', indexes: [] }
       ]);
 
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: 'Test query',
             positive: ['Positive doc'],

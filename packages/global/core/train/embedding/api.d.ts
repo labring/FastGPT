@@ -98,14 +98,16 @@ export type DeleteEmbeddingTrainDataResponse = MessageResponse;
 
 // ===== Training Task API =====
 
-// Create Training Task (supports exact mode and auto mode)
+// Create Training Task
+// datasetIds is ALWAYS required (even when trainsetId or evalDatasetId are provided):
+//   - eval-dataset generation stage reads datasetIds to sample eval data
+//   - eval stages call dispatchDatasetSearch against datasetIds to produce ranked results
+//   - trainsetId present  → skip trainset generation stage only; datasetIds still needed for eval
+//   - evalDatasetId present → skip eval-dataset generation stage only; datasetIds still needed for eval search
 export type CreateEmbeddingTrainTaskRequest = {
-  // Exact mode: pass trainsetId + evalDatasetId
-  // Auto mode: pass datasetIds (generate_trainset/generate_evaldataset stages auto-generate)
-  // Validation rule: (trainsetId && evalDatasetId) || datasetIds, otherwise missingParams
-  trainsetId?: string; // Exact mode: existing trainset ID (must be ready, teamId must match)
-  evalDatasetId?: string; // Exact mode: existing eval dataset ID
-  datasetIds?: string[]; // Auto mode: knowledge base ID list
+  datasetIds: string[]; // Required in all modes: knowledge base IDs used across generation and evaluation stages
+  trainsetId?: string; // Optional: if present, skip trainset generation stage
+  evalDatasetId?: string; // Optional: if present, skip eval dataset generation stage
 
   baseModelId: string; // Base model ID (BaseModelItemType.model)
   newModelName?: string; // Optional name for the trained model

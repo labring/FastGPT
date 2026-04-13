@@ -47,15 +47,6 @@ async function generateEvalDatasetFromDatasets(
 ): Promise<string> {
   addLog.info('Run generate eval dataset (auto mode, embedding)', { taskId: String(task._id) });
 
-  if (!task.datasetIds || task.datasetIds.length === 0) {
-    const enhancedError = createEmbeddingEnhancedError(
-      EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
-      EmbeddingTrainErrEnum.embeddingEvalNoDatasetConfigured,
-      EmbeddingTrainSuggestionEnum.embeddingEvalNoDatasetConfigured
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
-
   const datasetIds = task.datasetIds;
 
   addLog.info('Using dataset IDs from task', {

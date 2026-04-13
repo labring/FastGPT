@@ -64,8 +64,6 @@ export function reRankRecall({
     }
   )
     .then(async (data) => {
-      addLog.info('ReRank finish:', { time: Date.now() - start });
-
       if (!data?.results || data?.results?.length === 0) {
         addLog.error('[Rerank Error]', { message: 'Empty result', data });
       }

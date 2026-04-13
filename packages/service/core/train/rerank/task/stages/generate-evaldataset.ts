@@ -43,15 +43,6 @@ import { performDatasetSearch } from '../helpers/dataset-search';
 async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType): Promise<string> {
   addLog.info('Run generate eval dataset (auto mode)', { taskId: String(task._id) });
 
-  if (!task.datasetIds || task.datasetIds.length === 0) {
-    const enhancedError = createRerankEnhancedError(
-      RerankTaskCheckpointStageEnum.generate_evaldataset,
-      RerankTrainErrEnum.rerankEvalNoDatasetConfigured,
-      RerankTrainSuggestionEnum.rerankEvalNoDatasetConfigured
-    );
-    throw new TrainTaskUnrecoverableError(enhancedError);
-  }
-
   const datasetIds = task.datasetIds;
 
   addLog.info('Using dataset IDs from task', {

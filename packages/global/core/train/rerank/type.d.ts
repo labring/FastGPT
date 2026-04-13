@@ -42,6 +42,7 @@ export interface RerankEvalResult {
   mrr_scores?: Record<string, number[]>;
   ndcg_scores?: Record<string, number[]>;
   map_scores?: Record<string, number[]>;
+  precision_scores?: Record<string, number[]>;
   /**
    * Retrieval ranks for each case (case-by-case)
    * Outer array: each evaluation case
@@ -152,7 +153,6 @@ export type RerankTrainsetDataSchemaType = {
 /** Rerank training task schema */
 export type RerankTrainTaskSchemaType = {
   _id: string;
-  trainsetId?: string;
   teamId: string;
   tmbId: string;
 
@@ -167,11 +167,12 @@ export type RerankTrainTaskSchemaType = {
 
   /** Training type: lora or ptuning, defaults to lora */
   trainType?: `${RerankTrainTypeEnum}`;
-
+  /** Train dataset ID (exact mode: passed at create; auto mode: written by generate_trainset stage) */
+  trainsetId?: string;
   /** Eval dataset ID (exact mode: passed at create; auto mode: written by generate_evaldataset stage) */
   evalDatasetId?: string;
-  /** Knowledge base IDs (auto mode only: source for generate_trainset/generate_evaldataset) */
-  datasetIds?: string[];
+  /** Knowledge base IDs used for trainset/evaldataset generation and model evaluation */
+  datasetIds: string[];
   /** Optional name for the trained model */
   newModelName?: string;
 

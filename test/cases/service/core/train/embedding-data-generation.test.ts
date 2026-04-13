@@ -52,8 +52,13 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/train/embedding/external', () => ({
-  synthesizeEmbeddingTrainDatas: vi.fn()
+vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
+  buildFineTuneData: vi.fn()
+}));
+
+// mongoSessionRun: execute the callback with a fake session object so transaction logic is testable
+vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
+  mongoSessionRun: vi.fn().mockImplementation(async (fn: any) => fn({}))
 }));
 
 vi.mock('@fastgpt/service/core/train/embedding/utils', async () => {
@@ -119,12 +124,11 @@ describe('Embedding Train Data Generation', () => {
       ]);
 
       // Mock external service
-      const { synthesizeEmbeddingTrainDatas } = await import(
-        '@fastgpt/service/core/train/embedding/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeEmbeddingTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: 'What is artificial intelligence?',
             positive: ['Artificial Intelligence'],
@@ -151,7 +155,7 @@ describe('Embedding Train Data Generation', () => {
       expect(sampleDataFromDataset).toHaveBeenCalled();
     });
 
-    test('强制重新生成应该先清空旧数据', async () => {
+    test('强制重新生成应该原子性替换旧数据（先生成后删+插）', async () => {
       // Mock trainset
       (MongoEmbeddingTrainset.findById as any).mockResolvedValue({
         _id: trainsetId,
@@ -172,12 +176,11 @@ describe('Embedding Train Data Generation', () => {
         }
       ]);
 
-      const { synthesizeEmbeddingTrainDatas } = await import(
-        '@fastgpt/service/core/train/embedding/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeEmbeddingTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: 'Test query',
             positive: ['Test answer'],
@@ -202,11 +205,16 @@ describe('Embedding Train Data Generation', () => {
         opts: { attempts: 1 }
       } as any);
 
-      // Should delete existing data first with source filter
-      expect(MongoEmbeddingTrainsetData.deleteMany).toHaveBeenCalledWith({
-        trainsetId,
-        source: EmbeddingTrainDataSourceEnum.dataset
-      });
+      // deleteMany is called inside mongoSessionRun with filter + session option
+      expect(MongoEmbeddingTrainsetData.deleteMany).toHaveBeenCalledWith(
+        { trainsetId, source: EmbeddingTrainDataSourceEnum.dataset },
+        expect.objectContaining({ session: expect.any(Object) })
+      );
+      // insertMany is also called inside the same transaction
+      expect(MongoEmbeddingTrainsetData.insertMany).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ session: expect.any(Object) })
+      );
     });
   });
 

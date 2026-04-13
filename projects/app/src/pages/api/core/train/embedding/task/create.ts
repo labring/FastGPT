@@ -11,7 +11,7 @@ import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/t
 import { authEmbeddingTrainset } from '@fastgpt/service/support/permission/train/embedding/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
 import { embeddingTrainTaskQueue } from '@fastgpt/service/core/train/embedding/task/mq';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import type {
   CreateEmbeddingTrainTaskRequest,
   CreateEmbeddingTrainTaskResponse
@@ -27,12 +27,10 @@ async function handler(
     req.body as CreateEmbeddingTrainTaskRequest;
 
   if (!baseModelId) {
-    return Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingValidationBaseModelNotConfigured);
   }
-
-  // Validate parameters: exact mode (trainsetId && evalDatasetId) or auto mode (datasetIds)
-  if (!(trainsetId && evalDatasetId) && !datasetIds?.length) {
-    return Promise.reject(CommonErrEnum.missingParams);
+  if (!datasetIds?.length) {
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingValidationNoDatasetConfigured);
   }
 
   // 1. Authenticate user permission (team-level)
@@ -68,10 +66,8 @@ async function handler(
     });
   }
 
-  if (datasetIds?.length) {
-    // Auto mode: verify dataset synthesis indexes are ready
-    await validateDatasetSynthesisIndexes(datasetIds);
-  }
+  // Verify dataset synthesis indexes are ready
+  await validateDatasetSynthesisIndexes(datasetIds);
 
   // 4. Create task (controller checks for existing running tasks internally)
   const task = await createEmbeddingTrainTask({

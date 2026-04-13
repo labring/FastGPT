@@ -8,27 +8,37 @@ import type {
 import type { EnhancedErrorMessage } from './error';
 
 /**
- * Embedding evaluation result (same structure as RerankEvalResult)
- * Contains various ranking metrics at different k values
+ * Embedding evaluation detailed results
+ * Aligned with RerankDiTingDetailedResults (MRR, NDCG, MAP, Precision)
  */
 export interface EmbeddingDiTingDetailedResults {
   embed_top5_mrr?: number;
+  embed_top5_ndcg?: number;
+  embed_top5_map?: number;
   embed_top5_precision?: number;
   embed_top10_mrr?: number;
+  embed_top10_ndcg?: number;
+  embed_top10_map?: number;
   embed_top10_precision?: number;
   embed_top15_mrr?: number;
+  embed_top15_ndcg?: number;
+  embed_top15_map?: number;
   embed_top15_precision?: number;
   overall_mrr?: number;
+  overall_ndcg?: number;
+  overall_map?: number;
   overall_precision?: number;
   [key: string]: any;
 }
 
 /**
- * Embedding evaluation result (same metrics as Rerank)
+ * Embedding evaluation result
  */
 export interface EmbeddingEvalResult {
   detailed_results: EmbeddingDiTingDetailedResults;
   mrr_scores?: Record<string, number[]>;
+  ndcg_scores?: Record<string, number[]>;
+  map_scores?: Record<string, number[]>;
   precision_scores?: Record<string, number[]>;
   retrieval_ranks?: number[][];
   column_stats?: Record<string, any>;
@@ -132,7 +142,6 @@ export type EmbeddingTrainsetDataSchemaType = {
 /** Embedding training task schema */
 export type EmbeddingTrainTaskSchemaType = {
   _id: string;
-  trainsetId?: string;
   teamId: string;
   tmbId: string;
 
@@ -148,10 +157,12 @@ export type EmbeddingTrainTaskSchemaType = {
   /** Training type: lora or ptuning, defaults to lora */
   trainType?: `${EmbeddingTrainTypeEnum}`;
 
+  /** Train dataset ID (exact mode: passed at create; auto mode: written by generate_trainset stage) */
+  trainsetId?: string;
   /** Eval dataset ID (exact mode: passed at create; auto mode: written by generate_evaldataset stage) */
   evalDatasetId?: string;
-  /** Knowledge base IDs (auto mode only: source for generate_trainset/generate_evaldataset) */
-  datasetIds?: string[];
+  /** Knowledge base IDs used for trainset/evaldataset generation and model evaluation */
+  datasetIds: string[];
   /** Optional name for the trained model */
   newModelName?: string;
 

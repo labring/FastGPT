@@ -38,6 +38,7 @@ export enum RerankTrainErrEnum {
   rerankValidationDitingUnaccessible = 'rerankValidationDitingUnaccessible',
   rerankValidationDatasetNoSynthesisIndex = 'rerankValidationDatasetNoSynthesisIndex',
   rerankValidationNoDatasetConfigured = 'rerankValidationNoDatasetConfigured',
+  rerankValidationBaseModelNotConfigured = 'rerankValidationBaseModelNotConfigured',
 
   // === Preparing Stage Errors ===
   rerankPrepareTrainsetDeleted = 'rerankPrepareTrainsetDeleted',
@@ -132,6 +133,7 @@ export enum EmbeddingTrainErrEnum {
   embeddingValidationDitingUnaccessible = 'embeddingValidationDitingUnaccessible',
   embeddingValidationDatasetNoSynthesisIndex = 'embeddingValidationDatasetNoSynthesisIndex',
   embeddingValidationNoDatasetConfigured = 'embeddingValidationNoDatasetConfigured',
+  embeddingValidationBaseModelNotConfigured = 'embeddingValidationBaseModelNotConfigured',
 
   // === Preparing Stage Errors ===
   embeddingPrepareTrainsetDeleted = 'embeddingPrepareTrainsetDeleted',
@@ -229,6 +231,7 @@ export enum RerankTrainSuggestionEnum {
   rerankValidationDitingUnaccessible = 'rerankValidationDitingUnaccessible',
   rerankValidationDatasetNoSynthesisIndex = 'rerankValidationDatasetNoSynthesisIndex',
   rerankValidationNoDatasetConfigured = 'rerankValidationNoDatasetConfigured',
+  rerankValidationBaseModelNotConfigured = 'rerankValidationBaseModelNotConfigured',
 
   // === Preparing Stage Errors ===
   rerankPrepareTrainsetDeleted = 'rerankPrepareTrainsetDeleted',
@@ -326,6 +329,7 @@ export enum EmbeddingTrainSuggestionEnum {
   embeddingValidationDitingUnaccessible = 'embeddingValidationDitingUnaccessible',
   embeddingValidationDatasetNoSynthesisIndex = 'embeddingValidationDatasetNoSynthesisIndex',
   embeddingValidationNoDatasetConfigured = 'embeddingValidationNoDatasetConfigured',
+  embeddingValidationBaseModelNotConfigured = 'embeddingValidationBaseModelNotConfigured',
 
   // === Preparing Stage Errors ===
   embeddingPrepareTrainsetDeleted = 'embeddingPrepareTrainsetDeleted',
