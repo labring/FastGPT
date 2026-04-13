@@ -24,9 +24,6 @@ describe('SandboxInstance Schema', () => {
           repository: 'node',
           tag: '18-alpine'
         },
-        providerStatus: {
-          state: 'Running'
-        },
         providerCreatedAt: new Date()
       }
     };
@@ -54,7 +51,6 @@ describe('SandboxInstance Schema', () => {
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
         image: { repository: 'node', tag: 'latest' },
-        providerStatus: { state: 'Pending' },
         providerCreatedAt: new Date()
       }
     });
@@ -79,7 +75,6 @@ describe('SandboxInstance Schema', () => {
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
         image: { repository: 'node' },
-        providerStatus: { state: 'Running' },
         providerCreatedAt: new Date()
       }
     });
@@ -122,7 +117,6 @@ describe('SandboxInstance Schema', () => {
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
         image: { repository: 'node' },
-        providerStatus: { state: 'Running' },
         providerCreatedAt: new Date(),
         endpoint: {
           host: 'localhost',
@@ -158,7 +152,6 @@ describe('SandboxInstance Schema', () => {
         tmbId: '507f1f77bcf86cd799439013',
         provider: 'opensandbox',
         image: { repository: 'node' },
-        providerStatus: { state: 'Succeeded' },
         providerCreatedAt: new Date(),
         skillIds: ['507f1f77bcf86cd799439014', '507f1f77bcf86cd799439015']
       }

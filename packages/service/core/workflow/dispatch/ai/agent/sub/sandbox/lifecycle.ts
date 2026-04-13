@@ -338,11 +338,6 @@ export async function createAgentSandbox(
             skillIds: hasSkills ? deployableSkills.map((s) => s._id) : [],
             provider: providerConfig.provider,
             image: sandboxInfo.image,
-            providerStatus: {
-              state: sandboxInfo.status.state,
-              message: sandboxInfo.status.message,
-              reason: sandboxInfo.status.reason
-            },
             providerCreatedAt: sandboxInfo.createdAt
           }
         }

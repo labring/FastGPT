@@ -45,6 +45,17 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
 RUN pnpm --filter=app build
 
+# Bundle server.ts into a single CJS file; only 'next' is kept external (already in standalone output)
+# Banner: mirrors what standalone server.js does — chdir to __dirname and load pre-serialized
+# Next.js config so that next() skips webpack (config-utils) during startup.
+RUN cd projects/app && ./node_modules/.bin/esbuild server.ts \
+    --bundle \
+    --platform=node \
+    --format=cjs \
+    --outfile=server-proxy.js \
+    --external:next \
+    '--banner:js=process.chdir(__dirname);try{const d=require("./.next/required-server-files.json");process.env.__NEXT_PRIVATE_STANDALONE_CONFIG=JSON.stringify(d.config);}catch(e){}'
+
 # Remove build-time-only packages from standalone output before copying to runner.
 # These are traced into standalone by mistake (rspack bindings, gnu platform binaries, etc.)
 RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding-*/ \
@@ -60,6 +71,8 @@ WORKDIR /app
 
 ARG proxy
 ARG base_url
+ARG SHOW_SKILL=false
+ENV SHOW_SKILL=$SHOW_SKILL
 
 # create user and use it
 RUN addgroup --system --gid 1001 nodejs
@@ -78,6 +91,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/static /app/pr
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks /app/projects/app/.next/server/chunks
 # copy worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
+COPY --from=builder --chown=nextjs:nodejs /app/projects/app/server-proxy.js /app/projects/app/server-proxy.js
 
 # copy standload packages
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
@@ -100,6 +114,4 @@ EXPOSE 3000
 
 USER nextjs
 
-ENV serverPath=./projects/app/server.js
-
-ENTRYPOINT ["sh","-c","node --max-old-space-size=4096 ${serverPath}"]
+ENTRYPOINT ["sh","-c","if [ \"$SHOW_SKILL\" = \"true\" ]; then node --max-old-space-size=4096 ./projects/app/server-proxy.js; else node --max-old-space-size=4096 ./projects/app/server.js; fi"]
