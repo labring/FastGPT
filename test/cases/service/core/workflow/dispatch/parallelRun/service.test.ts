@@ -195,7 +195,7 @@ describe('parallelRun/service', () => {
       expect(indexVal).toBe(3); // index 2 → 2+1=3
     });
 
-    it('不在 childrenNodeIdList 中的节点不被设为 entry', () => {
+    it('容器外的节点不被包含在 taskRuntimeNodes 中（仅克隆子节点）', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
         runtimeEdges,
@@ -204,8 +204,11 @@ describe('parallelRun/service', () => {
         index: 0
       });
 
+      // 'outside' 不在 childrenNodeIdList 中，不应出现在克隆结果里
       const outsideClone = taskRuntimeNodes.find((n) => n.nodeId === 'outside');
-      expect(outsideClone?.isEntry).toBe(false);
+      expect(outsideClone).toBeUndefined();
+      // 只有 childrenNodeIdList 内的节点被克隆
+      expect(taskRuntimeNodes.map((n) => n.nodeId).sort()).toEqual(['end', 'start']);
     });
 
     it('runtimeEdges 独立克隆（修改克隆边不影响原始）', () => {
@@ -305,7 +308,7 @@ describe('parallelRun/service', () => {
       const result = parseTaskResponse({ index: 2, response });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error).toContain('end node');
+        expect(result.error).toContain('parallel_task_not_reach_end');
       }
     });
   });
@@ -348,6 +351,7 @@ describe('parallelRun/service', () => {
       success: true,
       index: 0,
       data: 'data-0',
+      totalPoints: 10,
       response: makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 10, moduleName: 'llm' } as any],
         [DispatchNodeResponseKeyEnum.assistantResponses]: [
@@ -358,12 +362,18 @@ describe('parallelRun/service', () => {
       })
     };
 
-    const failResult1: ParallelTaskResult = { success: false, index: 1, error: 'task failed' };
+    const failResult1: ParallelTaskResult = {
+      success: false,
+      index: 1,
+      error: 'task failed',
+      totalPoints: 0
+    };
 
     const successResult2: ParallelTaskResult = {
       success: true,
       index: 2,
       data: 'data-2',
+      totalPoints: 5,
       response: makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 5, moduleName: 'llm' } as any],
         [DispatchNodeResponseKeyEnum.assistantResponses]: [],
@@ -462,7 +472,7 @@ describe('parallelRun/service', () => {
     });
 
     it('失败项 error=undefined → message 为空字符串', () => {
-      const failNoError: ParallelTaskResult = { success: false, index: 0 };
+      const failNoError: ParallelTaskResult = { success: false, index: 0, totalPoints: 0 };
       const { fullResultsArray } = aggregateParallelResults([failNoError]);
 
       expect(fullResultsArray[0]).toEqual({ success: false, message: '', data: null });
@@ -484,6 +494,25 @@ describe('parallelRun/service', () => {
       const { status } = aggregateParallelResults([failResult1]);
 
       expect(status).toBe(ParallelRunStatusEnum.failed);
+    });
+
+    it('重试场景：totalPoints 反映所有 attempt 的累计值，而非仅最后一次', () => {
+      // 模拟一个任务重试了 2 次：每次消耗 8 pts，totalPoints 已在调用方累计为 24
+      const retriedResult: ParallelTaskResult = {
+        success: true,
+        index: 0,
+        data: 'retry-data',
+        totalPoints: 24, // 3 attempts × 8 pts
+        response: makeDispatchFlowResponse({
+          // response 里的 flowUsages 只反映最后一次 attempt（8 pts）
+          flowUsages: [{ totalPoints: 8, moduleName: 'llm' } as any],
+          flowResponses: [{ id: 'n0' } as any]
+        })
+      };
+
+      const { totalPoints } = aggregateParallelResults([retriedResult]);
+      // 应等于 totalPoints 字段（24），而非从 flowUsages 重算的 8
+      expect(totalPoints).toBe(24);
     });
 
     it('乱序输入 → 输出按输入 index 排序', () => {

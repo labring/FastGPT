@@ -138,6 +138,8 @@
   "parallel_full_results_desc": "與輸入陣列等長的結果陣列，每項形如 {success, message, data}：成功時 success=true、message 為空、data 為輸出值；失敗時 success=false、message 為錯誤訊息、data 為 null。",
   "parallel_status": "完成狀態",
   "parallel_status_desc": "整體執行狀態：success（全部成功）、partial_success（部分失敗）、failed（全部失敗）。",
+  "parallel_task_not_reach_end": "子工作流未到達結束節點",
+  "parallel_task_interactive_not_supported": "子工作流觸發了互動式回應，並行執行節點不支援互動式節點",
   "max_dialog_rounds": "最多攜帶幾輪對話紀錄",
   "max_tokens": "最大 Token 數",
   "mouse_priority": "滑鼠優先\n- 按下左鍵拖曳畫布\n- 按住 Shift 鍵並點選左鍵可批次選取",

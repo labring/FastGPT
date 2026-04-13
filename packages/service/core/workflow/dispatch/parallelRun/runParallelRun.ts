@@ -68,6 +68,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     loopInputArray,
     async (item: any, index: number) => {
       let lastResult: Awaited<ReturnType<typeof parseTaskResponse>> | undefined;
+      // Accumulate points across all retry attempts so nodeResponse.totalPoints
+      // matches the sum of all usagePush calls for this task.
+      let accumulatedPoints = 0;
 
       for (let attempt = 0; attempt < maxRetryAttempts + 1; attempt++) {
         const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
@@ -92,22 +95,19 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             (acc, usage) => acc + usage.totalPoints,
             0
           );
-          props.usagePush([
-            {
-              totalPoints: itemUsagePoint,
-              moduleName: `${name}-${index}`
-            }
-          ]);
+          accumulatedPoints += itemUsagePoint;
+          props.usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${index}` }]);
 
           const result = parseTaskResponse({ index, response });
-          if (result.success) return result;
+          if (result.success) return { ...result, totalPoints: accumulatedPoints };
 
           // Non-retryable: interactive response will never succeed on retry
-          if (response.workflowInteractiveResponse) return result;
+          if (response.workflowInteractiveResponse)
+            return { ...result, totalPoints: accumulatedPoints };
 
-          lastResult = result;
+          lastResult = { ...result, totalPoints: accumulatedPoints };
         } catch (err) {
-          lastResult = parseTaskError(index, err);
+          lastResult = { ...parseTaskError(index, err), totalPoints: accumulatedPoints };
         }
         // taskRuntimeNodes / taskRuntimeEdges go out of scope → GC
       }

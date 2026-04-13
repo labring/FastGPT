@@ -4,6 +4,7 @@ import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { injectNestedStartInputs } from '../loop/service';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { i18nT } from '../../../../../web/i18n/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -70,8 +71,11 @@ export const buildTaskRuntimeContext = (
 ): TaskRuntimeContext => {
   const { runtimeNodes, runtimeEdges, childrenNodeIdList, item, index } = params;
 
-  const taskRuntimeNodes = cloneDeep(runtimeNodes);
-  const taskRuntimeEdges = cloneDeep(runtimeEdges);
+  const childrenSet = new Set(childrenNodeIdList);
+  const taskRuntimeNodes = cloneDeep(runtimeNodes.filter((n) => childrenSet.has(n.nodeId)));
+  const taskRuntimeEdges = cloneDeep(
+    runtimeEdges.filter((e) => childrenSet.has(e.source) && childrenSet.has(e.target))
+  );
 
   injectNestedStartInputs(taskRuntimeNodes, childrenNodeIdList, item, index);
 
@@ -100,8 +104,14 @@ export const cloneTaskVariables = (variables: Record<string, any>): Record<strin
 // ─── 4. parseTaskResponse & parseTaskError ────────────────────────────────────
 
 export type ParallelTaskResult =
-  | { success: true; index: number; data: any; response: DispatchFlowResponse }
-  | { success: false; index: number; error?: string; response?: DispatchFlowResponse };
+  | { success: true; index: number; data: any; response: DispatchFlowResponse; totalPoints: number }
+  | {
+      success: false;
+      index: number;
+      error?: string;
+      response?: DispatchFlowResponse;
+      totalPoints: number;
+    };
 
 /**
  * Parse a successful runWorkflow response into a ParallelTaskResult.
@@ -118,9 +128,14 @@ export const parseTaskResponse = (params: {
 }): ParallelTaskResult => {
   const { index, response } = params;
 
-  // Interactive node: silently ignore
+  // Interactive node: not supported inside parallel runs — mark as failed with a clear reason
   if (response.workflowInteractiveResponse) {
-    return { success: false, index, response };
+    return {
+      success: false,
+      index,
+      error: i18nT('workflow:parallel_task_interactive_not_supported'),
+      response
+    };
   }
 
   const loopEndResponse = response.flowResponses.find(
@@ -134,7 +149,7 @@ export const parseTaskResponse = (params: {
     return {
       success: false,
       index,
-      error: getErrText(err, 'Sub-workflow did not reach the end node'),
+      error: getErrText(err, i18nT('workflow:parallel_task_not_reach_end')),
       response
     };
   }
@@ -215,10 +230,11 @@ export const aggregateParallelResults = (
       fullDetail.push({ success: false, index: result.index, error: result.error });
     }
 
+    // totalPoints is pre-accumulated across all retry attempts in the caller
+    totalPoints += result.totalPoints;
+
     if (result.response) {
       const response = result.response;
-      const points = response.flowUsages.reduce((acc, u) => acc + u.totalPoints, 0);
-      totalPoints += points;
       responseDetails.push(...response.flowResponses);
       assistantResponses.push(...(response[DispatchNodeResponseKeyEnum.assistantResponses] || []));
 

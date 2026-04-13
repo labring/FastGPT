@@ -575,7 +575,10 @@ const SideTabItem = ({
             <NormalSideTabItem
               index={index}
               value={value}
-              onChange={onChange}
+              onChange={(id) => {
+                onChange(id);
+                onToggleShowAccordion();
+              }}
               sideBarItem={sideBarItem}
             >
               <MyIcon
@@ -771,22 +774,13 @@ export const ResponseBox = React.memo(function ResponseBox({
     function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
       return res.map((item) => {
         let children: sideTabItemType[] = [];
-        if (
-          !!(
-            item?.toolDetail ||
-            item?.pluginDetail ||
-            item?.loopDetail ||
-            item?.parallelDetail ||
-            item?.childrenResponses
-          )
-        ) {
-          if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
-          if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
-          if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
-          if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
-          if (item?.childrenResponses)
-            children.push(...pretreatmentResponse(item?.childrenResponses));
-        }
+
+        if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
+        if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
+        if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+        if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
+        if (item?.childrenResponses)
+          children.push(...pretreatmentResponse(item?.childrenResponses));
 
         return {
           moduleLogo: item.moduleLogo,
