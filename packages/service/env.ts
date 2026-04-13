@@ -5,6 +5,7 @@ const BoolSchema = z
   .string()
   .transform((val) => val === 'true')
   .pipe(z.boolean());
+
 const NumSchema = z.coerce.number();
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
@@ -45,17 +46,33 @@ export const env = createEnv({
     LOG_OTEL_URL: z.url().optional(),
 
     METRICS_ENABLE_OTEL: BoolSchema.default(false),
-    METRICS_EXPORT_INTERVAL: z.coerce.number().int().positive().default(30000),
+    METRICS_EXPORT_INTERVAL: NumSchema.int().positive().default(30000),
     METRICS_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     METRICS_OTEL_URL: z.url().optional(),
 
     TRACING_ENABLE_OTEL: BoolSchema.default(false),
     TRACING_OTEL_SERVICE_NAME: z.string().default('fastgpt-client'),
     TRACING_OTEL_URL: z.url().optional(),
-    TRACING_OTEL_SAMPLE_RATIO: z.coerce.number().min(0).max(1).optional(),
+    TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
 
-    APP_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
-    DATASET_FOLDER_MAX_AMOUNT: z.coerce.number().int().positive().default(1000),
+    APP_FOLDER_MAX_AMOUNT: NumSchema.int().positive().default(1000),
+    DATASET_FOLDER_MAX_AMOUNT: NumSchema.int().positive().default(1000),
+
+    // ===== Workflow =====
+    /** Max length of loop / parallelRun input array. */
+    WORKFLOW_MAX_LOOP_TIMES: NumSchema.int()
+      .min(1)
+      .max(10000)
+      .optional()
+      .default(100)
+      .meta({ description: '循环节点最大循环次数' }),
+    /** Env upper bound for parallelRun concurrency. Must not exceed WORKFLOW_MAX_LOOP_TIMES. */
+    WORKFLOW_PARALLEL_MAX_CONCURRENCY: NumSchema.int()
+      .min(5)
+      .max(1000)
+      .optional()
+      .default(10)
+      .meta({ description: '并行节点最大并发数' }),
 
     // ===== Security =====
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
@@ -71,3 +88,9 @@ export const env = createEnv({
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);
   }
 });
+
+if (env.WORKFLOW_PARALLEL_MAX_CONCURRENCY > env.WORKFLOW_MAX_LOOP_TIMES) {
+  throw new Error(
+    `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${env.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${env.WORKFLOW_MAX_LOOP_TIMES})`
+  );
+}

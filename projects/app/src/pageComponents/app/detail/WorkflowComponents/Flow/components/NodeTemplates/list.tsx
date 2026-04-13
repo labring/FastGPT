@@ -26,7 +26,9 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
   FlowNodeTypeEnum,
-  AppNodeFlowNodeTypeMap
+  AppNodeFlowNodeTypeMap,
+  isNestedParentNodeType,
+  isInteractiveNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
@@ -276,12 +278,25 @@ const NodeTemplateList = ({
         });
 
         const currentNode = getNodeById(handleParams?.nodeId);
-        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop && !!currentNode?.parentNodeId) {
+        const isNestedParentNode = isNestedParentNodeType(templateNode.flowNodeType);
+        if (isNestedParentNode && !!currentNode?.parentNodeId) {
           toast({
             status: 'warning',
             title: t('workflow:can_not_loop')
           });
           return;
+        }
+
+        // Forbid interactive nodes inside parallelRun
+        if (currentNode?.parentNodeId && isInteractiveNodeType(templateNode.flowNodeType)) {
+          const parentNode = getNodeById(currentNode.parentNodeId);
+          if (parentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun) {
+            toast({
+              status: 'warning',
+              title: t('workflow:can_not_parallel')
+            });
+            return;
+          }
         }
 
         const newNode = nodeTemplate2FlowNode({
@@ -322,7 +337,7 @@ const NodeTemplateList = ({
 
         const newNodes = [newNode];
 
-        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop) {
+        if (isNestedParentNodeType(templateNode.flowNodeType)) {
           const startNode = nodeTemplate2FlowNode({
             template: LoopStartNode,
             position: { x: position.x + 60, y: position.y + 280 },

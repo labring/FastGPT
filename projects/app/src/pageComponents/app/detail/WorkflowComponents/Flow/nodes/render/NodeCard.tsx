@@ -9,7 +9,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getGradientByColorSchema,
@@ -218,7 +219,7 @@ const NodeCard = (props: Props) => {
   }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
-  const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
+  const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
     // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (

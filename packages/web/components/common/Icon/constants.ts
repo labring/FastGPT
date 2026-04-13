@@ -337,6 +337,10 @@ export const iconPaths = {
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/loopStartLinear': () =>
     import('./icons/core/workflow/template/loopStartLinear.tsx'),
+  'core/workflow/template/parallelRun': () =>
+    import('./icons/core/workflow/template/parallelRun.svg'),
+  'core/workflow/template/parallelRunLinear': () =>
+    import('./icons/core/workflow/template/parallelRunLinear.tsx'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
   'core/workflow/template/pluginOutputLinear': () =>

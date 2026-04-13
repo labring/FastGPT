@@ -157,8 +157,9 @@ export enum FlowNodeTypeEnum {
   readFiles = 'readFiles',
   userSelect = 'userSelect',
   loop = 'loop',
-  loopStart = 'loopStart',
-  loopEnd = 'loopEnd',
+  nestedStart = 'loopStart',
+  nestedEnd = 'loopEnd',
+  parallelRun = 'parallelRun',
   formInput = 'formInput',
   tool = 'tool',
   toolSet = 'toolSet',
@@ -348,3 +349,17 @@ export const NodeColorSchemaEnum = [
   'gray',
   'emerald'
 ] as const;
+
+/** 返回 true 表示该节点是嵌套父容器（loop / parallelRun）。 */
+export const isNestedParentNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
+  flowNodeType === FlowNodeTypeEnum.loop || flowNodeType === FlowNodeTypeEnum.parallelRun;
+
+/** 交互类节点类型集合（在 parallelRun 体内禁止使用）。 */
+export const INTERACTIVE_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.userSelect,
+  FlowNodeTypeEnum.formInput
+]);
+
+/** 返回 true 表示该节点是交互类节点（userSelect / formInput）。 */
+export const isInteractiveNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
+  INTERACTIVE_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
