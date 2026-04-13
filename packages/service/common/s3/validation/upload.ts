@@ -93,11 +93,13 @@ const getOfficeZipFormatByExtension = (extension: string) =>
  * mime-types（按扩展名）与 file-type（按魔数）对同一容器可能给出不同登记名，例如 .avi：
  * lookup → video/x-msvideo，file-type → video/vnd.avi。.mpeg：lookup → video/mpeg，file-type 可能为
  * video/MP1S（MPEG-1 PS）、video/MP2P（MPEG-2 PS）或 video/mpeg（模糊检测）。
+ * .m4a：lookup → audio/mp4（RFC），file-type（ftyp M4A）→ audio/x-m4a。
  * 比较前统一小写（忽略参数、大小写差异）。
  */
 const MIME_EQUIVALENCE_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
   new Set(['video/x-msvideo', 'video/vnd.avi', 'video/avi', 'video/msvideo']),
-  new Set(['video/mpeg', 'video/mp1s', 'video/mp2p'])
+  new Set(['video/mpeg', 'video/mp1s', 'video/mp2p']),
+  new Set(['audio/mp4', 'audio/x-m4a'])
 ];
 
 const normalizeMimeForCompare = (mime: string) => mime.split(';')[0]?.trim().toLowerCase() || '';

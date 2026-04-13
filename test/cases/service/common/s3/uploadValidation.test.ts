@@ -274,4 +274,24 @@ describe('validateUploadFile', () => {
       contentType: 'video/MP1S'
     });
   });
+
+  it('accepts M4A when mime-types says audio/mp4 but file-type says audio/x-m4a', async () => {
+    const miniM4a = Buffer.alloc(32);
+    miniM4a.write('ftyp', 4);
+    miniM4a.write('M4A ', 8);
+
+    await expect(
+      validateUploadFile({
+        buffer: miniM4a,
+        filename: 'clip.m4a',
+        uploadConstraints: {
+          defaultContentType: 'audio/mp4',
+          allowedExtensions: ['.m4a']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'clip.m4a',
+      contentType: 'audio/x-m4a'
+    });
+  });
 });
