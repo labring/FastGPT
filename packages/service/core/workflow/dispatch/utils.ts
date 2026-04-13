@@ -487,18 +487,18 @@ export const getNodeErrResponse = ({
 };
 
 /**
- * Mutates nodes in-place: sets the nestedStart node as entry and injects the
- * current item / 1-based index into its inputs.
- *
- * Shared by loop and parallelRun dispatchers.
- */
-/**
  * Coerce a points value to a finite number, defaulting to 0 for
  * NaN / Infinity / null / undefined.
  */
 export const safePoints = (val: number | undefined | null): number =>
   Number.isFinite(val) ? (val as number) : 0;
 
+/**
+ * Mutates nodes in-place: sets the nestedStart node as entry and injects the
+ * current item / 1-based index into its inputs.
+ *
+ * Shared by loop and parallelRun dispatchers.
+ */
 export const injectNestedStartInputs = ({
   nodes,
   childrenNodeIdList,

@@ -299,9 +299,15 @@ export const DispatchNodeResponseSchema = z
     // parallel run
     parallelInput: z.array(z.any()).optional().meta({ description: '并行输入' }),
     parallelResult: z.array(z.any()).optional().meta({ description: '并行结果' }),
-    parallelRunDetail: z.array(z.any()).optional().meta({ description: '并行详情' }),
-    parallelDetail: z.array(z.any()).optional().meta({ description: '并行详情' }),
-    
+    parallelRunDetail: z
+      .array(z.any())
+      .optional()
+      .meta({ description: '各任务执行摘要（成功/失败状态）' }),
+    parallelDetail: z
+      .array(z.any())
+      .optional()
+      .meta({ description: '成功任务子工作流完整响应列表' }),
+
     childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
 
     // Tools

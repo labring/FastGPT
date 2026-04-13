@@ -2,6 +2,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../type';
+import { safePoints } from '../utils';
 
 // ─── 1. getNestedEndOutputValue ───────────────────────────────────────────────
 
@@ -31,7 +32,10 @@ export const pushSubWorkflowUsage = (
   name: string,
   index: number
 ): number => {
-  const itemUsagePoint = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
+  const itemUsagePoint = response.flowUsages.reduce(
+    (acc, usage) => acc + safePoints(usage.totalPoints),
+    0
+  );
   usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${index}` }]);
   return itemUsagePoint;
 };
