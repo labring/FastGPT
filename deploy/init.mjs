@@ -18,7 +18,8 @@ const VectorEnum = {
   milvus: 'milvus',
   zilliz: 'zilliz',
   ob: 'ob',
-  seekdb: 'seekdb'
+  seekdb: 'seekdb',
+  opengauss: 'opengauss'
 };
 
 // make sure the cwd
@@ -110,6 +111,12 @@ init_sql:
 `,
     extra: ``
   },
+  opengauss: {
+    db: '',
+    config: `\
+  OPENGAUSS_URL: postgresql://gaussdb:FastGPT@123@opengauss:5432/fastgpt`,
+    extra: ''
+  },
 };
 
 /**
@@ -155,6 +162,9 @@ const replace = (source, region, vec) => {
 
   const seekdb = fs.readFileSync(path.join(process.cwd(), 'templates', 'vector', 'seekdb.txt'));
   vector.seekdb.db = String(seekdb);
+
+  const opengauss = fs.readFileSync(path.join(process.cwd(), 'templates', 'vector', 'opengauss.txt'));
+  vector.opengauss.db = String(opengauss);
 }
 
 const generateDevFile = async () => {
@@ -226,6 +236,14 @@ const generateProdFile = async () => {
     fs.promises.writeFile(
       path.join(process.cwd(), 'docker', 'global', 'docker-compose.seekdb.yml'),
       replace(template, 'global', VectorEnum.seekdb)
+    ),
+    fs.promises.writeFile(
+      path.join(process.cwd(), 'docker', 'cn', 'docker-compose.opengauss.yml'),
+      replace(template, 'cn', VectorEnum.opengauss)
+    ),
+    fs.promises.writeFile(
+      path.join(process.cwd(), 'docker', 'global', 'docker-compose.opengauss.yml'),
+      replace(template, 'global', VectorEnum.opengauss)
     )
   ]);
 
