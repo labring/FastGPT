@@ -17,6 +17,8 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
+import { useContextSelector } from 'use-context-selector';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -33,6 +35,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
+  const runtimeFileSelectConfig = useContextSelector(
+    WorkflowRuntimeContext,
+    (v) => v.runtimeFileSelectConfig
+  );
 
   const {
     update: updateFiles,
@@ -190,6 +196,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
             filename: copyFile.rawFile.name,
             appId,
             chatId,
+            fileSelectConfig: runtimeFileSelectConfig,
             outLinkAuthData
           });
 
@@ -231,7 +238,18 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     );
 
     removeFiles(errorFileIndex);
-  }, [appId, chatId, fileList, outLinkAuthData, removeFiles, replaceFiles, t, toast, updateFiles]);
+  }, [
+    appId,
+    chatId,
+    fileList,
+    outLinkAuthData,
+    removeFiles,
+    replaceFiles,
+    runtimeFileSelectConfig,
+    t,
+    toast,
+    updateFiles
+  ]);
 
   const sortFileList = useMemo(() => {
     // Sort: Document, image

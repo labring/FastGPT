@@ -1,17 +1,16 @@
-import jwt from 'jsonwebtoken';
-import { isAfter, differenceInSeconds } from 'date-fns';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { isAfter } from 'date-fns';
 import type { ClientSession } from 'mongoose';
-import { MongoS3TTL } from './schema';
-import { S3Buckets } from './constants';
+import { MongoS3TTL } from './models/ttl';
+import { S3Buckets } from './config/constants';
 import { S3PrivateBucket } from './buckets/private';
-import { S3Sources, type UploadImage2S3BucketParams } from './type';
+import { S3Sources, type UploadImage2S3BucketParams } from './contracts/type';
 import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
+
+export { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey, jwtSignS3DownloadToken } from './security/token';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -50,33 +49,6 @@ export function truncateFilename(
   const truncatedName = nameWithoutExt.substring(0, maxNameLength);
 
   return truncatedName + extension;
-}
-
-/**
- *
- * @param objectKey
- * @param expiredTime
- * @returns
- */
-export function jwtSignS3ObjectKey(objectKey: string, expiredTime: Date) {
-  const secret = process.env.FILE_TOKEN_KEY as string;
-  const expiresIn = differenceInSeconds(expiredTime, new Date());
-  const token = jwt.sign({ objectKey }, secret, { expiresIn });
-
-  return `${EndpointUrl}/api/system/file/${token}`;
-}
-
-export function jwtVerifyS3ObjectKey(token: string) {
-  const secret = process.env.FILE_TOKEN_KEY as string;
-  return new Promise<{ objectKey: string }>((resolve, reject) => {
-    jwt.verify(token, secret, (err, payload) => {
-      if (err || !payload || !(payload as jwt.JwtPayload).objectKey) {
-        reject(ERROR_ENUM.unAuthFile);
-      }
-
-      resolve(payload as { objectKey: string });
-    });
-  });
 }
 
 export function removeS3TTL({

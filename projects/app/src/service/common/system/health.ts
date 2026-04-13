@@ -2,7 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { S3Buckets } from '@fastgpt/service/common/s3/constants';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { InitialErrorEnum } from '@fastgpt/service/common/system/constants';
 import { loadModelProviders } from '@fastgpt/service/thirdProvider/fastgptPlugin/model';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
@@ -35,6 +35,7 @@ export const instrumentationCheck = async () => {
     console.error(message);
     return Promise.reject(message);
   }
+
   // pro
   if (global.feConfigs?.isPlus) {
     try {
@@ -48,6 +49,7 @@ export const instrumentationCheck = async () => {
       return Promise.reject(message);
     }
   }
+
   // sandbox
   try {
     await codeSandbox.runCode({
@@ -58,7 +60,8 @@ export const instrumentationCheck = async () => {
       variables: {}
     });
   } catch (error) {
-    console.warn(`${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
+    logger.warn(`[${InitialErrorEnum.SANDBOX_ERROR}]: ${getErrText(error)}`);
   }
+
   logger.info('instrumentation check finish');
 };
