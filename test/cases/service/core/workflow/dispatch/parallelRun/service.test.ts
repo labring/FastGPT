@@ -240,7 +240,7 @@ describe('parallelRun/service', () => {
       expect(indexVal).toBe(3); // index 2 → 2+1=3
     });
 
-    it('容器外的节点不被包含在 taskRuntimeNodes 中（仅克隆子节点）', () => {
+    it('容器外的节点也被包含在 taskRuntimeNodes 中（用于外部变量引用解析）', () => {
       const { taskRuntimeNodes } = buildTaskRuntimeContext({
         runtimeNodes,
         runtimeEdges,
@@ -249,11 +249,13 @@ describe('parallelRun/service', () => {
         index: 0
       });
 
-      // 'outside' 不在 childrenNodeIdList 中，不应出现在克隆结果里
+      // 'outside' 不在 childrenNodeIdList，但必须出现在克隆结果中，供 getReferenceVariableValue 解析外部引用
       const outsideClone = taskRuntimeNodes.find((n) => n.nodeId === 'outside');
-      expect(outsideClone).toBeUndefined();
-      // 只有 childrenNodeIdList 内的节点被克隆
-      expect(taskRuntimeNodes.map((n) => n.nodeId).sort()).toEqual(['end', 'start']);
+      expect(outsideClone).toBeDefined();
+      // 外部节点 isEntry 必须为 false，不能被当作入口节点执行
+      expect(outsideClone?.isEntry).toBe(false);
+      // 所有节点都应被克隆
+      expect(taskRuntimeNodes.map((n) => n.nodeId).sort()).toEqual(['end', 'outside', 'start']);
     });
 
     it('runtimeEdges 独立克隆（修改克隆边不影响原始）', () => {

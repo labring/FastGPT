@@ -89,10 +89,10 @@ export const buildTaskRuntimeContext = (
   const { runtimeNodes, runtimeEdges, childrenNodeIdList, item, index } = params;
 
   const childrenSet = new Set(childrenNodeIdList);
-  const taskRuntimeNodes = cloneDeep(runtimeNodes.filter((n) => childrenSet.has(n.nodeId)));
-  const taskRuntimeEdges = cloneDeep(
-    runtimeEdges.filter((e) => childrenSet.has(e.source) && childrenSet.has(e.target))
-  );
+  // Include ALL nodes (not just children) so that external node outputs remain accessible
+  // for variable reference resolution (getReferenceVariableValue uses runtimeNodesMap).
+  const taskRuntimeNodes = cloneDeep(runtimeNodes);
+  const taskRuntimeEdges = cloneDeep(runtimeEdges);
 
   injectNestedStartInputs({ nodes: taskRuntimeNodes, childrenNodeIdList, item, index });
 
