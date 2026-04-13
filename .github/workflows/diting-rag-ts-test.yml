@@ -1,0 +1,45 @@
+name: 'diting-rag-ts Tests'
+
+on:
+  push:
+    paths:
+      - 'packages/diting-rag-ts/**'
+  pull_request:
+    paths:
+      - 'packages/diting-rag-ts/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: TypeCheck diting-rag-ts
+        working-directory: packages/diting-rag-ts
+        run: pnpm typecheck
+
+      - name: Run diting-rag-ts unit tests
+        working-directory: packages/diting-rag-ts
+        run: pnpm test

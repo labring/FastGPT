@@ -210,6 +210,7 @@
   "template_import_mode_not_found": "未找到可用的模板导入模式: {{modeName}}",
   "template_mode": "模板导入",
   "template_unsupported_file_type": "不支持的文件类型，仅支持 {{types}}",
+  "template_excel_too_much_data": "QA 数据量过大，Excel 文件解析失败，请将文件另存为 CSV 格式后重新上传",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "知识库有处理中或正在重建的索引",
   "total_num_files": "共 {{total}} 个文件",
   "training.Error": "{{count}} 组异常",

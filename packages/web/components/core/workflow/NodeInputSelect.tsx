@@ -95,7 +95,7 @@ const NodeInputSelect = ({
     },
     {
       type: FlowNodeInputTypeEnum.custom,
-      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.input].icon,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.custom].icon,
       title: t('common:core.workflow.inputType.Manual input')
     },
     {

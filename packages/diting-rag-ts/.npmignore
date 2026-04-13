@@ -1,0 +1,31 @@
+# dev configs & tools
+.claude/
+.env*
+*.example
+Makefile
+
+# source files (compiled dist/ is published)
+src/
+bin/
+test/
+docs/
+
+# source maps (source not published, maps are useless)
+**/*.map
+
+# ts source files leaked into dist/src/prompts/ by copy-prompts script
+# negation keeps .d.ts declaration files needed by consumers
+dist/**/*.ts
+!dist/**/*.d.ts
+
+# dev/debug scripts not needed by consumers
+dist/bin/benchmark_pgvector.js
+dist/bin/debug_vectors.js
+dist/bin/demo.js
+dist/bin/test-retrieval.js
+
+# build configs
+tsconfig*.json
+vitest.config.ts
+pnpm-lock.yaml
+package-lock.json

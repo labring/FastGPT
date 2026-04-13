@@ -146,13 +146,14 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.generateSqlModel
       );
+      // Agentic Search
       defaultAppForm.dataset.retrievalMode = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetRetrievalMode
       );
       defaultAppForm.dataset.agenticSearchReasoning = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetagenticSearchReasoning
+        NodeInputKeyEnum.datasetAgenticSearchReasoning
       );
 
       // 不单独配置，取AI配置中的模型即可

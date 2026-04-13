@@ -336,6 +336,42 @@
             "valueType": "string",
             "debugLabel": "",
             "toolDescription": ""
+          },
+          {
+            "key": "retrievalMode",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "standard",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "agenticSearchLLMModel",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "agenticSearchRerankModel",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "string",
+            "value": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "agenticSearchReasoning",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "debugLabel": "",
+            "toolDescription": ""
           }
         ],
         "outputs": [

@@ -69,7 +69,7 @@ const FormItem: React.FC<{
   label: string;
   children: React.ReactNode;
   minWidth?: string;
-  tooltip?: string;
+  tooltip?: string | React.ReactNode;
 }> = ({ label, children, minWidth = SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM, tooltip }) => (
   <Flex alignItems={'center'} w={'100%'}>
     <FormLabel
@@ -400,7 +400,21 @@ const EditForm = ({
       {/* 检索配置 */}
       <Box {...BOX_STYLES}>
         <AccordionSection title={t('app:retrieval_config')}>
-          <FormItem label={t('app:retrieval_mode')} tooltip={t('app:retrieval_mode_tooltip')}>
+          <FormItem
+            label={t('app:retrieval_mode')}
+            tooltip={
+              <Box lineHeight={'24px'}>
+                <Box>
+                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_single_title')}</span>
+                  <span>{t('app:retrieval_mode_single_desc')}</span>
+                </Box>
+                <Box>
+                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_multiple_title')}</span>
+                  <span>{t('app:retrieval_mode_multiple_desc')}</span>
+                </Box>
+              </Box>
+            }
+          >
             <SfRadio
               flex={1}
               list={[
