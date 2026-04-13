@@ -1,7 +1,6 @@
 /* openGauss DataVec vector crud */
 import { DatasetVectorTableName } from '../constants';
 import { OgClient, connectOg } from './controller';
-import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type { VectorControllerType } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
@@ -140,7 +139,11 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
             ORDER BY score LIMIT ${limit};
         COMMIT;`
     );
-    const rows = results?.[results.length - 2]?.rows as PgSearchRawType[];
+    const rows = results?.[results.length - 2]?.rows as {
+      id: string;
+      collection_id: string;
+      score: number;
+    }[];
 
     if (!Array.isArray(rows)) {
       return {
