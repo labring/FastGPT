@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   clampParallelConcurrency,
+  clampParallelRetryTimes,
   buildTaskRuntimeContext,
   parseTaskResponse,
   parseTaskError,
@@ -116,6 +117,51 @@ describe('parallelRun/service', () => {
 
     it('用户 NaN → 使用默认值 5', () => {
       expect(clampParallelConcurrency(NaN, 10)).toBe(5);
+    });
+
+    it('用户 Infinity → 使用默认值 5', () => {
+      expect(clampParallelConcurrency(Infinity, 10)).toBe(5);
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────────────
+  describe('clampParallelRetryTimes', () => {
+    it('未指定（undefined）→ 默认 3', () => {
+      expect(clampParallelRetryTimes(undefined)).toBe(3);
+    });
+
+    it('正常范围内 → 原样返回（floor）', () => {
+      expect(clampParallelRetryTimes(2)).toBe(2);
+      expect(clampParallelRetryTimes(0)).toBe(0);
+      expect(clampParallelRetryTimes(5)).toBe(5);
+    });
+
+    it('超过上限 5 → clamp 到 5', () => {
+      expect(clampParallelRetryTimes(10)).toBe(5);
+      expect(clampParallelRetryTimes(100)).toBe(5);
+    });
+
+    it('负数 → clamp 到 0（允许"不重试"）', () => {
+      expect(clampParallelRetryTimes(-1)).toBe(0);
+      expect(clampParallelRetryTimes(-99)).toBe(0);
+    });
+
+    it('小数 → 向下取整', () => {
+      expect(clampParallelRetryTimes(2.9)).toBe(2);
+      expect(clampParallelRetryTimes(0.1)).toBe(0);
+    });
+
+    it('NaN → 默认 3（防止 Math.floor 传播 NaN 导致 for 循环永不执行）', () => {
+      expect(clampParallelRetryTimes(NaN)).toBe(3);
+    });
+
+    it('Infinity → 默认 3', () => {
+      expect(clampParallelRetryTimes(Infinity)).toBe(3);
+      expect(clampParallelRetryTimes(-Infinity)).toBe(3);
+    });
+
+    it('null（运行时非法入参）→ 默认 3', () => {
+      expect(clampParallelRetryTimes(null as any)).toBe(3);
     });
   });
 
