@@ -7,7 +7,7 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useContextSelector } from 'use-context-selector';
 import { useWorkflowUtils } from './useUtils';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -68,7 +68,7 @@ export const useKeyboard = () => {
       if (!Array.isArray(parseData)) return;
       // filter workflow data
       const filteredData = parseData.filter(
-        (item) => !!item.type && item.data?.unique !== true && item.type !== FlowNodeTypeEnum.loop
+        (item) => !!item.type && item.data?.unique !== true && !isNestedParentNodeType(item.type)
       );
 
       if (filteredData.length === 0) return;

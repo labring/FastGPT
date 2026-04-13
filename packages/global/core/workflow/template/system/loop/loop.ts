@@ -13,7 +13,7 @@ import {
 import { i18nT } from '../../../../../../web/i18n/utils';
 import {
   Input_Template_Children_Node_List,
-  Input_Template_LOOP_NODE_OFFSET,
+  Input_Template_NESTED_NODE_OFFSET,
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '../../input';
@@ -33,7 +33,7 @@ export const LoopNode: FlowNodeTemplateType = {
   courseUrl: '/docs/introduction/guide/dashboard/workflow/loop/',
   inputs: [
     {
-      key: NodeInputKeyEnum.loopInputArray,
+      key: NodeInputKeyEnum.nestedInputArray,
       renderTypeList: [FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.arrayAny,
       required: true,
@@ -43,12 +43,12 @@ export const LoopNode: FlowNodeTemplateType = {
     Input_Template_Children_Node_List,
     Input_Template_Node_Width,
     Input_Template_Node_Height,
-    Input_Template_LOOP_NODE_OFFSET
+    Input_Template_NESTED_NODE_OFFSET
   ],
   outputs: [
     {
-      id: NodeOutputKeyEnum.loopArray,
-      key: NodeOutputKeyEnum.loopArray,
+      id: NodeOutputKeyEnum.nestedArrayResult,
+      key: NodeOutputKeyEnum.nestedArrayResult,
       label: i18nT('workflow:loop_result'),
       type: FlowNodeOutputTypeEnum.static,
       valueType: WorkflowIOValueTypeEnum.arrayAny

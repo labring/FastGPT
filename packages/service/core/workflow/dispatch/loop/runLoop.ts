@@ -1,5 +1,5 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -13,13 +13,16 @@ import {
 import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
+import { env } from '../../../../env';
+import { getNestedEndOutputValue, pushSubWorkflowUsage, collectResponseFeedbacks } from './service';
+import { injectNestedStartInputs } from '../utils';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.loopInputArray]: Array<any>;
+  [NodeInputKeyEnum.nestedInputArray]: Array<any>;
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.loopArray]: Array<any>;
+  [NodeOutputKeyEnum.nestedArrayResult]: Array<any>;
 }>;
 
 export const dispatchLoop = async (props: Props): Promise<Response> => {
@@ -37,9 +40,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   }
 
   // Max loop times
-  const maxLength = process.env.WORKFLOW_MAX_LOOP_TIMES
-    ? Number(process.env.WORKFLOW_MAX_LOOP_TIMES)
-    : 50;
+  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
@@ -75,21 +76,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         }
       });
     } else {
-      runtimeNodes.forEach((node) => {
-        if (!childrenNodeIdList.includes(node.nodeId)) return;
-
-        // Init interactive response
-        if (node.flowNodeType === FlowNodeTypeEnum.loopStart) {
-          node.isEntry = true;
-          node.inputs.forEach((input) => {
-            if (input.key === NodeInputKeyEnum.loopStartInput) {
-              input.value = item;
-            } else if (input.key === NodeInputKeyEnum.loopStartIndex) {
-              input.value = index + 1;
-            }
-          });
-        }
-      });
+      injectNestedStartInputs({ nodes: runtimeNodes, childrenNodeIdList, item, index });
     }
 
     index++;
@@ -104,30 +91,16 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       )
     });
 
-    const loopOutputValue = response.flowResponses.find(
-      (res) => res.moduleType === FlowNodeTypeEnum.loopEnd
-    )?.loopOutputValue;
-
     // Concat runtime response
     if (!response.workflowInteractiveResponse) {
-      outputValueArr.push(loopOutputValue);
+      outputValueArr.push(getNestedEndOutputValue(response));
     }
     loopResponseDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
 
-    const itemUsagePoint = response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
-    totalPoints += itemUsagePoint;
-    props.usagePush([
-      {
-        totalPoints: itemUsagePoint,
-        moduleName: `${name}-${index}`
-      }
-    ]);
+    totalPoints += pushSubWorkflowUsage({ usagePush: props.usagePush, response, name, index });
 
-    // Collect custom feedbacks
-    if (response[DispatchNodeResponseKeyEnum.customFeedbacks]) {
-      customFeedbacks.push(...response[DispatchNodeResponseKeyEnum.customFeedbacks]);
-    }
+    collectResponseFeedbacks(response, customFeedbacks);
 
     // Concat new variables
     newVariables = {
@@ -148,7 +121,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
   return {
     data: {
-      [NodeOutputKeyEnum.loopArray]: outputValueArr
+      [NodeOutputKeyEnum.nestedArrayResult]: outputValueArr
     },
     [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
       ? {

@@ -497,6 +497,20 @@ export const WholeResponseContent = ({
       <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
       <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
 
+      {/* parallel */}
+      <Row
+        label={t('common:core.chat.response.parallel_input')}
+        value={activeModule?.parallelInput}
+      />
+      <Row
+        label={t('common:core.chat.response.parallel_output')}
+        value={activeModule?.parallelResult}
+      />
+      <Row
+        label={t('common:core.chat.response.parallel_run_detail')}
+        value={activeModule?.parallelRunDetail}
+      />
+
       {/* loopStart */}
       <Row
         label={t('common:core.chat.response.loop_input_element')}
@@ -561,7 +575,10 @@ const SideTabItem = ({
             <NormalSideTabItem
               index={index}
               value={value}
-              onChange={onChange}
+              onChange={(id) => {
+                onChange(id);
+                onToggleShowAccordion();
+              }}
               sideBarItem={sideBarItem}
             >
               <MyIcon
@@ -724,6 +741,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
             }
+            if (Array.isArray(item.parallelDetail)) {
+              helper(item.parallelDetail);
+            }
             if (Array.isArray(item.childrenResponses)) {
               helper(item.childrenResponses);
             }
@@ -754,15 +774,13 @@ export const ResponseBox = React.memo(function ResponseBox({
     function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
       return res.map((item) => {
         let children: sideTabItemType[] = [];
-        if (
-          !!(item?.toolDetail || item?.pluginDetail || item?.loopDetail || item?.childrenResponses)
-        ) {
-          if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
-          if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
-          if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
-          if (item?.childrenResponses)
-            children.push(...pretreatmentResponse(item?.childrenResponses));
-        }
+
+        if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
+        if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
+        if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+        if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
+        if (item?.childrenResponses)
+          children.push(...pretreatmentResponse(item?.childrenResponses));
 
         return {
           moduleLogo: item.moduleLogo,

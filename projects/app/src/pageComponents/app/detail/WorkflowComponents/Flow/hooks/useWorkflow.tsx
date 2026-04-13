@@ -14,7 +14,11 @@ import {
   type NodeSelectionChange,
   type EdgeRemoveChange
 } from 'reactflow';
-import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  EDGE_TYPE,
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -391,8 +395,8 @@ const useRAF = () => {
 
 export const popoverWidth = 400;
 export const popoverHeight = 600;
-// Loop 类型的父节点类型集合
-const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop]);
+// 嵌套父容器节点类型集合
+const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.parallelRun]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -427,30 +431,38 @@ export const useWorkflow = () => {
     [scheduleHelperLineUpdate]
   );
 
-  // Check if a node is placed on top of a loop node
+  // Check if a node is placed on top of a nested parent node (loop / parallelRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
-    const unSupportedTypes = [
+    const unSupportedInLoop = [
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
+      FlowNodeTypeEnum.parallelRun,
       FlowNodeTypeEnum.pluginInput,
       FlowNodeTypeEnum.pluginOutput,
       FlowNodeTypeEnum.systemConfig
     ];
+    // Interactive nodes are silently ignored in parallel (not added to parent)
+    const unSupportedInParallel = [
+      ...unSupportedInLoop,
+      FlowNodeTypeEnum.userSelect,
+      FlowNodeTypeEnum.formInput
+    ];
 
     if (!node || node.data.parentNodeId) return;
 
-    // 获取所有与当前节点相交的节点
+    // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
     const intersections = getIntersectingNodes(node);
-    // 获取所有与当前节点相交的节点中，类型为 loop 的节点且它不能是折叠状态
     const parentNode = intersections.find(
-      (item) => !item.data.isFolded && item.type === FlowNodeTypeEnum.loop
+      (item) => !item.data.isFolded && isNestedParentNodeType(item.type ?? '')
     );
 
     if (parentNode) {
+      const isParallel = parentNode.type === FlowNodeTypeEnum.parallelRun;
+      const unSupportedTypes = isParallel ? unSupportedInParallel : unSupportedInLoop;
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
         return toast({
           status: 'warning',
-          title: t('workflow:can_not_loop')
+          title: t(isParallel ? 'workflow:can_not_parallel' : 'workflow:can_not_loop')
         });
       }
 

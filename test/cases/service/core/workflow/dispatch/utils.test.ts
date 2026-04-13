@@ -11,7 +11,8 @@ import {
   filterSystemVariables,
   formatHttpError,
   rewriteRuntimeWorkFlow,
-  getNodeErrResponse
+  getNodeErrResponse,
+  safePoints
 } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -830,5 +831,31 @@ describe('getNodeErrResponse', () => {
     expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
+  });
+});
+
+// ─── safePoints ───────────────────────────────────────────────────────────────
+describe('safePoints', () => {
+  it('正常数值 → 原样返回', () => {
+    expect(safePoints(42)).toBe(42);
+    expect(safePoints(0)).toBe(0);
+    expect(safePoints(3.14)).toBe(3.14);
+  });
+
+  it('NaN → 0', () => {
+    expect(safePoints(NaN)).toBe(0);
+  });
+
+  it('Infinity → 0', () => {
+    expect(safePoints(Infinity)).toBe(0);
+    expect(safePoints(-Infinity)).toBe(0);
+  });
+
+  it('null → 0', () => {
+    expect(safePoints(null)).toBe(0);
+  });
+
+  it('undefined → 0', () => {
+    expect(safePoints(undefined)).toBe(0);
   });
 });
