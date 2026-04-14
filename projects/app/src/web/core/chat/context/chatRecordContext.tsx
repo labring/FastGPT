@@ -78,6 +78,14 @@ const ChatRecordContextProvider = ({
     async (
       data: LinkedPaginationProps<GetPaginationRecordsBodyType>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
+      if (!data.appId) {
+        return {
+          list: [],
+          hasMorePrev: false,
+          hasMoreNext: false
+        };
+      }
+
       setIsChatRecordsLoaded(false);
 
       const res = await callApi(data).finally(() => {
