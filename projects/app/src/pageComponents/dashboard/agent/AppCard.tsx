@@ -67,7 +67,7 @@ const AppCard = React.memo(function AppCard({
   const { folderDetail, setMoveAppId, setSearchKey } = useContextSelector(AppListContext, (v) => v);
 
   const [isHovered, setIsHovered] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleOpenExportSkill = useCallback(() => {
     setIsMenuOpen(false);
@@ -267,7 +267,6 @@ const AppCard = React.memo(function AppCard({
         flexDirection={'column'}
         onMouseEnter={() => {
           setIsHovered(true);
-          setIsMenuOpen(true);
         }}
         onMouseLeave={() => setIsHovered(false)}
         _hover={{
@@ -301,10 +300,16 @@ const AppCard = React.memo(function AppCard({
       >
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-          <Box color={'myGray.900'} fontWeight={'medium'} minWidth={0} overflow="hidden" h="100%">
+          <Box
+            color={'myGray.900'}
+            fontWeight={'medium'}
+            minWidth={0}
+            overflow="hidden"
+            lineHeight={'24px'}
+          >
             <Box className={'textEllipsis'}>{app.name}</Box>
           </Box>
-          <Box justifySelf="end" mr={-5}>
+          <Box justifySelf="end" mr={-5} display={'flex'} alignItems={'center'}>
             <AppTypeTag type={app.type} />
           </Box>
         </Grid>

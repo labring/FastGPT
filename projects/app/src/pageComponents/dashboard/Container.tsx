@@ -62,8 +62,8 @@ const NavItem = ({
       direction={isCollapsedMain ? 'column' : 'row'}
       align="center"
       h={indent ? '36px' : isCollapsedMain ? 'auto' : '40px'}
-      py={isCollapsedMain ? '6px' : 0}
-      px={isCollapsedMain ? '4px' : indent ? (isCollapsed ? '20px' : '44px') : '20px'}
+      py={isCollapsedMain ? '7px' : 0}
+      px={isCollapsedMain ? '12px' : indent ? (isCollapsed ? '20px' : '44px') : '20px'}
       bg={isActive ? 'rgba(50, 136, 250, 0.1)' : 'transparent'}
       cursor="pointer"
       borderRadius="6px"
@@ -75,21 +75,22 @@ const NavItem = ({
       {!indent && (
         <MyIcon
           name={icon as any}
-          w={isCollapsedMain ? '20px' : '16px'}
-          h={isCollapsedMain ? '20px' : '16px'}
-          color={isActive ? '#1770E6' : 'myGray.500'}
+          w="16px"
+          h="16px"
+          color={isActive ? '#156AD9' : '#505F73'}
           flexShrink={0}
         />
       )}
       {isCollapsedMain ? (
         <Text
-          mt="2px"
-          fontSize="10px"
+          mt="4px"
+          fontSize="12px"
           fontWeight={500}
-          color={isActive ? '#1770E6' : 'myGray.700'}
-          _groupHover={{ color: isActive ? '#1770E6' : '#2D3540' }}
+          color={isActive ? '#156AD9' : '#2D3540'}
+          _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
           textAlign="center"
           lineHeight="1.2"
+          whiteSpace="nowrap"
         >
           {collapsedLabel || label}
         </Text>
@@ -98,9 +99,9 @@ const NavItem = ({
           <Text
             ml={indent ? 0 : '9px'}
             fontSize={indent ? '13px' : '14px'}
-            fontWeight={indent ? 400 : 500}
-            color={isActive ? '#1770E6' : 'myGray.700'}
-            _groupHover={{ color: isActive ? '#1770E6' : '#2D3540' }}
+            fontWeight={indent ? 400 : 600}
+            color={isActive ? '#156AD9' : indent ? '#3E4A59' : '#2D3540'}
+            _groupHover={{ color: isActive ? '#156AD9' : indent ? '#3E4A59' : '#2D3540' }}
             whiteSpace="nowrap"
           >
             {label}
@@ -144,8 +145,8 @@ const SubNavGroup = ({
       align="center"
       justify={isCollapsed ? undefined : 'space-between'}
       h={isCollapsed ? 'auto' : '40px'}
-      py={isCollapsed ? '6px' : 0}
-      px={isCollapsed ? '4px' : '20px'}
+      py={isCollapsed ? '7px' : 0}
+      px={isCollapsed ? '12px' : '20px'}
       bg={isActive ? 'rgba(50, 136, 250, 0.1)' : 'transparent'}
       cursor="pointer"
       borderRadius="6px"
@@ -157,19 +158,20 @@ const SubNavGroup = ({
         <>
           <MyIcon
             name={icon as any}
-            w="20px"
-            h="20px"
-            color={isActive ? '#1770E6' : 'myGray.500'}
+            w="16px"
+            h="16px"
+            color={isActive ? '#156AD9' : '#505F73'}
             flexShrink={0}
           />
           <Text
-            mt="2px"
-            fontSize="10px"
+            mt="4px"
+            fontSize="12px"
             fontWeight={500}
-            color={isActive ? '#1770E6' : 'myGray.700'}
-            _groupHover={{ color: isActive ? '#1770E6' : '#2D3540' }}
+            color={isActive ? '#156AD9' : '#2D3540'}
+            _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
             textAlign="center"
             lineHeight="1.2"
+            whiteSpace="nowrap"
           >
             {collapsedLabel || label}
           </Text>
@@ -181,25 +183,25 @@ const SubNavGroup = ({
               name={icon as any}
               w="16px"
               h="16px"
-              color={isActive ? '#1770E6' : 'myGray.500'}
+              color={isActive ? '#156AD9' : '#505F73'}
               flexShrink={0}
             />
             <Text
               ml="9px"
               fontSize="14px"
-              fontWeight={500}
-              color={isActive ? '#1770E6' : 'myGray.700'}
-              _groupHover={{ color: isActive ? '#1770E6' : '#2D3540' }}
+              fontWeight={600}
+              color={isActive ? '#156AD9' : '#2D3540'}
+              _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
               whiteSpace="nowrap"
             >
               {label}
             </Text>
           </Flex>
           <MyIcon
-            name={isExpanded ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+            name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
             w="16px"
             h="16px"
-            color="myGray.400"
+            color="#505F73"
             flexShrink={0}
           />
         </>
@@ -265,8 +267,8 @@ const SubNavSettings = ({
       align="center"
       justify={isCollapsed ? undefined : 'space-between'}
       h={isCollapsed ? 'auto' : '40px'}
-      py={isCollapsed ? '6px' : 0}
-      px={isCollapsed ? '4px' : '20px'}
+      py={isCollapsed ? '7px' : 0}
+      px={isCollapsed ? '12px' : '20px'}
       bg={isActive ? 'rgba(50, 136, 250, 0.1)' : 'transparent'}
       cursor="pointer"
       borderRadius="6px"
@@ -278,19 +280,20 @@ const SubNavSettings = ({
         <>
           <MyIcon
             name={icon as any}
-            w="20px"
-            h="20px"
-            color={isActive ? '#1770E6' : 'myGray.500'}
+            w="16px"
+            h="16px"
+            color={isActive ? '#156AD9' : '#505F73'}
             flexShrink={0}
           />
           <Text
-            mt="2px"
-            fontSize="10px"
+            mt="4px"
+            fontSize="12px"
             fontWeight={500}
-            color={isActive ? '#1770E6' : 'myGray.700'}
-            _groupHover={{ color: isActive ? '#1770E6' : '#2D3540' }}
+            color={isActive ? '#156AD9' : '#2D3540'}
+            _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
             textAlign="center"
             lineHeight="1.2"
+            whiteSpace="nowrap"
           >
             {collapsedLabel || label}
           </Text>
@@ -302,25 +305,25 @@ const SubNavSettings = ({
               name={icon as any}
               w="16px"
               h="16px"
-              color={isActive ? '#1770E6' : 'myGray.500'}
+              color={isActive ? '#156AD9' : '#505F73'}
               flexShrink={0}
             />
             <Text
               ml="9px"
               fontSize="14px"
-              fontWeight={500}
-              color={isActive ? '#1770E6' : 'myGray.700'}
-              _groupHover={{ color: isActive ? '#1770E6' : '#2D3540' }}
+              fontWeight={600}
+              color={isActive ? '#156AD9' : '#2D3540'}
+              _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
               whiteSpace="nowrap"
             >
               {label}
             </Text>
           </Flex>
           <MyIcon
-            name={isExpanded ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+            name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
             w="16px"
             h="16px"
-            color="myGray.400"
+            color="#505F73"
             flexShrink={0}
           />
         </>
@@ -350,9 +353,9 @@ const SubNavSettings = ({
               <Text
                 fontSize="13px"
                 fontWeight={400}
-                color={item.path && currentPath.startsWith(item.path) ? '#1770E6' : 'myGray.700'}
+                color={item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'}
                 _groupHover={{
-                  color: item.path && currentPath.startsWith(item.path) ? '#1770E6' : '#2D3540'
+                  color: item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'
                 }}
                 whiteSpace="nowrap"
               >
@@ -483,18 +486,24 @@ export const DashboardNavbar = ({
         userSelect="none"
       >
         {/* 顶部 Logo */}
-        <Flex h="64px" px="12px" align="center" flexShrink={0}>
-          <MyImage w="40px" h="40px" src={LOGO_ICON} flexShrink={0} borderRadius="8px" />
+        <Flex h="64px" pl="18px" align="center" flexShrink={0}>
+          <MyImage
+            w="32px"
+            h="32px"
+            src={feConfigs?.systemLogo || LOGO_ICON}
+            flexShrink={0}
+            borderRadius="8px"
+          />
           {!isCollapsed && (
-            <Text ml="8px" fontSize="16px" fontWeight={600} color="myGray.900" whiteSpace="nowrap">
-              FastGPT
+            <Text ml="8px" fontSize="20px" fontWeight={600} color="#12161A" whiteSpace="nowrap">
+              {feConfigs?.systemTitle}
             </Text>
           )}
         </Flex>
 
         {/* 导航菜单区域 */}
         <Box flex={1} overflowY="auto" overflowX="hidden" px="8px">
-          <VStack spacing={0} align="stretch">
+          <VStack spacing={isCollapsed ? '16px' : 0} align="stretch">
             {/* 门户 */}
             <NavItem
               icon="navbar/chatLightNew"
@@ -600,7 +609,7 @@ export const DashboardNavbar = ({
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
             <Flex w={SIDEBAR_COLLAPSED_WIDTH} justify="center" flexShrink={0}>
-              <MyIcon name="navbar/bottomIcon" w="14px" color="myGray.500" flexShrink={0} />
+              <MyIcon name="navbar/bottomIcon" w="14px" color="#3E4A59" flexShrink={0} />
             </Flex>
           </Flex>
         </Box>
