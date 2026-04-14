@@ -121,6 +121,7 @@ export const getWorkflowResponseWrite = ({
   const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
     let _res = res as NextApiResponse & { [StreamResumeMirrorActive]?: boolean };
     const allowWriteToMirrorAfterClose = !!_res && _res[StreamResumeMirrorActive];
+    // 默认连接关闭后不再写 SSE；开启断线续传 mirror 时仍需在 closed 后把尾包写入 Redis Stream
     if (!res || !streamResponse || (res.closed && !allowWriteToMirrorAfterClose)) return;
 
     // Forbid show detail
