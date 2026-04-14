@@ -233,5 +233,7 @@
   "retrieval_mode": "检索策略",
   "retrieval_process": "检索过程",
   "retrieval_results": "检索结果",
-  "view_all_knowledge": "查看全部 {{count}} 个知识"
+  "view_all_knowledge": "查看全部 {{count}} 个知识",
+  "tag_faq_direct": "匹配到可直接回答的 FAQ",
+  "tag_no_recall": "未召回知识"
 }

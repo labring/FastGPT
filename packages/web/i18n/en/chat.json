@@ -234,5 +234,7 @@
   "retrieval_mode": "Retrieval Mode",
   "retrieval_process": "Retrieval Process",
   "retrieval_results": "Retrieval Results",
-  "view_all_knowledge": "View all {{count}} knowledge"
+  "view_all_knowledge": "View all {{count}} knowledge",
+  "tag_faq_direct": "Matched to a directly answerable FAQ",
+  "tag_no_recall": "No knowledge retrieved"
 }
