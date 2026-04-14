@@ -26,8 +26,12 @@
 'use strict';
 
 const axios = require('axios');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
+
+// Allow self-signed certificates
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ─── chatId 生成（与 FastGPT 服务端 getNanoid(24) 保持一致）────────────────
 // 首位强制小写字母，其余 23 位为 a-zA-Z0-9，总长 24
@@ -111,7 +115,8 @@ async function chat({ message, chatId, imageUrl, fileUrl, fileName, variables } 
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json'
       },
-      timeout: 60000
+      timeout: 60000,
+      httpsAgent
     });
   } catch (err) {
     const status = err.response?.status;
@@ -164,7 +169,8 @@ async function uploadFile(filePath, chatId) {
           Authorization: `Bearer ${API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 15000
+        timeout: 15000,
+        httpsAgent
       }
     );
   } catch (err) {
@@ -185,7 +191,8 @@ async function uploadFile(filePath, chatId) {
       },
       timeout: 120000,
       maxContentLength: Infinity,
-      maxBodyLength: Infinity
+      maxBodyLength: Infinity,
+      httpsAgent
     });
   } catch (err) {
     const status = err.response?.status;
