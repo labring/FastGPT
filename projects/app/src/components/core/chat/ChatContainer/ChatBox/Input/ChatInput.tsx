@@ -178,7 +178,7 @@ const ChatInput = ({
             letterSpacing={'0.5px'}
             w={'100%'}
             _placeholder={{
-              color: '#707070',
+              color: 'myWhite.850',
               fontSize: 'sm'
             }}
             value={inputValue}
@@ -299,14 +299,14 @@ const ChatInput = ({
                 p={[1, 2]}
                 borderRadius={'sm'}
                 cursor={'pointer'}
-                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+                _hover={{ bg: 'myGray.05' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenSelectFile();
                 }}
               >
                 <MyTooltip label={selectFileLabel}>
-                  <MyIcon name={selectFileIcon as any} w="18px" h="18px" color={'#707070'} />
+                  <MyIcon name={selectFileIcon as any} w="18px" h="18px" color={'myWhite.850'} />
                 </MyTooltip>
                 <File onSelect={(files) => onSelectFile({ files })} />
               </Flex>
@@ -322,14 +322,14 @@ const ChatInput = ({
                 p={[1, 2]}
                 borderRadius={'sm'}
                 cursor={'pointer'}
-                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+                _hover={{ bg: 'myGray.05' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   VoiceInputRef.current?.onSpeak?.();
                 }}
               >
                 <MyTooltip label={t('common:core.chat.Record')}>
-                  <MyIcon name={'core/chat/recordFill'} w="18px" h="18px" color={'#707070'} />
+                  <MyIcon name={'core/chat/recordFill'} w="18px" h="18px" color={'myWhite.850'} />
                 </MyTooltip>
               </Flex>
             )}
@@ -398,8 +398,8 @@ const ChatInput = ({
   /* light/3.5 active */
   const activeStyles: FlexProps = {
     boxShadow: '0px 4px 12px 0px rgba(0, 65, 178, 0.12)',
-    /* Blue Gray/L20 ------------ #E1E5EB */
-    border: '1px solid #E1E5EB'
+    border: '1px solid',
+    borderColor: 'borderColor.low'
   };
 
   return (
@@ -437,15 +437,14 @@ const ChatInput = ({
         pb={InputLeftComponent ? 2 : 3}
         position={'relative'}
         borderRadius={'8px'}
-        bg={'#FFFFFF'}
+        bg={'white'}
         overflow={'display'}
         {...(focusing
           ? activeStyles
           : {
               _hover: activeStyles,
-              /* Blue Gray/L20 ------------ #E1E5EB */
-              border: '1px solid #E1E5EB',
-              /* light/3.5 */
+              border: '1px solid',
+              borderColor: 'borderColor.low',
               boxShadow: '0px 2px 6px 0px rgba(0, 65, 178, 0.06)'
             })}
         onClick={() => TextareaDom?.current?.focus()}

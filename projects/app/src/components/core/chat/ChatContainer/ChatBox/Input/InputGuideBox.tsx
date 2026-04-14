@@ -50,9 +50,10 @@ export default function InputGuideBox({
 
   return filterData.length ? (
     <Box
-      bg={'#FFFFFF'}
+      bg={'white'}
       borderRadius={'6px'}
-      border={'1px solid #EBEDF0'}
+      border={'1px solid'}
+      borderColor={'myGray.200'}
       boxShadow={'0px 4px 10px 0px rgba(19, 51, 107, 0.1), 0px 0px 1px 0px rgba(19, 51, 107, 0.1)'}
       position={'absolute'}
       top={-3}
@@ -73,7 +74,7 @@ export default function InputGuideBox({
           borderRadius={'4px'}
           cursor={'pointer'}
           overflow={'hidden'}
-          color={'#333333'}
+          color={'myWhite.1000'}
           _hover={{
             bg: 'rgba(50, 136, 250, 0.06)',
             '.send-icon': {
@@ -83,7 +84,7 @@ export default function InputGuideBox({
           onClick={() => onSelect(item)}
         >
           <Box fontSize={'12px'} lineHeight={'20px'} flex={'1 0 0'}>
-            <HighlightText rawText={item} matchText={text} color={'#1770E6'} />
+            <HighlightText rawText={item} matchText={text} color={'blue.600'} />
           </Box>
           {/* <MyTooltip label={t('common:core.chat.markdown.Send Question')}>
             <MyIcon

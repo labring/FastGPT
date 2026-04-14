@@ -67,7 +67,7 @@ const ChatHeader = ({
       px={[3, 6]}
       minH={['46px', '60px']}
       color={'myGray.900'}
-      bg={'#FBFDFF'}
+      bg={'myWhite.300'}
       fontSize={'sm'}
     >
       {isPc ? (
@@ -304,7 +304,7 @@ export const PcHeader = ({
           mr={3}
           maxW={'200px'}
           className="textEllipsis"
-          color={'#333333'}
+          color={'myWhite.1000'}
           fontWeight={600}
           fontSize={'14px'}
           cursor={'pointer'}

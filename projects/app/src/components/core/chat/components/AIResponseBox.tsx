@@ -86,7 +86,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
             <MyIcon name={'core/chat/deepThing'} w={'14px'} flexShrink={0} />
             <Box
               fontSize={'xs'}
-              color={'#24282C' /* Gray modern/900 */}
+              color={'myGray.800' /* Gray modern/900 */}
               lineHeight={'18px'}
               fontWeight={500}
             >
@@ -97,7 +97,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
             {showAnimation && <MyIcon name={'common/loading'} w={'14px'} />}
           </HStack>
           <AccordionIcon
-            color={'#485264' /* HJ/color/light/general/surface/on-surface-low */}
+            color={'myGray.550' /* HJ/color/light/general/surface/on-surface-low */}
             ml={1}
             opacity={0.8}
           />
@@ -108,8 +108,8 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
           mt={2}
           bg={'white'}
           borderLeft={'2px solid'}
-          borderColor={'#EBEDF0' /* Blue Gray/L30 */}
-          color={'#999999' /* Gray/D30 */}
+          borderColor={'myGray.200' /* Blue Gray/L30 */}
+          color={'myWhite.800' /* Gray/D30 */}
           fontSize={'xs'}
           lineHeight={'20px'}
         >

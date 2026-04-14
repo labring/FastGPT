@@ -76,7 +76,7 @@ const SideBar = (e?: Props) => {
         w={'36px'}
         h={'50px'}
         borderRadius={'10px'}
-        bg={'#F0F2F5'}
+        bg={'myGray.150'}
         cursor={'pointer'}
         transition={'0.2s'}
         visibility={isButtonVisible || isFolded ? 'visible' : 'hidden'}
@@ -89,7 +89,7 @@ const SideBar = (e?: Props) => {
           name={'common/backLight'}
           transform={isFolded ? 'rotate(180deg)' : ''}
           w={'14px'}
-          color={'#485264'}
+          color={'myGray.550'}
         />
       </Flex>
       <Box position={'relative'} h={'100%'} overflow={isFolded ? 'hidden' : 'visible'}>

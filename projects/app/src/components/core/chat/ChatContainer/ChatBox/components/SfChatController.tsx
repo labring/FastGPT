@@ -39,11 +39,11 @@ const controlIconStyle = {
   cursor: 'pointer',
   p: '6px',
   bg: 'white',
-  color: '#637A99'
+  color: 'myGray.450'
 };
 const controlContainerStyle = {
   className: 'control',
-  color: '#637A99',
+  color: 'myGray.450',
   display: 'flex'
 };
 
