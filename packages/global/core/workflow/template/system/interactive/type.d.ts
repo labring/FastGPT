@@ -51,6 +51,8 @@ export type UserSelectOptionItemType = {
   key: string;
   value: string;
 };
+
+export type UserSelectOptionsValueType = UserSelectOptionItemType[] | [string, string][];
 type UserSelectInteractive = InteractiveNodeType & {
   type: 'userSelect';
   params: {
@@ -79,8 +81,10 @@ export type UserInputFormItemType = {
   // numberInput
   max?: number;
   min?: number;
-  // select
+  // select & multipleSelect
   list?: { label: string; value: string }[];
+  listInputType?: FlowNodeInputTypeEnum.reference | FlowNodeInputTypeEnum.custom;
+  listReference?: [string, string] | [string, string][];
 
   // File
   canLocalUpload?: boolean;

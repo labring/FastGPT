@@ -34,15 +34,17 @@ const InputFormEditModal = ({
   defaultValue,
   onClose,
   onSubmit,
-  keys
+  keys,
+  nodeId
 }: {
   defaultValue: UserInputFormItemType;
   onClose: () => void;
   onSubmit: (data: UserInputFormItemType) => void;
   keys: string[];
+  nodeId: string;
 }) => {
   const isEdit = !!defaultValue.key;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
   const onSubmitError = useSubmitErrorHandler();
@@ -60,6 +62,8 @@ const InputFormEditModal = ({
     () => inputTypeList.flat().find((item) => item.value === inputType)?.defaultValueType,
     [inputTypeList, inputType]
   );
+
+  const inputTypeColumns = i18n.language === 'en' ? 2 : 3;
 
   const onSubmitSuccess = useCallback(
     (data: UserInputFormItemType, action: 'confirm' | 'continue') => {
@@ -120,9 +124,11 @@ const InputFormEditModal = ({
           <InputTypeSelector
             inputTypeList={inputTypeList}
             selectedType={inputType}
+            columns={inputTypeColumns}
             onTypeChange={(type) => {
               setValue('type', type as FlowNodeInputTypeEnum);
               setValue('defaultValue', '');
+              setValue('listReference', undefined);
             }}
           />
         </Stack>
@@ -131,6 +137,7 @@ const InputFormEditModal = ({
           type={'formInput'}
           isEdit={isEdit}
           inputType={inputType}
+          nodeId={nodeId}
           onClose={onClose}
           onSubmitSuccess={onSubmitSuccess}
           onSubmitError={onSubmitError}

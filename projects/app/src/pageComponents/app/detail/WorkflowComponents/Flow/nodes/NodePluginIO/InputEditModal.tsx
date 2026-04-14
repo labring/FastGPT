@@ -82,6 +82,8 @@ const FieldEditModal = ({
     [inputType, inputTypeList]
   );
 
+  const inputTypeColumns = i18n.language === 'en' ? 2 : 3;
+
   const onSubmitSuccess = useCallback(
     (data: FlowNodeInputItemType, action: 'confirm' | 'continue') => {
       data.label = data?.label?.trim();
@@ -187,6 +189,7 @@ const FieldEditModal = ({
           <InputTypeSelector
             inputTypeList={inputTypeList}
             selectedType={inputType}
+            columns={inputTypeColumns}
             onTypeChange={(type) => {
               const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
               if (targetItem) {
