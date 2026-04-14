@@ -108,7 +108,7 @@ const ChatSliderList = ({ isShareMode }: Props) => {
               mb: '4px'
             })}
           >
-            <Box flex={'1 0 0'} ml={'8px'} className="textEllipsis" w={0} color={'#3E4A59'}>
+            <Box flex={'1 0 0'} ml={'8px'} className="textEllipsis" w={0} color={'myGray.600'}>
               <Box className="textEllipsis">{item.customTitle || item.title}</Box>
             </Box>
             {!!item.id && (

@@ -21,7 +21,7 @@ const ChatHistorySidebar = ({ title, banner, isShareMode }: Props) => {
       }
     : {
         backgroundColor: 'white',
-        borderColor: '#E6F1FF'
+        borderColor: 'blue.100'
       };
 
   return (

@@ -131,14 +131,14 @@ export const SimpleCitationDisplay = React.memo(
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <MyIcon name="core/chat/quoteBg" w={'14px'} h={'14px'} mr={2} />
-          <Box fontSize={'12px'} lineHeight={'12px'} color={'#333'} fontWeight={500} mr={2}>
+          <Box fontSize={'12px'} lineHeight={'12px'} color={'myWhite.1000'} fontWeight={500} mr={2}>
             {t('app:chat_item_citation_source', { count: citationList.length })}
           </Box>
           <MyIcon
             name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
             w={'12px'}
             h={'12px'}
-            color={'#485164'}
+            color={'myGray.550'}
           />
         </Flex>
 
@@ -146,7 +146,7 @@ export const SimpleCitationDisplay = React.memo(
         {isExpanded && (
           <Box
             mt={2}
-            background={'#FAFBFC'} /* Blue Gray/L70 ------------ #FAFBFC */
+            background={'myGray.25'} /* Blue Gray/L70 ------------ #FAFBFC */
             borderRadius={'4px'}
             py={'16px'}
             px={'12px'}
@@ -182,8 +182,8 @@ export const SimpleCitationDisplay = React.memo(
                     alignItems={'center'}
                     justifyContent={'center'}
                     fontSize={'10px'}
-                    color={'#909499'}
-                    background={'#F0F2F5'}
+                    color={'myWhite.850'}
+                    background={'myGray.150'}
                     borderRadius={'10px'}
                     mr={'5px'}
                     flexShrink={0}
@@ -194,7 +194,7 @@ export const SimpleCitationDisplay = React.memo(
                     className="citation-file-name"
                     fontSize={'12px'}
                     lineHeight={'16px'}
-                    color={item.noPermission ? '#909499' : '#156AD9'}
+                    color={item.noPermission ? 'myWhite.850' : 'blue.700'}
                     noOfLines={1}
                   >
                     {item.displayText}
@@ -457,7 +457,7 @@ const ChatItem = (props: Props) => {
                   isChatting={isChatting}
                 />
                 <SimpleCitationDisplay historyItem={chat} datasetReadPerMap={datasetReadPerMap} />
-                <Box color="#CCCCCC" mt={2} fontSize={'0.85rem'}>
+                <Box color={'myWhite.700'} mt={2} fontSize={'0.85rem'}>
                   {t('app:chat_item_cost_time')} {chat.durationSeconds}s
                 </Box>
               </>

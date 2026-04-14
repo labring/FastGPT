@@ -80,12 +80,12 @@ const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) =
           key={text}
           display="inline-flex"
           alignItems="center"
-          bg="#F7F8FA"
+          bg={'myGray.50'}
           borderRadius="8px"
           px="12px"
           h="32px"
           fontSize="sm"
-          color="#596A80"
+          color={'myGray.500'}
           cursor="pointer"
           onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
         >
@@ -172,10 +172,11 @@ const ChatItem = (props: Props) => {
       ...(type === ChatRoleEnum.Human
         ? {
             order: 0,
-            borderRadius: '8px 0 8px 8px',
+            borderRadius: '8px',
             justifyContent: 'flex-end',
             textAlign: 'right',
-            bg: '#E6F1FF'
+            bg: 'blue.100',
+            padding: '12px'
           }
         : {
             order: 1,
@@ -395,6 +396,7 @@ const ChatItem = (props: Props) => {
             {...MessageCardStyle}
             bg={styleMap.bg}
             borderRadius={styleMap.borderRadius}
+            p={styleMap.padding}
             textAlign={'left'}
             pb={0}
             {...(type === ChatRoleEnum.AI && { display: 'block', w: '100%', maxW: '100%', pr: 0 })}

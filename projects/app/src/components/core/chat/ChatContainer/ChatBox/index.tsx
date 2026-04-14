@@ -1419,6 +1419,10 @@ const ChatBox = ({
         overflowX={'hidden'}
         px={[4, 0]}
         pb={6}
+        sx={{
+          maskImage: 'linear-gradient(to bottom, transparent 0px, black 48px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 48px)'
+        }}
       >
         <Box maxW={['100%', 'min(738px, 92%)']} h={'100%'} mx={'auto'}>
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
