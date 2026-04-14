@@ -164,7 +164,8 @@ const HomeChatWindow = () => {
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId],
+      // Plus 配置晚于首屏就绪时，需重新拉会话状态（含 chatGenerateStatus，供流恢复）
+      refreshDeps: [appId, chatId, feConfigs?.isPlus],
       errorToast: '',
       onFinally() {
         forbidLoadChat.current = false;

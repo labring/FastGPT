@@ -65,8 +65,11 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { ensureGenerateChat, updateChatGenerateStatus } from '@/service/core/chat/resume-status';
-import { mirrorChatStream } from '@/service/core/chat/resume';
+import {
+  ensureGenerateChat,
+  updateChatGenerateStatus
+} from '@fastgpt/service/core/chat/resumeStatus';
+import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);

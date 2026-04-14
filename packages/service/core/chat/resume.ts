@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
-import { env } from '@fastgpt/service/env';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { env } from '../../env';
+import { getLogger, LogCategories } from '../../common/logger';
+import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
 import { StreamResumeMirrorActive } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);

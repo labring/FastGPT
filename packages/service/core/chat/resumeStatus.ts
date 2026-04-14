@@ -1,4 +1,4 @@
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoChat } from './chatSchema';
 import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type EnsureGenerateChatParams = {

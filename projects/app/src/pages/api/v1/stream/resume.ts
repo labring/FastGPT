@@ -13,7 +13,7 @@ import {
   StreamResumePhaseEnum,
   StreamResumePhaseEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { catchUpAllHistoryItems, _resume } from '@/service/core/chat/resume';
+import { catchUpAllHistoryItems, _resume } from '@fastgpt/service/core/chat/resume';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { transformPreviewHistories } from '@/global/core/chat/utils';

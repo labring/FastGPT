@@ -39,17 +39,25 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import {
+  ensurePendingChatRoundItems,
+  pushChatRecords,
+  updateInteractiveChat
+} from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
-import { ensureGenerateChat, updateChatGenerateStatus } from '@/service/core/chat/resume-status';
+import {
+  ensureGenerateChat,
+  updateChatGenerateStatus
+} from '@fastgpt/service/core/chat/resumeStatus';
 import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { mirrorChatStream } from '@/service/core/chat/resume';
+import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResumeMirror: ReturnType<typeof mirrorChatStream> | undefined;
@@ -57,13 +65,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     nodes = [],
     edges = [],
     messages = [],
-    responseChatItemId,
+    responseChatItemId: responseChatItemIdFromBody,
     variables = {},
     appName,
     appId,
     chatConfig,
     chatId
   } = ChatTestPropsSchema.parse(req.body);
+  const responseChatItemId = responseChatItemIdFromBody ?? getNanoid(24);
   const source = ChatSourceEnum.test;
   try {
     const originIp = getIpFromRequest(req);
@@ -165,6 +174,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId: String(app._id),
       chatId
     });
+
+    // 与线上 completions 一致：先落库本轮 Human + AI 占位，否则刷新恢复时「最后一条 AI」仍是上一轮，流会续写到旧气泡
+    if (!interactive) {
+      await ensurePendingChatRoundItems({
+        chatId,
+        appId: String(app._id),
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        userContent: userQuestion,
+        responseChatItemId
+      });
+    }
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,

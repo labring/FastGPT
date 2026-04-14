@@ -18,7 +18,7 @@ import {
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
   STREAM_RESUME_TTL_SECONDS,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
-} from '@/service/core/chat/resume';
+} from '@fastgpt/service/core/chat/resume';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {

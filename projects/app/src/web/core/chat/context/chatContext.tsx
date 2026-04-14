@@ -53,44 +53,26 @@ type ChatContextType = {
   主要存放历史记录数据。
   同时还存放外部链接鉴权信息，不会在 chatTest 下使用
 */
+/** 无 Provider 时（如应用编排「调试」页）侧栏历史不存在，用空实现避免抛错 */
+const chatContextFallbackScrollData: ChatContextType['ScrollData'] = ({ children }) => (
+  <>{children}</>
+);
+
 export const ChatContext = createContext<ChatContextType>({
-  // forbidLoadChat: undefined,
   histories: [],
-  onUpdateHistoryTitle: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  ScrollData: function (): ReactNode {
-    throw new Error('Function not implemented.');
-  },
-  loadHistories: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  setHistories: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  onUpdateHistory: function (data: UpdateHistoryParams): void {
-    throw new Error('Function not implemented.');
-  },
-  onDelHistory: function (data: string): Promise<undefined> {
-    throw new Error('Function not implemented.');
-  },
-  onClearHistories: function (): Promise<undefined> {
-    throw new Error('Function not implemented.');
-  },
+  onUpdateHistoryTitle: () => {},
+  ScrollData: chatContextFallbackScrollData,
+  loadHistories: () => {},
+  setHistories: () => {},
+  onUpdateHistory: () => {},
+  onDelHistory: async () => undefined,
+  onClearHistories: async () => undefined,
   isOpenSlider: false,
-  onCloseSlider: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  onOpenSlider: function (): void {
-    throw new Error('Function not implemented.');
-  },
+  onCloseSlider: () => {},
+  onOpenSlider: () => {},
   forbidLoadChat: { current: false },
-  onChangeChatId: function (chatId?: string | undefined, forbid?: boolean | undefined): void {
-    throw new Error('Function not implemented.');
-  },
-  onChangeAppId: function (appId: string): void {
-    throw new Error('Function not implemented.');
-  },
+  onChangeChatId: () => {},
+  onChangeAppId: () => {},
   isLoading: false
 });
 
