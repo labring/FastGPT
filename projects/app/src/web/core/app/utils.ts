@@ -339,6 +339,34 @@ export function form2AppWorkflow(
           label: i18nT('common:search_model'),
           valueType: WorkflowIOValueTypeEnum.string,
           value: formData.dataset.generateSqlModel
+        },
+        {
+          key: NodeInputKeyEnum.datasetRetrievalMode,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.retrievalMode
+        },
+        {
+          key: NodeInputKeyEnum.datasetAgenticSearchReasoning,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: formData.dataset.agenticSearchReasoning
+        },
+        {
+          key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.rerankModel
+        },
+        {
+          key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.aiSettings.model
         }
       ],
       outputs: DatasetSearchModule.outputs

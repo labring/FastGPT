@@ -41,6 +41,10 @@
   "contains": "contains",
   "content_to_retrieve": "Content to be searched",
   "content_to_search": "Content to be searched",
+  "agentic_search_retrieval_mode": "Retrieval Mode",
+  "agentic_search_llm_model": "AI Model",
+  "agentic_search_rerank_model": "Rerank Model",
+  "agentic_search_reasoning": "Output Reasoning",
   "contextMenu.addComment": "Add comment",
   "context_menu.add_comment": "Add comment",
   "create_link_error": "Error occurred while creating the link.",
@@ -184,8 +188,8 @@
   "template.agent_intro": "The model decides which tool to call.",
   "template.ai_chat": "AI chat",
   "template.ai_chat_intro": "Chat with an AI model.",
-  "template.dataset_search": "Knowledge base search",
-  "template.dataset_search_intro": "Uses semantic, full-text, and database search capabilities to search for reference materials related to the questions from the selected knowledge bases.",
+  "template.dataset_search": "Knowledge base retrieval",
+  "template.dataset_search_intro": "Retrieves relevant reference materials from the knowledge base using standard retrieval or multi-round intelligent retrieval.",
   "template.forbid_stream": "Disable output in streaming mode",
   "template.forbid_stream_desc": "Force nested apps to run in non-streaming mode.",
   "template.plugin_output": "Plugin output",
@@ -246,6 +250,6 @@
   "customer_service.welcome_text_default": "Hello! How can I help you?",
   "correction_data_hit_check": "Whether correction data is matched",
   "use_correction_data_reply": "Use correction data reply",
-  "debug_file_url_input.doc_link_placeholder": "文档链接",
-  "debug_file_url_input.add_doc_link": "添加文档链接"
+  "debug_file_url_input.doc_link_placeholder": "Document link",
+  "debug_file_url_input.add_doc_link": "Add document link"
 }

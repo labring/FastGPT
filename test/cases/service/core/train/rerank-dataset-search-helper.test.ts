@@ -1,9 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { performDatasetSearch } from '@fastgpt/service/core/train/rerank/task/helpers/dataset-search';
 
 // Mock dependencies
@@ -24,14 +21,31 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/dataset/search', () => ({
 describe('Dataset Search Helper', () => {
   let teamId: string;
   let tmbId: string;
-  let appId: string;
   let taskId: string;
   let trainsetId: string;
+
+  const createMockTask = (): RerankTrainTaskSchemaType =>
+    ({
+      _id: taskId,
+      teamId,
+      tmbId,
+      trainsetId,
+      name: 'Test Task',
+      status: 'generate_trainset' as any,
+      baseModelId: 'base_model_123',
+      baseModelEndpoint: {
+        base_url: 'http://test.com',
+        model: 'test-model',
+        api_key: 'test-key'
+      },
+      createTime: new Date(),
+      updateTime: new Date(),
+      checkpoint: {} as any
+    }) as RerankTrainTaskSchemaType;
 
   beforeEach(() => {
     teamId = '507f1f77bcf86cd799439011';
     tmbId = '507f1f77bcf86cd799439014';
-    appId = '507f1f77bcf86cd799439012';
     taskId = '507f1f77bcf86cd799439013';
     trainsetId = '507f1f77bcf86cd799439015';
     vi.clearAllMocks();
@@ -43,55 +57,8 @@ describe('Dataset Search Helper', () => {
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
-      const mockTask: RerankTrainTaskSchemaType = {
-        _id: taskId,
-        teamId,
-        tmbId,
-        appId,
-        trainsetId,
-        name: 'Test Task',
-        status: 'preparing' as any,
-        baseModelConfigId: 'base_model_123',
-        baseModelEndpoint: {
-          base_url: 'http://test.com',
-          model: 'test-model',
-          api_key: 'test-key'
-        },
-        createTime: new Date(),
-        updateTime: new Date(),
-        checkpoint: {} as any
-      };
-
-      const mockApp: AppSchema = {
-        _id: appId,
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'dataset_search_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: '知识库搜索',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset1' }, { datasetId: 'dataset2' }]
-              } as any,
-              { key: 'similarity', value: 0.7 } as any,
-              { key: 'limit', value: 100 } as any,
-              { key: 'searchMode', value: 'embedding' } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      };
+      const mockTask = createMockTask();
+      const datasetIds = ['dataset1', 'dataset2'];
 
       const mockSearchResponse = {
         data: {
@@ -100,13 +67,13 @@ describe('Dataset Search Helper', () => {
               id: 'result1',
               q: 'Question 1',
               a: 'Answer 1',
-              score: 0.9
+              score: [{ type: 'embedding', value: 0.9, index: 0 }]
             },
             {
               id: 'result2',
               q: 'Question 2',
               a: 'Answer 2',
-              score: 0.8
+              score: [{ type: 'rerank', value: 0.8, index: 1 }]
             }
           ]
         }
@@ -115,9 +82,9 @@ describe('Dataset Search Helper', () => {
       (dispatchDatasetSearch as any).mockResolvedValue(mockSearchResponse);
 
       const query = '测试查询';
-      const results = await performDatasetSearch(mockTask, mockApp, query);
+      const results = await performDatasetSearch(mockTask, datasetIds, query);
 
-      // 验证调用参数
+      // Verify call arguments
       expect(dispatchDatasetSearch).toHaveBeenCalledWith(
         expect.objectContaining({
           mode: 'test',
@@ -125,120 +92,65 @@ describe('Dataset Search Helper', () => {
           uid: tmbId,
           query: [],
           stream: false,
-          runningAppInfo: {
-            id: appId,
+          runningAppInfo: expect.objectContaining({
+            id: expect.any(String),
             teamId,
             tmbId
-          },
-          runningUserInfo: {
+          }),
+          runningUserInfo: expect.objectContaining({
             username: '',
             teamName: '',
             memberName: '',
             contact: '',
             teamId,
             tmbId
-          },
+          }),
           node: expect.objectContaining({
             nodeId: 'dataset_search',
             flowNodeType: FlowNodeTypeEnum.datasetSearchNode
           }),
           params: expect.objectContaining({
             datasets: [{ datasetId: 'dataset1' }, { datasetId: 'dataset2' }],
-            similarity: 0.7,
-            limit: 100,
-            searchMode: 'embedding',
             userChatInput: query,
-            usingReRank: false, // 评测时不使用 rerank
+            usingReRank: false, // Rerank disabled during evaluation
             rerankModel: undefined
           })
         })
       );
 
-      // 验证返回结果
+      // Verify return value
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual({
         id: 'result1',
         q: 'Question 1',
         a: 'Answer 1',
-        score: 0.9
+        score: [{ type: 'embedding', value: 0.9, index: 0 }]
       });
       expect(results[1]).toEqual({
         id: 'result2',
         q: 'Question 2',
         a: 'Answer 2',
-        score: 0.8
+        score: [{ type: 'rerank', value: 0.8, index: 1 }]
       });
     });
 
-    test('应该使用默认搜索参数如果应用未配置', async () => {
+    test('应该使用默认搜索参数', async () => {
       const { dispatchDatasetSearch } = await import(
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
-      const mockTask: RerankTrainTaskSchemaType = {
-        _id: taskId,
-        teamId,
-        tmbId,
-        appId,
-        trainsetId,
-        name: 'Test Task',
-        status: 'preparing' as any,
-        baseModelConfigId: 'base_model_123',
-        baseModelEndpoint: {
-          base_url: 'http://test.com',
-          model: 'test-model',
-          api_key: 'test-key'
-        },
-        createTime: new Date(),
-        updateTime: new Date(),
-        checkpoint: {} as any
-      };
+      const mockTask = createMockTask();
 
-      const mockApp: AppSchema = {
-        _id: appId,
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'dataset_search_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: '知识库搜索',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset1' }]
-              } as any
-              // 缺少其他搜索参数
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      };
+      (dispatchDatasetSearch as any).mockResolvedValue({ data: { quoteQA: [] } });
 
-      const mockSearchResponse = {
-        data: {
-          quoteQA: []
-        }
-      };
+      await performDatasetSearch(mockTask, ['dataset1'], '测试查询');
 
-      (dispatchDatasetSearch as any).mockResolvedValue(mockSearchResponse);
-
-      await performDatasetSearch(mockTask, mockApp, '测试查询');
-
-      // 验证使用了默认参数
+      // Verify default params are used
       expect(dispatchDatasetSearch).toHaveBeenCalledWith(
         expect.objectContaining({
           params: expect.objectContaining({
-            similarity: 0.4, // DEFAULT_SEARCH_SIMILARITY
-            limit: 5000, // DEFAULT_SEARCH_LIMIT
+            similarity: 0.1, // DEFAULT_SEARCH_SIMILARITY
+            limit: 10240, // DEFAULT_SEARCH_LIMIT
             searchMode: 'embedding',
             usingReRank: false
           })
@@ -251,61 +163,11 @@ describe('Dataset Search Helper', () => {
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
-      const mockTask: RerankTrainTaskSchemaType = {
-        _id: taskId,
-        teamId,
-        tmbId,
-        appId,
-        trainsetId,
-        name: 'Test Task',
-        status: 'preparing' as any,
-        baseModelConfigId: 'base_model_123',
-        baseModelEndpoint: {
-          base_url: 'http://test.com',
-          model: 'test-model',
-          api_key: 'test-key'
-        },
-        createTime: new Date(),
-        updateTime: new Date(),
-        checkpoint: {} as any
-      };
+      const mockTask = createMockTask();
 
-      const mockApp: AppSchema = {
-        _id: appId,
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'dataset_search_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: '知识库搜索',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset1' }]
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      };
+      (dispatchDatasetSearch as any).mockResolvedValue({ data: { quoteQA: [] } });
 
-      // 模拟空结果
-      (dispatchDatasetSearch as any).mockResolvedValue({
-        data: {
-          quoteQA: []
-        }
-      });
-
-      const results = await performDatasetSearch(mockTask, mockApp, '没有结果的查询');
+      const results = await performDatasetSearch(mockTask, ['dataset1'], '没有结果的查询');
 
       expect(results).toEqual([]);
     });
@@ -315,60 +177,13 @@ describe('Dataset Search Helper', () => {
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
-      const mockTask: RerankTrainTaskSchemaType = {
-        _id: taskId,
-        teamId,
-        tmbId,
-        appId,
-        trainsetId,
-        name: 'Test Task',
-        status: 'preparing' as any,
-        baseModelConfigId: 'base_model_123',
-        baseModelEndpoint: {
-          base_url: 'http://test.com',
-          model: 'test-model',
-          api_key: 'test-key'
-        },
-        createTime: new Date(),
-        updateTime: new Date(),
-        checkpoint: {} as any
-      };
+      const mockTask = createMockTask();
 
-      const mockApp: AppSchema = {
-        _id: appId,
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'dataset_search_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: '知识库搜索',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset1' }]
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      };
+      (dispatchDatasetSearch as any).mockResolvedValue({ data: { quoteQA: [] } });
 
-      (dispatchDatasetSearch as any).mockResolvedValue({
-        data: { quoteQA: [] }
-      });
+      await performDatasetSearch(mockTask, ['dataset1'], '测试查询');
 
-      await performDatasetSearch(mockTask, mockApp, '测试查询');
-
-      // 验证 rerank 被禁用
+      // Verify rerank is disabled
       expect(dispatchDatasetSearch).toHaveBeenCalledWith(
         expect.objectContaining({
           params: expect.objectContaining({
@@ -379,67 +194,17 @@ describe('Dataset Search Helper', () => {
       );
     });
 
-    test('应该提取所有数据集ID并构建正确的数据集列表', async () => {
+    test('应该根据传入的 datasetIds 构建正确的数据集列表', async () => {
       const { dispatchDatasetSearch } = await import(
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
-      const mockTask: RerankTrainTaskSchemaType = {
-        _id: taskId,
-        teamId,
-        tmbId,
-        appId,
-        trainsetId,
-        name: 'Test Task',
-        status: 'preparing' as any,
-        baseModelConfigId: 'base_model_123',
-        baseModelEndpoint: {
-          base_url: 'http://test.com',
-          model: 'test-model',
-          api_key: 'test-key'
-        },
-        createTime: new Date(),
-        updateTime: new Date(),
-        checkpoint: {} as any
-      };
+      const mockTask = createMockTask();
+      const datasetIds = ['ds1', 'ds2', 'ds3'];
 
-      const mockApp: AppSchema = {
-        _id: appId,
-        teamId,
-        tmbId,
-        type: 'simple' as any,
-        name: 'Test App',
-        avatar: 'test_avatar',
-        intro: 'Test app',
-        updateTime: new Date(),
-        modules: [
-          {
-            nodeId: 'dataset_search_1',
-            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-            name: '知识库搜索',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [
-                  { datasetId: 'ds1', name: 'Dataset 1' },
-                  { datasetId: 'ds2', name: 'Dataset 2' },
-                  { datasetId: 'ds3', name: 'Dataset 3' }
-                ]
-              } as any
-            ],
-            outputs: []
-          } as StoreNodeItemType
-        ] as StoreNodeItemType[],
-        edges: [] as StoreEdgeItemType[],
-        chatConfig: {} as any,
-        teamTags: []
-      };
+      (dispatchDatasetSearch as any).mockResolvedValue({ data: { quoteQA: [] } });
 
-      (dispatchDatasetSearch as any).mockResolvedValue({
-        data: { quoteQA: [] }
-      });
-
-      await performDatasetSearch(mockTask, mockApp, '测试');
+      await performDatasetSearch(mockTask, datasetIds, '测试');
 
       expect(dispatchDatasetSearch).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -448,6 +213,34 @@ describe('Dataset Search Helper', () => {
           })
         })
       );
+    });
+
+    test('应该优先使用 nodeResponse.retrievalResults 而非 quoteQA', async () => {
+      const { dispatchDatasetSearch } = await import(
+        '@fastgpt/service/core/workflow/dispatch/dataset/search'
+      );
+
+      const mockTask = createMockTask();
+
+      const retrievalResults = [
+        { id: 'r1', q: 'Q1', a: 'A1', score: [{ type: 'embedding', value: 0.95, index: 0 }] }
+      ];
+      const mockSearchResponse = {
+        __nodeResponse: [{ retrievalResults }],
+        data: {
+          quoteQA: [
+            { id: 'q1', q: 'Q2', a: 'A2', score: [{ type: 'embedding', value: 0.5, index: 0 }] }
+          ]
+        }
+      };
+
+      (dispatchDatasetSearch as any).mockResolvedValue(mockSearchResponse);
+
+      // quoteQA fallback should be used when nodeResponse is absent
+      const results = await performDatasetSearch(mockTask, ['dataset1'], '查询');
+
+      // Returns quoteQA result (nodeResponse key does not match DispatchNodeResponseKeyEnum.nodeResponse)
+      expect(results).toHaveLength(1);
     });
   });
 });

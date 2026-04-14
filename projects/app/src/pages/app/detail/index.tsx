@@ -111,6 +111,7 @@ export async function getServerSideProps(context: any) {
         'file',
         'publish',
         'workflow',
+        'skill',
         'dashboard_evaluation',
         'evaluation',
         'train',

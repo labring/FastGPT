@@ -2,65 +2,70 @@ import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/reran
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { createRerankModelConfig } from '../../model/controller';
 import { addLog } from '../../../../../common/system/log';
-import { createEnhancedError } from '../../utils';
+import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { TrainTaskUnrecoverableError } from '../errors';
+import { TrainTaskUnrecoverableError } from '../../../common/errors';
+import { MongoSystemModel } from '../../../../ai/config/schema';
 
 /**
- * Stage 3: Model Registration
+ * Stage 5: Model Registration
  *
  * Registers the finetuned rerank model configuration in FastGPT model management system.
  *
  * @param task - Training task data
- * @returns Tuned model config ID
- * @throws {UnrecoverableError} When tuned endpoint or base model config not found
+ * @returns Tuned model ID
+ * @throws {UnrecoverableError} When tuned endpoint or base model not found
  */
 export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise<{
-  tunedModelConfigId: string;
+  tunedModelId: string;
 }> {
   addLog.info('Run register stage', { taskId: String(task._id) });
 
   const checkpointData = task.checkpoint.data || {};
   if (!checkpointData.finetuning?.tunedModelEndpoint) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
-      RerankTrainErrEnum.registerEndpointNotFound,
-      RerankTrainSuggestionEnum.registerEndpointNotFound
+      RerankTrainErrEnum.rerankRegisterEndpointNotFound,
+      RerankTrainSuggestionEnum.rerankRegisterEndpointNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  if (!task.baseModelConfigId) {
-    const enhancedError = createEnhancedError(
+  if (!task.baseModelId) {
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
-      RerankTrainErrEnum.registerBaseModelNotFound,
-      RerankTrainSuggestionEnum.registerBaseModelNotFound
+      RerankTrainErrEnum.rerankRegisterBaseModelNotFound,
+      RerankTrainSuggestionEnum.rerankRegisterBaseModelNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   const tunedEndpoint = checkpointData.finetuning.tunedModelEndpoint;
-  const baseModelConfigId = task.baseModelConfigId;
-  const tunedModelConfigId = tunedEndpoint.model;
+  const baseModelId = task.baseModelId;
+  const tunedModelId = tunedEndpoint.model;
 
-  // The model ID from SFT Bridge is already unique and identifies the finetuned model
-  const tunedModelName = tunedModelConfigId;
+  // Use task.newModelName if provided, otherwise fall back to the model ID from SFT Bridge
+  const tunedModelName = task.newModelName || tunedModelId;
+
+  // Inherit charsPointsPrice from base model
+  const baseModelDoc = await MongoSystemModel.findOne({ model: baseModelId }).lean();
+  const baseMeta = (baseModelDoc?.metadata ?? {}) as { charsPointsPrice?: number };
 
   try {
     const tunedModelObjectId = await createRerankModelConfig({
       name: tunedModelName,
       endpoint: tunedEndpoint,
       isActive: true,
-      charsPointsPrice: 0
+      charsPointsPrice: baseMeta.charsPointsPrice
     });
 
     addLog.info('Created tuned model config and channel', {
       taskId: String(task._id),
-      modelConfigId: tunedModelConfigId,
-      ModelObjectId: tunedModelObjectId,
+      tunedModelId,
+      tunedModelObjectId,
       endpoint: tunedEndpoint
     });
   } catch (error) {
@@ -68,14 +73,14 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
 
     // Distinguish channel availability timeout from other errors
     const isChannelTimeout = errorMsg.includes('did not become available');
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.registering,
       isChannelTimeout
-        ? RerankTrainErrEnum.registerChannelNotAvailable
-        : RerankTrainErrEnum.registerAiProxyFailed,
+        ? RerankTrainErrEnum.rerankRegisterChannelNotAvailable
+        : RerankTrainErrEnum.rerankRegisterAiProxyFailed,
       isChannelTimeout
-        ? RerankTrainSuggestionEnum.registerChannelNotAvailable
-        : RerankTrainSuggestionEnum.registerAiProxyFailed,
+        ? RerankTrainSuggestionEnum.rerankRegisterChannelNotAvailable
+        : RerankTrainSuggestionEnum.rerankRegisterAiProxyFailed,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -83,11 +88,11 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
 
   addLog.info('Register stage completed', {
     taskId: String(task._id),
-    baseModelConfigId,
-    tunedModelConfigId
+    baseModelId,
+    tunedModelId
   });
 
   return {
-    tunedModelConfigId
+    tunedModelId
   };
 }

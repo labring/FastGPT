@@ -26,6 +26,14 @@ vi.mock('@fastgpt/global/core/ai/provider', () => ({
   })
 }));
 
+vi.mock('@fastgpt/service/core/app/provider/controller', () => ({
+  getModelProvider: vi.fn().mockReturnValue({
+    id: 'aicp',
+    en: 'Test Provider',
+    zh: '测试提供商'
+  })
+}));
+
 vi.mock('@fastgpt/service/core/train/rerank/task/helpers/channel', () => ({
   createTunedModelChannel: vi.fn().mockResolvedValue(undefined),
   deleteTunedModelChannel: vi.fn().mockResolvedValue(undefined),
@@ -73,7 +81,7 @@ describe('Rerank Model Config Controller', () => {
             name: 'Test Rerank Model',
             isActive: true,
             isCustom: true,
-            isTuned: true, // 验证 isTuned 字段被正确设置
+            isTuned: true, // Verify isTuned field is set correctly
             type: 'rerank',
             charsPointsPrice: 1
           })
@@ -168,7 +176,7 @@ describe('Rerank Model Config Controller', () => {
             name: 'Simple Model',
             isActive: false,
             isCustom: true,
-            isTuned: true, // 由训练模块创建，应该有 isTuned 标记
+            isTuned: true, // Created by training module, should have isTuned flag
             type: 'rerank',
             charsPointsPrice: 2
           })

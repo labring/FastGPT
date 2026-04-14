@@ -59,7 +59,7 @@ const deduplicateItems = (
 
   // 统计每个项目出现的次数
   const itemCounts = new Map<string, number>();
-  items.forEach(item => {
+  items.forEach((item) => {
     itemCounts.set(item, (itemCounts.get(item) || 0) + 1);
   });
 
@@ -68,7 +68,7 @@ const deduplicateItems = (
     const result: string[] = [];
     const seen = new Set<string>();
 
-    items.forEach(item => {
+    items.forEach((item) => {
       if (!seen.has(item)) {
         const count = itemCounts.get(item)!;
         if (count > threshold) {
@@ -118,7 +118,10 @@ const deduplicateLine = (line: string): string => {
 
   // 检测是否是表格行（包含 |）
   if (line.includes('|')) {
-    const cells = line.split('|').map(c => c.trim()).filter(c => c);
+    const cells = line
+      .split('|')
+      .map((c) => c.trim())
+      .filter((c) => c);
 
     if (cells.length === 0) return line;
 
@@ -127,7 +130,7 @@ const deduplicateLine = (line: string): string => {
   }
 
   // 检测重复单词（只处理较长的行）
-  const words = line.split(/\s+/).filter(w => w.length > 0);
+  const words = line.split(/\s+/).filter((w) => w.length > 0);
 
   if (words.length > DEDUP_MIN_WORDS) {
     // 先尝试检测连续重复
@@ -140,12 +143,14 @@ const deduplicateLine = (line: string): string => {
 
     // 否则检查是否有大量非连续重复
     const wordCounts = new Map<string, number>();
-    words.forEach(word => {
+    words.forEach((word) => {
       wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
     });
 
     // 检查是否存在高频重复词
-    const hasHighFreqWord = Array.from(wordCounts.values()).some(count => count > DEDUP_WORD_THRESHOLD);
+    const hasHighFreqWord = Array.from(wordCounts.values()).some(
+      (count) => count > DEDUP_WORD_THRESHOLD
+    );
 
     if (hasHighFreqWord) {
       // 使用通用去重函数，保留顺序
@@ -243,9 +248,7 @@ const extractLeadingHeaders = (text: string): string[] => {
  */
 const extractAllHeaders = (text: string): string[] => {
   const lines = text.split('\n');
-  return lines
-    .map((line) => line.trim())
-    .filter((line) => /^#{1,6}\s/.test(line));
+  return lines.map((line) => line.trim()).filter((line) => /^#{1,6}\s/.test(line));
 };
 
 /**
@@ -334,9 +337,7 @@ const mergeChunksWithDedup = (
   // 如果有公共标题前缀，去除第二个块中重复的父标题
   // 注意：即使标题完全相同（commonPrefixLength === headers2.length），也应该去重
   const chunk2ToAdd =
-    commonPrefixLength > 0
-      ? removeLeadingHeaders(chunk2, commonPrefixLength)
-      : chunk2;
+    commonPrefixLength > 0 ? removeLeadingHeaders(chunk2, commonPrefixLength) : chunk2;
 
   return chunk1 + separator + chunk2ToAdd;
 };
@@ -529,7 +530,8 @@ const codeBlockSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
         // 使用字符切分
         const contentTokens = getTextValidLength(chunkContent);
         // 防止除零：如果内容仅含空白字符，contentTokens 可能为 0
-        const avgCharsPerToken = contentTokens > 0 ? chunkContent.length / contentTokens : chunkContent.length;
+        const avgCharsPerToken =
+          contentTokens > 0 ? chunkContent.length / contentTokens : chunkContent.length;
         const charsPerChunk = Math.max(1, Math.floor(chunkSize * avgCharsPerToken));
 
         for (let pos = 0; pos < chunkContent.length; pos += charsPerChunk) {
@@ -649,7 +651,14 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
     // 添加最后一个块
     if (currentBodyContent) {
       chunks.push(
-        buildHtmlTableChunk(headerPrefix, tableOpenTag, tableCloseTag, theadContent, headerRow, currentBodyContent)
+        buildHtmlTableChunk(
+          headerPrefix,
+          tableOpenTag,
+          tableCloseTag,
+          theadContent,
+          headerRow,
+          currentBodyContent
+        )
       );
     }
 
@@ -676,7 +685,7 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
           : chunkTrMatches[0];
 
         // 遍历每一行，检查是否需要切分
-        for (let j = (chunkTheadMatch ? 0 : 1); j < chunkTrMatches.length; j++) {
+        for (let j = chunkTheadMatch ? 0 : 1; j < chunkTrMatches.length; j++) {
           const row = chunkTrMatches[j];
           const rowTokens = getTextValidLength(row);
 
@@ -687,7 +696,14 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
             if (!cellMatches || cellMatches.length === 0) {
               // 无法解析单元格，保持原样
               finalChunks.push(
-                buildHtmlTableChunk(headerPrefix, tableOpenTag, tableCloseTag, chunkTheadContent, chunkHeaderRow, `${row}\n`)
+                buildHtmlTableChunk(
+                  headerPrefix,
+                  tableOpenTag,
+                  tableCloseTag,
+                  chunkTheadContent,
+                  chunkHeaderRow,
+                  `${row}\n`
+                )
               );
               continue;
             }
@@ -719,7 +735,8 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
                 const cellChunks: string[] = [];
                 const contentLength = cell.content.length;
                 // 防止除零：HTML 标签多但可见内容少时，cellTokens 可能为 0
-                const avgCharsPerToken = cellTokens > 0 ? contentLength / cellTokens : contentLength;
+                const avgCharsPerToken =
+                  cellTokens > 0 ? contentLength / cellTokens : contentLength;
                 const charsPerChunk = Math.max(1, Math.floor(chunkSize * avgCharsPerToken));
 
                 for (let pos = 0; pos < contentLength; pos += charsPerChunk) {
@@ -733,7 +750,7 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
             }
 
             // 计算需要生成多少行（取最大的切分数量）
-            const maxSplits = Math.max(...splitCells.map(c => c.length));
+            const maxSplits = Math.max(...splitCells.map((c) => c.length));
 
             // 生成多行，每行包含对应的单元格切片
             for (let splitIndex = 0; splitIndex < maxSplits; splitIndex++) {
@@ -748,13 +765,27 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
 
               // 创建新的表格块
               finalChunks.push(
-                buildHtmlTableChunk(headerPrefix, tableOpenTag, tableCloseTag, chunkTheadContent, chunkHeaderRow, `${newRow}\n`)
+                buildHtmlTableChunk(
+                  headerPrefix,
+                  tableOpenTag,
+                  tableCloseTag,
+                  chunkTheadContent,
+                  chunkHeaderRow,
+                  `${newRow}\n`
+                )
               );
             }
           } else {
             // 单行不超过 chunkSize，保持原样
             finalChunks.push(
-              buildHtmlTableChunk(headerPrefix, tableOpenTag, tableCloseTag, chunkTheadContent, chunkHeaderRow, `${row}\n`)
+              buildHtmlTableChunk(
+                headerPrefix,
+                tableOpenTag,
+                tableCloseTag,
+                chunkTheadContent,
+                chunkHeaderRow,
+                `${row}\n`
+              )
             );
           }
         }
@@ -892,33 +923,35 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     const { reg, maxLen } = stepReges[step];
 
-    const replaceText = (() => {
+    // 快速路径：RegExp 无匹配时直接返回，避免 replace+split 对大文本的全量内存分配
+    if (reg instanceof RegExp) {
+      reg.lastIndex = 0;
+      const testResult = reg.test(text);
+      if (!testResult) {
+        reg.lastIndex = 0;
+        return text.trim() ? [{ text, title: '', chunkMaxSize: chunkSize }] : [];
+      }
+      reg.lastIndex = 0;
+    }
+
+    const replacement = (() => {
+      if (isCustomStep) return splitMarker;
+      if (isMarkdownSplit) return `${splitMarker}$1`;
+      return `$1${splitMarker}`;
+    })();
+
+    const splitTexts = (() => {
       if (typeof reg === 'string') {
         let tmpText = text;
         reg.split('|').forEach((itemReg) => {
-          tmpText = tmpText.replaceAll(
-            itemReg,
-            (() => {
-              if (isCustomStep) return splitMarker;
-              if (isMarkdownSplit) return `${splitMarker}$1`;
-              return `$1${splitMarker}`;
-            })()
-          );
+          tmpText = tmpText.replaceAll(itemReg, replacement);
         });
-        return tmpText;
+        return tmpText.split(splitMarker).filter((part) => part.trim());
       }
-
-      return text.replace(
-        reg,
-        (() => {
-          if (isCustomStep) return splitMarker;
-          if (isMarkdownSplit) return `${splitMarker}$1`;
-          return `$1${splitMarker}`;
-        })()
-      );
+      const replaced = text.replace(reg, replacement);
+      const parts = replaced.split(splitMarker);
+      return parts.filter((part) => part.trim());
     })();
-
-    const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
     const result = splitTexts
       .map((text) => {
@@ -1063,16 +1096,17 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         }
 
         // 在合并最深级标题时，需要补充标题
-        chunks.push(
-          ...innerChunks.map((chunk) => {
-            // 如果 chunk 已经包含 parentTitle（来自表格分块），则不重复添加
-            const fullTitle = parentTitle + item.title;
-            if (step === markdownIndex + customRegLen) {
-              return chunk.startsWith(fullTitle) ? chunk : `${fullTitle}${chunk}`;
-            }
-            return chunk;
-          })
-        );
+        const fullTitle = parentTitle + item.title;
+        if (step === markdownIndex + customRegLen && fullTitle) {
+          // 只有最深 markdown 层且有标题时才需要 map，避免无意义数组复制
+          chunks.push(
+            ...innerChunks.map((chunk) =>
+              chunk.startsWith(fullTitle) ? chunk : `${fullTitle}${chunk}`
+            )
+          );
+        } else {
+          chunks.push(...innerChunks);
+        }
 
         continue;
       }
@@ -1155,12 +1189,14 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   };
 
   try {
-    const chunks = splitTextRecursively({
+    const rawChunks = splitTextRecursively({
       text,
       step: 0,
       lastText: '',
       parentTitle: ''
-    }).map((chunk) => chunk?.replaceAll(codeBlockMarker, '\n')?.trim() || ''); // restore code block
+    });
+
+    const chunks = rawChunks.map((chunk) => chunk?.replaceAll(codeBlockMarker, '\n')?.trim() || ''); // restore code block
 
     const chars = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
 
@@ -1173,6 +1209,47 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   }
 };
 
+// 超大文本预切割阈值（字符数）：超过此值的 segment 先按自然断点切成小段再进 commonSplit
+// 避免 commonSplit 内部 regex replace/split 在百 MB 文本上产生多份全量副本
+const MAX_PRESPLIT_SIZE = (() => {
+  const mb = parseInt(process.env.MAX_TEXT_PRESPLIT_MB || '10', 10);
+  return (isNaN(mb) || mb <= 0 ? 10 : mb) * 1024 * 1024;
+})();
+
+/**
+ * 对超大文本按自然断点（\n\n → \n → 空格）预切割，避免整体传入 commonSplit 导致内存爆炸。
+ * 使用 lastIndexOf 扫描，不产生中间字符串，每个 slice 独立产生。
+ */
+const preSplitLargeText = (text: string, maxSize: number): string[] => {
+  if (text.length <= maxSize) return [text];
+
+  const segments: string[] = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = Math.min(start + maxSize, text.length);
+
+    if (end < text.length) {
+      const searchFrom = start + Math.floor(maxSize * 0.5);
+      let bp = text.lastIndexOf('\n\n', end);
+      if (bp < searchFrom) {
+        bp = text.lastIndexOf('\n', end);
+      }
+      if (bp < searchFrom) {
+        bp = text.lastIndexOf(' ', end);
+      }
+      if (bp >= searchFrom) {
+        end = bp + 1;
+      }
+    }
+
+    segments.push(text.slice(start, end));
+    start = end;
+  }
+
+  return segments;
+};
+
 /**
  * text split into chunks
  * chunkSize - one chunk len. max: 3500
@@ -1183,35 +1260,37 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   let { text = '', chunkSize } = props;
   const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
+  text = null as any;
 
-  const splitResult = splitWithCustomSign.map((item) => {
-    // 使用策略模式查找匹配的分割器
-    const strategy = SPLIT_STRATEGIES.find(s => s.check(item));
-    if (strategy) {
-      return strategy.split({ ...props, text: item });
+  //=== 合并分割、simpleText、deduplicateChunk 为一次遍历，消除中间数组 ===
+  const chunks: string[] = [];
+  for (const item of splitWithCustomSign) {
+    // 超大 segment 先预切割成 ≤MAX_PRESPLIT_SIZE 的小段，避免 commonSplit 内部 regex 产生多份全量副本
+    const subSegments = preSplitLargeText(item, MAX_PRESPLIT_SIZE);
+
+    for (const segment of subSegments) {
+      // 使用策略模式查找匹配的分割器
+      const strategy = SPLIT_STRATEGIES.find((s) => s.check(segment));
+      const result = strategy
+        ? strategy.split({ ...props, text: segment })
+        : commonSplit({ ...props, text: segment });
+      for (const chunk of result.chunks) {
+        chunks.push(deduplicateChunk(simpleText(chunk)));
+      }
     }
-    return commonSplit({ ...props, text: item });
-  });
-
-  let chunks = splitResult
-    .map((item) => item.chunks)
-    .flat()
-    .map((chunk) => simpleText(chunk));
-
-  //=== 后处理：去重、合并小块、去重标题 ===
-  // 应用去重逻辑，减少由重复内容导致的超大分片
-  chunks = chunks.map((chunk) => deduplicateChunk(chunk));
+  }
 
   const smallChunkThreshold = SMALL_CHUNK_THRESHOLD;
 
   // 第一步：对小于smallChunkThreshold的连续小块进行两两合并（多轮迭代直到无法继续合并）
-  let preProcessedChunks = [...chunks];
+  // 使用就地双指针写，避免每轮创建新数组
+  let preProcessedChunks = chunks;
   let hasSmallChunks = true;
 
   while (hasSmallChunks) {
-    const tempChunks: string[] = [];
-    let i = 0;
     hasSmallChunks = false;
+    let writeIdx = 0;
+    let i = 0;
 
     while (i < preProcessedChunks.length) {
       const currentChunk = preProcessedChunks[i];
@@ -1224,19 +1303,19 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
 
         // 如果下一个块也小于阈值，则合并
         if (nextLength < smallChunkThreshold) {
-          tempChunks.push(mergeChunksWithDedup(currentChunk, nextChunk));
+          preProcessedChunks[writeIdx++] = mergeChunksWithDedup(currentChunk, nextChunk);
           i += 2; // 跳过下一个块
           hasSmallChunks = true; // 标记还有小块，可能需要继续合并
           continue;
         }
       }
 
-      // 无法合并，直接添加当前块
-      tempChunks.push(currentChunk);
+      // 无法合并，直接写入当前位置
+      preProcessedChunks[writeIdx++] = currentChunk;
       i++;
     }
 
-    preProcessedChunks = tempChunks;
+    preProcessedChunks.length = writeIdx; // 就地截断，无需新建数组
   }
 
   // 第二步：装箱式合并 - 避免小块单独成块，同时去重标题
@@ -1286,7 +1365,8 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
           const prevBoxHeaders = extractLeadingHeaders(mergedChunks[mergedChunks.length - 1]);
           const chunkHeaders = extractLeadingHeaders(chunk);
           const commonPrefixLength = getCommonHeaderPrefixLength(prevBoxHeaders, chunkHeaders);
-          currentBox = commonPrefixLength > 0 ? removeLeadingHeaders(chunk, commonPrefixLength) : chunk;
+          currentBox =
+            commonPrefixLength > 0 ? removeLeadingHeaders(chunk, commonPrefixLength) : chunk;
         } else {
           currentBox = chunk;
         }
@@ -1297,7 +1377,9 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
             const currentHeaders = extractLeadingHeaders(currentBox);
             const nextHeaders = extractLeadingHeaders(preProcessedChunks[i + 1]);
             const commonLen = getCommonHeaderPrefixLength(currentHeaders, nextHeaders);
-            return commonLen > 0 ? removeLeadingHeaders(preProcessedChunks[i + 1], commonLen) : preProcessedChunks[i + 1];
+            return commonLen > 0
+              ? removeLeadingHeaders(preProcessedChunks[i + 1], commonLen)
+              : preProcessedChunks[i + 1];
           })();
           currentBox = currentBox + '\n\n' + nextChunkDeduplicated;
           i++; // 跳过下一个chunk

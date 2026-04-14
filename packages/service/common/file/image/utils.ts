@@ -3,6 +3,8 @@ import { addLog } from '../../system/log';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getContentTypeFromHeader } from '../utils';
+// 导入 https 模块用于处理自签名证书的HTTPS请求
+import https from 'https';
 
 // 图片格式魔数映射表
 const IMAGE_SIGNATURES: { type: string; magic: number[]; check?: (buffer: Buffer) => boolean }[] = [
@@ -98,10 +100,16 @@ export const getImageBase64 = async (url: string) => {
   addLog.debug(`Load image to base64: ${url}`);
 
   try {
+    // 创建 HTTPS Agent，禁用证书验证（rejectUnauthorized: false）
+    // 这是为了支持自签名证书的HTTPS请求，解决 DEPTH_ZERO_SELF_SIGNED_CERT 错误
+    // 在开发/测试环境中，服务可能使用自签名证书（如: https://10.109.96.140:19443）
+    // Node.js 默认会拒绝这类不受信任的证书，所以需要显式禁用验证
+    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
     const response = await retryFn(() =>
       axios.get(url, {
         baseURL: serverRequestBaseUrl,
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        httpsAgent // 传入 HTTPS Agent 配置
       })
     );
 

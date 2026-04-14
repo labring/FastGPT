@@ -67,9 +67,6 @@ export const DatasetSelectModal = ({
     loadDatasets
   } = useDatasetSelect(scene, formatResData);
 
-  // The vector model of the first selected dataset
-  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
-
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
     (datasetId: string) => {
@@ -80,14 +77,12 @@ export const DatasetSelectModal = ({
 
   const isEmptyDatabase = (item: DatasetListItemType) => isSmartGenerateScene && !item.dataCount;
 
-  // Check if a dataset is disabled (vector model mismatch)
+  // Check if a dataset is disabled
   const isDatasetDisabled = (item: DatasetListItemType) => {
     if (item.type === DatasetTypeEnum.structureDocument && !isSmartGenerateScene) {
       return false;
     }
-    return isSmartGenerateScene
-      ? isEmptyDatabase(item)
-      : !!activeVectorModel && item.vectorModel && activeVectorModel !== item.vectorModel.model;
+    return isSmartGenerateScene ? isEmptyDatabase(item) : false;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
@@ -96,34 +91,20 @@ export const DatasetSelectModal = ({
       : '';
   };
 
-  // Cache compatible datasets by vector model to avoid repeated filtering
-  const compatibleDatasetsByModel = useMemo(() => {
-    const visibleDatasets = datasets.filter(
-      (item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder
-    );
+  // All visible non-folder datasets in the current view
+  const visibleDatasets = useMemo(() => {
+    return datasets.filter((item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder);
+  }, [datasets]);
 
-    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
-    if (!targetModel) {
-      return [];
-    }
-
-    return visibleDatasets.filter(
-      (item: DatasetListItemType) =>
-        item.vectorModel?.model === targetModel || item.type === DatasetTypeEnum.structureDocument
-    );
-  }, [datasets, activeVectorModel]);
-
-  // Check if all compatible datasets are selected
+  // Check if all visible datasets are selected
   const isAllSelected = useMemo(() => {
-    if (compatibleDatasetsByModel.length === 0) {
+    if (visibleDatasets.length === 0) {
       return false;
     }
 
     const selectedDatasetIds = new Set(selectedDatasets.map((dataset) => dataset.datasetId));
-    return compatibleDatasetsByModel.every((item: DatasetListItemType) =>
-      selectedDatasetIds.has(item._id)
-    );
-  }, [compatibleDatasetsByModel, selectedDatasets]);
+    return visibleDatasets.every((item: DatasetListItemType) => selectedDatasetIds.has(item._id));
+  }, [visibleDatasets, selectedDatasets]);
 
   const onSelect = (item: DatasetListItemType, checked: boolean) => {
     if (checked) {
@@ -362,7 +343,7 @@ export const DatasetSelectModal = ({
                         isChecked={isAllSelected}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            const compatibleDatasets = compatibleDatasetsByModel.filter((dataset) => {
+                            const compatibleDatasets = visibleDatasets.filter((dataset) => {
                               return !isDatasetSelected(dataset._id);
                             });
                             const newSelections = compatibleDatasets.map(
@@ -377,11 +358,13 @@ export const DatasetSelectModal = ({
                             );
                             setSelectedDatasets((prev) => [...prev, ...newSelections]);
                           } else {
-                            const datasetIdsToRemove = compatibleDatasetsByModel.map(
+                            const datasetIdsToRemove = visibleDatasets.map(
                               (item: DatasetListItemType) => item._id
                             );
                             setSelectedDatasets((prev) =>
-                              prev.filter((dataset) => !datasetIdsToRemove.includes(dataset.datasetId))
+                              prev.filter(
+                                (dataset) => !datasetIdsToRemove.includes(dataset.datasetId)
+                              )
                             );
                           }
                         }}

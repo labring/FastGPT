@@ -502,17 +502,62 @@ describe('markdown 字符串处理函数测试', () => {
         expect(result.imageList[0].base64).toBe(base64Data);
       });
     });
+
+    it('应该处理换行包装的 base64 数据（文档解析器常见输出）', () => {
+      // 真实文档解析器（如 doc2x/textin）常对长 base64 按 76 字符分行
+      const line1 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAIBAQEBAQIBAQECAgICAgQD';
+      const line2 = 'AgICAgUEBAMEBgUGBg==';
+      const multilineBase64 = `${line1}\n${line2}`;
+      const expectedBase64 = `${line1}${line2}`;
+      const text = `![{2}\\right\\)^{2}\\left(\\frac{1}{](data:image/jpeg;base64,${multilineBase64})`;
+
+      const result = matchMdImg(text);
+
+      expect(result.imageList).toHaveLength(1);
+      // 空白字符应被清除
+      expect(result.imageList[0].base64).toBe(expectedBase64);
+      expect(result.imageList[0].mime).toBe('image/jpeg');
+      expect(result.text).not.toContain('data:image');
+    });
+
+    it('应该处理包含 LaTeX 公式 alt 文本的图片', () => {
+      // 复现用户报告的问题：alt 文本中含有 LaTeX 特殊字符如 \right\)、\left(
+      const base64Data = '/9j/4AAQSkZJRgABAQAAAQABAAD=';
+      const altText = '{2}\\right\\)^{2}\\left(\\frac{1}{';
+      const text = `![${altText}](data:image/jpeg;base64,${base64Data})`;
+
+      const result = matchMdImg(text);
+
+      expect(result.imageList).toHaveLength(1);
+      expect(result.imageList[0].base64).toBe(base64Data);
+      expect(result.imageList[0].mime).toBe('image/jpeg');
+      expect(result.text).toContain(`![${altText}]`);
+    });
+
+    it('应该转义 alt 文本中未转义的 [ 防止 CommonMark 括号嵌套解析失败', () => {
+      // 复现场景：PDF 解析后 alt 文本含有 [foo\] 结构
+      // CommonMark 中 [ 打开嵌套，\] 被转义不关闭嵌套，导致图片解析失败
+      const base64Data = '/9j/TEST==';
+      const altText = '图表说明 [Using the fundamental Poisson brackets\\] more text \\beta_{58';
+      const text = `![${altText}](data:image/jpeg;base64,${base64Data})`;
+
+      const result = matchMdImg(text);
+
+      expect(result.imageList).toHaveLength(1);
+      // alt 文本中的 [ 应被转义为 \[，防止 CommonMark 括号嵌套问题
+      expect(result.text).toContain('![图表说明 \\[Using the fundamental Poisson brackets\\]');
+      expect(result.text).not.toMatch(/!\[图表说明 \[Using/); // 不应有未转义的 [
+    });
   });
 
   describe('性能测试', () => {
-    it('uploadMarkdownBase64 应该处理多个图片', async () => {
-      // 注意: uploadMarkdownBase64 的正则 [^\)]+ 是贪婪匹配
-      // 多个图片在同一行会被匹配为一个,所以用换行分隔
+    it('uploadMarkdownBase64 应该处理同行多个图片', async () => {
+      // [^;]* 替代 .* 后，同行多图可以正确分别匹配，不需要换行分隔
       const imageCount = 5;
       let text = '';
 
       for (let i = 0; i < imageCount; i++) {
-        text += `![img${i}](data:image/png;base64,DATA${i}==)\n`;
+        text += `![img${i}](data:image/png;base64,DATA${i}==) `;
       }
 
       const mockUpload = vi.fn().mockImplementation(async (img) => {

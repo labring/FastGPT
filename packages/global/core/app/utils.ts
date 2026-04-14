@@ -146,6 +146,24 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.generateSqlModel
       );
+      // Agentic Search
+      defaultAppForm.dataset.retrievalMode = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetRetrievalMode
+      );
+      defaultAppForm.dataset.agenticSearchReasoning = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetAgenticSearchReasoning
+      );
+
+      // 不单独配置，取AI配置中的模型即可
+      defaultAppForm.dataset.agenticSearchLLMModel = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiModel
+      );
+      defaultAppForm.dataset.agenticSearchRerankModel =
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModel) ||
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModel);
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||

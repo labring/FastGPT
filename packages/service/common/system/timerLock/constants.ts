@@ -12,7 +12,8 @@ export enum TimerIdEnum {
   clearExpiredMinioFiles = 'clearExpiredMinioFiles',
   recordTeamQPM = 'recordTeamQPM',
   auditLogCleanup = 'auditLogCleanup',
-  chatHistoryCleanup = 'chatHistoryCleanup'
+  chatHistoryCleanup = 'chatHistoryCleanup',
+  collectionCleanup = 'collectionCleanup'
 }
 
 export enum LockNotificationEnum {

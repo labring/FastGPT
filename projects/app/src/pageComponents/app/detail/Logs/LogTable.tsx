@@ -427,7 +427,7 @@ const LogTable = ({
         </Td>
       ),
       [AppLogKeysEnum.OPTIMIZED_COUNT]: (
-        <Td key={AppLogKeysEnum.OPTIMIZED_COUNT}> TODO </Td>
+        <Td key={AppLogKeysEnum.OPTIMIZED_COUNT}> {item.correctionCount} </Td>
       ),
       [AppLogKeysEnum.VERSION_NAME]: (
         <Td key={AppLogKeysEnum.VERSION_NAME}>{item.versionName || '-'}</Td>

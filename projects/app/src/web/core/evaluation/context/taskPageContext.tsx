@@ -311,14 +311,11 @@ export const TaskPageContextProvider = ({
     }
   );
 
-  const { runAsync: runDeleteItem } = useRequest(
-    (itemId: string) => deleteEvaluationItem(itemId),
-    {
-      manual: true,
-      successToast: t('dashboard_evaluation:delete_success'),
-      errorToast: t('dashboard_evaluation:delete_failed')
-    }
-  );
+  const { runAsync: runDeleteItem } = useRequest((itemId: string) => deleteEvaluationItem(itemId), {
+    manual: true,
+    successToast: t('dashboard_evaluation:delete_success'),
+    errorToast: t('dashboard_evaluation:delete_failed')
+  });
 
   const { runAsync: runRetryItem } = useRequest(
     (itemId: string) => postRetryEvaluationItem({ evalItemId: itemId }),

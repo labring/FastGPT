@@ -250,6 +250,10 @@ export const datasetParseQueue = async (): Promise<any> => {
           billId: data.billId,
           paragraphChunkAIMode: collection.paragraphChunkAIMode
         });
+
+        // 释放 rawText 内存，resultText 已包含处理后的内容
+        rawText = null as any;
+
         // Push usage
         pushLLMTrainingUsage({
           teamId: data.teamId,
@@ -332,14 +336,34 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
 
           // 7. Delete task
-          await MongoDatasetTraining.deleteOne(
-            {
-              _id: data._id
-            },
-            {
-              session
+          try {
+            await MongoDatasetTraining.deleteOne(
+              {
+                _id: data._id
+              },
+              {
+                session
+              }
+            );
+          } catch (deleteErr: any) {
+            // Session may have been aborted by server (e.g. transaction timeout).
+            // Only safe to retry without session when pushDataListToTrainingQueue used its own
+            // independent transactions (large dataset path: trainingData.length > 10000).
+            // For small datasets, pushDataListToTrainingQueue reuses the outer session, so a
+            // session abort means training data was also rolled back — rethrow to let the outer
+            // error handler retry the entire parse task and avoid silent data loss.
+            const usedIndependentTransaction = trainingData.length > 10000;
+            if (
+              usedIndependentTransaction &&
+              (deleteErr?.codeName === 'NoSuchTransaction' ||
+                deleteErr?.message?.includes('has been aborted'))
+            ) {
+              addLog.warn('[Parse Queue] deleteOne session aborted, retrying without session');
+              await MongoDatasetTraining.deleteOne({ _id: data._id });
+            } else {
+              throw deleteErr;
             }
-          );
+          }
         });
 
         addLog.debug(`[Parse Queue] Finish`, {

@@ -177,10 +177,11 @@ async function handler(
         });
 
         // Delete collection and related data (data and training records)
+        // delFile: false — the new file already occupies the same S3 key
         await delCollection({
           collections,
           delImg: true,
-          delFile: true,
+          delFile: false,
           session
         });
 

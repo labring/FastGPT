@@ -105,7 +105,7 @@ async function preloadAllCollections(
   datasetId: Types.ObjectId
 ): Promise<CollectionCacheItem[]> {
   const collections = await MongoDatasetCollection.find(
-    { teamId, datasetId },
+    { teamId, datasetId, deleteTime: null },
     { _id: 1, parentId: 1, type: 1, 'tableSchema.exist': 1 }
   ).lean();
 
@@ -238,6 +238,7 @@ async function handler(
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
+    deleteTime: null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
       ? {
@@ -1015,4 +1016,3 @@ async function handleStatusFilterWithMemoryPagination({
 }
 
 export default NextAPI(handler);
-

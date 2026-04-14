@@ -40,7 +40,7 @@ async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQu
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
-    const enhanceConfig: EnhanceConfig = 
+    const enhanceConfig: EnhanceConfig =
       typeof req.body?.enhanceConfig === 'string'
         ? JSON.parse(req.body.enhanceConfig)
         : req.body?.enhanceConfig || {};
@@ -107,7 +107,6 @@ async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQu
         ...enhanceConfig
       }
     });
-
   } catch (error) {
     addLog.error(`Backup dataset collection create error: ${error}`);
     return Promise.reject(error);

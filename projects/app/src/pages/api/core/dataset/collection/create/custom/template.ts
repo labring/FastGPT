@@ -42,6 +42,11 @@ async function parseFileToCSV(buffer: Buffer, extension: string): Promise<string
     // Excel文件直接解析，使用通用的 Excel 解析方法
     const csvText = excelBufferToCSV(buffer);
     if (!csvText) {
+      // node-xlsx（SheetJS）对过大文件会静默返回空 sheet，而非抛出异常
+      // 空 Excel 文件通常 < 20KB；超过 500KB 仍为空说明有数据但无法解析
+      if (buffer.length > 500 * 1024) {
+        throw new Error(i18nT('dataset:template_excel_too_much_data'));
+      }
       throw new Error(i18nT('dataset:template_excel_file_empty'));
     }
     return csvText;
@@ -321,4 +326,3 @@ export const config = {
     bodyParser: false
   }
 };
-

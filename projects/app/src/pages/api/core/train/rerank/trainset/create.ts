@@ -1,11 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { createRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/controller';
-import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
-import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type {
   CreateRerankTrainsetRequest,
   CreateRerankTrainsetResponse
@@ -17,43 +14,33 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateRerankTrainsetResponse>
 ): Promise<CreateRerankTrainsetResponse> {
-  const { appId, name, description } = req.body as CreateRerankTrainsetRequest;
+  const { name, description } = req.body as CreateRerankTrainsetRequest;
 
-  if (!appId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  // 1. Authenticate app write permission
-  const { app, teamId, tmbId } = await authApp({
+  // 1. Authenticate user permission
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true,
-    appId,
+    authApiKey: true,
     per: WritePermissionVal
   });
 
-  // 2. Create app trainset (supports 1:N relationship)
-  const trainsetId = await createRerankTrainset({
-    appId,
+  // 2. Create trainset
+  const trainset = await createRerankTrainset({
     teamId,
     tmbId,
     name,
     description
   });
 
-  // 3. Get complete trainset object
-  const trainset = await MongoRerankTrainset.findById(trainsetId).lean();
-  if (!trainset) {
-    return Promise.reject(RerankTrainErrEnum.trainsetNotExist);
-  }
-
-  // 4. Audit log
-  const trainsetName = name || `${app.name} - Training Set`;
-  addAuditLog({
-    tmbId,
-    teamId,
-    event: AuditEventEnum.CREATE_RERANK_TRAINSET,
-    params: { appName: app.name, trainsetName }
-  });
+  // 3. Audit log
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.CREATE_RERANK_TRAINSET,
+      params: { trainsetName: trainset.name || String(trainset._id) }
+    });
+  })();
 
   return trainset;
 }
