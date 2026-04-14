@@ -53,7 +53,7 @@ import { mirrorChatStream } from '@/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResumeMirror: ReturnType<typeof mirrorChatStream> | undefined;
-  const {
+  let {
     nodes = [],
     edges = [],
     messages = [],
