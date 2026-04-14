@@ -23,10 +23,7 @@ import type {
 import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import type {
-  ResumeStreamParams,
-  StreamNoNeedToBeResumeType
-} from '@fastgpt/global/openapi/core/ai/api';
+import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 
 type StreamFetchProps = {
   url?: string;
@@ -468,8 +465,8 @@ function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
           if (event === StreamResumeCompletedEvent) {
             try {
               completedChat = JSON.parse(data) as StreamNoNeedToBeResumeType;
-            } catch (error) {
-              error = getErrText(error, '恢复完成态数据解析失败');
+            } catch (parseErr) {
+              error = getErrText(parseErr, '恢复完成态数据解析失败');
             }
             return;
           }
@@ -609,42 +606,5 @@ export const onOptimizeCode = async ({
       }
     },
     abortCtrl: controller
-  });
-};
-
-export const resumeChatStream = (params: ResumeStreamParams) => {
-  const search = new URLSearchParams(params);
-  const url = `/api/v2/chat/resume?${search.toString()}`;
-
-  return new Promise<void>(async (resolve, reject) => {
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    try {
-      await fetchEventSource(new Request(getWebReqUrl(url)), {
-        signal: signal,
-        onmessage: ({ event, data }) => {
-          if (event === SseResponseEventEnum.error) {
-            controller.abort();
-            reject(new Error('Failed to resume chat stream'));
-            return;
-          }
-
-          if (data === '[DONE]') {
-            controller.abort();
-            resolve();
-          }
-        },
-        onerror(err) {
-          controller.abort();
-          reject(new Error('Failed to resume chat stream', { cause: err }));
-          throw err;
-        },
-        openWhenHidden: true
-      });
-    } catch (error) {
-      if (signal.aborted) return;
-      reject(error);
-    }
   });
 };
