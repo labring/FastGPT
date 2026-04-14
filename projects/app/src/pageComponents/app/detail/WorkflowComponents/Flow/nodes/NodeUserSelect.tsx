@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { type NodeProps, Position, useViewport } from 'reactflow';
 import { Box, Button, HStack, Input } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
@@ -23,18 +23,87 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+const referenceSourceHandleKey = 'ref_default';
+
+const getOptionSourceHandleId = (nodeId: string, key: string) => getHandleId(nodeId, 'source', key);
+
+const defaultManualOptions: UserSelectOptionItemType[] = [
+  { value: 'Confirm', key: 'option1' },
+  { value: 'Cancel', key: 'option2' }
+];
+
+const getDefaultManualOptions = () => defaultManualOptions.map((item) => ({ ...item }));
 
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
   const { zoom } = useViewport();
+  const previousRenderTypeRef = useRef<string>();
+
+  const userSelectInput = useMemo(
+    () => inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions),
+    [inputs]
+  );
+  const currentRenderType = userSelectInput?.renderTypeList?.[userSelectInput.selectedTypeIndex || 0];
+
+  useEffect(() => {
+    if (!userSelectInput || !currentRenderType) return;
+
+    const previousRenderType = previousRenderTypeRef.current;
+    previousRenderTypeRef.current = currentRenderType;
+
+    if (!previousRenderType || previousRenderType === currentRenderType) return;
+
+    if (previousRenderType === FlowNodeInputTypeEnum.custom) {
+      const previousOptions = Array.isArray(userSelectInput.value)
+        ? (userSelectInput.value as UserSelectOptionItemType[])
+        : [];
+
+      previousOptions.forEach((item) => {
+        onDelEdge({
+          nodeId,
+          sourceHandle: getOptionSourceHandleId(nodeId, item.key)
+        });
+      });
+    }
+
+    if (previousRenderType === FlowNodeInputTypeEnum.reference) {
+      onDelEdge({
+        nodeId,
+        sourceHandle: getOptionSourceHandleId(nodeId, referenceSourceHandleKey)
+      });
+    }
+
+    if (currentRenderType === FlowNodeInputTypeEnum.custom) {
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: NodeInputKeyEnum.userSelectOptions,
+        value: {
+          ...userSelectInput,
+          value: getDefaultManualOptions()
+        }
+      });
+    }
+  }, [currentRenderType, nodeId, onChangeNode, onDelEdge, userSelectInput]);
 
   const CustomComponent = useMemo(
     () => ({
+      // selectedTypeIndex=0 (custom) 时渲染拖拽选项列表（手动输入模式）
+      // selectedTypeIndex=1 (reference) 时由 RenderInput 内置 Reference 组件接管
       [NodeInputKeyEnum.userSelectOptions]: (v: FlowNodeInputItemType) => {
+        const renderType = v.renderTypeList?.[v.selectedTypeIndex || 0];
+        if (renderType !== FlowNodeInputTypeEnum.custom) {
+          return null;
+        }
+
         const { key: optionKey, value, ...props } = v;
-        const options = value as UserSelectOptionItemType[];
+        const rawOptions = value as UserSelectOptionItemType[];
+        const options = rawOptions ?? defaultManualOptions;
 
         return (
           <Box>
@@ -140,8 +209,24 @@ const OptionItem = ({
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
   const { key: optionKey, value, ...props } = itemValue;
-  const options = value as UserSelectOptionItemType[];
+  const options = (value as UserSelectOptionItemType[]) ?? defaultManualOptions;
+
+  const updateOptionValue = useCallback(
+    (newValue: string) => {
+      const newVal = options.map((val) =>
+        val.key === item.key ? { ...val, value: newValue } : val
+      );
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: optionKey,
+        value: { ...props, key: optionKey, value: newVal }
+      });
+    },
+    [item.key, nodeId, onChangeNode, optionKey, options, props]
+  );
 
   return (
     <Box
@@ -163,6 +248,10 @@ const OptionItem = ({
             color={'myGray.600'}
             _hover={{ color: 'red.600' }}
             onClick={() => {
+              onDelEdge({
+                nodeId,
+                sourceHandle: getOptionSourceHandleId(nodeId, item.key)
+              });
               onChangeNode({
                 nodeId,
                 type: 'updateInput',
@@ -182,34 +271,15 @@ const OptionItem = ({
       </HStack>
       <Box position={'relative'} mt={1}>
         <Input
-          defaultValue={item.value}
+          value={item.value}
           bg={'white'}
           fontSize={'sm'}
-          onChange={(e) => {
-            const newVal = options.map((val) =>
-              val.key === item.key
-                ? {
-                    ...val,
-                    value: e.target.value
-                  }
-                : val
-            );
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key: optionKey,
-              value: {
-                ...props,
-                key: optionKey,
-                value: newVal
-              }
-            });
-          }}
+          onChange={(e) => updateOptionValue(e.target.value)}
         />
         {!snapshot.isDragging && (
           <MySourceHandle
             nodeId={nodeId}
-            handleId={getHandleId(nodeId, 'source', item.key)}
+            handleId={getOptionSourceHandleId(nodeId, item.key)}
             position={Position.Right}
             translate={[34, 0]}
           />

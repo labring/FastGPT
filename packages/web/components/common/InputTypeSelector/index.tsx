@@ -8,11 +8,13 @@ import { useTranslation } from 'next-i18next';
 const InputTypeSelector = ({
   inputTypeList,
   selectedType,
-  onTypeChange
+  onTypeChange,
+  columns = 3
 }: {
   inputTypeList: InputTypeConfigItem[][];
   selectedType: string;
   onTypeChange: (type: string) => void;
+  columns?: number;
 }) => {
   const { t } = useTranslation();
   return (
@@ -22,7 +24,7 @@ const InputTypeSelector = ({
           <Box
             key={groupIndex}
             display={'grid'}
-            gridTemplateColumns={'repeat(3, 1fr)'}
+            gridTemplateColumns={`repeat(${columns}, 1fr)`}
             gap={4}
             mt={3}
           >
