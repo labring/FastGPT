@@ -8,7 +8,11 @@ import type {
   WorkflowIOValueTypeEnum
 } from '../workflow/constants';
 import type { InputComponentPropsType, SelectedDatasetType } from '../workflow/type/io';
-import type { DatasetSearchModeEnum, RerankMethodEnum } from '../dataset/constants';
+import type {
+  DatasetRetrievalModeEnum,
+  DatasetSearchModeEnum,
+  RerankMethodEnum
+} from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import type { StoreEdgeItemType } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
@@ -102,6 +106,15 @@ export type AppDatasetSearchParamsType = {
 
   // database
   generateSqlModel?: string;
+
+  // 新增：检索模式（单轮/多轮）
+  retrievalMode?: `${DatasetRetrievalModeEnum}`;
+  // 新增：多轮智能检索使用的 LLM 模型
+  agenticSearchLLMModel?: string;
+  // 新增：多轮智能检索使用的 RERANK 模型
+  agenticSearchRerankModel?: string;
+  // 新增：是否输出思考过程
+  agenticSearchReasoning?: boolean;
 };
 export type AppSimpleEditFormType = {
   // templateId: string;

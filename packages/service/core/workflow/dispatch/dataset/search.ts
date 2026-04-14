@@ -6,7 +6,10 @@ import type {
   SearchCorrectionDataProps,
   SearchCorrectionDataResult
 } from '@fastgpt/global/core/chat/correction/type';
-import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  SearchScoreTypeEnum,
+  DatasetRetrievalModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { Types } from '../../../../common/mongo';
 import { MongoChatCorrection } from '../../../chat/correction/schema';
 import { getVectorsByText } from '../../../ai/embedding';
@@ -22,13 +25,21 @@ import {
   deepRagSearch,
   defaultSearchDatasetData,
   SearchDatabaseData,
-  generateAndExecuteSQL
+  generateAndExecuteSQL,
+  searchFAQData
 } from '../../../dataset/search/controller';
+import { agenticSearchDispatch } from '../../../dataset/search/agenticSearch';
 import {
   getMetadataWithValueExamples,
   queryByNL
 } from '../../../dataset/database/dative/client/dativeApiServer';
-import { calculateDynamicLimit, getDatasetSqlResultLimit } from '../../../dataset/search/utils';
+import {
+  calculateDynamicLimit,
+  datasetSearchQueryExtension,
+  getDatasetSqlResultLimit,
+  getSynonymMappings,
+  standardizeQuery
+} from '../../../dataset/search/utils';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
@@ -48,6 +59,7 @@ import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 import { MongoApp } from '../../../app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**
  * 从全局变量中获取 faqAnswerMode 配置
@@ -95,6 +107,13 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 
   [NodeInputKeyEnum.generateSqlModel]?: string;
+
+  // 检索模式（单轮/多轮）
+  [NodeInputKeyEnum.datasetRetrievalMode]?: `${DatasetRetrievalModeEnum}`;
+  // 多轮智能检索配置
+  [NodeInputKeyEnum.datasetAgenticSearchLLMModel]?: string;
+  [NodeInputKeyEnum.datasetAgenticSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetAgenticSearchReasoning]?: boolean;
 }>;
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
@@ -110,6 +129,7 @@ export async function dispatchDatasetSearch(
     chatConfig,
     variables,
     node,
+    workflowStreamResponse,
     params: {
       datasets = [],
       similarity,
@@ -123,6 +143,13 @@ export async function dispatchDatasetSearch(
       rerankModel,
       rerankMethod = RerankMethodEnum.content,
       rerankWeight,
+
+      // 检索模式（单轮/多轮）
+      retrievalMode = DatasetRetrievalModeEnum.standard,
+      // 多轮智能检索配置
+      agenticSearchLLMModel,
+      agenticSearchRerankModel,
+      agenticSearchReasoning = true,
 
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel,
@@ -145,7 +172,7 @@ export async function dispatchDatasetSearch(
 
   const { teamId, id: appId } = runningAppInfo;
 
-  // 获取应用类型，判断是否为智能客服
+  // 获取应用类型，判断是否为智能问答(assistant)
   const app = await MongoApp.findById(appId).select('type').lean();
   const isAssistant = app?.type === AppTypeEnum.assistant;
 
@@ -187,7 +214,7 @@ export async function dispatchDatasetSearch(
     const useVectorModelDataset = datasets.find(
       (d) => d.datasetType !== DatasetTypeEnum.structureDocument
     );
-    // Get vector model
+    // Get vector model for database type search (SearchDatabaseData uses this)
     const vectorModel = useVectorModelDataset
       ? getEmbeddingModel(
           (await MongoDataset.findById(useVectorModelDataset?.datasetId, 'vectorModel').lean())
@@ -242,6 +269,7 @@ export async function dispatchDatasetSearch(
           i18nErrorMessageData: { modelName: string };
         }
       | undefined = undefined; // 新增：Reranker 错误信息（仅 reranker 报错时有值）
+    let agenticSearchResult: SearchDatasetDataResponse['agenticSearchResult'] = undefined; // 新增：agentic 检索的过程信息（仅 agentic 路径有值）
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -422,6 +450,32 @@ export async function dispatchDatasetSearch(
       }
     }
     if (commonDatasetIds.length > 0) {
+      // ===== 提前执行指代消解（仅 isAssistant + extensionQuery 场景）=====
+      // 目的：
+      //   1. 为 FAQ/Correction 提供经过指代消解 + 同义词标准化的 query，提升命中率
+      //   2. 将结果下传给 defaultSearchDatasetData（standard 路径），避免重复 LLM 调用
+      // 触发条件：isAssistant && 开启问题改写 && 有 LLM 模型 && 有向量模型
+      let preComputedQueryExtension:
+        | Awaited<ReturnType<typeof datasetSearchQueryExtension>>
+        | undefined = undefined;
+      if (
+        isAssistant &&
+        datasetSearchUsingExtensionQuery &&
+        datasetSearchExtensionModel &&
+        vectorModel
+      ) {
+        preComputedQueryExtension = await datasetSearchQueryExtension({
+          query: userChatInput,
+          llmModel: getLLMModel(datasetSearchExtensionModel).model,
+          embeddingModel: vectorModel.model,
+          extensionBg: datasetSearchExtensionBg,
+          histories,
+          isAssistant: true,
+          teamId,
+          datasetIds: commonDatasetIds
+        });
+      }
+
       const searchData = {
         histories,
         teamId,
@@ -440,23 +494,223 @@ export async function dispatchDatasetSearch(
         collectionFilterMatch
       };
 
-      commonSearchResult = datasetDeepSearch
-        ? await deepRagSearch({
+      // ===== App 级别：校正数据 & FAQ 优先检索 =====
+      // 在路由到 agentic/standard 之前检查，确保两条路径都受到保护
+      if (isAssistant && vectorModel) {
+        const corrFaqStartTime = Date.now();
+
+        // 优先使用预计算的指代消解结果（含同义词标准化）；
+        // 降级到本地同义词标准化（extensionQuery=false 或 LLM 不可用时）
+        let embedInputs: string[];
+        let corrFaqQueryExtensionResult: typeof preComputedQueryExtension | undefined =
+          preComputedQueryExtension;
+        if (preComputedQueryExtension?.aiExtensionResult?.synonymRewriteResult?.standardizedQuery) {
+          const resolved =
+            preComputedQueryExtension.aiExtensionResult.synonymRewriteResult.standardizedQuery;
+          embedInputs = resolved !== userChatInput ? [userChatInput, resolved] : [userChatInput];
+        } else {
+          // 降级：仅做同义词标准化
+          const { synonymDict } = await getSynonymMappings({
+            teamId,
+            datasetIds: commonDatasetIds,
+            query: userChatInput
+          });
+          const corrFaqQuery = standardizeQuery(userChatInput, synonymDict);
+          embedInputs =
+            corrFaqQuery !== userChatInput ? [userChatInput, corrFaqQuery] : [userChatInput];
+          corrFaqQueryExtensionResult = undefined; // 降级场景无预计算结果
+        }
+
+        // 同时生成原始 query 和消解/标准化 query 的向量，两个都用于检索
+        // 避免改写覆盖掉原始语义，取相似度最高的命中结果
+        const { vectors: queryVectors, tokens: corrFaqTokens } = await getVectorsByText({
+          model: vectorModel,
+          input: embedInputs,
+          type: 'query'
+        });
+
+        // === 校正数据优先检索 ===
+        if (appId) {
+          // 对每个向量分别检索，取相似度最高的命中结果
+          const correctionResults = await Promise.all(
+            queryVectors.map((vec) =>
+              searchCorrectionData({
+                appId,
+                queryVector: vec,
+                embeddingTokens: corrFaqTokens,
+                teamId
+              })
+            )
+          );
+          const correctionResult = correctionResults
+            .filter(Boolean)
+            .sort((a, b) => (b?.similarity ?? 0) - (a?.similarity ?? 0))[0];
+
+          const correctionThreshold = global.systemEnv?.correctionSimilarityThreshold ?? 0.95;
+          addLog.debug('Assistant Config - correctionSimilarityThreshold', {
+            correctionThreshold
+          });
+
+          if (
+            correctionResult &&
+            correctionResult.similarity > correctionThreshold &&
+            correctionResult.correctedAnswer
+          ) {
+            const retrievalTimeVal = +((Date.now() - corrFaqStartTime) / 1000).toFixed(2);
+            const correctionChunk: SearchDataResponseItemType = {
+              id: `correction_quote_${correctionResult.correctionId}`,
+              updateTime: new Date(),
+              q: correctionResult.question,
+              a: correctionResult.correctedAnswer,
+              chunkIndex: 0,
+              datasetId: appId,
+              collectionId: `correction_quote_${correctionResult.correctionId}`,
+              sourceName: 'Correction Data',
+              sourceId: correctionResult.correctionId,
+              score: [
+                {
+                  type: SearchScoreTypeEnum.embedding,
+                  value: correctionResult.similarity,
+                  index: 0
+                }
+              ]
+            };
+            commonSearchResult = {
+              searchRes: [correctionChunk],
+              embeddingTokens: corrFaqTokens,
+              reRankInputTokens: 0,
+              searchMode: DatasetSearchModeEnum.embedding,
+              limit,
+              similarity: correctionResult.similarity,
+              usingReRank: false,
+              usingSimilarityFilter: true,
+              retrievalTime: retrievalTimeVal,
+              retrievalType: 'correction' as const,
+              correctionData: {
+                correctionId: correctionResult.correctionId,
+                correctedAnswer: correctionResult.correctedAnswer,
+                question: correctionResult.question,
+                similarity: correctionResult.similarity
+              },
+              queryExtensionResult: corrFaqQueryExtensionResult?.aiExtensionResult
+                ? {
+                    llmModel: corrFaqQueryExtensionResult.aiExtensionResult.llmModel,
+                    embeddingModel: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModel,
+                    inputTokens: corrFaqQueryExtensionResult.aiExtensionResult.inputTokens,
+                    outputTokens: corrFaqQueryExtensionResult.aiExtensionResult.outputTokens,
+                    embeddingTokens: corrFaqQueryExtensionResult.aiExtensionResult.embeddingTokens,
+                    query: corrFaqQueryExtensionResult.queriesForStorage || undefined,
+                    synonymRewriteResult:
+                      corrFaqQueryExtensionResult.aiExtensionResult.synonymRewriteResult,
+                    rewriteTime: corrFaqQueryExtensionResult.rewriteTime
+                  }
+                : undefined
+            };
+          }
+        }
+
+        // === FAQ 优先检索（仅当 correction 未命中且 faqAnswerMode === 'quote' 时）===
+        if (!commonSearchResult && faqAnswerMode === 'quote') {
+          // 对每个向量分别检索，取得分最高的命中结果
+          const faqResults = await Promise.all(
+            queryVectors.map((vec) =>
+              searchFAQData({
+                teamId,
+                datasetIds: commonDatasetIds,
+                queryVector: vec,
+                embeddingTokens: corrFaqTokens
+              })
+            )
+          );
+          const faqResult = faqResults
+            .filter(Boolean)
+            .sort((a, b) => (b?.score?.[0]?.value ?? 0) - (a?.score?.[0]?.value ?? 0))[0];
+
+          if (faqResult) {
+            const retrievalTimeVal = +((Date.now() - corrFaqStartTime) / 1000).toFixed(2);
+            addLog.debug('FAQ Search - Match found and returning', {
+              teamId,
+              dataId: faqResult.id,
+              similarity: faqResult.score?.[0]?.value
+            });
+            commonSearchResult = {
+              searchRes: [faqResult],
+              embeddingTokens: corrFaqTokens,
+              reRankInputTokens: 0,
+              searchMode: DatasetSearchModeEnum.embedding,
+              limit,
+              similarity: faqResult.score?.[0]?.value || 0.95,
+              usingReRank: false,
+              usingSimilarityFilter: true,
+              isFaqResult: true,
+              retrievalTime: retrievalTimeVal,
+              retrievalType: 'faq' as const,
+              queryExtensionResult: corrFaqQueryExtensionResult?.aiExtensionResult
+                ? {
+                    llmModel: corrFaqQueryExtensionResult.aiExtensionResult.llmModel,
+                    embeddingModel: corrFaqQueryExtensionResult.aiExtensionResult.embeddingModel,
+                    inputTokens: corrFaqQueryExtensionResult.aiExtensionResult.inputTokens,
+                    outputTokens: corrFaqQueryExtensionResult.aiExtensionResult.outputTokens,
+                    embeddingTokens: corrFaqQueryExtensionResult.aiExtensionResult.embeddingTokens,
+                    query: corrFaqQueryExtensionResult.queriesForStorage || undefined,
+                    synonymRewriteResult:
+                      corrFaqQueryExtensionResult.aiExtensionResult.synonymRewriteResult,
+                    rewriteTime: corrFaqQueryExtensionResult.rewriteTime
+                  }
+                : undefined
+            };
+          }
+        }
+      }
+
+      // 检索模式路由（correction/FAQ 未命中时才执行）
+      if (!commonSearchResult) {
+        if (retrievalMode === DatasetRetrievalModeEnum.agentic) {
+          // 多轮智能检索路径
+          // 将 FastGPT 预计算的指代消解结果和查询变体传给 agenticSearchDispatch
+          // agenticSearchDispatch 内部再以通用接口透传给 diting-rag-ts，保持库的独立性
+          //
+          // 选 coreferenceResolved 而非 standardizedQuery 作为 preResolvedQuery：
+          //   - coreferenceResolved 已完成"代词/省略 → 实体"的展开（如"它" → "产品名称"），
+          //     语义最完整，适合作为 Agent 检索的主查询；
+          //   - standardizedQuery 仅做同义词归一化，未解决指代歧义。
+          const preResolvedQuery =
+            preComputedQueryExtension?.aiExtensionResult?.synonymRewriteResult?.coreferenceResolved;
+          const preComputedQueries = preComputedQueryExtension?.aiExtensionResult?.extensionQueries;
+
+          commonSearchResult = await agenticSearchDispatch({
+            ...searchData,
+            agenticSearchLLMModel,
+            agenticSearchRerankModel,
+            agenticSearchReasoning,
+            synonymDatasetIds: commonDatasetIds,
+            workflowStreamResponse,
+            // 预计算结果：只在有值时传入，避免空值覆盖 diting-rag-ts 内部逻辑
+            ...(preResolvedQuery ? { preResolvedQuery } : {}),
+            ...(preComputedQueries?.length ? { preComputedQueries } : {}),
+            // 将 SQL 检索结果作为前置上下文传给 agent，使其能参考结构化数据后决定是否补充检索
+            ...(searchRes.length > 0 ? { preSearchRes: searchRes } : {})
+          });
+        } else if (datasetDeepSearch) {
+          commonSearchResult = await deepRagSearch({
             ...searchData,
             datasetDeepSearchModel,
             datasetDeepSearchMaxTimes,
             datasetDeepSearchBg
-          })
-        : await defaultSearchDatasetData({
+          });
+        } else {
+          commonSearchResult = await defaultSearchDatasetData({
             ...searchData,
             datasetSearchUsingExtensionQuery,
             datasetSearchExtensionModel,
             datasetSearchExtensionBg,
             isAssistant,
-            datasetIds: datasetIds,
-            appId, // 传递 appId 用于校正数据检索
-            faqAnswerMode // 传递 faqAnswerMode 用于 FAQ 检索判断
+            synonymDatasetIds: commonDatasetIds,
+            // 传入预计算结果，defaultSearchDatasetData 内部将跳过重复的 LLM 调用
+            preComputedQueryExtension
           });
+        }
+      }
     }
 
     embeddingTokens += totalEmbeddingTokens;
@@ -490,6 +744,8 @@ export async function dispatchDatasetSearch(
       retrievalType = commonResult.retrievalType;
       // 新增：提取 reranker 错误信息（仅 reranker 报错时有值）
       rerankError = commonResult.rerankError;
+      // 新增：提取 agentic 检索过程信息（仅 agentic 路径有值）
+      agenticSearchResult = commonResult.agenticSearchResult;
       // 提取 FAQ 数据信息
       if (commonResult.isFaqResult && commonResult.searchRes.length > 0) {
         faqAnswer = commonResult.searchRes[0].a;
@@ -507,11 +763,27 @@ export async function dispatchDatasetSearch(
 
     // count bill results
     const nodeDispatchUsages: ChatNodeUsageType[] = [];
-    // 1. Search vector
-    if (vectorModel) {
+    // 1. Search vector — bill per embedding model used across all groups
+    const modelTokenMap: Map<string, { modelName: string; tokens: number }> | undefined =
+      commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
+    if (modelTokenMap && modelTokenMap.size > 0) {
+      for (const { modelName, tokens } of modelTokenMap.values()) {
+        const { totalPoints, modelName: billingModelName } = formatModelChars2Points({
+          model: modelName,
+          inputTokens: tokens
+        });
+        nodeDispatchUsages.push({
+          totalPoints,
+          moduleName: node.name,
+          model: billingModelName,
+          inputTokens: tokens
+        });
+      }
+    } else if (vectorModel && embeddingTokens > 0) {
+      // Fallback: bill using the primary vectorModel (database search tokens)
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          model: vectorModel!.name,
+          model: vectorModel.name,
           inputTokens: embeddingTokens
         });
       nodeDispatchUsages.push({
@@ -578,7 +850,25 @@ export async function dispatchDatasetSearch(
         outputTokens: deepSearchResult.outputTokens
       });
     }
-    // 5. SQL Generation (for database datasets)
+    // 5. Agentic search LLM
+    if (
+      agenticSearchResult &&
+      (agenticSearchResult.llmInputTokens || agenticSearchResult.llmOutputTokens)
+    ) {
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: agenticSearchResult.llmModel || agenticSearchLLMModel || '',
+        inputTokens: agenticSearchResult.llmInputTokens,
+        outputTokens: agenticSearchResult.llmOutputTokens
+      });
+      nodeDispatchUsages.push({
+        totalPoints,
+        moduleName: i18nT('common:agentic_search'),
+        model: modelName,
+        inputTokens: agenticSearchResult.llmInputTokens,
+        outputTokens: agenticSearchResult.llmOutputTokens
+      });
+    }
+    // 6. SQL Generation (for database datasets)
     if (sqlResult.length > 0) {
       sqlResult.forEach((result) => {
         const { totalPoints, modelName } = formatModelChars2Points({
@@ -636,6 +926,7 @@ export async function dispatchDatasetSearch(
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints,
         query: userChatInput,
+        retrievalMode,
         embeddingModel: vectorModel?.name,
         embeddingTokens,
         similarity: usingSimilarityFilter ? similarity : undefined,
@@ -688,8 +979,23 @@ export async function dispatchDatasetSearch(
           ]
         }),
         // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
-        ...(rerankError && { rerankError })
+        ...(rerankError && { rerankError }),
+        // 新增：agentic 检索过程信息（仅 agentic 路径有值）
+        ...(agenticSearchResult && { agenticSearchResult })
       },
+      // 将 agentic 思考过程写入 assistantResponses，使其存入 AI 消息的 value，
+      // 刷新页面后前端能从 value 中渲染"思考过程"块，与实时流式体验一致
+      // 需要判断 agenticSearchReasoning
+      ...(agenticSearchReasoning && agenticSearchResult?.reasoningText
+        ? {
+            [DispatchNodeResponseKeyEnum.assistantResponses]: [
+              {
+                type: ChatItemValueTypeEnum.reasoning,
+                reasoning: { content: agenticSearchResult.reasoningText }
+              }
+            ]
+          }
+        : {}),
       ...((correctionData || faqAnswer) && {
         [DispatchNodeResponseKeyEnum.newVariables]: {
           // 设置全局变量 correct_mapping_answer

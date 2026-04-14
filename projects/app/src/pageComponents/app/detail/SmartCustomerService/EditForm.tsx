@@ -43,11 +43,15 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetRetrievalModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import SfRadio from '@/components/SF/SfRadio';
+import SfLeftRadio from '@/components/SF/SfLeftRadio';
 
 const SfDatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 const QGConfig = dynamic(() => import('@/components/core/app/assistant/QGConfig'));
@@ -65,7 +69,7 @@ const FormItem: React.FC<{
   label: string;
   children: React.ReactNode;
   minWidth?: string;
-  tooltip?: string;
+  tooltip?: string | React.ReactNode;
 }> = ({ label, children, minWidth = SIZES.FORM_LABEL_MIN_WIDTH.MEDIUM, tooltip }) => (
   <Flex alignItems={'center'} w={'100%'}>
     <FormLabel
@@ -85,16 +89,15 @@ const FormItem: React.FC<{
 // 手风琴组件包装器
 const AccordionSection: React.FC<{
   title: string;
-  icon: any; // 使用any类型来接受MyIcon的name属性
+  icon?: any;
   iconColor?: string;
   children: React.ReactNode;
   defaultIndex?: number[];
-}> = ({ title, icon, iconColor = 'primary.600', children, defaultIndex = [] }) => (
+}> = ({ title, children, defaultIndex = [] }) => (
   <Accordion allowToggle defaultIndex={defaultIndex}>
     <AccordionItem border="none">
       <AccordionButton _hover={{}} px={0}>
         <Flex flex="1" color={'myGray.900'} fontSize={'sm'} fontWeight="500" alignItems={'center'}>
-          <MyIcon name={icon} w={5} h={5} mr={2} color={iconColor} />
           {title}
         </Flex>
         <AccordionIcon />
@@ -342,10 +345,7 @@ const EditForm = ({
       <Box {...BOX_STYLES}>
         <Flex h={'32px'} mb={4} alignItems={'center'}>
           <Flex alignItems={'center'} flex={1}>
-            <MyIcon name={'core/app/assistant/database'} w={'20px'} h={5} color={'primary.600'} />
-            <FormLabel color={'myGray.900'} ml={2}>
-              {t('common:core.dataset.Choose Dataset')}
-            </FormLabel>
+            <FormLabel color={'myGray.900'}>{t('common:core.dataset.Choose Dataset')}</FormLabel>
           </Flex>
           <Button
             variant={'transparentBase'}
@@ -397,6 +397,66 @@ const EditForm = ({
           ))}
         </Grid>
       </Box>
+      {/* 检索配置 */}
+      <Box {...BOX_STYLES}>
+        <AccordionSection title={t('app:retrieval_config')}>
+          <FormItem
+            label={t('app:retrieval_mode')}
+            tooltip={
+              <Box lineHeight={'24px'} fontSize={'12px'}>
+                <Box>
+                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_single_title')}</span>
+                  <span>{t('app:retrieval_mode_single_desc')}</span>
+                </Box>
+                <Box>
+                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_multiple_title')}</span>
+                  <span>{t('app:retrieval_mode_multiple_desc')}</span>
+                </Box>
+              </Box>
+            }
+          >
+            <SfRadio
+              flex={1}
+              list={[
+                { value: DatasetRetrievalModeEnum.standard, title: t('app:retrieval_mode_single') },
+                { value: DatasetRetrievalModeEnum.agentic, title: t('app:retrieval_mode_multiple') }
+              ]}
+              value={
+                (appForm.dataset.retrievalMode as `${DatasetRetrievalModeEnum}`) ||
+                DatasetRetrievalModeEnum.standard
+              }
+              onChange={(mode) => {
+                setAppForm((state) => ({
+                  ...state,
+                  dataset: {
+                    ...state.dataset,
+                    retrievalMode: mode as `${DatasetRetrievalModeEnum}`
+                  }
+                }));
+              }}
+            />
+          </FormItem>
+          {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic && (
+            <FormItem
+              label={t('app:retrieval_output_thinking')}
+              tooltip={t('app:retrieval_output_thinking_tooltip')}
+            >
+              <Switch
+                isChecked={appForm.dataset.agenticSearchReasoning ?? true}
+                onChange={(e) => {
+                  setAppForm((state) => ({
+                    ...state,
+                    dataset: {
+                      ...state.dataset,
+                      agenticSearchReasoning: e.target.checked
+                    }
+                  }));
+                }}
+              />
+            </FormItem>
+          )}
+        </AccordionSection>
+      </Box>
       <Box>
         {/* 问答配置 */}
         <Box {...BOX_STYLES}>
@@ -416,15 +476,11 @@ const EditForm = ({
               label={t('app:smart_customer_service_faq_answer_mode')}
               tooltip={t('app:smart_customer_service_faq_answer_mode_tooltip')}
             >
-              <LeftRadio<string>
+              <SfLeftRadio<string>
                 list={FAQ_OPTIONS}
-                px={3}
-                py={1.5}
                 value={appForm.chatConfig.faqAnswerMode || FAQAnswerModeEnum.Quote}
                 onChange={(e) => updateVariableValue('faqAnswerMode', e)}
                 flex={1}
-                defaultBg="white"
-                activeBg="white"
                 gridTemplateColumns={GRID_COLUMNS.FAQ_OPTIONS}
               />
             </FormItem>
@@ -444,15 +500,11 @@ const EditForm = ({
                 label={t('app:smart_customer_service_fallback_reply')}
                 tooltip={t('app:smart_customer_service_fallback_reply_tooltip')}
               >
-                <LeftRadio<string>
+                <SfLeftRadio<string>
                   list={FALLBACK_REPLY_OPTIONS}
-                  px={3}
-                  py={1.5}
                   value={appForm.chatConfig.enableFallbackReply || 'useFallbackReply'}
                   onChange={(e) => updateVariableValue('enableFallbackReply', e)}
                   flex={1}
-                  defaultBg="white"
-                  activeBg="white"
                   gridTemplateColumns={GRID_COLUMNS.FAQ_OPTIONS}
                 />
               </FormItem>

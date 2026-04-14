@@ -18,12 +18,12 @@ import { addLog } from '../../../../../common/system/log';
 export async function mockSynthesizeRerankTrainDatas(
   request: DiTingSyntheticRerankTrainDatasRequest
 ): Promise<DiTingSyntheticRerankTrainDatasResponse> {
-  addLog.info('[MOCK] DiTing synthesize rerank train datas', {
+  addLog.debug('[MOCK] DiTing synthesize rerank train datas', {
     sampleCount: request.samples.length,
     config: request.config
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+  await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
   const minNegativeSamples = request.config.minNegativeSamples ?? 1;
   const maxNegativeSamples = request.config.maxNegativeSamples ?? 5;
@@ -158,13 +158,13 @@ export async function mockSynthesizeRerankTrainDatas(
 export async function mockSynthesizeRerankEvalData(
   request: DiTingSyntheticRerankEvalDataRequest
 ): Promise<DiTingSyntheticRerankEvalDataResponse> {
-  addLog.info('[MOCK] DiTing synthesize eval data', {
+  addLog.debug('[MOCK] DiTing synthesize eval data', {
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
     llmModel: request.llm_config.name
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000));
+  await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
   const contextText = request.inputData.context.join('\n');
   const question = `Question based on: ${contextText.slice(0, 50)}...`;
@@ -204,12 +204,12 @@ export async function mockSynthesizeRerankEvalData(
 export async function mockEvaluateRerankModel(
   request: DiTingEvaluateRerankRequest
 ): Promise<DiTingEvaluateRerankResponse> {
-  addLog.info('[MOCK] DiTing evaluate rerank model', {
+  addLog.debug('[MOCK] DiTing evaluate rerank model', {
     datasetSize: request.dataset.length,
     rerankModel: request.reranker_config.name
   });
 
-  await new Promise((resolve) => setTimeout(resolve, 3000 + Math.random() * 2000));
+  await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 300));
 
   const baseNdcg = 0.65 + Math.random() * 0.15;
   const baseMrr = 0.7 + Math.random() * 0.15;

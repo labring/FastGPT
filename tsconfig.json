@@ -17,7 +17,9 @@
     "baseUrl": ".",
     "paths": {
       "@fastgpt/*": ["packages/*"],
-      "@test": ["test/*"]
+      "@test": ["test/*"],
+      "diting-rag-ts": ["packages/diting-rag-ts/src/index.ts"],
+      "diting-rag-ts/*": ["packages/diting-rag-ts/src/*"]
     }
   },
   "exclude": ["node_modules", "**/node_modules", "**/node_modules/**"]

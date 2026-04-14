@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, useDisclosure, HStack, Button } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
-import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
+import QuoteList from '../ChatContainer/ChatBox/components/ChunkCardList';
 import {
   DatasetSearchModeMap,
-  DatasetSearchModeEnum
+  DatasetSearchModeEnum,
+  DatasetRetrievalModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -24,6 +25,7 @@ import { isEmpty } from 'lodash';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -53,7 +55,11 @@ export const WholeResponseContent = ({
 }) => {
   const { t } = useSafeTranslation();
 
-  // Auto scroll to top
+  const retrievalModeTextMap: Record<DatasetRetrievalModeEnum, string> = {
+    [DatasetRetrievalModeEnum.agentic]: t('app:retrieval_mode_multiple'),
+    [DatasetRetrievalModeEnum.standard]: t('app:retrieval_mode_single')
+  };
+
   const ContentRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (ContentRef.current) {
@@ -73,7 +79,7 @@ export const WholeResponseContent = ({
           <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
             {label}:
           </Box>
-          <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
+          <Box borderRadius={'sm'} fontSize={['xs', 'sm']} {...props}>
             {children}
           </Box>
         </Box>
@@ -178,6 +184,117 @@ export const WholeResponseContent = ({
     [correctionRecordDataList]
   );
 
+  const isAgenticMode = useMemo(
+    () =>
+      activeModule.retrievalMode === DatasetRetrievalModeEnum.agentic &&
+      activeModule.agenticSearchResult,
+    [activeModule]
+  );
+
+  const isDataSearch = useMemo(
+    () => activeModule.moduleType === FlowNodeTypeEnum.datasetSearchNode,
+    [activeModule]
+  );
+
+  const quoteListDom = useMemo(() => {
+    const isEmpty = !activeModule.quoteList || activeModule.quoteList.length === 0;
+    if (isEmpty && isDataSearch) {
+      return (
+        <Row
+          label={
+            hasDatabase && hasOtherKnowledgeBase
+              ? t('chat:other_knowledge_base_search_results')
+              : t('chat:search_results')
+          }
+          value={t('chat:no_matching_knowledge')}
+        />
+      );
+    }
+    if (isEmpty) return null;
+    // 多轮智能检索逻辑
+    if (isAgenticMode) {
+      return (
+        <Row
+          label={t('chat:search_results')}
+          rawDom={
+            <QuoteList
+              chatItemDataId={dataId}
+              rawSearch={activeModule.quoteList!}
+              applicationId={appId}
+              chatId={chatId}
+              isAgenticMode={isAgenticMode}
+            />
+          }
+        />
+      );
+    }
+    return (
+      <>
+        {hasDatabase && (
+          <Row
+            label={
+              hasDatabase && (hasOtherKnowledgeBase || hasCorrectionRecord)
+                ? t('chat:database_search_results')
+                : t('chat:search_results')
+            }
+            rawDom={
+              <QuoteList
+                chatItemDataId={dataId}
+                rawSearch={databaseDataList}
+                applicationId={appId}
+                chatId={chatId}
+              />
+            }
+          />
+        )}
+        {hasOtherKnowledgeBase && (
+          <Row
+            label={
+              hasDatabase && hasOtherKnowledgeBase
+                ? t('chat:other_knowledge_base_search_results')
+                : t('chat:search_results')
+            }
+            rawDom={
+              <QuoteList
+                chatItemDataId={dataId}
+                rawSearch={otherKnowledgeBaseDataList}
+                applicationId={appId}
+                chatId={chatId}
+              />
+            }
+          />
+        )}
+        {hasCorrectionRecord && (
+          <Row
+            label={t('chat:response_search_results', { len: activeModule.quoteList?.length ?? 0 })}
+            rawDom={
+              <QuoteList
+                chatItemDataId={dataId}
+                rawSearch={correctionRecordDataList}
+                applicationId={appId}
+                chatId={chatId}
+              />
+            }
+          />
+        )}
+      </>
+    );
+  }, [
+    activeModule.quoteList,
+    hasCorrectionRecord,
+    hasDatabase,
+    hasOtherKnowledgeBase,
+    databaseDataList,
+    otherKnowledgeBaseDataList,
+    correctionRecordDataList,
+    dataId,
+    appId,
+    chatId,
+    t,
+    Row,
+    isDataSearch
+  ]);
+
   return activeModule ? (
     <Box
       h={'100%'}
@@ -191,351 +308,355 @@ export const WholeResponseContent = ({
             overflow: 'auto'
           })}
     >
-      {/* common info */}
-      <>
-        <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
-        {activeModule?.totalPoints !== undefined && (
-          <Row
-            label={t('common:support.wallet.usage.Total points')}
-            value={formatNumber(activeModule.totalPoints)}
-          />
-        )}
-        {activeModule?.childTotalPoints !== undefined && (
-          <Row
-            label={t('chat:response.child total points')}
-            value={formatNumber(activeModule.childTotalPoints)}
-          />
-        )}
-        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
-        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
-        <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
-      </>
-      {/* ai chat */}
-      <>
-        {activeModule?.finishReason && (
-          <Row
-            label={t('chat:completion_finish_reason')}
-            value={t(completionFinishReasonMap[activeModule?.finishReason])}
-          />
-        )}
-        <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
-        {activeModule?.tokens && (
-          <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />
-        )}
-        {(!!activeModule?.inputTokens || !!activeModule?.outputTokens) && (
-          <Row
-            label={t('chat:llm_tokens')}
-            value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
-          />
-        )}
-        {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
-          <Row
-            label={t('common:core.chat.response.Tool call tokens')}
-            value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
-          />
-        )}
-
-        <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
-        <Row
-          label={t('common:core.chat.response.context total length')}
-          value={activeModule?.contextTotalLen}
-        />
-        <Row
-          label={t('common:core.chat.response.module temperature')}
-          value={activeModule?.temperature}
-        />
-        <Row
-          label={t('common:core.chat.response.module maxToken')}
-          value={activeModule?.maxToken}
-        />
-
-        <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
-        <Row
-          label={t('common:core.chat.response.module historyPreview')}
-          rawDom={
-            activeModule.historyPreview ? (
-              <Box px={3} py={2} border={'base'} borderRadius={'md'}>
-                {activeModule.historyPreview?.map((item, i) => (
-                  <Box
-                    key={i}
-                    _notLast={{
-                      borderBottom: '1px solid',
-                      borderBottomColor: 'myWhite.700',
-                      mb: 2
-                    }}
-                    pb={2}
-                  >
-                    <Box fontWeight={'bold'}>{item.obj}</Box>
-                    <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
-                  </Box>
-                ))}
-              </Box>
-            ) : (
-              ''
-            )
-          }
-        />
-      </>
-      {/* dataset search */}
-      <>
-        {activeModule?.searchMode && (
-          <Row
-            label={t('common:core.dataset.search.search mode')}
-            rawDom={
-              <Flex border={'base'} borderRadius={'md'} p={2}>
-                <Box>{searchModeDisplay}</Box>
-                {activeModule.embeddingWeight && (
-                  <>{`(${t('chat:response_hybrid_weight', {
-                    emb: activeModule.embeddingWeight,
-                    text: 1 - activeModule.embeddingWeight
-                  })})`}</>
-                )}
-              </Flex>
-            }
-          />
-        )}
-        <Row
-          label={t('common:core.chat.response.module similarity')}
-          value={activeModule?.similarity}
-        />
-        <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
-        <Row label={t('chat:response_embedding_model')} value={activeModule?.embeddingModel} />
-        <Row
-          label={t('chat:response_embedding_model_tokens')}
-          value={`${activeModule?.embeddingTokens}`}
-        />
-        {activeModule?.searchUsingReRank !== undefined && (
-          <>
+      {isAgenticMode ? (
+        <>
+          {/* 节点名 */}
+          <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
+          {/* 问题/检索词 */}
+          <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+          {/* 检索策略 */}
+          {activeModule.retrievalMode && (
             <Row
-              label={t('common:core.chat.response.search using reRank')}
+              label={t('chat:retrieval_mode')}
+              value={retrievalModeTextMap[activeModule.retrievalMode]}
+            />
+          )}
+          {/* 检索过程 */}
+          {activeModule.agenticSearchResult && (
+            <Row
+              label={t('chat:retrieval_process')}
+              value={activeModule.agenticSearchResult.reasoningText}
+            />
+          )}
+          {/* 检索结果 */}
+          {quoteListDom}
+        </>
+      ) : (
+        <>
+          {/* common info */}
+          <>
+            <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
+            {activeModule?.totalPoints !== undefined && (
+              <Row
+                label={t('common:support.wallet.usage.Total points')}
+                value={formatNumber(activeModule.totalPoints)}
+              />
+            )}
+            {activeModule?.childTotalPoints !== undefined && (
+              <Row
+                label={t('chat:response.child total points')}
+                value={formatNumber(activeModule.childTotalPoints)}
+              />
+            )}
+            <Row label={t('workflow:response.Error')} value={activeModule?.error} />
+            <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
+            <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
+          </>
+          {/* ai chat */}
+          <>
+            {activeModule?.finishReason && (
+              <Row
+                label={t('chat:completion_finish_reason')}
+                value={t(completionFinishReasonMap[activeModule?.finishReason])}
+              />
+            )}
+            <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
+            {activeModule?.tokens && (
+              <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />
+            )}
+            {(!!activeModule?.inputTokens || !!activeModule?.outputTokens) && (
+              <Row
+                label={t('chat:llm_tokens')}
+                value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
+              />
+            )}
+            {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
+              <Row
+                label={t('common:core.chat.response.Tool call tokens')}
+                value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
+              />
+            )}
+
+            <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+            {activeModule.retrievalMode && (
+              <Row
+                label={t('chat:retrieval_mode')}
+                value={retrievalModeTextMap[activeModule.retrievalMode]}
+              />
+            )}
+            {activeModule.agenticSearchResult && (
+              <Row
+                label={t('chat:retrieval_process')}
+                value={activeModule.agenticSearchResult.reasoningText}
+              />
+            )}
+            <Row
+              label={t('common:core.chat.response.context total length')}
+              value={activeModule?.contextTotalLen}
+            />
+            <Row
+              label={t('common:core.chat.response.module temperature')}
+              value={activeModule?.temperature}
+            />
+            <Row
+              label={t('common:core.chat.response.module maxToken')}
+              value={activeModule?.maxToken}
+            />
+
+            <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
+            <Row
+              label={t('common:core.chat.response.module historyPreview')}
               rawDom={
-                <Box border={'base'} borderRadius={'md'} p={2}>
-                  {activeModule?.searchUsingReRank ? (
-                    activeModule?.rerankModel ? (
-                      <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
-                    ) : (
-                      'True'
-                    )
-                  ) : (
-                    `False`
-                  )}
-                </Box>
+                activeModule.historyPreview ? (
+                  <Box px={3} py={2} border={'base'} borderRadius={'md'}>
+                    {activeModule.historyPreview?.map((item, i) => (
+                      <Box
+                        key={i}
+                        _notLast={{
+                          borderBottom: '1px solid',
+                          borderBottomColor: 'myWhite.700',
+                          mb: 2
+                        }}
+                        pb={2}
+                      >
+                        <Box fontWeight={'bold'}>{item.obj}</Box>
+                        <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  ''
+                )
               }
             />
-            <Row
-              label={t('chat:response_rerank_tokens')}
-              value={`${activeModule?.reRankInputTokens}`}
-            />
           </>
-        )}
-        {activeModule.queryExtensionResult && (
+          {/* dataset search */}
           <>
+            {activeModule?.searchMode && (
+              <Row
+                label={t('common:core.dataset.search.search mode')}
+                rawDom={
+                  <Flex border={'base'} borderRadius={'md'} p={2}>
+                    <Box>{searchModeDisplay}</Box>
+                    {activeModule.embeddingWeight && (
+                      <>{`(${t('chat:response_hybrid_weight', {
+                        emb: activeModule.embeddingWeight,
+                        text: 1 - activeModule.embeddingWeight
+                      })})`}</>
+                    )}
+                  </Flex>
+                }
+              />
+            )}
+            <Row
+              label={t('common:core.chat.response.module similarity')}
+              value={activeModule?.similarity}
+            />
+            <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
+            <Row label={t('chat:response_embedding_model')} value={activeModule?.embeddingModel} />
+            <Row
+              label={t('chat:response_embedding_model_tokens')}
+              value={`${activeModule?.embeddingTokens}`}
+            />
+            {activeModule?.searchUsingReRank !== undefined && (
+              <>
+                <Row
+                  label={t('common:core.chat.response.search using reRank')}
+                  rawDom={
+                    <Box border={'base'} borderRadius={'md'} p={2}>
+                      {activeModule?.searchUsingReRank ? (
+                        activeModule?.rerankModel ? (
+                          <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                        ) : (
+                          'True'
+                        )
+                      ) : (
+                        `False`
+                      )}
+                    </Box>
+                  }
+                />
+                <Row
+                  label={t('chat:response_rerank_tokens')}
+                  value={`${activeModule?.reRankInputTokens}`}
+                />
+              </>
+            )}
+            {activeModule.queryExtensionResult && (
+              <>
+                <Row
+                  label={t('common:core.chat.response.Extension model')}
+                  value={activeModule.queryExtensionResult.model}
+                />
+                <Row
+                  label={t('chat:query_extension_IO_tokens')}
+                  value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
+                />
+                <Row
+                  label={t('chat:query_extension_result')}
+                  value={activeModule.queryExtensionResult.query}
+                />
+              </>
+            )}
             <Row
               label={t('common:core.chat.response.Extension model')}
-              value={activeModule.queryExtensionResult.model}
-            />
-            <Row
-              label={t('chat:query_extension_IO_tokens')}
-              value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
+              value={activeModule?.extensionModel}
             />
             <Row
               label={t('chat:query_extension_result')}
-              value={activeModule.queryExtensionResult.query}
+              value={`${activeModule?.extensionResult}`}
+            />
+            {quoteListDom}
+          </>
+          {/* dataset concat */}
+          <>
+            <Row
+              label={t('chat:response.dataset_concat_length')}
+              value={activeModule?.concatLength}
             />
           </>
-        )}
-        <Row
-          label={t('common:core.chat.response.Extension model')}
-          value={activeModule?.extensionModel}
-        />
-        <Row label={t('chat:query_extension_result')} value={`${activeModule?.extensionResult}`} />
-        {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+          {/* classify question */}
           <>
-            {hasDatabase && (
-              <Row
-                label={
-                  hasDatabase && (hasOtherKnowledgeBase || hasCorrectionRecord)
-                    ? t('chat:database_search_results')
-                    : t('chat:search_results')
-                }
-                rawDom={
-                  <QuoteList
-                    chatItemDataId={dataId}
-                    rawSearch={databaseDataList}
-                    applicationId={appId}
-                    chatId={chatId}
-                  />
-                }
-              />
-            )}
-            {hasOtherKnowledgeBase && (
-              <Row
-                label={
-                  hasDatabase && hasOtherKnowledgeBase
-                    ? t('chat:other_knowledge_base_search_results')
-                    : t('chat:search_results')
-                }
-                rawDom={
-                  <QuoteList
-                    chatItemDataId={dataId}
-                    rawSearch={otherKnowledgeBaseDataList}
-                    applicationId={appId}
-                    chatId={chatId}
-                  />
-                }
-              />
-            )}
-            {hasCorrectionRecord && (
-              <Row
-                label={t('chat:response_search_results', { len: activeModule.quoteList.length })}
-                rawDom={
-                  <QuoteList
-                    chatItemDataId={dataId}
-                    rawSearch={correctionRecordDataList}
-                    applicationId={appId}
-                    chatId={chatId}
-                  />
-                }
-              />
-            )}
+            <Row
+              label={t('common:core.chat.response.module cq result')}
+              value={activeModule?.cqResult}
+            />
+            <Row
+              label={t('common:core.chat.response.module cq')}
+              value={(() => {
+                if (!activeModule?.cqList) return '';
+                return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
+              })()}
+            />
           </>
-        )}
-      </>
-      {/* dataset concat */}
-      <>
-        <Row label={t('chat:response.dataset_concat_length')} value={activeModule?.concatLength} />
-      </>
-      {/* classify question */}
-      <>
-        <Row
-          label={t('common:core.chat.response.module cq result')}
-          value={activeModule?.cqResult}
-        />
-        <Row
-          label={t('common:core.chat.response.module cq')}
-          value={(() => {
-            if (!activeModule?.cqList) return '';
-            return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
-          })()}
-        />
-      </>
-      {/* if-else */}
-      <>
-        <Row
-          label={t('common:core.chat.response.module if else Result')}
-          value={activeModule?.ifElseResult}
-        />
-      </>
-      {/* extract */}
-      <>
-        <Row
-          label={t('common:core.chat.response.module extract description')}
-          value={activeModule?.extractDescription}
-        />
-        <Row
-          label={t('common:core.chat.response.module extract result')}
-          value={activeModule?.extractResult}
-        />
-      </>
-      {/* http */}
-      <>
-        <Row label={'Headers'} value={activeModule?.headers} />
-        <Row label={'Params'} value={activeModule?.params} />
-        <Row label={'Body'} value={activeModule?.body} />
-        <Row
-          label={t('common:core.chat.response.module http result')}
-          value={activeModule?.httpResult}
-        />
-      </>
-      {/* plugin */}
-      <>
-        <Row label={t('chat:tool_input')} value={activeModule?.toolInput} />
-        <Row label={t('chat:tool_output')} value={activeModule?.pluginOutput} />
-      </>
-      {/* text output */}
-      <Row label={t('common:core.chat.response.text output')} value={activeModule?.textOutput} />
-      {/* code */}
-      <>
-        <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
-        <Row label={t('workflow:response.Custom outputs')} value={activeModule?.customOutputs} />
-        <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
-      </>
-
-      {/* read files */}
-      <>
-        {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
+          {/* if-else */}
+          <>
+            <Row
+              label={t('common:core.chat.response.module if else Result')}
+              value={activeModule?.ifElseResult}
+            />
+          </>
+          {/* extract */}
+          <>
+            <Row
+              label={t('common:core.chat.response.module extract description')}
+              value={activeModule?.extractDescription}
+            />
+            <Row
+              label={t('common:core.chat.response.module extract result')}
+              value={activeModule?.extractResult}
+            />
+          </>
+          {/* http */}
+          <>
+            <Row label={'Headers'} value={activeModule?.headers} />
+            <Row label={'Params'} value={activeModule?.params} />
+            <Row label={'Body'} value={activeModule?.body} />
+            <Row
+              label={t('common:core.chat.response.module http result')}
+              value={activeModule?.httpResult}
+            />
+          </>
+          {/* plugin */}
+          <>
+            <Row label={t('chat:tool_input')} value={activeModule?.toolInput} />
+            <Row label={t('chat:tool_output')} value={activeModule?.pluginOutput} />
+          </>
+          {/* text output */}
           <Row
-            label={t('workflow:response.read files')}
-            rawDom={
-              <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
-                {activeModule?.readFiles.map((file, i) => (
-                  <HStack
-                    key={i}
-                    bg={'white'}
-                    boxShadow={'base'}
-                    borderRadius={'sm'}
-                    py={1}
-                    px={2}
-                    {...(file.url
-                      ? {
-                          cursor: 'pointer',
-                          onClick: () => window.open(file.url)
-                        }
-                      : {})}
-                  >
-                    <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} />
-                    <Box>{file.name}</Box>
-                  </HStack>
-                ))}
-              </Flex>
-            }
+            label={t('common:core.chat.response.text output')}
+            value={activeModule?.textOutput}
           />
-        )}
-        <Row
-          label={t('workflow:response.Read file result')}
-          value={activeModule?.readFilesResult}
-        />
-      </>
+          {/* code */}
+          <>
+            <Row label={t('workflow:response.Custom inputs')} value={activeModule?.customInputs} />
+            <Row
+              label={t('workflow:response.Custom outputs')}
+              value={activeModule?.customOutputs}
+            />
+            <Row label={t('workflow:response.Code log')} value={activeModule?.codeLog} />
+          </>
 
-      {/* user select */}
-      <Row
-        label={t('common:core.chat.response.user_select_result')}
-        value={activeModule?.userSelectResult}
-      />
+          {/* read files */}
+          <>
+            {activeModule?.readFiles && activeModule?.readFiles.length > 0 && (
+              <Row
+                label={t('workflow:response.read files')}
+                rawDom={
+                  <Flex flexWrap={'wrap'} gap={3} px={4} py={2}>
+                    {activeModule?.readFiles.map((file, i) => (
+                      <HStack
+                        key={i}
+                        bg={'white'}
+                        boxShadow={'base'}
+                        borderRadius={'sm'}
+                        py={1}
+                        px={2}
+                        {...(file.url
+                          ? {
+                              cursor: 'pointer',
+                              onClick: () => window.open(file.url)
+                            }
+                          : {})}
+                      >
+                        <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} />
+                        <Box>{file.name}</Box>
+                      </HStack>
+                    ))}
+                  </Flex>
+                }
+              />
+            )}
+            <Row
+              label={t('workflow:response.Read file result')}
+              value={activeModule?.readFilesResult}
+            />
+          </>
 
-      {/* update var */}
-      <Row
-        label={t('common:core.chat.response.update_var_result')}
-        value={activeModule?.updateVarResult}
-      />
+          {/* user select */}
+          <Row
+            label={t('common:core.chat.response.user_select_result')}
+            value={activeModule?.userSelectResult}
+          />
 
-      {/* loop */}
-      <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
-      <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
+          {/* update var */}
+          <Row
+            label={t('common:core.chat.response.update_var_result')}
+            value={activeModule?.updateVarResult}
+          />
 
-      {/* loopStart */}
-      <Row
-        label={t('common:core.chat.response.loop_input_element')}
-        value={activeModule?.loopInputValue}
-      />
+          {/* loop */}
+          <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
+          <Row
+            label={t('common:core.chat.response.loop_output')}
+            value={activeModule?.loopResult}
+          />
 
-      {/* loopEnd */}
-      <Row
-        label={t('common:core.chat.response.loop_output_element')}
-        value={activeModule?.loopOutputValue}
-      />
+          {/* loopStart */}
+          <Row
+            label={t('common:core.chat.response.loop_input_element')}
+            value={activeModule?.loopInputValue}
+          />
 
-      {/* form input */}
-      <Row label={t('workflow:form_input_result')} value={activeModule?.formInputResult} />
+          {/* loopEnd */}
+          <Row
+            label={t('common:core.chat.response.loop_output_element')}
+            value={activeModule?.loopOutputValue}
+          />
 
-      {/* tool params */}
-      <Row
-        label={t('workflow:tool_params.tool_params_result')}
-        value={activeModule?.toolParamsResult}
-      />
+          {/* form input */}
+          <Row label={t('workflow:form_input_result')} value={activeModule?.formInputResult} />
 
-      {/* tool */}
-      <Row label={t('workflow:tool.tool_result')} value={activeModule?.toolRes} />
+          {/* tool params */}
+          <Row
+            label={t('workflow:tool_params.tool_params_result')}
+            value={activeModule?.toolParamsResult}
+          />
+
+          {/* tool */}
+          <Row label={t('workflow:tool.tool_result')} value={activeModule?.toolRes} />
+        </>
+      )}
     </Box>
   ) : null;
 };

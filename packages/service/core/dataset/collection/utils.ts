@@ -48,7 +48,7 @@ export async function findCollectionAndChild({
   async function find(id: string) {
     // find children
     const children = await MongoDatasetCollection.find(
-      { teamId, datasetId, parentId: id },
+      { teamId, datasetId, parentId: id, deleteTime: null },
       fields
     ).lean();
 

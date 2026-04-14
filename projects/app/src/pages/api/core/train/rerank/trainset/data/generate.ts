@@ -4,7 +4,6 @@ import {
   authRerankTrainset,
   authGenerateFromDatasets
 } from '@fastgpt/service/support/permission/train/rerank/auth';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { rerankTrainDataGenerateQueue } from '@fastgpt/service/core/train/rerank/data/mq';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
@@ -15,6 +14,8 @@ import type {
   GenerateRerankTrainDataRequest,
   GenerateRerankTrainDataResponse
 } from '@fastgpt/global/core/train/rerank/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -26,60 +27,54 @@ async function handler(
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  // 1. Authenticate trainset write permission
-  const { trainset, teamId, tmbId } = await authRerankTrainset({
+  if (!datasetIds?.length) {
+    return Promise.reject(CommonErrEnum.missingParams);
+  }
+
+  // 1. Verify write permission for the trainset
+  const { trainset } = await authRerankTrainset({
     req,
     authToken: true,
+    authApiKey: true,
     trainsetId,
     per: WritePermissionVal
   });
 
-  // Get app information for dataset extraction
-  const { app } = await authApp({
-    req,
-    authToken: true,
-    appId: String(trainset.appId),
-    per: WritePermissionVal
-  });
-
-  // 2. Process dataset IDs
-  let targetDatasetIds: string[];
-
-  if (datasetIds?.length) {
-    // User specified datasets, use them directly
-    targetDatasetIds = datasetIds;
-  } else {
-    // User didn't specify, parse dataset IDs from app config using utility function
-    const { extractDatasetIdsFromApp } = require('@fastgpt/service/core/train/rerank/utils');
-    targetDatasetIds = extractDatasetIdsFromApp(app);
-  }
-
-  if (!targetDatasetIds.length) {
-    return Promise.reject(RerankTrainErrEnum.noDatasetAvailable);
-  }
-
-  // 3. Authenticate dataset read permission
+  // 2. Verify read permission for each dataset
   await authGenerateFromDatasets({
     req,
     authToken: true,
-    datasetIds: targetDatasetIds
+    authApiKey: true,
+    datasetIds
   });
 
-  // 4. Check status
+  // 3. Reject if generation is already in progress
   if (trainset.status === RerankTrainsetStatusEnum.generating) {
-    return Promise.reject(RerankTrainErrEnum.trainsetGenerating);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainsetGenerating);
   }
 
-  // 5. Create async task
+  // 4. Enqueue async generation job
   const job = await rerankTrainDataGenerateQueue.add(`generate-${trainset._id}-${Date.now()}`, {
-    appId: String(trainset.appId),
     trainsetId: String(trainset._id),
-    datasetIds: targetDatasetIds,
-    generateConfig // Pass config directly, defaults handled by controller and DiTing service
+    datasetIds,
+    generateConfig
   });
 
-  // 6. Save jobId to trainset for retry functionality
+  // 5. Persist jobId on the trainset for retry support
   await MongoRerankTrainset.updateOne({ _id: trainset._id }, { jobId: job.id as string });
+
+  // 6. Audit log
+  (async () => {
+    addAuditLog({
+      tmbId: trainset.tmbId,
+      teamId: trainset.teamId,
+      event: AuditEventEnum.GENERATE_RERANK_TRAINSET_DATA,
+      params: {
+        trainsetName: trainset.name || String(trainset._id),
+        datasetCount: datasetIds.length
+      }
+    });
+  })();
 
   return {
     jobId: job.id as string,

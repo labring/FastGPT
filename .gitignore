@@ -40,3 +40,6 @@ coverage
 document/.source
 AGENTS.md
 projects/app/worker/
+projects/app/data/train/
+# diting-rag-ts（source-based，无需 dist）
+packages/diting-rag-ts/dist/

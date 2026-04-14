@@ -37,6 +37,7 @@ async function handler(req: NextApiRequest) {
   const match = {
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId),
+    deleteTime: null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...(searchText
       ? {

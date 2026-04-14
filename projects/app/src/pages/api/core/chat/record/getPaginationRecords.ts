@@ -15,15 +15,16 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType, type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { getPaginationChatItems } from '@fastgpt/service/core/chat/controller';
 
-// Type for chat item with rewriteStandardizedQuery property using intersection type
+// Type for chat item with rewriteStandardizedQuery and agenticSearchResult property using intersection type
 type ChatItemWithRewrite = ChatItemType & {
   rewriteStandardizedQuery?: string;
+  agenticSearchResult?: ChatHistoryItemResType['agenticSearchResult'];
 };
 
 export type getPaginationRecordsQuery = {};
@@ -32,7 +33,6 @@ export type getPaginationRecordsBody = PaginationProps &
   GetChatRecordsProps & {
     chatLogsFilter?: `${ChatLogsFilterEnum}`;
   };
-
 
 export type getPaginationRecordsResponse = PaginationResponse<ChatItemType> & {
   goodTotal?: number;
@@ -122,7 +122,7 @@ export async function handler(
     });
   }
 
-    // Add rewriteStandardizedQuery to Human messages
+  // Add rewriteStandardizedQuery to Human messages
   filteredHistories.forEach((item, index) => {
     if (item.obj === ChatRoleEnum.Human) {
       const nextIndex = index + 1;
@@ -146,12 +146,18 @@ export async function handler(
         }
       }
     }
+    if (item.obj === ChatRoleEnum.AI && item.responseData) {
+      for (const response of item.responseData) {
+        if (response.agenticSearchResult) {
+          item.agenticSearchResult = response.agenticSearchResult;
+          break;
+        }
+      }
+    }
   });
 
   return {
-    list: isPlugin
-      ? filteredHistories
-      : transformPreviewHistories(filteredHistories, showCite),
+    list: isPlugin ? filteredHistories : transformPreviewHistories(filteredHistories, showCite),
     total,
     goodTotal,
     badTotal,

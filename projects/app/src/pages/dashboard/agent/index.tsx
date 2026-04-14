@@ -188,7 +188,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         variant={'primary'}
                         leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
                       >
-                        {t('app:new_app')}
+                        {t('app:create_new_app')}
                       </Button>
                     }
                     menuList={[

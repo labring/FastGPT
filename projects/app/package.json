@@ -37,8 +37,8 @@
     "dayjs": "^1.11.7",
     "echarts": "5.4.1",
     "echarts-gl": "2.0.9",
-    "exceljs": "^4.4.0",
     "esbuild": "^0.25.11",
+    "exceljs": "^4.4.0",
     "framer-motion": "9.1.7",
     "hyperdown": "^2.4.29",
     "i18next": "23.16.8",
@@ -98,6 +98,7 @@
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "8.56.0",
     "eslint-config-next": "14.2.26",
+    "mongodb-memory-server": "^10.1.4",
     "typescript": "^5.1.3",
     "vitest": "^3.0.9"
   }

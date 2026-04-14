@@ -129,7 +129,8 @@ export const uploadMarkdownBase64 = async ({
 }) => {
   if (uploadImgController) {
     // match base64, upload and replace it
-    const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
+    // 使用 [^;]* 代替 .* 避免贪婪匹配跨越多个 data:image/ (同行多图时 .* 会错误地跨图匹配)
+    const base64Regex = /data:image\/[^;]*;base64,([^\)]+)/g;
     const base64Arr = rawText.match(base64Regex) || [];
 
     // upload base64 and replace it
@@ -174,23 +175,27 @@ export const markdownProcess = async ({
 
 export const matchMdImg = (text: string) => {
   // 优化后的正则:
-  // 1. 使用 [^\]]* 匹配 alt 文本(更精确)
-  // 2. 使用 [A-Za-z0-9+/=]+ 匹配 base64 数据(避免回溯)
-  // 3. 明确匹配 data:image/ 前缀
-  const base64Regex = /!\[([^\]]*)\]\((data:image\/([^;]+);base64,([A-Za-z0-9+/=]+))\)/g;
+  // 1. 使用 [\s\S]*? 惰性匹配 alt 文本，允许其中包含 ] 和换行（如图表描述、公式等复杂文本）
+  // 2. 使用 [\s\S]*? 惰性匹配 base64 数据，配合 \) 锚定结束，支持换行包装的 base64
+  // 3. 明确匹配 data:image/ 前缀，确保 alt 结束位置唯一确定
+  const base64Regex = /!\[([\s\S]*?)\]\((data:image\/([^;]+);base64,([\sA-Za-z0-9+/=]+?))\)/g;
   const imageList: ImageType[] = [];
 
   text = text.replace(base64Regex, (_match, altText, _fullDataUrl, mime, base64Data) => {
     const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
+    // 移除 base64 数据中的空白字符（文档解析器可能对长 base64 数据进行换行包装）
+    const cleanBase64 = base64Data.replace(/\s/g, '');
 
     imageList.push({
       uuid,
-      base64: base64Data,
+      base64: cleanBase64,
       mime: `image/${mime}`
     });
 
-    // 保持原有的 alt 文本，只替换 base64 部分
-    return `![${altText}](${uuid})`;
+    // 转义 alt 文本中未转义的 [，防止 CommonMark 解析时产生未闭合的括号嵌套。
+    // 若 alt 文本中有 [foo\] 这样的结构，[ 打开嵌套但 \] 不关闭，导致图片解析失败。
+    const sanitizedAlt = altText.replace(/(?<!\\)\[/g, '\\[');
+    return `![${sanitizedAlt}](${uuid})`;
   });
 
   return {

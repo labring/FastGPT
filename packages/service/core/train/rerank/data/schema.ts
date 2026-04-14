@@ -1,17 +1,12 @@
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import type { RerankTrainsetDataSchemaType } from '@fastgpt/global/core/train/rerank/type';
-import { TrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
+import { RerankTrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
 
 /** Rerank trainset data schema */
 const RerankTrainsetDataSchema = new connectionMongo.Schema({
   trainsetId: {
     type: connectionMongo.Schema.Types.ObjectId,
     ref: 'rerank_trainset',
-    required: true
-  },
-  appId: {
-    type: connectionMongo.Schema.Types.ObjectId,
-    ref: 'app',
     required: true
   },
   teamId: {
@@ -33,7 +28,7 @@ const RerankTrainsetDataSchema = new connectionMongo.Schema({
   },
   source: {
     type: String,
-    enum: Object.values(TrainDataSourceEnum),
+    enum: Object.values(RerankTrainDataSourceEnum),
     required: true
   },
   metadata: {
@@ -72,10 +67,9 @@ const RerankTrainsetDataSchema = new connectionMongo.Schema({
 // Indexes
 RerankTrainsetDataSchema.index({ trainsetId: 1 });
 RerankTrainsetDataSchema.index({ trainsetId: 1, createTime: -1 });
-RerankTrainsetDataSchema.index({ appId: 1, createTime: -1 });
+RerankTrainsetDataSchema.index({ teamId: 1, createTime: -1 }); // Replaced appId index: query by team dimension
 RerankTrainsetDataSchema.index({ teamId: 1 });
 RerankTrainsetDataSchema.index({ source: 1 });
-RerankTrainsetDataSchema.index({ appId: 1, source: 1 });
 RerankTrainsetDataSchema.index({ trainsetId: 1, source: 1, createTime: -1 });
 
 export const MongoRerankTrainsetData = getMongoModel<RerankTrainsetDataSchemaType>(

@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { rerankTrainTaskProcessor } from '@fastgpt/service/core/train/rerank/task/processor';
 import {
-  updateTaskStatus,
-  updateCheckpointStage,
-  updateCheckpointData,
+  updateRerankTaskStatus,
+  updateRerankCheckpointStage,
+  updateRerankCheckpointData,
   getRerankTrainTask,
   deleteRerankTrainTask
 } from '@fastgpt/service/core/train/rerank/task/controller';
@@ -16,7 +16,7 @@ import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import {
   TrainTaskUnrecoverableError,
   TrainTaskRetriableError
-} from '@fastgpt/service/core/train/rerank/task/errors';
+} from '@fastgpt/service/core/train/common/errors';
 import * as fs from 'fs';
 
 // Mock dependencies
@@ -30,9 +30,9 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/task/controller', () => ({
-  updateTaskStatus: vi.fn(),
-  updateCheckpointStage: vi.fn(),
-  updateCheckpointData: vi.fn(),
+  updateRerankTaskStatus: vi.fn(),
+  updateRerankCheckpointStage: vi.fn(),
+  updateRerankCheckpointData: vi.fn(),
   getRerankTrainTask: vi.fn(),
   deleteRerankTrainTask: vi.fn()
 }));
@@ -56,7 +56,20 @@ vi.mock('@fastgpt/service/core/train/rerank/model/controller', () => ({
   deleteRerankModelConfig: vi.fn()
 }));
 
-// Mock channel 模块
+// Mock ai/config/schema (used by register stage to query base model metadata)
+vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
+  MongoSystemModel: {
+    findOne: vi.fn().mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        metadata: {
+          charsPointsPrice: 0
+        }
+      })
+    })
+  }
+}));
+
+// Mock channel module
 vi.mock('@fastgpt/service/core/train/rerank/task/helpers/channel', () => ({
   createTunedModelChannel: vi.fn().mockResolvedValue(undefined)
 }));
@@ -76,24 +89,7 @@ vi.mock('@fastgpt/service/core/train/rerank/trainset/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/data/controller', () => ({
-  calculateTrainsetStats: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/app/schema', () => ({
-  MongoApp: {
-    findById: vi.fn(),
-    findByIdAndUpdate: vi.fn()
-  }
-}));
-
-vi.mock('@fastgpt/service/core/app/version/schema', () => ({
-  MongoAppVersion: {
-    create: vi.fn()
-  }
-}));
-
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
-  mongoSessionRun: vi.fn((callback) => callback({ session: null }))
+  calculateRerankTrainsetStats: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
@@ -113,8 +109,8 @@ vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema', () => 
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
-  syntheticRerankEvalData: vi.fn(),
-  evaluateRerank: vi.fn(),
+  synthesizeRerankEvalData: vi.fn(),
+  evaluateRerankModel: vi.fn(),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
@@ -138,7 +134,7 @@ vi.mock('fs', () => {
       readFile: vi.fn().mockResolvedValue(Buffer.from('test data')),
       unlink: vi.fn().mockResolvedValue(undefined)
     },
-    // 同时导出同步版本
+    // also export synchronous versions
     writeFile: vi.fn(),
     readFile: vi.fn(),
     unlink: vi.fn(),
@@ -147,7 +143,7 @@ vi.mock('fs', () => {
   };
 });
 
-// 单独 mock fs/promises 以支持直接导入 'fs/promises' 的代码
+// separately mock fs/promises to support code that directly imports 'fs/promises'
 vi.mock('fs/promises', () => ({
   readFile: vi.fn().mockResolvedValue(Buffer.from('test data')),
   writeFile: vi.fn().mockResolvedValue(undefined),
@@ -166,11 +162,8 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/dataset/search', () => ({
   dispatchDatasetSearch: vi.fn()
 }));
 
-import type { AppSchema } from '@fastgpt/global/core/app/type';
-
 describe('Rerank Train Task Processor', () => {
   const mockTaskId = 'task_123';
-  const mockAppId = 'app_123';
   const mockTeamId = 'team_123';
   const mockTmbId = 'tmb_123';
 
@@ -180,12 +173,12 @@ describe('Rerank Train Task Processor', () => {
     checkpointData: any = {}
   ): Partial<RerankTrainTaskSchemaType> => ({
     _id: mockTaskId,
-    appId: mockAppId,
     trainsetId: 'trainset_123',
     teamId: mockTeamId,
     tmbId: mockTmbId,
     name: 'Test Rerank Task',
-    baseModelConfigId: 'base_model_123',
+    baseModelId: 'base_model_123',
+    datasetIds: ['dataset_001', 'dataset_002'],
     baseModelEndpoint: {
       base_url: 'http://example.com/v1',
       api_key: 'test-key',
@@ -203,7 +196,7 @@ describe('Rerank Train Task Processor', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    // 设置测试环境变量
+    // Set up test environment variables
     process.env.AIPROXY_API_ENDPOINT = 'http://test-aiproxy.com';
     process.env.AIPROXY_API_TOKEN = 'test-token';
     // Set short polling intervals for faster tests
@@ -214,7 +207,7 @@ describe('Rerank Train Task Processor', () => {
     const { MongoRerankTrainset } = await import(
       '@fastgpt/service/core/train/rerank/trainset/schema'
     );
-    const { calculateTrainsetStats } = await import(
+    const { calculateRerankTrainsetStats } = await import(
       '@fastgpt/service/core/train/rerank/data/controller'
     );
 
@@ -225,14 +218,14 @@ describe('Rerank Train Task Processor', () => {
       })
     });
 
-    (calculateTrainsetStats as any).mockResolvedValue({
+    (calculateRerankTrainsetStats as any).mockResolvedValue({
       dataCount: 10,
       positiveCount: 10,
       negativeCount: 50,
       sourceSummary: []
     });
 
-    // 设置默认的 sampleDataFromDataset mock
+    // Set default sampleDataFromDataset mock
     const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
     (sampleDataFromDataset as any).mockResolvedValue([
       {
@@ -254,15 +247,19 @@ describe('Rerank Train Task Processor', () => {
 
   describe('rerankTrainTaskProcessor', () => {
     test('应该成功执行完整的训练任务流程', async () => {
-      const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
-        await import('@fastgpt/service/core/train/rerank/task/controller');
+      const {
+        updateRerankTaskStatus,
+        updateRerankCheckpointStage,
+        updateRerankCheckpointData,
+        getRerankTrainTask
+      } = await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
       );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
+      const { createSFTTask, querySFTTaskStatus, synthesizeRerankEvalData, evaluateRerankModel } =
         await import('@fastgpt/service/core/train/rerank/external');
 
       // Mock initial task
@@ -286,7 +283,7 @@ describe('Rerank Train Task Processor', () => {
           negativeDocs: ['doc 6']
         }
       ];
-      // Mock cursor() 返回异步迭代器
+      // Mock cursor() returns an async iterator
       (MongoRerankTrainsetData.find as any).mockReturnValue({
         cursor: vi.fn().mockReturnValue({
           async *[Symbol.asyncIterator]() {
@@ -314,54 +311,6 @@ describe('Rerank Train Task Processor', () => {
       // Mock model creation
       (createRerankModelConfig as any).mockResolvedValue('config_123');
 
-      // Mock application and version operations
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
-
-      // Mock app with datasetSearchNode and chatNode (for AI model extraction)
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [
-              {
-                key: 'model',
-                value: 'gpt-4'
-              }
-            ]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123'
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }, { datasetId: 'dataset_002' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: {
-          nodeVersion: null
-        }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-      (MongoApp.findByIdAndUpdate as any).mockResolvedValue(undefined);
-      (MongoAppVersion.create as any).mockResolvedValue([
-        {
-          _id: 'version_123'
-        }
-      ]);
-
       // Mock evaluation dataset collections
       const { MongoEvalDatasetCollection } = await import(
         '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
@@ -384,7 +333,7 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // Mock MongoEvalDatasetData.find 用于评测阶段
+      // Mock MongoEvalDatasetData.find for evaluation stage
       (MongoEvalDatasetData.find as any).mockReturnValue({
         lean: vi.fn().mockResolvedValue([
           {
@@ -411,7 +360,7 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Mock evaluation
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -420,7 +369,7 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerank as any).mockResolvedValue({
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -469,7 +418,7 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Mock checkpoint data updates to simulate real database operations
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -491,51 +440,60 @@ describe('Rerank Train Task Processor', () => {
         }
       } as any);
 
-      // 验证状态更新
-      expect(updateTaskStatus).toHaveBeenCalledWith(mockTaskId, RerankTrainTaskStatusEnum.running);
+      // Verify status update
+      expect(updateRerankTaskStatus).toHaveBeenCalledWith(
+        mockTaskId,
+        RerankTrainTaskStatusEnum.running
+      );
 
-      // 验证阶段执行顺序
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      // Verify stage execution order (7 stages)
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         1,
         mockTaskId,
-        RerankTaskCheckpointStageEnum.preparing
+        RerankTaskCheckpointStageEnum.generate_trainset
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
         2,
+        mockTaskId,
+        RerankTaskCheckpointStageEnum.generate_evaldataset
+      );
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
+        3,
+        mockTaskId,
+        RerankTaskCheckpointStageEnum.eval_basemodel
+      );
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
+        4,
         mockTaskId,
         RerankTaskCheckpointStageEnum.finetuning
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
-        3,
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
+        5,
         mockTaskId,
         RerankTaskCheckpointStageEnum.registering
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
-        4,
+      expect(updateRerankCheckpointStage).toHaveBeenNthCalledWith(
+        6,
         mockTaskId,
-        RerankTaskCheckpointStageEnum.evaluating
+        RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
-      expect(updateCheckpointStage).toHaveBeenNthCalledWith(
-        5,
-        mockTaskId,
-        RerankTaskCheckpointStageEnum.applying
-      );
+      expect(updateRerankCheckpointStage).toHaveBeenCalledTimes(6);
 
-      // 验证数据准备阶段
+      // Verify data preparation stage
       expect(fs.createWriteStream).toHaveBeenCalled();
       expect(MongoRerankTrainsetData.find).toHaveBeenCalledWith({
         trainsetId: 'trainset_123'
       });
 
-      // 验证微调阶段
+      // Verify finetuning stage
       expect(createSFTTask).toHaveBeenCalled();
       expect(querySFTTaskStatus).toHaveBeenCalledWith({
         taskId: 'sft_task_123'
       });
 
-      // 验证注册阶段 - 使用 tunedModelConfigId 作为 name
+      // Verify registration stage - uses tunedModelId as name
       expect(createRerankModelConfig).toHaveBeenCalledWith({
-        name: 'tuned-model', // 直接使用 tunedModelConfigId 作为名称
+        name: 'tuned-model', // use tunedModelId directly as name
         endpoint: {
           base_url: 'http://sft-bridge.com/v1',
           api_key: 'sft-brige-key',
@@ -545,15 +503,16 @@ describe('Rerank Train Task Processor', () => {
         charsPointsPrice: 0
       });
 
-      // 验证评测阶段
-      expect(syntheticRerankEvalData).toHaveBeenCalledTimes(2); // 只调用2次（对2个样本各调用一次，只生成一份数据集）
-      expect(evaluateRerank).toHaveBeenCalledTimes(2);
+      // Verify evaluation stage
+      expect(synthesizeRerankEvalData).toHaveBeenCalled(); // called multiple times in generate_evaldataset stage (MIN_EVAL_QA_COUNT)
+      expect(evaluateRerankModel).toHaveBeenCalledTimes(2);
 
-      // 验证最终结果保存包含完整的评测数据
-      // 验证 checkpointData.evaluating 包含了完整的数据演进过程
-      expect(checkpointData.evaluating).toBeDefined();
-      expect(checkpointData.evaluating.evalDatasetId).toBe('eval_dataset_123');
-      expect(checkpointData.evaluating.baseModelEvalResult).toEqual({
+      // Verify final result saving contains complete evaluation data
+      // Each stage's data is stored under the corresponding checkpointData key
+      expect(checkpointData.generate_evaldataset).toBeDefined();
+      expect(checkpointData.generate_evaldataset.evalDatasetId).toBe('eval_dataset_123');
+      expect(checkpointData.eval_basemodel).toBeDefined();
+      expect(checkpointData.eval_basemodel.baseModelEvalResult).toEqual({
         detailed_results: {
           rerank_top10_ndcg: 0.85,
           rerank_top10_mrr: 0.9,
@@ -561,7 +520,8 @@ describe('Rerank Train Task Processor', () => {
           rerank_top10_recall: 0.78
         }
       });
-      expect(checkpointData.evaluating.tunedModelEvalResult).toEqual({
+      expect(checkpointData.eval_tunedmodel).toBeDefined();
+      expect(checkpointData.eval_tunedmodel.tunedModelEvalResult).toEqual({
         detailed_results: {
           rerank_top10_ndcg: 0.85,
           rerank_top10_mrr: 0.9,
@@ -570,24 +530,17 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // 验证应用更新阶段
-      expect(checkpointData.applying).toBeDefined();
-      expect(checkpointData.applying.versionId).toBe('version_123');
-      expect(checkpointData.applying.versionName).toContain('Fine-tuned');
-      expect(checkpointData.applying.previousModelConfigId).toBe('base_model_123');
-      expect(checkpointData.applying.updatedNodesCount).toBe(1);
-
-      // 验证最终结果保存
+      // Verify final result saving
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
-        {
+        expect.objectContaining({
           result: {
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
-            tunedModelConfigId: 'tuned-model',
+            tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: {
               detailed_results: {
@@ -604,40 +557,38 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            // 应用更新结果
-            versionId: 'version_123',
-            versionName: expect.any(String),
-            previousModelConfigId: 'base_model_123',
-            previousTaskId: '',
-            updatedNodesCount: 1
+            }
           }
-        }
+        })
       );
     });
 
     test('应该正确处理重试逻辑', async () => {
-      const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
-        await import('@fastgpt/service/core/train/rerank/task/controller');
+      const {
+        updateRerankTaskStatus,
+        updateRerankCheckpointStage,
+        updateRerankCheckpointData,
+        getRerankTrainTask
+      } = await import('@fastgpt/service/core/train/rerank/task/controller');
 
       // Mock a task that completed preparing stage and should start finetuning on retry
       let taskState = createMockTask(
         RerankTrainTaskStatusEnum.running,
-        RerankTaskCheckpointStageEnum.preparing, // preparing已完成
+        RerankTaskCheckpointStageEnum.generate_trainset, // preparing completed
         {
-          preparing: {
+          generate_trainset: {
             trainDatasetId: 'data_1',
             trainDatasetFilePath: '/tmp/test.jsonl'
           }
-          // 注意：没有finetuning数据，因为还没执行
+          // note: no finetuning data yet since it hasn't been executed
         }
       );
       const checkpointData: any = {
-        preparing: {
+        generate_trainset: {
           trainDatasetId: 'trainset_1', // Updated to training set ID
           trainDatasetFilePath: '/tmp/test.jsonl'
         }
-        // 注意：没有finetuning数据，准备开始执行
+        // note: no finetuning data, about to start execution
       };
 
       (getRerankTrainTask as any).mockImplementation(async (id: string) => {
@@ -652,10 +603,10 @@ describe('Rerank Train Task Processor', () => {
         }
         return Promise.resolve(null);
       });
-      (updateCheckpointStage as any).mockResolvedValue(undefined);
+      (updateRerankCheckpointStage as any).mockResolvedValue(undefined);
 
       // Mock checkpoint data updates to simulate real database operations
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -678,56 +629,8 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // Mock application and version operations
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
-
-      // Mock app with datasetSearchNode and chatNode (for AI model extraction)
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [
-              {
-                key: 'model',
-                value: 'gpt-4'
-              }
-            ]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123'
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }, { datasetId: 'dataset_002' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: {
-          nodeVersion: null
-        }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-      (MongoApp.findByIdAndUpdate as any).mockResolvedValue(undefined);
-      (MongoAppVersion.create as any).mockResolvedValue([
-        {
-          _id: 'version_123'
-        }
-      ]);
-
       // Mock remaining stages succeed
-      const { syntheticRerankEvalData, evaluateRerank } = await import(
+      const { synthesizeRerankEvalData, evaluateRerankModel } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { createRerankModelConfig } = await import(
@@ -757,7 +660,7 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // Mock MongoEvalDatasetData.find 用于评测阶段
+      // Mock MongoEvalDatasetData.find for eval stage
       if (!(MongoEvalDatasetData.find as any).mock) {
         (MongoEvalDatasetData.find as any).mockReturnValue({
           lean: vi.fn().mockResolvedValue([
@@ -787,7 +690,7 @@ describe('Rerank Train Task Processor', () => {
         });
       }
 
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -796,7 +699,7 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerank as any).mockResolvedValue({
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -821,40 +724,36 @@ describe('Rerank Train Task Processor', () => {
         }
       } as any);
 
-      // 验证重试时的阶段执行逻辑（跳过已完成的阶段，执行后续阶段）
-      // 由于 shouldRunStage 现在使用 > 关系，preparing 阶段会被跳过
-      expect(updateCheckpointStage).not.toHaveBeenCalledWith(
+      // Verify retry stage execution logic (skip completed stages, execute subsequent stages)
+      // Since shouldRunStage now uses > relationship, the preparing stage will be skipped
+      expect(updateRerankCheckpointStage).not.toHaveBeenCalledWith(
         mockTaskId,
-        RerankTaskCheckpointStageEnum.preparing
+        RerankTaskCheckpointStageEnum.generate_trainset
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.finetuning
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
         RerankTaskCheckpointStageEnum.registering
       );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
-        RerankTaskCheckpointStageEnum.evaluating
-      );
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
-        mockTaskId,
-        RerankTaskCheckpointStageEnum.applying
+        RerankTaskCheckpointStageEnum.eval_tunedmodel
       );
 
-      // 验证最终结果保存
+      // Verify final result saving
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
-        {
+        expect.objectContaining({
           result: {
-            trainDatasetId: 'trainset_1', // 使用原有的 preparing 数据，不重新生成
-            trainDatasetFilePath: '/tmp/test.jsonl', // 使用原有的 preparing 数据，不重新生成
-            tunedModelConfigId: 'tuned-model',
+            trainDatasetId: 'trainset_1', // use existing preparing data, not regenerated
+            trainDatasetFilePath: '/tmp/test.jsonl', // use existing preparing data, not regenerated
+            tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: {
               detailed_results: {
@@ -871,20 +770,14 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            // 应用更新结果
-            versionId: 'version_123',
-            versionName: expect.any(String),
-            previousModelConfigId: 'base_model_123',
-            previousTaskId: '',
-            updatedNodesCount: 1
+            }
           }
-        }
+        })
       );
     });
 
     test('应该正确处理checkpoint数据更新后重新获取任务', async () => {
-      const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
+      const { updateRerankCheckpointStage, updateRerankCheckpointData, getRerankTrainTask } =
         await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
@@ -892,9 +785,8 @@ describe('Rerank Train Task Processor', () => {
 
       // Mock initial task
       const mockTask = createMockTask();
-      (getRerankTrainTask as any).mockResolvedValue(mockTask);
 
-      // Mock train data - 使用 cursor() 返回异步迭代器
+      // Mock train data - use cursor() to return async iterator
       const mockTrainData = [
         {
           _id: 'data_1',
@@ -914,34 +806,85 @@ describe('Rerank Train Task Processor', () => {
         })
       });
 
-      (fs.writeFile as any).mockResolvedValue(undefined);
-
-      // Mock task updates after each checkpoint update
-      let callCount = 0;
+      // Use evolving checkpoint data to simulate real database operations
+      const checkpointData: any = {};
       (getRerankTrainTask as any).mockImplementation((id: string) => {
-        callCount++;
-        if (callCount === 1) {
-          return Promise.resolve(mockTask); // Initial call
-        } else if (callCount === 2) {
-          // After preparing stage - should have checkpoint data
-          return Promise.resolve({
-            ...mockTask,
-            checkpoint: {
-              ...mockTask.checkpoint,
-              stage: RerankTaskCheckpointStageEnum.preparing,
-              data: {
-                preparing: {
-                  trainDatasetId: 'trainset_123', // Updated to training set ID
-                  trainDatasetFilePath: '/tmp/test.jsonl'
-                }
-              }
-            }
-          });
-        }
-        return Promise.resolve(mockTask);
+        return Promise.resolve({
+          ...mockTask,
+          checkpoint: {
+            ...mockTask.checkpoint,
+            data: { ...checkpointData }
+          }
+        });
       });
 
-      // Mock SFT operations to fail quickly for this test
+      (updateRerankCheckpointData as any).mockImplementation(
+        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
+          if (merge) {
+            checkpointData[stage] = { ...checkpointData[stage], ...data };
+          } else {
+            checkpointData[stage] = data;
+          }
+          return Promise.resolve();
+        }
+      );
+
+      // Mock dependencies needed for generate_evaldataset stage
+      const { synthesizeRerankEvalData } = await import(
+        '@fastgpt/service/core/train/rerank/external'
+      );
+      (synthesizeRerankEvalData as any).mockResolvedValue({
+        success: true,
+        data: { qaPair: { question: 'Test question', answer: 'Test answer' } }
+      });
+
+      const { MongoEvalDatasetCollection } = await import(
+        '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
+      );
+      const { MongoEvalDatasetData } = await import(
+        '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
+      );
+      (MongoEvalDatasetCollection.create as any).mockResolvedValue([
+        { _id: 'eval_dataset_123', teamId: mockTeamId, tmbId: mockTmbId }
+      ]);
+      (MongoEvalDatasetData.insertMany as any).mockResolvedValue([{ _id: 'eval_data_123' }]);
+
+      // Mock dependencies needed for eval_basemodel stage
+      (MongoEvalDatasetData.find as any).mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          {
+            userInput: 'Test question',
+            retrievalContextsFull: [
+              {
+                id: 'data_001',
+                q: 'Test q',
+                a: 'Test a',
+                score: [{ type: 'embedding', value: 0.9, index: 0 }]
+              }
+            ],
+            expectedContextIds: ['data_001']
+          }
+        ])
+      });
+
+      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
+      (getRerankModel as any).mockReturnValue({
+        model: 'test-rerank-model',
+        requestUrl: 'http://test.com',
+        requestAuth: 'test-api-key'
+      });
+
+      const { evaluateRerankModel } = await import('@fastgpt/service/core/train/rerank/external');
+      (evaluateRerankModel as any).mockResolvedValue({
+        success: true,
+        data: {
+          runLogs: {
+            detailed_results: { overall_ndcg: 0.8, overall_mrr: 0.85, overall_precision: 0.82 }
+          }
+        }
+      });
+
+      // Mock SFT operations to fail at finetuning stage
       const { createSFTTask } = await import('@fastgpt/service/core/train/rerank/external');
       (createSFTTask as any).mockRejectedValue(new Error('SFT error'));
 
@@ -961,20 +904,20 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskRetriableError);
         expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.finetuneSftBridgeCreateFailed
+          RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed
         );
       }
 
-      // 验证确实在finetuning阶段重新获取了任务数据
-      expect(getRerankTrainTask).toHaveBeenCalledTimes(2); // Initial + after preparing
-      expect(updateCheckpointData).toHaveBeenCalledWith(
+      // Verify generate_trainset stage checkpoint data was written
+      expect(updateRerankCheckpointData).toHaveBeenCalledWith(
         mockTaskId,
-        'preparing',
+        'generate_trainset',
         expect.objectContaining({
-          trainDatasetId: 'trainset_123' // Now correctly expects training set ID, not data ID
+          trainDatasetId: 'trainset_123'
         })
-        // 注意：不需要验证 merge 参数，因为它是默认值 false
       );
+      // Verify task data was re-fetched before entering subsequent stages (called multiple times)
+      expect(getRerankTrainTask).toHaveBeenCalled();
     });
 
     test('应该处理没有训练数据的情况', async () => {
@@ -988,11 +931,11 @@ describe('Rerank Train Task Processor', () => {
       const mockTask = createMockTask();
       (getRerankTrainTask as any).mockResolvedValue(mockTask);
 
-      // Mock empty train data - cursor() 返回空的异步迭代器
+      // Mock empty train data - cursor() returns empty async iterator
       (MongoRerankTrainsetData.find as any).mockReturnValue({
         cursor: vi.fn().mockReturnValue({
           async *[Symbol.asyncIterator]() {
-            // 空迭代器
+            // empty iterator
           }
         })
       });
@@ -1013,16 +956,16 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.prepareDataEmptyAfterWrite
+          RerankTrainErrEnum.rerankPrepareDataEmptyAfterWrite
         );
       }
     });
 
     test('应该正确处理文件清理', async () => {
       const {
-        updateTaskStatus,
-        updateCheckpointStage,
-        updateCheckpointData,
+        updateRerankTaskStatus,
+        updateRerankCheckpointStage,
+        updateRerankCheckpointData,
         getRerankTrainTask,
         deleteRerankTrainTask
       } = await import('@fastgpt/service/core/train/rerank/task/controller');
@@ -1069,7 +1012,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.writeFile as any).mockResolvedValue(undefined);
 
       // Mock checkpoint data updates to simulate real database operations
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -1097,59 +1040,11 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // Mock application and version operations
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
-
-      // Mock app with datasetSearchNode and chatNode (for AI model extraction)
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [
-              {
-                key: 'model',
-                value: 'gpt-4'
-              }
-            ]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123'
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }, { datasetId: 'dataset_002' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: {
-          nodeVersion: null
-        }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-      (MongoApp.findByIdAndUpdate as any).mockResolvedValue(undefined);
-      (MongoAppVersion.create as any).mockResolvedValue([
-        {
-          _id: 'version_123'
-        }
-      ]);
-
       // Mock task deletion with file path
       (deleteRerankTrainTask as any).mockImplementation(async (taskId: string) => {
         const task = await getRerankTrainTask(taskId);
         if (task?.result?.trainDatasetFilePath) {
-          // 使用 fs.promises 的 mock 版本
+          // use fs.promises mock version
           const fsPromises = await import('fs/promises');
           await fsPromises.unlink(task.result.trainDatasetFilePath);
         }
@@ -1159,7 +1054,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.unlink as any).mockResolvedValue(undefined);
 
       // Mock remaining stages
-      const { syntheticRerankEvalData, evaluateRerank } = await import(
+      const { synthesizeRerankEvalData, evaluateRerankModel } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { createRerankModelConfig } = await import(
@@ -1189,7 +1084,7 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // Mock MongoEvalDatasetData.find 用于评测阶段
+      // Mock MongoEvalDatasetData.find for eval stage
       if (!(MongoEvalDatasetData.find as any).mock) {
         (MongoEvalDatasetData.find as any).mockReturnValue({
           lean: vi.fn().mockResolvedValue([
@@ -1219,7 +1114,7 @@ describe('Rerank Train Task Processor', () => {
         });
       }
 
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -1228,7 +1123,7 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerank as any).mockResolvedValue({
+      (evaluateRerankModel as any).mockResolvedValue({
         success: true,
         data: {
           runLogs: {
@@ -1255,21 +1150,21 @@ describe('Rerank Train Task Processor', () => {
         }
       } as any);
 
-      // 验证文件写入和清理
+      // Verify file write and cleanup
       expect(fs.createWriteStream).toHaveBeenCalled();
       // Note: fs.unlink would be called when the task is deleted, not during normal execution
 
-      // 验证最终结果保存
+      // Verify final result saving
       const { MongoRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/schema'
       );
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
-        {
+        expect.objectContaining({
           result: {
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
-            tunedModelConfigId: 'tuned-model',
+            tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
             baseModelEvalResult: {
               detailed_results: {
@@ -1286,21 +1181,15 @@ describe('Rerank Train Task Processor', () => {
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            // 应用更新结果
-            versionId: 'version_123',
-            versionName: expect.any(String),
-            previousModelConfigId: 'base_model_123',
-            previousTaskId: '',
-            updatedNodesCount: 1
+            }
           }
-        }
+        })
       );
     });
   });
 
-  describe('任务失败处理', () => {
-    test('UnrecoverableError 应该被抛出（状态更新由 worker 的 failed 事件处理）', async () => {
+  describe('Task Failure Handling', () => {
+    test('UnrecoverableError should be thrown (status update handled by worker failed event)', async () => {
       const { getRerankTrainTask } = await import(
         '@fastgpt/service/core/train/rerank/task/controller'
       );
@@ -1311,11 +1200,11 @@ describe('Rerank Train Task Processor', () => {
       const mockTask = createMockTask();
       (getRerankTrainTask as any).mockResolvedValue(mockTask);
 
-      //Mock 空的训练数据，这会触发 UnrecoverableError
+      //Mock empty training data, which will trigger UnrecoverableError
       (MongoRerankTrainsetData.find as any).mockReturnValue({
         cursor: vi.fn().mockReturnValue({
           async *[Symbol.asyncIterator]() {
-            // 空迭代器
+            // Empty cursor
           }
         })
       });
@@ -1336,18 +1225,17 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.prepareDataEmptyAfterWrite
+          RerankTrainErrEnum.rerankPrepareDataEmptyAfterWrite
         );
       }
 
-      // 注意：processor 不再直接更新 MongoDB 状态
-      // 状态更新由 worker 的 failed 事件处理器统一处理
+      // Note: processor no longer directly updates MongoDB status
+      // Status update is handled uniformly by the worker's failed event handler
     });
 
-    test('SFT 任务失败应该抛出错误', async () => {
-      const { updateCheckpointData, updateCheckpointStage, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
+    test('SFT task failure should throw an error', async () => {
+      const { updateRerankCheckpointData, updateRerankCheckpointStage, getRerankTrainTask } =
+        await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
@@ -1394,7 +1282,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
 
       // Mock checkpoint data updates
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -1405,7 +1293,7 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock SFT 创建成功但查询返回失败状态
+      // Mock SFT created successfully but query returns failed status
       (createSFTTask as any).mockResolvedValue({
         task_id: 'sft_task_123'
       });
@@ -1431,25 +1319,24 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.finetuneTrainingFailed
+          RerankTrainErrEnum.rerankFinetuneTrainingFailed
         );
       }
 
-      // 验证阶段已更新到 preparing
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      // Verify stage was updated to preparing
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
-        RerankTaskCheckpointStageEnum.preparing
+        RerankTaskCheckpointStageEnum.generate_trainset
       );
     });
 
     test('评测阶段失败应该抛出错误', async () => {
-      const { updateCheckpointData, updateCheckpointStage, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
+      const { updateRerankCheckpointData, updateRerankCheckpointStage, getRerankTrainTask } =
+        await import('@fastgpt/service/core/train/rerank/task/controller');
       const { MongoRerankTrainsetData } = await import(
         '@fastgpt/service/core/train/rerank/data/schema'
       );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData } = await import(
+      const { createSFTTask, querySFTTaskStatus, synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { createRerankModelConfig } = await import(
@@ -1495,7 +1382,7 @@ describe('Rerank Train Task Processor', () => {
       (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
 
       // Mock checkpoint data updates
-      (updateCheckpointData as any).mockImplementation(
+      (updateRerankCheckpointData as any).mockImplementation(
         async (taskId: string, stage: string, data: any, merge: boolean = false) => {
           if (merge) {
             checkpointData[stage] = { ...checkpointData[stage], ...data };
@@ -1506,7 +1393,7 @@ describe('Rerank Train Task Processor', () => {
         }
       );
 
-      // Mock SFT 成功
+      // Mock SFT success
       (createSFTTask as any).mockResolvedValue({
         task_id: 'sft_task_123'
       });
@@ -1520,49 +1407,11 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // Mock 模型注册成功
+      // Mock model registration success
       (createRerankModelConfig as any).mockResolvedValue('config_123');
 
-      // Mock application for dataset extraction
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [
-              {
-                key: 'model',
-                value: 'gpt-4'
-              }
-            ]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123'
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }, { datasetId: 'dataset_002' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: {
-          nodeVersion: null
-        }
-      };
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-
-      // Mock 评测数据集生成失败
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      // Mock evaluation dataset generation failure
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: false,
         error: 'Failed to connect to evaluation service'
       });
@@ -1583,14 +1432,14 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskRetriableError);
         expect((error as TrainTaskRetriableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.evalDitingGenerationFailed
+          RerankTrainErrEnum.rerankEvalDitingGenerationFailed
         );
       }
 
-      // 验证阶段已更新到 registering
-      expect(updateCheckpointStage).toHaveBeenCalledWith(
+      // Verify stage was updated to generate_trainset (stage 1 complete, stage 2 failed during eval dataset generation)
+      expect(updateRerankCheckpointStage).toHaveBeenCalledWith(
         mockTaskId,
-        RerankTaskCheckpointStageEnum.registering
+        RerankTaskCheckpointStageEnum.generate_trainset
       );
     });
 
@@ -1599,7 +1448,7 @@ describe('Rerank Train Task Processor', () => {
         '@fastgpt/service/core/train/rerank/task/controller'
       );
 
-      // Mock 任务不存在
+      // Mock task not found
       (getRerankTrainTask as any).mockResolvedValue(null);
 
       try {
@@ -1618,198 +1467,9 @@ describe('Rerank Train Task Processor', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.processorTaskNotFound
+          RerankTrainErrEnum.rerankProcessorTaskNotFound
         );
       }
-    });
-
-    test('应用更新阶段未找到可更新节点应该抛出 UnrecoverableError', async () => {
-      const { updateCheckpointData, updateCheckpointStage, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
-      const { MongoRerankTrainsetData } = await import(
-        '@fastgpt/service/core/train/rerank/data/schema'
-      );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
-        await import('@fastgpt/service/core/train/rerank/external');
-      const { createRerankModelConfig } = await import(
-        '@fastgpt/service/core/train/rerank/model/controller'
-      );
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-
-      const mockTask = createMockTask();
-      const checkpointData: any = {};
-
-      (getRerankTrainTask as any).mockImplementation(async (id: string) => {
-        if (id === mockTaskId) {
-          return Promise.resolve({
-            ...mockTask,
-            checkpoint: {
-              ...mockTask.checkpoint,
-              data: { ...checkpointData }
-            }
-          });
-        }
-        return Promise.resolve(null);
-      });
-
-      const mockTrainData = [
-        {
-          _id: 'data_1',
-          trainsetId: 'trainset_1',
-          query: 'test',
-          positiveDocs: ['positive'],
-          negativeDocs: ['negative']
-        }
-      ];
-      (MongoRerankTrainsetData.find as any).mockReturnValue({
-        cursor: vi.fn().mockReturnValue({
-          async *[Symbol.asyncIterator]() {
-            for (const item of mockTrainData) {
-              yield item;
-            }
-          }
-        })
-      });
-
-      (fs.writeFile as any).mockResolvedValue(undefined);
-      (fs.readFile as any).mockResolvedValue(Buffer.from('test data'));
-
-      // Mock checkpoint data updates
-      (updateCheckpointData as any).mockImplementation(
-        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
-          if (merge) {
-            checkpointData[stage] = { ...checkpointData[stage], ...data };
-          } else {
-            checkpointData[stage] = data;
-          }
-          return Promise.resolve();
-        }
-      );
-
-      // Mock SFT 成功
-      (createSFTTask as any).mockResolvedValue({
-        task_id: 'sft_task_123'
-      });
-      (querySFTTaskStatus as any).mockResolvedValue({
-        task_id: 'sft_task_123',
-        status: 'completed',
-        endpoint: {
-          base_url: 'http://sft-bridge.com/v1',
-          model: 'tuned-model',
-          api_key: 'sft-bridge-key'
-        }
-      });
-
-      // Mock 模型注册成功
-      (createRerankModelConfig as any).mockResolvedValue('config_123');
-
-      // Mock evaluation dataset collections
-      const { MongoEvalDatasetCollection } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
-      );
-      const { MongoEvalDatasetData } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
-      );
-      (MongoEvalDatasetCollection.create as any).mockResolvedValue([
-        {
-          _id: 'eval_dataset_123',
-          teamId: mockTeamId,
-          tmbId: mockTmbId,
-          name: 'Test Eval Collection'
-        }
-      ]);
-      (MongoEvalDatasetData.insertMany as any).mockResolvedValue([
-        {
-          _id: 'eval_data_123',
-          collectionId: 'eval_dataset_123'
-        }
-      ]);
-
-      // Mock 评测成功
-      (syntheticRerankEvalData as any).mockResolvedValue({
-        success: true,
-        data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
-        }
-      });
-      (evaluateRerank as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              rerank_top10_ndcg: 0.85,
-              rerank_top10_mrr: 0.9,
-              rerank_top10_precision: 0.82,
-              rerank_top10_recall: 0.78
-            }
-          }
-        }
-      });
-
-      // Mock 应用配置有 datasets 和 chatNode 但没有 rerankModel
-      const mockAppWithoutRerank = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [
-              {
-                key: 'model',
-                value: 'gpt-4'
-              }
-            ]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }, { datasetId: 'dataset_002' }]
-              }
-              // 故意不添加 rerankModel，以触发"未找到可更新节点"的错误
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: {
-          nodeVersion: null
-        }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockAppWithoutRerank)
-      });
-
-      try {
-        await rerankTrainTaskProcessor({
-          data: {
-            taskId: mockTaskId,
-            isRetry: false
-          },
-          attemptsMade: 0,
-          opts: {
-            attempts: 3
-          }
-        } as any);
-        // Should not reach here
-        expect.fail('Expected error to be thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
-        expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.applyNoNodesToUpdate
-        );
-      }
-
-      // 注意：processor 不再直接更新 MongoDB 状态
-      // 状态更新由 worker 的 failed 事件处理器统一处理
     });
   });
 
@@ -1818,35 +1478,14 @@ describe('Rerank Train Task Processor', () => {
       const { performDatasetSearch } = await import(
         '@fastgpt/service/core/train/rerank/task/helpers/dataset-search'
       );
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
       const { dispatchDatasetSearch } = await import(
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
-      // 创建模拟任务
+      // Create mock task
       const mockTask = createMockTask() as RerankTrainTaskSchemaType;
 
-      // 创建模拟应用配置
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }, { datasetId: 'dataset_002' }]
-              }
-            ]
-          }
-        ]
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-
-      // 模拟 dispatchDatasetSearch 返回值
+      // Mock dispatchDatasetSearch return value
       (dispatchDatasetSearch as any).mockResolvedValue({
         data: {
           quoteQA: [
@@ -1866,10 +1505,14 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // 执行检索
-      const results = await performDatasetSearch(mockTask, mockApp as AppSchema, 'Test query');
+      // Execute search (using task.datasetIds)
+      const results = await performDatasetSearch(
+        mockTask,
+        ['dataset_001', 'dataset_002'],
+        'Test query'
+      );
 
-      // 验证结果
+      // Verify results
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual({
         id: 'context_001',
@@ -1884,7 +1527,7 @@ describe('Rerank Train Task Processor', () => {
         score: [{ type: 'rerank', value: 0.88, index: 1 }]
       });
 
-      // 验证 dispatchDatasetSearch 被正确调用（不使用 rerank）
+      // Verify dispatchDatasetSearch was called correctly (without rerank)
       expect(dispatchDatasetSearch).toHaveBeenCalledWith(
         expect.objectContaining({
           mode: 'test',
@@ -1892,9 +1535,9 @@ describe('Rerank Train Task Processor', () => {
             userChatInput: 'Test query',
             rerankModel: undefined,
             usingReRank: false,
-            // 验证使用了应用的实际搜索参数
-            similarity: 0.4,
-            limit: 5000,
+            // Verify actual search params from constants are used
+            similarity: 0.1,
+            limit: 10240,
             searchMode: 'embedding'
           })
         })
@@ -1905,32 +1548,13 @@ describe('Rerank Train Task Processor', () => {
       const { performDatasetSearch } = await import(
         '@fastgpt/service/core/train/rerank/task/helpers/dataset-search'
       );
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
       const { dispatchDatasetSearch } = await import(
         '@fastgpt/service/core/workflow/dispatch/dataset/search'
       );
 
       const mockTask = createMockTask() as RerankTrainTaskSchemaType;
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          }
-        ]
-      };
 
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-
-      // 模拟空的检索结果
+      // Mock empty search results
       (dispatchDatasetSearch as any).mockResolvedValue({
         data: {
           quoteQA: []
@@ -1939,7 +1563,7 @@ describe('Rerank Train Task Processor', () => {
 
       const results = await performDatasetSearch(
         mockTask,
-        mockApp as AppSchema,
+        ['dataset_001', 'dataset_002'],
         'No results query'
       );
 
@@ -1949,12 +1573,11 @@ describe('Rerank Train Task Processor', () => {
 
   describe('runGenerateEvalDataset', () => {
     test('应该成功生成评测数据集', async () => {
-      const { runGenerateEvalDataset } = await import(
-        '@fastgpt/service/core/train/rerank/task/stages/evaluate'
+      const { runGenerateEvalDatasetStage } = await import(
+        '@fastgpt/service/core/train/rerank/task/stages/generate-evaldataset'
       );
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
-      const { syntheticRerankEvalData } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { dispatchDatasetSearch } = await import(
@@ -1966,40 +1589,18 @@ describe('Rerank Train Task Processor', () => {
       const { MongoEvalDatasetData } = await import(
         '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
       );
+      const { getDefaultLLMModel } = await import('@fastgpt/service/core/ai/model');
 
-      // 创建模拟任务
+      // Create mock task
       const mockTask = createMockTask() as RerankTrainTaskSchemaType;
 
-      // 创建模拟应用配置（包含 AI 模型配置）
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          },
-          {
-            flowNodeType: 'chatNode',
-            inputs: [
-              {
-                key: 'model',
-                value: 'gpt-4'
-              }
-            ]
-          }
-        ]
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
+      // Mock system default model
+      (getDefaultLLMModel as any).mockReturnValue({
+        model: 'gpt-4',
+        name: 'GPT-4'
       });
 
-      // 模拟采样数据
+      // Mock sampled data
       (sampleDataFromDataset as any).mockResolvedValue([
         {
           datasetId: 'dataset_001',
@@ -2009,8 +1610,8 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // 模拟 DiTing 生成评测 QA 对
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      // Mock DiTing generating evaluation QA pairs
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -2020,7 +1621,7 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // 模拟检索结果
+      // Mock search results
       (dispatchDatasetSearch as any).mockResolvedValue({
         data: {
           quoteQA: [
@@ -2034,7 +1635,7 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // 模拟评测数据集创建
+      // Mock evaluation dataset creation
       (MongoEvalDatasetCollection.create as any).mockResolvedValue([
         {
           _id: 'eval_collection_123',
@@ -2050,22 +1651,22 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // 执行生成评测数据集
-      const evalDatasetId = await runGenerateEvalDataset(mockTask);
+      // Execute generate eval dataset
+      const result = await runGenerateEvalDatasetStage(mockTask);
 
-      // 验证结果
-      expect(evalDatasetId).toBe('eval_collection_123');
+      // Verify results
+      expect(result.evalDatasetId).toBe('eval_collection_123');
 
-      // 验证 DiTing API 被调用，并使用了从应用提取的模型配置
-      expect(syntheticRerankEvalData).toHaveBeenCalledWith(
+      // Verify DiTing API was called using system default model
+      expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            name: 'gpt-4' // 应该使用从应用工作流中提取的模型
+            name: 'gpt-4' // should use system default model
           })
         })
       );
 
-      // 验证数据集创建（统一的评测数据集）
+      // Verify dataset creation (unified evaluation dataset)
       expect(MongoEvalDatasetCollection.create).toHaveBeenCalledWith([
         expect.objectContaining({
           name: 'Eval Dataset - Task task_123',
@@ -2073,12 +1674,12 @@ describe('Rerank Train Task Processor', () => {
           metadata: expect.objectContaining({
             taskId: 'task_123',
             taskName: 'Test Rerank Task',
-            sampleSize: 1
+            sampleSize: expect.any(Number)
           })
         })
       ]);
 
-      // 验证数据插入
+      // Verify data insertion
       expect(MongoEvalDatasetData.insertMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -2092,12 +1693,11 @@ describe('Rerank Train Task Processor', () => {
     });
 
     test('应该在没有 AI 模型配置时使用系统默认模型', async () => {
-      const { runGenerateEvalDataset } = await import(
-        '@fastgpt/service/core/train/rerank/task/stages/evaluate'
+      const { runGenerateEvalDatasetStage } = await import(
+        '@fastgpt/service/core/train/rerank/task/stages/generate-evaldataset'
       );
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
-      const { syntheticRerankEvalData } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
       );
       const { dispatchDatasetSearch } = await import(
@@ -2113,33 +1713,13 @@ describe('Rerank Train Task Processor', () => {
 
       const mockTask = createMockTask() as RerankTrainTaskSchemaType;
 
-      // 创建没有 AI 模型配置的应用（没有 chatNode）
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          }
-        ]
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-
-      // Mock 系统默认模型
+      // Mock system default model
       (getDefaultLLMModel as any).mockReturnValue({
         model: 'default-llm-model',
         name: 'Default LLM Model'
       });
 
-      // 模拟采样数据
+      // Mock sampled data
       (sampleDataFromDataset as any).mockResolvedValue([
         {
           datasetId: 'dataset_001',
@@ -2149,8 +1729,8 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // 模拟 DiTing 生成评测 QA 对
-      (syntheticRerankEvalData as any).mockResolvedValue({
+      // Mock DiTing generating evaluation QA pairs
+      (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
           qaPair: {
@@ -2160,7 +1740,7 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // 模拟检索结果
+      // Mock search results
       (dispatchDatasetSearch as any).mockResolvedValue({
         data: {
           quoteQA: [
@@ -2174,7 +1754,7 @@ describe('Rerank Train Task Processor', () => {
         }
       });
 
-      // 模拟评测数据集创建
+      // Mock evaluation dataset creation
       (MongoEvalDatasetCollection.create as any).mockResolvedValue([
         {
           _id: 'eval_collection_123',
@@ -2190,799 +1770,43 @@ describe('Rerank Train Task Processor', () => {
         }
       ]);
 
-      // 应该成功执行，使用系统默认模型
-      const evalDatasetId = await runGenerateEvalDataset(mockTask);
+      // should succeed using system default model
+      const result = await runGenerateEvalDatasetStage(mockTask);
 
-      // 验证结果
-      expect(evalDatasetId).toBe('eval_collection_123');
+      // Verify results
+      expect(result.evalDatasetId).toBe('eval_collection_123');
 
-      // 验证使用了系统默认模型
-      expect(syntheticRerankEvalData).toHaveBeenCalledWith(
+      // Verify system default model was used
+      expect(synthesizeRerankEvalData).toHaveBeenCalledWith(
         expect.objectContaining({
           llm_config: expect.objectContaining({
-            name: 'default-llm-model' // 应该使用系统默认模型
+            name: 'default-llm-model' // should use system default model
           })
         })
       );
     });
 
     test('应该在没有数据可用时抛出错误', async () => {
-      const { runGenerateEvalDataset } = await import(
-        '@fastgpt/service/core/train/rerank/task/stages/evaluate'
+      const { runGenerateEvalDatasetStage } = await import(
+        '@fastgpt/service/core/train/rerank/task/stages/generate-evaldataset'
       );
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
 
       const mockTask = createMockTask() as RerankTrainTaskSchemaType;
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          }
-        ]
-      };
 
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-
-      // 模拟没有采样数据
+      // Mock no sampled data
       (sampleDataFromDataset as any).mockResolvedValue([]);
 
       try {
-        await runGenerateEvalDataset(mockTask);
+        await runGenerateEvalDatasetStage(mockTask);
         // Should not reach here
         expect.fail('Expected error to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(TrainTaskUnrecoverableError);
         expect((error as TrainTaskUnrecoverableError).enhancedError.type).toBe(
-          RerankTrainErrEnum.evalNoDataAvailable
+          RerankTrainErrEnum.rerankEvalNoDataAvailable
         );
       }
-    });
-  });
-
-  describe('自动删除之前的微调模型', () => {
-    test('新模型表现更好时，应该自动删除之前的微调模型', async () => {
-      const { updateTaskStatus, updateCheckpointStage, updateCheckpointData, getRerankTrainTask } =
-        await import('@fastgpt/service/core/train/rerank/task/controller');
-      const { MongoRerankTrainsetData } = await import(
-        '@fastgpt/service/core/train/rerank/data/schema'
-      );
-      const { createRerankModelConfig, deleteRerankModelConfig } = await import(
-        '@fastgpt/service/core/train/rerank/model/controller'
-      );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
-        await import('@fastgpt/service/core/train/rerank/external');
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-
-      // Mock MongoRerankTrainTask.findOne for previous task lookup
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-      (MongoRerankTrainTask.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null) // No previous task found
-      });
-      (MongoRerankTrainTask.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null) // No previous task found by id
-      });
-
-      // Mock initial task
-      const mockTask = createMockTask();
-      (getRerankTrainTask as any).mockResolvedValue(mockTask);
-
-      // Mock train data
-      const mockTrainData = [
-        {
-          _id: 'data_1',
-          trainsetId: 'trainset_1',
-          query: 'query 1',
-          positiveDocs: ['doc 1'],
-          negativeDocs: ['doc 2']
-        }
-      ];
-      (MongoRerankTrainsetData.find as any).mockReturnValue({
-        cursor: vi.fn().mockReturnValue({
-          async *[Symbol.asyncIterator]() {
-            for (const item of mockTrainData) {
-              yield item;
-            }
-          }
-        })
-      });
-
-      // Mock SFT operations
-      (createSFTTask as any).mockResolvedValue({
-        task_id: 'sft_task_123'
-      });
-      (querySFTTaskStatus as any).mockResolvedValue({
-        task_id: 'sft_task_123',
-        status: 'completed',
-        endpoint: {
-          base_url: 'http://sft-bridge.com/v1',
-          model: 'tuned-model-new',
-          api_key: 'sft-bridge-key'
-        }
-      });
-
-      // Mock model creation
-      (createRerankModelConfig as any).mockResolvedValue('new_model_config_123');
-
-      // Mock application
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
-
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [{ key: 'model', value: 'gpt-4' }]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123' // 使用 baseModel，这样才能被更新
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: { nodeVersion: null }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-      (MongoApp.findByIdAndUpdate as any).mockResolvedValue(undefined);
-      (MongoAppVersion.create as any).mockResolvedValue([{ _id: 'version_123' }]);
-
-      // Mock evaluation datasets
-      const { MongoEvalDatasetCollection } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
-      );
-      const { MongoEvalDatasetData } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
-      );
-      (MongoEvalDatasetCollection.create as any).mockResolvedValue([
-        { _id: 'eval_dataset_123', teamId: mockTeamId, tmbId: mockTmbId }
-      ]);
-      (MongoEvalDatasetData.insertMany as any).mockResolvedValue([
-        { _id: 'eval_data_123', collectionId: 'eval_dataset_123' }
-      ]);
-      (MongoEvalDatasetData.find as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue([
-          {
-            userInput: 'Test question',
-            retrievalContextsFull: [
-              {
-                id: 'data_001',
-                q: 'Test question',
-                a: 'Test answer',
-                score: [{ type: 'fullText', value: 1.5, index: 0 }]
-              }
-            ],
-            expectedContextIds: ['data_001']
-          }
-        ])
-      });
-
-      // Mock getRerankModel - 之前的模型现在通过 previousModelConfigId 获取
-      // previousModelConfigId 会在 apply 阶段被记录
-      (getRerankModel as any).mockImplementation((modelId: string) => {
-        if (modelId === 'base_model_123') {
-          // 这是上一次微调后保存的模型（现在被记录为 base_model_123）
-          return {
-            model: 'base_model_123',
-            isTuned: true, // 实际是之前的微调模型
-            requestUrl: 'http://old.com',
-            requestAuth: 'old-key'
-          };
-        }
-        return {
-          model: modelId,
-          requestUrl: 'http://test.com',
-          requestAuth: 'test-key'
-        };
-      });
-
-      // Mock evaluation - 新模型表现更好
-      (syntheticRerankEvalData as any).mockResolvedValue({
-        success: true,
-        data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
-        }
-      });
-
-      // 第一次评测（之前的微调模型）：overall_ndcg = 0.75
-      // 第二次评测（新微调模型）：overall_ndcg = 0.85
-      let evalCallCount = 0;
-      (evaluateRerank as any).mockImplementation(async () => {
-        evalCallCount++;
-        if (evalCallCount === 1) {
-          // Base model (previous tuned model) evaluation
-          return {
-            success: true,
-            data: {
-              runLogs: {
-                detailed_results: {
-                  overall_ndcg: 0.75,
-                  overall_mrr: 0.8,
-                  overall_precision: 0.7, // Added precision
-                  overall_map: 0.72
-                }
-              }
-            }
-          };
-        } else {
-          // New tuned model evaluation (better performance)
-          return {
-            success: true,
-            data: {
-              runLogs: {
-                detailed_results: {
-                  overall_ndcg: 0.85,
-                  overall_mrr: 0.9,
-                  overall_precision: 0.82, // Added precision (better than base)
-                  overall_map: 0.82
-                }
-              }
-            }
-          };
-        }
-      });
-
-      // Mock dataset search
-      const { dispatchDatasetSearch } = await import(
-        '@fastgpt/service/core/workflow/dispatch/dataset/search'
-      );
-      (dispatchDatasetSearch as any).mockResolvedValue({
-        data: {
-          quoteQA: [
-            {
-              id: 'data_001',
-              q: 'Test question',
-              a: 'Test answer',
-              score: [{ type: 'embedding', value: 0.95, index: 0 }]
-            }
-          ]
-        }
-      });
-
-      // Mock checkpoint data
-      let taskState = { ...mockTask };
-      const checkpointData: any = {};
-
-      (getRerankTrainTask as any).mockImplementation(async (id: string) => {
-        if (id === mockTaskId) {
-          return Promise.resolve({
-            ...taskState,
-            checkpoint: {
-              ...taskState.checkpoint,
-              data: { ...checkpointData }
-            }
-          });
-        }
-        return Promise.resolve(null);
-      });
-
-      (updateCheckpointData as any).mockImplementation(
-        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
-          if (merge) {
-            checkpointData[stage] = { ...checkpointData[stage], ...data };
-          } else {
-            checkpointData[stage] = data;
-          }
-          return Promise.resolve();
-        }
-      );
-
-      // Mock deleteRerankModelConfig to track deletion calls
-      (deleteRerankModelConfig as any).mockResolvedValue(undefined);
-
-      await rerankTrainTaskProcessor({
-        data: {
-          taskId: mockTaskId,
-          isRetry: false
-        },
-        attemptsMade: 0,
-        opts: {
-          attempts: 3
-        }
-      } as any);
-
-      // 验证删除函数被调用（删除之前的微调模型）
-      // previousTaskId为空，因为没有找到previous task，所以sftTaskId为undefined
-      expect(deleteRerankModelConfig).toHaveBeenCalledWith('base_model_123', undefined);
-
-      // 验证任务最终状态
-      expect(updateTaskStatus).toHaveBeenCalledWith(
-        mockTaskId,
-        RerankTrainTaskStatusEnum.completed
-      );
-    });
-
-    test('新模型表现不如之前模型时，应该保留之前的微调模型', async () => {
-      const { updateTaskStatus, updateCheckpointData, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
-      const { MongoRerankTrainsetData } = await import(
-        '@fastgpt/service/core/train/rerank/data/schema'
-      );
-      const { createRerankModelConfig, deleteRerankModelConfig } = await import(
-        '@fastgpt/service/core/train/rerank/model/controller'
-      );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
-        await import('@fastgpt/service/core/train/rerank/external');
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-
-      // Mock MongoRerankTrainTask.findOne for previous task lookup
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-      (MongoRerankTrainTask.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null) // No previous task found
-      });
-      (MongoRerankTrainTask.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null) // No previous task found by id
-      });
-
-      const mockTask = createMockTask();
-      (getRerankTrainTask as any).mockResolvedValue(mockTask);
-
-      const mockTrainData = [
-        {
-          _id: 'data_1',
-          trainsetId: 'trainset_1',
-          query: 'query 1',
-          positiveDocs: ['doc 1'],
-          negativeDocs: ['doc 2']
-        }
-      ];
-      (MongoRerankTrainsetData.find as any).mockReturnValue({
-        cursor: vi.fn().mockReturnValue({
-          async *[Symbol.asyncIterator]() {
-            for (const item of mockTrainData) {
-              yield item;
-            }
-          }
-        })
-      });
-
-      (createSFTTask as any).mockResolvedValue({ task_id: 'sft_task_123' });
-      (querySFTTaskStatus as any).mockResolvedValue({
-        task_id: 'sft_task_123',
-        status: 'completed',
-        endpoint: {
-          base_url: 'http://sft-bridge.com/v1',
-          model: 'tuned-model-new',
-          api_key: 'sft-bridge-key'
-        }
-      });
-
-      (createRerankModelConfig as any).mockResolvedValue('new_model_config_123');
-
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
-
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [{ key: 'model', value: 'gpt-4' }]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123' // 使用 baseModel，这样才能被更新
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: { nodeVersion: null }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-      (MongoApp.findByIdAndUpdate as any).mockResolvedValue(undefined);
-      (MongoAppVersion.create as any).mockResolvedValue([{ _id: 'version_123' }]);
-
-      const { MongoEvalDatasetCollection } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
-      );
-      const { MongoEvalDatasetData } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
-      );
-      (MongoEvalDatasetCollection.create as any).mockResolvedValue([
-        { _id: 'eval_dataset_123', teamId: mockTeamId, tmbId: mockTmbId }
-      ]);
-      (MongoEvalDatasetData.insertMany as any).mockResolvedValue([
-        { _id: 'eval_data_123', collectionId: 'eval_dataset_123' }
-      ]);
-      (MongoEvalDatasetData.find as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue([
-          {
-            userInput: 'Test question',
-            retrievalContextsFull: [
-              {
-                id: 'data_001',
-                q: 'Test question',
-                a: 'Test answer',
-                score: [{ type: 'fullText', value: 1.5, index: 0 }]
-              }
-            ],
-            expectedContextIds: ['data_001']
-          }
-        ])
-      });
-
-      (getRerankModel as any).mockImplementation((modelId: string) => {
-        if (modelId === 'base_model_123') {
-          return {
-            model: 'base_model_123',
-            isTuned: true, // 之前的微调模型
-            requestUrl: 'http://old.com',
-            requestAuth: 'old-key'
-          };
-        }
-        return {
-          model: modelId,
-          requestUrl: 'http://test.com',
-          requestAuth: 'test-key'
-        };
-      });
-
-      (syntheticRerankEvalData as any).mockResolvedValue({
-        success: true,
-        data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
-        }
-      });
-
-      // 新模型表现不如之前的模型
-      let evalCallCount = 0;
-      (evaluateRerank as any).mockImplementation(async () => {
-        evalCallCount++;
-        if (evalCallCount === 1) {
-          // Base model (previous tuned model) evaluation - 表现较好
-          return {
-            success: true,
-            data: {
-              runLogs: {
-                detailed_results: {
-                  overall_ndcg: 0.9, // 之前模型表现更好
-                  overall_mrr: 0.92,
-                  overall_map: 0.88
-                }
-              }
-            }
-          };
-        } else {
-          // New tuned model evaluation - 表现较差
-          return {
-            success: true,
-            data: {
-              runLogs: {
-                detailed_results: {
-                  overall_ndcg: 0.75, // 新模型表现较差
-                  overall_mrr: 0.78,
-                  overall_map: 0.72
-                }
-              }
-            }
-          };
-        }
-      });
-
-      const { dispatchDatasetSearch } = await import(
-        '@fastgpt/service/core/workflow/dispatch/dataset/search'
-      );
-      (dispatchDatasetSearch as any).mockResolvedValue({
-        data: {
-          quoteQA: [
-            {
-              id: 'data_001',
-              q: 'Test question',
-              a: 'Test answer',
-              score: [{ type: 'embedding', value: 0.95, index: 0 }]
-            }
-          ]
-        }
-      });
-
-      let taskState = { ...mockTask };
-      const checkpointData: any = {};
-
-      (getRerankTrainTask as any).mockImplementation(async (id: string) => {
-        if (id === mockTaskId) {
-          return Promise.resolve({
-            ...taskState,
-            checkpoint: {
-              ...taskState.checkpoint,
-              data: { ...checkpointData }
-            }
-          });
-        }
-        return Promise.resolve(null);
-      });
-
-      (updateCheckpointData as any).mockImplementation(
-        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
-          if (merge) {
-            checkpointData[stage] = { ...checkpointData[stage], ...data };
-          } else {
-            checkpointData[stage] = data;
-          }
-          return Promise.resolve();
-        }
-      );
-
-      await rerankTrainTaskProcessor({
-        data: {
-          taskId: mockTaskId,
-          isRetry: false
-        },
-        attemptsMade: 0,
-        opts: {
-          attempts: 3
-        }
-      } as any);
-
-      // 验证删除函数没有被调用（保留之前的微调模型）
-      expect(deleteRerankModelConfig).not.toHaveBeenCalledWith('base_model_123');
-
-      // 验证任务最终状态
-      expect(updateTaskStatus).toHaveBeenCalledWith(
-        mockTaskId,
-        RerankTrainTaskStatusEnum.completed
-      );
-    });
-
-    test('之前模型不是微调模型时，不应该删除', async () => {
-      const { updateTaskStatus, updateCheckpointData, getRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/controller'
-      );
-      const { MongoRerankTrainsetData } = await import(
-        '@fastgpt/service/core/train/rerank/data/schema'
-      );
-      const { createRerankModelConfig, deleteRerankModelConfig } = await import(
-        '@fastgpt/service/core/train/rerank/model/controller'
-      );
-      const { createSFTTask, querySFTTaskStatus, syntheticRerankEvalData, evaluateRerank } =
-        await import('@fastgpt/service/core/train/rerank/external');
-      const { getRerankModel } = await import('@fastgpt/service/core/ai/model');
-
-      const mockTask = createMockTask();
-      (getRerankTrainTask as any).mockResolvedValue(mockTask);
-
-      const mockTrainData = [
-        {
-          _id: 'data_1',
-          trainsetId: 'trainset_1',
-          query: 'query 1',
-          positiveDocs: ['doc 1'],
-          negativeDocs: ['doc 2']
-        }
-      ];
-      (MongoRerankTrainsetData.find as any).mockReturnValue({
-        cursor: vi.fn().mockReturnValue({
-          async *[Symbol.asyncIterator]() {
-            for (const item of mockTrainData) {
-              yield item;
-            }
-          }
-        })
-      });
-
-      (createSFTTask as any).mockResolvedValue({ task_id: 'sft_task_123' });
-      (querySFTTaskStatus as any).mockResolvedValue({
-        task_id: 'sft_task_123',
-        status: 'completed',
-        endpoint: {
-          base_url: 'http://sft-bridge.com/v1',
-          model: 'tuned-model-new',
-          api_key: 'sft-bridge-key'
-        }
-      });
-
-      (createRerankModelConfig as any).mockResolvedValue('new_model_config_123');
-
-      const { MongoApp } = await import('@fastgpt/service/core/app/schema');
-      const { MongoAppVersion } = await import('@fastgpt/service/core/app/version/schema');
-
-      const mockApp = {
-        _id: mockAppId,
-        modules: [
-          {
-            flowNodeType: 'chatNode',
-            inputs: [{ key: 'model', value: 'gpt-4' }]
-          },
-          {
-            flowNodeType: 'datasetSearchNode',
-            inputs: [
-              {
-                key: 'rerankModel',
-                value: 'base_model_123' // 基础模型，不是微调模型
-              },
-              {
-                key: 'datasets',
-                value: [{ datasetId: 'dataset_001' }]
-              }
-            ]
-          }
-        ],
-        edges: [],
-        chatConfig: {},
-        pluginData: { nodeVersion: null }
-      };
-
-      (MongoApp.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(mockApp)
-      });
-      (MongoApp.findByIdAndUpdate as any).mockResolvedValue(undefined);
-      (MongoAppVersion.create as any).mockResolvedValue([{ _id: 'version_123' }]);
-
-      const { MongoEvalDatasetCollection } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema'
-      );
-      const { MongoEvalDatasetData } = await import(
-        '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema'
-      );
-      (MongoEvalDatasetCollection.create as any).mockResolvedValue([
-        { _id: 'eval_dataset_123', teamId: mockTeamId, tmbId: mockTmbId }
-      ]);
-      (MongoEvalDatasetData.insertMany as any).mockResolvedValue([
-        { _id: 'eval_data_123', collectionId: 'eval_dataset_123' }
-      ]);
-      (MongoEvalDatasetData.find as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue([
-          {
-            userInput: 'Test question',
-            retrievalContextsFull: [
-              {
-                id: 'data_001',
-                q: 'Test question',
-                a: 'Test answer',
-                score: [{ type: 'fullText', value: 1.5, index: 0 }]
-              }
-            ],
-            expectedContextIds: ['data_001']
-          }
-        ])
-      });
-
-      // 之前的模型不是微调模型（isTuned 不为 true）
-      (getRerankModel as any).mockImplementation((modelId: string) => {
-        if (modelId === 'base_model_123') {
-          return {
-            model: 'base_model_123',
-            isTuned: false, // 不是微调模型
-            requestUrl: 'http://base.com',
-            requestAuth: 'base-key'
-          };
-        }
-        return {
-          model: modelId,
-          requestUrl: 'http://test.com',
-          requestAuth: 'test-key'
-        };
-      });
-
-      (syntheticRerankEvalData as any).mockResolvedValue({
-        success: true,
-        data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
-        }
-      });
-
-      (evaluateRerank as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              overall_ndcg: 0.85,
-              overall_mrr: 0.9,
-              overall_map: 0.82
-            }
-          }
-        }
-      });
-
-      const { dispatchDatasetSearch } = await import(
-        '@fastgpt/service/core/workflow/dispatch/dataset/search'
-      );
-      (dispatchDatasetSearch as any).mockResolvedValue({
-        data: {
-          quoteQA: [
-            {
-              id: 'data_001',
-              q: 'Test question',
-              a: 'Test answer',
-              score: [{ type: 'embedding', value: 0.95, index: 0 }]
-            }
-          ]
-        }
-      });
-
-      let taskState = { ...mockTask };
-      const checkpointData: any = {};
-
-      (getRerankTrainTask as any).mockImplementation(async (id: string) => {
-        if (id === mockTaskId) {
-          return Promise.resolve({
-            ...taskState,
-            checkpoint: {
-              ...taskState.checkpoint,
-              data: { ...checkpointData }
-            }
-          });
-        }
-        return Promise.resolve(null);
-      });
-
-      (updateCheckpointData as any).mockImplementation(
-        async (taskId: string, stage: string, data: any, merge: boolean = false) => {
-          if (merge) {
-            checkpointData[stage] = { ...checkpointData[stage], ...data };
-          } else {
-            checkpointData[stage] = data;
-          }
-          return Promise.resolve();
-        }
-      );
-
-      await rerankTrainTaskProcessor({
-        data: {
-          taskId: mockTaskId,
-          isRetry: false
-        },
-        attemptsMade: 0,
-        opts: {
-          attempts: 3
-        }
-      } as any);
-
-      // 验证删除函数没有被调用（不是微调模型，不应该删除）
-      expect(deleteRerankModelConfig).not.toHaveBeenCalledWith('base_model_123');
-
-      // 验证任务最终状态
-      expect(updateTaskStatus).toHaveBeenCalledWith(
-        mockTaskId,
-        RerankTrainTaskStatusEnum.completed
-      );
     });
   });
 });

@@ -204,7 +204,7 @@ const DatasetCard = React.memo(function DatasetCard({
           }
         }}
       >
-        <Flex w="100%">
+        <Flex w="100%" alignItems={'center'}>
           <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
           <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} ml={2}>
             {dataset.name}

@@ -1,13 +1,13 @@
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
 import type { RetrievalContextItem } from '@fastgpt/global/core/evaluation/dataset/type';
-import { extractDatasetIdsFromApp, extractDatasetSearchParamsFromApp } from '../../utils';
+import { DEFAULT_SEARCH_SIMILARITY, DEFAULT_SEARCH_LIMIT } from '../../constants';
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { RerankMethodEnum } from '@fastgpt/global/core/dataset/constants';
-import type { AppSchema } from '@fastgpt/global/core/app/type';
+import { RerankMethodEnum, DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MAX_SEARCH_RUN_TIMES } from '../../constants';
 import { addLog } from '../../../../../common/system/log';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { Types } from 'mongoose';
 
 /**
  * Perform dataset search and retrieve search results
@@ -15,28 +15,23 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
  * Note: This function is exported for unit testing only.
  *
  * For evaluation dataset generation, rerank is NOT used - only embedding search.
- * Reuses app's actual search parameters (similarity, search mode, extension query, etc.).
+ * Uses default search parameters (similarity, limit, searchMode=embedding).
  *
  * @param task - Training task
- * @param app - Application configuration
+ * @param datasetIds - List of dataset IDs to search
  * @param query - Query question
  * @returns Array of retrieval context items
  */
 export async function performDatasetSearch(
   task: RerankTrainTaskSchemaType,
-  app: AppSchema,
+  datasetIds: string[],
   query: string
 ): Promise<RetrievalContextItem[]> {
-  const datasetIds = extractDatasetIdsFromApp(app);
   const datasets = datasetIds.map((id) => ({ datasetId: id }));
-
-  const searchParams = extractDatasetSearchParamsFromApp(app);
 
   addLog.debug('performDatasetSearch - Starting dataset search', {
     taskId: task._id,
-    appId: task.appId,
     query,
-    searchParams,
     datasetCount: datasets.length
   });
 
@@ -55,8 +50,8 @@ export async function performDatasetSearch(
     mcpClientMemory: {},
 
     runningAppInfo: {
-      id: task.appId,
-      name: app.name,
+      id: new Types.ObjectId().toString(),
+      name: 'RerankTrainEvalSearch',
       teamId: task.teamId,
       tmbId: task.tmbId
     },
@@ -71,7 +66,7 @@ export async function performDatasetSearch(
     },
 
     histories: [],
-    chatConfig: app.chatConfig || {},
+    chatConfig: {},
 
     node: {
       nodeId: 'dataset_search',
@@ -87,15 +82,15 @@ export async function performDatasetSearch(
 
     params: {
       datasets: datasets as any,
-      similarity: searchParams.similarity,
-      limit: searchParams.limit,
+      similarity: DEFAULT_SEARCH_SIMILARITY,
+      limit: DEFAULT_SEARCH_LIMIT,
       userChatInput: query,
-      searchMode: searchParams.searchMode as any,
-      embeddingWeight: searchParams.embeddingWeight,
+      searchMode: DatasetSearchModeEnum.embedding,
+      embeddingWeight: undefined,
       usingReRank: false,
       rerankModel: undefined,
       rerankMethod: RerankMethodEnum.question,
-      collectionFilterMatch: searchParams.collectionFilterMatch || '',
+      collectionFilterMatch: '',
       datasetSearchUsingExtensionQuery: false, // disable for ensuring the retrieval contexts stable
       datasetSearchExtensionModel: '',
       datasetSearchExtensionBg: ''

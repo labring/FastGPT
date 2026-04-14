@@ -97,7 +97,8 @@ export async function generateSynthesis(): Promise<any> {
           data,
           text: data.q
         };
-      } catch (error) {
+      } catch (err) {
+        addLog.error(`[Synthesis Queue] Database query error`, err);
         return {
           error: true
         };
@@ -108,7 +109,6 @@ export async function generateSynthesis(): Promise<any> {
       break;
     }
     if (error) {
-      addLog.error(`[Synthesis Queue] Error`, error);
       await delay(500);
       continue;
     }

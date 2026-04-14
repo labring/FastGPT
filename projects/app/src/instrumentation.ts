@@ -99,7 +99,6 @@ export async function register() {
         initAppTemplateTypes()
       ]);
 
-
       // 动态导入评估模块并初始化（确保在系统配置加载后）
       const { initEvaluationWorkers } = await import('@fastgpt/service/core/evaluation');
       initEvaluationWorkers();
@@ -107,6 +106,10 @@ export async function register() {
       // 初始化 Rerank 训练模块 Workers
       const { initRerankTrainWorkers } = await import('@fastgpt/service/core/train/rerank');
       initRerankTrainWorkers();
+
+      // 初始化 Embedding 训练模块 Workers
+      const { initEmbeddingTrainWorkers } = await import('@fastgpt/service/core/train/embedding');
+      initEmbeddingTrainWorkers();
 
       startCron();
       startTrainingQueue(true);

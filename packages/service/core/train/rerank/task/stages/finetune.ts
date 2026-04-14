@@ -12,12 +12,12 @@ import {
   DEFAULT_SFT_BRIDGE_MAX_POLLS,
   DEFAULT_SFT_BRIDGE_POLL_INTERVAL
 } from '../../constants';
-import { createEnhancedError } from '../../utils';
+import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../errors';
+import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 
 /**
  * Stage 2: Model Finetuning
@@ -40,33 +40,33 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
   addLog.info('Run finetune stage', { taskId: String(task._id) });
 
   const checkpointData = task.checkpoint.data || {};
-  if (!checkpointData.preparing?.trainDatasetFilePath) {
-    const enhancedError = createEnhancedError(
+  if (!checkpointData.generate_trainset?.trainDatasetFilePath) {
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.finetuneDataPathNotFound,
-      RerankTrainSuggestionEnum.finetuneDataPathNotFound
+      RerankTrainErrEnum.rerankFinetuneDataPathNotFound,
+      RerankTrainSuggestionEnum.rerankFinetuneDataPathNotFound
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   if (!task.baseModelEndpoint.model) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.finetuneModelConfigInvalid,
-      RerankTrainSuggestionEnum.finetuneModelConfigInvalid
+      RerankTrainErrEnum.rerankFinetuneModelConfigInvalid,
+      RerankTrainSuggestionEnum.rerankFinetuneModelConfigInvalid
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
   let datasetFile: Buffer;
   try {
-    datasetFile = await fs.readFile(checkpointData.preparing.trainDatasetFilePath);
+    datasetFile = await fs.readFile(checkpointData.generate_trainset.trainDatasetFilePath);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.finetuneDataFileNotFound,
-      RerankTrainSuggestionEnum.finetuneDataFileNotFound,
+      RerankTrainErrEnum.rerankFinetuneDataFileNotFound,
+      RerankTrainSuggestionEnum.rerankFinetuneDataFileNotFound,
       errorMsg
     );
     throw new TrainTaskUnrecoverableError(enhancedError);
@@ -77,6 +77,7 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     const createResponse = await createSFTTask({
       datasetFile,
       taskType: 'rerank',
+      trainType: task.trainType || 'lora',
       parameters: {
         learning_rate: DEFAULT_SFT_BRIDGE_LEARNING_RATE,
         epochs: 3,
@@ -87,10 +88,10 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
     sftTaskId = createResponse.task_id;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.finetuneSftBridgeCreateFailed,
-      RerankTrainSuggestionEnum.finetuneSftBridgeCreateFailed,
+      RerankTrainErrEnum.rerankFinetuneSftBridgeCreateFailed,
+      RerankTrainSuggestionEnum.rerankFinetuneSftBridgeCreateFailed,
       errorMsg
     );
     throw new TrainTaskRetriableError(enhancedError);
@@ -130,10 +131,10 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
         taskId: String(task._id),
         sftTaskId
       });
-      const enhancedError = createEnhancedError(
+      const enhancedError = createRerankEnhancedError(
         RerankTaskCheckpointStageEnum.finetuning,
-        RerankTrainErrEnum.finetuneCancelled,
-        RerankTrainSuggestionEnum.finetuneCancelled
+        RerankTrainErrEnum.rerankFinetuneCancelled,
+        RerankTrainSuggestionEnum.rerankFinetuneCancelled
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
     }
@@ -156,19 +157,19 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       endpoint = statusResponse.endpoint;
 
       if (!endpoint) {
-        const enhancedError = createEnhancedError(
+        const enhancedError = createRerankEnhancedError(
           RerankTaskCheckpointStageEnum.finetuning,
-          RerankTrainErrEnum.finetuneDeploymentFailed,
-          RerankTrainSuggestionEnum.finetuneDeploymentFailed
+          RerankTrainErrEnum.rerankFinetuneDeploymentFailed,
+          RerankTrainSuggestionEnum.rerankFinetuneDeploymentFailed
         );
         throw new TrainTaskRetriableError(enhancedError);
       }
     } else if (statusResponse.status === SFTTaskStatus.failed) {
       const errorMsg = statusResponse.error;
-      const enhancedError = createEnhancedError(
+      const enhancedError = createRerankEnhancedError(
         RerankTaskCheckpointStageEnum.finetuning,
-        RerankTrainErrEnum.finetuneTrainingFailed,
-        RerankTrainSuggestionEnum.finetuneTrainingFailed,
+        RerankTrainErrEnum.rerankFinetuneTrainingFailed,
+        RerankTrainSuggestionEnum.rerankFinetuneTrainingFailed,
         errorMsg
       );
       throw new TrainTaskUnrecoverableError(enhancedError);
@@ -186,26 +187,26 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       pollInterval,
       timeoutDuration
     });
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.finetuneTimeout,
-      RerankTrainSuggestionEnum.finetuneTimeout
+      RerankTrainErrEnum.rerankFinetuneTimeout,
+      RerankTrainSuggestionEnum.rerankFinetuneTimeout
     );
     throw new TrainTaskRetriableError(enhancedError);
   }
 
   if (!endpoint) {
-    const enhancedError = createEnhancedError(
+    const enhancedError = createRerankEnhancedError(
       RerankTaskCheckpointStageEnum.finetuning,
-      RerankTrainErrEnum.finetuneDeploymentNoEndpoint,
-      RerankTrainSuggestionEnum.finetuneDeploymentNoEndpoint
+      RerankTrainErrEnum.rerankFinetuneDeploymentNoEndpoint,
+      RerankTrainSuggestionEnum.rerankFinetuneDeploymentNoEndpoint
     );
     throw new TrainTaskRetriableError(enhancedError);
   }
 
   addLog.info('Finetune stage completed (tuned model auto-deployed to serving)', {
     taskId: String(task._id),
-    baseModelConfigId: task.baseModelConfigId,
+    baseModelId: task.baseModelId,
     baseModelEndpoint: task.baseModelEndpoint,
     tunedModelEndpoint: endpoint
   });

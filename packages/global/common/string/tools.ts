@@ -22,7 +22,6 @@ export const simpleText = (text = '') => {
   text = text.replace(/\n{3,}/g, '\n\n');
   text = text.replace(/[\s&&[^\n]]{2,}/g, ' ');
   text = text.replace(/[\x00-\x08]/g, ' ');
-
   return text;
 };
 
@@ -107,7 +106,14 @@ export function replaceVariable(
 }
 
 /* replace sensitive text */
-export const replaceSensitiveText = (text: string) => {
+export const replaceSensitiveText = (text: any): string => {
+  if (typeof text !== 'string') {
+    try {
+      text = JSON.stringify(text);
+    } catch {
+      text = String(text);
+    }
+  }
   // 1. http link
   text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
   // 2. nx-xxx 全部替换成xxx

@@ -174,6 +174,7 @@ export type ChatSiteItemType = ChatItemMergeType & {
   time?: Date;
   durationSeconds?: number;
   rewriteStandardizedQuery?: string;
+  agenticSearchResult?: DispatchNodeResponseType['agenticSearchResult'];
   errorMsg?: string;
   deleteTime?: Date | null;
   collapseTop?: {
@@ -186,6 +187,7 @@ export type ChatSiteItemType = ChatItemMergeType & {
     dataIds: string[];
     isExpanded: boolean;
   };
+  agenticSearchResult?: any;
 } & ChatBoxInputType &
   ResponseTagItemType;
 

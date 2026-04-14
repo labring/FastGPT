@@ -1,30 +1,33 @@
 import { MongoRerankTrainsetData } from './schema';
-import { TrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
+import { RerankTrainDataSourceEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
-import type { TrainsetStatistics } from '@fastgpt/global/core/train/rerank/type';
+import type {
+  RerankTrainsetDataSchemaType,
+  RerankTrainsetStatistics
+} from '@fastgpt/global/core/train/rerank/type';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /** Create manual training data */
-export async function createManualTrainData(params: {
+export async function createManualRerankTrainData(params: {
   trainsetId: string;
-  appId: string;
   teamId: string;
   tmbId: string;
   query: string;
   positiveDocs: string[];
   negativeDocs: string[];
   reason?: string;
-}): Promise<string> {
-  const { trainsetId, appId, teamId, tmbId, query, positiveDocs, negativeDocs, reason } = params;
+}): Promise<RerankTrainsetDataSchemaType> {
+  const { trainsetId, teamId, tmbId, query, positiveDocs, negativeDocs, reason } = params;
 
-  const [{ _id }] = await MongoRerankTrainsetData.create([
+  const [doc] = await MongoRerankTrainsetData.create([
     {
       trainsetId,
-      appId,
       teamId,
       query,
       positiveDocs,
       negativeDocs,
-      source: TrainDataSourceEnum.manual,
+      source: RerankTrainDataSourceEnum.manual,
       metadata: {
         sourceInfo: {
           manualInfo: {
@@ -37,16 +40,16 @@ export async function createManualTrainData(params: {
     }
   ]);
 
-  addLog.info('Created manual train data', {
+  addLog.info('Created manual rerank train data', {
     trainsetId,
-    dataId: String(_id)
+    dataId: String(doc._id)
   });
 
-  return String(_id);
+  return doc.toObject() as RerankTrainsetDataSchemaType;
 }
 
 /** Update training data */
-export async function updateTrainData(params: {
+export async function updateRerankTrainData(params: {
   dataId: string;
   query?: string;
   positiveDocs?: string[];
@@ -65,18 +68,18 @@ export async function updateTrainData(params: {
 
   await MongoRerankTrainsetData.updateOne({ _id: dataId }, updateFields);
 
-  addLog.info('Updated train data', { dataId });
+  addLog.info('Updated rerank train data', { dataId });
 }
 
 /** Delete training data */
-export async function deleteTrainData(dataIds: string[]): Promise<number> {
+export async function deleteRerankTrainData(dataIds: string[]): Promise<number> {
   if (dataIds.length === 0) {
-    throw new Error('dataIds is empty');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   const firstData = await MongoRerankTrainsetData.findById(dataIds[0]).lean();
   if (!firstData) {
-    throw new Error('Train data not found');
+    return Promise.reject(RerankTrainErrEnum.rerankTrainDataNotExist);
   }
 
   const result = await MongoRerankTrainsetData.deleteMany({
@@ -84,7 +87,7 @@ export async function deleteTrainData(dataIds: string[]): Promise<number> {
     trainsetId: firstData.trainsetId
   });
 
-  addLog.info('Deleted train data', {
+  addLog.info('Deleted rerank train data', {
     trainsetId: String(firstData.trainsetId),
     deletedCount: result.deletedCount
   });
@@ -93,7 +96,9 @@ export async function deleteTrainData(dataIds: string[]): Promise<number> {
 }
 
 /** Calculate trainset statistics */
-export async function calculateTrainsetStats(trainsetId: string): Promise<TrainsetStatistics> {
+export async function calculateRerankTrainsetStats(
+  trainsetId: string
+): Promise<RerankTrainsetStatistics> {
   const trainData = await MongoRerankTrainsetData.find({ trainsetId }).lean();
 
   const dataCount = trainData.length;
@@ -106,12 +111,12 @@ export async function calculateTrainsetStats(trainsetId: string): Promise<Trains
   });
 
   // Use Map to store final data structure directly
-  const sourceSummary = new Map<string, TrainsetStatistics['sourceSummary'][number]>();
+  const sourceSummary = new Map<string, RerankTrainsetStatistics['sourceSummary'][number]>();
 
   trainData.forEach((data) => {
     const source = data.source;
 
-    if (source === TrainDataSourceEnum.dataset) {
+    if (source === RerankTrainDataSourceEnum.dataset) {
       const datasetId = data.metadata?.sourceInfo?.datasetInfo?.datasetId;
 
       if (datasetId) {
@@ -127,12 +132,12 @@ export async function calculateTrainsetStats(trainsetId: string): Promise<Trains
         }
         // Type assertion needed because TypeScript can't narrow discriminated union in Map.get()
         const item = sourceSummary.get(key) as Extract<
-          TrainsetStatistics['sourceSummary'][number],
+          RerankTrainsetStatistics['sourceSummary'][number],
           { type: 'dataset' }
         >;
         item.count++;
       }
-    } else if (source === TrainDataSourceEnum.chat_log) {
+    } else if (source === RerankTrainDataSourceEnum.chat_log) {
       const chatId = data.metadata?.sourceInfo?.chatLogInfo?.chatId;
 
       if (chatId) {
@@ -147,12 +152,12 @@ export async function calculateTrainsetStats(trainsetId: string): Promise<Trains
           });
         }
         const item = sourceSummary.get(key) as Extract<
-          TrainsetStatistics['sourceSummary'][number],
+          RerankTrainsetStatistics['sourceSummary'][number],
           { type: 'chat_log' }
         >;
         item.count++;
       }
-    } else if (source === TrainDataSourceEnum.manual) {
+    } else if (source === RerankTrainDataSourceEnum.manual) {
       const creator = data.metadata?.sourceInfo?.manualInfo?.creator;
 
       if (creator) {
@@ -167,7 +172,7 @@ export async function calculateTrainsetStats(trainsetId: string): Promise<Trains
           });
         }
         const item = sourceSummary.get(key) as Extract<
-          TrainsetStatistics['sourceSummary'][number],
+          RerankTrainsetStatistics['sourceSummary'][number],
           { type: 'manual' }
         >;
         item.count++;

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { updateTrainData } from '@fastgpt/service/core/train/rerank/data/controller';
+import { updateRerankTrainData } from '@fastgpt/service/core/train/rerank/data/controller';
 import { MongoRerankTrainsetData } from '@fastgpt/service/core/train/rerank/data/schema';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -18,19 +18,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<any> 
   // Get data
   const data = await MongoRerankTrainsetData.findById(dataId).lean();
   if (!data) {
-    return Promise.reject(RerankTrainErrEnum.trainDataNotExist);
+    return Promise.reject(RerankTrainErrEnum.rerankTrainDataNotExist);
   }
 
   // Authenticate permission via trainset
   await authRerankTrainset({
     req,
     authToken: true,
+    authApiKey: true,
     trainsetId: String(data.trainsetId),
     per: WritePermissionVal
   });
 
   // Update
-  await updateTrainData({
+  await updateRerankTrainData({
     dataId,
     query,
     positiveDocs,
