@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { ChatGernateStatusEnum, ChatSourceEnum } from '../../../../core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 
 // Get chat histories schema
@@ -22,7 +22,7 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(
     customTitle: z.string().optional(),
     title: z.string(),
     top: z.boolean().optional(),
-    chatGenerateStatus: z.enum(ChatGernateStatusEnum).optional(),
+    chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
     hasBeenRead: z.boolean().optional()
   })
 );
@@ -39,7 +39,7 @@ export const GetHistoryStatusResponseSchema = z.object({
     z.object({
       chatId: z.string(),
       updateTime: z.date(),
-      chatGenerateStatus: z.enum(ChatGernateStatusEnum).optional(),
+      chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
       hasBeenRead: z.boolean().optional()
     })
   )

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import { ChatGernateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -203,7 +203,7 @@ describe('stream resume api', () => {
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
-        chatGenerateStatus: ChatGernateStatusEnum.generating
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
       })
     );
 
@@ -274,7 +274,7 @@ describe('stream resume api', () => {
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
-        chatGenerateStatus: ChatGernateStatusEnum.done
+        chatGenerateStatus: ChatGenerateStatusEnum.done
       })
     );
     vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as any);
@@ -313,7 +313,7 @@ describe('stream resume api', () => {
       code: 200,
       data: {
         hasBeenRead: true,
-        chatGenerateStatus: ChatGernateStatusEnum.done,
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
         records: {
           list: [
             {
@@ -357,7 +357,7 @@ describe('stream resume api', () => {
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
-        chatGenerateStatus: ChatGernateStatusEnum.done
+        chatGenerateStatus: ChatGenerateStatusEnum.done
       })
     );
     vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as any);
@@ -408,7 +408,7 @@ describe('stream resume api', () => {
     const payload = JSON.parse(chunks[0].replace(/^event: [^\n]+\ndata: /, '').trim()) as any;
     expect(payload).toEqual({
       hasBeenRead: true,
-      chatGenerateStatus: ChatGernateStatusEnum.done,
+      chatGenerateStatus: ChatGenerateStatusEnum.done,
       records: {
         list: [
           {

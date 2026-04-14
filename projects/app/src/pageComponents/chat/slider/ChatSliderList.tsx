@@ -11,7 +11,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
@@ -35,7 +35,7 @@ const ChatSliderList = () => {
       customTitle?: string;
       top?: boolean;
       updateTime: Date;
-      chatGenerateStatus?: ChatGernateStatusEnum;
+      chatGenerateStatus?: ChatGenerateStatusEnum;
       hasBeenRead?: boolean;
     }[] = histories.map((item) => {
       const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
@@ -59,7 +59,7 @@ const ChatSliderList = () => {
       customTitle?: string;
       top?: boolean;
       updateTime: Date;
-      chatGenerateStatus?: ChatGernateStatusEnum;
+      chatGenerateStatus?: ChatGenerateStatusEnum;
       hasBeenRead?: boolean;
     } = {
       id: activeChatId,
@@ -139,7 +139,7 @@ const ChatSliderList = () => {
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
                 {item.hasBeenRead === false &&
-                item.chatGenerateStatus !== ChatGernateStatusEnum.generating ? (
+                item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? (
                   <Box
                     className="unreadDot"
                     w={'8px'}
@@ -155,12 +155,12 @@ const ChatSliderList = () => {
                     fontWeight={'400'}
                     fontSize={'mini'}
                     color={
-                      item.chatGenerateStatus === ChatGernateStatusEnum.generating
+                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
                         ? 'primary.600'
                         : 'myGray.500'
                     }
                   >
-                    {item.chatGenerateStatus === ChatGernateStatusEnum.generating
+                    {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
                       ? t('chat:history_generating')
                       : t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
                   </Box>

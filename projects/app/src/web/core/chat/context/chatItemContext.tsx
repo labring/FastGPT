@@ -10,7 +10,7 @@ import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/c
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import type { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -27,7 +27,7 @@ type ChatBoxDataType = {
   appId: string;
   title?: string;
   userAvatar?: string;
-  chatGenerateStatus?: ChatGernateStatusEnum;
+  chatGenerateStatus?: ChatGenerateStatusEnum;
   hasBeenRead?: boolean;
 
   app: {

@@ -1,7 +1,7 @@
 import { SearchDataResponseItemSchema } from '../dataset/type';
 import {
-  ChatGernateStatusEnum,
   ChatFileTypeEnum,
+  ChatGenerateStatusEnum,
   ChatRoleEnum,
   type ChatSourceEnum
 } from './constants';
@@ -125,7 +125,8 @@ export type ChatSchemaType = {
   // Error count (redundant field for performance)
   errorCount?: number;
 
-  chatGenerateStatus: ChatGernateStatusEnum;
+  /** 旧数据可能无此字段；业务上按 done 处理 */
+  chatGenerateStatus?: ChatGenerateStatusEnum;
   hasBeenRead: boolean;
 
   deleteTime?: Date | null;
@@ -298,7 +299,7 @@ export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
 export const ChatHistoryItemSchema = HistoryItemSchema.extend({
   appId: z.string(),
   top: z.boolean().optional(),
-  chatGenerateStatus: z.nativeEnum(ChatGernateStatusEnum).optional(),
+  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
   hasBeenRead: z.boolean().optional()
 });
 export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;

@@ -1,5 +1,5 @@
 import { subMinutes } from 'date-fns';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getLogger, LogCategories } from '../../common/logger';
 import { MongoChat } from './chatSchema';
 
@@ -18,12 +18,12 @@ export const cleanStaleGeneratingChats = async (): Promise<{ modifiedCount: numb
 
   const result = await MongoChat.updateMany(
     {
-      chatGenerateStatus: ChatGernateStatusEnum.generating,
+      chatGenerateStatus: ChatGenerateStatusEnum.generating,
       updateTime: { $lt: threshold }
     },
     {
       $set: {
-        chatGenerateStatus: ChatGernateStatusEnum.done,
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
         updateTime: now,
         hasBeenRead: false
       }

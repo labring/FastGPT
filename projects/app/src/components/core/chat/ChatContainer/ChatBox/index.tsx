@@ -67,7 +67,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { cloneDeep } from 'lodash';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -176,6 +176,8 @@ const ChatBox = ({
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const activeChatIdRef = useRef<string | undefined>(chatId);
+  activeChatIdRef.current = chatId;
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
@@ -190,16 +192,20 @@ const ChatBox = ({
   const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
 
   const syncSidebarChatGenerateStatus = useMemoizedFn(
-    (status: ChatGernateStatusEnum, options?: { hasBeenRead?: boolean }) => {
-      if (!chatId) return;
+    (
+      status: ChatGenerateStatusEnum,
+      options?: { hasBeenRead?: boolean; targetChatId?: string }
+    ) => {
+      const targetChatId = options?.targetChatId ?? chatId;
+      if (!targetChatId) return;
       setHistories((prev) => {
-        const idx = prev.findIndex((h) => h.chatId === chatId);
+        const idx = prev.findIndex((h) => h.chatId === targetChatId);
         if (idx === -1) {
           queueMicrotask(loadHistories);
           return prev;
         }
         return prev.map((h) =>
-          h.chatId === chatId
+          h.chatId === targetChatId
             ? {
                 ...h,
                 chatGenerateStatus: status,
@@ -790,12 +796,12 @@ const ChatBox = ({
             state.chatId === chatId
               ? {
                   ...state,
-                  chatGenerateStatus: ChatGernateStatusEnum.generating,
+                  chatGenerateStatus: ChatGenerateStatusEnum.generating,
                   hasBeenRead: false
                 }
               : state
           );
-          syncSidebarChatGenerateStatus(ChatGernateStatusEnum.generating, { hasBeenRead: false });
+          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, { hasBeenRead: false });
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
@@ -894,7 +900,7 @@ const ChatBox = ({
               state.chatId === chatId
                 ? {
                     ...state,
-                    chatGenerateStatus: ChatGernateStatusEnum.done,
+                    chatGenerateStatus: ChatGenerateStatusEnum.done,
                     hasBeenRead: true
                   }
                 : state
@@ -906,7 +912,7 @@ const ChatBox = ({
             })
               .catch(() => {})
               .finally(() => {
-                syncSidebarChatGenerateStatus(ChatGernateStatusEnum.done, { hasBeenRead: true });
+                syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: true });
               });
           } catch (err: any) {
             console.log('Chat error', err);
@@ -939,7 +945,7 @@ const ChatBox = ({
               state.chatId === chatId
                 ? {
                     ...state,
-                    chatGenerateStatus: ChatGernateStatusEnum.error,
+                    chatGenerateStatus: ChatGenerateStatusEnum.error,
                     hasBeenRead: true
                   }
                 : state
@@ -951,7 +957,7 @@ const ChatBox = ({
             })
               .catch(() => {})
               .finally(() => {
-                syncSidebarChatGenerateStatus(ChatGernateStatusEnum.error, { hasBeenRead: true });
+                syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, { hasBeenRead: true });
               });
           }
 
@@ -1197,7 +1203,7 @@ const ChatBox = ({
       !appId ||
       !chatId ||
       isChatting ||
-      chatBoxData.chatGenerateStatus !== ChatGernateStatusEnum.generating ||
+      chatBoxData.chatGenerateStatus !== ChatGenerateStatusEnum.generating ||
       resumedChatIdRef.current === chatId
     ) {
       return;
@@ -1205,6 +1211,7 @@ const ChatBox = ({
 
     resumedChatIdRef.current = chatId;
 
+    const resumeForChatId = chatId;
     const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
     const controller = new AbortController();
     resumeController.current = controller;
@@ -1217,12 +1224,15 @@ const ChatBox = ({
           chatId,
           controller,
           onmessage: (message) => {
+            if (resumeForChatId !== activeChatIdRef.current) return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
               appendResumeAiPlaceholder(responseChatId);
             }
             generatingMessage(message);
           }
         });
+
+        if (resumeForChatId !== activeChatIdRef.current) return;
 
         if (completedChat) {
           setChatRecords(
@@ -1266,6 +1276,7 @@ const ChatBox = ({
         });
       } catch (error) {
         if (controller.signal.aborted) return;
+        if (resumeForChatId !== activeChatIdRef.current) return;
 
         setChatRecords((state) => {
           const currentLastItem = state[state.length - 1];
@@ -1297,23 +1308,26 @@ const ChatBox = ({
         });
       } finally {
         resumeController.current = undefined;
-        setChatBoxData((state) => ({
-          ...(state.chatId === chatId
+        setChatBoxData((state) =>
+          state.chatId === resumeForChatId
             ? {
                 ...state,
-                chatGenerateStatus: ChatGernateStatusEnum.done,
+                chatGenerateStatus: ChatGenerateStatusEnum.done,
                 hasBeenRead: true
               }
-            : state)
-        }));
+            : state
+        );
         void postMarkChatRead({
           appId,
-          chatId,
+          chatId: resumeForChatId,
           ...outLinkAuthData
         })
           .catch(() => {})
           .finally(() => {
-            syncSidebarChatGenerateStatus(ChatGernateStatusEnum.done, { hasBeenRead: true });
+            syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, {
+              hasBeenRead: true,
+              targetChatId: resumeForChatId
+            });
           });
       }
     })();

@@ -1,6 +1,6 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
-import { ChatGernateStatusEnum } from '../../../core/chat/constants';
+import { ChatGenerateStatusEnum } from '../../../core/chat/constants';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
@@ -80,8 +80,8 @@ export const StreamResumeCompletedRecordsSchema = z.object({
 });
 
 export const StreamNoNeedToBeResumeSchema = z.object({
-  chatGenerateStatus: z.nativeEnum(ChatGernateStatusEnum).meta({
-    example: ChatGernateStatusEnum.done,
+  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).meta({
+    example: ChatGenerateStatusEnum.done,
     description: '聊天生成状态'
   }),
   hasBeenRead: z.boolean().meta({

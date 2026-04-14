@@ -1,5 +1,5 @@
 import { MongoChat } from './chatSchema';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type EnsureGenerateChatParams = {
   appId: string;
@@ -23,7 +23,7 @@ export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
         ...params,
         updateTime: now,
         hasBeenRead: false,
-        chatGenerateStatus: ChatGernateStatusEnum.generating
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
       },
       $setOnInsert: {
         createTime: now
@@ -36,7 +36,7 @@ export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
 };
 
 type UpdateChatGenerateStatusParams = Pick<EnsureGenerateChatParams, 'appId' | 'chatId'> & {
-  status: ChatGernateStatusEnum;
+  status: ChatGenerateStatusEnum;
   /** 若传入则覆盖；否则在 done/error 时默认未读（前台看完可再调 markRead） */
   hasBeenRead?: boolean;
 };
@@ -49,7 +49,7 @@ export const updateChatGenerateStatus = async (params: UpdateChatGenerateStatusP
   };
   if (hasBeenRead !== undefined) {
     $set.hasBeenRead = hasBeenRead;
-  } else if (status === ChatGernateStatusEnum.done || status === ChatGernateStatusEnum.error) {
+  } else if (status === ChatGenerateStatusEnum.done || status === ChatGenerateStatusEnum.error) {
     $set.hasBeenRead = false;
   }
   await MongoChat.updateOne({ appId, chatId }, { $set });

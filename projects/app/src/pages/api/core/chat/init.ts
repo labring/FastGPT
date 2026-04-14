@@ -14,7 +14,7 @@ import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponseType> {
   const { appId, chatId } = InitChatQuerySchema.parse(req.query);
@@ -37,10 +37,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
 
-    if (
-      chat?.hasBeenRead === false &&
-      chat?.chatGenerateStatus !== ChatGernateStatusEnum.generating
-    ) {
+    const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+    if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
       await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
       chat.hasBeenRead = true;
     }

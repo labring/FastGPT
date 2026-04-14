@@ -15,7 +15,7 @@ import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -108,7 +108,7 @@ const ChatContextProvider = ({
             ? {
                 ...item,
                 hasBeenRead:
-                  item.chatGenerateStatus === ChatGernateStatusEnum.generating ? false : true
+                  item.chatGenerateStatus === ChatGenerateStatusEnum.generating ? false : true
               }
             : item
         )
@@ -223,7 +223,7 @@ const ChatContextProvider = ({
 
   /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
   const hasGeneratingInSidebar = useMemo(
-    () => histories.some((h) => h.chatGenerateStatus === ChatGernateStatusEnum.generating),
+    () => histories.some((h) => h.chatGenerateStatus === ChatGenerateStatusEnum.generating),
     [histories]
   );
 
@@ -247,7 +247,7 @@ const ChatContextProvider = ({
               if (!s) return item;
               const nextGen = s.chatGenerateStatus ?? item.chatGenerateStatus;
               const nextRead =
-                nextGen === ChatGernateStatusEnum.generating
+                nextGen === ChatGenerateStatusEnum.generating
                   ? false
                   : s.hasBeenRead ?? item.hasBeenRead;
               return {

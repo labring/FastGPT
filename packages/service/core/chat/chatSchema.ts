@@ -2,7 +2,7 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
-import { ChatGernateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -108,8 +108,12 @@ const ChatSchema = new Schema({
 
   chatGenerateStatus: {
     type: Number,
-    enum: Object.values(ChatGernateStatusEnum),
-    default: ChatGernateStatusEnum.generating
+    enum: [
+      ChatGenerateStatusEnum.generating,
+      ChatGenerateStatusEnum.done,
+      ChatGenerateStatusEnum.error
+    ],
+    default: ChatGenerateStatusEnum.generating
   },
   hasBeenRead: {
     type: Boolean,

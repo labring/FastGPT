@@ -56,7 +56,7 @@ import {
   ensureGenerateChat,
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/resumeStatus';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -294,7 +294,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await updateChatGenerateStatus({
       appId: String(app._id),
       chatId,
-      status: ChatGernateStatusEnum.done
+      status: ChatGenerateStatusEnum.done
     });
 
     await streamResumeMirror.flush();
@@ -304,7 +304,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await updateChatGenerateStatus({
         appId,
         chatId,
-        status: ChatGernateStatusEnum.error
+        status: ChatGenerateStatusEnum.error
       });
     }
     res.status(500);

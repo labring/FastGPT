@@ -6,7 +6,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
   DispatchNodeResponseKeyEnum,
   StreamResumeCompletedEvent,
@@ -78,7 +78,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!chat) {
       return Promise.reject(new Error('Chat not found'));
     }
-    return chat;
+    return {
+      hasBeenRead: chat.hasBeenRead ?? false,
+      chatGenerateStatus: chat.chatGenerateStatus ?? ChatGenerateStatusEnum.done
+    };
   };
 
   const findCompletedChat = async (): Promise<StreamNoNeedToBeResumeType> => {
@@ -116,7 +119,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { chatGenerateStatus } = await findCurrentChat();
 
   // Chat has been completed, no need to catch up history items and resume stream
-  if (chatGenerateStatus !== ChatGernateStatusEnum.generating) {
+  if (chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
     await makeSureTheCompletedChatHasBeenRead();
     const completedChat = await findCompletedChat();
 

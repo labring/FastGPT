@@ -243,15 +243,6 @@ export const ensurePendingChatRoundItems = async (params: EnsurePendingChatRound
 
   if (existingAi) return;
 
-  const existingHuman = await MongoChatItem.findOne({
-    appId,
-    chatId,
-    dataId: humanDataId,
-    obj: ChatRoleEnum.Human
-  })
-    .select('_id')
-    .lean();
-
   const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
     ...params.userContent,
     dataId: humanDataId,
@@ -271,40 +262,33 @@ export const ensurePendingChatRoundItems = async (params: EnsurePendingChatRound
   };
 
   await mongoSessionRun(async (session) => {
-    if (!existingHuman) {
-      await MongoChatItem.create(
-        [
-          {
-            chatId,
-            teamId,
-            tmbId,
-            appId,
-            ...userPayload
-          },
-          {
-            chatId,
-            teamId,
-            tmbId,
-            appId,
-            ...aiPlaceholder
-          }
-        ],
-        { session, ordered: true, ...writePrimary }
-      );
-    } else {
-      await MongoChatItem.create(
-        [
-          {
-            chatId,
-            teamId,
-            tmbId,
-            appId,
-            ...aiPlaceholder
-          }
-        ],
-        { session, ordered: true, ...writePrimary }
-      );
-    }
+    const upsertOpts = { session, upsert: true, ...writePrimary };
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
+      {
+        $setOnInsert: {
+          teamId,
+          tmbId,
+          chatId,
+          appId,
+          ...userPayload
+        }
+      },
+      upsertOpts
+    );
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
+      {
+        $setOnInsert: {
+          teamId,
+          tmbId,
+          chatId,
+          appId,
+          ...aiPlaceholder
+        }
+      },
+      upsertOpts
+    );
   });
 };
 

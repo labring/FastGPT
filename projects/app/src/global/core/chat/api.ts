@@ -3,7 +3,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 export type GetChatSpeechProps = OutLinkChatAuthProps & {
   appId: string;
@@ -39,7 +39,7 @@ export type InitChatResponse = {
   userAvatar?: string;
   title?: string;
   variables?: Record<string, any>;
-  chatGenerateStatus?: ChatGernateStatusEnum;
+  chatGenerateStatus?: ChatGenerateStatusEnum;
   hasBeenRead?: boolean;
   app: {
     chatConfig?: AppChatConfigType;

@@ -70,7 +70,7 @@ import {
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/resumeStatus';
 import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
-import { ChatGernateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -400,7 +400,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await updateChatGenerateStatus({
       appId: runningAppId,
       chatId: runningChatId,
-      status: ChatGernateStatusEnum.done
+      status: ChatGenerateStatusEnum.done
     });
 
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
@@ -522,7 +522,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await updateChatGenerateStatus({
         appId: runningAppId,
         chatId: runningChatId,
-        status: ChatGernateStatusEnum.error
+        status: ChatGenerateStatusEnum.error
       });
     }
     if (stream) {

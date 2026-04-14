@@ -96,7 +96,7 @@ export enum GetChatTypeEnum {
   home = 'home'
 }
 
-export enum ChatGernateStatusEnum {
+export enum ChatGenerateStatusEnum {
   generating = 0,
   done = 1,
   error = 2
