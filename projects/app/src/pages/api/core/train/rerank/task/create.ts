@@ -11,7 +11,7 @@ import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/sc
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
 import { rerankTrainTaskQueue } from '@fastgpt/service/core/train/rerank/task/mq';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import type {
   CreateRerankTrainTaskRequest,
   CreateRerankTrainTaskResponse
@@ -27,12 +27,10 @@ async function handler(
     req.body as CreateRerankTrainTaskRequest;
 
   if (!baseModelId) {
-    return Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(RerankTrainErrEnum.rerankValidationBaseModelNotConfigured);
   }
-
-  // Validate parameters: exact mode (trainsetId && evalDatasetId) or auto mode (datasetIds)
-  if (!(trainsetId && evalDatasetId) && !datasetIds?.length) {
-    return Promise.reject(CommonErrEnum.missingParams);
+  if (!datasetIds?.length) {
+    return Promise.reject(RerankTrainErrEnum.rerankValidationNoDatasetConfigured);
   }
 
   // 1. Authenticate user permission (team-level)
@@ -68,10 +66,8 @@ async function handler(
     });
   }
 
-  if (datasetIds?.length) {
-    // Auto mode: verify dataset synthesis indexes are ready
-    await validateDatasetSynthesisIndexes(datasetIds);
-  }
+  // Verify dataset synthesis indexes are ready
+  await validateDatasetSynthesisIndexes(datasetIds);
 
   // 4. Create task (controller checks for existing running tasks internally)
   const task = await createRerankTrainTask({

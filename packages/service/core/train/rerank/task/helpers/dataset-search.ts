@@ -27,7 +27,7 @@ export async function performDatasetSearch(
   datasetIds: string[],
   query: string
 ): Promise<RetrievalContextItem[]> {
-  const datasets = datasetIds.map((id) => ({ datasetId: id }));
+  const datasets = datasetIds.map((id) => ({ datasetId: id, avatar: '', name: '' }));
 
   addLog.debug('performDatasetSearch - Starting dataset search', {
     taskId: task._id,
@@ -81,7 +81,7 @@ export async function performDatasetSearch(
     runtimeEdges: [],
 
     params: {
-      datasets: datasets as any,
+      datasets,
       similarity: DEFAULT_SEARCH_SIMILARITY,
       limit: DEFAULT_SEARCH_LIMIT,
       userChatInput: query,

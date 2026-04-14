@@ -110,7 +110,10 @@ describe('Dataset Search Helper', () => {
             flowNodeType: FlowNodeTypeEnum.datasetSearchNode
           }),
           params: expect.objectContaining({
-            datasets: [{ datasetId: 'dataset1' }, { datasetId: 'dataset2' }],
+            datasets: [
+              { datasetId: 'dataset1', avatar: '', name: '' },
+              { datasetId: 'dataset2', avatar: '', name: '' }
+            ],
             userChatInput: query,
             usingReRank: false, // Rerank disabled during evaluation
             rerankModel: undefined
@@ -209,7 +212,11 @@ describe('Dataset Search Helper', () => {
       expect(dispatchDatasetSearch).toHaveBeenCalledWith(
         expect.objectContaining({
           params: expect.objectContaining({
-            datasets: [{ datasetId: 'ds1' }, { datasetId: 'ds2' }, { datasetId: 'ds3' }]
+            datasets: [
+              { datasetId: 'ds1', avatar: '', name: '' },
+              { datasetId: 'ds2', avatar: '', name: '' },
+              { datasetId: 'ds3', avatar: '', name: '' }
+            ]
           })
         })
       );

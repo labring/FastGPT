@@ -1,12 +1,15 @@
 {
- "permissions": {
-   "allow": [
-     "Bash",
-     "Read",
-     "Edit",
-     "WebFetch",
-     "MCP",
-     "Agent(*)"
-   ]
- }
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Edit",
+      "WebFetch",
+      "MCP",
+      "Agent(*)"
+    ],
+    "additionalDirectories": [
+      "/data/home/cz/diting"
+    ]
+  }
 }

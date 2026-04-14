@@ -249,7 +249,7 @@ export async function runGenerateTrainsetStage(task: RerankTrainTaskSchemaType):
     // Trigger data generation queue
     const job = await rerankTrainDataGenerateQueue.add(`generate-trainset-${trainsetId}`, {
       trainsetId,
-      datasetIds: task.datasetIds!
+      datasetIds: task.datasetIds
     });
 
     // Write jobId back to trainset for retry support

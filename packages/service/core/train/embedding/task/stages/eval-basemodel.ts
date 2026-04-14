@@ -43,7 +43,10 @@ export async function runEvalBaseModelStage(task: EmbeddingTrainTaskSchemaType):
     String(task._id),
     evalDatasetId,
     task.baseModelId,
-    EmbeddingTaskCheckpointStageEnum.eval_basemodel
+    EmbeddingTaskCheckpointStageEnum.eval_basemodel,
+    task.teamId,
+    task.tmbId,
+    task.datasetIds
   );
 
   return { baseModelEvalResult };

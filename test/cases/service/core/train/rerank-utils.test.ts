@@ -103,6 +103,27 @@ describe('Rerank Utils', () => {
 
       expect(results).toEqual(['result1', 42, { key: 'value' }]);
     });
+
+    test('并发峰值不超过 limit（追踪最大同时执行数）', async () => {
+      const LIMIT = 3;
+      const limit = pLimit(LIMIT);
+      let current = 0;
+      let peak = 0;
+
+      const tasks = Array.from({ length: 10 }, () =>
+        limit(async () => {
+          current++;
+          peak = Math.max(peak, current);
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          current--;
+        })
+      );
+
+      await Promise.all(tasks);
+
+      expect(peak).toBeLessThanOrEqual(LIMIT);
+      expect(peak).toBeGreaterThan(1); // 确认并行仍然发生，不是串行
+    });
   });
 
   describe('buildModelEndpoint', () => {

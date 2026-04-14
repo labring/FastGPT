@@ -250,7 +250,7 @@ export async function runGenerateTrainsetStage(task: EmbeddingTrainTaskSchemaTyp
     // Trigger data generation queue
     const job = await embeddingTrainDataGenerateQueue.add(`generate-trainset-${trainsetId}`, {
       trainsetId,
-      datasetIds: task.datasetIds!
+      datasetIds: task.datasetIds
     });
 
     // Write jobId back to trainset for retry support

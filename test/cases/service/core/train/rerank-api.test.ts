@@ -60,11 +60,10 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
-  synthesizeRerankTrainDatas: vi.fn().mockResolvedValue({
-    success: true,
-    data: []
-  })
+vi.mock('@fastgpt/service/core/train/rerank/external', () => ({}));
+
+vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
+  buildFineTuneData: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/utils', async () => {
@@ -137,12 +136,11 @@ describe('Rerank Train Data API', () => {
         }
       ]);
 
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: 'Test query',
             positive: ['Test positive'],

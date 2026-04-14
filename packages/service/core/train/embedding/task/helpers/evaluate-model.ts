@@ -6,29 +6,50 @@ import {
   EmbeddingTrainErrEnum,
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { evaluateEmbeddingModel } from '../../external';
 import { getEmbeddingModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
-import { buildModelEndpoint } from '../../utils';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
+import { TrainTaskUnrecoverableError } from '../../../common/errors';
+import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
+import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { RerankMethodEnum, DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DEFAULT_SEARCH_SIMILARITY,
+  DEFAULT_SEARCH_LIMIT,
+  MAX_SEARCH_RUN_TIMES,
+  DEFAULT_EVAL_CONCURRENCY
+} from '../../constants';
+import { pLimit } from '../../../common/utils';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { Types } from 'mongoose';
+
+const K_VALUES = [5, 10, 15];
 
 /**
  * Evaluate an embedding model on the given evaluation dataset
  *
- * Shared implementation used by both eval_basemodel and eval_tunedmodel stages.
- * Key difference from rerank: only uses expected_dataid, no retrieval_reference_list
+ * Replaces the previous DiTing-based evaluation.
+ * For each query in the eval dataset:
+ *   1. Calls dispatchDatasetSearch (embedding-only mode)
+ *   2. Extracts the ordered document ID list
+ *   3. Computes MRR, NDCG, MAP, Precision@K using computeRankingMetrics
  *
- * @param taskId - Training task ID (for logging)
+ * @param taskId      - Training task ID (for logging)
  * @param evalDatasetId - Evaluation dataset collection ID
- * @param modelId - Model ID to evaluate
- * @param stage - Checkpoint stage enum, used for error attribution
- * @returns Full runLogs with embedding evaluation results
+ * @param modelId     - Model ID to evaluate (for config lookup)
+ * @param stage       - Checkpoint stage enum, used for error attribution
+ * @param teamId      - Team ID for dataset search auth
+ * @param tmbId       - Team member ID for dataset search auth
+ * @param datasetIds  - Dataset IDs to search against (required, must be non-empty)
  */
 export async function evaluateEmbeddingModelHelper(
   taskId: string,
   evalDatasetId: string,
   modelId: string,
-  stage: EmbeddingTaskCheckpointStageEnum
+  stage: EmbeddingTaskCheckpointStageEnum,
+  teamId: string,
+  tmbId: string,
+  datasetIds: string[]
 ): Promise<EmbeddingEvalResult> {
   addLog.info('Evaluate embedding model', { taskId, modelId, stage });
 
@@ -46,7 +67,6 @@ export async function evaluateEmbeddingModelHelper(
   }
 
   const modelConfig = getEmbeddingModel(modelId);
-
   if (!modelConfig) {
     const enhancedError = createEmbeddingEnhancedError(
       stage,
@@ -57,43 +77,110 @@ export async function evaluateEmbeddingModelHelper(
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  // Key difference: embedding only uses expected_dataid, no retrieval_reference_list
-  const dataset = evalDataItems.map((item) => ({
-    q: item.userInput,
-    expected_dataid: item.expectedContextIds || []
+  // Run embedding search for each query and collect the ordered document ID list.
+  // Inject modelConfig as vectorModel so dispatchDatasetSearch uses the specified
+  // model instead of the dataset's default, enabling base vs tuned model comparison.
+  const datasets = datasetIds.map((id) => ({
+    datasetId: id,
+    avatar: '',
+    name: '',
+    vectorModel: modelConfig
   }));
 
-  const modelEndpoint = buildModelEndpoint(modelConfig);
+  // Run embedding search for each query with bounded concurrency to avoid overwhelming the vector DB
+  const limit = pLimit(DEFAULT_EVAL_CONCURRENCY);
+  const cases = await Promise.all(
+    evalDataItems.map((item) =>
+      limit(async () => {
+        const query = item.userInput;
+        const expectedIds = item.expectedContextIds || [];
 
-  const response = await evaluateEmbeddingModel({
-    dataset: dataset,
-    embedding_config: {
-      name: modelEndpoint.model,
-      base_url: modelEndpoint.base_url,
-      api_key: modelEndpoint.api_key
-    }
-  });
+        try {
+          const searchResponse = await dispatchDatasetSearch({
+            mode: 'test',
+            timezone: 'Asia/Shanghai',
+            externalProvider: {},
+            uid: tmbId,
+            variables: {},
+            query: [],
+            stream: false,
+            maxRunTimes: MAX_SEARCH_RUN_TIMES,
+            chatId: '',
+            checkIsStopping: () => false,
+            workflowDispatchDeep: 0,
+            mcpClientMemory: {},
+            runningAppInfo: {
+              id: new Types.ObjectId().toString(),
+              name: 'EmbeddingTrainEvalSearch',
+              teamId,
+              tmbId
+            },
+            runningUserInfo: {
+              username: '',
+              teamName: '',
+              memberName: '',
+              contact: '',
+              teamId,
+              tmbId
+            },
+            histories: [],
+            chatConfig: {},
+            node: {
+              nodeId: 'dataset_search',
+              name: 'Dataset Search',
+              avatar: '',
+              flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+              showStatus: true,
+              inputs: [],
+              outputs: []
+            },
+            runtimeNodes: [],
+            runtimeEdges: [],
+            params: {
+              datasets,
+              similarity: DEFAULT_SEARCH_SIMILARITY,
+              limit: DEFAULT_SEARCH_LIMIT,
+              userChatInput: query,
+              searchMode: DatasetSearchModeEnum.embedding,
+              embeddingWeight: undefined,
+              usingReRank: false,
+              rerankModel: undefined,
+              rerankMethod: RerankMethodEnum.question,
+              collectionFilterMatch: '',
+              datasetSearchUsingExtensionQuery: false,
+              datasetSearchExtensionModel: '',
+              datasetSearchExtensionBg: ''
+            }
+          });
 
-  if (!response.success || !response.data?.runLogs?.detailed_results) {
-    const enhancedError = createEmbeddingEnhancedError(
-      stage,
-      EmbeddingTrainErrEnum.embeddingEvalDitingEvalFailed,
-      EmbeddingTrainSuggestionEnum.embeddingEvalDitingEvalFailed,
-      response.error
-    );
-    throw new TrainTaskRetriableError(enhancedError);
-  }
+          const nodeResponse = (searchResponse as any)[DispatchNodeResponseKeyEnum.nodeResponse];
+          const retrievalResults =
+            nodeResponse?.retrievalResults || (searchResponse as any).data?.quoteQA || [];
+          const rankedIds = retrievalResults.map((r: any) => r.id as string);
 
-  const runLogs = response.data.runLogs;
-  const detailedResults = runLogs.detailed_results;
+          return { rankedIds, expectedIds };
+        } catch (err) {
+          addLog.warn('Embedding eval search failed for query, treating as no results', {
+            taskId,
+            query: query?.substring(0, 50),
+            error: err instanceof Error ? err.message : String(err)
+          });
+          return { rankedIds: [], expectedIds };
+        }
+      })
+    )
+  );
+
+  const metrics = computeRankingMetrics(cases, K_VALUES, 'embed');
 
   addLog.info('Embedding model evaluated', {
     taskId,
     modelId,
     stage,
-    mrr: detailedResults.embed_top10_mrr,
-    precision: detailedResults.embed_top10_precision
+    mrr10: metrics.detailed_results.embed_top10_mrr,
+    ndcg10: metrics.detailed_results.embed_top10_ndcg,
+    precision10: metrics.detailed_results.embed_top10_precision
   });
 
-  return runLogs;
+  return metrics as EmbeddingEvalResult;
 }

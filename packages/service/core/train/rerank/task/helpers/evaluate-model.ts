@@ -6,22 +6,30 @@ import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { evaluateRerankModel } from '../../external';
 import { getRerankModel } from '../../../../ai/model';
+import { reRankRecall } from '../../../../ai/rerank';
 import { addLog } from '../../../../../common/system/log';
-import { buildModelEndpoint } from '../../utils';
-import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
+import { TrainTaskUnrecoverableError } from '../../../common/errors';
+import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
+import { pLimit } from '../../../common/utils';
+import { DEFAULT_EVAL_CONCURRENCY } from '../../constants';
+
+const K_VALUES = [5, 10, 15];
 
 /**
  * Evaluate a rerank model on the given evaluation dataset
  *
- * Shared implementation used by both eval_basemodel and eval_tunedmodel stages.
+ * Replaces the previous DiTing-based evaluation.
+ * For each query in the eval dataset:
+ *   1. Reads the pre-stored retrievalContextsFull (embedding search results from eval data generation)
+ *   2. Calls reRankRecall with the specific rerank model to reorder the candidates
+ *   3. Extracts the ordered document ID list from reranked results
+ *   4. Computes MRR, NDCG, MAP, Precision@K using computeRankingMetrics
  *
- * @param taskId - Training task ID (for logging)
+ * @param taskId        - Training task ID (for logging)
  * @param evalDatasetId - Evaluation dataset collection ID
- * @param modelId - Model ID (RerankModelItemType.model) to evaluate
- * @param stage - Checkpoint stage enum, used for error attribution
- * @returns Full runLogs including retrieval_ranks for CSV download
+ * @param modelId       - Model ID (RerankModelItemType.model) to evaluate
+ * @param stage         - Checkpoint stage enum, used for error attribution
  */
 export async function evaluateRerankModelHelper(
   taskId: string,
@@ -45,7 +53,6 @@ export async function evaluateRerankModelHelper(
   }
 
   const modelConfig = getRerankModel(modelId);
-
   if (!modelConfig) {
     const enhancedError = createRerankEnhancedError(
       stage,
@@ -56,54 +63,62 @@ export async function evaluateRerankModelHelper(
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
-  const dataset = evalDataItems.map((item) => ({
-    q: item.userInput,
-    retrieval_reference_list: (item.retrievalContextsFull || []).map((ctx) => ({
-      id: ctx.id,
-      q: ctx.q,
-      a: ctx.a || '',
-      score: ctx.score
-    })),
-    expected_dataid: item.expectedContextIds || []
-  }));
+  // Filter out eval items that have no candidate list (cannot evaluate when retrievalContextsFull is empty)
+  const validItems = evalDataItems.filter((item) => (item.retrievalContextsFull || []).length > 0);
 
-  const modelEndpoint = buildModelEndpoint(modelConfig);
-  const rerankerConfig = {
-    name: modelEndpoint.model,
-    base_url: modelEndpoint.base_url,
-    api_key: modelEndpoint.api_key
-  };
-
-  const response = await evaluateRerankModel({
-    dataset,
-    reranker_config: rerankerConfig,
-    metric_config: {
-      metric_name: 'rerank_metric'
-    }
-  });
-
-  if (!response.success || !response.data?.runLogs?.detailed_results) {
-    const enhancedError = createRerankEnhancedError(
-      stage,
-      RerankTrainErrEnum.rerankEvalDitingEvalFailed,
-      RerankTrainSuggestionEnum.rerankEvalDitingEvalFailed,
-      response.error
-    );
-    throw new TrainTaskRetriableError(enhancedError);
+  if (validItems.length === 0) {
+    addLog.warn('No valid eval items with retrievalContextsFull, returning zero metrics', {
+      taskId,
+      totalItems: evalDataItems.length
+    });
+    return computeRankingMetrics([], K_VALUES, 'rerank') as RerankEvalResult;
   }
 
-  const runLogs = response.data.runLogs;
-  const detailedResults = runLogs.detailed_results;
+  // Run reranker for each query with bounded concurrency to avoid overwhelming the rerank API
+  const limit = pLimit(DEFAULT_EVAL_CONCURRENCY);
+  const cases = await Promise.all(
+    validItems.map((item) =>
+      limit(async () => {
+        const query = item.userInput;
+        const expectedIds = item.expectedContextIds || [];
+        const candidates = item.retrievalContextsFull || [];
+
+        try {
+          const rerankResult = await reRankRecall({
+            model: modelConfig,
+            query,
+            documents: candidates.map((c) => ({
+              id: c.id,
+              text: [c.q, c.a].filter(Boolean).join('\n')
+            }))
+          });
+
+          const rankedIds = (rerankResult.results || []).map((r) => r.id);
+          return { rankedIds, expectedIds };
+        } catch (err) {
+          addLog.warn('Rerank recall failed for query, treating as no reorder', {
+            taskId,
+            query: query?.substring(0, 50),
+            error: err instanceof Error ? err.message : String(err)
+          });
+          // Fallback: preserve original embedding order
+          return { rankedIds: candidates.map((c) => c.id), expectedIds };
+        }
+      })
+    )
+  );
+
+  const metrics = computeRankingMetrics(cases, K_VALUES, 'rerank');
 
   addLog.info('Rerank model evaluated', {
     taskId,
     modelId,
     stage,
-    ndcg: detailedResults.rerank_top10_ndcg,
-    mrr: detailedResults.rerank_top10_mrr,
-    precision: detailedResults.rerank_top10_precision,
-    hasRetrievalRanks: !!runLogs.retrieval_ranks
+    mrr10: metrics.detailed_results.rerank_top10_mrr,
+    ndcg10: metrics.detailed_results.rerank_top10_ndcg,
+    precision10: metrics.detailed_results.rerank_top10_precision,
+    hasRetrievalRanks: !!metrics.retrieval_ranks
   });
 
-  return runLogs;
+  return metrics as RerankEvalResult;
 }

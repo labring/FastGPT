@@ -26,6 +26,10 @@ export const DEFAULT_SFT_BRIDGE_MAX_POLLS = 600; // ~10 hours total
 /** SFT Bridge task default learning rate */
 export const DEFAULT_SFT_BRIDGE_LEARNING_RATE = 0.0001;
 
+// ===== Evaluation Configuration =====
+/** Model evaluation default concurrency (controls concurrent rerank/embedding search calls) */
+export const DEFAULT_EVAL_CONCURRENCY = 20;
+
 // ===== Dataset Search Configuration =====
 /** Dataset search default similarity threshold */
 export const DEFAULT_SEARCH_SIMILARITY = 0.1;
