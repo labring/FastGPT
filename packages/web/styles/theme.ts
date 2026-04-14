@@ -771,6 +771,7 @@ export const theme = extendTheme({
       15: 'rgba(18, 22, 26, 0.15)',
 
       25: '#FCFCFD',
+      35: '#FAFBFC',
       50: '#F7F8FA',
       100: '#F5F7FA',
       150: '#F0F2F5',

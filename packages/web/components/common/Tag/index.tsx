@@ -4,6 +4,7 @@ import { Box, type BoxProps, Flex, type FlexProps } from '@chakra-ui/react';
 type ColorSchemaType =
   | 'white'
   | 'blue'
+  | 'primary'
   | 'green'
   | 'red'
   | 'yellow'
@@ -55,10 +56,15 @@ const colorMap: Record<
     bg: 'myGray.50',
     color: 'myGray.700'
   },
-  blue: {
+  primary: {
     borderColor: 'primary.200',
     bg: 'primary.50',
     color: 'primary.600'
+  },
+  blue: {
+    borderColor: 'blue.200',
+    bg: 'blue.50',
+    color: 'blue.600'
   },
   purple: {
     borderColor: 'violet.50',
