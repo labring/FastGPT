@@ -124,24 +124,23 @@ export const FlowNodeOutputItemTypeSchema = z.object({
   required: z.boolean().optional(),
 
   invalid: z.boolean().optional(),
-  invalidCondition: z.optional(
-    z
-      .function({
-        input: z.tuple([
-          z.object({
-            inputs: z.array(FlowNodeInputItemTypeSchema),
-            llmModelMap: z.record(z.string(), LLMModelItemSchema)
-          })
-        ]),
-        output: z.boolean()
-      })
-      .meta({
-        override: {
-          type: 'string',
-          description: 'Function placeholder; not represented in JSON payloads'
-        }
-      })
-  ),
+  invalidCondition: z
+    .function({
+      input: z.tuple([
+        z.object({
+          inputs: z.array(FlowNodeInputItemTypeSchema),
+          llmModelMap: z.record(z.string(), LLMModelItemSchema)
+        })
+      ]),
+      output: z.boolean()
+    })
+    .optional()
+    .meta({
+      override: {
+        type: 'string',
+        description: 'Function placeholder; not represented in JSON payloads'
+      }
+    }),
 
   customFieldConfig: CustomFieldConfigTypeSchema.optional(),
   deprecated: z.boolean().optional()
