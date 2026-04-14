@@ -94,7 +94,14 @@ async function chat({ message, chatId, imageUrl, fileUrl, fileName, variables } 
       content.push({ type: 'image_url', image_url: { url: imageUrl } });
     }
     if (fileUrl) {
-      content.push({ type: 'file_url', name: fileName || path.basename(fileUrl), url: fileUrl });
+      // fileUrl should be an object with { url, key, name } from uploadFile()
+      const fileObj = typeof fileUrl === 'string' ? { url: fileUrl, name: fileName } : fileUrl;
+      content.push({
+        type: 'file_url',
+        name: fileObj.name || fileName || 'file',
+        url: fileObj.url || fileUrl,
+        key: fileObj.key
+      });
     }
   } else {
     content = message;
@@ -139,16 +146,17 @@ async function chat({ message, chatId, imageUrl, fileUrl, fileName, variables } 
 }
 
 /**
- * Upload a local file to FastGPT and return the accessible file URL
+ * Upload a local file to FastGPT and return file metadata for use in chat
  *
  * Steps:
  *   1. Call presignChatFilePostUrl to obtain a pre-signed upload URL
  *   2. PUT the file to the pre-signed URL
- *   3. Return the file access URL
+ *   3. Call presignChatFileGetUrl to get the accessible file URL
+ *   4. Return an object with url, key, and name for use in chat()
  *
  * @param {string} filePath  Absolute path to the local file
  * @param {string} chatId    Session ID (must match the chatId used in the subsequent chat() call)
- * @returns {Promise<string>} File access URL
+ * @returns {Promise<{url: string, key: string, name: string}>} File metadata object with url, key, and name
  */
 async function uploadFile(filePath, chatId) {
   if (!filePath) throw new Error('filePath is required');
@@ -159,6 +167,10 @@ async function uploadFile(filePath, chatId) {
   const fileBuffer = fs.readFileSync(filePath);
 
   // Step 1: Obtain pre-signed upload URL
+  // Request fields:
+  //   - filename: extracted from filePath using path.basename()
+  //   - appId: loaded from config.json at module init
+  //   - chatId: passed as parameter to this function
   let presignRes;
   try {
     presignRes = await axios.post(
@@ -183,6 +195,9 @@ async function uploadFile(filePath, chatId) {
   if (!uploadUrl) throw new Error('Failed to obtain pre-signed upload URL: missing url field in response');
 
   // Step 2: Upload the file
+  // uploadUrl: obtained from presignRes.data.data.url (Step 1 response)
+  // uploadHeaders: obtained from presignRes.data.data.headers (Step 1 response)
+  //   includes: x-amz-meta-content-disposition, x-amz-meta-origin-filename, x-amz-meta-upload-time
   try {
     await axios.put(uploadUrl, fileBuffer, {
       headers: {
@@ -200,11 +215,41 @@ async function uploadFile(filePath, chatId) {
     throw new Error(`File upload failed — HTTP ${status ?? 'network error'}: ${detail}`);
   }
 
-  // Step 3: Build and return the file access URL from the key field
+  // Step 3: Get the presigned download URL for file access
+  // key: obtained from presignRes.data.data.key (Step 1 response)
+  // appId: same as Step 1, loaded from config.json at module init
   const key = presignRes.data?.data?.key;
   if (!key) throw new Error('File uploaded successfully, but the response is missing the key field; cannot construct file URL');
 
-  return `${BASE_URL}/${key.replace(/^\//, '')}`;
+  let fileAccessUrl;
+  try {
+    const getUrlRes = await axios.post(
+      `${BASE_URL}/api/core/chat/file/presignChatFileGetUrl`,
+      { key, appId: APP_ID },
+      {
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000,
+        httpsAgent
+      }
+    );
+    // fileAccessUrl: obtained from getUrlRes.data.data (Step 3 response)
+    // This URL has longer expiration time and is used for accessing files in chat
+    fileAccessUrl = getUrlRes.data?.data;
+    if (!fileAccessUrl) throw new Error('Failed to obtain file access URL: missing data field in response');
+  } catch (err) {
+    const status = err.response?.status;
+    const detail = err.response?.data?.message || err.message;
+    throw new Error(`Failed to obtain file access URL — HTTP ${status ?? 'network error'}: ${detail}`);
+  }
+
+  // Return object with url, key, and name for use in chat()
+  // - url: presigned download URL from Step 3 (for accessing file in chat requests)
+  // - key: file key from Step 1 (for file identification and reference)
+  // - name: filename extracted from filePath (for display purposes)
+  return { url: fileAccessUrl, key, name: filename };
 }
 
 module.exports = { chat, uploadFile };
