@@ -27,6 +27,7 @@ type ChatBoxDataType = {
   appId: string;
   title?: string;
   userAvatar?: string;
+  /** 与 init 接口对齐；侧栏轮询、ChatBox `enableAutoResume` 依赖其是否为 generating */
   chatGenerateStatus?: ChatGenerateStatusEnum;
   hasBeenRead?: boolean;
 

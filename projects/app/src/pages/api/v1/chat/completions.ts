@@ -69,7 +69,6 @@ import {
   ensureGenerateChat,
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/resumeStatus';
-import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
@@ -97,7 +96,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   } = CompletionsPropsSchema.parse(req.body);
 
   const startTime = Date.now();
-  let mirror: ReturnType<typeof mirrorChatStream> | undefined;
   let runningChatId: string | undefined;
   let runningAppId: string | undefined;
 
@@ -279,16 +277,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId
     });
 
-    const shouldTeeResumeStream = stream && source === ChatSourceEnum.online;
-    const workflowApiVersion = shouldTeeResumeStream ? 'v2' : 'v1';
-    mirror = shouldTeeResumeStream
-      ? mirrorChatStream({
-          res,
-          teamId,
-          appId: runningAppId,
-          chatId: runningChatId
-        })
-      : undefined;
+    // 流式 + 站内 online：工作流 dispatch 走 v2 管道；与 HTTP 路径是 /v1 还是 /v2 无关
+    const shouldUseWorkflowStreamV2 = stream && source === ChatSourceEnum.online;
+    const workflowApiVersion = shouldUseWorkflowStreamV2 ? 'v2' : 'v1';
+    // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/v2/chat/resume 承担
 
     if (!interactive) {
       await ensurePendingChatRoundItems({
@@ -442,8 +434,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         data: '[DONE]'
       });
 
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -559,8 +549,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     if (stream) {
       sseErrRes(res, err);
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
       jsonRes(res, {
@@ -568,8 +556,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         error: err
       });
     }
-  } finally {
-    mirror?.restore();
   }
 }
 export default NextAPI(handler);

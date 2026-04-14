@@ -152,7 +152,7 @@ const AIContentCard = React.memo(function AIContentCard({
         );
       })}
 
-      {/* Requesting animation */}
+      {/* 生成中占位动画（含断线续传拉流期间最后一条非文本时的 shimmer） */}
       {isLastChild && !lastIsText && !lastIsReasoning && isChatting && (
         <Box className={markdownStyles.animation}></Box>
       )}

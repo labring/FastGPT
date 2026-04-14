@@ -2,8 +2,11 @@ import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import type { InitTeamChatProps } from '@/global/core/chat/api';
-import type { InitChatResponseType } from '@fastgpt/global/openapi/core/chat/controler/api';
+import {
+  InitTeamChatQuerySchema,
+  type InitChatResponseType,
+  type InitTeamChatQueryType
+} from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -16,17 +19,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { z } from 'zod';
 
-const QuerySchema = z.object({
-  teamId: z.string(),
-  appId: z.string(),
-  chatId: z.string().optional(),
-  teamToken: z.string()
-});
-
-async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResponse) {
-  const { teamId, appId, chatId, teamToken } = QuerySchema.parse(req.query);
+async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApiResponse) {
+  const { teamId, appId, chatId, teamToken } = InitTeamChatQuerySchema.parse(req.query);
 
   const { uid, tags } = await authTeamSpaceToken({
     teamId,

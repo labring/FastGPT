@@ -291,6 +291,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await pushChatRecords(params);
     }
 
+    // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/v2/chat/resume
     await updateChatGenerateStatus({
       appId: String(app._id),
       chatId,

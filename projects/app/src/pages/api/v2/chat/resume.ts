@@ -49,11 +49,12 @@ const shouldRespondWithSse = (req: NextApiRequest) => {
 
 export const config = {
   api: {
+    // 仅使用 query，无 body；关闭默认 body 解析以免干扰
     bodyParser: false
   }
 };
 
-// GET /api/v1/stream/resume?chatId=xxx&appId=xxx&teamId=xxx
+// GET /api/v2/chat/resume?chatId=xxx&appId=xxx&teamId=xxx（与 /v2/chat/completions 同属 v2，断线续传配套）
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
     chatId,

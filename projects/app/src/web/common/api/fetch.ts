@@ -559,7 +559,7 @@ type StreamResumeFetchParams = {
 export function streamResumeFetch(params: StreamResumeFetchParams) {
   const { appId, chatId, onmessage, controller } = params;
   const query = new URLSearchParams({ appId, chatId });
-  const url = `/api/v1/stream/resume?${query}`;
+  const url = `/api/v2/chat/resume?${query}`;
 
   return $resumefetch({ url, onmessage, controller });
 }
@@ -614,7 +614,7 @@ export const onOptimizeCode = async ({
 
 export const resumeChatStream = (params: ResumeStreamParams) => {
   const search = new URLSearchParams(params);
-  const url = `/api/v1/stream/resume?${search.toString()}`;
+  const url = `/api/v2/chat/resume?${search.toString()}`;
 
   return new Promise<void>(async (resolve, reject) => {
     const controller = new AbortController();

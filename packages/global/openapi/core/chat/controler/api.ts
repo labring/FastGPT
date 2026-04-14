@@ -22,6 +22,16 @@ export const InitChatQuerySchema = z
     }
   });
 export type InitChatQueryType = z.infer<typeof InitChatQuerySchema>;
+
+/** 团队空间 init：`/api/core/chat/team/init` */
+export const InitTeamChatQuerySchema = z.object({
+  teamId: z.string().min(1),
+  appId: z.string().min(1),
+  chatId: z.string().optional(),
+  teamToken: z.string().min(1)
+});
+export type InitTeamChatQueryType = z.infer<typeof InitTeamChatQuerySchema>;
+
 export const InitChatResponseSchema = z.object({
   chatId: z.string().optional().describe('对话ID'),
   appId: ObjectIdSchema.describe('应用ID'),

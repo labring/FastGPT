@@ -34,7 +34,7 @@ export const LLMRequestRecordSchema = z.object({
 export type LLMRequestRecordSchemaType = z.infer<typeof LLMRequestRecordSchema>;
 
 /* ============================================================================
- * 共享 Schema
+ * 共享：OpenAI 风格 ChatMessage（与其它 LLM 接口复用）
  * ============================================================================ */
 
 export const ChatMessageSchema = z.object({
@@ -53,6 +53,11 @@ export const ChatMessageSchema = z.object({
   tool_calls: z.array(z.object()).optional().meta({ description: '工具调用' }),
   tool_call_id: z.string().optional().meta({ description: '工具调用 ID' })
 });
+
+/* ============================================================================
+ * 断线续传：GET /api/v2/chat/resume（与 v2/chat/completions 同前缀；query 仅 appId / chatId / teamId）
+ * ============================================================================ */
+
 export const ResumeStreamParamsSchema = z.object({
   appId: ObjectIdSchema,
   teamId: ObjectIdSchema.optional(),

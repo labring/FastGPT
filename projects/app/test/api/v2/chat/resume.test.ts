@@ -7,7 +7,7 @@ import {
   StreamResumePhaseEnum,
   StreamResumePhaseEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import handler from '@/pages/api/v1/stream/resume';
+import handler from '@/pages/api/v2/chat/resume';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
