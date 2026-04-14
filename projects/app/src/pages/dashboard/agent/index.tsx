@@ -99,15 +99,14 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const agentTabList = useMemo(
     () => [
+      { label: t('app:type.All'), value: 'all' },
       { label: t('app:smart_qa'), value: AppTypeEnum.assistant },
       { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow }
     ],
     [t]
   );
 
-  // 当 type 为 'all'（默认）时，视觉上默认激活"智能问答"
-  const activeAgentTab =
-    !appType || appType === 'all' ? AppTypeEnum.assistant : (appType as string);
+  const activeAgentTab = !appType || appType === 'all' ? 'all' : (appType as string);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
