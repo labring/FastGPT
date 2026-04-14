@@ -80,7 +80,8 @@ const extensionToLang: Record<string, string[]> = {
   svg: ['svg'],
   pdf: ['pdf'],
   audio: ['mp3', 'wav', 'm4a', 'flac', 'ogg'],
-  video: ['avi', 'mp4', 'webm', 'mov', 'm4v']
+  // 仅保留浏览器 <video> 原生可解码的容器；avi/mkv/wmv/flv/mov/m4v 等走兜底
+  video: ['mp4', 'webm']
 };
 
 const langMap = Object.entries(extensionToLang).reduce(

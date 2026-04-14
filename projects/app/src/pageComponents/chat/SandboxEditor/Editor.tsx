@@ -81,19 +81,29 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   // 初始加载根目录的 loading 状态
   const [loadingRoot, setLoadingRoot] = useState(false);
 
-  // 读取文件内容 - 根据 language 来决定解码策略
+  // 读取文件内容 - 根据 language 决定解码策略
+  // - 媒体（image/audio/video）→ blob URL
+  // - 其他 → 严格 UTF-8 解码；解不出来视为不可预览（如 xlsx/zip 等真二进制）
   const { runAsync: loadFile, loading: loadingFile } = useRequest(
-    async (filePath: string, language: string): Promise<string> => {
+    async (
+      filePath: string,
+      language: string
+    ): Promise<{ content: string; isUnknown: boolean }> => {
       const response = await getSandboxFile({ appId, chatId, outLinkAuthData, path: filePath });
 
       const isBinary = getIsBinaryByLanguage(language);
 
       if (isBinary) {
         const blob = await response.blob();
-        return URL.createObjectURL(blob);
-      } else {
-        const content = await response.text();
-        return content;
+        return { content: URL.createObjectURL(blob), isUnknown: false };
+      }
+
+      const buffer = await response.arrayBuffer();
+      try {
+        const content = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        return { content, isUnknown: false };
+      } catch {
+        return { content: '', isUnknown: true };
       }
     },
     { manual: true }
@@ -106,7 +116,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
       if (!targetPath) return;
 
       const targetFile = openedFiles.find((f) => f.path === targetPath);
-      if (!targetFile || targetFile.isBinary) return;
+      if (!targetFile || targetFile.isBinary || targetFile.isUnknown) return;
 
       await writeSandboxFile({
         appId,
@@ -160,7 +170,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
       const language = getLanguageByFileName(fileName);
       const isBinary = getIsBinaryByLanguage(language);
 
-      const content = await loadFile(filePath, language);
+      const { content, isUnknown } = await loadFile(filePath, language);
 
       const newFile: OpenedFile = {
         path: filePath,
@@ -168,7 +178,8 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
         content,
         language,
         isBinary,
-        isDirty: false
+        isDirty: false,
+        isUnknown
       };
 
       setOpenedFiles((prev) => [...prev, newFile]);
@@ -214,7 +225,7 @@ const SandboxEditor = ({ appId, chatId, outLinkAuthData }: Props) => {
   // 当切换 tab 时,更新编辑器内容
   useEffect(() => {
     if (!editorRef.current || !activeFilePath || !activeFile) return;
-    if (activeFile.isBinary) return;
+    if (activeFile.isBinary || activeFile.isUnknown) return;
 
     // 使用 ref 标记防止循环更新
     isUpdatingRef.current = true;
