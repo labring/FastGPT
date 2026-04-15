@@ -180,51 +180,51 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
 
   const Render = useMemo(() => {
     return (
-      <HStack flex={1} justifyContent={'space-between'}>
-        <HStack>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
-          <Box>
-            <HStack spacing={1}>
-              <Box color={'myGray.900'}>{appDetail.name}</Box>
-            </HStack>
-            {showSaveStatus && (
-              <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
-                <MyTag
-                  py={0}
-                  px={1}
-                  showDot
-                  bg={'transparent'}
-                  colorSchema={
-                    isSaved
-                      ? publishStatusStyle.published.colorSchema
-                      : publishStatusStyle.unPublish.colorSchema
-                  }
-                >
-                  {t(
-                    isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text
-                  )}
-                </MyTag>
-              </Flex>
-            )}
-          </Box>
-        </HStack>
-
-        <InfoMenu>
-          <IconButton
-            aria-label="Expand"
-            icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
-            w={'34px'}
-            h={'34px'}
-            bg={'white'}
-            border={'1px solid'}
-            borderColor={'myGray.250'}
-            borderRadius={'sm'}
-            boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
-            _hover={{
-              bg: 'myGray.50'
-            }}
-          />
-        </InfoMenu>
+      <HStack>
+        <Avatar src={appDetail.avatar} w={'30px'} borderRadius={'md'} />
+        <Box>
+          <HStack px={1} spacing={2} alignItems={'center'}>
+            <Box
+              color={'myGray.900'}
+              maxW={'320px'}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              whiteSpace={'nowrap'}
+            >
+              {appDetail.name}
+            </Box>
+            <InfoMenu>
+              <IconButton
+                aria-label="Expand"
+                icon={<MyIcon name={'common/select'} w={'16px'} color={'myGray.500'} />}
+                w={'16px'}
+                h={'16px'}
+                minW={'unset'}
+                variant={'ghost'}
+                p={0}
+              />
+            </InfoMenu>
+          </HStack>
+          {showSaveStatus && (
+            <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
+              <MyTag
+                py={0}
+                px={1}
+                showDot
+                bg={'transparent'}
+                colorSchema={
+                  isSaved
+                    ? publishStatusStyle.published.colorSchema
+                    : publishStatusStyle.unPublish.colorSchema
+                }
+              >
+                {t(
+                  isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text
+                )}
+              </MyTag>
+            </Flex>
+          )}
+        </Box>
 
         {isOpenImport && <ImportSettings onClose={onCloseImport} />}
         {isOpenExportSkill && (
