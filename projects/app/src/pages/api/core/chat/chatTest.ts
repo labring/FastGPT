@@ -40,8 +40,9 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  ensurePendingChatRoundItems,
-  pushChatRecords,
+  failChatRound,
+  finalizeChatRound,
+  prepareChatRound,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
@@ -62,6 +63,7 @@ import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResumeMirror: ReturnType<typeof mirrorChatStream> | undefined;
   let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
+  let usePreparedRound = false;
   let {
     nodes = [],
     edges = [],
@@ -152,6 +154,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
+    usePreparedRound = !interactive;
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
@@ -160,32 +163,33 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
-    await ensureGenerateChat({
-      appId: String(app._id),
-      chatId,
-      teamId: String(teamId),
-      tmbId: String(tmbId),
-      source,
-      sourceName: appName || ''
-    });
+    if (usePreparedRound) {
+      await prepareChatRound({
+        appId: String(app._id),
+        chatId,
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        source,
+        sourceName: appName || '',
+        userContent: userQuestion,
+        responseChatItemId
+      });
+    } else {
+      await ensureGenerateChat({
+        appId: String(app._id),
+        chatId,
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        source,
+        sourceName: appName || ''
+      });
+    }
 
     streamResumeMirror = mirrorChatStream({
       teamId: String(teamId),
       appId: String(app._id),
       chatId
     });
-
-    // 与线上 completions 一致：先落库本轮 Human + AI 占位，否则刷新恢复时「最后一条 AI」仍是上一轮，流会续写到旧气泡
-    if (!interactive) {
-      await ensurePendingChatRoundItems({
-        chatId,
-        appId: String(app._id),
-        teamId: String(teamId),
-        tmbId: String(tmbId),
-        userContent: userQuestion,
-        responseChatItemId
-      });
-    }
 
     workflowResponseWrite = getWorkflowResponseWrite({
       res,
@@ -288,25 +292,36 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...params
       });
     } else {
-      await pushChatRecords(params);
+      await finalizeChatRound(params);
     }
 
-    // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/v2/chat/resume
-    await updateChatGenerateStatus({
-      appId: String(app._id),
-      chatId,
-      status: ChatGenerateStatusEnum.done
-    });
+    if (interactive) {
+      // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/v2/chat/resume
+      await updateChatGenerateStatus({
+        appId: String(app._id),
+        chatId,
+        status: ChatGenerateStatusEnum.done
+      });
+    }
 
     await streamResumeMirror.flush();
     await streamResumeMirror.shrinkTTLAfterComplete();
   } catch (err: any) {
     if (appId && chatId) {
-      await updateChatGenerateStatus({
-        appId,
-        chatId,
-        status: ChatGenerateStatusEnum.error
-      });
+      if (usePreparedRound) {
+        await failChatRound({
+          appId,
+          chatId,
+          responseChatItemId,
+          error: err
+        });
+      } else {
+        await updateChatGenerateStatus({
+          appId,
+          chatId,
+          status: ChatGenerateStatusEnum.error
+        });
+      }
     }
     res.status(500);
     if (workflowResponseWrite) {
