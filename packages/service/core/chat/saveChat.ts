@@ -349,15 +349,13 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
       },
       {
         session,
-        upsert: true,
-        ...writePrimary
+        upsert: true
       }
     );
 
     const upsertOptions = {
       session,
-      upsert: true,
-      ...writePrimary
+      upsert: true
     };
 
     await MongoChatItem.updateOne(
@@ -425,7 +423,7 @@ export const ensurePendingChatRoundItems = async (params: EnsurePendingChatRound
   };
 
   await mongoSessionRun(async (session) => {
-    const upsertOpts = { session, upsert: true, ...writePrimary };
+    const upsertOpts = { session, upsert: true };
     await MongoChatItem.updateOne(
       { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
       {
@@ -533,8 +531,7 @@ export const finalizeChatRound = async (props: Props) => {
         },
         {
           session,
-          new: true,
-          ...writePrimary
+          new: true
         }
       ),
       MongoChatItem.findOneAndUpdate(
@@ -547,8 +544,7 @@ export const finalizeChatRound = async (props: Props) => {
         },
         {
           session,
-          new: true,
-          ...writePrimary
+          new: true
         }
       )
     ]);
@@ -571,7 +567,7 @@ export const finalizeChatRound = async (props: Props) => {
           chatItemDataId: aiDataId,
           data: item
         })),
-        { session, ordered: true, ...writePrimary }
+        { session, ordered: true }
       );
     }
 
@@ -604,8 +600,7 @@ export const finalizeChatRound = async (props: Props) => {
         ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
       },
       {
-        session,
-        ...writePrimary
+        session
       }
     );
 
@@ -697,8 +692,7 @@ export const failChatRound = async (params: FailChatRoundParams) => {
           }
         },
         {
-          session,
-          ...writePrimary
+          session
         }
       );
 
@@ -711,8 +705,7 @@ export const failChatRound = async (params: FailChatRoundParams) => {
             }
           },
           {
-            session,
-            ...writePrimary
+            session
           }
         );
       }
@@ -808,7 +801,7 @@ export const pushChatRecords = async (props: Props) => {
               obj: ChatRoleEnum.Human
             }
           },
-          { session, ...writePrimary }
+          { session }
         );
         await MongoChatItem.updateOne(
           { _id: aiExisting._id },
@@ -818,7 +811,7 @@ export const pushChatRecords = async (props: Props) => {
               obj: ChatRoleEnum.AI
             }
           },
-          { session, ...writePrimary }
+          { session }
         );
 
         await MongoChatItemResponse.deleteMany(
@@ -835,7 +828,7 @@ export const pushChatRecords = async (props: Props) => {
               chatItemDataId: aiRoundDataId,
               data: item
             })),
-            { session, ordered: true, ...writePrimary }
+            { session, ordered: true }
           );
         }
 
@@ -850,7 +843,7 @@ export const pushChatRecords = async (props: Props) => {
             appId,
             ...item
           })),
-          { session, ordered: true, ...writePrimary }
+          { session, ordered: true }
         );
         chatItemIdHuman = humanCreated._id;
         chatItemIdAi = aiCreated._id;
@@ -865,7 +858,7 @@ export const pushChatRecords = async (props: Props) => {
               chatItemDataId: responseDataId,
               data: item
             })),
-            { session, ordered: true, ...writePrimary }
+            { session, ordered: true }
           );
         }
       }
@@ -901,8 +894,7 @@ export const pushChatRecords = async (props: Props) => {
         },
         {
           session,
-          upsert: true,
-          ...writePrimary
+          upsert: true
         }
       );
 
@@ -1195,7 +1187,7 @@ export const updateInteractiveChat = async ({
           chatItemDataId: chatItem.dataId,
           data: item
         })),
-        { session, ordered: true, ...writePrimary }
+        { session, ordered: true }
       );
     }
 

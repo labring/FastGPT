@@ -49,7 +49,11 @@ import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
-import { streamResumeFetch, type StreamResponseType } from '@/web/common/api/fetch';
+import {
+  streamResumeFetch,
+  type ResumeStreamErrorType,
+  type StreamResponseType
+} from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useCreation, useDebounceEffect, useMemoizedFn, useThrottleFn } from 'ahooks';
@@ -202,13 +206,26 @@ const ChatBox = ({
         const idx = prev.findIndex((h) => h.chatId === targetChatId);
         if (idx === -1) {
           queueMicrotask(loadHistories);
-          return prev;
+          return [
+            {
+              chatId: targetChatId,
+              appId,
+              title: chatBoxData.title || t('common:core.chat.New Chat'),
+              customTitle: '',
+              top: false,
+              updateTime: new Date(),
+              chatGenerateStatus: status,
+              hasBeenRead: options?.hasBeenRead ?? status !== ChatGenerateStatusEnum.generating
+            },
+            ...prev
+          ];
         }
         return prev.map((h) =>
           h.chatId === targetChatId
             ? {
                 ...h,
                 chatGenerateStatus: status,
+                updateTime: new Date(),
                 ...(options?.hasBeenRead !== undefined ? { hasBeenRead: options.hasBeenRead } : {})
               }
             : h
@@ -896,25 +913,35 @@ const ChatBox = ({
 
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
+            const finishedInActiveChat = activeChatIdRef.current === chatId;
             setChatBoxData((state) =>
               state.chatId === chatId
                 ? {
                     ...state,
                     chatGenerateStatus: ChatGenerateStatusEnum.done,
-                    hasBeenRead: true
+                    hasBeenRead: finishedInActiveChat
                   }
                 : state
             );
-            void postMarkChatRead({
-              appId,
-              chatId,
-              ...outLinkAuthData
-            })
-              .catch(() => {})
-              .finally(() => {
-                syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: true });
-              });
+
+            if (finishedInActiveChat) {
+              void postMarkChatRead({
+                appId,
+                chatId,
+                ...outLinkAuthData
+              })
+                .catch(() => {})
+                .finally(() => {
+                  syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: true });
+                });
+            } else {
+              syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: false });
+            }
           } catch (err: any) {
+            if (isAbortByLeave(err)) {
+              return;
+            }
+
             console.log('Chat error', err);
             toast({
               title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
@@ -941,24 +968,32 @@ const ChatBox = ({
               setChatRecords(newChatList.slice(0, newChatList.length - 2));
             }
 
+            const finishedInActiveChat = activeChatIdRef.current === chatId;
             setChatBoxData((state) =>
               state.chatId === chatId
                 ? {
                     ...state,
                     chatGenerateStatus: ChatGenerateStatusEnum.error,
-                    hasBeenRead: true
+                    hasBeenRead: finishedInActiveChat
                   }
                 : state
             );
-            void postMarkChatRead({
-              appId,
-              chatId,
-              ...outLinkAuthData
-            })
-              .catch(() => {})
-              .finally(() => {
-                syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, { hasBeenRead: true });
-              });
+
+            if (finishedInActiveChat) {
+              void postMarkChatRead({
+                appId,
+                chatId,
+                ...outLinkAuthData
+              })
+                .catch(() => {})
+                .finally(() => {
+                  syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, {
+                    hasBeenRead: true
+                  });
+                });
+            } else {
+              syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, { hasBeenRead: false });
+            }
           }
 
           autoTTSResponse && finishSegmentedAudio();
@@ -1216,6 +1251,7 @@ const ChatBox = ({
     const controller = new AbortController();
     resumeController.current = controller;
     scrollToBottom('auto');
+    let resumeFinalStatus = ChatGenerateStatusEnum.done;
 
     (async () => {
       try {
@@ -1278,6 +1314,11 @@ const ChatBox = ({
         if (controller.signal.aborted) return;
         if (resumeForChatId !== activeChatIdRef.current) return;
 
+        const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
+        resumeFinalStatus = isStreamError
+          ? ChatGenerateStatusEnum.error
+          : ChatGenerateStatusEnum.done;
+
         setChatRecords((state) => {
           const currentLastItem = state[state.length - 1];
           if (
@@ -1306,29 +1347,54 @@ const ChatBox = ({
 
           return next;
         });
+
+        if (isStreamError) {
+          toast({
+            title: t(getErrText(error, t('common:core.chat.error.Chat error') as any)),
+            status: 'error',
+            duration: 5000,
+            isClosable: true
+          });
+        }
       } finally {
         resumeController.current = undefined;
+        const finishedInActiveChat = activeChatIdRef.current === resumeForChatId;
+        const leftWhileResuming =
+          controller.signal.aborted && isAbortByLeave(controller.signal.reason);
+
+        if (leftWhileResuming) {
+          return;
+        }
+
         setChatBoxData((state) =>
           state.chatId === resumeForChatId
             ? {
                 ...state,
-                chatGenerateStatus: ChatGenerateStatusEnum.done,
-                hasBeenRead: true
+                chatGenerateStatus: resumeFinalStatus,
+                hasBeenRead: finishedInActiveChat
               }
             : state
         );
-        void postMarkChatRead({
-          appId,
-          chatId: resumeForChatId,
-          ...outLinkAuthData
-        })
-          .catch(() => {})
-          .finally(() => {
-            syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, {
-              hasBeenRead: true,
-              targetChatId: resumeForChatId
+
+        if (finishedInActiveChat) {
+          void postMarkChatRead({
+            appId,
+            chatId: resumeForChatId,
+            ...outLinkAuthData
+          })
+            .catch(() => {})
+            .finally(() => {
+              syncSidebarChatGenerateStatus(resumeFinalStatus, {
+                hasBeenRead: true,
+                targetChatId: resumeForChatId
+              });
             });
+        } else {
+          syncSidebarChatGenerateStatus(resumeFinalStatus, {
+            hasBeenRead: false,
+            targetChatId: resumeForChatId
           });
+        }
       }
     })();
   }, [
@@ -1347,7 +1413,9 @@ const ChatBox = ({
     setChatBoxData,
     setChatRecords,
     syncSidebarChatGenerateStatus,
-    appendResumeAiPlaceholder
+    appendResumeAiPlaceholder,
+    t,
+    toast
   ]);
 
   const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;

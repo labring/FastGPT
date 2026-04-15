@@ -37,6 +37,11 @@ export type StreamResponseType = {
 export type ResumeStreamResponseType = StreamResponseType & {
   completedChat?: StreamNoNeedToBeResumeType;
 };
+export type ResumeStreamErrorType = {
+  message: string;
+  responseText: string;
+  isStreamError?: boolean;
+};
 
 type CommonResponseType = {
   responseValueId?: string;
@@ -378,7 +383,11 @@ function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
     const onfailed = (err?: any) => {
       finished = true;
       const message = getErrText(err, error ?? '响应过程出现异常~');
-      reject({ message, responseText });
+      reject({
+        message,
+        responseText,
+        isStreamError: error !== undefined
+      } satisfies ResumeStreamErrorType);
     };
 
     const isAnswerEvent = (event: SseResponseEventEnum) => {
