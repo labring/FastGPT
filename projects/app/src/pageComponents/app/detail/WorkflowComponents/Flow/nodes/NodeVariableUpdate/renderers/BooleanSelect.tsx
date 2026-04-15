@@ -19,7 +19,7 @@ const BooleanSelect = ({ mode = 'true', onChange }: Props) => {
     { value: 'negate', label: t('workflow:var_update_boolean_negate') }
   ];
 
-  return <MySelect<Mode> size={'sm'} list={list} value={mode} onChange={onChange} />;
+  return <MySelect<Mode> h={10} list={list} value={mode} onChange={onChange} />;
 };
 
 export default BooleanSelect;

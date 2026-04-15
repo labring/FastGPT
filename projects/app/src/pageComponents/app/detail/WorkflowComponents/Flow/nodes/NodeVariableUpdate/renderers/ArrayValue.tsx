@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import InputRender from '@/components/core/app/formRender';
@@ -17,14 +17,17 @@ const elementInputTypeFor = (valueType?: WorkflowIOValueTypeEnum): InputTypeEnum
       return InputTypeEnum.textarea; // PromptEditor，带 `/` 变量选择
     case WorkflowIOValueTypeEnum.arrayNumber:
       return InputTypeEnum.numberInput;
-    case WorkflowIOValueTypeEnum.arrayBoolean:
-      return InputTypeEnum.switch;
     case WorkflowIOValueTypeEnum.arrayObject:
       return InputTypeEnum.JSONEditor;
     default:
       return InputTypeEnum.textarea;
   }
 };
+
+// 元素类型是否可以与模式下拉同行展示
+const isInlineElementType = (valueType?: WorkflowIOValueTypeEnum) =>
+  valueType === WorkflowIOValueTypeEnum.arrayNumber ||
+  valueType === WorkflowIOValueTypeEnum.arrayBoolean;
 
 type Props = {
   valueType?: WorkflowIOValueTypeEnum;
@@ -56,13 +59,67 @@ const ArrayValue = ({
     onChange({ value: ['', v] as ReferenceValueType });
   };
 
-  const body = (() => {
-    if (mode === 'clear') return null;
+  const modeSelect = (
+    <MySelect<Mode>
+      width={'126px'}
+      h={10}
+      flexShrink={0}
+      list={modeList}
+      value={mode}
+      onChange={(m) => onChange({ arrayMode: m, value: undefined })}
+    />
+  );
 
-    // equal：整数组 JSONEditor；append：单元素对应 InputRender
-    const inputType = mode === 'equal' ? InputTypeEnum.JSONEditor : elementInputTypeFor(valueType);
-
+  // append + 数字/布尔：与模式同行展示元素输入
+  if (mode === 'append' && isInlineElementType(valueType)) {
+    if (valueType === WorkflowIOValueTypeEnum.arrayBoolean) {
+      type BoolStr = 'true' | 'false';
+      const boolList: { value: BoolStr; label: string }[] = [
+        { value: 'true', label: 'True' },
+        { value: 'false', label: 'False' }
+      ];
+      const current: BoolStr = (value?.[1] as unknown) === false ? 'false' : 'true';
+      return (
+        <Flex gap={2} alignItems={'center'}>
+          {modeSelect}
+          <Box flex={1} w={0}>
+            <MySelect<BoolStr>
+              h={10}
+              list={boolList}
+              value={current}
+              onChange={(v) => onInputChange(v === 'true')}
+            />
+          </Box>
+        </Flex>
+      );
+    }
+    // arrayNumber
     return (
+      <Flex gap={2} alignItems={'center'}>
+        {modeSelect}
+        <Box flex={1} w={0}>
+          <InputRender
+            inputType={InputTypeEnum.numberInput}
+            variables={variables}
+            variableLabels={variableLabels}
+            value={value?.[1]}
+            onChange={onInputChange}
+          />
+        </Box>
+      </Flex>
+    );
+  }
+
+  if (mode === 'clear') {
+    return modeSelect;
+  }
+
+  // equal：整数组 JSONEditor；append 的字符串/对象：独占一行
+  const inputType = mode === 'equal' ? InputTypeEnum.JSONEditor : elementInputTypeFor(valueType);
+
+  return (
+    <Box>
+      <Box mb={2}>{modeSelect}</Box>
       <InputRender
         inputType={inputType}
         variables={variables}
@@ -70,20 +127,6 @@ const ArrayValue = ({
         value={value?.[1]}
         onChange={onInputChange}
       />
-    );
-  })();
-
-  return (
-    <Box>
-      <Box mb={2}>
-        <MySelect<Mode>
-          size={'sm'}
-          list={modeList}
-          value={mode}
-          onChange={(m) => onChange({ arrayMode: m, value: undefined })}
-        />
-      </Box>
-      {body}
     </Box>
   );
 };
