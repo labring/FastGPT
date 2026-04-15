@@ -27,8 +27,19 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install Dependencies
         run: pnpm install
+
+      - name: Install Python Dependencies
+        run: pip install -r projects/code-sandbox/requirements.txt
 
       - name: Run Unit Tests
         run: pnpm --filter=code-sandbox test
