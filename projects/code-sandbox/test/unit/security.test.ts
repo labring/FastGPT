@@ -25,8 +25,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await jsPool.shutdown();
-  await pyPool.shutdown();
+  await jsPool?.shutdown();
+  await pyPool?.shutdown();
 });
 
 describe('模块拦截', () => {
