@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { formatFileSize, detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import {
+  formatFileSize,
+  detectFileEncoding,
+  hasNonAsciiByte
+} from '@fastgpt/global/common/file/tools';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -140,6 +144,26 @@ describe('文件工具函数测试', () => {
 
       // Binary data might be detected as various encodings or undefined
       expect(encoding).toBeDefined();
+    });
+
+    it('should not treat invalid utf-8 byte sequence as utf-8', () => {
+      // Windows-1252 smart quote bytes, invalid in standalone UTF-8 sequence
+      const invalidUtf8Buffer = Buffer.from([0x93, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x94]);
+      const encoding = detectFileEncoding(invalidUtf8Buffer);
+
+      expect(encoding).not.toBe('utf-8');
+    });
+  });
+
+  describe('hasNonAsciiByte', () => {
+    it('should return false for pure ascii buffer', () => {
+      const buffer = Buffer.from('Hello123', 'ascii');
+      expect(hasNonAsciiByte(buffer)).toBe(false);
+    });
+
+    it('should return true for utf-8 chinese buffer', () => {
+      const buffer = Buffer.from('中文', 'utf8');
+      expect(hasNonAsciiByte(buffer)).toBe(true);
     });
   });
 });
