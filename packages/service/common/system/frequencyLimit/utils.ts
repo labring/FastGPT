@@ -8,7 +8,8 @@ export const authFrequencyLimit = async ({
   eventId,
   maxAmount,
   expiredTime,
-  num = 1
+  num = 1,
+  strict = false
 }: AuthFrequencyLimitProps) => {
   try {
     // 对应 eventId 的 account+1, 不存在的话，则创建一个
@@ -33,5 +34,8 @@ export const authFrequencyLimit = async ({
     }
   } catch (error) {
     logger.error('Failed to update auth frequency limit', { eventId, error });
+    if (strict) {
+      throw error;
+    }
   }
 };

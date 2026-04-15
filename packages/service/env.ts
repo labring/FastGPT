@@ -1,3 +1,7 @@
+/**
+ * 服务包环境变量单一来源：在 `server` schema 中声明，通过导出的 `env` 读取。
+ * 勿在 `type/env.ts` 中扩充 `ProcessEnv`。
+ */
 import { createEnv } from '@t3-oss/env-core';
 import { z } from 'zod';
 
@@ -6,6 +10,8 @@ const BoolSchema = z
   .transform((val) => val === 'true')
   .pipe(z.boolean());
 const NumSchema = z.coerce.number();
+const IntSchema = NumSchema.int();
+const PositiveIntSchema = IntSchema.positive();
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 
@@ -59,6 +65,10 @@ export const env = createEnv({
 
     // ===== Security =====
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
+
+    PASSWORD_LOGIN_LOCK_SECONDS: PositiveIntSchema.optional().default(120),
+    LOGIN_FAIL_MAX_ATTEMPTS: PositiveIntSchema.optional().default(10),
+    LOGIN_FAIL_WINDOW_SECONDS: PositiveIntSchema.optional(),
 
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)
