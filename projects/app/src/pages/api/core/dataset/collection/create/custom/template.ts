@@ -38,27 +38,6 @@ export type CustomTemplateImportResponse = {
 
 const SUPPORTED_EXTENSIONS = ['csv', 'xls', 'xlsx'];
 
-// 解析文件为CSV文本
-async function parseFileToCSV(buffer: Buffer, extension: string): Promise<string> {
-  if (extension === 'xlsx' || extension === 'xls') {
-    // Excel文件直接解析，使用通用的 Excel 解析方法
-    const csvText = excelBufferToCSV(buffer);
-    if (!csvText) {
-      // node-xlsx（SheetJS）对过大文件会静默返回空 sheet，而非抛出异常
-      // 空 Excel 文件通常 < 20KB；超过 500KB 仍为空说明有数据但无法解析
-      if (buffer.length > 500 * 1024) {
-        throw new Error(i18nT('dataset:template_excel_too_much_data'));
-      }
-      throw new Error(i18nT('dataset:template_excel_file_empty'));
-    }
-    return csvText;
-  } else {
-    // CSV文件，使用公共方法检测编码并解码
-    const { content } = detectAndDecodeBuffer(buffer);
-    return content;
-  }
-}
-
 // 验证模板格式
 function validateTemplateFormat(csvText: string): void {
   const lines = csvText.trim().split('\n');
@@ -118,14 +97,30 @@ async function handler(
       datasetId: data.datasetId
     });
 
-    // 1. 读取文件并解析为CSV
-    const buffer = await fs.promises.readFile(file.path);
-    const rawText = await parseFileToCSV(buffer, extension);
+    // 1. 验证模板格式（CSV 只读 4096 字节头部，Excel 读全量转换后验证）
+    if (extension === 'xlsx' || extension === 'xls') {
+      const fileBuffer = await fs.promises.readFile(file.path);
+      const csv = excelBufferToCSV(fileBuffer);
+      if (!csv) {
+        if (fileBuffer.length > 500 * 1024)
+          throw new Error(i18nT('dataset:template_excel_too_much_data'));
+        throw new Error(i18nT('dataset:template_excel_file_empty'));
+      }
+      validateTemplateFormat(csv.substring(0, 4096));
+    } else {
+      // CSV: 只读头部 4096 字节做格式验证，避免主线程读大文件
+      const headerBuffer = Buffer.alloc(4096);
+      const fd = await fs.promises.open(file.path, 'r');
+      try {
+        await fd.read(headerBuffer, 0, 4096, 0);
+      } finally {
+        await fd.close();
+      }
+      const { content: headerText } = detectAndDecodeBuffer(headerBuffer);
+      validateTemplateFormat(headerText);
+    }
 
-    // 2. 验证模板格式
-    validateTemplateFormat(rawText);
-
-    // 3. Handle duplicate file name (within transaction to avoid TOCTOU)
+    // 2. Handle duplicate file name (within transaction to avoid TOCTOU)
     let fileName = decodeURIComponent(file.originalname);
     let deletedCollectionId: string | undefined;
     let overwritten = false;
@@ -242,9 +237,6 @@ async function handler(
       contentType: file.mimetype
     });
 
-    // 5. 删除临时文件
-    removeFilesByPaths(filePaths);
-
     // 6. 获取模式配置
     const customTemplateConfig = global.systemEnv?.customTemplateImport;
     const defaultModeName = customTemplateConfig?.defaultActivateMode || 'default';
@@ -286,10 +278,11 @@ async function handler(
           }
         : enhanceConfig;
 
-    // 7. 创建集合并插入数据
+    // 7. 创建集合（通过 filePath 路径，Worker 统计行数后推入后台解析队列，API 快速返回）
     const { collectionId, results: insertResults } = await createCollectionAndInsertData({
       dataset,
-      rawText,
+      filePath: file.path,
+      fileExtension: extension,
       backupParse: true,
       createCollectionParams: {
         teamId,
@@ -310,6 +303,9 @@ async function handler(
         imageIndexPrompt: finalEnhanceConfig.imageIndexPrompt
       }
     });
+
+    // 5. 删除临时文件（在 createCollectionAndInsertData 之后，因为优化路径需要读文件）
+    removeFilesByPaths(filePaths);
 
     return {
       collectionId,

@@ -43,7 +43,13 @@ export const readFileRawText = async ({
       }
 
       if (normalizedEncoding) {
-        return iconv.decode(buffer, normalizedEncoding);
+        // TextDecoder（V8 原生 ICU）对 GBK 比 iconv-lite 快约 30 倍，对 UTF-8 性能相当。
+        // 降级到 iconv-lite 兜底 TextDecoder 不支持的编码。
+        try {
+          return new TextDecoder(normalizedEncoding).decode(buffer);
+        } catch {
+          return iconv.decode(buffer, normalizedEncoding);
+        }
       }
 
       return buffer.toString('utf-8');

@@ -42,6 +42,7 @@
     "axios": "catalog:",
     "date-fns": "catalog:",
     "dayjs": "catalog:",
+    "csv-rex": "^0.7.0",
     "echarts": "5.4.1",
     "echarts-gl": "2.0.9",
     "esbuild": "^0.25.11",

@@ -1,11 +1,18 @@
 import { parentPort } from 'worker_threads';
 import { workerResponse } from '../controller';
-import { parseDatasetBackup2Chunks } from '../../core/dataset/utils';
+import {
+  parseDatasetBackup2Chunks,
+  parseDatasetBackupFromSharedBuffer,
+  parseDatasetBackupFromFile,
+  countDatasetBackupFromFile
+} from '../../core/dataset/parseBackup';
 
 // 这里导入所有需要在worker中运行的同步函数
-// 后续可以根据需要添加更多函数
 const availableFunctions: Record<string, Function> = {
-  parseDatasetBackup2Chunks
+  parseDatasetBackup2Chunks,
+  parseDatasetBackupFromSharedBuffer,
+  parseDatasetBackupFromFile,
+  countDatasetBackupFromFile
 };
 
 interface SyncFunctionCall {

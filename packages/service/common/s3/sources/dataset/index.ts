@@ -155,6 +155,22 @@ export class S3DatasetSource extends S3PrivateBucket {
     };
   }
 
+  // 下载原始文件字节（不做格式转换）
+  async getDatasetFileBuffer(
+    fileId: string
+  ): Promise<{ buffer: Buffer; extension: string; filename: string }> {
+    const [fileMetadata, downloadResponse] = await Promise.all([
+      this.getFileMetadata(fileId),
+      this.client.downloadObject({ key: fileId })
+    ]);
+    const buffer = await streamConsumer.buffer(downloadResponse.body);
+    return {
+      buffer,
+      extension: fileMetadata?.extension || '',
+      filename: fileMetadata?.filename || ''
+    };
+  }
+
   // 根据文件 Buffer 上传文件
   async upload(params: UploadParams): Promise<string> {
     const { datasetId, filename, contentType, ...file } = UploadParamsSchema.parse(params);

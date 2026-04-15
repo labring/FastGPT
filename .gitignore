@@ -7,6 +7,7 @@ out/
 # build/
 .astro/
 
+.worktrees/
 # misc
 .DS_Store
 *.pem
@@ -46,3 +47,4 @@ projects/app/data/train/
 
 # diting-rag-ts（source-based，无需 dist）
 packages/diting-rag-ts/dist/
+
