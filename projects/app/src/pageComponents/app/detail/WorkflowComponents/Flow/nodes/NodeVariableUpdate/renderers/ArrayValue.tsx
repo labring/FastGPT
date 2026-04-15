@@ -7,6 +7,10 @@ import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType
+} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 type Mode = NonNullable<TUpdateListItem['arrayMode']>;
 
@@ -33,8 +37,8 @@ type Props = {
   valueType?: WorkflowIOValueTypeEnum;
   arrayMode?: TUpdateListItem['arrayMode'];
   value?: ReferenceValueType;
-  variables: any[];
-  variableLabels: any[];
+  variables: EditorVariablePickerType[];
+  variableLabels: EditorVariableLabelPickerType[];
   onChange: (patch: Partial<TUpdateListItem>) => void;
 };
 

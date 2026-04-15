@@ -6,6 +6,10 @@ import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import type {
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType
+} from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 type NumberOperator = NonNullable<TUpdateListItem['numberOperator']>;
 
@@ -28,8 +32,8 @@ const OPERATORS: { value: NumberOperator; label: React.ReactNode }[] = (
 type Props = {
   operator?: NumberOperator;
   value: unknown;
-  variables: any[];
-  variableLabels: any[];
+  variables: EditorVariablePickerType[];
+  variableLabels: EditorVariableLabelPickerType[];
   onChange: (patch: { operator?: NumberOperator; value?: unknown }) => void;
 };
 

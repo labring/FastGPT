@@ -39,6 +39,22 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import VariableSelector from './VariableSelector';
 import ValueRenderer from './ValueRenderer';
 
+// 切换目标变量时按新类型生成默认操作字段与初值，
+// 保证 UI 初始显示与 runtime 默认行为一致（否则 boolean 会出现 UI 显示"是" / runtime 写 false 的错配）
+const getDefaultsForValueType = (valueType?: WorkflowIOValueTypeEnum): Partial<TUpdateListItem> => {
+  const isArray = typeof valueType === 'string' && valueType.startsWith('array');
+  return {
+    valueType,
+    numberOperator: valueType === WorkflowIOValueTypeEnum.number ? '=' : undefined,
+    booleanMode: valueType === WorkflowIOValueTypeEnum.boolean ? 'true' : undefined,
+    arrayMode: isArray ? 'equal' : undefined,
+    value:
+      valueType === WorkflowIOValueTypeEnum.boolean
+        ? (['', true] as unknown as ReferenceValueType)
+        : (['', ''] as ReferenceValueType)
+  };
+};
+
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
   const { t } = useTranslation();
@@ -176,23 +192,9 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     systemConfigNode,
                     chatConfig: appDetail.chatConfig
                   }).valueType;
-                  const isArray =
-                    typeof newValueType === 'string' && newValueType.startsWith('array');
-
-                  // 切换目标变量时根据新类型给操作字段赋默认值，
-                  // 保证 UI 初始显示与 runtime 默认行为一致（否则 boolean 会出现 UI 显示"是" / runtime 写 false 的错配）
                   applyPatch({
                     variable: value as ReferenceItemValueType,
-                    valueType: newValueType,
-                    numberOperator:
-                      newValueType === WorkflowIOValueTypeEnum.number ? '=' : undefined,
-                    booleanMode:
-                      newValueType === WorkflowIOValueTypeEnum.boolean ? 'true' : undefined,
-                    arrayMode: isArray ? 'equal' : undefined,
-                    value:
-                      newValueType === WorkflowIOValueTypeEnum.boolean
-                        ? (['', true] as unknown as ReferenceValueType)
-                        : (['', ''] as ReferenceValueType)
+                    ...getDefaultsForValueType(newValueType)
                   });
                 }}
               />

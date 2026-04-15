@@ -25,7 +25,7 @@ const VariableSelector = ({ nodeId, variable, valueType, onSelect }: Props) => {
       list={referenceList}
       value={variable}
       onSelect={onSelect}
-      isArray={valueType?.includes('array')}
+      isArray={valueType?.startsWith('array')}
     />
   );
 };

@@ -147,7 +147,7 @@ if (isInput && isArrayType(valueType)) {
 | Array 模式下拉位置 | 独立一行，位于「值」label 下方（避免与运算符行视觉冲突） |
 | 切换 Array 模式时是否清空 value | **清空**（`value: undefined`），避免残留脏数据；切换 Number/Boolean 模式同样清空 |
 | clear 模式下的 `renderType` | 保留上次值，运行时忽略，不影响序列化 |
-| 切换目标变量时的默认值 | onSelect 根据新 valueType 赋默认：number→`numberOperator='='`；boolean→`booleanMode='true', value=['', true]`；array→`arrayMode='equal'`。保证 UI 初始态与 runtime 默认行为一致（否则 boolean 会出现 UI 显示「是」但 runtime 写 `false` 的错配） |
+| 切换目标变量时的默认值 | onSelect 调用 `getDefaultsForValueType(valueType)` 统一派默认：number→`numberOperator='='`；boolean→`booleanMode='true', value=['', true]`；array→`arrayMode='equal'`。保证 UI 初始态与 runtime 默认行为一致（否则 boolean 会出现 UI 显示「是」但 runtime 写 `false` 的错配） |
 
 ## 8. 前置重构：组件拆分
 
@@ -199,10 +199,16 @@ workflow:var_update_array_equal
 
 ## 11. 相关文件
 
-- `projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeVariableUpdate.tsx`
+- `projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeVariableUpdate/`
+  - `index.tsx` — NodeCard 外壳 + `getDefaultsForValueType` + 列表管理
+  - `ValueRenderer.tsx` — 按 renderType / valueType 派发
+  - `VariableSelector.tsx` — 变量选择器
+  - `renderers/{NumberFormula,BooleanSelect,ArrayValue}.tsx`
 - `packages/service/core/workflow/dispatch/tools/runUpdateVar.ts`
-- `projects/app/src/components/core/app/formRender/utils.ts`
 - `packages/global/core/workflow/template/system/variableUpdate/type.ts`
+- `test/cases/service/core/workflow/dispatch/tools/runUpdateVar.test.ts`
+- `packages/web/components/common/Icon/icons/math/*.svg` + `constants.ts`
+- `packages/web/i18n/{en,zh-CN,zh-Hant}/workflow.json`
 
 ## 12. TODO
 
