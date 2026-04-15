@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as loginApi from '@/pages/api/support/user/account/loginByPassword';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -9,6 +9,7 @@ import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { Call } from '@test/utils/request';
 import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
@@ -229,6 +230,114 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
     expect(res.data.token).toBeDefined();
     expect(typeof res.data.token).toBe('string');
+  });
+
+  describe('account + IP login lockout', () => {
+    async function loadLoginApi(maxAttempts: string) {
+      vi.unstubAllEnvs();
+      vi.stubEnv('LOGIN_FAIL_MAX_ATTEMPTS', maxAttempts);
+      vi.resetModules();
+      return import('@/pages/api/support/user/account/loginByPassword');
+    }
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    it('should reject with tooManyRequest after max failed password attempts', async () => {
+      const loginMod = await loadLoginApi('3');
+
+      for (let i = 0; i < 3; i++) {
+        const res = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+          body: {
+            username: 'testuser',
+            password: 'wrongpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        });
+        expect(res.code).toBe(500);
+        expect(res.error).toBe(UserErrEnum.account_psw_error);
+      }
+
+      const locked = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+        body: {
+          username: 'testuser',
+          password: 'wrongpassword',
+          code: '123456',
+          language: 'zh-CN'
+        }
+      });
+      expect(locked.code).toBe(500);
+      expect(locked.error).toBe(ERROR_ENUM.tooManyRequest);
+    });
+
+    it('should clear failure counter after successful login', async () => {
+      const loginMod = await loadLoginApi('3');
+
+      for (let i = 0; i < 2; i++) {
+        const res = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+          body: {
+            username: 'testuser',
+            password: 'wrongpassword',
+            code: '123456',
+            language: 'zh-CN'
+          }
+        });
+        expect(res.code).toBe(500);
+        expect(res.error).toBe(UserErrEnum.account_psw_error);
+      }
+
+      const ok = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+        body: {
+          username: 'testuser',
+          password: 'testpassword',
+          code: '123456',
+          language: 'zh-CN'
+        }
+      });
+      expect(ok.code).toBe(200);
+
+      const after = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+        body: {
+          username: 'testuser',
+          password: 'wrongpassword',
+          code: '123456',
+          language: 'zh-CN'
+        }
+      });
+      expect(after.code).toBe(500);
+      expect(after.error).toBe(UserErrEnum.account_psw_error);
+    });
+
+    it('should count auth code failures toward lockout', async () => {
+      vi.mocked(authCode).mockRejectedValue(new Error('Invalid code'));
+      const loginMod = await loadLoginApi('2');
+
+      for (let i = 0; i < 2; i++) {
+        const res = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+          body: {
+            username: 'testuser',
+            password: 'testpassword',
+            code: 'wrongcode',
+            language: 'zh-CN'
+          }
+        });
+        expect(res.code).toBe(500);
+      }
+
+      const locked = await Call<LoginByPasswordBodyType, {}, any>(loginMod.default, {
+        body: {
+          username: 'testuser',
+          password: 'testpassword',
+          code: 'wrongcode',
+          language: 'zh-CN'
+        }
+      });
+      expect(locked.code).toBe(500);
+      expect(locked.error).toBe(ERROR_ENUM.tooManyRequest);
+    });
   });
 
   // ===== Security: NoSQL injection prevention (GHSA-jxvr-h2vx-p73r) =====

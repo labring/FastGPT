@@ -4,6 +4,7 @@ import { authFrequencyLimit } from '../system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
 import { type NextApiResponse } from 'next';
 import { jsonRes } from '../response';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 // unit: times/s
 // how to use?
@@ -12,12 +13,15 @@ export function useIPFrequencyLimit({
   id,
   seconds,
   limit,
-  force = false
+  force = false,
+  failClosed = false
 }: {
   id: string;
   seconds: number;
   limit: number;
   force?: boolean;
+  /** When true, Mongo errors reject with tooManyRequest instead of failing open. */
+  failClosed?: boolean;
 }) {
   return async (req: ApiRequestProps, res: NextApiResponse) => {
     const ip = requestIp.getClientIp(req);
@@ -28,12 +32,17 @@ export function useIPFrequencyLimit({
       await authFrequencyLimit({
         eventId: `ip-qps-limit-${id}-` + ip,
         maxAmount: limit,
-        expiredTime: addSeconds(new Date(), seconds)
+        expiredTime: addSeconds(new Date(), seconds),
+        strict: failClosed
       });
-    } catch (_) {
+    } catch (err) {
+      const isLimitExceeded = err && typeof err === 'object' && 'amount' in err;
       jsonRes(res, {
         code: 429,
-        error: `Too many request, request ${limit} times every ${seconds} seconds`
+        error:
+          failClosed && !isLimitExceeded
+            ? ERROR_ENUM.tooManyRequest
+            : `Too many request, request ${limit} times every ${seconds} seconds`
       });
     }
   };
