@@ -26,12 +26,14 @@ export const useChatTest = ({
   nodes,
   edges,
   chatConfig = {},
-  isReady
+  isReady,
+  debuggerMode = false
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
   isReady: boolean;
+  debuggerMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -157,11 +159,12 @@ export const useChatTest = ({
           appId={appId}
           chatId={chatId}
           showMarkIcon
+          debuggerMode={debuggerMode}
           chatType={ChatTypeEnum.test}
           onStartChat={startChat}
         />
       ),
-    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
+    [appDetail.type, appId, chatId, isReady, restartChat, startChat, debuggerMode]
   );
 
   return {

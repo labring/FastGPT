@@ -1,4 +1,4 @@
-import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
+import { Box, type BoxProps, Card, Flex, Button, Text } from '@chakra-ui/react';
 import React, { useMemo, useState } from 'react';
 import ChatController, { type ChatControllerProps } from './SfChatController';
 import ChatAvatar from './ChatAvatar';
@@ -19,6 +19,7 @@ import AIResponseBox from '../../../components/AIResponseBox';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import {
   type AIChatItemValueItemType,
@@ -443,36 +444,90 @@ const ChatItem = (props: Props) => {
         </Box>
       ))}
 
-      <Flex
-        w={'100%'}
-        alignItems={'center'}
-        gap={2}
-        justifyContent={styleMap.justifyContent}
-        mt={2}
-        ml={type === ChatRoleEnum.AI ? 4 : 0}
-      >
-        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
-          <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
-            {chat.time && (isPc || isChatLog) && (
-              <Box
-                order={type === ChatRoleEnum.AI ? 2 : 0}
-                className={'time-label'}
-                fontSize={styleMap.fontSize}
-                color={styleMap.color}
-                fontWeight={styleMap.fontWeight}
-                display={isChatLog ? 'block' : 'none'}
-              >
-                {t(formatTimeToChatItemTime(chat.time) as any, {
-                  time: dayjs(chat.time).format('HH:mm')
-                }).replace('#', ':')}
-              </Box>
+      {/* Rewrite standardized query */}
+      {type === ChatRoleEnum.Human &&
+        chat.rewriteStandardizedQuery &&
+        formatChatValue2InputType(chat.value).text !== chat.rewriteStandardizedQuery && (
+          <Box
+            textAlign="right"
+            fontSize="12px"
+            color="#999999"
+            mt={2}
+            p={2}
+            borderRight="2px solid"
+            borderColor="myGray.200"
+            pr={'10px'}
+          >
+            {t('app:chat_item_rewrite')}：{chat.rewriteStandardizedQuery}
+          </Box>
+        )}
+
+      <Flex alignItems={'center'} mt={2}>
+        <Flex
+          w={'100%'}
+          alignItems={'center'}
+          gap={2}
+          justifyContent={styleMap.justifyContent}
+          ml={type === ChatRoleEnum.AI ? 4 : 0}
+        >
+          {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+            <Flex order={styleMap.order} ml={styleMap.ml} align={'center'} gap={'0.62rem'}>
+              {chat.time && (isPc || isChatLog) && (
+                <Box
+                  order={type === ChatRoleEnum.AI ? 2 : 0}
+                  className={'time-label'}
+                  fontSize={styleMap.fontSize}
+                  color={styleMap.color}
+                  fontWeight={styleMap.fontWeight}
+                  display={isChatLog ? 'block' : 'none'}
+                >
+                  {t(formatTimeToChatItemTime(chat.time) as any, {
+                    time: dayjs(chat.time).format('HH:mm')
+                  }).replace('#', ':')}
+                </Box>
+              )}
+              <ChatController
+                {...props}
+                isLastChild={isLastChild}
+                showFeedbackContent={showFeedbackContent}
+                onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
+              />
+            </Flex>
+          )}
+        </Flex>
+        {/* 反馈标签区域：好评、差评、未命中知识库 */}
+        {chat.obj === ChatRoleEnum.AI && (
+          <Flex ml={'auto'} gap={1}>
+            {!!chat.userGoodFeedback && (
+              <MyTag colorSchema="green">
+                <MyIcon name="core/chat/feedback/goodLight" w="14px" h="14px" mr={1} />
+                <Text fontSize="xs" fontWeight={500}>
+                  {t('app:chat_item_liked')}
+                </Text>
+              </MyTag>
             )}
-            <ChatController
-              {...props}
-              isLastChild={isLastChild}
-              showFeedbackContent={showFeedbackContent}
-              onToggleFeedbackContent={() => setShowFeedbackContent(!showFeedbackContent)}
-            />
+            {!!chat.userBadFeedback && (
+              <MyTooltip label={chat.userBadFeedback}>
+                <MyTag colorSchema="yellow">
+                  <MyIcon name="core/chat/feedback/badLight" w="14px" h="14px" mr={1} />
+                  <Text fontSize="xs" fontWeight={500}>
+                    {chat.userBadFeedback.length > 20
+                      ? chat.userBadFeedback.substring(0, 20) + '...'
+                      : chat.userBadFeedback}
+                  </Text>
+                </MyTag>
+              </MyTooltip>
+            )}
+            {chat.quoteList && chat.quoteList.length === 0 && (
+              <MyTag colorSchema="pink" showDot={false}>
+                <Flex alignItems={'center'}>
+                  <MyIcon w={'14px'} name="common/info" mr={1} />
+                  <Text fontSize="xs" fontWeight={500}>
+                    {t('app:logs_filter_not_found_knowledge')}
+                  </Text>
+                </Flex>
+              </MyTag>
+            )}
           </Flex>
         )}
       </Flex>

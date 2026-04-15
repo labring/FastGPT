@@ -167,6 +167,7 @@ export type ChatSiteItemType = ChatItemMergeType & {
   _id?: string;
   id: string;
   dataId: string;
+  correctionId?: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;

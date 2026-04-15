@@ -59,7 +59,7 @@ const Edit = ({
       )}
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
+          <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} debuggerMode={true} />
         </Box>
       )}
     </Box>

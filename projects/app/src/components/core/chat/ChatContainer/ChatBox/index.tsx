@@ -104,6 +104,7 @@ enum FeedbackTypeEnum {
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
     isReady: boolean;
+    debuggerMode?: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
@@ -127,7 +128,8 @@ const ChatBox = ({
   showWorkorder,
   onStartChat,
   chatType,
-  onTriggerRefresh
+  onTriggerRefresh,
+  debuggerMode = false
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -1162,14 +1164,25 @@ const ChatBox = ({
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
   // 非 home type, and no chat records and no var
+  // 非运行调试场景
+  // 数据已经加载完成 -> 避免日志记录里先出现问候语再出现记录
   const isAppChatEmptyRender = useMemo(() => {
     return (
       chatType !== ChatTypeEnum.home &&
       chatRecords.length === 0 &&
       !chatStartedWatch &&
-      isNoneWelcomeAndVariable
+      isNoneWelcomeAndVariable &&
+      !debuggerMode &&
+      isChatRecordsLoaded
     );
-  }, [chatType, chatRecords.length, chatStartedWatch, isNoneWelcomeAndVariable]);
+  }, [
+    chatType,
+    chatRecords.length,
+    chatStartedWatch,
+    isNoneWelcomeAndVariable,
+    debuggerMode,
+    isChatRecordsLoaded
+  ]);
 
   const toggleDeletedGroup = useCallback((dataIds: string[]) => {
     setExpandedDeletedGroups((prev) => {

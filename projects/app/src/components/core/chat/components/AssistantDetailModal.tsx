@@ -572,9 +572,11 @@ const KnowledgeRerankNode = ({
             ) : (
               <>
                 {t('chat:knowledge_rerank')}
-                {!hasError && mergedList.length > 0 && (
+                {!hasError && !isLoading && (
                   <MyTag colorSchema="blue" ml={2}>
-                    {t('chat:summarize_retrieval_results_count', { count: mergedList.length })}
+                    {mergedList.length > 0
+                      ? t('chat:summarize_retrieval_results_count', { count: mergedList.length })
+                      : t('chat:no_rerank_passed')}
                   </MyTag>
                 )}
               </>
@@ -602,85 +604,79 @@ const KnowledgeRerankNode = ({
                     {errorText}
                   </Box>
                 ) : (
-                  <>
-                    {mergedList.length > 0 ? (
-                      <>
-                        <Flex flexDirection={'column'} gap={3}>
-                          {displayList.map((item, index) => {
-                            // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
-                            const descriptionList = [];
+                  mergedList.length > 0 && (
+                    <>
+                      <Flex flexDirection={'column'} gap={3}>
+                        {displayList.map((item, index) => {
+                          // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
+                          const descriptionList = [];
 
-                            // 从 score 数组中提取分数信息，按固定顺序添加
-                            if (item.score && Array.isArray(item.score)) {
-                              const rrfScore = item.score.find((s) => s.type === 'rrf');
-                              const reRankScore = item.score.find((s) => s.type === 'reRank');
+                          // 从 score 数组中提取分数信息，按固定顺序添加
+                          if (item.score && Array.isArray(item.score)) {
+                            const rrfScore = item.score.find((s) => s.type === 'rrf');
+                            const reRankScore = item.score.find((s) => s.type === 'reRank');
 
-                              if (rrfScore) {
-                                descriptionList.push(
-                                  `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
-                                );
-                              }
-                              if (reRankScore) {
-                                descriptionList.push(
-                                  `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
-                                );
-                              }
+                            if (rrfScore) {
+                              descriptionList.push(
+                                `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
+                              );
                             }
-
-                            // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
-                            let recallRank = '-';
-                            if (item.retrievalRank !== undefined) {
-                              recallRank = `${item.retrievalRank + 1}`;
+                            if (reRankScore) {
+                              descriptionList.push(
+                                `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
+                              );
                             }
-                            // 多轮智能检索不显示
-                            !isAgenticMode &&
-                              descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
+                          }
 
-                            // 使用 TOP1、TOP2 格式作为标题
-                            const title = `TOP${index + 1}`;
+                          // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
+                          let recallRank = '-';
+                          if (item.retrievalRank !== undefined) {
+                            recallRank = `${item.retrievalRank + 1}`;
+                          }
+                          // 多轮智能检索不显示
+                          !isAgenticMode &&
+                            descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
-                            // 计算 linkText 和 linkUrl
-                            let linkText = '';
-                            let linkUrl = '';
+                          // 使用 TOP1、TOP2 格式作为标题
+                          const title = `TOP${index + 1}`;
 
-                            if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                              linkText = `${item.sourceName || ''} / #${item.index}`;
-                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
-                            } else if (item.sourceType === 'sql') {
-                              linkText = item.sourceName || '';
-                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
-                            }
+                          // 计算 linkText 和 linkUrl
+                          let linkText = '';
+                          let linkUrl = '';
 
-                            return (
-                              <ChunkInfoCard
-                                key={item._id || index}
-                                title={title}
-                                descriptionList={descriptionList}
-                                linkText={linkText}
-                                linkUrl={linkUrl}
-                                q={item.q}
-                                a={item.a}
-                              />
-                            );
-                          })}
-                        </Flex>
-                        {!isShowAll && mergedList.length > maxCount && (
-                          <Button
-                            mt={3}
-                            onClick={() => setIsShowAll(true)}
-                            w="100%"
-                            variant={'primaryOutline'}
-                          >
-                            {t('chat:view_all_knowledge', { count: mergedList.length })}
-                          </Button>
-                        )}
-                      </>
-                    ) : (
-                      <Box fontSize={'sm'} color={'myGray.600'}>
-                        {t('chat:no_rerank_passed')}
-                      </Box>
-                    )}
-                  </>
+                          if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                            linkText = `${item.sourceName || ''} / #${item.index}`;
+                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
+                          } else if (item.sourceType === 'sql') {
+                            linkText = item.sourceName || '';
+                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                          }
+
+                          return (
+                            <ChunkInfoCard
+                              key={item._id || index}
+                              title={title}
+                              descriptionList={descriptionList}
+                              linkText={linkText}
+                              linkUrl={linkUrl}
+                              q={item.q}
+                              a={item.a}
+                            />
+                          );
+                        })}
+                      </Flex>
+                      {!isShowAll && mergedList.length > maxCount && (
+                        <Button
+                          mt={3}
+                          onClick={() => setIsShowAll(true)}
+                          w="100%"
+                          variant={'primaryOutline'}
+                        >
+                          {t('chat:view_all_knowledge', { count: mergedList.length })}
+                        </Button>
+                      )}
+                    </>
+                  )
                 )}
               </>
             )}
@@ -808,6 +804,11 @@ const FinalAnswerNode = ({
             alignItems={'center'}
           >
             {t('chat:final_answer')}
+            {isFallback && (
+              <MyTag colorSchema="blue" ml={2}>
+                {t('chat:fallback_reply')}
+              </MyTag>
+            )}
             {finalAnswer && !isError && (
               <MyTooltip label={t('common:Copy')}>
                 <Box
@@ -834,12 +835,6 @@ const FinalAnswerNode = ({
         <Box pl={'28px'} pt={2} pb={0}>
           {finalAnswer && (
             <>
-              {/* 兜底回复说明文本 */}
-              {isFallback && (
-                <Box fontSize={'12px'} lineHeight={'16px'} color={'myGray.600'} mb={2}>
-                  {t('chat:fallback_reply')}
-                </Box>
-              )}
               {/* 错误状态：直接显示错误文本，不带边框 */}
               {isError ? (
                 <Box fontSize={'sm'} color={'red.600'}>
@@ -1040,7 +1035,6 @@ const ChatDetailModal = ({
       maxH={['90vh', '700px']}
       h={['90vh', '80vh']}
       isLoading={loading}
-      iconSrc="/imgs/modal/wholeRecord.svg"
       title={t('chat:chat_details')}
     >
       <ModalBody>
