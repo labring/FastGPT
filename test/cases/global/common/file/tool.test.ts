@@ -74,6 +74,15 @@ describe('文件工具函数测试', () => {
   });
 
   describe('detectFileEncoding', () => {
+    it('should detect UTF-8 with BOM', () => {
+      const content = Buffer.from('Hello 世界', 'utf8');
+      const bomBuffer = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), content]);
+
+      const encoding = detectFileEncoding(bomBuffer);
+
+      expect(encoding).toBe('utf-8');
+    });
+
     it('should detect UTF-8 encoding', () => {
       const utf8Text = 'Hello World 你好世界';
       const buffer = Buffer.from(utf8Text, 'utf8');
@@ -115,14 +124,14 @@ describe('文件工具函数测试', () => {
       expect(encoding).toBeDefined();
     });
 
-    it('should only read first 200 bytes', () => {
-      // Create a large buffer
-      const largeBuffer = Buffer.alloc(1000);
-      largeBuffer.write('UTF-8 text at beginning', 0, 'utf8');
+    it('should detect utf-8 for english prefix and chinese body', () => {
+      const longEnglishPrefix = 'A'.repeat(2048);
+      const mixedText = `${longEnglishPrefix}\n\n这里是中文正文。`;
+      const buffer = Buffer.from(mixedText, 'utf8');
 
-      const encoding = detectFileEncoding(largeBuffer);
+      const encoding = detectFileEncoding(buffer);
 
-      expect(encoding).toBeDefined();
+      expect(encoding).toBe('utf-8');
     });
 
     it('should handle binary data', () => {
