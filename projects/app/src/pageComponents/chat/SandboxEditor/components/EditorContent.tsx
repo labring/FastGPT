@@ -88,6 +88,11 @@ const EditorContent = ({
   const renderFileContent = () => {
     if (!activeFile) return null;
 
+    // 非媒体文件 UTF-8 解码失败 → 走兜底（如 xlsx/zip 等真二进制）
+    if (activeFile.isUnknown) {
+      return t('chat:sandbox_binary_file_no_preview');
+    }
+
     // 二进制文件预览 (图片/音频/视频)
     if (activeFile.isBinary) {
       const { language, content, name } = activeFile;

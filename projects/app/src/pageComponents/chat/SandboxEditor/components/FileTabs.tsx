@@ -10,6 +10,8 @@ export type OpenedFile = {
   language: string;
   isBinary: boolean;
   isDirty: boolean;
+  // 非媒体文件 UTF-8 解码失败时为 true，前端走「无法预览」兜底
+  isUnknown?: boolean;
 };
 
 type Props = {
