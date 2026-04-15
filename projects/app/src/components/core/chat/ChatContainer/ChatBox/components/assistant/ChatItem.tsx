@@ -212,8 +212,9 @@ export const SimpleCitationDisplay = React.memo(
     prevProps.datasetReadPerMap === nextProps.datasetReadPerMap
 );
 
-const HumanContentCard = React.memo(
+export const HumanContentCard = React.memo(
   function HumanContentCard({ chatValue }: { chatValue: ChatItemValueItemType[] }) {
+    window.console.log(chatValue, formatChatValue2InputType(chatValue));
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     return (
       <Flex

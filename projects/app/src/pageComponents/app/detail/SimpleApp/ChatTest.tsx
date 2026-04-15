@@ -23,8 +23,9 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 type Props = {
   appForm: AppSimpleEditFormType;
   setRenderEdit: React.Dispatch<React.SetStateAction<boolean>>;
+  debuggerMode?: boolean;
 };
-const ChatTest = ({ appForm, setRenderEdit }: Props) => {
+const ChatTest = ({ appForm, setRenderEdit, debuggerMode = false }: Props) => {
   const { t } = useTranslation();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -50,7 +51,8 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
-    isReady: true
+    isReady: true,
+    debuggerMode
   });
   const isAssistantType = appDetail.type === AppTypeEnum.assistant;
 
@@ -113,7 +115,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   );
 };
 
-const Render = ({ appForm, setRenderEdit }: Props) => {
+const Render = ({ appForm, setRenderEdit, debuggerMode }: Props) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -135,7 +137,7 @@ const Render = ({ appForm, setRenderEdit }: Props) => {
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
+        <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} debuggerMode={debuggerMode} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

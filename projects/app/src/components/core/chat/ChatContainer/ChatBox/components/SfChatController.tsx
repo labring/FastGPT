@@ -1,5 +1,6 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { Flex, type FlexProps, Box, Button, useDisclosure } from '@chakra-ui/react';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo, useCallback } from 'react';
@@ -9,7 +10,6 @@ import { formatChatValue2InputType } from '../utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
@@ -31,6 +31,7 @@ export type ChatControllerProps = {
   onToggleFeedbackReadStatus?: () => void;
   showFeedbackContent?: boolean;
   onToggleFeedbackContent?: () => void;
+  onCorrectError?: () => void;
 };
 
 // icon color: Graphite Black/L70 ---------- #637A99
@@ -57,7 +58,8 @@ const ChatController = ({
   onAddUserLike,
   onToggleFeedbackReadStatus,
   showFeedbackContent,
-  onToggleFeedbackContent
+  onToggleFeedbackContent,
+  onCorrectError
 }: ChatControllerProps & FlexProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
@@ -134,6 +136,26 @@ const ChatController = ({
                   <Box>{t('common:Detail')}</Box>
                 </Flex>
               </MyTooltip>
+              {!!onCorrectError && (
+                <MyTooltip label={t('app:chat_item_correct_error')}>
+                  <Flex
+                    alignItems={'center'}
+                    gap={'4px'}
+                    px={2}
+                    h={'24px'}
+                    borderRadius={'4px'}
+                    borderColor={'myGray.200'}
+                    cursor={'pointer'}
+                    color={'myGray.600'}
+                    fontSize={'xs'}
+                    _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
+                    onClick={onCorrectError}
+                  >
+                    <MyIcon name={'kbTest'} w={'12px'} />
+                    <Box>{t('app:chat_item_correct_error')}</Box>
+                  </Flex>
+                </MyTooltip>
+              )}
             </Flex>
             {/* 分隔线 */}
             <Box w={'1px'} h={'14px'} bg={'myGray.200'} flexShrink={0} />
@@ -268,6 +290,20 @@ const ChatController = ({
             </>
           )}
         </Flex>
+        {isAIMsg && !!chat.correctionId && (
+          <MyTag
+            ml={1}
+            type={'borderFill'}
+            fontSize={'10px'}
+            height={'22px'}
+            showDot
+            colorSchema="green"
+            border={'none'}
+            borderRadius={'22px'}
+          >
+            {t('app:chat_item_optimized')}
+          </MyTag>
+        )}
 
         {onToggleFeedbackReadStatus &&
           isAIMsg &&
