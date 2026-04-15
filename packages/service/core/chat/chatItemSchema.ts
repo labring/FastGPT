@@ -95,7 +95,7 @@ const ChatItemSchema = new Schema({
   delete by chat id;
   close custom feedback;
 */
-ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
+ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { unique: true });
 // Get histories
 ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1 });
 // get chatitem list,Anchor filter

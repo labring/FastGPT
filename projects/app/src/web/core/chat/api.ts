@@ -1,5 +1,4 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { InitTeamChatProps } from '@/global/core/chat/api';
 import type { InitOutLinkChatQueryType } from '@fastgpt/global/openapi/core/chat/outLink/api';
 import type { ChatSettingModelType, ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 import type {
@@ -10,6 +9,7 @@ import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteAp
 import type {
   InitChatQueryType,
   InitChatResponseType,
+  InitTeamChatQueryType,
   StopV2ChatParams
 } from '@fastgpt/global/openapi/core/chat/controler/api';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
@@ -24,7 +24,7 @@ export const getInitChatInfo = (data: InitChatQueryType) =>
   GET<InitChatResponseType>(`/core/chat/init`, data);
 export const getInitOutLinkChatInfo = (data: InitOutLinkChatQueryType) =>
   GET<InitChatResponseType>(`/core/chat/outLink/init`, data);
-export const getTeamChatInfo = (data: InitTeamChatProps) =>
+export const getTeamChatInfo = (data: InitTeamChatQueryType) =>
   GET<InitChatResponseType>(`/core/chat/team/init`, data);
 
 /*---------- chat setting ------------*/

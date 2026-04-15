@@ -7,7 +7,7 @@ export const TagsMap = {
   // Ai -skill
   aiSkill: 'AI技能管理',
   // AI
-  aiCommon: 'AI 通用 接口',
+  aiCommon: 'AI 通用接口',
   // Sandbox
   sandbox: 'AI 沙盒',
 

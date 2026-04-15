@@ -114,6 +114,7 @@ export const LogCategories = {
       HISTORY: ['chat', 'history'],
       INPUT_GUIDE: ['chat', 'input-guide'],
       ITEM: ['chat', 'item'],
+      RESUME: ['chat', 'resume'],
       OUTLINK: ['chat', 'outlink'],
       QUOTE: ['chat', 'quote'],
       RECORD: ['chat', 'record'],

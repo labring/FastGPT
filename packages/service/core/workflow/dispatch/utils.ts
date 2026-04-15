@@ -109,16 +109,42 @@ export const getWorkflowResponseWrite = ({
   detail,
   streamResponse,
   id = getNanoid(24),
-  showNodeStatus = true
+  showNodeStatus = true,
+  streamResumeMirror
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
   showNodeStatus?: boolean;
+  streamResumeMirror?: {
+    enqueueRaw?: (chunk: string) => Promise<void> | void;
+  };
 }) => {
+  const writeStreamChunk = ({ event, data }: { event?: string; data: string }) => {
+    if (!streamResponse) return;
+
+    const raw = `${event ? `event: ${event}\n` : ''}data: ${data}\n\n`;
+
+    void streamResumeMirror?.enqueueRaw?.(raw);
+
+    if (!res || res.closed || res.writableEnded || res.destroyed) return;
+
+    responseWrite({
+      res,
+      event,
+      data
+    });
+  };
+
   const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
-    if (!res || res.closed || !streamResponse) return;
+    if (typeof data === 'string') {
+      writeStreamChunk({ event, data });
+      return;
+    }
+
+    if (!streamResponse) return;
+    if (!event) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -136,8 +162,7 @@ export const getWorkflowResponseWrite = ({
     };
     if (!showNodeStatus && statusEvent[event]) return;
 
-    responseWrite({
-      res,
+    writeStreamChunk({
       event: detail ? event : undefined,
       data: JSON.stringify({
         ...data,
@@ -163,7 +188,7 @@ export const getWorkflowChildResponseWrite = ({
   };
 };
 
-/* 
+/*
   Filter orphan edges from workflow.
   Orphan edges are edges that have a source or target that is not in the nodes array.
   This is used to prevent errors when the workflow is edited and the nodes are not updated.
