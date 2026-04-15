@@ -160,7 +160,8 @@ const ChatItem = (props: Props) => {
     questionGuides = [],
     chat,
     hideCiteIcon,
-    datasetReadPerMap = {}
+    datasetReadPerMap = {},
+    showExtraInfo = false
   } = props;
 
   const { t } = useTranslation();
@@ -445,7 +446,8 @@ const ChatItem = (props: Props) => {
       ))}
 
       {/* Rewrite standardized query */}
-      {type === ChatRoleEnum.Human &&
+      {showExtraInfo &&
+        type === ChatRoleEnum.Human &&
         chat.rewriteStandardizedQuery &&
         formatChatValue2InputType(chat.value).text !== chat.rewriteStandardizedQuery && (
           <Box
@@ -496,7 +498,7 @@ const ChatItem = (props: Props) => {
           )}
         </Flex>
         {/* 反馈标签区域：好评、差评、未命中知识库 */}
-        {chat.obj === ChatRoleEnum.AI && (
+        {showExtraInfo && chat.obj === ChatRoleEnum.AI && (
           <Flex ml={'auto'} gap={1}>
             {!!chat.userGoodFeedback && (
               <MyTag colorSchema="green">

@@ -205,6 +205,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
                       type={item.obj}
                       chat={item}
                       isLastChild={index === chatRecords.length - 1}
+                      showExtraInfo
                     />
                   )}
                   {item.obj === ChatRoleEnum.AI && (
@@ -214,6 +215,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
                       isLastChild={index === chatRecords.length - 1}
                       onCorrectError={() => handleCorrectError(item.dataId)}
                       datasetReadPerMap={datasetReadPerMap}
+                      showExtraInfo
                       {...{
                         statusBoxData
                       }}

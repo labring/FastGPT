@@ -32,6 +32,8 @@ export type ChatControllerProps = {
   showFeedbackContent?: boolean;
   onToggleFeedbackContent?: () => void;
   onCorrectError?: () => void;
+  /** 目前只在智能问答日志详情会传true */
+  showExtraInfo?: boolean;
 };
 
 // icon color: Graphite Black/L70 ---------- #637A99
@@ -59,21 +61,13 @@ const ChatController = ({
   onToggleFeedbackReadStatus,
   showFeedbackContent,
   onToggleFeedbackContent,
-  onCorrectError
+  onCorrectError,
+  showExtraInfo = false
 }: ChatControllerProps & FlexProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
-  const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
-  const audioLoading = useContextSelector(ChatBoxContext, (v) => v.audioLoading);
-  const audioPlaying = useContextSelector(ChatBoxContext, (v) => v.audioPlaying);
-  const hasAudio = useContextSelector(ChatBoxContext, (v) => v.hasAudio);
-  const playAudioByText = useContextSelector(ChatBoxContext, (v) => v.playAudioByText);
-  const cancelAudio = useContextSelector(ChatBoxContext, (v) => v.cancelAudio);
-  const audioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.audioPlayingChatId);
-  const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const isAssistantType = useContextSelector(ChatBoxContext, (v) => v.isAssistantType);
 
@@ -290,7 +284,7 @@ const ChatController = ({
             </>
           )}
         </Flex>
-        {isAIMsg && !!chat.correctionId && (
+        {isAIMsg && showExtraInfo && !!chat.correctionId && (
           <MyTag
             ml={1}
             type={'borderFill'}
