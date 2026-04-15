@@ -341,6 +341,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/parallelRun.svg'),
   'core/workflow/template/parallelRunLinear': () =>
     import('./icons/core/workflow/template/parallelRunLinear.tsx'),
+  'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
   'core/workflow/template/pluginOutputLinear': () =>
@@ -432,6 +433,11 @@ export const iconPaths = {
   key: () => import('./icons/key.svg'),
   keyPrimary: () => import('./icons/keyPrimary.svg'),
   loading: () => import('./icons/loading.svg'),
+  'math/divide': () => import('./icons/math/divide.svg'),
+  'math/equal': () => import('./icons/math/equal.svg'),
+  'math/minus': () => import('./icons/math/minus.svg'),
+  'math/plus': () => import('./icons/math/plus.svg'),
+  'math/times': () => import('./icons/math/times.svg'),
   mcp: () => import('./icons/mcp.svg'),
   menu: () => import('./icons/menu.svg'),
   minus: () => import('./icons/minus.svg'),
