@@ -138,6 +138,9 @@ export type EmbeddingTrainTaskListItem = EmbeddingTrainTaskSchemaType & {
 };
 export type ListEmbeddingTrainTasksResponse = PaginationResponse<EmbeddingTrainTaskListItem>;
 
+// List All Training Tasks (no pagination, no filter)
+export type ListAllEmbeddingTrainTasksResponse = EmbeddingTrainTaskListItem[];
+
 // Retry Training Task
 export type RetryEmbeddingTrainTaskRequest = TaskIdQuery;
 export type RetryEmbeddingTrainTaskResponse = {

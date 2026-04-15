@@ -139,6 +139,9 @@ export type RerankTrainTaskListItem = RerankTrainTaskSchemaType & {
 };
 export type ListRerankTrainTasksResponse = PaginationResponse<RerankTrainTaskListItem>;
 
+// List All Training Tasks (no pagination, no filter)
+export type ListAllRerankTrainTasksResponse = RerankTrainTaskListItem[];
+
 // Retry Training Task
 export type RetryRerankTrainTaskRequest = TaskIdQuery;
 export type RetryRerankTrainTaskResponse = {
