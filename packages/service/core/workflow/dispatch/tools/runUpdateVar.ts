@@ -39,10 +39,9 @@ const arrayElementType = (valueType?: WorkflowIOValueTypeEnum): WorkflowIOValueT
 
 const applyNumberOp = (
   oldValue: unknown,
-  operator: NonNullable<TUpdateListItem['numberOperator']>,
+  operator: Exclude<NonNullable<TUpdateListItem['numberOperator']>, '='>,
   input: unknown
 ) => {
-  if (operator === '=') return Number(input) || 0;
   const a = Number(oldValue) || 0;
   const b = Number(input) || 0;
   switch (operator) {
