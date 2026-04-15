@@ -8,9 +8,9 @@ import {
   FastLoginBodySchema,
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
-  LoginSuccessResponseSchema
+  LoginSuccessResponseSchema,
+  OpenAPIUserSchema
 } from './api';
-import { OpenAPIUserSchema } from './api';
 
 export const LoginPath: OpenAPIPath = {
   '/support/user/account/tokenLogin': {

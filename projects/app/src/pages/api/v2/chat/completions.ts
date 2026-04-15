@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
+import { authCert, clearCookie } from '@fastgpt/service/support/permission/auth/common';
+import { getSseErrorResponse, sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,10 +18,11 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
-  pushChatRecords,
+  failChatRound,
+  finalizeChatRound,
+  prepareChatRound,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
-import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -64,6 +65,12 @@ import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+import {
+  ensureGenerateChat,
+  updateChatGenerateStatus
+} from '@fastgpt/service/core/chat/resumeStatus';
+import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -91,6 +98,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
+  let mirror: ReturnType<typeof mirrorChatStream> | undefined;
+  let runningChatId: string | undefined;
+  let runningAppId: string | undefined;
+  let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
+  const finalResponseChatItemId = responseChatItemId || getNanoid(24);
+  let usePreparedRound = false;
 
   try {
     if (!Array.isArray(messages)) {
@@ -240,15 +253,66 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
-    const workflowResponseWrite = getWorkflowResponseWrite({
+    const saveChatId = chatId || getNanoid(24);
+    const source = (() => {
+      if (shareId) {
+        return ChatSourceEnum.share;
+      }
+      if (authType === 'apikey') {
+        return ChatSourceEnum.api;
+      }
+      if (spaceTeamId) {
+        return ChatSourceEnum.team;
+      }
+      return ChatSourceEnum.online;
+    })();
+
+    runningChatId = saveChatId;
+    runningAppId = String(app._id);
+    usePreparedRound = !interactive;
+
+    if (usePreparedRound) {
+      await prepareChatRound({
+        appId: runningAppId,
+        chatId: runningChatId,
+        teamId,
+        tmbId: String(tmbId),
+        source,
+        sourceName: sourceName || '',
+        shareId,
+        outLinkUid: outLinkUserId,
+        userContent: userQuestion,
+        responseChatItemId: finalResponseChatItemId
+      });
+    } else {
+      await ensureGenerateChat({
+        appId: runningAppId,
+        chatId: runningChatId,
+        teamId,
+        tmbId: String(tmbId),
+        source,
+        sourceName: sourceName || '',
+        shareId,
+        outLinkUid: outLinkUserId
+      });
+    }
+
+    mirror = stream
+      ? mirrorChatStream({
+          teamId,
+          appId: runningAppId,
+          chatId: runningChatId
+        })
+      : undefined;
+
+    workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
       streamResponse: stream,
       id: chatId,
-      showNodeStatus: showRunningStatus
+      showNodeStatus: showRunningStatus,
+      streamResumeMirror: mirror
     });
-
-    const saveChatId = chatId || getNanoid(24);
 
     /* start flow controller */
     const {
@@ -279,7 +343,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           uid: String(outLinkUserId || tmbId),
 
           chatId: saveChatId,
-          responseChatItemId,
+          responseChatItemId: finalResponseChatItemId,
           runtimeNodes,
           runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
           variables,
@@ -300,25 +364,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // save chat
-    const source = (() => {
-      if (shareId) {
-        return ChatSourceEnum.share;
-      }
-      if (authType === 'apikey') {
-        return ChatSourceEnum.api;
-      }
-      if (spaceTeamId) {
-        return ChatSourceEnum.team;
-      }
-      return ChatSourceEnum.online;
-    })();
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
-      dataId: responseChatItemId,
+      dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses,
@@ -351,7 +402,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (interactive) {
       await updateInteractiveChat({ interactive, ...params });
     } else {
-      await pushChatRecords(params);
+      await finalizeChatRound(params);
+    }
+
+    if (interactive) {
+      await updateChatGenerateStatus({
+        appId: runningAppId,
+        chatId: runningChatId,
+        status: ChatGenerateStatusEnum.done
+      });
     }
 
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
@@ -378,12 +437,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           finish_reason: 'stop'
         })
       });
-      responseWrite({
-        res,
+
+      workflowResponseWrite({
         event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
 
+      await mirror?.flush();
+      await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -467,8 +528,37 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
+    if (runningAppId && runningChatId) {
+      if (usePreparedRound) {
+        await failChatRound({
+          appId: runningAppId,
+          chatId: runningChatId,
+          responseChatItemId: finalResponseChatItemId,
+          error: err
+        });
+      } else {
+        await updateChatGenerateStatus({
+          appId: runningAppId,
+          chatId: runningChatId,
+          status: ChatGenerateStatusEnum.error
+        });
+      }
+    }
     if (stream) {
-      sseErrRes(res, err);
+      if (workflowResponseWrite) {
+        const { event, data, shouldClearCookie } = getSseErrorResponse(err);
+        if (shouldClearCookie) {
+          clearCookie(res);
+        }
+        workflowResponseWrite({
+          event,
+          data
+        });
+      } else {
+        sseErrRes(res, err);
+      }
+      await mirror?.flush();
+      await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
       jsonRes(res, {

@@ -48,10 +48,8 @@ export type DispatchFlowResponse = {
 const WorkflowResponseItemSchema = z.object({
   id: z.string().optional(),
   stepId: z.string().optional(),
-  event: z.custom<SseResponseEventEnum>(),
-  data: z.custom<Record<string, any> & { length?: never }>(
-    (val) => typeof val === 'object' && val !== null && !Array.isArray(val)
-  )
+  event: z.custom<SseResponseEventEnum>().optional(),
+  data: z.union([z.string(), z.looseObject({})])
 });
 export type WorkflowResponseItemType = z.infer<typeof WorkflowResponseItemSchema>;
 export const WorkflowResponseFnSchema = z.function({

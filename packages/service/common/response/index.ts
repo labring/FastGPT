@@ -175,20 +175,42 @@ export const jsonRes = <T = any>(
 };
 
 export const sseErrRes = (res: NextApiResponse, error: any) => {
+  const { event, data, shouldClearCookie } = getSseErrorResponse(error);
+  if (shouldClearCookie) {
+    clearCookie(res);
+  }
+  responseWrite({
+    res,
+    event,
+    data
+  });
+};
+
+export const getSseErrorResponse = (
+  error: any
+): {
+  event: SseResponseEventEnum.error;
+  data: string;
+  shouldClearCookie: boolean;
+} => {
   const errResponseKey = typeof error === 'string' ? error : error?.message;
 
   // Specified error
   if (ERROR_RESPONSE[errResponseKey]) {
     // login is expired
     if (errResponseKey === ERROR_ENUM.unAuthorization) {
-      clearCookie(res);
+      return {
+        event: SseResponseEventEnum.error,
+        data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
+        shouldClearCookie: true
+      };
     }
 
-    return responseWrite({
-      res,
+    return {
       event: SseResponseEventEnum.error,
-      data: JSON.stringify(ERROR_RESPONSE[errResponseKey])
-    });
+      data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
+      shouldClearCookie: false
+    };
   }
 
   let msg = error?.response?.statusText || error?.message || '请求错误';
@@ -204,11 +226,11 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
   logger.error('SSE error', { message: msg, error });
 
-  responseWrite({
-    res,
+  return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({ message: replaceSensitiveText(msg) })
-  });
+    data: JSON.stringify({ message: replaceSensitiveText(msg) }),
+    shouldClearCookie: false
+  };
 };
 
 export function responseWriteController({

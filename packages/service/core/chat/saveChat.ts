@@ -4,7 +4,7 @@ import type {
   UserChatItemType
 } from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
@@ -35,6 +35,8 @@ import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type Props = {
   chatId: string;
@@ -57,13 +59,19 @@ export type Props = {
   errorMsg?: string;
 };
 
-const beforProcess = (props: Props) => {
-  // Remove url
-  props.userContent.value.forEach((item) => {
+const isSkipSaveChatId = (chatId?: string) => !chatId || chatId === 'NO_RECORD_HISTORIES';
+
+const stripUserContentFileUrls = (userContent: UserChatItemType & { dataId?: string }) => {
+  userContent.value.forEach((item) => {
     if (item.file?.key) {
       item.file.url = '';
     }
   });
+};
+
+const beforeProcess = (props: Props) => {
+  // Remove url
+  stripUserContentFileUrls(props.userContent);
 };
 const afterProcess = async ({
   contents,
@@ -217,8 +225,498 @@ const getChatDataLog = async ({
   };
 };
 
+export type EnsurePendingChatRoundParams = {
+  chatId: string;
+  appId: string;
+  teamId: string;
+  tmbId: string;
+  userContent: UserChatItemType & { dataId?: string };
+  responseChatItemId: string;
+};
+
+type PrepareChatRoundParams = Pick<
+  Props,
+  'chatId' | 'appId' | 'teamId' | 'tmbId' | 'source' | 'sourceName' | 'shareId' | 'outLinkUid'
+> & {
+  userContent: UserChatItemType & { dataId?: string };
+  responseChatItemId: string;
+};
+
+type FailChatRoundParams = {
+  chatId: string;
+  appId: string;
+  responseChatItemId?: string;
+  error: unknown;
+};
+
+const ensurePreparedHumanDataId = ({
+  userContent,
+  responseChatItemId
+}: {
+  userContent: UserChatItemType & { dataId?: string };
+  responseChatItemId: string;
+}) => {
+  if (userContent.dataId && userContent.dataId !== responseChatItemId) {
+    return userContent.dataId;
+  }
+
+  const humanDataId = getNanoid(24);
+  userContent.dataId = humanDataId;
+
+  return humanDataId;
+};
+
+const getPreparedRoundDataIds = ({
+  userContent,
+  aiContent
+}: {
+  userContent: UserChatItemType & { dataId?: string };
+  aiContent: AIChatItemType & { dataId?: string };
+}) => {
+  if (!userContent.dataId) {
+    throw new Error('Pending chat round human dataId is missing');
+  }
+  if (!aiContent.dataId) {
+    throw new Error('Pending chat round ai dataId is missing');
+  }
+  if (userContent.dataId === aiContent.dataId) {
+    throw new Error('Pending chat round dataId must be unique');
+  }
+
+  return {
+    humanDataId: userContent.dataId,
+    aiDataId: aiContent.dataId
+  };
+};
+
+export const prepareChatRound = async (params: PrepareChatRoundParams) => {
+  const {
+    chatId,
+    appId,
+    teamId,
+    tmbId,
+    source,
+    sourceName,
+    shareId,
+    outLinkUid,
+    responseChatItemId
+  } = params;
+
+  if (isSkipSaveChatId(chatId)) return;
+
+  stripUserContentFileUrls(params.userContent);
+  const humanDataId = ensurePreparedHumanDataId({
+    userContent: params.userContent,
+    responseChatItemId
+  });
+  const now = new Date();
+
+  const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
+    ...params.userContent,
+    dataId: humanDataId,
+    obj: ChatRoleEnum.Human
+  };
+
+  const aiPlaceholder: AIChatItemType & { dataId: string } = {
+    dataId: responseChatItemId,
+    obj: ChatRoleEnum.AI,
+    value: []
+  };
+
+  await mongoSessionRun(async (session) => {
+    await MongoChat.updateOne(
+      {
+        appId,
+        chatId
+      },
+      {
+        $set: {
+          teamId,
+          tmbId,
+          appId,
+          chatId,
+          source,
+          sourceName,
+          shareId,
+          outLinkUid,
+          updateTime: now,
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.generating
+        },
+        $setOnInsert: {
+          createTime: now
+        }
+      },
+      {
+        session,
+        upsert: true
+      }
+    );
+
+    const upsertOptions = {
+      session,
+      upsert: true
+    };
+
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
+      {
+        $setOnInsert: {
+          teamId,
+          tmbId,
+          chatId,
+          appId,
+          ...userPayload
+        }
+      },
+      upsertOptions
+    );
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
+      {
+        $setOnInsert: {
+          teamId,
+          tmbId,
+          chatId,
+          appId,
+          ...aiPlaceholder
+        }
+      },
+      upsertOptions
+    );
+  });
+};
+
+export const ensurePendingChatRoundItems = async (params: EnsurePendingChatRoundParams) => {
+  const { chatId, appId, teamId, tmbId, responseChatItemId } = params;
+  if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
+
+  const humanDataId = params.userContent.dataId ?? responseChatItemId;
+
+  const existingAi = await MongoChatItem.findOne({
+    appId,
+    chatId,
+    dataId: responseChatItemId,
+    obj: ChatRoleEnum.AI
+  })
+    .select('_id')
+    .lean();
+
+  if (existingAi) return;
+
+  const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
+    ...params.userContent,
+    dataId: humanDataId,
+    obj: ChatRoleEnum.Human
+  };
+
+  userPayload.value?.forEach((item) => {
+    if ('file' in item && item.file?.key) {
+      item.file.url = '';
+    }
+  });
+
+  const aiPlaceholder: AIChatItemType & { dataId: string } = {
+    dataId: responseChatItemId,
+    obj: ChatRoleEnum.AI,
+    value: []
+  };
+
+  await mongoSessionRun(async (session) => {
+    const upsertOpts = { session, upsert: true };
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
+      {
+        $setOnInsert: {
+          teamId,
+          tmbId,
+          chatId,
+          appId,
+          ...userPayload
+        }
+      },
+      upsertOpts
+    );
+    await MongoChatItem.updateOne(
+      { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
+      {
+        $setOnInsert: {
+          teamId,
+          tmbId,
+          chatId,
+          appId,
+          ...aiPlaceholder
+        }
+      },
+      upsertOpts
+    );
+  });
+};
+
+export const finalizeChatRound = async (props: Props) => {
+  beforeProcess(props);
+
+  const {
+    chatId,
+    appId,
+    versionId,
+    teamId,
+    tmbId,
+    nodes,
+    appChatConfig,
+    variables,
+    newTitle,
+    source,
+    sourceName,
+    shareId,
+    outLinkUid,
+    userContent,
+    aiContent,
+    durationSeconds,
+    errorMsg,
+    metadata = {}
+  } = props;
+
+  if (isSkipSaveChatId(chatId)) return;
+
+  const { welcomeText, variables: variableList } = getAppChatConfig({
+    chatConfig: appChatConfig,
+    systemConfigNode: getGuideModule(nodes),
+    isPublicFetch: false
+  });
+  const pluginInputs = nodes?.find(
+    (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
+  )?.inputs;
+
+  const { aiResponse, nodeResponses, errorCount } = formatAiContent({
+    aiContent,
+    durationSeconds,
+    errorMsg
+  });
+  const processedContent = [userContent, aiResponse];
+  const { humanDataId, aiDataId } = await getPreparedRoundDataIds({
+    userContent,
+    aiContent
+  });
+  const now = new Date();
+
+  await mongoSessionRun(async (session) => {
+    const chat = await MongoChat.findOne(
+      {
+        appId,
+        chatId
+      },
+      '_id metadata'
+    )
+      .session(session)
+      .lean();
+
+    if (!chat) {
+      throw new Error(`Pending chat round chat not found: ${chatId}`);
+    }
+
+    const metadataUpdate = {
+      ...chat.metadata,
+      ...metadata
+    };
+
+    const [humanDoc, aiDoc] = await Promise.all([
+      MongoChatItem.findOneAndUpdate(
+        { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
+        {
+          $set: {
+            ...(processedContent[0] as Record<string, unknown>),
+            obj: ChatRoleEnum.Human
+          }
+        },
+        {
+          session,
+          new: true
+        }
+      ),
+      MongoChatItem.findOneAndUpdate(
+        { appId, chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
+        {
+          $set: {
+            ...(processedContent[1] as Record<string, unknown>),
+            obj: ChatRoleEnum.AI
+          }
+        },
+        {
+          session,
+          new: true
+        }
+      )
+    ]);
+
+    if (!humanDoc || !aiDoc) {
+      throw new Error(`Pending chat round items not found: ${chatId}`);
+    }
+
+    await MongoChatItemResponse.deleteMany(
+      { appId, chatId, chatItemDataId: aiDataId },
+      { session }
+    );
+
+    if (nodeResponses?.length) {
+      await MongoChatItemResponse.create(
+        nodeResponses.map((item) => ({
+          teamId,
+          appId,
+          chatId,
+          chatItemDataId: aiDataId,
+          data: item
+        })),
+        { session, ordered: true }
+      );
+    }
+
+    await MongoChat.updateOne(
+      {
+        appId,
+        chatId
+      },
+      {
+        $set: {
+          teamId,
+          tmbId,
+          appId,
+          appVersionId: versionId,
+          chatId,
+          variableList,
+          welcomeText,
+          variables: variables || {},
+          pluginInputs,
+          title: newTitle,
+          source,
+          sourceName,
+          shareId,
+          outLinkUid,
+          metadata: metadataUpdate,
+          updateTime: now,
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.done
+        },
+        ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
+      },
+      {
+        session
+      }
+    );
+
+    await afterProcess({
+      contents: processedContent,
+      variables,
+      variableList,
+      session
+    });
+
+    pushChatLog({
+      chatId,
+      chatItemIdHuman: String(humanDoc._id),
+      chatItemIdAi: String(aiDoc._id),
+      appId
+    });
+  });
+
+  try {
+    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+      nodeResponses
+    });
+    const userId = String(outLinkUid || tmbId);
+
+    const hasHistoryChat = await MongoAppChatLog.exists({
+      teamId,
+      appId,
+      userId,
+      createTime: { $lt: now }
+    });
+
+    await MongoAppChatLog.updateOne(
+      {
+        teamId,
+        appId,
+        chatId,
+        updateTime: { $gte: fifteenMinutesAgo }
+      },
+      {
+        $inc: {
+          chatItemCount: 1,
+          errorCount,
+          totalPoints,
+          totalResponseTime: durationSeconds
+        },
+        $set: {
+          updateTime: now,
+          sourceName
+        },
+        $setOnInsert: {
+          appId,
+          teamId,
+          chatId,
+          userId,
+          source,
+          createTime: now,
+          goodFeedbackCount: 0,
+          badFeedbackCount: 0,
+          isFirstChat: !hasHistoryChat
+        }
+      },
+      {
+        upsert: true,
+        ...writePrimary
+      }
+    );
+  } catch (error) {
+    logger.error('Failed to push chat log', { chatId, error });
+  }
+};
+
+export const failChatRound = async (params: FailChatRoundParams) => {
+  const { chatId, appId, responseChatItemId, error } = params;
+
+  if (isSkipSaveChatId(chatId)) return;
+
+  try {
+    const now = new Date();
+    const errorMsg = getErrText(error);
+
+    await mongoSessionRun(async (session) => {
+      await MongoChat.updateOne(
+        { appId, chatId },
+        {
+          $set: {
+            chatGenerateStatus: ChatGenerateStatusEnum.error,
+            updateTime: now,
+            hasBeenRead: false
+          }
+        },
+        {
+          session
+        }
+      );
+
+      if (responseChatItemId) {
+        await MongoChatItem.updateOne(
+          { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
+          {
+            $set: {
+              errorMsg
+            }
+          },
+          {
+            session
+          }
+        );
+      }
+    });
+  } catch (saveError) {
+    logger.error('Failed to mark chat round as error', { chatId, error: saveError });
+  }
+};
+
 export const pushChatRecords = async (props: Props) => {
-  beforProcess(props);
+  beforeProcess(props);
 
   const {
     chatId,
@@ -273,31 +771,96 @@ export const pushChatRecords = async (props: Props) => {
       errorMsg
     });
     const processedContent = [userContent, aiResponse];
+    const humanRoundDataId = (processedContent[0] as { dataId?: string }).dataId as string;
+    const aiRoundDataId = (processedContent[1] as { dataId?: string }).dataId as string;
 
     await mongoSessionRun(async (session) => {
-      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi, dataId }] = await MongoChatItem.create(
-        processedContent.map((item) => ({
-          chatId,
-          teamId,
-          tmbId,
-          appId,
-          ...item
-        })),
-        { session, ordered: true, ...writePrimary }
-      );
+      const humanExisting = await MongoChatItem.findOne({
+        appId,
+        chatId,
+        dataId: humanRoundDataId,
+        obj: ChatRoleEnum.Human
+      }).session(session);
+      const aiExisting = await MongoChatItem.findOne({
+        appId,
+        chatId,
+        dataId: aiRoundDataId,
+        obj: ChatRoleEnum.AI
+      }).session(session);
 
-      // Create chat item respones
-      if (nodeResponses) {
-        await MongoChatItemResponse.create(
-          nodeResponses.map((item) => ({
-            teamId,
-            appId,
-            chatId,
-            chatItemDataId: dataId,
-            data: item
-          })),
-          { session, ordered: true, ...writePrimary }
+      let chatItemIdHuman: unknown;
+      let chatItemIdAi: unknown;
+      let responseDataId = aiRoundDataId;
+
+      if (humanExisting && aiExisting) {
+        await MongoChatItem.updateOne(
+          { _id: humanExisting._id },
+          {
+            $set: {
+              ...(processedContent[0] as Record<string, unknown>),
+              obj: ChatRoleEnum.Human
+            }
+          },
+          { session }
         );
+        await MongoChatItem.updateOne(
+          { _id: aiExisting._id },
+          {
+            $set: {
+              ...(processedContent[1] as Record<string, unknown>),
+              obj: ChatRoleEnum.AI
+            }
+          },
+          { session }
+        );
+
+        await MongoChatItemResponse.deleteMany(
+          { appId, chatId, chatItemDataId: aiRoundDataId },
+          { session }
+        );
+
+        if (nodeResponses?.length) {
+          await MongoChatItemResponse.create(
+            nodeResponses.map((item) => ({
+              teamId,
+              appId,
+              chatId,
+              chatItemDataId: aiRoundDataId,
+              data: item
+            })),
+            { session, ordered: true }
+          );
+        }
+
+        chatItemIdHuman = humanExisting._id;
+        chatItemIdAi = aiExisting._id;
+      } else {
+        const [humanCreated, aiCreated] = await MongoChatItem.create(
+          processedContent.map((item) => ({
+            chatId,
+            teamId,
+            tmbId,
+            appId,
+            ...item
+          })),
+          { session, ordered: true }
+        );
+        chatItemIdHuman = humanCreated._id;
+        chatItemIdAi = aiCreated._id;
+        responseDataId = aiCreated.dataId;
+
+        if (nodeResponses) {
+          await MongoChatItemResponse.create(
+            nodeResponses.map((item) => ({
+              teamId,
+              appId,
+              chatId,
+              chatItemDataId: responseDataId,
+              data: item
+            })),
+            { session, ordered: true }
+          );
+        }
       }
 
       await MongoChat.updateOne(
@@ -331,8 +894,7 @@ export const pushChatRecords = async (props: Props) => {
         },
         {
           session,
-          upsert: true,
-          ...writePrimary
+          upsert: true
         }
       );
 
@@ -419,7 +981,7 @@ export const updateInteractiveChat = async ({
 }: Props & {
   interactive: WorkflowInteractiveResponseType;
 }) => {
-  beforProcess(props);
+  beforeProcess(props);
 
   const {
     teamId,
@@ -625,7 +1187,7 @@ export const updateInteractiveChat = async ({
           chatItemDataId: chatItem.dataId,
           data: item
         })),
-        { session, ordered: true, ...writePrimary }
+        { session, ordered: true }
       );
     }
 

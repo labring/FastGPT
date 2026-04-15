@@ -106,6 +106,19 @@ export const env = createEnv({
     // ===== Security =====
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
 
+    /** Redis 流式镜像续期：生成中（秒） */
+    STREAM_RESUME_TTL_SECONDS: z.coerce
+      .number<number>()
+      .int()
+      .positive()
+      .default(30 * 60),
+    /** 流结束后缩短 TTL，便于回收（秒） */
+    STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: z.coerce
+      .number<number>()
+      .int()
+      .positive()
+      .default(5 * 60),
+
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)
     SHOW_SKILL: BoolSchema.default(false)

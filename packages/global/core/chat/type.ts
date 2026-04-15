@@ -1,6 +1,10 @@
 import { SearchDataResponseItemSchema } from '../dataset/type';
-import type { ChatSourceEnum } from './constants';
-import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
+import {
+  ChatFileTypeEnum,
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  type ChatSourceEnum
+} from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import { AppSchemaTypeSchema, type AppSchemaType, type VariableItemType } from '../app/type';
@@ -120,6 +124,10 @@ export type ChatSchemaType = {
   hasUnreadBadFeedback?: boolean;
   // Error count (redundant field for performance)
   errorCount?: number;
+
+  /** 旧数据可能无此字段；业务上按 done 处理 */
+  chatGenerateStatus?: ChatGenerateStatusEnum;
+  hasBeenRead: boolean;
 
   deleteTime?: Date | null;
 };
@@ -290,7 +298,9 @@ export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
 
 export const ChatHistoryItemSchema = HistoryItemSchema.extend({
   appId: z.string(),
-  top: z.boolean().optional()
+  top: z.boolean().optional(),
+  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
+  hasBeenRead: z.boolean().optional()
 });
 export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;
 

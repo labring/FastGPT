@@ -156,6 +156,30 @@ describe('getWorkflowResponseWrite', () => {
     fn({ event: SseResponseEventEnum.answer, data: { text: 'hi' } });
     expect(responseWrite).toHaveBeenCalledWith(expect.objectContaining({ event: undefined }));
   });
+
+  it('should continue mirroring direct chunks after response is closed', () => {
+    const res = mockRes();
+    res.closed = true;
+    const enqueueRaw = vi.fn();
+    vi.mocked(responseWrite).mockClear();
+
+    const fn = getWorkflowResponseWrite({
+      res,
+      detail: true,
+      streamResponse: true,
+      streamResumeMirror: {
+        enqueueRaw
+      }
+    });
+
+    fn({
+      event: SseResponseEventEnum.answer,
+      data: '[DONE]'
+    });
+
+    expect(enqueueRaw).toHaveBeenCalledWith(expect.stringContaining('data: [DONE]'));
+    expect(responseWrite).not.toHaveBeenCalled();
+  });
 });
 
 describe('getWorkflowChildResponseWrite', () => {

@@ -101,6 +101,10 @@ const AppChatWindow = () => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
+      if (!appId) {
+        return Promise.reject('appId is empty');
+      }
+
       const histories = messages.slice(-1);
       const { responseText } = await streamFetch({
         data: {
@@ -188,7 +192,8 @@ const AppChatWindow = () => {
             <ChatBox
               appId={appId}
               chatId={chatId}
-              isReady={!loading}
+              isReady={!loading && !!appId}
+              enableAutoResume
               feedbackType={'user'}
               chatType={ChatTypeEnum.chat}
               outLinkAuthData={outLinkAuthData}
