@@ -3,10 +3,15 @@
  *
  * 封装 FastGPT /api/v1/chat/completions 接口的基础调用逻辑。
  * 支持：普通对话、多轮对话。
- * 注意：此版本不支持文件和图片上传（仅用于 Assistant 类型应用）。
+ *
+ * 限制：此版本不支持文件和图片上传（仅用于 Assistant 类型应用）
+ * 原因：
+ *   - Assistant 应用是轻量级应用，专注于纯文本对话
+ *   - 文件上传功能只在 Workflow 或其他应用类型中支持
+ *   - 如需文件上传功能，请使用 chat.js 版本（完整版本）
  *
  * 用法：
- *   const { chat } = require('./chat');
+ *   const { chat } = require('./chat-assistant');
  *
  *   // 普通对话（返回 { reply, chatId }）
  *   const { reply } = await chat({ message: '你好' });
@@ -19,8 +24,12 @@
 'use strict';
 
 const axios = require('axios');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
+
+// Allow self-signed certificates
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ─── chatId 生成（与 FastGPT 服务端 getNanoid(24) 保持一致）────────────────
 // 首位强制小写字母，其余 23 位为 a-zA-Z0-9，总长 24
@@ -58,6 +67,8 @@ const APP_ID   = _cfg.appId;
 /**
  * Send a chat request
  *
+ * 此函数仅支持纯文本对话，适用于 Assistant 类型应用。
+ *
  * @param {object}  options
  * @param {string}  options.message     User message text (required)
  * @param {string}  [options.chatId]    Session ID; auto-generated if omitted. Pass the chatId returned by a previous call to continue a multi-turn conversation.
@@ -65,6 +76,11 @@ const APP_ID   = _cfg.appId;
  * @returns {Promise<{ reply: string, chatId: string }>}
  *   reply  — AI response text
  *   chatId — Session ID used for this call (pass it back for multi-turn conversations)
+ *
+ * 不支持的功能：
+ *   - imageUrl：图片 URL（如需此功能，使用 chat.js 版本）
+ *   - fileUrl：文件 URL（如需此功能，使用 chat.js 版本）
+ *   - fileName：文件名（如需此功能，使用 chat.js 版本）
  */
 async function chat({ message, chatId, variables } = {}) {
   if (!message) throw new Error('message is required');
@@ -72,6 +88,8 @@ async function chat({ message, chatId, variables } = {}) {
   // Auto-generate chatId when not provided, using the same algorithm as the FastGPT server (getNanoid(24))
   const resolvedChatId = chatId || getNanoid(24);
 
+  // Build request body for text-only conversation (Assistant application type)
+  // Note: This version only supports plain text messages, no multimodal content
   const body = {
     chatId: resolvedChatId,
     stream: false,
@@ -82,12 +100,20 @@ async function chat({ message, chatId, variables } = {}) {
 
   let response;
   try {
+    // Request fields explanation:
+    //   - chatId: Session ID from above (auto-generated or provided)
+    //   - stream: false (this client doesn't support streaming)
+    //   - messages: Array with single user message
+    //     - role: 'user' (message sender role)
+    //     - content: plain text message (string, not array like in chat.js)
+    //   - variables: Optional application-specific variables
     response = await axios.post(`${BASE_URL}/api/v1/chat/completions`, body, {
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json'
       },
-      timeout: 60000
+      timeout: 60000,
+      httpsAgent
     });
   } catch (err) {
     const status = err.response?.status;
