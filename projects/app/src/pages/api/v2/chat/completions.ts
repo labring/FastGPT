@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
+import { authCert, clearCookie } from '@fastgpt/service/support/permission/auth/common';
+import { getSseErrorResponse, sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -22,7 +22,6 @@ import {
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
-import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -101,6 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let mirror: ReturnType<typeof mirrorChatStream> | undefined;
   let runningChatId: string | undefined;
   let runningAppId: string | undefined;
+  let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
 
   try {
     if (!Array.isArray(messages)) {
@@ -280,7 +280,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     mirror = stream
       ? mirrorChatStream({
-          res,
           teamId,
           appId: runningAppId,
           chatId: runningChatId
@@ -298,12 +297,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    const workflowResponseWrite = getWorkflowResponseWrite({
+    workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
       streamResponse: stream,
       id: chatId,
-      showNodeStatus: showRunningStatus
+      showNodeStatus: showRunningStatus,
+      streamResumeMirror: mirror
     });
 
     /* start flow controller */
@@ -427,8 +427,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           finish_reason: 'stop'
         })
       });
-      responseWrite({
-        res,
+
+      workflowResponseWrite({
         event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
@@ -526,7 +526,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
     if (stream) {
-      sseErrRes(res, err);
+      if (workflowResponseWrite) {
+        const { event, data, shouldClearCookie } = getSseErrorResponse(err);
+        if (shouldClearCookie) {
+          clearCookie(res);
+        }
+        workflowResponseWrite({
+          event,
+          data
+        });
+      } else {
+        sseErrRes(res, err);
+      }
       await mirror?.flush();
       await mirror?.shrinkTTLAfterComplete();
       res.end();
@@ -536,8 +547,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         error: err
       });
     }
-  } finally {
-    mirror?.restore();
   }
 }
 export default NextAPI(handler);

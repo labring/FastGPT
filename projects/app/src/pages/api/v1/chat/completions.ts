@@ -428,8 +428,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
 
-      responseWrite({
-        res,
+      workflowResponseWrite({
         event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });

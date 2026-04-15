@@ -1,8 +1,7 @@
-import type { NextApiResponse } from 'next';
 import { env } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
-import { StreamResumeMirrorActive } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { NextApiResponse } from 'next';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
@@ -57,32 +56,17 @@ const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
   await redis.del(keys.keyOfStream);
 };
 
-export const mirrorChatStream = ({
-  res,
-  ...params
-}: {
-  res: NextApiResponse;
-  teamId: string;
-  appId: string;
-  chatId: string;
-}) => {
+export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
   const redis = getGlobalRedisConnection();
   const keys = getStreamResumeRedisKeys(params);
   const rawKeys = getStreamResumeRedisRawKeys(keys);
-
-  const _write_stash = res.write;
-  const _write_fn = res.write.bind(res);
   /** 先清空上一轮镜像，再顺序 XADD；首个 chunk 一定排在清空之后 */
   let queue: Promise<void> = clearStreamResumeMirrorKeys(keys).catch((error) => {
     logger.error('Failed to clear stream resume redis keys before mirror', { params, error });
   });
   let lastTouchedAt = 0;
-  let _res = res as NextApiResponse & {
-    write: typeof res.write;
-    [StreamResumeMirrorActive]?: boolean;
-  };
 
-  const _enqueue = (chunk: string) => {
+  const enqueueRaw = (chunk: string) => {
     queue = queue
       .then(async () => {
         await redis.call('XADD', rawKeys.rawKeyOfStream, '*', 'raw', chunk);
@@ -99,30 +83,10 @@ export const mirrorChatStream = ({
     return queue;
   };
 
-  _res[StreamResumeMirrorActive] = true;
-  _res.write = ((chunk: any, ...args: any[]) => {
-    if (chunk !== undefined && chunk !== null) {
-      const encoding = typeof args[0] === 'string' ? (args[0] as BufferEncoding) : undefined;
-      void _enqueue(chunkToString(chunk, encoding));
-    }
-
-    if (_res.writableEnded || _res.destroyed || _res.closed) {
-      return true;
-    }
-
-    try {
-      return _write_fn(chunk, ...(args as []));
-    } catch (error) {
-      logger.warn('Skip writing mirrored stream chunk to closed response', {
-        params,
-        error
-      });
-      return true;
-    }
-  }) as typeof res.write;
-
   return {
     ...keys,
+    enqueueRaw: (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) =>
+      enqueueRaw(chunkToString(chunk, encoding)),
     flush: async () => {
       await queue;
     },
@@ -133,10 +97,6 @@ export const mirrorChatStream = ({
       } catch (error) {
         logger.error('Failed to shrink stream resume redis ttl', { params, error });
       }
-    },
-    restore: () => {
-      delete _res[StreamResumeMirrorActive];
-      _res.write = _write_stash;
     }
   };
 };

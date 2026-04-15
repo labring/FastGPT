@@ -451,21 +451,16 @@ describe('stream resume helpers', () => {
     vi.useFakeTimers();
     try {
       const redis = getGlobalRedisConnection() as any;
-      const res = {
-        write: vi.fn(() => true)
-      } as any;
-
       const delSpy = vi.spyOn(redis, 'del').mockResolvedValue(1);
 
       const mirror = mirrorChatStream({
-        res,
         teamId,
         appId,
         chatId
       });
 
-      res.write('event: answer\n');
-      res.write('data: hello\n\n');
+      await mirror.enqueueRaw('event: answer\n');
+      await mirror.enqueueRaw('data: hello\n\n');
 
       await mirror.flush();
 
@@ -494,7 +489,7 @@ describe('stream resume helpers', () => {
       expect(redis.expire).toHaveBeenCalledTimes(1);
 
       vi.advanceTimersByTime(STREAM_RESUME_TTL_TOUCH_INTERVAL_MS);
-      res.write('event: done\ndata: [DONE]\n\n');
+      await mirror.enqueueRaw('event: done\ndata: [DONE]\n\n');
       await mirror.flush();
 
       expect(redis.expire).toHaveBeenCalledTimes(2);
@@ -506,9 +501,8 @@ describe('stream resume helpers', () => {
   it('should set short ttl after shrinkTTLAfterComplete', async () => {
     const redis = getGlobalRedisConnection() as any;
     const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
-    const res = { write: vi.fn(() => true) } as any;
-    const mirror = mirrorChatStream({ res, teamId, appId, chatId });
-    res.write('data: x\n\n');
+    const mirror = mirrorChatStream({ teamId, appId, chatId });
+    await mirror.enqueueRaw('data: x\n\n');
     await mirror.flush();
     redis.expire.mockClear?.();
     await mirror.shrinkTTLAfterComplete();
@@ -530,9 +524,6 @@ describe('stream resume helpers', () => {
     await redis.set(keyOfStream, 'legacy');
 
     const mirror = mirrorChatStream({
-      res: {
-        write: vi.fn(() => true)
-      } as any,
       teamId,
       appId,
       chatId
@@ -543,56 +534,24 @@ describe('stream resume helpers', () => {
     expect(await redis.get(keyOfStream)).toBeFalsy();
   });
 
-  it('should restore the original response write after cleanup', async () => {
-    const originalWrite = vi.fn(() => true);
-    const res = {
-      write: originalWrite
-    } as any;
-
-    const mirror = mirrorChatStream({
-      res,
-      teamId,
-      appId,
-      chatId
-    });
-
-    expect(res.write).not.toBe(originalWrite);
-
-    mirror.restore();
-
-    expect(res.write).toBe(originalWrite);
-  });
-
   it('should continue mirroring chunks after the original response is already closed', async () => {
     const redis = getGlobalRedisConnection() as any;
-    const originalWrite = vi.fn(() => true);
-    const res = {
-      write: originalWrite,
-      closed: false,
-      writableEnded: false,
-      destroyed: false
-    } as any;
-
     const delSpy = vi.spyOn(redis, 'del').mockResolvedValue(1);
 
     const mirror = mirrorChatStream({
-      res,
       teamId,
       appId,
       chatId
     });
 
-    res.write('event: answer\n');
-    res.closed = true;
-    res.writableEnded = true;
-    res.write('data: hello\n\n');
+    await mirror.enqueueRaw('event: answer\n');
+    await mirror.enqueueRaw('data: hello\n\n');
 
     await mirror.flush();
 
     const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
     const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-    expect(originalWrite).toHaveBeenCalledTimes(1);
     expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');

@@ -20,8 +20,7 @@ import { responseWrite } from '../../../common/response';
 import { type NextApiResponse } from 'next';
 import {
   DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum,
-  StreamResumeMirrorActive
+  SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -110,19 +109,42 @@ export const getWorkflowResponseWrite = ({
   detail,
   streamResponse,
   id = getNanoid(24),
-  showNodeStatus = true
+  showNodeStatus = true,
+  streamResumeMirror
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
   showNodeStatus?: boolean;
+  streamResumeMirror?: {
+    enqueueRaw?: (chunk: string) => Promise<void> | void;
+  };
 }) => {
+  const writeStreamChunk = ({ event, data }: { event?: string; data: string }) => {
+    if (!streamResponse) return;
+
+    const raw = `${event ? `event: ${event}\n` : ''}data: ${data}\n\n`;
+
+    void streamResumeMirror?.enqueueRaw?.(raw);
+
+    if (!res || res.closed || res.writableEnded || res.destroyed) return;
+
+    responseWrite({
+      res,
+      event,
+      data
+    });
+  };
+
   const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
-    let _res = res as NextApiResponse & { [StreamResumeMirrorActive]?: boolean };
-    const allowWriteToMirrorAfterClose = !!_res && _res[StreamResumeMirrorActive];
-    // 默认连接关闭后不再写 SSE；开启断线续传 mirror 时仍需在 closed 后把尾包写入 Redis Stream
-    if (!res || !streamResponse || (res.closed && !allowWriteToMirrorAfterClose)) return;
+    if (typeof data === 'string') {
+      writeStreamChunk({ event, data });
+      return;
+    }
+
+    if (!streamResponse) return;
+    if (!event) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -140,8 +162,7 @@ export const getWorkflowResponseWrite = ({
     };
     if (!showNodeStatus && statusEvent[event]) return;
 
-    responseWrite({
-      res,
+    writeStreamChunk({
       event: detail ? event : undefined,
       data: JSON.stringify({
         ...data,

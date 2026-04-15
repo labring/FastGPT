@@ -1,13 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sseErrRes } from '@fastgpt/service/common/response';
+import { getSseErrorResponse, sseErrRes } from '@fastgpt/service/common/response';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { responseWrite } from '@fastgpt/service/common/response';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { clearCookie } from '@fastgpt/service/support/permission/auth/common';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import {
@@ -61,6 +61,7 @@ import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResumeMirror: ReturnType<typeof mirrorChatStream> | undefined;
+  let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
   let {
     nodes = [],
     edges = [],
@@ -169,7 +170,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     streamResumeMirror = mirrorChatStream({
-      res,
       teamId: String(teamId),
       appId: String(app._id),
       chatId
@@ -187,12 +187,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    const workflowResponseWrite = getWorkflowResponseWrite({
+    workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail: true,
       streamResponse: true,
       id: chatId,
-      showNodeStatus: true
+      showNodeStatus: true,
+      streamResumeMirror: streamResumeMirror
     });
 
     /* start process */
@@ -244,8 +245,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         finish_reason: 'stop'
       })
     });
-    responseWrite({
-      res,
+    workflowResponseWrite({
       event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });
@@ -309,11 +309,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
     res.status(500);
-    sseErrRes(res, err);
+    if (workflowResponseWrite) {
+      const { event, data, shouldClearCookie } = getSseErrorResponse(err);
+      if (shouldClearCookie) {
+        clearCookie(res);
+      }
+      workflowResponseWrite({
+        event,
+        data
+      });
+    } else {
+      sseErrRes(res, err);
+    }
     await streamResumeMirror?.flush();
     await streamResumeMirror?.shrinkTTLAfterComplete();
-  } finally {
-    streamResumeMirror?.restore();
   }
   res.end();
 }
