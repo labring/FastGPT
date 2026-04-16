@@ -8,12 +8,13 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 async function handler(req: ApiRequestProps<{}, DeleteSkillQuery>) {
   const { skillId } = req.query;
 
   if (!skillId || !isValidObjectId(skillId)) {
-    return Promise.reject({ code: 400, error: 'Invalid skill ID' });
+    return Promise.reject(SkillErrEnum.unExist);
   }
 
   const { teamId, tmbId, skill } = await authSkill({

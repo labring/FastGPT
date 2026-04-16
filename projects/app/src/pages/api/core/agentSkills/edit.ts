@@ -8,6 +8,7 @@ import type { CreateEditDebugSandboxBody } from '@fastgpt/global/core/agentSkill
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 /**
  * Create an edit-debug sandbox for a skill.
@@ -32,13 +33,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate required parameters
     if (!skillId) {
-      sseErrRes(res, new Error('skillId is required'));
+      sseErrRes(res, new UserError('skillId is required'));
       res.end();
       return;
     }
 
     if (!isValidObjectId(skillId)) {
-      sseErrRes(res, new Error('Invalid skill ID format'));
+      sseErrRes(res, new UserError('Invalid skill ID format'));
       res.end();
       return;
     }
@@ -54,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate optional parameters
     if (image && !image.repository) {
-      sseErrRes(res, new Error('image.repository is required when image is provided'));
+      sseErrRes(res, new UserError('image.repository is required when image is provided'));
       res.end();
       return;
     }

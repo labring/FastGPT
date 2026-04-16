@@ -9,6 +9,7 @@ import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 async function handler(
   req: ApiRequestProps<{}, GetSkillDetailQuery>
@@ -16,7 +17,7 @@ async function handler(
   const { skillId } = req.query;
 
   if (!skillId || !isValidObjectId(skillId)) {
-    return Promise.reject({ code: 400, error: 'Invalid skill ID' });
+    return Promise.reject(SkillErrEnum.unExist);
   }
 
   const { skill, permission } = await authSkill({

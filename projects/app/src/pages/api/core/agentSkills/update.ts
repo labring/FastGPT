@@ -99,10 +99,10 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     // Field validation for normal update
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length === 0) {
-        return Promise.reject({ code: 400, error: 'Skill name cannot be empty' });
+        return Promise.reject(SkillErrEnum.invalidSkillName);
       }
       if (name.length > 50) {
-        return Promise.reject({ code: 400, error: 'Skill name must be less than 50 characters' });
+        return Promise.reject(SkillErrEnum.invalidSkillName);
       }
       const nameExists = await checkSkillNameExists(
         name.trim(),
@@ -111,23 +111,23 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
         skillId
       );
       if (nameExists) {
-        return Promise.reject({ code: 409, error: 'Skill name already exists' });
+        return Promise.reject(SkillErrEnum.skillNameExists);
       }
     }
 
     if (description !== undefined && description.length > 500) {
-      return Promise.reject({ code: 400, error: 'Description must be less than 500 characters' });
+      return Promise.reject(SkillErrEnum.invalidDescription);
     }
 
     if (category !== undefined) {
       const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
       if (category.some((c) => !validCategories.includes(c))) {
-        return Promise.reject({ code: 400, error: 'Invalid category value' });
+        return Promise.reject(SkillErrEnum.invalidCategory);
       }
     }
 
     if (config !== undefined && JSON.stringify(config).length > 50_000) {
-      return Promise.reject({ code: 400, error: 'Config exceeds maximum allowed size (50KB)' });
+      return Promise.reject(SkillErrEnum.invalidConfig);
     }
 
     const updateData: Record<string, any> = {};
@@ -138,7 +138,7 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     if (avatar !== undefined) updateData.avatar = avatar;
 
     if (Object.keys(updateData).length === 0) {
-      return Promise.reject({ code: 400, error: 'No fields to update' });
+      return Promise.reject(SkillErrEnum.noFieldsToUpdate);
     }
 
     await mongoSessionRun(async (session) => {

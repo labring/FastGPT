@@ -32,6 +32,7 @@ import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -65,33 +66,33 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
 
   // Validate required fields
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return Promise.reject({ code: 400, error: 'Skill name is required' });
+    return Promise.reject(SkillErrEnum.invalidSkillName);
   }
   if (name.length > 50) {
-    return Promise.reject({ code: 400, error: 'Skill name must be less than 50 characters' });
+    return Promise.reject(SkillErrEnum.invalidSkillName);
   }
   if (description && description.length > 500) {
-    return Promise.reject({ code: 400, error: 'Description must be less than 500 characters' });
+    return Promise.reject(SkillErrEnum.invalidDescription);
   }
   if (requirements && !model) {
-    return Promise.reject({ code: 400, error: 'Model is required when requirements is provided' });
+    return Promise.reject(SkillErrEnum.missingModel);
   }
   if (requirements && requirements.length > 8000) {
-    return Promise.reject({ code: 400, error: 'Requirements must be less than 8000 characters' });
+    return Promise.reject(SkillErrEnum.requirementsTooLong);
   }
 
   const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
   if (category.length > 0 && category.some((c) => !validCategories.includes(c))) {
-    return Promise.reject({ code: 400, error: 'Invalid category value' });
+    return Promise.reject(SkillErrEnum.invalidCategory);
   }
   if (config && JSON.stringify(config).length > 50_000) {
-    return Promise.reject({ code: 400, error: 'Config exceeds maximum allowed size (50KB)' });
+    return Promise.reject(SkillErrEnum.invalidConfig);
   }
 
   // Check if skill name already exists in the same parent folder
   const nameExists = await checkSkillNameExists(name.trim(), teamId, parentId || null);
   if (nameExists) {
-    return Promise.reject({ code: 409, error: 'Skill name already exists in this directory' });
+    return Promise.reject(SkillErrEnum.skillNameExists);
   }
 
   // Generate SKILL.md content
