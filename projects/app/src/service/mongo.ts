@@ -52,3 +52,32 @@ export async function initRootUser(retry = 3): Promise<any> {
     }
   }
 }
+
+export async function initAgentUsers(): Promise<void> {
+  const agentUsernames = process.env.AGENT_USERS
+    ? process.env.AGENT_USERS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ['agent_user_1', 'agent_user_2', 'agent_user_3'];
+  const psw = '123456789';
+
+  for (const username of agentUsernames) {
+    try {
+      const existingUser = await MongoUser.findOne({ username });
+      if (existingUser) {
+        addLog.debug(`agent user already exists: ${username}`);
+        continue;
+      }
+      await mongoSessionRun(async (session) => {
+        const [{ _id }] = await MongoUser.create([{ username, password: hashStr(psw) }], {
+          session,
+          ordered: true
+        });
+        await createDefaultTeam({ userId: _id, session });
+      });
+      console.log(`agent user created: ${username}`);
+    } catch (error) {
+      addLog.error(`init agent user error: ${username}`, { error });
+    }
+  }
+}
