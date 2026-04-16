@@ -145,6 +145,10 @@ export const DispatchNodeResponseSchema = z
   .object({
     // common
     moduleLogo: z.string().optional().meta({ description: '模块 logo' }),
+    moduleNameArgs: z
+      .record(z.string(), z.any())
+      .optional()
+      .meta({ description: '模块名 i18n 插值参数' }),
     runningTime: z.number().optional().meta({ description: '运行时间: 毫秒' }),
     query: z.string().optional().meta({ description: '查询语句' }),
     textOutput: z.string().optional().meta({ description: '文本输出' }),

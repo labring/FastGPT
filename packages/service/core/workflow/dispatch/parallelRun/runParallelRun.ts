@@ -122,7 +122,10 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     responseDetails,
     assistantResponses,
     customFeedbacks
-  } = aggregateParallelResults(taskResults);
+  } = aggregateParallelResults(taskResults, {
+    taskInputs: loopInputArray,
+    parentNodeId: node.nodeId
+  });
 
   return {
     data: {

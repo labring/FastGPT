@@ -27,6 +27,7 @@ const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestI
 type sideTabItemType = {
   moduleLogo?: string;
   moduleName: string;
+  moduleNameArgs?: Record<string, any>;
   runningTime?: number;
   moduleType: string;
   // nodeId:string; // abandon
@@ -143,7 +144,10 @@ export const WholeResponseContent = ({
     >
       {/* common info */}
       <>
-        <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
+        <Row
+          label={t('chat:response.node_name')}
+          value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
+        />
         {activeModule?.totalPoints !== undefined && (
           <Row
             label={t('common:support.wallet.usage.Total points')}
@@ -575,10 +579,7 @@ const SideTabItem = ({
             <NormalSideTabItem
               index={index}
               value={value}
-              onChange={(id) => {
-                onChange(id);
-                onToggleShowAccordion();
-              }}
+              onChange={onChange}
               sideBarItem={sideBarItem}
             >
               <MyIcon
@@ -656,7 +657,7 @@ const SideTabItem = ({
           />
           <Box ml={2}>
             <Box fontSize={'xs'} fontWeight={'bold'}>
-              {t(sideBarItem.moduleName as any)}
+              {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
             </Box>
             <Box fontSize={'2xs'} color={'myGray.500'}>
               {t(sideBarItem.runningTime as any) + 's'}
@@ -785,6 +786,7 @@ export const ResponseBox = React.memo(function ResponseBox({
         return {
           moduleLogo: item.moduleLogo,
           moduleName: item.moduleName,
+          moduleNameArgs: item.moduleNameArgs,
           runningTime: item.runningTime,
           moduleType: item.moduleType,
           id: item.id ?? item.nodeId,
@@ -908,7 +910,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                 />
 
                 <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
-                  {t(activeModule.moduleName as any)}
+                  {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>
               <Box flex={'1 0 0'}>

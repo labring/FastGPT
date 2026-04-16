@@ -354,6 +354,16 @@ describe('parallelRun/service', () => {
 
   // ────────────────────────────────────────────────────────────────────────────
   describe('aggregateParallelResults', () => {
+    // 默认 opts：taskInputs 按 index 原样返回，便于断言 wrapper.loopInputValue
+    const agg = (
+      results: ParallelTaskResult[],
+      opts?: { taskInputs?: any[]; parentNodeId?: string }
+    ) =>
+      aggregateParallelResults(results, {
+        taskInputs: opts?.taskInputs ?? results.map((r) => `input-${r.index}`),
+        parentNodeId: opts?.parentNodeId ?? 'parent'
+      });
+
     const successResult0: ParallelTaskResult = {
       success: true,
       index: 0,
@@ -389,10 +399,7 @@ describe('parallelRun/service', () => {
     };
 
     it('全部成功 → filteredArray 全部 + fullDetail 全 success', () => {
-      const { filteredArray, fullDetail } = aggregateParallelResults([
-        successResult0,
-        successResult2
-      ]);
+      const { filteredArray, fullDetail } = agg([successResult0, successResult2]);
 
       expect(filteredArray).toHaveLength(2);
       expect(filteredArray).toEqual(['data-0', 'data-2']);
@@ -400,11 +407,7 @@ describe('parallelRun/service', () => {
     });
 
     it('混合成功/失败 → filteredArray 只含成功项（顺序保留），fullDetail 保留全部', () => {
-      const { filteredArray, fullDetail } = aggregateParallelResults([
-        successResult0,
-        failResult1,
-        successResult2
-      ]);
+      const { filteredArray, fullDetail } = agg([successResult0, failResult1, successResult2]);
 
       expect(filteredArray).toEqual(['data-0', 'data-2']);
       expect(fullDetail).toHaveLength(3);
@@ -413,7 +416,7 @@ describe('parallelRun/service', () => {
     });
 
     it('全部失败 → filteredArray=[]，fullDetail 全 failed', () => {
-      const { filteredArray, fullDetail } = aggregateParallelResults([failResult1]);
+      const { filteredArray, fullDetail } = agg([failResult1]);
 
       expect(filteredArray).toHaveLength(0);
       expect(fullDetail).toHaveLength(1);
@@ -421,37 +424,77 @@ describe('parallelRun/service', () => {
     });
 
     it('totalPoints 累加正确', () => {
-      const { totalPoints } = aggregateParallelResults([
-        successResult0,
-        failResult1,
-        successResult2
-      ]);
+      const { totalPoints } = agg([successResult0, failResult1, successResult2]);
 
       expect(totalPoints).toBe(15); // 10 + 0 + 5
     });
 
     it('customFeedbacks 合并（只含成功任务）', () => {
-      const { customFeedbacks } = aggregateParallelResults([
-        successResult0,
-        failResult1,
-        successResult2
-      ]);
+      const { customFeedbacks } = agg([successResult0, failResult1, successResult2]);
 
       expect(customFeedbacks).toEqual(['fb1']);
     });
 
-    it('responseDetails / assistantResponses 按顺序累加', () => {
-      const { responseDetails, assistantResponses } = aggregateParallelResults([
-        successResult0,
-        successResult2
-      ]);
+    it('responseDetails 每次任务包装成一个虚拟节点；assistantResponses 按顺序累加', () => {
+      const { responseDetails, assistantResponses } = agg([successResult0, successResult2]);
 
-      expect(responseDetails).toHaveLength(2); // 1 from index 0, 1 from index 2
+      // 每次任务一个 wrapper（不再平铺子节点）
+      expect(responseDetails).toHaveLength(2);
+      expect(responseDetails[0]).toMatchObject({
+        id: 'parent_task_0',
+        nodeId: 'parent_task_0',
+        moduleName: 'workflow:parallel_task',
+        moduleNameArgs: { index: 1 },
+        loopInputValue: 'input-0',
+        loopOutputValue: 'data-0',
+        error: undefined
+      });
+      // 子节点挂在 childrenResponses 下
+      expect(responseDetails[0].childrenResponses).toEqual([{ id: 'n0' }]);
+      expect(responseDetails[1]).toMatchObject({
+        id: 'parent_task_2',
+        moduleNameArgs: { index: 3 },
+        loopOutputValue: 'data-2'
+      });
+      expect(responseDetails[1].childrenResponses).toEqual([{ id: 'n2' }]);
+
       expect(assistantResponses).toHaveLength(1); // only index 0 has assistant response
     });
 
+    it('失败任务 → wrapper 带 error、无 loopOutputValue', () => {
+      const { responseDetails } = agg([failResult1]);
+
+      expect(responseDetails).toHaveLength(1);
+      expect(responseDetails[0]).toMatchObject({
+        id: 'parent_task_1',
+        moduleNameArgs: { index: 2 },
+        error: 'task failed',
+        loopOutputValue: undefined
+      });
+      // 失败任务没有 response → childrenResponses 为空数组
+      expect(responseDetails[0].childrenResponses).toEqual([]);
+    });
+
+    it('wrapper.runningTime 为子节点 runningTime 之和（精确到百分位）', () => {
+      const withTimings: ParallelTaskResult = {
+        success: true,
+        index: 0,
+        data: 'ok',
+        totalPoints: 0,
+        response: makeDispatchFlowResponse({
+          flowResponses: [
+            { id: 'a', runningTime: 0.33 } as any,
+            { id: 'b', runningTime: 0.67 } as any,
+            { id: 'c' } as any // missing runningTime → treated as 0
+          ]
+        })
+      };
+      const { responseDetails } = agg([withTimings]);
+      expect(responseDetails[0].runningTime).toBe(1);
+    });
+
     it('全部成功 → fullResultsArray 每项 {success:true, message:"", data}', () => {
-      const { fullResultsArray } = aggregateParallelResults([successResult0, successResult2]);
+      const { fullResultsArray } = agg([successResult0, successResult2]);
 
       expect(fullResultsArray).toEqual([
         { success: true, message: '', data: 'data-0' },
@@ -460,11 +503,7 @@ describe('parallelRun/service', () => {
     });
 
     it('混合成功/失败 → fullResultsArray 按输入顺序，失败项 data=null、message=错误信息', () => {
-      const { fullResultsArray } = aggregateParallelResults([
-        successResult0,
-        failResult1,
-        successResult2
-      ]);
+      const { fullResultsArray } = agg([successResult0, failResult1, successResult2]);
 
       expect(fullResultsArray).toHaveLength(3);
       expect(fullResultsArray[0]).toEqual({ success: true, message: '', data: 'data-0' });
@@ -473,32 +512,32 @@ describe('parallelRun/service', () => {
     });
 
     it('全部失败 → fullResultsArray 全为 {success:false, data:null}', () => {
-      const { fullResultsArray } = aggregateParallelResults([failResult1]);
+      const { fullResultsArray } = agg([failResult1]);
 
       expect(fullResultsArray).toEqual([{ success: false, message: 'task failed', data: null }]);
     });
 
     it('失败项 error=undefined → message 为空字符串', () => {
       const failNoError: ParallelTaskResult = { success: false, index: 0, totalPoints: 0 };
-      const { fullResultsArray } = aggregateParallelResults([failNoError]);
+      const { fullResultsArray } = agg([failNoError]);
 
       expect(fullResultsArray[0]).toEqual({ success: false, message: '', data: null });
     });
 
     it('全部成功 → status = success', () => {
-      const { status } = aggregateParallelResults([successResult0, successResult2]);
+      const { status } = agg([successResult0, successResult2]);
 
       expect(status).toBe(ParallelRunStatusEnum.success);
     });
 
     it('混合成功/失败 → status = partial_success', () => {
-      const { status } = aggregateParallelResults([successResult0, failResult1, successResult2]);
+      const { status } = agg([successResult0, failResult1, successResult2]);
 
       expect(status).toBe(ParallelRunStatusEnum.partial_success);
     });
 
     it('全部失败 → status = failed', () => {
-      const { status } = aggregateParallelResults([failResult1]);
+      const { status } = agg([failResult1]);
 
       expect(status).toBe(ParallelRunStatusEnum.failed);
     });
@@ -517,17 +556,14 @@ describe('parallelRun/service', () => {
         })
       };
 
-      const { totalPoints } = aggregateParallelResults([retriedResult]);
+      const { totalPoints } = agg([retriedResult]);
       // 应等于 totalPoints 字段（24），而非从 flowUsages 重算的 8
       expect(totalPoints).toBe(24);
     });
 
     it('乱序输入 → 输出按输入 index 排序', () => {
       // 故意以 index 2 → 0 的顺序传入
-      const { filteredArray, fullResultsArray } = aggregateParallelResults([
-        successResult2,
-        successResult0
-      ]);
+      const { filteredArray, fullResultsArray } = agg([successResult2, successResult0]);
 
       expect(filteredArray).toEqual(['data-0', 'data-2']);
       expect(fullResultsArray.map((r) => r.data)).toEqual(['data-0', 'data-2']);
