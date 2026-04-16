@@ -18,7 +18,14 @@ import {
 } from '../common/utils';
 
 // Re-export common utilities for backward compatibility
-export { pLimit, sampleDataFromDataset, buildModelEndpoint, getTrainStageKey, formatTrainTaskError, formatSynthesisIndexesToPairs };
+export {
+  pLimit,
+  sampleDataFromDataset,
+  buildModelEndpoint,
+  getTrainStageKey,
+  formatTrainTaskError,
+  formatSynthesisIndexesToPairs
+};
 
 /**
  * Create enhanced error message for embedding training tasks

@@ -122,7 +122,7 @@ function List() {
               ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
               : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
           }
-          gridGap={5}
+          gridGap={3}
           alignItems={'stretch'}
         >
           {myDatasets.map((dataset) => (

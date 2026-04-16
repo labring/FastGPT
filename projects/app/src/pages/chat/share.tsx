@@ -105,10 +105,23 @@ const OutLink = (props: Props) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const isNoneWelcomeAndVariable = useContextSelector(
+    ChatItemContext,
+    (v) => v.isNoneWelcomeAndVariable
+  );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
+
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+
+  const isShowHeader = useMemo(
+    () =>
+      (!isNoneWelcomeAndVariable || (isChatRecordsLoaded && chatRecords.length !== 0)) &&
+      showHead === '1',
+    [chatBoxData, isChatRecordsLoaded, chatRecords, showHead]
+  );
 
   const initSign = useRef(false);
   const { data, loading } = useRequest(
@@ -266,7 +279,10 @@ const OutLink = (props: Props) => {
 
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistorySidebar menuConfirmButtonText={t('chat:confirm_to_clear_share_chat_history')} />
+      <ChatHistorySidebar
+        menuConfirmButtonText={t('chat:confirm_to_clear_share_chat_history')}
+        isShareMode={true}
+      />
     );
 
     if (showHistory !== '1') return null;
@@ -289,13 +305,14 @@ const OutLink = (props: Props) => {
         desc={props.appIntro || data?.app?.intro}
         icon={props.appAvatar || data?.app?.avatar}
       />
-      <Flex
-        h={'full'}
-        gap={4}
-        {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
-      >
+      <Flex h={'full'} gap={4} p={'0 !important'} borderRadius={'0'} boxShadow={'none'}>
         {(!datasetCiteData || isPc) && (
-          <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
+          <PageContainer
+            flex={'1 0 0'}
+            w={0}
+            p={'0 !important'}
+            insertProps={{ borderRadius: '0' }}
+          >
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
 
@@ -308,7 +325,7 @@ const OutLink = (props: Props) => {
                 flexDirection={'column'}
               >
                 {/* header */}
-                {showHead === '1' ? (
+                {isShowHeader ? (
                   <ChatHeader
                     chatSettings={undefined}
                     pane={ChatSidebarPaneEnum.RECENTLY_USED_APPS}

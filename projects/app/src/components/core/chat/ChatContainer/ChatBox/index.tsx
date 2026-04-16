@@ -51,7 +51,7 @@ import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
-import ChatItem from './components/ChatItem';
+import ChatItem from './components/SfChatItem';
 import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
@@ -70,6 +70,11 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { getDatasetDataBatchPermission } from '@/web/core/dataset/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -80,6 +85,15 @@ const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'))
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
+const AppChatEmptyBox = dynamic(() => import('./components/AppChatEmptyBox'));
+
+const sx = {
+  borderRadius: '12px',
+  borderImage:
+    'conic-gradient(from 180deg at 50% 50%, rgba(50, 170, 255, 0.6) -42deg, rgba(119, 226, 57, 0.6) 19deg, rgba(38, 219, 131, 0.6) 50deg, rgba(81, 155, 252, 0.6) 133deg, rgba(36, 131, 255, 0.6) 151deg, rgba(118, 105, 253, 0.6) 225deg, rgba(237, 125, 214, 0.6) 244deg, rgba(50, 170, 255, 0.6) 318deg, rgba(119, 226, 57, 0.6) 379deg) 1',
+  boxShadow: '0px 2px 6px 0px rgba(0, 78, 212, 0.06)',
+  background: 'linear-gradient(180deg, rgba(240, 246, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%)'
+};
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -90,6 +104,7 @@ enum FeedbackTypeEnum {
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
     isReady: boolean;
+    debuggerMode?: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
     showVoiceIcon?: boolean;
@@ -113,7 +128,8 @@ const ChatBox = ({
   showWorkorder,
   onStartChat,
   chatType,
-  onTriggerRefresh
+  onTriggerRefresh,
+  debuggerMode = false
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -149,6 +165,10 @@ const ChatBox = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
   );
+  const isNoneWelcomeAndVariable = useContextSelector(
+    ChatItemContext,
+    (v) => v.isNoneWelcomeAndVariable
+  );
 
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -168,6 +188,38 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+
+  // 批量查询数据集权限（所有消息只发一次请求）
+  const [datasetReadPerMap, setDatasetReadPerMap] = useState<Record<string, boolean>>({});
+  const uniqueDatasetIds = useMemo(() => {
+    return Array.from(
+      new Set(
+        chatRecords
+          .filter((record) => record.obj === ChatRoleEnum.AI)
+          .flatMap((record) => {
+            const { totalQuoteList = [] } = addStatisticalDataToHistoryItem(record);
+            return totalQuoteList
+              .filter((item) => !isDatabaseSource(item.sourceId) && item.datasetId)
+              .map((item) => item.datasetId);
+          })
+      )
+    );
+  }, [chatRecords]);
+  useEffect(() => {
+    if (uniqueDatasetIds.length === 0) return;
+    getDatasetDataBatchPermission(uniqueDatasetIds)
+      .then((resultMap) => {
+        setDatasetReadPerMap(
+          Object.fromEntries(
+            uniqueDatasetIds.map((id) => [id, resultMap[id]?.permission?.hasReadPer ?? false])
+          )
+        );
+      })
+      .catch(() => {
+        setDatasetReadPerMap(Object.fromEntries(uniqueDatasetIds.map((id) => [id, false])));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueDatasetIds.join(',')]);
 
   // Workflow running, there are user input or selection
   const lastInteractive = useMemo(() => getInteractiveByHistories(chatRecords), [chatRecords]);
@@ -1111,6 +1163,27 @@ const ChatBox = ({
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
+  // 非 home type, and no chat records and no var
+  // 非运行调试场景
+  // 数据已经加载完成 -> 避免日志记录里先出现问候语再出现记录
+  const isAppChatEmptyRender = useMemo(() => {
+    return (
+      chatType !== ChatTypeEnum.home &&
+      chatRecords.length === 0 &&
+      !chatStartedWatch &&
+      isNoneWelcomeAndVariable &&
+      !debuggerMode &&
+      isChatRecordsLoaded
+    );
+  }, [
+    chatType,
+    chatRecords.length,
+    chatStartedWatch,
+    isNoneWelcomeAndVariable,
+    debuggerMode,
+    isChatRecordsLoaded
+  ]);
+
   const toggleDeletedGroup = useCallback((dataIds: string[]) => {
     setExpandedDeletedGroups((prev) => {
       const newSet = new Set(prev);
@@ -1148,7 +1221,7 @@ const ChatBox = ({
       const prevIsDeleted = index > 0 ? !!chatRecords[index - 1].deleteTime : false;
       const nextIsDeleted =
         index < chatRecords.length - 1 ? !!chatRecords[index + 1].deleteTime : false;
-      console.log(isDeleted, 2323);
+
       if (isDeleted && !prevIsDeleted) {
         // 开始新的删除组
         currentGroup = {
@@ -1230,12 +1303,12 @@ const ChatBox = ({
                   }}
                 >
                   {/* 时间间隔显示逻辑：相邻消息时间差超过10分钟则显示时间 */}
-                  {index !== 0 &&
+                  {/* {index !== 0 &&
                     item.time &&
                     processedRecords[index - 1].time !== undefined &&
                     new Date(item.time).getTime() -
                       new Date(processedRecords[index - 1].time!).getTime() >
-                      10 * 60 * 1000 && <TimeBox time={item.time} />}
+                      10 * 60 * 1000 && <TimeBox time={item.time} />} */}
 
                   <Box py={item.hideInUI ? 0 : 6}>
                     {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
@@ -1243,7 +1316,6 @@ const ChatBox = ({
                         type={item.obj}
                         avatar={userAvatar}
                         chat={item}
-                        onRetry={retryInput(item.dataId)}
                         onDelete={delOneMessage(item.dataId)}
                         isLastChild={index === processedRecords.length - 1}
                       />
@@ -1255,10 +1327,15 @@ const ChatBox = ({
                         chat={item}
                         isLastChild={index === processedRecords.length - 1}
                         hideCiteIcon={isAssistantType}
+                        datasetReadPerMap={datasetReadPerMap}
                         {...{
                           showVoiceIcon,
                           statusBoxData,
                           questionGuides,
+                          onRetry:
+                            index > 0 && processedRecords[index - 1]?.obj === ChatRoleEnum.Human
+                              ? retryInput(processedRecords[index - 1].dataId)
+                              : undefined,
                           onMark: onMark(
                             item,
                             formatChatValue2InputType(processedRecords[index - 1]?.value)?.text
@@ -1352,11 +1429,15 @@ const ChatBox = ({
         flex={'1 0 0'}
         h={0}
         w={'100%'}
-        overflow={'overlay'}
+        overflowX={'hidden'}
         px={[4, 0]}
         pb={6}
+        sx={{
+          maskImage: 'linear-gradient(to bottom, transparent 0px, black 48px)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 48px)'
+        }}
       >
-        <Box maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
+        <Box maxW={['100%', 'min(738px, 92%)']} h={'100%'} mx={'auto'}>
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
           {/* variable input */}
@@ -1374,7 +1455,7 @@ const ChatBox = ({
       <>
         <WelcomeHomeBox />
 
-        <Box mt={5} w={'100%'}>
+        <Box mt={16} w={'100%'}>
           <QuickApps />
         </Box>
       </>
@@ -1387,6 +1468,7 @@ const ChatBox = ({
       display={'flex'}
       flexDirection={'column'}
       h={'100%'}
+      className="chatBox"
       position={'relative'}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
@@ -1418,15 +1500,50 @@ const ChatBox = ({
             )}
           </Flex>
         </MyBox>
+      ) : isAppChatEmptyRender ? (
+        <MyBox
+          isLoading={isLoadingRecords}
+          flex={'1 0 0'}
+          h={0}
+          w="100%"
+          position="relative"
+          overflow="hidden"
+          bg="linear-gradient(180deg, #FAFCFF, #FFFFFF)"
+        >
+          {/* 右上角装饰区域 */}
+          <BgDecoration showBg={false} />
+
+          {/* 居中区域：标题 + 输入框 */}
+          <Flex
+            h="100%"
+            flexDir="column"
+            justifyContent="center"
+            alignItems="center"
+            position="relative"
+            zIndex={1}
+            px={[2, 4]}
+          >
+            <AppChatEmptyBox />
+            <Box w={'100%'} maxW={['100%', 'min(738px, 92%)']} sx={sx}>
+              <ChatInput
+                onSendMessage={sendPrompt}
+                onStop={() => abortRequest('stop')}
+                TextareaDom={TextareaDom}
+                resetInputVal={resetInputVal}
+                chatForm={chatForm}
+              />
+            </Box>
+          </Flex>
+        </MyBox>
       ) : (
         <>
           {AppChatRenderBox}
           {canSendPrompt && (
             <Box
-              px={[3, 5]}
               m={['0 auto 10px', '10px auto']}
               w={'100%'}
-              maxW={['auto', 'min(820px, 100%)']}
+              maxW={['100%', 'min(738px, 92%)']}
+              sx={sx}
             >
               {showWorkorder && <WorkorderEntrance />}
 

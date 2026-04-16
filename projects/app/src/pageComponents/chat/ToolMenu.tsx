@@ -25,13 +25,8 @@ const ToolMenu = ({
   return (
     <MyMenu
       Button={
-        <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'}>
-          <IconButton
-            icon={<MyIcon name={'more'} w={'14px'} p={2} />}
-            aria-label={''}
-            size={'sm'}
-            variant={reserveSpace ? 'transparentBase' : 'whitePrimary'}
-          />
+        <Box transform={reserveSpace ? 'translateX(-32px)' : 'none'} cursor={'pointer'}>
+          <MyIcon color={'myGray.600'} name={'more'} w={'16px'} p={2} />
         </Box>
       }
       menuList={[

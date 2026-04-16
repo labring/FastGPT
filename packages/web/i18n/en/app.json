@@ -502,6 +502,7 @@
   "tts_browser": "Built-in in browser (free)",
   "tts_close": "Disabled",
   "type.All": "All",
+  "type.Agent": "Agent",
   "type.Chat_Agent": "Dialogue Agent",
   "type.Create http plugin tip": "Bulk create plugins using OpenAPI schema. They must be compatible with the GPTs format.",
   "type.Create mcp tools tip": "Automatically parse the specified MCP address to bulk create callable MCP tools.",

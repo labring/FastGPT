@@ -4,6 +4,7 @@ import { Box, type BoxProps, Flex, type FlexProps } from '@chakra-ui/react';
 type ColorSchemaType =
   | 'white'
   | 'blue'
+  | 'primary'
   | 'green'
   | 'red'
   | 'yellow'
@@ -11,7 +12,8 @@ type ColorSchemaType =
   | 'purple'
   | 'adora'
   | 'orange'
-  | 'pink';
+  | 'pink'
+  | 'lightBlue';
 
 export type TagProps = FlexProps & {
   children: React.ReactNode | React.ReactNode[];
@@ -54,20 +56,25 @@ const colorMap: Record<
     bg: 'myGray.50',
     color: 'myGray.700'
   },
-  blue: {
+  primary: {
     borderColor: 'primary.200',
     bg: 'primary.50',
     color: 'primary.600'
   },
+  blue: {
+    borderColor: 'blue.200',
+    bg: 'blue.50',
+    color: 'blue.600'
+  },
   purple: {
-    borderColor: '#ECF',
-    bg: '#F6EEFA',
-    color: '#A558C9'
+    borderColor: 'violet.50',
+    bg: 'violet.25',
+    color: 'violet.500'
   },
   adora: {
-    borderColor: '#D3CAFF',
-    bg: '#F0EEFF',
-    color: '#6F5DD7'
+    borderColor: 'adora.200',
+    bg: 'adora.50',
+    color: 'adora.600'
   },
   orange: {
     borderColor: 'orange.200',
@@ -75,9 +82,14 @@ const colorMap: Record<
     color: 'orange.600'
   },
   pink: {
-    borderColor: '#FFE0EC',
-    bg: '#FFF1F6',
-    color: '#E82F72'
+    borderColor: 'pink.50',
+    bg: 'pink.25',
+    color: 'pink.500'
+  },
+  lightBlue: {
+    borderColor: '#B3D4FF',
+    bg: 'rgba(230, 241, 255, 0.6)',
+    color: 'blue.600'
   }
 };
 

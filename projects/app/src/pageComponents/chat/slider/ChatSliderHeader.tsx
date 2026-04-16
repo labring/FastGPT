@@ -39,16 +39,15 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   const isFavouriteAppPane = pane === ChatSidebarPaneEnum.FAVORITE_APPS;
 
   return isPc ? (
-    <Flex pt={5} px={[2, 5]} alignItems={'center'} fontSize={'sm'} pb={title ? 0 : 2}>
-      {!title && <Avatar src={appAvatar} borderRadius={'md'} />}
+    <Flex alignItems={'center'} fontSize={'16px'} p={'8px'} m={['16px', '12px']}>
+      {!title && <Avatar src={appAvatar} borderRadius={'md'} w={'24px'} />}
 
       <Box
         flex={'1 0 0'}
         w={0}
         ml={2}
-        fontWeight={'bold'}
+        fontWeight={'600'}
         fontSize={title ? '16px' : 'inherit'}
-        color={title ? 'myGray.900' : 'inherit'}
         className={'textEllipsis'}
       >
         <MyTooltip label={title || appName} shouldWrapChildren={false}>

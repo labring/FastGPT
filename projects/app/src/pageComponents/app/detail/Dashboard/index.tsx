@@ -28,7 +28,14 @@ const Dashboard = () => {
   } = useMultipleSelect<ChatSourceEnum>(Object.values(ChatSourceEnum), true);
 
   return (
-    <Flex flexDirection={'column'} h={'full'}>
+    <Flex
+      flexDirection={'column'}
+      h={'full'}
+      pb={'16px'}
+      pt={'16px'}
+      bg="white"
+      borderRadius={'16px'}
+    >
       <LogChart
         appId={appId}
         chatSources={chatSources}
@@ -37,6 +44,7 @@ const Dashboard = () => {
         setIsSelectAllSource={setIsSelectAllSource}
         dateRange={dateRange}
         setDateRange={setDateRange}
+        px={[4, 4]}
       />
     </Flex>
   );

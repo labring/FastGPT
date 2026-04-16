@@ -16,20 +16,13 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
   const { isPc } = useSystem();
 
   const histories = useContextSelector(ChatContext, (v) => v.histories);
-  const onClearHistory = useContextSelector(ChatContext, (v) => v.onClearHistories);
+  // const onClearHistory = useContextSelector(ChatContext, (v) => v.onClearHistories);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   return (
-    <Flex
-      w={'100%'}
-      px={[2, 5]}
-      h={'36px'}
-      my={5}
-      justify={['space-between', '']}
-      alignItems={'center'}
-    >
+    <Flex w={'100%'} px={3} h={'36px'} mb={4} justify={['space-between', '']} alignItems={'center'}>
       {!isPc && (
         <Flex height={'100%'} align={'center'} justify={'center'}>
           <MyIcon ml={2} name="core/chat/sideLine" />
@@ -43,9 +36,12 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
         variant={'whitePrimary'}
         flex={['0 0 auto', 1]}
         h={'100%'}
-        px={6}
-        color={'primary.600'}
-        borderRadius={'xl'}
+        mx={1}
+        color={'myGray.600'}
+        border="1px solid"
+        borderColor={'myGray.200'}
+        boxShadow={'none'}
+        borderRadius={'8px'}
         leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
         overflow={'hidden'}
         onClick={() => {
@@ -56,7 +52,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
         {t('common:core.chat.New Chat')}
       </Button>
 
-      {isPc && histories.length > 0 && (
+      {/* {isPc && histories.length > 0 && (
         <PopoverConfirm
           Trigger={
             <Box ml={3} h={'100%'}>
@@ -73,7 +69,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
           content={menuConfirmButtonText || t('common:Delete')}
           onConfirm={() => onClearHistory()}
         />
-      )}
+      )} */}
     </Flex>
   );
 };

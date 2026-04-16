@@ -42,7 +42,7 @@ const Evaluation = () => {
   return (
     <DashboardContainer>
       {({ MenuIcon }) => (
-        <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
+        <Flex h={'full'} p={6} flexDirection="column">
           <Flex h={'100%'} flexDirection={'column'} gap={4}>
             {evaluationTab === 'tasks' && <EvaluationTasks Tab={Tab} />}
             {evaluationTab === 'datasets' && <EvaluationDatasets Tab={Tab} />}
@@ -64,7 +64,8 @@ export async function getServerSideProps(content: any) {
         'evaluation',
         'dataset',
         'app',
-        'common'
+        'common',
+        'account'
       ]))
     }
   };

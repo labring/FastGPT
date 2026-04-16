@@ -1,5 +1,6 @@
+// @file 应用工作台（Agent）页面，展示智能问答和工作流应用列表
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
@@ -34,6 +35,7 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import CreateModal from '@/pages/dashboard/create/CreateModal';
 import type { CreateAppType } from '@/pages/dashboard/create/CreateModal';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -95,6 +97,17 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const [createAppType, setCreateAppType] = useState<CreateAppType>();
 
+  const agentTabList = useMemo(
+    () => [
+      { label: t('app:type.All'), value: 'all' },
+      { label: t('app:smart_qa'), value: AppTypeEnum.assistant },
+      { label: t('app:type.Workflow bot'), value: AppTypeEnum.workflow }
+    ],
+    [t]
+  );
+
+  const activeAgentTab = !appType || appType === 'all' ? 'all' : (appType as string);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
@@ -102,38 +115,53 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
+          pr={folderDetail ? 4 : 4}
+          pl={4}
           pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
-              <Box>
-                <FolderPath
-                  paths={paths}
-                  hoverStyle={{ bg: 'myGray.200' }}
-                  forbidLastClick
-                  onClick={(parentId) => {
+          <Box display={'grid'} gridTemplateColumns={'1fr auto 1fr'} alignItems={'center'} gap={3}>
+            <Flex alignItems={'center'}>
+              {!isPc ? (
+                MenuIcon
+              ) : paths.length > 0 ? (
+                <Box>
+                  <FolderPath
+                    paths={paths}
+                    hoverStyle={{ bg: 'myGray.200' }}
+                    forbidLastClick
+                    onClick={(parentId) => {
+                      router.push({
+                        query: {
+                          ...router.query,
+                          parentId
+                        }
+                      });
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+                  {t('app:application')}
+                </Box>
+              )}
+            </Flex>
+            <Box>
+              {isPc && paths.length === 0 && (
+                <MyTabs
+                  tabs={agentTabList}
+                  value={activeAgentTab}
+                  onChange={(value) => {
                     router.push({
-                      query: {
-                        ...router.query,
-                        parentId
-                      }
+                      pathname: '/dashboard/agent',
+                      query: { type: value }
                     });
                   }}
                 />
-              </Box>
-            ) : (
-              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-                {t('app:application')}
-              </Box>
-            )}
-            <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
+              )}
+            </Box>
+            <Flex justifyContent={'flex-end'} alignItems={'center'} gap={3}>
               {isPc && (
                 <SearchInput
                   maxW={['auto', '250px']}
@@ -208,7 +236,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-          </Flex>
+          </Box>
           {!isPc && (
             <Box mt={2}>
               {
@@ -270,7 +298,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           </Box>
         )}
       </Flex>
-
       {!!editFolder && (
         <EditFolderModal
           {...editFolder}
@@ -309,7 +336,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user', 'skill']))
+      ...(await serviceSideProps(content, ['app', 'user', 'skill', 'account']))
     }
   };
 }

@@ -6,6 +6,7 @@
   "Previous": "上一个",
   "ai_reasoning": "思考过程",
   "back_to_text": "返回输入",
+  "ai_reasoning_done": "已深度思考（用时 {{seconds}} 秒）",
   "balance_not_enough_pause": "由于 AI 积分不足，暂停运行工作流",
   "chat.quote.No Data": "找不到该文件",
   "chat.quote.deleted": "该数据已被删除～",
@@ -228,8 +229,11 @@
   "rerank_score": "重排分数：",
   "recall_rank": "召回排名：",
   "run_preview": "运行预览",
+  "greeting_with_name": "HI，我是{{appName}}",
   "retrieval_mode": "检索策略",
   "retrieval_process": "检索过程",
   "retrieval_results": "检索结果",
-  "view_all_knowledge": "查看全部 {{count}} 个知识"
+  "view_all_knowledge": "查看全部 {{count}} 个知识",
+  "tag_faq_direct": "匹配到可直接回答的 FAQ",
+  "tag_no_recall": "未召回知识"
 }

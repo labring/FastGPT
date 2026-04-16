@@ -332,7 +332,7 @@ const ChatItem = (props: Props) => {
             />
           </Flex>
         )}
-        <ChatAvatar src={avatar} type={type} />
+        {/* <ChatAvatar src={avatar} type={type} /> */}
 
         {/* Workflow status */}
         {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (

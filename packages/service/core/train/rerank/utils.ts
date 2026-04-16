@@ -19,7 +19,14 @@ import {
 } from '../common/utils';
 
 // Re-export common utilities for backward compatibility
-export { pLimit, sampleDataFromDataset, buildModelEndpoint, getTrainStageKey, formatTrainTaskError, formatSynthesisIndexesToPairs };
+export {
+  pLimit,
+  sampleDataFromDataset,
+  buildModelEndpoint,
+  getTrainStageKey,
+  formatTrainTaskError,
+  formatSynthesisIndexesToPairs
+};
 
 // Re-export constants used by rerank-specific callers
 export { DEFAULT_SEARCH_SIMILARITY, DEFAULT_SEARCH_LIMIT };

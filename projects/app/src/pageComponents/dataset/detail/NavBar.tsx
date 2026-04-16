@@ -1,10 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FolderPath from '@/components/common/folder/Path';
@@ -22,15 +23,11 @@ export enum TabEnum {
 }
 
 const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
-  const { datasetDetail, rebuildingCount, paths } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const { datasetDetail, paths } = useContextSelector(DatasetPageContext, (v) => v);
 
   const tabList = [
     {
@@ -69,13 +66,11 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     <>
       {isPc ? (
         <Flex
-          pb={2}
-          pt={3}
-          px={4}
+          h={'16'}
           justify={'space-between'}
-          borderBottom={!showNavTab ? 'none' : theme.borders.base}
-          borderColor={'myGray.200'}
+          alignItems={'center'}
           position={'relative'}
+          flexShrink={0}
         >
           {currentTab === TabEnum.dataCard ? (
             <>
@@ -122,30 +117,15 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             </Flex>
           )}
 
-          <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
-            <LightRowTabs<TabEnum>
-              px={4}
-              py={1}
-              visibility={!showNavTab ? 'hidden' : 'visible'}
-              flex={1}
-              mx={'auto'}
-              w={'100%'}
-              list={tabList}
-              value={currentTab}
-              activeColor="primary.700"
-              onChange={setCurrentTab}
-              inlineStyles={{
-                fontSize: '1rem',
-                lineHeight: '1.5rem',
-                fontWeight: 500,
-                border: 'none',
-                _hover: {
-                  bg: 'myGray.05'
-                },
-                borderRadius: '6px'
-              }}
-            />
-          </Box>
+          {showNavTab && (
+            <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+              <MyTabs
+                tabs={tabList}
+                value={currentTab}
+                onChange={(val) => setCurrentTab(val as TabEnum)}
+              />
+            </Box>
+          )}
 
           {/* 训练情况hover弹窗 */}
           {/* {!isDatabaseDataset(datasetDetail.type) && (

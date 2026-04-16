@@ -6,6 +6,7 @@
   "Previous": "Previous",
   "ai_reasoning": "Reasoning process",
   "back_to_text": "Return to input",
+  "ai_reasoning_done": "已深度思考（用时 {{seconds}} 秒）",
   "balance_not_enough_pause": "Workflow paused due to insufficient AI points",
   "chat.quote.No Data": "Unable to find the file.",
   "chat.quote.deleted": "The data has been deleted.",
@@ -229,8 +230,11 @@
   "rerank_score": "Rerank score: ",
   "recall_rank": "Recall rank: ",
   "run_preview": "Run preview",
+  "greeting_with_name": "HI，我是{{appName}}",
   "retrieval_mode": "Retrieval Mode",
   "retrieval_process": "Retrieval Process",
   "retrieval_results": "Retrieval Results",
-  "view_all_knowledge": "View all {{count}} knowledge"
+  "view_all_knowledge": "View all {{count}} knowledge",
+  "tag_faq_direct": "Matched to a directly answerable FAQ",
+  "tag_no_recall": "No knowledge retrieved"
 }
