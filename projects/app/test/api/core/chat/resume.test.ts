@@ -138,6 +138,8 @@ const invokeStreamingHandler = async (
 ) => {
   const headers: Record<string, string> = {};
   const chunks: string[] = [];
+  let statusCode = 200;
+  let jsonPayload: any;
   let closeHandler: (() => void) | undefined;
 
   const req = {
@@ -161,8 +163,23 @@ const invokeStreamingHandler = async (
     }),
     end: vi.fn(() => {
       res.writableEnded = true;
+      res.writableFinished = true;
     }),
+    status: vi.fn((code: number) => {
+      statusCode = code;
+      res.statusCode = code;
+      return res;
+    }),
+    json: vi.fn((data: any) => {
+      jsonPayload = data;
+      headers['Content-Type'] ??= 'application/json';
+      res.writableEnded = true;
+      res.writableFinished = true;
+      return res;
+    }),
+    statusCode,
     writableEnded: false,
+    writableFinished: false,
     destroyed: false
   } as any;
 
@@ -176,6 +193,8 @@ const invokeStreamingHandler = async (
     result,
     headers,
     chunks,
+    statusCode,
+    jsonPayload,
     res,
     closeHandler
   };
@@ -217,11 +236,18 @@ describe('stream resume api', () => {
       liveResponses: [[[rawKeyOfStream, [liveDoneItem]]]]
     });
 
-    const { result, headers, chunks, res, closeHandler } = await invokeStreamingHandler({
-      teamId,
-      appId,
-      chatId
-    });
+    const { result, headers, chunks, res, closeHandler } = await invokeStreamingHandler(
+      {
+        teamId,
+        appId,
+        chatId
+      },
+      {
+        headers: {
+          accept: 'text/event-stream'
+        }
+      }
+    );
 
     expect(result).toEqual({
       code: 200,
@@ -351,6 +377,39 @@ describe('stream resume api', () => {
     });
     expect(addPreviewUrlToChatItems).toHaveBeenCalled();
     expect(redis.call).not.toHaveBeenCalled();
+  });
+
+  it('should reject non-sse resume requests while the chat is still generating', async () => {
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    );
+
+    const redis = getGlobalRedisConnection() as any;
+    redis.call = vi.fn();
+    redis.duplicate = vi.fn();
+
+    const { statusCode, jsonPayload, chunks, headers, res } = await invokeStreamingHandler({
+      teamId,
+      appId,
+      chatId
+    });
+
+    expect(statusCode).toBe(406);
+    expect(jsonPayload).toMatchObject({
+      code: 406,
+      statusText: 'error',
+      message:
+        'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.',
+      data: null
+    });
+    expect(headers['Content-Type']).toBe('application/json');
+    expect(chunks).toHaveLength(0);
+    expect(res.write).not.toHaveBeenCalled();
+    expect(redis.call).not.toHaveBeenCalled();
+    expect(redis.duplicate).not.toHaveBeenCalled();
   });
 
   it('should push completed chat records through sse when the client requested event stream', async () => {

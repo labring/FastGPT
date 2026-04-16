@@ -20,6 +20,8 @@ import { transformPreviewHistories } from '@/global/core/chat/utils';
 
 const completedChatPageSize = 10;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
+const resumeGeneratingRequiresSseMessage =
+  'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
 
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
@@ -135,6 +137,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     writeSseEvent(res, StreamResumeCompletedEvent, JSON.stringify(completedChat));
     writeSseEvent(res, 'done', '[DONE]');
     res.end();
+    return;
+  }
+
+  if (!respondWithSse) {
+    res.status(406).json({
+      code: 406,
+      statusText: 'error',
+      message: resumeGeneratingRequiresSseMessage,
+      data: null
+    });
     return;
   }
 
