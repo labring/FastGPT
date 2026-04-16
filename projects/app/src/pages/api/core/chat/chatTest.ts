@@ -56,7 +56,7 @@ import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completio
 import {
   ensureGenerateChat,
   updateChatGenerateStatus
-} from '@fastgpt/service/core/chat/resumeStatus';
+} from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 

@@ -32,7 +32,6 @@ export enum SseResponseEventEnum {
 
 export const StreamResumePhaseEvent = 'resumePhase';
 export const StreamResumeCompletedEvent = 'resumeCompleted';
-export const StreamResumeMirrorActive = Symbol('__fastgptStreamResumeMirrorActive');
 
 export enum StreamResumePhaseEnum {
   catchup = 'catchup',

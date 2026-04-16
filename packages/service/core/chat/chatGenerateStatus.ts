@@ -1,3 +1,7 @@
+/**
+ * Service helpers for persisting per-chat generate status.
+ * Used by stream resume, sidebar polling, and stale-generating correction paths.
+ */
 import { MongoChat } from './chatSchema';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 

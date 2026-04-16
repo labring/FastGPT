@@ -68,7 +68,7 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import {
   ensureGenerateChat,
   updateChatGenerateStatus
-} from '@fastgpt/service/core/chat/resumeStatus';
+} from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);

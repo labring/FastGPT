@@ -21,13 +21,16 @@ import { transformPreviewHistories } from '@/global/core/chat/utils';
 const completedChatPageSize = 10;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
 
+const isResponseClosed = (res: NextApiResponse) =>
+  !!(res.closed || res.writableEnded || res.destroyed);
+
 const writeResumePhase = (res: NextApiResponse, phase: StreamResumePhaseEnum) => {
-  if (res.writableEnded || res.destroyed) return;
+  if (isResponseClosed(res)) return;
   res.write(`event: ${StreamResumePhaseEvent}\ndata: ${phase}\n\n`);
 };
 
 const writeSseEvent = (res: NextApiResponse, event: string, data: string) => {
-  if (res.writableEnded || res.destroyed) return;
+  if (isResponseClosed(res)) return;
   res.write(`event: ${event}\ndata: ${data}\n\n`);
 };
 

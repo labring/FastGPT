@@ -9,6 +9,10 @@ const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 export const STREAM_RESUME_TTL_SECONDS = env.STREAM_RESUME_TTL_SECONDS;
 /** 流结束后短 TTL（见 env `STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`） */
 export const STREAM_RESUME_POST_COMPLETE_TTL_SECONDS = env.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
+/**
+ * One active resume request keeps one dedicated blocking Redis connection alive for at most this
+ * long before the XREAD call returns and the loop re-checks the HTTP socket state.
+ */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 
@@ -33,6 +37,9 @@ const getRawRedisKey = (key: string) => `${FASTGPT_REDIS_PREFIX}${key}`;
 const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
   rawKeyOfStream: getRawRedisKey(keys.keyOfStream)
 });
+
+const isResponseClosed = (res: NextApiResponse) =>
+  !!(res.closed || res.writableEnded || res.destroyed);
 
 const touchStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
   const redis = getGlobalRedisConnection();
@@ -129,7 +136,7 @@ const writeRedisStreamFields = ({
   res: NextApiResponse;
   fields: RedisStreamFields;
 }) => {
-  if (res.writableEnded || res.destroyed) return;
+  if (isResponseClosed(res)) return;
 
   if (fields.raw !== undefined) {
     res.write(fields.raw);
@@ -166,7 +173,7 @@ export const catchUpAllHistoryItems = async ({
 
   let lastStreamId = '';
 
-  while (!res.writableEnded && !res.destroyed) {
+  while (!isResponseClosed(res)) {
     const rangeStart = lastStreamId ? `(${lastStreamId}` : '-';
 
     const historyItems = (await redis.call(
@@ -191,12 +198,12 @@ export const catchUpAllHistoryItems = async ({
         fields
       });
 
-      if (res.writableEnded || res.destroyed) {
+      if (isResponseClosed(res)) {
         break;
       }
     }
 
-    if (historyItems.length < maxReplayLength || res.writableEnded || res.destroyed) {
+    if (historyItems.length < maxReplayLength || isResponseClosed(res)) {
       return lastStreamId;
     }
 
@@ -213,6 +220,9 @@ export const _resume = async ({
   ...params
 }: ResumeBaseParams & { cursor?: string }) => {
   const redis = getGlobalRedisConnection();
+  // BLOCK reserves the socket until data arrives or timeout, so each in-flight resume uses a
+  // dedicated duplicated Redis connection. If high-concurrency deployments hit connection limits,
+  // consider fan-out or a shared blocking pool in a follow-up refactor.
   const blockingRedis = redis.duplicate();
   const keys = getStreamResumeRedisKeys(params);
   const { rawKeyOfStream } = getStreamResumeRedisRawKeys(keys);
@@ -240,7 +250,7 @@ export const _resume = async ({
       }
     }
 
-    while (!res.writableEnded && !res.destroyed) {
+    while (!isResponseClosed(res)) {
       const streamId = cursor || '$';
       const result = (await blockingRedis.call(
         'XREAD',
@@ -272,7 +282,7 @@ export const _resume = async ({
           fields
         });
 
-        if (isTerminalRedisStreamFields(fields) || res.writableEnded || res.destroyed) {
+        if (isTerminalRedisStreamFields(fields) || isResponseClosed(res)) {
           return cursor;
         }
       }
