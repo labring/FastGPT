@@ -101,3 +101,10 @@ export enum ChatGenerateStatusEnum {
   done = 1,
   error = 2
 }
+
+/**
+ * Opt-in header for enabling Redis-backed SSE resume buffering on chat stream endpoints.
+ * Third-party clients that do not need `/api/core/chat/resume` should omit it.
+ */
+export const STREAM_RESUME_REQUEST_HEADER = 'x-fastgpt-stream-resume';
+export const STREAM_RESUME_REQUEST_HEADER_ENABLED = '1';

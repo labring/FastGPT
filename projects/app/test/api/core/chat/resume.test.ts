@@ -13,9 +13,13 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
+  getStreamResumeMirror,
+  isStreamResumeMirrorRequested,
   mirrorChatStream,
+  resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
+  STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
   STREAM_RESUME_TTL_SECONDS,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
@@ -504,6 +508,7 @@ describe('stream resume helpers', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    resetStreamResumeMirrorGuardForTest();
   });
 
   it('should mirror raw response writes to redis stream in order and throttle ttl refreshes', async () => {
@@ -614,5 +619,48 @@ describe('stream resume helpers', () => {
     expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
+  });
+
+  it('should require the opt-in header before creating a mirror', async () => {
+    const redis = getGlobalRedisConnection() as any;
+    redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
+
+    const withoutHeader = await getStreamResumeMirror({
+      resumeRequestHeaderValue: undefined,
+      teamId,
+      appId,
+      chatId
+    });
+    const withHeader = await getStreamResumeMirror({
+      resumeRequestHeaderValue: '1',
+      teamId,
+      appId,
+      chatId
+    });
+
+    expect(withoutHeader).toBeUndefined();
+    expect(withHeader).toBeDefined();
+    expect(redis.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
+    const redis = getGlobalRedisConnection() as any;
+    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
+
+    const mirror = await getStreamResumeMirror({
+      resumeRequestHeaderValue: 'true',
+      teamId,
+      appId,
+      chatId
+    });
+
+    expect(mirror).toBeUndefined();
+    expect(redis.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('should parse truthy stream resume request headers', () => {
+    expect(isStreamResumeMirrorRequested('YES')).toBe(true);
+    expect(isStreamResumeMirrorRequested('0')).toBe(false);
   });
 });
