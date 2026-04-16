@@ -1,8 +1,7 @@
 import { env } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
-import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
