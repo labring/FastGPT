@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -30,6 +30,8 @@ const ChatSliderList = ({ isShareMode }: Props) => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const concatHistory = useMemo(() => {
     const formatHistories: {
@@ -113,17 +115,12 @@ const ChatSliderList = ({ isShareMode }: Props) => {
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
-                {/* <Box
-                  className="time"
-                  display={'block'}
-                  fontWeight={'400'}
-                  fontSize={'mini'}
-                  color={'myGray.500'}
+                <Box
+                  className="more"
+                  display={['block', openMenuId === item.id ? 'block' : 'none']}
                 >
-                  {t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
-                </Box> */}
-                <Box className="more" display={['block', 'none']}>
                   <MyMenu
+                    onOpenChange={(isOpen) => setOpenMenuId(isOpen ? item.id : null)}
                     Button={
                       <IconButton
                         size={'xs'}

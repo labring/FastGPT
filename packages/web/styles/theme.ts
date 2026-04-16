@@ -814,6 +814,7 @@ export const theme = extendTheme({
       7: 'rgba(51, 112, 255, 0.7)',
       9: 'rgba(51, 112, 255, 0.9)',
 
+      25: '#FBFDFF',
       50: '#F5F9FF',
       100: '#E6F1FF',
       200: '#C2D7F2',
