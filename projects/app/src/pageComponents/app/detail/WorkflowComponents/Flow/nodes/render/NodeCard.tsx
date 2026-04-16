@@ -344,7 +344,7 @@ const NodeCard = (props: Props) => {
                 />
               )}
               {showHeader && (
-                <Box px={3} pt={4} position={'relative'}>
+                <Box px={4} pt={4} position={'relative'}>
                   <Flex alignItems={'center'} mb={1}>
                     <NodeTitleSection
                       nodeId={nodeId}
@@ -375,7 +375,7 @@ const NodeCard = (props: Props) => {
             <Flex
               flexDirection={'column'}
               flex={1}
-              py={showHeader ? 3 : 0}
+              pb={showHeader ? 4 : 0}
               gap={2}
               position={'relative'}
             >

@@ -14,8 +14,8 @@ const BooleanSelect = ({ mode = 'true', onChange }: Props) => {
   const { t } = useTranslation();
 
   const list: { value: Mode; label: string }[] = [
-    { value: 'true', label: t('workflow:var_update_boolean_true') },
-    { value: 'false', label: t('workflow:var_update_boolean_false') },
+    { value: 'true', label: 'True' },
+    { value: 'false', label: 'False' },
     { value: 'negate', label: t('workflow:var_update_boolean_negate') }
   ];
 
