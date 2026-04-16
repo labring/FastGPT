@@ -176,7 +176,9 @@ const nextConfig: NextConfig = {
     'bullmq',
     '@zilliz/milvus2-sdk-node',
     'tiktoken',
-    '@opentelemetry/api-logs'
+    '@opentelemetry/api-logs',
+    '@mariozechner/pi-agent-core',
+    '@mariozechner/pi-ai'
   ],
   // 优化大库的 barrel exports tree-shaking
   experimental: {
