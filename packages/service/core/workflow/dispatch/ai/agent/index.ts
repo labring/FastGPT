@@ -45,6 +45,7 @@ import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { env } from '../../../../../env';
+import { dispatchPiAgent } from './piAgent';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -77,6 +78,11 @@ type Response = DispatchNodeResultType<{
 */
 
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
+  // pi-agent-core engine: bypass Plan+Step orchestration
+  if (env.AGENT_ENGINE === 'pi') {
+    return dispatchPiAgent(props);
+  }
+
   const MAX_PLAN_ITERATIONS = 10; // 最大规划轮次
 
   let {
