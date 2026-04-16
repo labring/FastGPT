@@ -959,7 +959,11 @@ const InputTypeConfig = ({
                                       cursor={selectEnums.length > 1 ? 'pointer' : 'not-allowed'}
                                       p={2}
                                       borderRadius={'md'}
-                                      _hover={selectEnums.length > 1 ? { color: 'primary.600' } : undefined}
+                                      _hover={
+                                        selectEnums.length > 1
+                                          ? { color: 'primary.600' }
+                                          : undefined
+                                      }
                                       w={'16px'}
                                     />
                                   </Box>

@@ -48,7 +48,8 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions),
     [inputs]
   );
-  const currentRenderType = userSelectInput?.renderTypeList?.[userSelectInput.selectedTypeIndex || 0];
+  const currentRenderType =
+    userSelectInput?.renderTypeList?.[userSelectInput.selectedTypeIndex || 0];
 
   useEffect(() => {
     if (!userSelectInput || !currentRenderType) return;

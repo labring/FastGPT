@@ -457,18 +457,21 @@ export const checkWorkflowNodeAndConnection = ({
       }
     }
     if (data.flowNodeType === FlowNodeTypeEnum.userSelect) {
-      const optionInput = data.inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions);
+      const optionInput = data.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.userSelectOptions
+      );
       const renderType = optionInput?.renderTypeList?.[optionInput.selectedTypeIndex || 0];
 
       if (renderType === FlowNodeInputTypeEnum.reference) {
         const nodeIds = nodes.map((node) => node.data.nodeId);
-        const isValidReference =
-          optionInput?.valueType?.startsWith('array')
-            ? Array.isArray(optionInput?.value) &&
-              optionInput.value.every((item) => isValidReferenceValue(item, nodeIds))
-            : isValidReferenceValue(optionInput?.value, nodeIds);
+        const isValidReference = optionInput?.valueType?.startsWith('array')
+          ? Array.isArray(optionInput?.value) &&
+            optionInput.value.every((item) => isValidReferenceValue(item, nodeIds))
+          : isValidReferenceValue(optionInput?.value, nodeIds);
         const referenceHandleId = getHandleId(data.nodeId, 'source', 'ref_default');
-        const referenceEdgeCount = edges.filter((edge) => edge.sourceHandle === referenceHandleId).length;
+        const referenceEdgeCount = edges.filter(
+          (edge) => edge.sourceHandle === referenceHandleId
+        ).length;
 
         if (!isValidReference || referenceEdgeCount > 1) {
           return [data.nodeId];
