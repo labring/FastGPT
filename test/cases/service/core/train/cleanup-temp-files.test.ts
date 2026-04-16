@@ -17,9 +17,14 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
 }));
 
 // Mock getRerankTrainDataDir to return test directory
-vi.mock('@fastgpt/service/core/train/rerank/constants', () => ({
-  getRerankTrainDataDir: vi.fn(() => os.tmpdir())
-}));
+vi.mock('@fastgpt/service/core/train/rerank/constants', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/train/rerank/constants')>();
+  return {
+    ...actual,
+    getRerankTrainDataDir: vi.fn(() => os.tmpdir())
+  };
+});
 
 describe('临时文件清理功能', () => {
   const testTaskId = 'test_task_123';

@@ -84,6 +84,9 @@ export async function mockQuerySFTTaskStatus(
   let progress: number | undefined;
   let message: string;
 
+  const failEnvKey = task.taskType === 'rerank' ? 'MOCK_SFT_RERANK_FAIL' : 'MOCK_SFT_EMBED_FAIL';
+  const shouldFail = process.env[failEnvKey] === 'true';
+
   if (elapsedSeconds < 3) {
     currentStatus = SFTTaskStatus.created;
     progress = 0;
@@ -92,6 +95,10 @@ export async function mockQuerySFTTaskStatus(
     currentStatus = SFTTaskStatus.running;
     progress = Math.min(80, Math.floor(((elapsedSeconds - 3) / 6) * 80));
     message = 'Training in progress';
+  } else if (shouldFail) {
+    currentStatus = SFTTaskStatus.failed;
+    progress = undefined;
+    message = `Mock failure injected via ${failEnvKey}`;
   } else if (elapsedSeconds < 12) {
     currentStatus = SFTTaskStatus.deploying;
     progress = Math.min(95, 80 + Math.floor(((elapsedSeconds - 9) / 3) * 15));
@@ -111,7 +118,9 @@ export async function mockQuerySFTTaskStatus(
     message
   };
 
-  if (currentStatus === SFTTaskStatus.completed) {
+  if (currentStatus === SFTTaskStatus.failed && shouldFail) {
+    response.error = `Mock failure injected via ${failEnvKey}`;
+  } else if (currentStatus === SFTTaskStatus.completed) {
     const envPrefix =
       task.taskType === 'rerank' ? 'MOCK_SFT_RERANK_ENDPOINT' : 'MOCK_SFT_EMBED_ENDPOINT';
     const baseUrl = process.env[`${envPrefix}_BASE_URL`];

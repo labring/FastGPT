@@ -8,7 +8,7 @@ import {
   type JobCleanupResult,
   type JobCleanupOptions,
   checkBullMQHealth
-} from '../utils/mq';
+} from '../../../common/bullmq/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const evaluationItemQueue = getQueue<EvaluationItemJobData>(QueueNames.evalTaskItem, {

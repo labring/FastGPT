@@ -1,5 +1,5 @@
 import type { Queue, Job } from 'bullmq';
-import { addLog } from '../../../common/system/log';
+import { addLog } from '../system/log';
 
 export interface JobCleanupResult {
   queue: string;

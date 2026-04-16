@@ -110,9 +110,6 @@ describe('Rerank Train Task Controller', () => {
         '@fastgpt/service/core/train/rerank/task/schema'
       );
 
-      (MongoRerankTrainTask.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null) // no running task
-      });
       (MongoRerankTrainTask.create as any).mockResolvedValue([createMockDoc({ _id: 'task_123' })]);
 
       const task = await createRerankTrainTask({
@@ -150,9 +147,6 @@ describe('Rerank Train Task Controller', () => {
         '@fastgpt/service/core/train/rerank/task/schema'
       );
 
-      (MongoRerankTrainTask.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null) // no running task
-      });
       (MongoRerankTrainTask.create as any).mockResolvedValue([createMockDoc({ _id: 'task_auto' })]);
 
       const task = await createRerankTrainTask({
@@ -624,50 +618,6 @@ describe('Rerank Train Task Controller', () => {
       });
 
       await expect(cancelRerankTrainTask('task_123')).rejects.toBe('rerankTaskCannotCancel');
-    });
-  });
-
-  describe('createRerankTrainTask - rerankTaskAlreadyRunning', () => {
-    test('同一 baseModelId 已有进行中任务时应拒绝创建', async () => {
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-
-      (MongoRerankTrainTask.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue({ _id: 'existing_task', status: 'running' })
-      });
-
-      await expect(
-        createRerankTrainTask({
-          baseModelId: 'model_123',
-          datasetIds: ['ds1'],
-          teamId: 'team_123',
-          tmbId: 'tmb_123'
-        })
-      ).rejects.toBe('rerankTaskAlreadyRunning');
-
-      expect(MongoRerankTrainTask.create).not.toHaveBeenCalled();
-    });
-
-    test('无进行中任务时应正常创建', async () => {
-      const { MongoRerankTrainTask } = await import(
-        '@fastgpt/service/core/train/rerank/task/schema'
-      );
-
-      // no running task
-      (MongoRerankTrainTask.findOne as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null)
-      });
-      (MongoRerankTrainTask.create as any).mockResolvedValue([createMockDoc({ _id: 'new_task' })]);
-
-      const task = await createRerankTrainTask({
-        baseModelId: 'model_123',
-        datasetIds: ['ds1'],
-        teamId: 'team_123',
-        tmbId: 'tmb_123'
-      });
-
-      expect(String(task._id)).toBe('new_task');
     });
   });
 

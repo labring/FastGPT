@@ -1,5 +1,10 @@
 import { getQueue, QueueNames } from '../../../../common/bullmq';
 import { DEFAULT_JOB_BACKOFF_DELAY } from '../constants';
+import {
+  createJobCleaner,
+  type JobCleanupOptions,
+  type JobCleanupResult
+} from '../../../../common/bullmq/utils';
 
 export type RerankTrainTaskJobData = {
   taskId: string;
@@ -13,3 +18,15 @@ export const rerankTrainTaskQueue = getQueue<RerankTrainTaskJobData>(QueueNames.
     removeOnFail: false // Keep failed jobs for troubleshooting
   }
 });
+
+export const removeRerankTrainTaskJob = (
+  taskId: string,
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
+  return cleaner.cleanAllJobsByFilter(
+    rerankTrainTaskQueue,
+    (job) => String(job.data?.taskId) === String(taskId),
+    QueueNames.rerankTrainTask
+  );
+};

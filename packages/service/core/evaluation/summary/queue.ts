@@ -7,7 +7,7 @@ import {
   createJobCleaner,
   type JobCleanupResult,
   type JobCleanupOptions
-} from '../utils/mq';
+} from '../../../common/bullmq/utils';
 import { type LanguageType, detectEvaluationLanguage } from './util/languageUtil';
 
 export type EvaluationSummaryJobData = {
