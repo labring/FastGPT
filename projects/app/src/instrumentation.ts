@@ -21,7 +21,7 @@ export async function register() {
           initProPromptLoader
         },
         { initVectorStore },
-        { initRootUser },
+        { initRootUser, initAgentUsers },
         { startMongoWatch },
         { startCron },
         { startTrainingQueue },
@@ -87,6 +87,7 @@ export async function register() {
         getInitConfig(),
         initVectorStore(),
         initRootUser(),
+        initAgentUsers(),
         loadSystemModels(),
         loadSystemBuiltinMetrics(),
         initProPromptLoader() // Initialize remote prompt loader
