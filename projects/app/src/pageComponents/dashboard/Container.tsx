@@ -85,7 +85,7 @@ const NavItem = ({
         <Text
           mt="4px"
           fontSize="12px"
-          fontWeight={500}
+          fontWeight={isActive ? 600 : 500}
           color={isActive ? '#156AD9' : '#2D3540'}
           _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
           textAlign="center"
@@ -99,7 +99,7 @@ const NavItem = ({
           <Text
             ml={indent ? 0 : '9px'}
             fontSize={indent ? '13px' : '14px'}
-            fontWeight={indent ? 400 : 600}
+            fontWeight={isActive ? 600 : 500}
             color={isActive ? '#156AD9' : indent ? '#3E4A59' : '#2D3540'}
             _groupHover={{ color: isActive ? '#156AD9' : indent ? '#3E4A59' : '#2D3540' }}
             whiteSpace="nowrap"
@@ -166,7 +166,7 @@ const SubNavGroup = ({
           <Text
             mt="4px"
             fontSize="12px"
-            fontWeight={500}
+            fontWeight={isActive ? 600 : 500}
             color={isActive ? '#156AD9' : '#2D3540'}
             _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
             textAlign="center"
@@ -189,7 +189,7 @@ const SubNavGroup = ({
             <Text
               ml="9px"
               fontSize="14px"
-              fontWeight={600}
+              fontWeight={isActive ? 600 : 500}
               color={isActive ? '#156AD9' : '#2D3540'}
               _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
               whiteSpace="nowrap"
@@ -288,7 +288,7 @@ const SubNavSettings = ({
           <Text
             mt="4px"
             fontSize="12px"
-            fontWeight={500}
+            fontWeight={isActive ? 600 : 500}
             color={isActive ? '#156AD9' : '#2D3540'}
             _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
             textAlign="center"
@@ -311,7 +311,7 @@ const SubNavSettings = ({
             <Text
               ml="9px"
               fontSize="14px"
-              fontWeight={600}
+              fontWeight={isActive ? 600 : 500}
               color={isActive ? '#156AD9' : '#2D3540'}
               _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
               whiteSpace="nowrap"
@@ -352,7 +352,7 @@ const SubNavSettings = ({
             >
               <Text
                 fontSize="13px"
-                fontWeight={400}
+                fontWeight={item.path && currentPath.startsWith(item.path) ? 600 : 500}
                 color={item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'}
                 _groupHover={{
                   color: item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'
@@ -454,7 +454,6 @@ export const DashboardNavbar = ({
   const appBuildItems = useMemo(
     () => [
       { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
-      { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' },
       { key: 'tool', label: t('common:navbar.Tools'), path: '/dashboard/tool' },
       { key: 'mcp', label: t('common:mcp_server'), path: '/dashboard/mcpServer' }
     ],
@@ -515,7 +514,7 @@ export const DashboardNavbar = ({
 
             {/* 模板市场 */}
             <NavItem
-              icon="navbar/templateMarketNew"
+              icon="core/importTemplateIcon"
               label={t('common:template_market')}
               isActive={isActivePrefix(['/dashboard/templateMarket'])}
               isCollapsed={isCollapsed}

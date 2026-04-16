@@ -59,7 +59,7 @@ const SideBar = (e?: Props) => {
       flex={isFolded ? '0 0 0' : w}
       w={['100%', 0]}
       h={'100%'}
-      zIndex={1}
+      zIndex={2}
       transition={'0.2s'}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

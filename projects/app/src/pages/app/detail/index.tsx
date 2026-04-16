@@ -11,7 +11,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { DashboardNavbar, SIDEBAR_COLLAPSED_WIDTH } from '@/pageComponents/dashboard/Container';
+import {
+  DashboardNavbar,
+  SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_EXPANDED_WIDTH
+} from '@/pageComponents/dashboard/Container';
 import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp'), {
