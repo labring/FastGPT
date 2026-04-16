@@ -431,6 +431,32 @@ export const useWorkflow = () => {
     [scheduleHelperLineUpdate]
   );
 
+  // 同步计算并应用辅助线吸附。父节点拖动场景下,子节点的 delta 依赖 change.position,
+  // 必须在 delta 计算前完成吸附,不能走 RAF 异步突变。
+  const applyHelperLineSnapSync = useMemoizedFn(
+    (change: NodePositionChange, candidateNodes: Node[]) => {
+      if (!change.dragging || !change.position) return;
+
+      const dragPos = change.position;
+      const filtered: Array<{ node: Node; distance: number }> = [];
+      for (const n of candidateNodes) {
+        const dx = Math.abs(n.position.x - dragPos.x);
+        const dy = Math.abs(n.position.y - dragPos.y);
+        if (dx <= 3000 && dy <= 3000) {
+          filtered.push({ node: n, distance: dx + dy });
+        }
+      }
+      filtered.sort((a, b) => a.distance - b.distance);
+      const nearest = filtered.slice(0, 15).map((item) => item.node);
+
+      const helperLines = computeHelperLines(change, nearest);
+      change.position.x = helperLines.snapPosition.x ?? change.position.x;
+      change.position.y = helperLines.snapPosition.y ?? change.position.y;
+      setHelperLineHorizontal(helperLines.horizontal);
+      setHelperLineVertical(helperLines.vertical);
+    }
+  );
+
   // Check if a node is placed on top of a nested parent node (loop / parallelRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     const unSupportedInLoop = [
@@ -606,10 +632,11 @@ export const useWorkflow = () => {
           { topLevelNodes: [] as Node[], childNodes: [] as Node[] }
         );
 
-        // 计算对齐辅助线 (仅针对顶层节点)
-        checkNodeHelpLine(change, topLevelNodes);
+        // 同步吸附辅助线:父拖动场景下,子节点 delta 依赖 change.position,
+        // 若走 RAF 异步会与父节点吸附结果错位,子节点每次吸附都会偏移并最终跳出父节点
+        applyHelperLineSnapSync(change, topLevelNodes);
 
-        // 计算子节点的位置变化
+        // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
         if (childNodes.length > 0) {
           const initPosition = node.position;
           const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
