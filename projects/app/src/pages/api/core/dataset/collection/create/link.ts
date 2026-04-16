@@ -8,6 +8,7 @@ import {
   CreateLinkCollectionBodySchema,
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { link, ...body } = CreateLinkCollectionBodySchema.parse(req.body);
@@ -18,6 +19,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     authApiKey: true,
     datasetId: body.datasetId,
     per: WritePermissionVal
+  });
+
+  // Check dataset limit
+  await checkDatasetIndexLimit({
+    teamId,
+    insertLen: 1
   });
 
   return createCollectionAndInsertData({

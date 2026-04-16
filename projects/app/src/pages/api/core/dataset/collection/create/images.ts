@@ -21,6 +21,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -42,6 +43,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       req,
       authToken: true,
       authApiKey: true
+    });
+
+    // Check dataset limit
+    await checkDatasetIndexLimit({
+      teamId,
+      insertLen: 1
     });
 
     const planStatus = await getTeamPlanStatus({ teamId });
