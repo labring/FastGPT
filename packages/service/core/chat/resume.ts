@@ -1,8 +1,7 @@
 import { env } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
-import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
@@ -22,7 +21,7 @@ export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
 
-type RequestLike = Pick<NextApiRequest, 'headers'>;
+type ResumeRequestHeaderValue = string | string[] | undefined;
 type RedisMemoryPressureCache = {
   checkedAt: number;
   blocked: boolean;
@@ -65,11 +64,11 @@ const getNormalizedHeaderValue = (value: string | string[] | undefined) => {
   return value?.trim().toLowerCase();
 };
 
-export const isStreamResumeMirrorRequested = (req?: RequestLike) => {
-  const headerValue = getNormalizedHeaderValue(req?.headers?.[STREAM_RESUME_REQUEST_HEADER]);
-  if (!headerValue) return false;
+export const isStreamResumeMirrorRequested = (headerValue?: ResumeRequestHeaderValue) => {
+  const normalizedHeaderValue = getNormalizedHeaderValue(headerValue);
+  if (!normalizedHeaderValue) return false;
 
-  return resumeRequestEnabledValues.has(headerValue);
+  return resumeRequestEnabledValues.has(normalizedHeaderValue);
 };
 
 const parseRedisInfoNumber = (info: string, key: string) => {
@@ -240,10 +239,10 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
 };
 
 export const getStreamResumeMirror = async ({
-  req,
+  resumeRequestHeaderValue,
   ...params
-}: StreamResumeRedisKeysParams & { req?: RequestLike }) => {
-  if (!isStreamResumeMirrorRequested(req)) return;
+}: StreamResumeRedisKeysParams & { resumeRequestHeaderValue?: ResumeRequestHeaderValue }) => {
+  if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
   if (await isRedisMemoryPressureBlockingStreamResume()) {
     return;

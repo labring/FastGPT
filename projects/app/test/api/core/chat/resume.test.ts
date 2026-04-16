@@ -1,11 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  STREAM_RESUME_REQUEST_HEADER
-} from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -630,17 +626,13 @@ describe('stream resume helpers', () => {
     redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
 
     const withoutHeader = await getStreamResumeMirror({
-      req: { headers: {} } as any,
+      resumeRequestHeaderValue: undefined,
       teamId,
       appId,
       chatId
     });
     const withHeader = await getStreamResumeMirror({
-      req: {
-        headers: {
-          [STREAM_RESUME_REQUEST_HEADER]: '1'
-        }
-      } as any,
+      resumeRequestHeaderValue: '1',
       teamId,
       appId,
       chatId
@@ -657,11 +649,7 @@ describe('stream resume helpers', () => {
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
     const mirror = await getStreamResumeMirror({
-      req: {
-        headers: {
-          [STREAM_RESUME_REQUEST_HEADER]: 'true'
-        }
-      } as any,
+      resumeRequestHeaderValue: 'true',
       teamId,
       appId,
       chatId
@@ -672,19 +660,7 @@ describe('stream resume helpers', () => {
   });
 
   it('should parse truthy stream resume request headers', () => {
-    expect(
-      isStreamResumeMirrorRequested({
-        headers: {
-          [STREAM_RESUME_REQUEST_HEADER]: 'YES'
-        }
-      } as any)
-    ).toBe(true);
-    expect(
-      isStreamResumeMirrorRequested({
-        headers: {
-          [STREAM_RESUME_REQUEST_HEADER]: '0'
-        }
-      } as any)
-    ).toBe(false);
+    expect(isStreamResumeMirrorRequested('YES')).toBe(true);
+    expect(isStreamResumeMirrorRequested('0')).toBe(false);
   });
 });

@@ -70,7 +70,10 @@ import {
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  STREAM_RESUME_REQUEST_HEADER
+} from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -299,7 +302,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     mirror = stream
       ? await getStreamResumeMirror({
-          req,
+          resumeRequestHeaderValue: req.headers[STREAM_RESUME_REQUEST_HEADER],
           teamId,
           appId: runningAppId,
           chatId: runningChatId
