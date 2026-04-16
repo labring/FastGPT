@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  STREAM_RESUME_REQUEST_HEADER
+} from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
