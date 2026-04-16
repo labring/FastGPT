@@ -37,14 +37,19 @@ const InputRender = (props: InputRenderProps) => {
   // Password
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
 
-  const isSelectAll = useMemo(() => {
+  const multipleSelectList = useMemo(() => {
+    if (inputType !== InputTypeEnum.multipleSelect) return [];
     return (
-      inputType === InputTypeEnum.multipleSelect &&
-      Array.isArray(value) &&
-      value.length === (props.list?.length || 0)
+      props.list ?? props.enums?.map((item) => ({ label: item.value, value: item.value })) ?? []
     );
-    // @ts-ignore
-  }, [inputType, value, props.list?.length]);
+  }, [inputType, props.list, props.enums]);
+
+  const isSelectAll = useMemo(() => {
+    if (inputType !== InputTypeEnum.multipleSelect) return false;
+    if (!Array.isArray(value) || multipleSelectList.length === 0) return false;
+    const valueSet = new Set(value);
+    return multipleSelectList.every((item) => valueSet.has(item.value));
+  }, [inputType, value, multipleSelectList]);
 
   const commonProps = useMemoEnhance(
     () => ({
@@ -179,13 +184,11 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.multipleSelect) {
-    const list =
-      props.list || props.enums?.map((item) => ({ label: item.value, value: item.value })) || [];
     return (
       <MultipleSelect<string>
         {...commonProps}
         h={10}
-        list={list}
+        list={multipleSelectList}
         value={value}
         onSelect={(e) => onChange?.(e)}
         isSelectAll={isSelectAll}

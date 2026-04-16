@@ -101,8 +101,8 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
         maxY = Math.max(maxY, node.position.y + nodeHeight);
       });
 
-      const childWidth = Math.max(maxX - minX + 80, 840);
-      const childHeight = Math.max(maxY - minY + 80, 600);
+      const childWidth = Math.max(maxX - minX + 80, 0);
+      const childHeight = Math.max(maxY - minY + 80, 0);
 
       const diffWidth = childWidth - loopChilWidth;
       const diffHeight = childHeight - loopChilHeight;
