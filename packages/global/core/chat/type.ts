@@ -299,7 +299,7 @@ export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
 export const ChatHistoryItemSchema = HistoryItemSchema.extend({
   appId: z.string(),
   top: z.boolean().optional(),
-  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
+  chatGenerateStatus: z.nativeEnum(ChatGenerateStatusEnum).optional(),
   hasBeenRead: z.boolean().optional()
 });
 export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;
