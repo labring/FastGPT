@@ -38,7 +38,7 @@ export const InitChatResponseSchema = z.object({
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
-  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional().describe('对话生成状态'),
+  chatGenerateStatus: z.nativeEnum(ChatGenerateStatusEnum).optional().describe('对话生成状态'),
   hasBeenRead: z.boolean().optional().describe('是否已读'),
   app: z
     .object({
