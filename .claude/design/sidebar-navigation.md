@@ -1,6 +1,6 @@
 # 侧边导航栏设计文档
 
-> 最后更新：2026-04-15
+> 最后更新：2026-04-16
 
 ## 概述
 
@@ -12,8 +12,43 @@ FastGPT 使用统一的侧边导航栏组件 `DashboardNavbar`，适用于 Dashb
 
 | 文件 | 说明 |
 |------|------|
-| `projects/app/src/pageComponents/dashboard/Container.tsx` | 导航栏核心组件，含所有子组件定义和导航数据 |
-| `projects/app/src/pages/app/detail/index.tsx` | 应用详情页，复用 `DashboardNavbar`，初始折叠 |
+| `projects/app/src/pageComponents/dashboard/Container.tsx` | 导航栏核心组件，含所有子组件定义、`DashboardContainer` 和导航数据 |
+| `projects/app/src/pages/app/detail/index.tsx` | 应用详情页，直接使用 `DashboardNavbar`，固定折叠 |
+| `projects/app/src/pages/dataset/list/index.tsx` | 知识库列表页，直接使用 `DashboardNavbar`，默认展开 |
+| `projects/app/src/pages/dataset/detail/index.tsx` | 知识库详情页，直接使用 `DashboardNavbar`，固定折叠 |
+| `projects/app/src/pageComponents/account/AccountContainer.tsx` | 账户设置容器，直接使用 `DashboardNavbar`，默认展开 |
+| `projects/app/src/pages/config/tool/index.tsx` | 系统工具配置页，直接使用 `DashboardNavbar`，默认展开 |
+| `projects/app/src/pages/config/tool/marketplace.tsx` | 工具市场配置页，直接使用 `DashboardNavbar`，默认展开 |
+
+---
+
+## 页面引用树
+
+```
+DashboardNavbar（定义于 pageComponents/dashboard/Container.tsx）
+│
+├── [间接] 通过 DashboardContainer 包装（默认展开，可折叠）
+│   ├── pages/dashboard/agent/index.tsx              — 应用列表
+│   ├── pages/dashboard/tool/index.tsx               — 工具列表
+│   ├── pages/dashboard/systemTool/index.tsx         — 系统工具
+│   ├── pages/dashboard/mcpServer/index.tsx          — MCP 服务
+│   ├── pages/dashboard/templateMarket/index.tsx     — 模板市场
+│   └── pages/dashboard/evaluation/                  — 应用测评
+│       ├── index.tsx
+│       ├── dimension/edit.tsx
+│       ├── dimension/create.tsx
+│       └── dataset/fileImport.tsx
+│
+├── [直接] 一级页面（默认展开，可折叠）
+│   ├── pages/dataset/list/index.tsx                 — 知识库列表
+│   ├── pageComponents/account/AccountContainer.tsx  — 账户设置
+│   ├── pages/config/tool/index.tsx                  — 系统工具配置
+│   └── pages/config/tool/marketplace.tsx            — 工具市场配置
+│
+└── [直接] 二级页面（固定折叠 + hideCollapseButton，不可展开）
+    ├── pages/app/detail/index.tsx                   — 应用详情
+    └── pages/dataset/detail/index.tsx               — 知识库详情
+```
 
 ---
 
@@ -40,7 +75,7 @@ DashboardNavbar
 │       └── SettingsItem    —— 二级子项（含退出登录）
 └── 底部区域
     ├── TeamPlanStatusCard（仅展开时显示）
-    └── 折叠切换按钮
+    └── 折叠切换按钮（hideCollapseButton=true 时隐藏）
 ```
 
 ---
@@ -180,14 +215,16 @@ const [isCollapsed, setIsCollapsed] = useState(false); // 默认展开
 
 ```tsx
 // Provider（pages/app/detail/index.tsx）
-const [isCollapsed, setIsCollapsed] = useState(true); // 默认折叠
-const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
+const [isCollapsed] = useState(true); // 固定折叠，不可切换
+const sidebarWidth = SIDEBAR_COLLAPSED_WIDTH;
 
-{isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+{isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} hideCollapseButton />}
 <Box pl={isPc ? sidebarWidth : 0} ...>
   <AppDetail />
 </Box>
 ```
+
+> 二级页面传入 `hideCollapseButton` 隐藏底部折叠按钮，侧边栏固定为折叠态。
 
 ---
 

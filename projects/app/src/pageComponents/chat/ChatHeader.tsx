@@ -67,7 +67,7 @@ const ChatHeader = ({
       px={[3, 6]}
       minH={['46px', '60px']}
       color={'myGray.900'}
-      bg={'myWhite.300'}
+      bg={'blue.25'}
       fontSize={'sm'}
     >
       {isPc ? (

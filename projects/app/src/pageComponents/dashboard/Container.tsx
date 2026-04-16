@@ -372,10 +372,12 @@ const SubNavSettings = ({
 // ===== 主侧边栏组件 =====
 export const DashboardNavbar = ({
   isCollapsed,
-  setIsCollapsed
+  setIsCollapsed,
+  hideCollapseButton = false
 }: {
   isCollapsed: boolean;
   setIsCollapsed: (v: boolean) => void;
+  hideCollapseButton?: boolean;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -601,16 +603,18 @@ export const DashboardNavbar = ({
               <TeamPlanStatusCard />
             </Box>
           )}
-          <Flex
-            h="48px"
-            align="center"
-            cursor="pointer"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
-            <Flex w={SIDEBAR_COLLAPSED_WIDTH} justify="center" flexShrink={0}>
-              <MyIcon name="navbar/bottomIcon" w="14px" color="#3E4A59" flexShrink={0} />
+          {!hideCollapseButton && (
+            <Flex
+              h="48px"
+              align="center"
+              cursor="pointer"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+            >
+              <Flex w={SIDEBAR_COLLAPSED_WIDTH} justify="center" flexShrink={0}>
+                <MyIcon name="navbar/bottomIcon" w="14px" color="#3E4A59" flexShrink={0} />
+              </Flex>
             </Flex>
-          </Flex>
+          )}
         </Box>
       </Box>
       <ConfirmModal />

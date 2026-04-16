@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Menu,
   MenuList,
@@ -228,6 +228,13 @@ const MyMenu = ({
     }
   });
 
+  // 组件卸载时清除关闭定时器，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      clearTimeout(closeTimer.current);
+    };
+  }, []);
+
   const computeOffset = useMemo<[number, number]>(() => {
     if (offset) return offset;
     if (typeof width === 'number') return [-width / 2, 5];
@@ -251,10 +258,12 @@ const MyMenu = ({
           if (formatTrigger === 'hover') {
             handleSetIsOpen(true);
           }
+          // 鼠标重新进入触发区域时，清除待执行的关闭定时器
           clearTimeout(closeTimer.current);
         }}
         onMouseLeave={() => {
           if (formatTrigger === 'hover') {
+            // 延迟关闭，给鼠标移向 MenuList（Portal 渲染）留出时间
             closeTimer.current = setTimeout(() => {
               handleSetIsOpen(false);
             }, 100);
@@ -296,6 +305,20 @@ const MyMenu = ({
           p={'6px'}
           border={'1px solid #fff'}
           boxShadow={'3'}
+          onMouseEnter={() => {
+            // MenuList 通过 Portal 渲染到 body，不在 ref Box 的 DOM 范围内。
+            // 鼠标从触发按钮移向菜单列表时，会触发外层 Box 的 onMouseLeave，
+            // 此处清除关闭定时器，确保鼠标在菜单列表上时菜单保持打开。
+            clearTimeout(closeTimer.current);
+          }}
+          onMouseLeave={() => {
+            if (formatTrigger === 'hover') {
+              // 鼠标离开菜单列表时，延迟关闭
+              closeTimer.current = setTimeout(() => {
+                handleSetIsOpen(false);
+              }, 100);
+            }
+          }}
         >
           {menuList.map((item, i) => {
             return (
