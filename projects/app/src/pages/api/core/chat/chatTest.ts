@@ -56,7 +56,7 @@ import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completio
 import {
   ensureGenerateChat,
   updateChatGenerateStatus
-} from '@fastgpt/service/core/chat/resumeStatus';
+} from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 
@@ -296,7 +296,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     if (interactive) {
-      // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/v2/chat/resume
+      // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/core/chat/resume
       await updateChatGenerateStatus({
         appId: String(app._id),
         chatId,

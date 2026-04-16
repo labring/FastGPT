@@ -68,7 +68,7 @@ import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/comple
 import {
   ensureGenerateChat,
   updateChatGenerateStatus
-} from '@fastgpt/service/core/chat/resumeStatus';
+} from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);

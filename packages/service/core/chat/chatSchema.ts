@@ -158,6 +158,15 @@ try {
   ChatSchema.index({ appId: 1, tmbId: 1, updateTime: -1 });
   // clearHistory(API)
   ChatSchema.index({ appId: 1, source: 1, tmbId: 1, updateTime: -1 });
+  // Periodic cleanup for chats stuck in generating state.
+  ChatSchema.index(
+    { chatGenerateStatus: 1, updateTime: 1 },
+    {
+      partialFilterExpression: {
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      }
+    }
+  );
 
   /* 反馈过滤的索引 */
   // 2. Has good feedback filter

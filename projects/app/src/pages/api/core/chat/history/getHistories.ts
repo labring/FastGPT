@@ -1,5 +1,5 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
@@ -126,7 +126,7 @@ export async function handler(
       customTitle: item.customTitle,
       title: item.title,
       top: item.top,
-      chatGenerateStatus: item.chatGenerateStatus,
+      chatGenerateStatus: item.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
       hasBeenRead: item.hasBeenRead
     })),
     total

@@ -20,14 +20,19 @@ import { transformPreviewHistories } from '@/global/core/chat/utils';
 
 const completedChatPageSize = 10;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
+const resumeGeneratingRequiresSseMessage =
+  'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
+
+const isResponseClosed = (res: NextApiResponse) =>
+  !!(res.closed || res.writableEnded || res.destroyed);
 
 const writeResumePhase = (res: NextApiResponse, phase: StreamResumePhaseEnum) => {
-  if (res.writableEnded || res.destroyed) return;
+  if (isResponseClosed(res)) return;
   res.write(`event: ${StreamResumePhaseEvent}\ndata: ${phase}\n\n`);
 };
 
 const writeSseEvent = (res: NextApiResponse, event: string, data: string) => {
-  if (res.writableEnded || res.destroyed) return;
+  if (isResponseClosed(res)) return;
   res.write(`event: ${event}\ndata: ${data}\n\n`);
 };
 
@@ -54,7 +59,7 @@ export const config = {
   }
 };
 
-// GET /api/v2/chat/resume?chatId=xxx&appId=xxx&teamId=xxx（与 /v2/chat/completions 同属 v2，断线续传配套）
+// GET /api/core/chat/resume?chatId=xxx&appId=xxx&teamId=xxx（与 /v2/chat/completions 配套，断线续传）
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
     chatId,
@@ -132,6 +137,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     writeSseEvent(res, StreamResumeCompletedEvent, JSON.stringify(completedChat));
     writeSseEvent(res, 'done', '[DONE]');
     res.end();
+    return;
+  }
+
+  if (!respondWithSse) {
+    res.status(406).json({
+      code: 406,
+      statusText: 'error',
+      message: resumeGeneratingRequiresSseMessage,
+      data: null
+    });
     return;
   }
 

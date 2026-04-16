@@ -9,6 +9,7 @@ import {
 import { SandboxPath } from './sandbox';
 import { AgentPath } from './agent';
 import { z } from 'zod';
+import { getErrorResponse } from '../../type';
 
 export const AIPath: OpenAPIPath = {
   ...SandboxPath,
@@ -35,10 +36,11 @@ export const AIPath: OpenAPIPath = {
     }
   },
 
-  '/v2/chat/resume': {
+  '/core/chat/resume': {
     get: {
       summary: '恢复流式响应',
-      description: '与 /v2/chat/completions 同属 v2；GET query 传 appId / chatId / teamId',
+      description:
+        '与 /v2/chat/completions 配套；GET query 传 appId / chatId / teamId。已完成对话可返回 JSON；若对话仍在生成中，则必须请求 SSE，否则返回 406。',
       tags: [TagsMap.aiCommon],
       requestParams: {
         query: ResumeStreamParamsSchema
@@ -52,6 +54,18 @@ export const AIPath: OpenAPIPath = {
             },
             'application/json': {
               schema: StreamNoNeedToBeResumeSchema
+            }
+          }
+        },
+        406: {
+          description: '对话仍在生成中，但请求未声明接受 SSE',
+          content: {
+            'application/json': {
+              schema: getErrorResponse({
+                code: 406,
+                message:
+                  'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.'
+              })
             }
           }
         }
