@@ -120,8 +120,8 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} position={'relative'}>
-            <Box flex={1}>
+          <Box display={'grid'} gridTemplateColumns={'1fr auto 1fr'} alignItems={'center'} gap={3}>
+            <Box>
               {!isPc ? (
                 MenuIcon
               ) : paths.length > 0 ? (
@@ -144,8 +144,8 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </Box>
               )}
             </Box>
-            {isPc && paths.length === 0 && (
-              <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+            <Box>
+              {isPc && paths.length === 0 && (
                 <MyTabs
                   tabs={toolTabList}
                   value={isSystemTool ? 'system' : 'my'}
@@ -154,9 +154,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     if (tab) router.push(tab.path);
                   }}
                 />
-              </Box>
-            )}
-            <Flex flex={1} justifyContent={'flex-end'} alignItems={'center'} gap={3}>
+              )}
+            </Box>
+            <Flex justifyContent={'flex-end'} alignItems={'center'} gap={3}>
               {isPc && (
                 <>
                   <MySelect
@@ -256,7 +256,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-          </Flex>
+          </Box>
 
           {!isPc && (
             <Box mt={2}>

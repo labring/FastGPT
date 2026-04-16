@@ -109,6 +109,9 @@ const OutLink = () => {
       overflowX={'hidden'}
       h={'100%'}
       flexDirection={'column'}
+      pt={'16px'}
+      bg="white"
+      borderRadius={'16px'}
     >
       <Box mx={[4, 8]} py={[4, 6]} borderBottom={'1px solid'} borderColor={'myGray.150'}>
         <MyRadio

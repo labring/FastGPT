@@ -357,7 +357,8 @@ const LogChart = ({
               alignItems={'center'}
               borderRadius={'md'}
               pl={0}
-              pr={4}
+              pr={0}
+              _hover={{ bg: 'transparent' }}
             >
               <AccordionIcon w={5} color={'myGray.600'} mr={1} />
               {t('app:logs_user_data')}
@@ -377,7 +378,7 @@ const LogChart = ({
                 }}
               />
             </AccordionButton>
-            <AccordionPanel py={0}>
+            <AccordionPanel py={0} px={0}>
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                 <Box {...chartBoxStyles}>
                   <LineChartComponent
@@ -515,7 +516,8 @@ const LogChart = ({
               alignItems={'center'}
               borderRadius={'md'}
               pl={0}
-              pr={4}
+              pr={0}
+              _hover={{ bg: 'transparent' }}
             >
               <AccordionIcon w={5} color={'myGray.600'} mr={1} />
               {t('app:logs_chat_data')}
@@ -534,7 +536,7 @@ const LogChart = ({
                 }}
               />
             </AccordionButton>
-            <AccordionPanel py={0}>
+            <AccordionPanel py={0} px={0}>
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                 <Box {...chartBoxStyles}>
                   <LineChartComponent
@@ -665,7 +667,8 @@ const LogChart = ({
               alignItems={'center'}
               borderRadius={'md'}
               pl={0}
-              pr={4}
+              pr={0}
+              _hover={{ bg: 'transparent' }}
             >
               <AccordionIcon w={5} color={'myGray.600'} mr={1} />
               {t('app:logs_app_result')}
@@ -684,7 +687,7 @@ const LogChart = ({
                 }}
               />
             </AccordionButton>
-            <AccordionPanel py={0}>
+            <AccordionPanel py={0} px={0}>
               <Grid mt={5} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
                 <Box {...chartBoxStyles}>
                   <LineChartComponent

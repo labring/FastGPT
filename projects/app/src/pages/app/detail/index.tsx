@@ -11,12 +11,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import {
-  DashboardNavbar,
-  SIDEBAR_COLLAPSED_WIDTH,
-  SIDEBAR_EXPANDED_WIDTH
-} from '@/pageComponents/dashboard/Container';
-import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
+import { DashboardNavbar, SIDEBAR_COLLAPSED_WIDTH } from '@/pageComponents/dashboard/Container';
 
 const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp'), {
   ssr: false,
@@ -100,7 +95,6 @@ const Provider = () => {
         bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
         transition="padding-left 0.2s ease"
       >
-        <BgDecoration />
         <AppDetail />
       </Box>
     </AppContextProvider>
