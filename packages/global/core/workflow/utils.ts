@@ -273,6 +273,8 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: item.valueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
+          defaultValue: item.defaultValue,
+          value: item.defaultValue,
           list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
