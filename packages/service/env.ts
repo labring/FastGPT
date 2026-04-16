@@ -109,13 +109,17 @@ export const env = createEnv({
       .number<number>()
       .int()
       .positive()
-      .default(30 * 60),
+      .default(5 * 60),
     /** 流结束后缩短 TTL，便于回收（秒） */
-    STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: z.coerce
+    STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: z.coerce.number<number>().int().positive().default(30),
+    /** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建流恢复镜像 */
+    STREAM_RESUME_REDIS_MAXMEMORY_RATIO: z.coerce.number<number>().positive().max(1).default(0.8),
+    /** Redis 内存水位检测缓存时长（毫秒），避免每个流请求都调用 INFO MEMORY */
+    STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: z.coerce
       .number<number>()
       .int()
       .positive()
-      .default(5 * 60),
+      .default(5000),
 
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)

@@ -58,10 +58,10 @@ import {
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { mirrorChatStream } from '@fastgpt/service/core/chat/resume';
+import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let streamResumeMirror: ReturnType<typeof mirrorChatStream> | undefined;
+  let streamResumeMirror: Awaited<ReturnType<typeof getStreamResumeMirror>>;
   let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
   let usePreparedRound = false;
   let {
@@ -185,7 +185,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    streamResumeMirror = mirrorChatStream({
+    streamResumeMirror = await getStreamResumeMirror({
+      req,
       teamId: String(teamId),
       appId: String(app._id),
       chatId
@@ -304,8 +305,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    await streamResumeMirror.flush();
-    await streamResumeMirror.shrinkTTLAfterComplete();
+    await streamResumeMirror?.flush();
+    await streamResumeMirror?.shrinkTTLAfterComplete();
   } catch (err: any) {
     if (appId && chatId) {
       if (usePreparedRound) {

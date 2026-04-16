@@ -4,6 +4,10 @@ import {
   StreamResumePhaseEnum,
   StreamResumePhaseEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  STREAM_RESUME_REQUEST_HEADER,
+  STREAM_RESUME_REQUEST_HEADER_ENABLED
+} from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import {
@@ -42,6 +46,13 @@ export type ResumeStreamErrorType = {
   responseText: string;
   isStreamError?: boolean;
 };
+
+const shouldSendStreamResumeHeader = (url: string) =>
+  new Set([
+    '/api/v2/chat/completions',
+    '/api/proApi/core/chat/chatHome',
+    '/api/core/chat/chatTest'
+  ]).has(url);
 
 type CommonResponseType = {
   responseValueId?: string;
@@ -535,13 +546,17 @@ export const streamFetch = ({
       : {}),
     cTime: formatTime2YMDHMW(new Date())
   };
+  const shouldEnableStreamResume = shouldSendStreamResumeHeader(url);
 
   return $ssefetch({
     url,
     requestInit: {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(shouldEnableStreamResume && {
+          [STREAM_RESUME_REQUEST_HEADER]: STREAM_RESUME_REQUEST_HEADER_ENABLED
+        })
       },
       body: JSON.stringify({
         ...data,

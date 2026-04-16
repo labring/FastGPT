@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  STREAM_RESUME_REQUEST_HEADER
+} from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -13,9 +17,13 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
+  getStreamResumeMirror,
+  isStreamResumeMirrorRequested,
   mirrorChatStream,
+  resetStreamResumeMirrorGuardForTest,
   getStreamResumeRedisKeys,
   STREAM_RESUME_POST_COMPLETE_TTL_SECONDS,
+  STREAM_RESUME_REDIS_MAXMEMORY_RATIO,
   STREAM_RESUME_TTL_SECONDS,
   STREAM_RESUME_TTL_TOUCH_INTERVAL_MS
 } from '@fastgpt/service/core/chat/resume';
@@ -504,6 +512,7 @@ describe('stream resume helpers', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    resetStreamResumeMirrorGuardForTest();
   });
 
   it('should mirror raw response writes to redis stream in order and throttle ttl refreshes', async () => {
@@ -614,5 +623,68 @@ describe('stream resume helpers', () => {
     expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
+  });
+
+  it('should require the opt-in header before creating a mirror', async () => {
+    const redis = getGlobalRedisConnection() as any;
+    redis.info = vi.fn().mockResolvedValue('used_memory:10\r\nmaxmemory:100\r\n');
+
+    const withoutHeader = await getStreamResumeMirror({
+      req: { headers: {} } as any,
+      teamId,
+      appId,
+      chatId
+    });
+    const withHeader = await getStreamResumeMirror({
+      req: {
+        headers: {
+          [STREAM_RESUME_REQUEST_HEADER]: '1'
+        }
+      } as any,
+      teamId,
+      appId,
+      chatId
+    });
+
+    expect(withoutHeader).toBeUndefined();
+    expect(withHeader).toBeDefined();
+    expect(redis.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
+    const redis = getGlobalRedisConnection() as any;
+    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
+
+    const mirror = await getStreamResumeMirror({
+      req: {
+        headers: {
+          [STREAM_RESUME_REQUEST_HEADER]: 'true'
+        }
+      } as any,
+      teamId,
+      appId,
+      chatId
+    });
+
+    expect(mirror).toBeUndefined();
+    expect(redis.info).toHaveBeenCalledTimes(1);
+  });
+
+  it('should parse truthy stream resume request headers', () => {
+    expect(
+      isStreamResumeMirrorRequested({
+        headers: {
+          [STREAM_RESUME_REQUEST_HEADER]: 'YES'
+        }
+      } as any)
+    ).toBe(true);
+    expect(
+      isStreamResumeMirrorRequested({
+        headers: {
+          [STREAM_RESUME_REQUEST_HEADER]: '0'
+        }
+      } as any)
+    ).toBe(false);
   });
 });

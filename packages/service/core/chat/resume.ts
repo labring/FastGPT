@@ -1,7 +1,8 @@
 import { env } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
-import type { NextApiResponse } from 'next';
+import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
+import type { NextApiRequest, NextApiResponse } from 'next';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
@@ -9,12 +10,29 @@ const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 export const STREAM_RESUME_TTL_SECONDS = env.STREAM_RESUME_TTL_SECONDS;
 /** 流结束后短 TTL（见 env `STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`） */
 export const STREAM_RESUME_POST_COMPLETE_TTL_SECONDS = env.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
+/** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建镜像 */
+export const STREAM_RESUME_REDIS_MAXMEMORY_RATIO = env.STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
+/** Redis 内存检测缓存时间，避免每个流请求都去调用 INFO MEMORY */
+export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
+  env.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS;
 /**
  * One active resume request keeps one dedicated blocking Redis connection alive for at most this
  * long before the XREAD call returns and the loop re-checks the HTTP socket state.
  */
 export const STREAM_RESUME_BLOCK_MS = 30000;
 export const STREAM_RESUME_TTL_TOUCH_INTERVAL_MS = 1000;
+
+type RequestLike = Pick<NextApiRequest, 'headers'>;
+type RedisMemoryPressureCache = {
+  checkedAt: number;
+  blocked: boolean;
+  usedMemory?: number;
+  maxMemory?: number;
+};
+
+let redisMemoryPressureCache: RedisMemoryPressureCache | undefined;
+let redisMemoryPressurePromise: Promise<boolean> | undefined;
+let lastLoggedMemoryPressureState: boolean | undefined;
 
 type StreamResumeRedisKeysParams = {
   teamId: string;
@@ -37,6 +55,119 @@ const getRawRedisKey = (key: string) => `${FASTGPT_REDIS_PREFIX}${key}`;
 const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
   rawKeyOfStream: getRawRedisKey(keys.keyOfStream)
 });
+
+const resumeRequestEnabledValues = new Set(['1', 'true', 'yes', 'on']);
+
+const getNormalizedHeaderValue = (value: string | string[] | undefined) => {
+  if (Array.isArray(value)) {
+    return value[0]?.trim().toLowerCase();
+  }
+  return value?.trim().toLowerCase();
+};
+
+export const isStreamResumeMirrorRequested = (req?: RequestLike) => {
+  const headerValue = getNormalizedHeaderValue(req?.headers?.[STREAM_RESUME_REQUEST_HEADER]);
+  if (!headerValue) return false;
+
+  return resumeRequestEnabledValues.has(headerValue);
+};
+
+const parseRedisInfoNumber = (info: string, key: string) => {
+  const match = info.match(new RegExp(`(?:^|\\r?\\n)${key}:(\\d+)`));
+  if (!match) return undefined;
+
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : undefined;
+};
+
+const logRedisMemoryPressureState = (cache: RedisMemoryPressureCache) => {
+  if (lastLoggedMemoryPressureState === cache.blocked) return;
+
+  const usageRatio =
+    cache.maxMemory && cache.maxMemory > 0 && cache.usedMemory !== undefined
+      ? Number((cache.usedMemory / cache.maxMemory).toFixed(4))
+      : undefined;
+
+  if (cache.blocked) {
+    lastLoggedMemoryPressureState = true;
+    logger.warn('Disabling new stream resume mirrors due to Redis memory pressure', {
+      usedMemory: cache.usedMemory,
+      maxMemory: cache.maxMemory,
+      usageRatio,
+      threshold: STREAM_RESUME_REDIS_MAXMEMORY_RATIO
+    });
+    return;
+  }
+
+  if (lastLoggedMemoryPressureState === undefined) {
+    lastLoggedMemoryPressureState = false;
+    return;
+  }
+
+  lastLoggedMemoryPressureState = false;
+  logger.info('Redis memory pressure recovered; stream resume mirror creation resumed', {
+    usedMemory: cache.usedMemory,
+    maxMemory: cache.maxMemory,
+    usageRatio,
+    threshold: STREAM_RESUME_REDIS_MAXMEMORY_RATIO
+  });
+};
+
+const isRedisMemoryPressureBlockingStreamResume = async () => {
+  const now = Date.now();
+  if (
+    redisMemoryPressureCache &&
+    now - redisMemoryPressureCache.checkedAt < STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS
+  ) {
+    return redisMemoryPressureCache.blocked;
+  }
+
+  if (redisMemoryPressurePromise) {
+    return redisMemoryPressurePromise;
+  }
+
+  redisMemoryPressurePromise = (async () => {
+    try {
+      const redis = getGlobalRedisConnection();
+      const info = await redis.info('memory');
+      const usedMemory = parseRedisInfoNumber(info, 'used_memory');
+      const maxMemory = parseRedisInfoNumber(info, 'maxmemory');
+      const blocked =
+        typeof usedMemory === 'number' &&
+        typeof maxMemory === 'number' &&
+        maxMemory > 0 &&
+        usedMemory / maxMemory >= STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
+
+      redisMemoryPressureCache = {
+        checkedAt: now,
+        blocked,
+        usedMemory,
+        maxMemory
+      };
+      logRedisMemoryPressureState(redisMemoryPressureCache);
+
+      return blocked;
+    } catch (error) {
+      logger.warn('Failed to inspect Redis memory pressure for stream resume mirror', { error });
+
+      if (redisMemoryPressureCache) {
+        return redisMemoryPressureCache.blocked;
+      }
+
+      return false;
+    } finally {
+      redisMemoryPressurePromise = undefined;
+    }
+  })();
+
+  return redisMemoryPressurePromise;
+};
+
+export const resetStreamResumeMirrorGuardForTest = () => {
+  redisMemoryPressureCache = undefined;
+  redisMemoryPressurePromise = undefined;
+  lastLoggedMemoryPressureState = undefined;
+};
 
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
@@ -106,6 +237,19 @@ export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
       }
     }
   };
+};
+
+export const getStreamResumeMirror = async ({
+  req,
+  ...params
+}: StreamResumeRedisKeysParams & { req?: RequestLike }) => {
+  if (!isStreamResumeMirrorRequested(req)) return;
+
+  if (await isRedisMemoryPressureBlockingStreamResume()) {
+    return;
+  }
+
+  return mirrorChatStream(params);
 };
 
 type RedisStreamFields = Record<string, string>;
