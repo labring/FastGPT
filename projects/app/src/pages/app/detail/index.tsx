@@ -90,7 +90,9 @@ const Provider = () => {
 
   return (
     <AppContextProvider>
-      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} />}
+      {isPc && (
+        <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} hideCollapseButton />
+      )}
       <Box
         h={'100%'}
         pl={isPc ? sidebarWidth : 0}

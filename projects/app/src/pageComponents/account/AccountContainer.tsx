@@ -172,7 +172,10 @@ const AccountContainer = ({
         transition="padding-left 0.2s ease"
       >
         <BgDecoration />
-        <PageContainer isLoading={isLoading}>
+        <PageContainer
+          isLoading={isLoading}
+          insertProps={{ p: 0, background: 'white', position: 'relative', ml: 4 }}
+        >
           <Flex flexDirection={'column'} h={'100%'} pt={[4, 0]}>
             {!isPc && (
               <Box mb={3}>

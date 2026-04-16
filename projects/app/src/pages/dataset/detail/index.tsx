@@ -79,7 +79,14 @@ const Detail = ({ datasetId, currentTab }: Props) => {
             <NavBar currentTab={currentTab} />
           )}
           <Flex flex={1} gap={2} overflow={'hidden'}>
-            <Flex flex={1} w={0} bg={'white'} flexDir={'column'} boxShadow={'2'} borderRadius={'md'}>
+            <Flex
+              flex={1}
+              w={0}
+              bg={'white'}
+              flexDir={'column'}
+              boxShadow={'2'}
+              borderRadius={'md'}
+            >
               <Box flex={'1'} overflowY={'auto'}>
                 {currentTab === TabEnum.collectionCard && (
                   <CollectionPageContextProvider>
@@ -135,7 +142,9 @@ const Render = (data: Props) => {
 
   return (
     <>
-      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} />}
+      {isPc && (
+        <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} hideCollapseButton />
+      )}
       <Box
         h={'100%'}
         pl={isPc ? SIDEBAR_COLLAPSED_WIDTH : 0}
