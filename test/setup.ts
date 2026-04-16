@@ -9,9 +9,6 @@ import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import { loadVectorDBEnv } from './utils/env';
 
-const FILE_TOKEN_KEY_TEST = 'bfd697e7e798f75deaf2d31210bc93a2e41ad4eed9e7831071d77821b7b97cff';
-process.env.FILE_TOKEN_KEY ??= FILE_TOKEN_KEY_TEST;
-
 vi.stubEnv('NODE_ENV', 'test');
 
 loadVectorDBEnv({ envFileNames: ['.env.test.local'] });

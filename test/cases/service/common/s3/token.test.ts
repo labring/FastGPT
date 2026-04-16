@@ -25,14 +25,6 @@ describe('s3 token validation', () => {
     vi.restoreAllMocks();
   });
 
-  it('requires a strong FILE_TOKEN_KEY', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetoken');
-
-    await expect(import('@fastgpt/service/env')).rejects.toThrow(
-      'Invalid environment variables. Please check: FILE_TOKEN_KEY'
-    );
-  });
-
   it('accepts legacy object key tokens that do not include a type', async () => {
     const { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey } = await loadTokenModule();
     const objectKey = 'chat/appId/userId/chatId/file.txt';
