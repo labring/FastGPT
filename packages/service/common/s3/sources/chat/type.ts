@@ -7,7 +7,7 @@ export const ChatFileUploadSchema = z.object({
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional(),
+  expiredTime: z.coerce.date().optional(),
   maxFileSize: z.number().positive().optional(),
   allowedExtensions: z.array(z.string().nonempty()).optional()
 });

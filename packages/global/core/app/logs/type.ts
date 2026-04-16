@@ -24,8 +24,8 @@ export const AppChatLogSchema = z.object({
   userId: z.string(),
   source: z.enum(ChatSourceEnum),
   sourceName: z.string().optional(),
-  createTime: z.date(),
-  updateTime: z.date(),
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
 
   chatItemCount: z.number(),
   errorCount: z.number(),

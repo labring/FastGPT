@@ -4,7 +4,7 @@ import type { S3BaseBucket } from '../buckets/base';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
-  uploadedAt: z.date(),
+  uploadedAt: z.coerce.date(),
   accessUrl: z.string(),
   contentType: z.string(),
   id: z.string().length(32),
@@ -74,7 +74,7 @@ export const UploadImage2S3BucketParamsSchema = z.object({
   uploadKey: z.string().nonempty(),
   mimetype: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional()
+  expiredTime: z.coerce.date().optional()
 });
 export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketParamsSchema>;
 
@@ -83,7 +83,7 @@ export const UploadFileByBodySchema = z.object({
   contentType: z.string().optional(),
   key: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional()
+  expiredTime: z.coerce.date().optional()
 });
 export type UploadFileByBodyParams = z.infer<typeof UploadFileByBodySchema>;
 export type UploadFileByBufferParams = UploadFileByBodyParams;

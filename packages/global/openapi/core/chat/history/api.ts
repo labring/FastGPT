@@ -17,7 +17,7 @@ export type GetHistoriesBodyType = z.infer<typeof GetHistoriesBodySchema>;
 export const GetHistoriesResponseSchema = PaginationResponseSchema(
   z.object({
     chatId: z.string(),
-    updateTime: z.date(),
+    updateTime: z.coerce.date(),
     appId: z.string(),
     customTitle: z.string().optional(),
     title: z.string(),
@@ -38,7 +38,7 @@ export const GetHistoryStatusResponseSchema = z.object({
   list: z.array(
     z.object({
       chatId: z.string(),
-      updateTime: z.date(),
+      updateTime: z.coerce.date(),
       chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
       hasBeenRead: z.boolean().optional()
     })

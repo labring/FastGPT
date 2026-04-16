@@ -33,7 +33,7 @@ export const BillSchema = z.object({
     .object({
       amount: z.number().meta({ description: '退款金额' }),
       refundId: z.string().meta({ description: '退款 ID' }),
-      refundTime: z.date().meta({ description: '退款时间' })
+      refundTime: z.coerce.date().meta({ description: '退款时间' })
     })
     .optional()
     .meta({ description: '退款数据' })

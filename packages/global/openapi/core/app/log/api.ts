@@ -53,8 +53,10 @@ export const ChatLogItemSchema = z.object({
   customTitle: z.string().nullish().meta({ example: '自定义标题', description: '自定义对话标题' }),
   source: z.enum(ChatSourceEnum).meta({ example: ChatSourceEnum.api, description: '对话来源' }),
   sourceName: z.string().nullish().meta({ example: 'API调用', description: '来源名称' }),
-  updateTime: z.date().meta({ example: '2024-01-01T00:30:00.000Z', description: '更新时间' }),
-  createTime: z
+  updateTime: z.coerce
+    .date()
+    .meta({ example: '2024-01-01T00:30:00.000Z', description: '更新时间' }),
+  createTime: z.coerce
     .date()
     .nullish()
     .meta({ example: '2024-01-01T00:00:00.000Z', description: '创建时间' }),
@@ -172,11 +174,11 @@ export const GetChartDataBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
   }),
-  dateStart: z.date().meta({
+  dateStart: z.coerce.date().meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '开始日期'
   }),
-  dateEnd: z.date().meta({
+  dateEnd: z.coerce.date().meta({
     example: '2024-12-31T23:59:59.999Z',
     description: '结束日期'
   }),

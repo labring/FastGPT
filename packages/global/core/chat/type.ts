@@ -256,8 +256,8 @@ export const ChatItemDBSchema = ChatItemObjItemSchema.and(
     teamId: z.string(),
     tmbId: z.string(),
     appId: z.string(),
-    time: z.date(),
-    deleteTime: z.date().nullish()
+    time: z.coerce.date(),
+    deleteTime: z.coerce.date().nullish()
   })
 );
 export type ChatItemDBSchemaType = z.infer<typeof ChatItemDBSchema>;
@@ -290,7 +290,7 @@ export type ChatAppListSchemaType = z.infer<typeof ChatAppListSchema>;
 /* ---------- history ------------- */
 export const HistoryItemSchema = z.object({
   chatId: z.string(),
-  updateTime: z.date(),
+  updateTime: z.coerce.date(),
   customTitle: z.string().optional(),
   title: z.string()
 });

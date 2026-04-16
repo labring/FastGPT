@@ -25,7 +25,7 @@ export const LLMRequestRecordSchema = z.object({
   response: z.record(z.string(), z.any()).meta({
     description: 'LLM 响应内容'
   }),
-  createdAt: z.date().meta({
+  createdAt: z.coerce.date().meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '创建时间'
   })

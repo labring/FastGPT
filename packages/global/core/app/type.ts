@@ -97,7 +97,7 @@ export const AppSchemaTypeSchema = z.object({
   intro: z.string(),
   templateId: z.string().optional(),
 
-  updateTime: z.date(),
+  updateTime: z.coerce.date(),
 
   modules: z.array(StoreNodeItemTypeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
@@ -113,7 +113,7 @@ export const AppSchemaTypeSchema = z.object({
   // App system config
   chatConfig: AppChatConfigTypeSchema,
   scheduledTriggerConfig: AppScheduledTriggerConfigTypeSchema.optional(),
-  scheduledTriggerNextTime: z.date().optional(),
+  scheduledTriggerNextTime: z.coerce.date().optional(),
 
   inheritPermission: z.boolean().optional(),
 
@@ -122,7 +122,7 @@ export const AppSchemaTypeSchema = z.object({
   quick: z.boolean().optional(),
 
   // 软删除字段
-  deleteTime: z.date().nullish(),
+  deleteTime: z.coerce.date().nullish(),
 
   /** @deprecated */
   defaultPermission: z.number().optional(),

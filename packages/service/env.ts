@@ -16,9 +16,7 @@ const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
 
 export const env = createEnv({
   server: {
-    FILE_TOKEN_KEY: z.string().min(32, 'FILE_TOKEN_KEY must be at least 32 characters'),
-    // FILE_TOKEN_KEY: z.string(),
-
+    FILE_TOKEN_KEY: z.string().min(6, 'FILE_TOKEN_KEY must be at least 6 characters'),
     // ===== Agent sandbox =====
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),

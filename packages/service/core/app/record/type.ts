@@ -5,7 +5,7 @@ export const AppRecordSchemaZod = z.object({
   tmbId: z.string(),
   teamId: z.string(),
   appId: z.string(),
-  lastUsedTime: z.date()
+  lastUsedTime: z.coerce.date()
 });
 
 // TypeScript types inferred from Zod schemas
