@@ -22,7 +22,7 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(
     customTitle: z.string().optional(),
     title: z.string(),
     top: z.boolean().optional(),
-    chatGenerateStatus: z.nativeEnum(ChatGenerateStatusEnum).optional(),
+    chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
     hasBeenRead: z.boolean().optional()
   })
 );
