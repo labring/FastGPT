@@ -112,7 +112,7 @@ const SmartCustomerServiceEdit = () => {
   );
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 4]} py={3}>
+    <Flex h={'100%'} flexDirection={'column'} px={5}>
       <Header
         appForm={appForm}
         forbiddenSaveSnapshot={forbiddenSaveSnapshot}

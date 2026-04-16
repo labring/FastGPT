@@ -121,8 +121,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} position={'relative'}>
-            <Flex flex={1} alignItems={'center'}>
+          <Box display={'grid'} gridTemplateColumns={'1fr auto 1fr'} alignItems={'center'} gap={3}>
+            <Flex alignItems={'center'}>
               {!isPc ? (
                 MenuIcon
               ) : paths.length > 0 ? (
@@ -147,8 +147,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </Box>
               )}
             </Flex>
-            {isPc && paths.length === 0 && (
-              <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+            <Box>
+              {isPc && paths.length === 0 && (
                 <MyTabs
                   tabs={agentTabList}
                   value={activeAgentTab}
@@ -159,9 +159,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     });
                   }}
                 />
-              </Box>
-            )}
-            <Flex flex={1} justifyContent={'flex-end'} alignItems={'center'} gap={3}>
+              )}
+            </Box>
+            <Flex justifyContent={'flex-end'} alignItems={'center'} gap={3}>
               {isPc && (
                 <SearchInput
                   maxW={['auto', '250px']}
@@ -236,7 +236,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-          </Flex>
+          </Box>
           {!isPc && (
             <Box mt={2}>
               {
