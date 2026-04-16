@@ -162,7 +162,7 @@ export const useSystemStore = create<State>()(
           'zh-CN': {},
           'zh-Hant': {}
         },
-        aiproxyChannels: {},
+        aiproxyChannels: [],
         defaultModels: {},
         llmModelList: [],
         embeddingModelList: [],
