@@ -195,8 +195,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-sdk/plugin':
-        specifier: 0.3.8
-        version: 0.3.8
+        specifier: 0.6.0
+        version: 0.6.0
       axios:
         specifier: 'catalog:'
         version: 1.13.6
@@ -2772,8 +2772,8 @@ packages:
     resolution: {integrity: sha512-niJXceEdyZSWN/syE9aRlTb6Gk6Posez9j4eiuyoQWgF0wGH1IWDbC2c0tlSglZQn6ONY90HzyRsSLOGlpd9KQ==}
     engines: {node: '>=20', pnpm: '>=9'}
 
-  '@fastgpt-sdk/plugin@0.3.8':
-    resolution: {integrity: sha512-GjKrXMHxeF5UMkYGXawrUpzZjVRw3DICNYODeYwsUVOy+/ltu5zuwsqLkuuGQ7Arp/SBCmYRjG/MHmeNp4xxfw==}
+  '@fastgpt-sdk/plugin@0.6.0':
+    resolution: {integrity: sha512-xvjWj3+WLVqI1lggZEMlHLrl5c90JPomXOS5DZlWqgrmcgdoUlE1yzmWC2iXCoG2+IQTcOKaooqE6ITVqURgOg==}
 
   '@fastgpt-sdk/sandbox-adapter@0.0.36':
     resolution: {integrity: sha512-RPwK6kFmpv5U2tqPNj+HzDoZEQ06fgMsrOzXx/uT33rubikOLHmNV4kJ8Mra+EhzzYbNmFq2iFapaocy4ExbwQ==}
@@ -13790,7 +13790,7 @@ snapshots:
       '@opentelemetry/sdk-trace-node': 2.6.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.39.0
 
-  '@fastgpt-sdk/plugin@0.3.8':
+  '@fastgpt-sdk/plugin@0.6.0':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
       zod: 4.1.12
