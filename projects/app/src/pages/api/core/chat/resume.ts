@@ -26,6 +26,9 @@ const resumeGeneratingRequiresSseMessage =
 const isResponseClosed = (res: NextApiResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
+const isResponseClosed = (res: NextApiResponse) =>
+  !!(res.closed || res.writableEnded || res.destroyed);
+
 const writeResumePhase = (res: NextApiResponse, phase: StreamResumePhaseEnum) => {
   if (isResponseClosed(res)) return;
   res.write(`event: ${StreamResumePhaseEvent}\ndata: ${phase}\n\n`);
