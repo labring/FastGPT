@@ -280,7 +280,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // 流式 + 站内 online：工作流 dispatch 走 v2 管道；与 HTTP 路径是 /v1 还是 /v2 无关
     const shouldUseWorkflowStreamV2 = stream && source === ChatSourceEnum.online;
     const workflowApiVersion = shouldUseWorkflowStreamV2 ? 'v2' : 'v1';
-    // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/v2/chat/resume 承担
+    // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/core/chat/resume 承担
 
     if (!interactive) {
       await ensurePendingChatRoundItems({

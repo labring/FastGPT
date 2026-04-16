@@ -35,10 +35,10 @@ export const AIPath: OpenAPIPath = {
     }
   },
 
-  '/v2/chat/resume': {
+  '/core/chat/resume': {
     get: {
       summary: '恢复流式响应',
-      description: '与 /v2/chat/completions 同属 v2；GET query 传 appId / chatId / teamId',
+      description: '与 /v2/chat/completions 配套；GET query 传 appId / chatId / teamId',
       tags: [TagsMap.aiCommon],
       requestParams: {
         query: ResumeStreamParamsSchema

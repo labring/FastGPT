@@ -54,7 +54,7 @@ export const config = {
   }
 };
 
-// GET /api/v2/chat/resume?chatId=xxx&appId=xxx&teamId=xxx（与 /v2/chat/completions 同属 v2，断线续传配套）
+// GET /api/core/chat/resume?chatId=xxx&appId=xxx&teamId=xxx（与 /v2/chat/completions 配套，断线续传）
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
     chatId,

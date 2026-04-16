@@ -55,7 +55,7 @@ export const ChatMessageSchema = z.object({
 });
 
 /* ============================================================================
- * 断线续传：GET /api/v2/chat/resume（与 v2/chat/completions 同前缀；query 仅 appId / chatId / teamId）
+ * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；query 仅 appId / chatId / teamId）
  * ============================================================================ */
 
 export const ResumeStreamParamsSchema = z.object({
