@@ -571,7 +571,7 @@ describe('stream resume api', () => {
         }
       );
 
-      await vi.advanceTimersByTimeAsync(1000);
+      await vi.runAllTimersAsync();
 
       const { chunks, res } = await responsePromise;
 
