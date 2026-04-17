@@ -515,5 +515,16 @@
   "file": "File",
   "name_or_description": "Name/Description",
   "website_label": "Website",
-  "database_table_label": "Data Table"
+  "database_table_label": "Data Table",
+  "new_dataset_title": "New {{name}}",
+  "icon_and_name": "Icon & Name",
+  "agent_model_label": "Knowledge Enhancement Model",
+  "agent_model_tip": "Generates enhanced indexes based on knowledge content, such as questions and summaries, which is essential for improving retrieval recall.",
+  "vlm_model_label": "Image Parsing Model",
+  "vlm_model_tip": "When knowledge contains images, you can configure an image parsing model to recognize text and structural information (e.g., tables, flowcharts).",
+  "vector_model_tip": "Converts text into numerical vectors, enabling semantic vector search during knowledge Q&A. This is essential for knowledge retrieval.",
+  "website_url": "Website URL",
+  "website_url_placeholder": "Enter the root URL; all static pages under it will be crawled",
+  "website_selector_label": "Selector",
+  "website_selector_placeholder": "CSS selector, e.g.: body .content #document"
 }
