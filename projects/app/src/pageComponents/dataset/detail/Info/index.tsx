@@ -2,14 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Flex, Switch, Input } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { postRebuildEmbedding } from '@/web/core/dataset/api';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
@@ -46,7 +46,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     trainingCount,
     isDatabaseType: isDatabase
   } = useContextSelector(DatasetPageContext, (v) => v);
-  const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+  const { feConfigs, llmModelList, embeddingModelList, getVlmModelList } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -257,13 +257,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               <AIModelSelector
                 w={'100%'}
                 value={agentModel.model}
-                list={datasetModelList.map((item) => ({
+                list={llmModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}
                 fontSize={'mini'}
                 onChange={(e) => {
-                  const agentModel = datasetModelList.find((item) => item.model === e);
+                  const agentModel = llmModelList.find((item) => item.model === e);
                   if (!agentModel) return;
                   setValue('agentModel', agentModel);
                   return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();

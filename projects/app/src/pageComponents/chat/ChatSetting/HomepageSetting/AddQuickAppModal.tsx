@@ -16,6 +16,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 type Props = {
   selectedIds: string[];
@@ -37,7 +38,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   });
   const searchAppName = watch('name');
 
-  const [parentId, setParentId] = useState('');
+  const [parentId, setParentId] = useState<ParentIdType>('');
 
   const {
     data: appData = { apps: [], paths: [] as { parentId: string; parentName: string }[] },

@@ -20,8 +20,8 @@ import { useTranslation } from 'next-i18next';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 import { shadowLight } from '../../../styles/theme';
-import { isArray } from 'lodash';
 import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
+import MyLoading from '../MyLoading';
 
 const menuItemStyles: MenuItemProps = {
   borderRadius: 'sm',
@@ -59,7 +59,10 @@ export type SelectProps<T = any> = {
   inputValue?: string;
   setInputValue?: (val: string) => void;
 
+  onOpenFunc?: () => void;
+
   tagStyle?: FlexProps;
+  menuBottomSlot?: React.ReactNode;
 } & Omit<ButtonProps, 'onSelect'>;
 
 type SelectedItemType<T> = {
@@ -86,14 +89,24 @@ const MultipleSelect = <T = any,>({
   inputValue,
   setInputValue,
 
+  onOpenFunc,
+
   tagStyle,
+  menuBottomSlot,
+  isLoading,
   ...props
 }: SelectProps<T>) => {
   const SearchInputRef = useRef<HTMLInputElement>(null);
   const tagsContainerRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen: originalOnOpen, onClose } = useDisclosure();
+
+  const onOpen = useCallback(() => {
+    originalOnOpen();
+    onOpenFunc?.();
+  }, [originalOnOpen, onOpenFunc]);
+
   const canInput = setInputValue !== undefined;
 
   const [visibleItems, setVisibleItems] = useState<SelectedItemType<T>[]>([]);
@@ -124,7 +137,7 @@ const MultipleSelect = <T = any,>({
     if (!isOpen) {
       setInputValue?.('');
     }
-  }, [isOpen]);
+  }, [isOpen, setInputValue]);
 
   const onclickItem = useCallback(
     (val: T) => {
@@ -442,6 +455,7 @@ const MultipleSelect = <T = any,>({
           zIndex={99}
           maxH={'40vh'}
           overflowY={'auto'}
+          position={'relative'}
         >
           {setIsSelectAll && (
             <>
@@ -467,6 +481,17 @@ const MultipleSelect = <T = any,>({
           )}
 
           {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
+
+          {menuBottomSlot && (
+            <>
+              <MyDivider my={1} />
+              <Box px={1} py={1}>
+                {menuBottomSlot}
+              </Box>
+            </>
+          )}
+
+          {isLoading && <MyLoading fixed={false} />}
         </MenuList>
       </Menu>
     </Box>

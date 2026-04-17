@@ -4,7 +4,7 @@ import { ERROR_RESPONSE } from './errorCode';
 export const getErrText = (err: any, def = ''): any => {
   const rawMsg =
     typeof err === 'string'
-      ? err
+      ? err || def
       : err?.response?.data?.message ||
         err?.response?.message ||
         err?.message ||
@@ -12,6 +12,7 @@ export const getErrText = (err: any, def = ''): any => {
         err?.response?.msg ||
         err?.msg ||
         err?.error ||
+        err?.code ||
         def;
 
   const msg = typeof rawMsg === 'string' ? rawMsg : String(rawMsg ?? '');
@@ -27,6 +28,10 @@ export const getErrText = (err: any, def = ''): any => {
 
   // msg && console.log('error =>', msg);
   return replaceSensitiveText(msg);
+};
+
+export const getErrResponse = (err: any): any => {
+  return err?.response?.data || err?.response || err;
 };
 
 export class UserError extends Error {

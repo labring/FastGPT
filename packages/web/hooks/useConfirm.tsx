@@ -151,6 +151,7 @@ export const useConfirm = (props?: {
                 <Input
                   size={'sm'}
                   value={inputValue}
+                  autoFocus
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={t('common:confirm_input_delete_placeholder', {
                     confirmText: customContentInputConfirmText

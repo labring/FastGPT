@@ -23,7 +23,12 @@ export const computedAppToolUsage = async ({
   const { source } = splitCombineToolId(plugin.id);
   const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
-  if (source !== AppToolSourceEnum.personal) {
+  const set = new Set([
+    AppToolSourceEnum.commercial,
+    AppToolSourceEnum.community,
+    AppToolSourceEnum.systemTool
+  ]);
+  if (set.has(source)) {
     if (error) return 0;
 
     const pluginCurrentCost = plugin.currentCost ?? 0;

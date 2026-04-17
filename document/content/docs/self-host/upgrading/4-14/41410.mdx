@@ -1,0 +1,78 @@
+---
+title: 'V4.14.10'
+description: 'FastGPT V4.14.10 更新说明'
+---
+
+## 升级指南
+
+###  1. 增加 agent-sandbox 相关配置
+
+以下针对的是 `docker compose` 部署方案的配置调整，使用`sealos`的商业版用户，可私信支持人员，提供在线的沙盒服务方案。
+
+打开[最新 yml 部署文件](https://github.com/labring/FastGPT/blob/main/deploy/docker/cn/docker-compose.pg.yml)，调整以下内容：
+
+1. 在文件顶部增加 `x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'` 变量配置。
+2. 增加 3 组 services: `opensandbox-server`,`volume-manager`,`agent-sandbox-image`
+3. 增加 `configs`, 文件底部可找到该内容，直接复制添加。
+4. 修改 `fastgpt-app`/`fastgpt-pro` 环境变量， 增加以下变量：
+
+```bash
+# ==================== Agent sandbox 配置 ====================
+AGENT_SANDBOX_PROVIDER: opensandbox
+# OpenSandbox 配置（PROVIDER: opensandbox 时生效）
+AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://opensandbox-server:8090
+AGENT_SANDBOX_OPENSANDBOX_API_KEY:
+AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
+# Volume 持久化配置（opensandbox provider 下可选）
+AGENT_SANDBOX_ENABLE_VOLUME: true
+AGENT_SANDBOX_VOLUME_MANAGER_URL: http://volume-manager:3000
+AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
+```
+
+### 2. 修改 sandbox 镜像名
+
+原先的 `sandbox` 服务的镜像名，需要从`fastgpt-sandbox`改成`fastgpt-code-sandbox`。
+
+目的是为了区分 agent-sandbox 和 code-sandbox。
+
+### 3. 更新镜像 tag
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.10.2
+- 更新 fastpgt-pro(商业版) 镜像 tag: v4.14.10
+- 更新 code-sandbox 镜像 tag: v4.14.10
+- 更新 fastgpt-plugin 镜像 tag: v0.5.6
+
+更新完后即可重启服务。
+
+### 4. 更新系统工具，刷新头像
+
+系统工具部分头像，移除了 icon，都转用图片链接，所以会丢失一部分工具的头像。可以重新更新一次系统工具（卸载再安装，或者直接导入 pkg 覆盖）。
+
+## 🚀 新增内容
+
+1. 增加 OpenSandbox docker 部署方案及适配，并支持通过挂载 volume 进行数据持久化。
+2. 新增沙盒读取文件链接工具，可以直接让 AI 返回文件的访问链接。
+3. 新增微信个人号发布渠道
+4. 飞书发布渠道，支持流输出。
+5. 目录最大上限，可通过环境变量配置。
+6. rerank 模型上限配置，避免超出单条 document 上限导致 rerank 失败。
+7. 增加 LLM 梯度计量计费模式，同时统一计费推送方式。
+
+## ⚙️ 优化
+
+1. 工作流 runtime，减少计算复杂。
+2. 增加一些对于大变量的计算限制，避免计算复杂度过高导致线程阻塞。
+3. 移除模型配置里“用于知识库文件处理”、“用于问题分类”等配置，统一增加“测试模型“标志。测试模型会有特殊标识，并且仅可在 ai chat 中使用，其余场景将会过滤。
+
+## 🐛 修复
+
+1. 子工作流的全局变量默认值未生效。
+2. agent 模式下已配的 rerank 模型不显示。
+3. bge-m3 embedding 向量模型输出都为 0 的问题。
+4. MCP 并发调用时，连接异常导致调用失败。
+5. 修复登录接口安全问题
+6. 修复 MCP SSRF 安全问题
+7. 修复工作流工具错误未成功捕获问题
+8. 修复子工作流全局变量默认值未生效

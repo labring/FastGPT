@@ -1,0 +1,120 @@
+---
+title: Integrating ChatGLM2-6B
+description: Integrating the private ChatGLM2-6B model with FastGPT
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## Introduction
+
+FastGPT lets you use your own OpenAI API KEY to quickly call OpenAI APIs. It currently integrates GPT-3.5, GPT-4, and embedding models for building Knowledge Bases. However, for data security reasons, you may not want to send all data to cloud-based LLMs.
+
+So how do you connect a private model to FastGPT? This guide walks through integrating Tsinghua's ChatGLM2 as an example.
+
+## ChatGLM2-6B Overview
+
+ChatGLM2-6B is the second-generation version of the open-source bilingual (Chinese-English) chat model ChatGLM-6B. For details, see the [ChatGLM2-6B project page](https://github.com/THUDM/ChatGLM2-6B).
+
+<Alert context="warning">
+Note: ChatGLM2-6B weights are fully open for academic research. Commercial use requires official written permission. This tutorial only demonstrates one integration method and does not grant any license.
+</Alert>
+
+## Recommended Configuration
+
+According to official data, generating 8192 tokens requires 12.8GB VRAM at FP16, 8.1GB at int8, and 5.1GB at int4. Quantization slightly affects performance, but not significantly.
+
+Recommended configurations:
+
+
+| Type | RAM | VRAM | Disk Space | Start Command |
+|------|---------|---------|----------|--------------------------|
+| fp16 | >=16GB | >=16GB | >=25GB | python openai_api.py 16 |
+| int8 | >=16GB | >=9GB | >=25GB | python openai_api.py 8 |
+| int4 | >=16GB | >=6GB | >=25GB | python openai_api.py 4 |
+
+
+## Deployment
+
+### Environment Requirements
+
+- Python 3.8.10
+- CUDA 11.8
+- Network access to download models
+
+### Source Code Deployment
+
+1. Set up the environment as described above;
+2. Download the [Python file](https://github.com/labring/FastGPT/blob/main/plugins/model/llm-ChatGLM2/openai_api.py)
+3. Run `pip install -r requirements.txt`;
+4. Open the Python file and configure the token in the `verify_token` method -- this adds a layer of authentication to prevent unauthorized access;
+5. Run `python openai_api.py --model_name 16`. Choose the number based on the configuration table above.
+
+Wait for the model to download and load. If you encounter errors, try asking GPT for help.
+
+On successful startup, you should see an address like this:
+
+![](/imgs/chatglm2.png)
+
+> `http://0.0.0.0:6006` is the connection address.
+
+### Docker Deployment
+
+**Image and Port**
+
++ Image: `stawky/chatglm2:latest`
++ China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
++ Port: 6006
+
+```
+# Set the security token (used as the channel key in OneAPI)
+Default: sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+You can also set it via the environment variable: sk-key. Refer to Docker documentation for how to pass environment variables.
+```
+
+## Connect to One API
+
+Add a channel for chatglm2 with the following parameters:
+
+![](/imgs/model-m3e1.png)
+
+Here, chatglm2 is used as the language model.
+
+## Test
+
+curl example:
+
+```bash
+curl --location --request POST 'https://domain/v1/chat/completions' \
+--header 'Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "chatglm2",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
+
+Set Authorization to sk-aaabbbcccdddeeefffggghhhiiijjjkkk. The model field should match the custom model name you entered in One API.
+
+## Integrate with FastGPT
+
+Edit the config.json file and add chatglm2 to `llmModels`:
+
+```json
+"llmModels": [
+  // Existing models
+  {
+    "model": "chatglm2",
+    "name": "chatglm2",
+    "maxContext": 4000,
+    "maxResponse": 4000,
+    "quoteMaxToken": 2000,
+    "maxTemperature": 1,
+    "vision": false,
+    "defaultSystemChatPrompt": ""
+  }
+]
+```
+
+## Usage
+
+Simply select chatglm2 as the model.

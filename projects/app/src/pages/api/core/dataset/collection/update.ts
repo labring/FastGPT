@@ -4,7 +4,10 @@ import {
   getCollectionUpdateTime
 } from '@fastgpt/service/core/dataset/collection/utils';
 import { validateCollectionNameUpdate } from '@fastgpt/service/core/dataset/collection/validateName';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  authDataset,
+  authDatasetCollection
+} from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -19,6 +22,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
+import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 export type UpdateDatasetCollectionParams = {
   id?: string;
   parentId?: string;
@@ -79,20 +83,21 @@ const updateFolderChildrenForbid = async ({
   );
 };
 
-async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
-  let {
-    datasetId,
-    externalFileId,
-    id,
-    parentId,
-    name,
-    tags,
-    forbid,
-    createTime,
-    overwriteDuplicate
-  } = req.body;
+async function handler(req: ApiRequestProps) {
+  let { datasetId, externalFileId, id, parentId, name, tags, forbid, createTime } =
+    UpdateDatasetCollectionBodySchema.parse(req.body);
+  const { overwriteDuplicate } = req.body as { overwriteDuplicate?: boolean };
 
+  // 通过 externalFileId 查找 collection：先鉴权 dataset，再查询
   if (datasetId && externalFileId) {
+    await authDataset({
+      req,
+      authToken: true,
+      authApiKey: true,
+      datasetId,
+      per: WritePermissionVal
+    });
+
     const collection = await MongoDatasetCollection.findOne({ datasetId, externalFileId }, '_id');
     if (!collection) {
       return Promise.reject(CommonErrEnum.fileNotFound);

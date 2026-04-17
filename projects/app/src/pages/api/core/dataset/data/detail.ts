@@ -8,26 +8,13 @@ import {
   DatasetTrainingStatusEnum,
   type DatasetTrainingStatusType
 } from '@fastgpt/global/core/dataset/constants';
+import {
+  GetDatasetDataDetailQuerySchema,
+  GetDatasetDataDetailResponseSchema
+} from '@fastgpt/global/openapi/core/dataset/data/api';
 
-export type Response = {
-  id: string;
-  q: string;
-  a: string;
-  imageId?: string;
-  source: string;
-  metadata?: Record<string, any>;
-  trainingStatus?: DatasetTrainingStatusType;
-};
-
-async function handler(
-  req: ApiRequestProps<
-    {},
-    {
-      id: string;
-    }
-  >
-) {
-  const { id: dataId } = req.query;
+async function handler(req: ApiRequestProps) {
+  const { id: dataId } = GetDatasetDataDetailQuerySchema.parse(req.query);
 
   const { datasetData } = await authDatasetData({
     req,
@@ -52,7 +39,7 @@ async function handler(
   }
 
   return {
-    ...datasetData,
+    ...GetDatasetDataDetailResponseSchema.parse(datasetData),
     trainingStatus
   };
 }

@@ -220,7 +220,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                           {
                             label: (
                               <Flex alignItems="center" fontSize="14px">
-                                <MyIcon name="core/importTemplateIcon" w="24px" mr={2} />
+                                <MyIcon name="core/app/importTemplateIcon" w="24px" mr={2} />
                                 {t('app:create_from_template')}
                               </Flex>
                             ),

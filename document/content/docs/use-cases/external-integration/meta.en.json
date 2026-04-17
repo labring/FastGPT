@@ -1,0 +1,5 @@
+{
+  "title": "External FastGPT Integration",
+  "description": "Tutorial on external applications calling FastGPT features through various methods",
+  "pages": ["openapi", "wechat", "feishu", "dingtalk", "wecom", "official_account"]
+}

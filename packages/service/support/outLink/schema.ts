@@ -1,11 +1,12 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
-import { type OutLinkSchema as SchemaType } from '@fastgpt/global/support/outLink/type';
+import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../../core/app/schema';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -44,6 +45,10 @@ const OutLinkSchema = new Schema({
   },
 
   showRunningStatus: {
+    type: Boolean,
+    default: false
+  },
+  showSkillReferences: {
     type: Boolean,
     default: false
   },
@@ -108,11 +113,14 @@ OutLinkSchema.virtual('associatedApp', {
   justOne: true
 });
 
-try {
-  OutLinkSchema.index({ shareId: -1 });
-  OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
-} catch (error) {
-  console.log(error);
-}
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
-export const MongoOutLink = getMongoModel<SchemaType>('outlinks', OutLinkSchema);
+OutLinkSchema.index({ shareId: -1 });
+OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
+// Wechat polling recovery: find online channels on startup
+OutLinkSchema.index(
+  { type: 1, 'app.status': 1 },
+  { partialFilterExpression: { type: 'wechat', 'app.status': 'online' } }
+);
+
+export const MongoOutLink = getMongoModel<OutLinkSchemaType>('outlinks', OutLinkSchema);

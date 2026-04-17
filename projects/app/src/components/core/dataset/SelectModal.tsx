@@ -1,18 +1,16 @@
 import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useQuery } from '@tanstack/react-query';
-import React, { type Dispatch, useMemo, useState } from 'react';
+import React, { type Dispatch, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
-
-type PathItemType = {
-  parentId: string;
-  parentName: string;
-};
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 
 const DatasetSelectContainer = ({
   isOpen,
@@ -24,8 +22,8 @@ const DatasetSelectContainer = ({
   children
 }: {
   isOpen: boolean;
-  setParentId: Dispatch<string>;
-  paths: PathItemType[];
+  setParentId: Dispatch<ParentIdType>;
+  paths: ParentTreePathItemType[];
   onClose: () => void;
   tips?: string | null;
   isLoading?: boolean;
@@ -73,7 +71,7 @@ export function useDatasetSelect(
   scene?: string | undefined,
   formatResData = (datasetList: DatasetListItemType[]) => datasetList
 ) {
-  const [parentId, setParentId] = useState('');
+  const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
 
   const {

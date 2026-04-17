@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { EditApiKeyProps, GetApiKeyProps } from '@/global/support/openapi/api.d';
+import type { EditApiKeyProps, GetApiKeyProps } from '@/global/support/openapi/api';
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 
 /**

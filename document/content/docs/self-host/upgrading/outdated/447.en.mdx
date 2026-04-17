@@ -1,0 +1,27 @@
+---
+title: V4.4.7 (includes upgrade script)
+description: FastGPT V4.4.7 Update (includes upgrade script)
+---
+
+## Run the Initialization API
+
+Send 1 HTTP request (replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your domain):
+
+1. https://xxxxx/api/admin/initv447
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv447' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This initializes PostgreSQL indexes and converts empty `file_id` objects to `manual` objects. If you have a large dataset, this may take a while — you can monitor progress via logs.
+
+## What's New
+
+### FastGPT V4.4.7
+
+1. Improved Knowledge Base file CRUD operations.
+2. Added support for reading links as a data source.
+3. Differentiated between manual entries and annotations, enabling data traceability back to a specific file.
+4. Upgraded the OpenAI SDK.

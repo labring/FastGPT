@@ -1,6 +1,6 @@
 import { cloneDeep } from 'lodash';
 import { type SystemModelItemType } from './type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 export const getDefaultLLMModel = () => global?.systemDefaultModel.llm!;
 export const getLLMModel = (model?: string | LLMModelItemType) => {
@@ -11,9 +11,9 @@ export const getLLMModel = (model?: string | LLMModelItemType) => {
 
 export const getDatasetModel = (model?: string) => {
   return (
-    Array.from(global.llmModelMap.values())
-      ?.filter((item) => item.datasetProcess)
-      ?.find((item) => item.model === model || item.name === model) ?? getDefaultLLMModel()
+    Array.from(global.llmModelMap.values())?.find(
+      (item) => item.model === model || item.name === model
+    ) ?? getDefaultLLMModel()
   );
 };
 
@@ -25,6 +25,9 @@ export const getVlmModel = (model?: string) => {
   const list = getVlmModelList();
   return list.find((item) => item.model === model || item.name === model) || list[0];
 };
+
+export const getDefaultHelperBotModel = (): LLMModelItemType =>
+  global?.systemDefaultModel.helperBotLLM || getDefaultLLMModel();
 
 export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
 export const getEmbeddingModel = (model?: string) => {
@@ -56,7 +59,13 @@ export function getEvaluationModel(model?: string) {
   return global.llmModelMap.get(model) || getDefaultEvaluationModel();
 }
 
-export const findAIModel = (model: string): SystemModelItemType | undefined => {
+export const findAIModel = (
+  model: string | SystemModelItemType
+): SystemModelItemType | undefined => {
+  if (typeof model === 'object') {
+    return model;
+  }
+
   return (
     global.llmModelMap.get(model) ||
     global.embeddingModelMap.get(model) ||

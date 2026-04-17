@@ -1,0 +1,62 @@
+---
+title: V4.9.4
+description: FastGPT V4.9.4 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Data
+
+### 2. Install Redis
+
+* For Docker deployments, refer to the latest `docker-compose.yml` file to add Redis configuration. Add a Redis container and configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
+* For Sealos deployments, create a new `redis` database in the Database section, copy the `internal connection` URL as the Redis connection string, then configure the `REDIS_URL` environment variable for both `fastgpt` and `fastgpt-pro`.
+
+| | | |
+| --- | --- |  --- |
+| ![](/imgs/sealos-redis1.png) | ![](/imgs/sealos-redis2.png) |  ![](/imgs/sealos-redis3.png) |
+
+### 3. Update Image Tags
+
+- Update FastGPT image tag: v4.9.4
+- Update FastGPT Pro image tag: v4.9.4
+- Sandbox: no update required
+- AIProxy: no update required
+
+### 4. Run the Upgrade Script
+
+This script only needs to be run by Pro edition users.
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv494' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**Script Functions**
+
+1. Updates the site sync scheduler.
+
+## New Features
+
+1. Collection data training status display.
+2. SMTP email sending plugin.
+3. BullMQ message queue.
+4. Partial data caching via Redis.
+5. Site sync now supports configuring training parameters and incremental sync.
+6. AI chat/tool calls now return the model's `finish_reason` field for easier tracking of output interruption causes.
+7. Mobile voice input UI adjustments.
+
+## Improvements
+
+1. Admin template rendering adjustments.
+2. Chat file expiration time now configurable via environment variable.
+3. MongoDB log database can now be deployed independently.
+
+## Bug Fixes
+
+1. Unable to click into subdirectories when searching apps/knowledge bases.
+2. Retraining parameters not properly initialized.
+3. Inconsistent requests in package/service across multiple apps.

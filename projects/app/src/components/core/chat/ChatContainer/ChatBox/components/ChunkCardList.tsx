@@ -8,7 +8,8 @@ import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { getQuoteDataList } from '@/web/core/chat/api';
+import { getQuoteDataList } from '@/web/core/chat/record/api';
+import type { GetQuoteResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import { useTranslation } from 'next-i18next';
@@ -51,7 +52,7 @@ const ChunkCardList = React.memo(function QuoteList({
   );
 
   const { data: quoteList } = useRequest(
-    async () =>
+    async (): Promise<GetQuoteResponseType> =>
       !!chatItemDataId
         ? await getQuoteDataList({
             datasetDataIdList,

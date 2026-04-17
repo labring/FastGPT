@@ -1,0 +1,61 @@
+{
+  "name": "@fastgpt-sdk/logger",
+  "private": false,
+  "version": "0.1.2",
+  "description": "FastGPT SDK for logger",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "logger",
+    "opentelemetry"
+  ],
+  "author": "FastGPT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/labring/FastGPT.git",
+    "directory": "FastGPT/sdk/logger"
+  },
+  "homepage": "https://github.com/labring/FastGPT",
+  "bugs": {
+    "url": "https://github.com/labring/FastGPT/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": "9.x"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@logtape/logtape": "^2",
+    "@logtape/pretty": "^2",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.203.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.203.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-logs": "^0.203.0",
+    "@opentelemetry/semantic-conventions": "^1.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,25 +1,17 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type {
-  ApiDatasetDetailResponse,
-  ApiDatasetServerType
-} from '@fastgpt/global/core/dataset/apiDataset/type';
+import type { ApiDatasetDetailResponse } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-
-export type GetApiDatasetPathQuery = {};
-
-export type GetApiDatasetPathBody = {
-  datasetId?: string;
-  parentId?: ParentIdType;
-  apiDatasetServer?: ApiDatasetServerType;
-};
-
-export type GetApiDatasetPathResponse = string;
+import {
+  GetApiDatasetPathNamesBodySchema,
+  GetApiDatasetPathNamesResponseSchema,
+  type GetApiDatasetPathNamesBody,
+  type GetApiDatasetPathNamesResponse
+} from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 
 const getFullPath = async (
   currentId: string,
@@ -40,11 +32,15 @@ const getFullPath = async (
 };
 
 async function handler(
-  req: ApiRequestProps<GetApiDatasetPathBody, any>,
-  res: ApiResponseType<GetApiDatasetPathResponse>
-): Promise<GetApiDatasetPathResponse> {
-  const { datasetId, parentId } = req.body;
-  if (!parentId) return '';
+  req: ApiRequestProps<GetApiDatasetPathNamesBody>
+): Promise<GetApiDatasetPathNamesResponse> {
+  const {
+    datasetId,
+    parentId,
+    apiDatasetServer: bodyApiDatasetServer
+  } = GetApiDatasetPathNamesBodySchema.parse(req.body);
+
+  if (!parentId) return GetApiDatasetPathNamesResponseSchema.parse('');
 
   const apiDatasetServer = await (async () => {
     if (datasetId) {
@@ -60,7 +56,7 @@ async function handler(
     } else {
       await authCert({ req, authToken: true });
 
-      return req.body.apiDatasetServer;
+      return bodyApiDatasetServer;
     }
   })();
 
@@ -70,7 +66,9 @@ async function handler(
     return Promise.reject(DatasetErrEnum.noApiServer);
   }
 
-  return await getFullPath(parentId, apiDataset.getFileDetail);
+  const fullPath = await getFullPath(parentId, apiDataset.getFileDetail);
+
+  return GetApiDatasetPathNamesResponseSchema.parse(fullPath);
 }
 
 export default NextAPI(handler);

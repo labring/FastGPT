@@ -177,6 +177,7 @@ function buildProps(datasets: SelectedDatasetType[], overrides: Record<string, a
     variables: {},
     node: { nodeId: 'node1', name: 'DatasetSearch', avatar: '' } as any,
     runtimeEdges: [],
+    usagePush: vi.fn(),
     params: {
       datasets,
       similarity: 0.5,

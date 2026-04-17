@@ -1,0 +1,94 @@
+# ==============================================================================
+# Pool for kubectl-only scenarios（纯 kubectl 场景 Pool）
+# ==============================================================================
+#
+# 用途：纯 kubectl 场景，不使用 SDK
+#
+# 适用场景：
+#   - RL 训练批量任务
+#   - 压力测试
+#   - 批量数据处理
+#   - 不需要 SDK 动态交互的场景
+#
+# 特点：
+#   - 没有 execd（不支持 SDK）
+#   - 包含 task-executor（支持 taskTemplate）
+#   - 配置简洁，资源占用少
+#
+# ==============================================================================
+
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: kubectl-pool
+  namespace: default
+  labels:
+    app: opensandbox
+    component: kubectl-pool
+  annotations:
+    description: "纯 kubectl 场景 Pool，不包含 execd"
+spec:
+  template:
+    metadata:
+      labels:
+        pool: kubectl-pool
+        sdk-compatible: "false"
+    spec:
+      # ========================================
+      # 必需：共享进程命名空间（task-executor 需要）
+      # ========================================
+      shareProcessNamespace: true
+
+      # ========================================
+      # 主容器：Sandbox 环境
+      # ========================================
+      containers:
+      - name: sandbox-container
+        image: nginx:latest
+        imagePullPolicy: IfNotPresent
+
+        # 直接运行业务命令，不需要 bootstrap.sh
+        command: ["sleep", "infinity"]
+
+        # 资源配置
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+      # ========================================
+      # Sidecar：Task Executor
+      # ========================================
+      - name: task-executor
+        image: opensandbox/task-executor:dev
+        imagePullPolicy: Never
+
+        ports:
+        - containerPort: 5758
+          name: task-executor
+          protocol: TCP
+
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+        # 安全上下文
+        securityContext:
+          capabilities:
+            add: ["SYS_PTRACE"]
+
+  # ========================================
+  # Pool 容量配置
+  # ========================================
+  capacitySpec:
+    bufferMin: 2
+    bufferMax: 5
+    poolMin: 2
+    poolMax: 10

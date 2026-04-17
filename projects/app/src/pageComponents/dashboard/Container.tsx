@@ -17,6 +17,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 
 export enum TabEnum {
   agent = 'agent',
+  skill = 'skill',
   tool = 'tool',
   system_tool = 'systemTool',
   app_templates = 'templateMarket',
@@ -118,9 +119,28 @@ const DashboardContainer = ({
           {
             typeId: AppTypeEnum.workflow,
             typeName: t('app:type.Workflow bot')
+          },
+
+          {
+            typeId: AppTypeEnum.simple,
+            typeName: t('app:type.Chat_Agent')
+          },
+          {
+            typeId: AppTypeEnum.chatAgent,
+            typeName: t('app:type.Chat_Agent_v2')
           }
         ]
       },
+      ...(feConfigs?.show_skill
+        ? [
+            {
+              groupId: TabEnum.skill,
+              groupAvatar: 'common/skill',
+              groupName: 'Skill',
+              children: []
+            }
+          ]
+        : []),
       {
         groupId: TabEnum.tool,
         groupAvatar: 'core/app/type/plugin',
@@ -148,7 +168,7 @@ const DashboardContainer = ({
       {
         groupId: TabEnum.system_tool,
         groupAvatar: 'common/app',
-        groupName: t('app:core.module.template.System Tools'),
+        groupName: t('common:system_tools'),
         children: []
       },
       {
@@ -206,6 +226,7 @@ const DashboardContainer = ({
   }, [
     currentType,
     feConfigs.appTemplateCourse,
+    feConfigs?.show_skill,
     t,
     templateList,
     templateTags,

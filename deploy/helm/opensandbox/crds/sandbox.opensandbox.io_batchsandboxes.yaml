@@ -1,0 +1,189 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: batchsandboxes.sandbox.opensandbox.io
+spec:
+  group: sandbox.opensandbox.io
+  names:
+    kind: BatchSandbox
+    listKind: BatchSandboxList
+    plural: batchsandboxes
+    shortNames:
+    - bsbx
+    singular: batchsandbox
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The desired number of pods.
+      jsonPath: .spec.replicas
+      name: DESIRED
+      type: integer
+    - description: The number of currently all pods.
+      jsonPath: .status.replicas
+      name: TOTAL
+      type: integer
+    - description: The number of currently all allocated pods.
+      jsonPath: .status.allocated
+      name: ALLOCATED
+      type: integer
+    - description: The number of currently all ready pods.
+      jsonPath: .status.ready
+      name: Ready
+      type: integer
+    - description: The number of currently all running tasks.
+      jsonPath: .status.taskRunning
+      name: TASK_RUNNING
+      priority: 1
+      type: integer
+    - description: The number of currently all succeed tasks.
+      jsonPath: .status.taskSucceed
+      name: TASK_SUCCEED
+      priority: 1
+      type: integer
+    - description: The number of currently all failed tasks.
+      jsonPath: .status.taskFailed
+      name: TASK_FAILED
+      priority: 1
+      type: integer
+    - description: The number of currently all unknown tasks.
+      jsonPath: .status.taskUnknown
+      name: TASK_UNKNOWN
+      priority: 1
+      type: integer
+    - description: sandbox expire time
+      jsonPath: .spec.expireTime
+      name: EXPIRE
+      type: string
+    - description: CreationTimestamp is a timestamp representing the server time when
+        this object was created. It is not guaranteed to be set in happens-before
+        order across separate operations. Clients may not set this value. It is represented
+        in RFC3339 form and is in UTC.
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: BatchSandbox is the Schema for the batchsandboxes API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BatchSandboxSpec defines the desired state of BatchSandbox.
+            properties:
+              expireTime:
+                description: |-
+                  ExpireTime - Absolute time when the batch-sandbox is deleted.
+                  If a time in the past is provided, the batch-sandbox will be deleted immediately.
+                format: date-time
+                type: string
+              poolRef:
+                description: |-
+                  PoolRef references the Pool resource name for pooled sandbox creation.
+                  Mutually exclusive with Template - use PoolRef for pool-based allocation or Template for direct sandbox creation.
+                type: string
+              replicas:
+                default: 1
+                description: Replicas is the number of desired replicas.
+                format: int32
+                minimum: 0
+                type: integer
+              shardPatches:
+                description: ShardPatches indicates patching to the Template for BatchSandbox.
+                x-kubernetes-preserve-unknown-fields: true
+              shardTaskPatches:
+                description: ShardTaskPatches indicates patching to the TaskTemplate
+                  for individual Task.
+                x-kubernetes-preserve-unknown-fields: true
+              taskResourcePolicyWhenCompleted:
+                default: Retain
+                description: |-
+                  TaskResourcePolicyWhenCompleted specifies how resources should be handled once a task reaches a completed state (SUCCEEDED or FAILED).
+                  - Retain: Keep the resources until the BatchSandbox is deleted.
+                  - Release: Free the resources immediately when the task completes.
+                type: string
+              taskTemplate:
+                description: |-
+                  Task is a custom task spec that is automatically dispatched after the sandbox is successfully created.
+                  The Sandbox is responsible for managing the lifecycle of the task.
+                x-kubernetes-preserve-unknown-fields: true
+              template:
+                description: Template describes the pods that will be created.
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - replicas
+            type: object
+          status:
+            description: BatchSandboxStatus defines the observed state of BatchSandbox.
+            properties:
+              allocated:
+                description: "\tAllocated is the number of actual scheduled Pod"
+                format: int32
+                type: integer
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the most recent generation observed for this BatchSandbox. It corresponds to the
+                  BatchSandbox's generation, which is updated on mutation by the API Server.
+                format: int64
+                type: integer
+              ready:
+                description: "\tReady is the number of actual Ready Pod"
+                format: int32
+                type: integer
+              replicas:
+                description: Replicas is the number of actual Pods
+                format: int32
+                type: integer
+              taskFailed:
+                description: TaskFailed is the number of Failed task
+                format: int32
+                type: integer
+              taskPending:
+                description: TaskPending is the number of Pending task which is unassigned
+                format: int32
+                type: integer
+              taskRunning:
+                description: TaskRunning is the number of Running task
+                format: int32
+                type: integer
+              taskSucceed:
+                description: TaskSucceed is the number of Succeed task
+                format: int32
+                type: integer
+              taskUnknown:
+                description: TaskUnknown is the number of Unknown task
+                format: int32
+                type: integer
+            required:
+            - allocated
+            - ready
+            - replicas
+            - taskFailed
+            - taskPending
+            - taskRunning
+            - taskSucceed
+            - taskUnknown
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

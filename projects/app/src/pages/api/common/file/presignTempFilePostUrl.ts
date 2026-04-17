@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
@@ -15,7 +15,7 @@ export type PresignTempFilePostUrlParams = {
 
 async function handler(
   req: ApiRequestProps<PresignTempFilePostUrlParams>
-): Promise<CreatePostPresignedUrlResult> {
+): Promise<CreatePostPresignedUrlResponseType> {
   const { filename } = req.body;
 
   const { teamId, tmbId } = await authUserPer({
@@ -28,8 +28,7 @@ async function handler(
 
   await authFrequencyLimit({
     eventId: `${tmbId}-uploadfile`,
-    maxAmount:
-      planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
@@ -40,8 +39,7 @@ async function handler(
     { rawKey: fileKey, filename },
     {
       expiredHours: 1,
-      maxFileSize:
-        planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+      maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
     }
   );
 }

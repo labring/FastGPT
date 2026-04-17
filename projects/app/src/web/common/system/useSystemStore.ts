@@ -7,11 +7,11 @@ import type {
   RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 import {
@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/global/core/ai/provider';
 import { getMyModels, getOperationalAd } from './api';
 
-type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
+type LoginStoreType = { provider: OAuthEnum; lastRoute: string; state: string };
 
 export type NotSufficientModalType =
   | TeamErrEnum.datasetSizeNotEnough
@@ -62,7 +62,6 @@ type State = {
   aiproxyIdMap: NonNullable<InitDateResponse['aiproxyIdMap']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
-  datasetModelList: LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
@@ -166,7 +165,6 @@ export const useSystemStore = create<State>()(
         aiproxyIdMap: {},
         defaultModels: {},
         llmModelList: [],
-        datasetModelList: [],
         embeddingModelList: [],
         ttsModelList: [],
         reRankModelList: [],
@@ -238,7 +236,6 @@ export const useSystemStore = create<State>()(
             state.llmModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
               state.llmModelList;
-            state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
             state.embeddingModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.embedding) ??
               state.embeddingModelList;
@@ -272,7 +269,6 @@ export const useSystemStore = create<State>()(
           aiproxyIdMap: state.aiproxyIdMap,
           defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
-          datasetModelList: state.datasetModelList,
           embeddingModelList: state.embeddingModelList,
           ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,

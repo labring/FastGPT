@@ -1,19 +1,24 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
+import {
+  UpdatePasswordByOldBodySchema,
+  type UpdatePasswordByOldBodyType,
+  type UpdatePasswordByOldResponseType
+} from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 
-  if (!oldPsw || !newPsw) {
-    return Promise.reject('Params is missing');
-  }
+async function handler(
+  req: ApiRequestProps<UpdatePasswordByOldBodyType>,
+  res: ApiResponseType<any>
+): Promise<UpdatePasswordByOldResponseType> {
+  const { oldPsw, newPsw } = UpdatePasswordByOldBodySchema.parse(req.body);
 
   const { tmbId, teamId, sessionId } = await authCert({ req, authToken: true });
   const tmb = await MongoTeamMember.findById(tmbId);

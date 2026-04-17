@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import { WorkflowIOValueTypeEnum } from '../constants';
 export enum FlowNodeInputTypeEnum { // render ui
   reference = 'reference', // reference to other node output
@@ -27,6 +27,9 @@ export enum FlowNodeInputTypeEnum { // render ui
 
   hidden = 'hidden',
   custom = 'custom', // 自定义渲染
+
+  selectSkill = 'selectSkill',
+  selectTool = 'selectTool',
 
   fileSelect = 'fileSelect',
   timePointSelect = 'timePointSelect',
@@ -87,6 +90,12 @@ export const FlowNodeInputMap: Record<
   [FlowNodeInputTypeEnum.custom]: {
     icon: 'core/workflow/inputType/custom'
   },
+  [FlowNodeInputTypeEnum.selectSkill]: {
+    icon: 'core/workflow/inputType/selectDataset'
+  },
+  [FlowNodeInputTypeEnum.selectTool]: {
+    icon: 'core/workflow/inputType/selectDataset'
+  },
   [FlowNodeInputTypeEnum.input]: {
     icon: 'core/workflow/inputType/input'
   },
@@ -135,7 +144,8 @@ export enum FlowNodeTypeEnum {
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
-  agent = 'tools',
+  agent = 'agent',
+  toolCall = 'tools',
   stopTool = 'stopTool',
   toolParams = 'toolParams',
   lafModule = 'lafModule',
@@ -231,6 +241,16 @@ export const FlowValueTypeMap: Record<
   }
 };
 
+export const getFlowValueTypeMeta = (
+  valueType?: WorkflowIOValueTypeEnum | string | null
+): (typeof FlowValueTypeMap)[WorkflowIOValueTypeEnum] => {
+  if (valueType == null || valueType === '') {
+    return FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
+  }
+  const meta = FlowValueTypeMap[valueType as WorkflowIOValueTypeEnum];
+  return meta ?? FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
+};
+
 export const EDGE_TYPE = 'default';
 
 export const chatHistoryValueDesc = `{
@@ -246,9 +266,11 @@ export const datasetQuoteValueDesc = `{
   q: string;
   a: string
 }[]`;
-export const datasetSelectValueDesc = `{
-  datasetId: string;
-}[]`;
+export const datasetSelectValueDesc = `[
+  {
+    "datasetId": "6693a4a6b69b7a9b0e37d9b0"
+  }
+]`;
 
 export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
   [FlowNodeTypeEnum.pluginModule]: true,
@@ -279,9 +301,9 @@ export const NodeGradients = {
   lafTeal: 'linear-gradient(180deg, rgba(72, 213, 186, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
-  gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
+  gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  emerald: 'linear-gradient(180deg, rgba(20, 168, 70, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
 };
-
 export const NodeBorderColors = {
   pink: 'rgba(255, 161, 206, 0.6)',
   blue: 'rgba(104, 192, 255, 0.6)',
@@ -301,5 +323,28 @@ export const NodeBorderColors = {
   lafTeal: 'rgba(72, 213, 186, 0.6)',
   skyBlue: 'rgba(137, 229, 255, 0.6)',
   salmon: 'rgba(255, 160, 160, 0.6)',
-  gray: 'rgba(136, 136, 136, 0.6)'
+  gray: 'rgba(136, 136, 136, 0.6)',
+  emerald: 'rgba(20, 168, 70, 0.6)'
 };
+export const NodeColorSchemaEnum = [
+  'pink',
+  'blue',
+  'blueLight',
+  'blueDark',
+  'orange',
+  'purple',
+  'teal',
+  'green',
+  'greenLight',
+  'indigo',
+  'coral',
+  'lime',
+  'violet',
+  'violetDeep',
+  'yellowGreen',
+  'lafTeal',
+  'skyBlue',
+  'salmon',
+  'gray',
+  'emerald'
+] as const;

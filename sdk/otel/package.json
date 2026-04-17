@@ -1,0 +1,80 @@
+{
+  "name": "@fastgpt-sdk/otel",
+  "private": false,
+  "version": "0.1.2",
+  "description": "FastGPT SDK for OpenTelemetry observability",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    },
+    "./logger": {
+      "import": "./dist/logger-entry.mjs",
+      "types": "./dist/logger-entry.d.mts"
+    },
+    "./metrics": {
+      "import": "./dist/metrics-entry.mjs",
+      "types": "./dist/metrics-entry.d.mts"
+    },
+    "./tracing": {
+      "import": "./dist/tracing-entry.mjs",
+      "types": "./dist/tracing-entry.d.mts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "otel",
+    "opentelemetry",
+    "metrics",
+    "tracing",
+    "logging"
+  ],
+  "author": "FastGPT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/labring/FastGPT.git",
+    "directory": "FastGPT/sdk/otel"
+  },
+  "homepage": "https://github.com/labring/FastGPT",
+  "bugs": {
+    "url": "https://github.com/labring/FastGPT/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@logtape/logtape": "^2",
+    "@logtape/pretty": "^2",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.203.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.203.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.203.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.203.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-logs": "^0.203.0",
+    "@opentelemetry/sdk-metrics": "^2.0.1",
+    "@opentelemetry/sdk-trace-base": "^2.0.1",
+    "@opentelemetry/sdk-trace-node": "^2.0.1",
+    "@opentelemetry/semantic-conventions": "^1.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,4 +1,4 @@
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 
 export enum ChatRoleEnum {
   System = 'System',
@@ -21,12 +21,13 @@ export enum ChatFileTypeEnum {
   image = 'image',
   file = 'file'
 }
+
 export enum ChatItemValueTypeEnum {
   text = 'text',
   file = 'file',
+  reasoning = 'reasoning',
   tool = 'tool',
-  interactive = 'interactive',
-  reasoning = 'reasoning'
+  interactive = 'interactive'
 }
 
 export enum ChatSourceEnum {
@@ -39,8 +40,9 @@ export enum ChatSourceEnum {
   feishu = 'feishu',
   official_account = 'official_account',
   wecom = 'wecom',
-  mcp = 'mcp',
-  evaluation = 'evaluation'
+  evaluation = 'evaluation',
+  wechat = 'wechat',
+  mcp = 'mcp'
 }
 
 export const ChatSourceMap = {
@@ -80,6 +82,10 @@ export const ChatSourceMap = {
     name: i18nT('common:core.chat.logs.wecom'),
     color: '#FD853A'
   },
+  [ChatSourceEnum.wechat]: {
+    name: i18nT('common:core.chat.logs.wechat'),
+    color: '#07C160'
+  },
   [ChatSourceEnum.mcp]: {
     name: i18nT('common:core.chat.logs.mcp'),
     color: '#F97066'
@@ -100,4 +106,11 @@ export enum FeedbackFilterEnum {
   good = 'good',
   bad = 'bad',
   noFeedback = 'noFeedback'
+}
+
+export enum GetChatTypeEnum {
+  normal = 'normal',
+  outLink = 'outLink',
+  team = 'team',
+  home = 'home'
 }

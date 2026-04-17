@@ -1,6 +1,9 @@
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import fs from 'fs';
 import path from 'path';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.INFRA.FILE);
 
 export const getFileMaxSize = () => {
   const mb = global.feConfigs.uploadFileMaxSize || 1000;
@@ -11,7 +14,7 @@ export const removeFilesByPaths = (paths: string[]) => {
   paths.forEach((path) => {
     fs.unlink(path, (err) => {
       if (err) {
-        // console.error(err);
+        logger.warn('Failed to remove file path', { path, error: err });
       }
     });
   });
@@ -50,7 +53,7 @@ export const clearTmpUploadFiles = () => {
         if (Date.now() - stats.mtime.getTime() > 2 * 60 * 60 * 1000) {
           fs.unlink(filePath, (err) => {
             if (err) return;
-            console.log(`Deleted temp file: ${filePath}`);
+            logger.info('Deleted expired temp file', { filePath });
           });
         }
       });

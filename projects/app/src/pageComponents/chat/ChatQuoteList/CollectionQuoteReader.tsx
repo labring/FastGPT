@@ -1,8 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
-import {
-  type DatasetCiteItemType,
-  type SearchDataResponseItemType
-} from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -11,7 +8,7 @@ import DownloadButton from './DownloadButton';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useMemo, useState } from 'react';
-import { getDatasetDataPermission } from '@/web/core/dataset/api';
+import { getDatasetPermission } from '@/web/core/dataset/api';
 import ScoreTag from './ScoreTag';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';
@@ -19,7 +16,7 @@ import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import CollectionQuoteItem from './CollectionQuoteItem';
 import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getCollectionQuote } from '@/web/core/chat/api';
+import { getCollectionQuote } from '@/web/core/chat/record/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
@@ -45,7 +42,7 @@ const CollectionReader = ({
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: datasetData } = useRequest(async () => await getDatasetDataPermission(datasetId), {
+  const { data: datasetData } = useRequest(async () => await getDatasetPermission(datasetId), {
     manual: !userInfo || !datasetId,
     refreshDeps: [datasetId, userInfo]
   });
@@ -110,7 +107,7 @@ const CollectionReader = ({
 
   const formatedDataList = useMemo(
     () =>
-      datasetDataList.map((item: DatasetCiteItemType) => {
+      datasetDataList.map((item) => {
         const isCurrentSelected = currentQuoteItem?.id === item._id;
         const quoteIndex = filterResults.findIndex((res) => res.id === item._id);
 

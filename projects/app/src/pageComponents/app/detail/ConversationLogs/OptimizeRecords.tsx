@@ -233,7 +233,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
       <Box flex={1} px={6}>
         <ScrollData>
           <VStack align="stretch" spacing={3}>
-            {optimizeRecords.map((record, index) => (
+            {optimizeRecords.map((record: ChatCorrectionListItem, index: number) => (
               <Card
                 key={record._id}
                 px={3}

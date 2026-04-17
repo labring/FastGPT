@@ -1,57 +1,52 @@
 import React, { useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import AISettingModal, { type AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
+import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
 type Props = {
-  llmModelType?: `${LLMModelTypeEnum}`;
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
 };
 
-const SettingLLMModel = ({
-  llmModelType = LLMModelTypeEnum.all,
-  defaultData,
-  onChange,
-  ...props
-}: AIChatSettingsModalProps & Props) => {
+const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
   const model = defaultData.model;
 
-  const modelList = useMemo(
-    () =>
-      llmModelList.filter((modelData) => {
-        if (!llmModelType) return true;
-        const filterField = llmModelTypeFilterMap[llmModelType];
-        if (!filterField) return true;
-        //@ts-ignore
-        return !!modelData[filterField];
-      }),
-    [llmModelList, llmModelType]
-  );
-  const defaultModel = useMemo(() => {
-    return getWebDefaultLLMModel(modelList).model;
-  }, [modelList]);
+  const { modelSet, modelList, defaultLLMModel } = useMemoEnhance(() => {
+    const modelSet = new Set<string>(llmModelList.map((item) => item.model));
+    return {
+      modelList: llmModelList,
+      modelSet,
+      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.model
+    };
+  }, [llmModelList]);
 
-  // Set default model
+  // Reset undefined model
   useEffect(() => {
-    if (!modelList.find((item) => item.model === model) && !!defaultModel) {
+    if (model) {
+      if (modelSet.size > 0 && !modelSet.has(model) && defaultLLMModel) {
+        onChange({
+          ...defaultData,
+          model: defaultLLMModel
+        });
+      }
+    } else if (defaultLLMModel) {
       onChange({
         ...defaultData,
-        model: defaultModel
+        model: defaultLLMModel
       });
     }
-  }, [modelList, model, defaultModel, onChange]);
+  }, [model, defaultData, modelSet, defaultLLMModel]);
 
   const {
     isOpen: isOpenAIChatSetting,
@@ -71,6 +66,7 @@ const SettingLLMModel = ({
       <HStack spacing={1}>
         <Box flex={'1 0 0'}>
           <AIModelSelector
+            {...props}
             w={'100%'}
             value={model}
             list={llmModelList.map((item) => ({

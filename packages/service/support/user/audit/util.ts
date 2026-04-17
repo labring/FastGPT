@@ -1,6 +1,7 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '../../../../web/i18n/utils';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
+import { i18nT } from '../../../../global/common/i18n/utils';
 import { MongoTeamAudit } from './schema';
 import type {
   AdminAuditEventEnum,
@@ -13,6 +14,7 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 export function getI18nAppType(type: AppTypeEnum): string {
   if (type === AppTypeEnum.folder) return i18nT('account_team:type.Folder');
   if (type === AppTypeEnum.simple) return i18nT('app:type.Chat_Agent');
+  if (type === AppTypeEnum.chatAgent) return 'Agent';
   if (type === AppTypeEnum.workflow) return i18nT('account_team:type.Workflow bot');
   if (type === AppTypeEnum.workflowTool) return i18nT('app:toolType_workflow');
   if (type === AppTypeEnum.httpPlugin) return i18nT('account_team:type.Http plugin');
@@ -42,6 +44,12 @@ export function getI18nDatasetType(type: DatasetTypeEnum | string): string {
   if (type === DatasetTypeEnum.feishu) return i18nT('account_team:dataset.feishu_dataset');
   if (type === DatasetTypeEnum.yuque) return i18nT('account_team:dataset.yuque_dataset');
   if (type === DatasetTypeEnum.database) return i18nT('dataset:database');
+  return i18nT('common:UnKnow');
+}
+
+export function getI18nSkillType(type: AgentSkillTypeEnum | string): string {
+  if (type === AgentSkillTypeEnum.folder) return i18nT('account_team:skill.folder');
+  if (type === AgentSkillTypeEnum.skill) return i18nT('account_team:skill.skill');
   return i18nT('common:UnKnow');
 }
 

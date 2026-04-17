@@ -1,5 +1,5 @@
 import { type ErrType } from '../errorCode';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../i18n/utils';
 
 /* evaluation: 510000 */
 export enum EvaluationErrEnum {

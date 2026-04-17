@@ -1,0 +1,89 @@
+---
+title: Workflows & Plugins
+description: A quick overview of FastGPT Workflows and Plugins
+---
+
+Starting from V4.0, FastGPT adopted a new approach to building AI applications. It uses Flow node orchestration (Workflows) to implement complex processes, improving flexibility and extensibility. This does raise the learning curve — users with development experience will find it easier to pick up.
+
+[Watch the video tutorial](https://www.bilibili.com/video/BV1is421u7bQ/)
+
+![](/imgs/flow-intro1.png)
+
+## What is a Node?
+
+In programming terms, a node is like a function or API endpoint — think of it as a **step**. By connecting multiple nodes together, you build a step-by-step process that produces the final AI output.
+
+Below is the simplest AI conversation, consisting of a Workflow Start node and an AI Chat node.
+
+![](/imgs/flow-intro2.png)
+
+Execution flow:
+1. The user inputs a question. The [Workflow Start] node executes and saves the user's question.
+2. The [AI Chat] node executes. It has two required parameters: "Chat History" and "User Question." Chat history defaults to 6 messages, representing the context length. The user question comes from the [Workflow Start] node.
+3. The [AI Chat] node calls the conversation API with the chat history and user question to generate a response.
+
+### Node Categories
+
+Functionally, nodes fall into 2 categories:
+
+1. **System Nodes**: User guidance (configures dialog information) and user question (workflow entry point).
+2. **Function Nodes**: Knowledge Base search, AI Chat, and all other nodes. These have inputs and outputs and can be freely combined.
+
+### Node Components
+
+Each node has 3 core parts: inputs, outputs, and triggers.
+
+   ![](/imgs/flow-intro3.png)
+
+   - AI model, prompt, chat history, user question, and Knowledge Base citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
+   - New context and AI reply content are outputs. Outputs can be referenced by any subsequent node.
+   - Each node has four "triggers" (top, bottom, left, right) for connections. Connected nodes execute sequentially based on conditions.
+
+## Key Concept — How Workflows Execute
+
+FastGPT Workflows start from the [Workflow Start] node, triggered when the user inputs a question. There is no **fixed exit point** — the workflow ends when all nodes stop running. If no nodes execute in a given cycle, the workflow completes.
+
+Let's look at how workflows execute and when each node is triggered.
+
+   ![](/imgs/flow-intro1.png)
+
+As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In the example, the [Knowledge Base Search] node has one predecessor line on the left and one successor line on the right. The [AI Chat] node only has a predecessor line on the left.
+
+Lines in FastGPT Workflows have these states:
+- `waiting`: The connected node is waiting to execute.
+- `active`: The connected node is ready to execute.
+- `skip`: The connected node should be skipped.
+
+Node execution rules:
+
+1. If any predecessor line has `waiting` status, the node waits.
+2. If any predecessor line has `active` status, the node executes.
+3. If no predecessor lines are `waiting` or `active`, the node is skipped.
+4. After execution, successor lines are updated to `active` or `skip`, and predecessor lines reset to `waiting` for the next cycle.
+
+Walking through the example:
+1. [Workflow Start] completes and sets its successor line to `active`.
+2. [Knowledge Base Search] sees its predecessor line is `active`, executes, then sets its successor line to `active` and predecessor line to `waiting`.
+3. [AI Chat] sees its predecessor line is `active` and executes. The workflow ends.
+
+## How to Connect Nodes
+
+1. Each node has connection points on all four sides for convenience. Left and top are predecessor connection points; right and bottom are successor connection points.
+2. Click the x in the middle of a connection line to delete it.
+3. Left-click to select a connection line.
+
+## How to Read Workflows
+
+1. Read from left to right.
+2. Start from the **User Question** node, which represents the user sending text to trigger the workflow.
+3. Focus on [AI Chat] and [Specified Reply] nodes — these are where answers are output.
+
+## FAQ
+
+### How do I merge multiple outputs?
+
+1. Text Processing: can merge strings together.
+2. Knowledge Base Search Merge: can combine multiple Knowledge Base search results.
+3. Other results: cannot be merged directly. Consider passing them to an `HTTP` node for merging. Use [Laf](https://laf.run/) to quickly create a serverless HTTP endpoint.
+
+

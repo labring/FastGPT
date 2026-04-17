@@ -311,7 +311,7 @@ export const useDebug = () => {
                 key={item.key}
                 label={item.label}
                 required={item.required}
-                placeholder={t(item.description)}
+                description={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
@@ -324,7 +324,7 @@ export const useDebug = () => {
                 key={item.key}
                 label={item.label}
                 required={item.required}
-                placeholder={t(item.description)}
+                description={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
@@ -337,7 +337,7 @@ export const useDebug = () => {
                 key={item.key}
                 label={item.label}
                 required={item.required}
-                placeholder={item.description}
+                description={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}

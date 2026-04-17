@@ -7,7 +7,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { TableSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { DatabaseCollectionsBody as GetConfigurationResponse } from '@fastgpt/global/core/dataset/database/api';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export type Query = { datasetId: string };
 

@@ -10,7 +10,7 @@ import type {
   DatasetTagType,
   DatasetSynonymSchemaType,
   TagUsageType
-} from '@fastgpt/global/core/dataset/type.d';
+} from '@fastgpt/global/core/dataset/type';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
@@ -22,69 +22,20 @@ import type {
   FileIdCreateDatasetCollectionParams,
   reTrainingDatasetFileCollectionParams,
   LinkCreateDatasetCollectionParams,
-  PostDatasetSyncParams,
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
   DatabaseSearchTestResponse,
-  SearchTestProps,
-  SearchTestResponse
+  InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
-import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
-import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
-import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
-import type {
-  PostPreviewFilesChunksProps,
-  PreviewChunksResponse
-} from '@/pages/api/core/dataset/file/getPreviewChunks';
-import type {
-  readCollectionSourceBody,
-  readCollectionSourceResponse
-} from '@/pages/api/core/dataset/collection/read';
-import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
-import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
-import type {
-  GetDatasetDataListProps,
-  GetDatasetDataListRes
-} from '@/pages/api/core/dataset/data/v2/list';
 import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
-import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
-import type {
-  listExistIdQuery,
-  listExistIdResponse
-} from '@/pages/api/core/dataset/apiDataset/listExistId';
-import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
-import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
-import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
-import type {
-  getTrainingDataDetailBody,
-  getTrainingDataDetailResponse
-} from '@/pages/api/core/dataset/training/getTrainingDataDetail';
-import type { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
-import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
-import type {
-  getTrainingErrorBody,
-  getTrainingErrorResponse
-} from '@/pages/api/core/dataset/training/getTrainingError';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
-import type {
-  GetApiDatasetCataLogResponse,
-  GetApiDatasetCataLogProps
-} from '@/pages/api/core/dataset/apiDataset/getCatalog';
-import type {
-  GetApiDatasetPathBody,
-  GetApiDatasetPathResponse
-} from '@/pages/api/core/dataset/apiDataset/getPathNames';
-import type { DelCollectionBody } from '@/pages/api/core/dataset/collection/delete';
-import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import type {
   CheckConnectionBody,
   DetectChangesResponse,
@@ -96,7 +47,7 @@ import type { DatabaseCollectionsBody as GetConfigurationResponse } from '@fastg
 import type {
   ApplyChangesBody,
   ApplyChangesResponse
-} from '@fastgpt/global/core/dataset/database/api.d';
+} from '@fastgpt/global/core/dataset/database/api';
 import type { EnhanceConfig } from '@/pages/api/core/dataset/collection/create/template';
 import type {
   CustomFileIdImportBody,
@@ -110,25 +61,65 @@ import type {
   CheckDuplicateFileNamesBody,
   CheckDuplicateFileNamesResponse
 } from '@/pages/api/core/dataset/collection/check/duplicate';
+import type { UpdateDatasetCollectionParams } from '@/pages/api/core/dataset/collection/update';
 import type {
-  DatasetCreateWithFilesBody,
-  DatasetCreateWithFilesResponse
-} from '@/pages/api/core/dataset/createWithFiles';
+  PostDatasetSyncParams,
+  CreateDatasetBody,
+  CreateDatasetWithFilesBody,
+  CreateDatasetWithFilesResponse,
+  GetDatasetListBody,
+  UpdateDatasetBody,
+  CreateDatasetFolderBody,
+  SearchDatasetTestBody,
+  SearchDatasetTestResponse,
+  GetDatasetPermissionResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
+import type {
+  GetDatasetTrainingQueueResponse,
+  RebuildEmbeddingBody,
+  UpdateTrainingDataBody,
+  GetTrainingDataDetailBody,
+  GetTrainingDataDetailResponse,
+  DeleteTrainingDataBody,
+  GetTrainingErrorBody,
+  GetTrainingErrorResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
+import type {
+  GetPreviewChunksBody,
+  GetPreviewChunksResponse
+} from '@fastgpt/global/openapi/core/dataset/file/api';
+import type {
+  ReadCollectionSourceBodyType,
+  ReadCollectionSourceResponseType,
+  GetCollectionTrainingDetailResponseType,
+  DeleteCollectionBodyType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
+import type {
+  GetDatasetDataListBody,
+  GetDatasetDataListResponse,
+  GetQuoteDataResponse,
+  GetQuoteDataBody
+} from '@fastgpt/global/openapi/core/dataset/data/api';
+import type {
+  GetApiDatasetFileListBody,
+  GetApiDatasetFileListExistIdQuery,
+  GetApiDatasetFileListExistIdResponse,
+  GetApiDatasetCatalogResponse,
+  GetApiDatasetCatalogBody,
+  GetApiDatasetPathNamesBody,
+  GetApiDatasetPathNamesResponse
+} from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
-  POST<DatasetListItemType[]>(`/core/dataset/list`, data);
+  POST<DatasetListItemType[]>(`/core/dataset/list`, data, { maxQuantity: 1 });
 
 export const getDatasetsPaginated = (
-  data: Required<Pick<GetDatasetListBody, 'pageNum' | 'pageSize'>> &
-    Omit<GetDatasetListBody, 'pageNum' | 'pageSize'>
+  data: GetDatasetListBody & { pageNum: number; pageSize: number }
 ) => POST<{ list: DatasetListItemType[]; total: number }>(`/core/dataset/list`, data);
 
 export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
   POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
-/**
- * get type=dataset list
- */
 
 export const getDatasetPaths = (data: GetPathProps) => {
   if (!data.sourceId) return Promise.resolve([]);
@@ -137,13 +128,13 @@ export const getDatasetPaths = (data: GetPathProps) => {
 
 export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/dataset/detail?id=${id}`);
 
-export const postCreateDataset = (data: CreateDatasetParams) =>
+export const postCreateDataset = (data: CreateDatasetBody) =>
   POST<string>(`/core/dataset/create`, data);
 
-export const postCreateDatasetWithFiles = (data: DatasetCreateWithFilesBody) =>
-  POST<DatasetCreateWithFilesResponse>(`/core/dataset/createWithFiles`, data);
+export const postCreateDatasetWithFiles = (data: CreateDatasetWithFilesBody) =>
+  POST<CreateDatasetWithFilesResponse>(`/core/dataset/createWithFiles`, data);
 
-export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/dataset/update`, data);
+export const putDatasetById = (data: UpdateDatasetBody) => PUT<void>(`/core/dataset/update`, data);
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
@@ -152,11 +143,14 @@ export const postDatasetSync = (data: PostDatasetSyncParams) =>
     timeout: 600000
   }).catch();
 
-export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
+export const postCreateDatasetFolder = (data: CreateDatasetFolderBody) =>
   POST(`/core/dataset/folder/create`, data);
 
+export const getDatasetPermission = (id?: string) =>
+  GET<GetDatasetPermissionResponse>(`/core/dataset/getPermission`, { id });
+
 export const resumeInheritPer = (datasetId: string) =>
-  GET(`/core/dataset/resumeInheritPermission`, { datasetId });
+  PUT(`/core/dataset/resumeInheritPermission`, { datasetId });
 
 export const postChangeOwner = (data: { ownerId: string; datasetId: string }) =>
   POST(`/proApi/core/dataset/changeOwner`, data);
@@ -260,8 +254,8 @@ export const postImportFaqByTemplate = ({
 };
 
 /* =========== search test ============ */
-export const postSearchText = (data: SearchTestProps) =>
-  POST<SearchTestResponse>(`/core/dataset/searchTest`, data);
+export const postSearchText = (data: SearchDatasetTestBody) =>
+  POST<SearchDatasetTestResponse>(`/core/dataset/searchTest`, data);
 
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
@@ -271,7 +265,7 @@ export const getDatasetCollectionPathById = (parentId: string) =>
 export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
 export const getDatasetCollectionTrainingDetail = (collectionId: string) =>
-  GET<getTrainingDetailResponse>(`/core/dataset/collection/trainingDetail`, {
+  GET<GetCollectionTrainingDetailResponseType>(`/core/dataset/collection/trainingDetail`, {
     collectionId
   });
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
@@ -327,7 +321,7 @@ export const postCreateDatasetApiDatasetCollection = (
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
-export const delDatasetCollectionById = (params: DelCollectionBody) =>
+export const delDatasetCollectionById = (params: DeleteCollectionBodyType) =>
   POST(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
   POST<DatasetCollectionSyncResultEnum>(`/core/dataset/collection/sync`, {
@@ -363,14 +357,14 @@ export const getAllTags = (datasetId: string) =>
 
 /* =============================== data ==================================== */
 /* get dataset list */
-export const getDatasetDataList = (data: GetDatasetDataListProps) =>
-  POST<GetDatasetDataListRes>(`/core/dataset/data/v2/list`, data);
+export const getDatasetDataList = (data: GetDatasetDataListBody) =>
+  POST<GetDatasetDataListResponse>(`/core/dataset/data/v2/list`, data);
 
 export const getDatasetDataPermission = (id?: string) =>
-  GET<GetQuotePermissionResponse>(`/core/dataset/data/getPermission`, { id });
+  GET<GetDatasetPermissionResponse>(`/core/dataset/data/getPermission`, { id });
 
 export const getDatasetDataBatchPermission = (ids: string[]) =>
-  POST<Record<string, GetQuotePermissionResponse>>(`/core/dataset/data/getBatchPermission`, {
+  POST<Record<string, GetDatasetPermissionResponse>>(`/core/dataset/data/getBatchPermission`, {
     ids
   });
 
@@ -395,7 +389,7 @@ export const delOneDatasetDataById = (id: string) =>
   DELETE<string>(`/core/dataset/data/delete`, { id });
 
 // Get quote data
-export const getQuoteData = (data: GetQuoteDataProps) =>
+export const getQuoteData = (data: GetQuoteDataBody) =>
   POST<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, data);
 
 /**
@@ -410,44 +404,44 @@ export const getDatasetDataIndex = (data: {
 }) => POST<{ index: number }>(`/core/dataset/data/getindex`, data);
 
 /* ================ training ==================== */
-export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
+export const postRebuildEmbedding = (data: RebuildEmbeddingBody) =>
   POST(`/core/dataset/training/rebuildEmbedding`, data);
 
 export const getDatasetTrainingQueue = (datasetId: string) =>
-  GET<getDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
+  GET<GetDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
     datasetId
   });
 
-export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
-  POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {
+export const getPreviewChunks = (data: GetPreviewChunksBody) =>
+  POST<GetPreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {
     maxQuantity: 1,
     timeout: 600000
   });
 
-export const deleteTrainingData = (data: deleteTrainingDataBody) =>
+export const deleteTrainingData = (data: DeleteTrainingDataBody) =>
   POST(`/core/dataset/training/deleteTrainingData`, data);
-export const updateTrainingData = (data: updateTrainingDataBody) =>
+export const updateTrainingData = (data: UpdateTrainingDataBody) =>
   PUT(`/core/dataset/training/updateTrainingData`, data);
-export const getTrainingDataDetail = (data: getTrainingDataDetailBody) =>
-  POST<getTrainingDataDetailResponse>(`/core/dataset/training/getTrainingDataDetail`, data);
-export const getTrainingError = (data: getTrainingErrorBody) =>
-  POST<getTrainingErrorResponse>(`/core/dataset/training/getTrainingError`, data);
+export const getTrainingDataDetail = (data: GetTrainingDataDetailBody) =>
+  POST<GetTrainingDataDetailResponse>(`/core/dataset/training/getTrainingDataDetail`, data);
+export const getTrainingError = (data: GetTrainingErrorBody) =>
+  POST<GetTrainingErrorResponse>(`/core/dataset/training/getTrainingError`, data);
 
 /* ================== read source ======================== */
-export const getCollectionSource = (data: readCollectionSourceBody) =>
-  POST<readCollectionSourceResponse>('/core/dataset/collection/read', data);
+export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>
+  POST<ReadCollectionSourceResponseType>('/core/dataset/collection/read', data);
 
 /* ================== apiDataset ======================== */
-export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
+export const getApiDatasetFileList = (data: GetApiDatasetFileListBody) =>
   POST<APIFileItemType[]>('/core/dataset/apiDataset/list', data);
-export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
-  GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
+export const getApiDatasetFileListExistId = (data: GetApiDatasetFileListExistIdQuery) =>
+  GET<GetApiDatasetFileListExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
 
-export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
-  POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getCatalog', data);
+export const getApiDatasetCatalog = (data: GetApiDatasetCatalogBody) =>
+  POST<GetApiDatasetCatalogResponse>('/core/dataset/apiDataset/getCatalog', data);
 
-export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
-  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);
+export const getApiDatasetPaths = (data: GetApiDatasetPathNamesBody) =>
+  POST<GetApiDatasetPathNamesResponse>('/core/dataset/apiDataset/getPathNames', data);
 
 /* ================== database ======================== */
 /**

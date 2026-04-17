@@ -2,15 +2,12 @@
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import type { NextApiRequest } from 'next';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
@@ -20,17 +17,12 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { InsertDataBodySchema } from '@fastgpt/global/openapi/core/dataset/data/api';
 
-async function handler(req: NextApiRequest) {
-  const { collectionId, q, a, indexes, metadata, id } = req.body as InsertOneDatasetDataProps;
-
-  if (!q) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  if (!collectionId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps) {
+  const { collectionId, q, a, indexes } = InsertDataBodySchema.parse(req.body);
+  const { metadata, id } = req.body as { metadata?: Record<string, string>; id?: string };
 
   // Validate custom ID if provided
   if (id !== undefined) {
@@ -143,6 +135,7 @@ async function handler(req: NextApiRequest) {
       agentModel,
       vectorModel,
       mode: trainingMode,
+      billId: tmbId,
       session,
       data: [
         {

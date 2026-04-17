@@ -417,7 +417,7 @@ export const useDataBaseConfig = (
 
     if (isEditMode) {
       // 编辑模式：调用更新数据库配置接口
-      await updateDatabaseConfig({ datasetId, ...backendData });
+      await updateDatabaseConfig({ datasetId, ...backendData } as any);
     } else {
       // 创建模式：调用创建数据库知识库数据集接口
       await createCollections({ datasetId, ...backendData });

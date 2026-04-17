@@ -14,7 +14,7 @@ import {
   adaptiveAdjustConfig,
   logAdaptiveAdjustments
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
-import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types/index.d';
+import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types';
 
 // Request body type
 export type CustomLinkImportBody = {
@@ -120,7 +120,7 @@ async function handler(
   logAdaptiveAdjustments(datasetId, adjustments);
 
   // 6. Assemble complete parameters and call original logic
-  const { collectionId, insertResults } = await createCollectionAndInsertData({
+  const { collectionId, results: insertResults } = await createCollectionAndInsertData({
     dataset,
     createCollectionParams: {
       teamId,

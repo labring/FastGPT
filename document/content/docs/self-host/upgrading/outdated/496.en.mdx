@@ -1,0 +1,83 @@
+---
+title: V4.9.6
+description: FastGPT V4.9.6 Release Notes
+---
+
+## New Features
+
+1. Apps can now be called externally via MCP.
+2. Support for creating tools using the MCP SSE protocol.
+3. Batch execution node now supports interactive nodes, enabling human participation in each loop iteration.
+4. Added workspace secondary menu with merged toolbox.
+5. Added system configurations for grok3, GPT4.1, o-series, and Gemini 2.5 models.
+
+## Improvements
+
+1. Enhanced workflow data type conversion robustness and compatibility.
+2. Python sandbox code now supports large data inputs.
+3. Breadcrumb component now supports configuring whether the last step is clickable.
+4. Knowledge base tool call results now automatically prepend image domain names.
+5. GitHub Action runner upgraded to Ubuntu 24.
+6. Removed extra leading/trailing newlines when replying via Lark, WeChat Official Account, and other third-party channels.
+7. Adjusted chunking strategy: large tables are now split into independent chunks instead of being merged into oversized blocks.
+8. Iframe embed component now includes built-in microphone permission declaration.
+
+## Bug Fixes
+
+1. Sub-workflows with interactive nodes not fully restoring all sub-workflow data.
+2. Completion v1 API not accepting the `interactive` parameter, causing API call failures.
+3. Consecutive tool calls causing abnormal context truncation.
+
+## Upgrade Guide
+
+### 1. Back Up Your Data
+
+### 2. Deploy the MCP Server Service
+
+#### Docker Deployment
+
+Add the `fastgpt-mcp-server` service to your `docker-compose.yml` file:
+
+```yml
+fastgpt-mcp-server:
+  container_name: fastgpt-mcp-server
+  image: ghcr.io/labring/fastgpt-mcp_server:v4.9.6
+  ports:
+    - 3005:3000
+  networks:
+    - fastgpt
+  restart: always
+  environment:
+    - FASTGPT_ENDPOINT=http://fastgpt:3000
+```
+
+#### Sealos Deployment
+
+In `App Management`, add a new `fastgpt-mcp-server` app with the image `ghcr.io/labring/fastgpt-mcp_server:v4.9.6` and set the environment variable `FASTGPT_ENDPOINT=<your FastGPT access URL>`.
+
+### 3. Update FastGPT Container Environment Variables
+
+#### Community Edition
+
+Add the following to your `config.json` configuration file: `"feconfigs.mcpServerProxyEndpoint": "<fastgpt-mcp-server access URL>"` (no trailing slash). For example:
+
+```json
+{
+  "feConfigs": {
+    "lafEnv": "https://laf.dev",
+    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn"
+  }
+}
+```
+
+#### Pro Edition
+
+In the Admin panel, go to `System Configuration - Basic Settings - System Parameters` and set the `MCP Proxy Server URL` to the public access URL of your `fastgpt-mcp-server`.
+
+### 4. Update Image Tags
+
+- Update FastGPT image tag: v4.9.6
+- Update FastGPT Pro image tag: v4.9.6
+- Update Sandbox image tag: v4.9.6
+- Add FastGPT MCP Server image tag: v4.9.6
+- AIProxy: no update required

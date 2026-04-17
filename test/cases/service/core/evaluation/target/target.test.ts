@@ -35,8 +35,23 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
   removeDatasetCiteText: vi.fn((text) => text)
 }));
 
+vi.mock('@fastgpt/global/core/ai/llm/utils', () => ({
+  removeDatasetCiteText: vi.fn((text) => text)
+}));
+
+vi.mock('@fastgpt/service/core/chat/chatItemSchema', () => ({
+  MongoChatItem: {
+    findOne: vi.fn().mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ dataId: 'test-data-id' })
+      })
+    })
+  }
+}));
+
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
-  saveChat: vi.fn()
+  saveChat: vi.fn(),
+  pushChatRecords: vi.fn()
 }));
 
 // Import mocked functions
@@ -52,13 +67,6 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock Date.now to ensure predictable responseTime
-    const mockStartTime = 1000000000000;
-    const mockEndTime = mockStartTime + 1500; // 1.5 seconds later
-    vi.spyOn(Date, 'now')
-      .mockReturnValueOnce(mockStartTime) // First call in execute()
-      .mockReturnValueOnce(mockEndTime); // Second call in execute()
 
     const config: WorkflowConfig = {
       appId: 'test-app-id',
@@ -106,7 +114,7 @@ describe('WorkflowTarget - Workflow Only Support', () => {
 
     expect(result.actualOutput).toBe('The capital of France is Paris.');
     expect(result.usage).toEqual([{ totalPoints: 10 }]);
-    expect(result.responseTime).toBe(1500); // 1.5 seconds as mocked
+    expect(result.responseTime).toBe(1.5); // durationSeconds from workflow dispatch
 
     expect(dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({

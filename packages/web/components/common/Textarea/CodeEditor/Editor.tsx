@@ -4,6 +4,9 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { getWebReqUrl } from '../../../../common/system/utils';
 import usePythonCompletion from './usePythonCompletion';
+import useJSCompletion from './useJSCompletion';
+import useSystemHelperCompletion from './useSystemHelperCompletion';
+
 loader.config({
   paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
 });
@@ -22,9 +25,10 @@ export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
   language?: string;
+  options?: any;
 };
 
-const options = {
+const defaultOptions = {
   lineNumbers: 'on',
   guides: {
     indentation: false
@@ -43,7 +47,12 @@ const options = {
   scrollBeyondLastLine: false,
   folding: true,
   overviewRulerBorder: false,
-  tabSize: 2
+  tabSize: 2,
+  wordBasedSuggestions: 'off',
+  quickSuggestions: { other: 'on', comments: false, strings: false },
+  suggest: {
+    showWords: false
+  }
 };
 
 const MyEditor = ({
@@ -54,13 +63,24 @@ const MyEditor = ({
   variables = [],
   defaultHeight = 200,
   onOpenModal,
-  language = 'typescript',
+  language = 'javascript',
+  options,
   ...props
 }: Props) => {
   const [height, setHeight] = useState(defaultHeight);
   const initialY = useRef(0);
 
+  const mergedOptions = React.useMemo(
+    () => ({
+      ...defaultOptions,
+      ...options
+    }),
+    [options]
+  );
+
   const registerPythonCompletion = usePythonCompletion();
+  const registerJSCompletion = useJSCompletion();
+  const registerSystemHelperCompletion = useSystemHelperCompletion();
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     initialY.current = e.clientY;
@@ -129,8 +149,10 @@ const MyEditor = ({
         }
       });
       registerPythonCompletion(monaco);
+      registerJSCompletion(monaco);
+      registerSystemHelperCompletion(monaco);
     },
-    [registerPythonCompletion]
+    [registerPythonCompletion, registerJSCompletion, registerSystemHelperCompletion]
   );
 
   return (
@@ -146,7 +168,7 @@ const MyEditor = ({
       <Editor
         height={'100%'}
         language={language}
-        options={options as any}
+        options={mergedOptions}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
         defaultValue={defaultValue}

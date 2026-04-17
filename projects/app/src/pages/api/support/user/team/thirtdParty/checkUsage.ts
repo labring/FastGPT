@@ -3,7 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { axios } from '@fastgpt/service/common/api/axios';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export type checkUsageQuery = { key: string };
 
@@ -43,7 +44,7 @@ async function handler(
       used: data.used || 0
     };
   } catch (error) {
-    addLog.debug('checkUsage error', { error });
+    logger.debug('checkUsage error', { error });
   }
 }
 

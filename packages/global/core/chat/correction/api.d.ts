@@ -1,5 +1,5 @@
 import type { CorrectionDataType, ChatCorrectionSchemaType } from './type';
-import type { PaginationProps, PaginationResponse } from '../../../../web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../openapi/api';
 // Correction API Types
 export type SubmitChatCorrectionParams = {
   appId: string;

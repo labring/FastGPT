@@ -12,8 +12,21 @@ vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any
     ...mod,
     connectMongo: async (props: { db: Mongoose; url: string; connectedCb?: () => void }) => {
       const { db, url } = props;
-      await db.connect(url, { dbName: randomUUID() });
+      await db.connect(url, { dbName: randomUUID(), retryWrites: false });
       await db.connection.db?.dropDatabase();
     }
+  };
+});
+
+/**
+ * Mock mongoSessionRun to avoid transaction issues in tests
+ * MongoDB transactions require replica set, which may not be available in test environment
+ */
+vi.mock(import('@fastgpt/service/common/mongo/sessionRun'), async () => {
+  return {
+    mongoSessionRun: vi.fn(async (fn) => {
+      // Execute the function without a real session
+      return await fn(null as any);
+    })
   };
 });

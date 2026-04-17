@@ -38,8 +38,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
       value: TabEnum.collectionCard
     },
     // 同义词Tab - 仅对非数据库类型和结构化文档类型知识库显示
-    ...(!isDatabaseDataset(datasetDetail.type) &&
-    datasetDetail.type !== DatasetTypeEnum.structureDocument
+    ...(!isDatabaseDataset(datasetDetail.type)
       ? [{ label: t('dataset:synonym_tab_title'), value: TabEnum.synonym }]
       : []),
     { label: t('common:core.dataset.test.Search Test'), value: TabEnum.test },

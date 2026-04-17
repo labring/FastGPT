@@ -2,26 +2,17 @@ import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/co
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  GetDatasetDetailQuerySchema,
+  type GetDatasetDetailResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
-type Query = {
-  id: string;
-};
-export type DatasetDetailResponse = DatasetItemType & { tableSchemaDescriptions?: string[] };
-
-async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
-  const { id: datasetId } = req.query as {
-    id: string;
-  };
-
-  if (!datasetId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
+  const { id: datasetId } = GetDatasetDetailQuerySchema.parse(req.query);
 
   // 凭证校验
   const { dataset, permission } = await authDataset({
@@ -34,7 +25,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
 
   const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
 
-  const result: DatasetDetailResponse = {
+  const result = {
     ...dataset,
     status,
     errorMsg,
@@ -42,7 +33,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     vectorModel:
       dataset.type !== DatasetTypeEnum.structureDocument
         ? getEmbeddingModel(dataset.vectorModel)
-        : undefined,
+        : (undefined as any),
     agentModel: getLLMModel(dataset.agentModel),
     vlmModel: getVlmModel(dataset.vlmModel),
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)

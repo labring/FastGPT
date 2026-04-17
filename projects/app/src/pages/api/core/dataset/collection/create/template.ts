@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -9,12 +9,14 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import type { small2bigConfigType } from '@fastgpt/global/core/dataset/type';
 import type { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { z } from 'zod';
 
 export type TemplateImportQuery = {};
 export type EnhanceConfig = {
@@ -30,7 +32,9 @@ export type TemplateImportBody = { datasetId: string; enhanceConfig: EnhanceConf
 
 export type TemplateImportResponse = CreateCollectionResponse;
 
-async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQuery>) {
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
+
+async function handler(req: ApiRequestProps) {
   const filepaths: string[] = [];
 
   try {
@@ -40,10 +44,14 @@ async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQu
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
+    const { datasetId, parentId, enhanceConfig: rawEnhanceConfig } =
+      CreateTemplateCollectionFormSchema.extend({
+        enhanceConfig: z.any().optional()
+      }).parse(result.data);
     const enhanceConfig: EnhanceConfig =
-      typeof req.body?.enhanceConfig === 'string'
-        ? JSON.parse(req.body.enhanceConfig)
-        : req.body?.enhanceConfig || {};
+      typeof rawEnhanceConfig === 'string'
+        ? JSON.parse(rawEnhanceConfig)
+        : rawEnhanceConfig || {};
 
     if (!isCSVFile(filename)) {
       return Promise.reject('File must be a CSV file');
@@ -54,7 +62,7 @@ async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQu
       authToken: true,
       authApiKey: true,
       per: WritePermissionVal,
-      datasetId: result.data.datasetId
+      datasetId
     });
 
     const { rawText } = await readRawTextByLocalFile({
@@ -100,6 +108,7 @@ async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQu
         teamId,
         tmbId,
         datasetId: dataset._id,
+        parentId,
         name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,
@@ -108,7 +117,7 @@ async function handler(req: ApiRequestProps<TemplateImportBody, TemplateImportQu
       }
     });
   } catch (error) {
-    addLog.error(`Backup dataset collection create error: ${error}`);
+    logger.error(`Backup dataset collection create error: ${error}`);
     return Promise.reject(error);
   } finally {
     multer.clearDiskTempFiles(filepaths);

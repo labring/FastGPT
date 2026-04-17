@@ -1,0 +1,61 @@
+name: Preview Docs Image — Build
+
+on:
+  pull_request:
+    paths:
+      - 'document/**'
+    types: [opened, synchronize, reopened]
+
+# Only one build per PR branch at a time
+concurrency:
+  group: 'preview-docs-build-${{ github.head_ref }}'
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./document
+          file: ./document/Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: fastgpt-docs-pr:${{ github.event.pull_request.head.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=FastGPT Docs Preview
+          build-args: |
+            FASTGPT_HOME_DOMAIN=https://fastgpt.io
+          outputs: type=docker,dest=/tmp/docs-image.tar
+          cache-from: type=gha,scope=docs
+          cache-to: type=gha,mode=max,scope=docs
+
+      - name: Save PR metadata
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-docs-image
+          path: |
+            /tmp/docs-image.tar
+            /tmp/pr-number.txt
+            /tmp/pr-sha.txt
+          retention-days: 1

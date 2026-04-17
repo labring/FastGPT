@@ -11,7 +11,8 @@ import SystemErrEnum from './code/system';
 import databaseErr from './code/database';
 import evaluationErr from './code/evaluation';
 import trainErr from './code/train';
-import { i18nT } from '../../../web/i18n/utils';
+import agentSkillErr from './code/agentSkill';
+import { i18nT } from '../i18n/utils';
 
 export const ERROR_CODE: { [key: number]: string } = {
   400: i18nT('common:code_error.error_code.400'),
@@ -114,5 +115,6 @@ export const ERROR_RESPONSE: Record<
   ...commonErr,
   ...SystemErrEnum,
   ...evaluationErr,
-  ...trainErr
+  ...trainErr,
+  ...agentSkillErr
 };

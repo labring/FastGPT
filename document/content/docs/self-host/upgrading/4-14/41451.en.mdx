@@ -1,0 +1,47 @@
+---
+title: 'V4.14.5.1 (Includes Upgrade Script)'
+description: 'FastGPT V4.14.5.1 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.14.5.1
+- Update FastGPT commercial edition image tag: v4.14.5.1
+- Update fastgpt-plugin image tag: v0.4.0
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+- mongo: no update needed
+
+### 2. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv41451' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. Migrates system secret key configuration for system tools.
+
+## New Features
+
+1. Markdown tables now support CSV export.
+
+## Improvements
+
+1. Workflow trackpad scrolling is no longer blocked when encountering input fields.
+2. Workflow node paste now positions precisely at the mouse cursor.
+3. Precisely removes extraneous system fields from LLM requests to prevent errors with certain model APIs.
+4. Uses path.extname to extract file extensions from URLs.
+
+## Bug Fixes
+
+1. After setting system secret keys for a system toolset, child tools could not read the configured secret keys.
+2. Password-type global variables had incorrect required field validation.
+3. Time-type global variable month picker was obscured.
+4. Line breaks were lost in the manual copy dialog.
+5. Chat API threw an error when file upload type variables were not provided.

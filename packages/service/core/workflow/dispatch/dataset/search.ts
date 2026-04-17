@@ -1,4 +1,4 @@
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -39,15 +39,18 @@ import {
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
 import { MongoDatasetCollection } from '../../../dataset/collection/schema';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../global/common/i18n/utils';
 import { addLog } from '../../../../common/system/log';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
-import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 import { MongoApp } from '../../../app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
 /**
  * 从全局变量中获取 faqAnswerMode 配置
@@ -74,7 +77,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.userChatInput]?: string;
-  [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchMode]: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
@@ -165,7 +168,6 @@ export async function dispatchDatasetSearch(
       limit,
       searchMode
     },
-    nodeDispatchUsages: [],
     [DispatchNodeResponseKeyEnum.toolResponses]: []
   };
 
@@ -614,7 +616,7 @@ export async function dispatchDatasetSearch(
     }
 
     // count bill results
-    const nodeDispatchUsages: ChatNodeUsageType[] = [];
+    const nodeUsages: ChatNodeUsageType[] = [];
     // 1. Search vector — bill per embedding model used across all groups
     const modelTokenMap: Map<string, { modelName: string; tokens: number }> | undefined =
       commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
@@ -624,7 +626,7 @@ export async function dispatchDatasetSearch(
           model: modelName,
           inputTokens: tokens
         });
-        nodeDispatchUsages.push({
+        nodeUsages.push({
           totalPoints,
           moduleName: node.name,
           model: billingModelName,
@@ -638,7 +640,7 @@ export async function dispatchDatasetSearch(
           model: vectorModel.name,
           inputTokens: embeddingTokens
         });
-      nodeDispatchUsages.push({
+      nodeUsages.push({
         totalPoints: embeddingTotalPoints,
         moduleName: node.name,
         model: embeddingModelName,
@@ -646,13 +648,13 @@ export async function dispatchDatasetSearch(
       });
     }
     // 2. Rerank
-    if (usingReRank) {
+    if (searchUsingReRank) {
       const { totalPoints: reRankTotalPoints, modelName: reRankModelName } =
         formatModelChars2Points({
           model: rerankModelData?.model,
           inputTokens: reRankInputTokens
         });
-      nodeDispatchUsages.push({
+      nodeUsages.push({
         totalPoints: reRankTotalPoints,
         moduleName: i18nT('account_usage:rerank'),
         model: reRankModelName,
@@ -666,7 +668,7 @@ export async function dispatchDatasetSearch(
         inputTokens: queryExtensionResult.inputTokens,
         outputTokens: queryExtensionResult.outputTokens
       });
-      nodeDispatchUsages.push({
+      nodeUsages.push({
         totalPoints: llmPoints,
         moduleName: i18nT('common:core.module.template.Query extension'),
         model: llmModelName,
@@ -679,7 +681,7 @@ export async function dispatchDatasetSearch(
           model: queryExtensionResult.embeddingModel,
           inputTokens: queryExtensionResult.embeddingTokens
         });
-      nodeDispatchUsages.push({
+      nodeUsages.push({
         totalPoints: embeddingPoints,
         moduleName: `${i18nT('account_usage:ai.query_extension_embedding')}`,
         model: embeddingModelName,
@@ -694,7 +696,7 @@ export async function dispatchDatasetSearch(
         inputTokens: deepSearchResult.inputTokens,
         outputTokens: deepSearchResult.outputTokens
       });
-      nodeDispatchUsages.push({
+      nodeUsages.push({
         totalPoints,
         moduleName: i18nT('common:deep_rag_search'),
         model: modelName,
@@ -710,7 +712,7 @@ export async function dispatchDatasetSearch(
           inputTokens: result.input_tokens,
           outputTokens: result.output_tokens
         });
-        nodeDispatchUsages.push({
+        nodeUsages.push({
           totalPoints,
           moduleName: i18nT('common:database_search'),
           model: modelName,
@@ -719,14 +721,15 @@ export async function dispatchDatasetSearch(
         });
       });
     }
-    const totalPoints = nodeDispatchUsages.reduce((acc, item) => acc + item.totalPoints, 0);
+    const totalPoints = nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0);
+    props.usagePush(nodeUsages);
 
     addLog.debug('Dataset Search - Final Statistics', {
       totalSearchResults: searchRes.length,
       totalPoints,
       totalEmbeddingTokens: embeddingTokens,
       totalSqlResults: sqlResult.length,
-      nodeDispatchUsagesCount: nodeDispatchUsages.length
+      nodeUsagesCount: nodeUsages.length
     });
 
     // Debug日志：输出检索结果完整内容
@@ -782,7 +785,7 @@ export async function dispatchDatasetSearch(
               model: queryExtensionResult.llmModel,
               inputTokens: queryExtensionResult.inputTokens,
               outputTokens: queryExtensionResult.outputTokens,
-              query: queryExtensionResult.query,
+              query: queryExtensionResult.query || '',
               synonymRewriteResult: queryExtensionResult.synonymRewriteResult,
               rewriteTime: queryExtensionResult.rewriteTime
             }
@@ -822,7 +825,6 @@ export async function dispatchDatasetSearch(
           ...(faqAnswer && { udQRlgfO: faqAnswer })
         }
       }),
-      nodeDispatchUsages,
       [DispatchNodeResponseKeyEnum.toolResponses]:
         searchRes.length > 0
           ? {
@@ -837,7 +839,7 @@ export async function dispatchDatasetSearch(
           : 'No results'
     };
   } catch (error) {
-    addLog.error(`[Dataset search] error`, error);
+    logger.error('Dataset search dispatch failed', { error });
     return getNodeErrResponse({ error });
   }
 }

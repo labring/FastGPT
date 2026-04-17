@@ -19,9 +19,10 @@ API 文件库能够让用户轻松对接已有的文档库，只需要按照 Fas
 
 创建知识库时，选择 API 文件库类型，然后需要配置两个关键参数:文件服务接口的 baseURL 和用于身份验证的请求头信息。只要提供的接口规范符合 FastGPT 的要求，系统就能自动获取并展示完整的文件列表，可以根据需要选择性地将文件导入到知识库中。
 
-你需要提供两个参数：
+你需要提供三个参数：
 - baseURL: 文件服务接口的 baseURL
 - authorization: 用于身份验证的请求头信息，实际请求格式为 `Authorization: Bearer <token>`
+- basePath: 可选，根目录路径，用于指定文件树的起始位置
 
 ## 接口规范
 
@@ -46,6 +47,7 @@ type FileListItem = {
   type: 'file' | 'folder';
   updateTime: Date;
   createTime: Date;
+  hasChild?: boolean; // 可选，是否有子节点，默认 folder 类型为 true
 }
 ```
 
@@ -57,7 +59,7 @@ type FileListItem = {
 
 
 <Alert icon=" " context="success">
-- parentId - 父级 id，可选，或者 null。
+- parentId - 父级 id，可选。如果不传或传 null，则使用配置的 basePath 作为根目录
 - searchKey - 检索词，可选
 </Alert>
 
@@ -79,17 +81,17 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 
 ```json
 {
-    "code": 200,
     "success": true,
     "message": "",
     "data": [
         {
             "id": "xxxx",
             "parentId": "xxxx",
-            "type": "file",  // file | folder
+            "type": "file",
             "name":"test.json",
             "updateTime":"2024-11-26T03:05:24.759Z",
-            "createTime":"2024-11-26T03:05:24.759Z"
+            "createTime":"2024-11-26T03:05:24.759Z",
+            "hasChild": false
         }
    ]
 }
@@ -118,24 +120,25 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
 
 ```json
 {
-    "code": 200,
     "success": true,
     "message": "",
     "data": {
         "title": "文档标题",
-        "content": "FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！\n",
-        "previewUrl": "xxxx"
+        "content": "FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！\n"
     }
 }
 ```
 
 <Alert icon=" " context="success">
 
-- title - 文件标题。
-- content - 文件内容，直接拿来用。
-- previewUrl - 文件链接，系统会请求该地址获取文件内容。
+- **title** - 文件标题，可选。用于显示文件名称，如果不提供，系统会尝试从 `previewUrl` 中解析文件名。
+- **content** - 文件的文本内容，可选。直接返回文件的完整文本内容，系统会直接使用该内容进行索引和检索。
+- **previewUrl** - 文件的访问链接，可选。提供一个可访问的文件 URL，系统会自动请求该地址下载文件并提取内容。支持各种文件格式（如 PDF、Word、Markdown 等）。
 
-`content`和`previewUrl`二选一返回，如果同时返回则 `content` 优先级更高，返回 `previewUrl`时，则会访问该链接进行文档内容读取。
+**重要说明：**
+- `content` 和 `previewUrl` 二选一返回，**必须至少返回其中一个**，否则会报错。
+- 如果同时返回 `content` 和 `previewUrl`，则 `content` 优先级更高，系统会直接使用 `content` 的内容。
+- 返回 `previewUrl` 时，系统会访问该链接进行文档内容读取和解析，并会缓存解析结果以提高性能。
 
 </Alert>
 
@@ -165,7 +168,6 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 
 ```json
 {
-    "code": 200,
     "success": true,
     "message": "",
     "data": {
@@ -183,3 +185,49 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 </Tabs>
 
 
+### 4. 获取文件详情
+
+<Tabs items={['请求示例','响应示例']}>
+  <Tab value="请求示例" >
+
+
+id 为文件的 id。
+
+```bash
+curl --location --request GET '{{baseURL}}/v1/file/detail?id=xx' \
+--header 'Authorization: Bearer {{authorization}}'
+```
+
+
+  </Tab>
+
+  <Tab value="响应示例" >
+
+
+```json
+{
+    "success": true,
+    "message": "",
+    "data": {
+        "id": "xxxx",
+        "name": "test.json",
+        "parentId": "xxxx",
+        "type": "file",
+        "updateTime": "2024-11-26T03:05:24.759Z",
+        "createTime": "2024-11-26T03:05:24.759Z"
+    }
+}
+```
+
+<Alert icon=" " context="success">
+- id - 文件 id
+- name - 文件名称
+- parentId - 父级 id，null 表示根目录
+- type - 文件类型，file 或 folder
+- updateTime - 更新时间
+- createTime - 创建时间
+</Alert>
+
+
+  </Tab>
+</Tabs>

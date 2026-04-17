@@ -22,7 +22,7 @@ import type {
   getEvalDatasetCollectionDetailResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
 import type { SmartGenerateEvalDatasetResponse } from '@/pages/api/core/evaluation/dataset/data/smartGenerate';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 // 智能生成评测数据集
 export const postSmartGenerateEvaluationDataset = (data: smartGenerateEvalDatasetBody) =>

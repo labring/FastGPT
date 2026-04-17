@@ -12,7 +12,7 @@ import type {
   EvalMetricDisplayType,
   EvaluationResponse
 } from '@fastgpt/global/core/evaluation/metric/type';
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 /**
  * 获取评估维度列表

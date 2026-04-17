@@ -10,7 +10,7 @@ import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetsContext } from '../../../pages/dataset/list/context';
+import { DatasetsContext } from './context';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {

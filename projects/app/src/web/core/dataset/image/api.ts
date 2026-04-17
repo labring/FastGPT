@@ -1,5 +1,5 @@
 import { POST } from '@/web/common/api/request';
-import type { ImageCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import type { ImageCreateDatasetCollectionParams } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 
 export const createImageDatasetCollection = async ({
   files,

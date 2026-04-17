@@ -1,25 +1,22 @@
 import type { AppChatConfigType, AppSimpleEditFormType } from '../app/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { FlowNodeTemplateTypeEnum, NodeInputKeyEnum } from '../workflow/constants';
-import type { FlowNodeInputItemType } from '../workflow/type/io.d';
+import type { FlowNodeInputItemType } from '../workflow/type/io';
 import { getAppChatConfig } from '../workflow/utils';
 import { type StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum, RerankMethodEnum } from '../dataset/constants';
+import type { AppFormEditFormType } from './formEdit/type';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum, AssistantGlobalVarKey } from './constants';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
 
-export const getDefaultAppForm = (): AppSimpleEditFormType => {
+export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
     aiSettings: {
       model: '',
-      systemPrompt: '',
-      temperature: 0,
       isResponseAnswerText: true,
-      maxHistories: 6,
-      maxToken: 4000,
-      aiChatReasoning: true
+      maxHistories: 6
     },
     dataset: {
       datasets: [],
@@ -34,6 +31,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       datasetSearchExtensionBg: ''
     },
     selectedTools: [],
+    selectedAgentSkills: [],
     chatConfig: {}
   };
 };

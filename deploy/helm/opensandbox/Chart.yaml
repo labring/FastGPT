@@ -1,0 +1,17 @@
+apiVersion: v2
+name: opensandbox-controller
+description: A Helm chart for deploying OpenSandbox Kubernetes Controller
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+keywords:
+  - opensandbox
+  - sandbox
+  - kubernetes
+  - operator
+  - controller
+home: https://github.com/alibaba/OpenSandbox
+maintainers:
+  - name: OpenSandbox Team
+    url: https://github.com/alibaba/OpenSandbox
+icon: https://avatars.githubusercontent.com/u/1961952

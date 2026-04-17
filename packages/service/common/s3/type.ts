@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Mimes } from './constants';
 import type { S3BaseBucket } from './buckets/base';
+import { Readable } from 'node:stream';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -15,7 +16,14 @@ export type S3Metadata = z.infer<typeof S3MetadataSchema>;
 export type ContentType = (typeof Mimes)[keyof typeof Mimes];
 export type ExtensionType = keyof typeof Mimes;
 
-export const S3SourcesSchema = z.enum(['avatar', 'chat', 'dataset', 'temp', 'rawText']);
+export const S3SourcesSchema = z.enum([
+  'avatar',
+  'chat',
+  'dataset',
+  'temp',
+  'rawText',
+  'helperBot'
+]);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 
@@ -32,14 +40,6 @@ export const CreatePostPresignedUrlOptionsSchema = z.object({
 });
 export type CreatePostPresignedUrlOptions = z.infer<typeof CreatePostPresignedUrlOptionsSchema>;
 
-export const CreatePostPresignedUrlResultSchema = z.object({
-  url: z.string().nonempty(),
-  key: z.string().nonempty(),
-  headers: z.record(z.string(), z.string()),
-  maxSize: z.number().positive().optional() // bytes
-});
-export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;
-
 export const CreateGetPresignedUrlParamsSchema = z.object({
   key: z.string().nonempty(),
   expiredHours: z.number().positive().optional()
@@ -55,12 +55,14 @@ export const UploadImage2S3BucketParamsSchema = z.object({
 });
 export type UploadImage2S3BucketParams = z.infer<typeof UploadImage2S3BucketParamsSchema>;
 
-export const UploadFileByBufferSchema = z.object({
-  buffer: z.instanceof(Buffer),
+export const UploadFileByBodySchema = z.object({
+  body: z.union([z.instanceof(Buffer), z.string(), z.instanceof(Readable)]),
   contentType: z.string().optional(),
-  key: z.string().nonempty()
+  key: z.string().nonempty(),
+  filename: z.string().nonempty(),
+  expiredTime: z.date().optional()
 });
-export type UploadFileByBufferParams = z.infer<typeof UploadFileByBufferSchema>;
+export type UploadFileByBufferParams = z.infer<typeof UploadFileByBodySchema>;
 
 declare global {
   var s3BucketMap: {

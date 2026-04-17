@@ -6,11 +6,10 @@ import PageContainer from '@/components/PageContainer';
 import ChatSlider from '@/pageComponents/chat/slider';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { GetChatTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
@@ -23,10 +22,12 @@ import { ChatPageContext, ChatPageContextProvider } from '@/web/core/chat/contex
 import ChatTeamApp from '@/pageComponents/chat/ChatTeamApp';
 import ChatFavouriteApp from '@/pageComponents/chat/ChatFavouriteApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+
+const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 const Chat = () => {
   const { isPc } = useSystem();
@@ -90,6 +91,7 @@ type ChatPageProps = {
   appId: string;
   isStandalone?: string;
   showRunningStatus: boolean;
+  showSkillReferences: boolean;
   showCite: boolean;
   showFullText: boolean;
   canDownloadSource: boolean;
@@ -119,7 +121,7 @@ const ChatContent = (props: ChatPageProps) => {
   }, [appId, chatId]);
 
   const loginSuccess = useCallback(
-    async (res: LoginSuccessResponse) => {
+    async (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
     },
     [setUserInfo]
@@ -151,6 +153,7 @@ const ChatContent = (props: ChatPageProps) => {
       <ChatItemContextProvider
         showRouteToDatasetDetail={isStandalone !== '1'}
         showRunningStatus={props.showRunningStatus}
+        showSkillReferences={props.showSkillReferences}
         canDownloadSource={props.canDownloadSource}
         isShowCite={props.showCite}
         isShowFullText={props.showFullText}
@@ -186,12 +189,12 @@ export async function getServerSideProps(context: any) {
           appId,
           type: PublishChannelEnum.playground
         },
-        'showRunningStatus showCite showFullText canDownloadSource showWholeResponse'
+        'showRunningStatus showSkillReferences showCite showFullText canDownloadSource showWholeResponse'
       ).lean();
 
       return config;
     } catch (error) {
-      addLog.error('getServerSideProps', error);
+      logger.error('getServerSideProps failed', { error, appId });
       return null;
     }
   })();
@@ -200,6 +203,7 @@ export async function getServerSideProps(context: any) {
     props: {
       appId,
       showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
+      showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
       showCite: chatQuoteReaderConfig?.showCite ?? true,
       showFullText: chatQuoteReaderConfig?.showFullText ?? true,
       canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,

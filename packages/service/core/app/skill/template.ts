@@ -151,7 +151,7 @@ function getAppTypeLabel(type: `${AppTypeEnum}`, locale: string = 'zh-CN'): stri
     const typeMapEn: Record<string, string> = {
       [AppTypeEnum.simple]: 'Simple Chat',
       [AppTypeEnum.workflow]: 'Workflow',
-      [AppTypeEnum.agent]: 'Agent',
+      [AppTypeEnum.chatAgent]: 'Agent',
       [AppTypeEnum.assistant]: 'Assistant',
       [AppTypeEnum.workflowTool]: 'Workflow Tool',
       [AppTypeEnum.httpPlugin]: 'HTTP Plugin',
@@ -168,7 +168,7 @@ function getAppTypeLabel(type: `${AppTypeEnum}`, locale: string = 'zh-CN'): stri
   const typeMap: Record<string, string> = {
     [AppTypeEnum.simple]: '简易对话',
     [AppTypeEnum.workflow]: '工作流',
-    [AppTypeEnum.agent]: 'Agent',
+    [AppTypeEnum.chatAgent]: 'Agent',
     [AppTypeEnum.assistant]: '助手应用',
     [AppTypeEnum.workflowTool]: '工作流工具',
     [AppTypeEnum.httpPlugin]: 'HTTP 插件',

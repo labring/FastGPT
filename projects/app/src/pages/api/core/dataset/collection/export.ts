@@ -5,7 +5,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { responseWriteController } from '@fastgpt/service/common/response';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -15,6 +15,7 @@ import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const parseBody = ExportCollectionBodySchema.parse(req.body);
@@ -123,7 +124,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   });
 
   cursor.on('error', (err) => {
-    addLog.error(`export usage error`, err);
+    logger.error(`export usage error`, { error: err });
     res.status(500);
     res.end();
   });

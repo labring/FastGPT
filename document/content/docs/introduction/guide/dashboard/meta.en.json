@@ -1,0 +1,13 @@
+{
+  "title": "Dashboard",
+  "description": "FastGPT dashboard and workflow node usage guide",
+  "pages": [
+    "basic-mode",
+    "intro",
+    "workflow",
+    "mcp_server",
+    "mcp_tools",
+    "gapier",
+    "evaluation"
+  ]
+}

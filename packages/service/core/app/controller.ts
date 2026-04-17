@@ -1,4 +1,4 @@
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -28,7 +28,10 @@ import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { addLog } from '../../common/system/log';
+import { getLogger, LogCategories } from '../../common/logger';
+import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/controller';
+
+const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
 export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }) => {
   if (!nodes) return;
@@ -96,7 +99,7 @@ export async function findAppAndAllChildren({
   teamId: string;
   appId: string;
   fields?: string;
-}): Promise<AppSchema[]> {
+}): Promise<AppSchemaType[]> {
   const find = async (id: string) => {
     const children = await MongoApp.find(
       {
@@ -144,14 +147,26 @@ export const deleteAppDataProcessor = async ({
   app,
   teamId
 }: {
-  app: AppSchema;
+  app: AppSchemaType;
   teamId: string;
 }) => {
   const appId = String(app._id);
 
   // 1. 删除应用头像
   await removeImageByPath(app.avatar);
+
   // 2. 删除聊天记录和S3文件
+  // 删除沙盒实例
+  {
+    // 对话生成的
+    await deleteSandboxesByAppId(appId);
+    // 编辑 skill 生成的
+    const appChatIds = (await MongoChat.find({ appId }, { _id: 1 }).lean()).map((c) =>
+      String(c._id)
+    );
+    await deleteSandboxesByChatIds({ appId, chatIds: appChatIds });
+  }
+
   await getS3ChatSource().deleteChatFilesByPrefix({ appId });
   await MongoAppChatLog.deleteMany({ teamId, appId });
   await MongoChatItemResponse.deleteMany({ appId });
@@ -231,6 +246,6 @@ export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string 
       parentId = parentApp.parentId;
     }
   }).catch((err) => {
-    addLog.error('updateParentFoldersUpdateTime error', err);
+    logger.error('Failed to update parent folder updateTime', { error: err });
   });
 };

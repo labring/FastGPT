@@ -44,8 +44,8 @@ const FeiShuEditModal = ({
         appId,
         type: PublishChannelEnum.feishu,
         app: {
-          appId: e?.app?.appId?.trim(),
-          appSecret: e.app?.appSecret?.trim(),
+          appId: e?.app?.appId?.trim() ?? '',
+          appSecret: e.app?.appSecret?.trim() ?? '',
           encryptKey: e.app?.encryptKey?.trim()
         }
       }),
@@ -61,8 +61,8 @@ const FeiShuEditModal = ({
       updateShareChat({
         ...e,
         app: {
-          appId: e?.app?.appId?.trim(),
-          appSecret: e.app?.appSecret?.trim(),
+          appId: e?.app?.appId?.trim() ?? '',
+          appSecret: e.app?.appSecret?.trim() ?? '',
           encryptKey: e.app?.encryptKey?.trim()
         }
       }),

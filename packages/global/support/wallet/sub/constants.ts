@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 import { BillTypeEnum } from '../bill/constants';
 
 export enum SubTypeEnum {
@@ -48,9 +48,11 @@ export enum StandardSubLevelEnum {
   advanced = 'advanced',
   custom = 'custom',
 
-  // @deprecated
+  /** @deprecated */
   experience = 'experience',
+  /** @deprecated */
   team = 'team',
+  /** @deprecated */
   enterprise = 'enterprise'
 }
 

@@ -1,0 +1,49 @@
+{{- if and .Values.rbac.create .Values.metrics.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}metrics-auth-role
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Values.namePrefix }}metrics-auth-rolebinding
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Values.namePrefix }}metrics-auth-role
+subjects:
+- kind: ServiceAccount
+  name: {{ include "opensandbox-controller.serviceAccountName" . }}
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}metrics-reader
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+{{- end }}

@@ -1,37 +1,39 @@
 import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoUsage } from './schema';
 import { type ClientSession } from '../../../common/mongo';
-import { addLog } from '../../../common/system/log';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../../global/common/i18n/utils';
 import { formatModelChars2Points } from './utils';
 import { MongoUsageItem } from './usageItemSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WALLET.USAGE);
 
 export async function createUsage(data: CreateUsageProps) {
   try {
     return await global.createUsageHandler(data);
   } catch (error) {
-    addLog.error('createUsage error', error);
+    logger.error('Failed to create usage', { error });
   }
 }
 export async function concatUsage(data: ConcatUsageProps) {
   try {
     await global.concatUsageHandler(data);
   } catch (error) {
-    addLog.error('concatUsage error', error);
+    logger.error('Failed to concat usage', { error });
   }
 }
 export async function pushUsageItems(data: PushUsageItemsProps) {
   try {
     await global.pushUsageItemsHandler(data);
   } catch (error) {
-    addLog.error('pushUsageItems error', error);
+    logger.error('Failed to push usage items', { error });
   }
 }
 

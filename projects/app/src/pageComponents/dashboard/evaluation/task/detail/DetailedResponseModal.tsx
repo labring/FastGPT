@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getChatResData } from '@/web/core/chat/api';
+import { getChatResData } from '@/web/core/chat/record/api';
 import { ResponseBox } from '@/components/core/chat/components/WholeResponseModal';
 
 interface DetailedResponseModalProps {

@@ -4,7 +4,7 @@ import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getAppDetailById } from '@/web/core/app/api';
-import type { AppDetailType } from '@fastgpt/global/core/app/type.d';
+import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import {
   getEvaluationStats,
   getEvaluationItemList,

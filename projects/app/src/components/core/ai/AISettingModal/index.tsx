@@ -23,17 +23,19 @@ import {
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import PriceTiersLabel from '../PriceTiersLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
+import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -54,13 +56,26 @@ const LabelStyles: BoxProps = {
   mr: 5
 };
 
-export type AIChatSettingsModalProps = {};
+export type AIChatSettingsModalProps = {
+  showMaxToken?: boolean;
+  showTemperature?: boolean;
+  showTopP?: boolean;
+  showStopSign?: boolean;
+  showResponseFormat?: boolean;
+  showReasoning?: boolean;
+};
 
 const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  llmModels = []
+  llmModels = [],
+  showMaxToken = true,
+  showTemperature = true,
+  showTopP = true,
+  showStopSign = true,
+  showResponseFormat = true,
+  showReasoning = true
 }: AIChatSettingsModalProps & {
   onClose: () => void;
   onSuccess: (e: SettingAIDataType) => void;
@@ -84,23 +99,22 @@ const AIChatSettingsModal = ({
   const temperature = watch('temperature');
   const useVision = watch('aiChatVision');
 
-  const selectedModel = useMemo(() => {
-    return getWebLLMModel(model);
+  const data = useMemo(() => {
+    const modelData = getWebLLMModel(model);
+    const support = getLLMSupportParams(modelData);
+
+    return {
+      selectedModel: modelData,
+      supportParams: support
+    };
   }, [model]);
-  const llmSupportVision = !!selectedModel?.vision;
-  const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
-  const llmSupportReasoning = !!selectedModel?.reasoning;
+  const selectedModel = data.selectedModel;
+  const supportParams = data.supportParams;
 
   const topP = watch(NodeInputKeyEnum.aiChatTopP);
-  const llmSupportTopP = !!selectedModel?.showTopP;
-
   const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
-  const llmSupportStopSign = !!selectedModel?.showStopSign;
-
   const responseFormat = watch(NodeInputKeyEnum.aiChatResponseFormat);
   const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
-  const llmSupportResponseFormat =
-    !!selectedModel?.responseFormatList && selectedModel?.responseFormatList.length > 0;
 
   const tokenLimit = useMemo(() => {
     return selectedModel?.maxResponse || 4096;
@@ -193,25 +207,11 @@ const AIChatSettingsModal = ({
             <Tbody>
               <Tr color={'myGray.900'}>
                 <Td pt={0} pb={2}>
-                  {typeof selectedModel?.inputPrice === 'number' ? (
-                    <>
-                      <Box>
-                        {t('common:support.wallet.Ai point every thousand tokens_input', {
-                          points: selectedModel?.inputPrice || 0
-                        })}
-                      </Box>
-                      <Box>
-                        {t('common:support.wallet.Ai point every thousand tokens_output', {
-                          points: selectedModel?.outputPrice || 0
-                        })}
-                      </Box>
-                    </>
-                  ) : (
-                    <>
-                      {t('common:support.wallet.Ai point every thousand tokens', {
-                        points: selectedModel?.charsPointsPrice || 0
-                      })}
-                    </>
+                  {!!selectedModel && (
+                    <PriceTiersLabel
+                      config={selectedModel}
+                      unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                    />
                   )}
                 </Td>
 
@@ -250,32 +250,34 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        <Flex {...FlexItemStyles}>
-          <Box {...LabelStyles}>
-            <Box>{t('app:max_tokens')}</Box>
-            <Switch
-              isChecked={maxToken !== undefined}
-              size={'sm'}
-              onChange={(e) => {
-                setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
-              }}
-            />
-          </Box>
-          <Box flex={'1 0 0'}>
-            <InputSlider
-              min={0}
-              max={tokenLimit}
-              step={200}
-              isDisabled={maxToken === undefined}
-              value={maxToken}
-              onChange={(val) => {
-                setValue(NodeInputKeyEnum.aiChatMaxToken, val);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-        {llmSupportTemperature && (
+        {showMaxToken && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Box>{t('app:max_tokens')}</Box>
+              <Switch
+                isChecked={maxToken !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <InputSlider
+                min={0}
+                max={tokenLimit}
+                step={200}
+                isDisabled={maxToken === undefined}
+                value={maxToken}
+                onChange={(val) => {
+                  setValue(NodeInputKeyEnum.aiChatMaxToken, val);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {supportParams.temperature && showTemperature && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -305,7 +307,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportTopP && (
+        {supportParams.topP && showTopP && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -335,7 +337,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportStopSign && (
+        {showStopSign && supportParams.stop && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -360,7 +362,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportResponseFormat && selectedModel?.responseFormatList && (
+        {showResponseFormat && supportParams.responseFormat && (
           <Flex {...FlexItemStyles}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:response_format')}</Flex>
@@ -380,7 +382,7 @@ const AIChatSettingsModal = ({
                 isDisabled={responseFormat === undefined}
                 size={'sm'}
                 bg={'myGray.25'}
-                list={selectedModel.responseFormatList.map((item) => ({
+                list={selectedModel.responseFormatList!.map((item) => ({
                   value: item,
                   label: item
                 }))}
@@ -393,7 +395,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {/* Json schema */}
-        {responseFormat === 'json_schema' && (
+        {showResponseFormat && responseFormat === 'json_schema' && (
           <Flex {...FlexItemStyles} h="auto">
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
@@ -412,7 +414,7 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {llmSupportReasoning && (
+        {supportParams.reasoning && showReasoning && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>
@@ -429,12 +431,12 @@ const AIChatSettingsModal = ({
         )}
         {showVisionSwitch && (
           <Flex {...FlexItemStyles} h={'25px'}>
-            <Box {...LabelStyles} w={llmSupportVision ? '9rem' : 'auto'}>
+            <Box {...LabelStyles} w={supportParams.vision ? '9rem' : 'auto'}>
               <Flex alignItems={'center'}>
                 {t('app:llm_use_vision')}
                 <QuestionTip ml={1} label={t('app:llm_use_vision_tip')}></QuestionTip>
               </Flex>
-              {llmSupportVision ? (
+              {supportParams.vision ? (
                 <Switch
                   isChecked={useVision}
                   size={'sm'}

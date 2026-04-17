@@ -7,7 +7,7 @@ import {
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
+import { multer } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import {
   checkTeamAIPoints,
@@ -25,7 +25,11 @@ import {
 
 vi.mock('@fastgpt/service/core/evaluation/common');
 vi.mock('@fastgpt/service/common/mongo/sessionRun');
-vi.mock('@fastgpt/service/common/file/multer');
+vi.mock('@fastgpt/service/common/file/multer', () => ({
+  multer: {
+    resolveMultipleFormData: vi.fn()
+  }
+}));
 vi.mock('@fastgpt/service/common/file/utils');
 vi.mock('@fastgpt/service/support/permission/teamLimit');
 vi.mock('@fastgpt/service/core/ai/model');
@@ -58,7 +62,7 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
 
 const mockAuthEvaluationDatasetDataWrite = vi.mocked(authEvaluationDatasetDataWrite);
 const mockAuthEvaluationDatasetCreate = vi.mocked(authEvaluationDatasetCreate);
-const mockGetUploadModel = vi.mocked(getUploadModel);
+const mockMulter = vi.mocked(multer);
 const mockRemoveFilesByPaths = vi.mocked(removeFilesByPaths);
 const mockCheckTeamAIPoints = vi.mocked(checkTeamAIPoints);
 const mockCheckTeamEvalDatasetLimit = vi.mocked(checkTeamEvalDatasetLimit);
@@ -113,10 +117,6 @@ describe('EvalDatasetData Import API', () => {
     }
   ];
 
-  const mockUploadModel = {
-    getUploadFiles: vi.fn()
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -134,14 +134,13 @@ describe('EvalDatasetData Import API', () => {
       isDirectory: () => false
     } as any);
 
-    mockGetUploadModel.mockReturnValue(mockUploadModel as any);
-    mockUploadModel.getUploadFiles.mockResolvedValue({
-      files: mockFiles,
+    mockMulter.resolveMultipleFormData.mockResolvedValue({
+      fileMetadata: mockFiles,
       data: {
         collectionId: validCollectionId,
         enableQualityEvaluation: false
       }
-    });
+    } as any);
 
     mockAuthEvaluationDatasetDataWrite.mockResolvedValue({
       teamId: validTeamId,
@@ -183,10 +182,10 @@ describe('EvalDatasetData Import API', () => {
 
   describe('Parameter Validation', () => {
     it('should reject when no files are uploaded', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: [],
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: [],
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -195,10 +194,10 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject when files are not CSV', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: [{ ...mockFiles[0], originalname: 'test.txt' }],
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: [{ ...mockFiles[0], originalname: 'test.txt' }],
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -207,10 +206,10 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject when neither collectionId nor name provided', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: mockFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: mockFiles,
         data: { enableQualityEvaluation: false }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -219,14 +218,14 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject when both collectionId and name provided', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: mockFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: mockFiles,
         data: {
           collectionId: validCollectionId,
           name: 'Test Collection',
           enableQualityEvaluation: false
         }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -235,13 +234,13 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject when enableQualityEvaluation is not boolean', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: mockFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: mockFiles,
         data: {
           collectionId: validCollectionId,
           enableQualityEvaluation: 'true'
         }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -252,13 +251,13 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject when quality evaluation enabled but no model provided', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: mockFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: mockFiles,
         data: {
           collectionId: validCollectionId,
           enableQualityEvaluation: true
         }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -269,14 +268,14 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject when evaluation model not found in global map', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: mockFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: mockFiles,
         data: {
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
           evaluationModel: 'non-existent-model'
         }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -333,14 +332,14 @@ describe('EvalDatasetData Import API', () => {
 
     describe('Mode 2: Create New Collection', () => {
       beforeEach(() => {
-        mockUploadModel.getUploadFiles.mockResolvedValue({
-          files: mockFiles,
+        mockMulter.resolveMultipleFormData.mockResolvedValue({
+          fileMetadata: mockFiles,
           data: {
             name: 'New Collection',
             description: 'Test description',
             enableQualityEvaluation: false
           }
-        });
+        } as any);
       });
 
       it('should create new collection when name provided', async () => {
@@ -364,13 +363,13 @@ describe('EvalDatasetData Import API', () => {
       });
 
       it('should reject when collection name is empty', async () => {
-        mockUploadModel.getUploadFiles.mockResolvedValue({
-          files: mockFiles,
+        mockMulter.resolveMultipleFormData.mockResolvedValue({
+          fileMetadata: mockFiles,
           data: {
             name: '',
             enableQualityEvaluation: false
           }
-        });
+        } as any);
 
         const req = { body: {} };
         const res = {};
@@ -401,10 +400,10 @@ describe('EvalDatasetData Import API', () => {
         { ...mockFiles[1], originalname: 'test2.csv' }
       ];
 
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: multipleFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: multipleFiles,
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -486,14 +485,14 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should trigger quality evaluation when enabled', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: mockFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: mockFiles,
         data: {
           collectionId: validCollectionId,
           enableQualityEvaluation: true,
           evaluationModel: 'gpt-4'
         }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -517,10 +516,10 @@ describe('EvalDatasetData Import API', () => {
 
   describe('Security - Directory Traversal Protection', () => {
     it('should reject files with directory traversal attempts', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: [{ ...mockFiles[0], path: '../../../etc/passwd' }],
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: [{ ...mockFiles[0], path: '../../../etc/passwd' }],
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -529,10 +528,10 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject files with Windows-style directory traversal', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: [{ ...mockFiles[0], path: '..\\..\\windows\\system32\\config\\sam' }],
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: [{ ...mockFiles[0], path: '..\\..\\windows\\system32\\config\\sam' }],
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const req = { body: {} };
       const res = {};
@@ -541,10 +540,10 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject non-existent file paths', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: [{ ...mockFiles[0], path: '/non/existent/file.csv' }],
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: [{ ...mockFiles[0], path: '/non/existent/file.csv' }],
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const fs = require('fs');
       fs.readFileSync.mockImplementation(() => {
@@ -558,10 +557,10 @@ describe('EvalDatasetData Import API', () => {
     });
 
     it('should reject directory paths instead of files', async () => {
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: [{ ...mockFiles[0], path: '/tmp/' }],
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: [{ ...mockFiles[0], path: '/tmp/' }],
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const fs = require('fs');
       fs.statSync = vi.fn().mockReturnValue({
@@ -581,10 +580,10 @@ describe('EvalDatasetData Import API', () => {
         { ...mockFiles[1], path: '/var/tmp/upload-123.csv' }
       ];
 
-      mockUploadModel.getUploadFiles.mockResolvedValue({
-        files: legitimateFiles,
+      mockMulter.resolveMultipleFormData.mockResolvedValue({
+        fileMetadata: legitimateFiles,
         data: { collectionId: validCollectionId, enableQualityEvaluation: false }
-      });
+      } as any);
 
       const fs = require('fs');
       fs.statSync = vi.fn().mockReturnValue({

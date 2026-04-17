@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
@@ -10,10 +10,12 @@ import {
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { ExportDatasetQuerySchema } from '@fastgpt/global/openapi/core/dataset/api';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 type DataItemType = {
   _id: string;
@@ -23,13 +25,7 @@ type DataItemType = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  let { datasetId } = req.query as {
-    datasetId: string;
-  };
-
-  if (!datasetId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+  const { datasetId } = ExportDatasetQuerySchema.parse(req.query);
 
   // 凭证校验
   const { teamId, dataset } = await authDataset({
@@ -90,7 +86,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   cursor.on('error', (err) => {
-    addLog.error(`export dataset error`, err);
+    logger.error(`export dataset error`, { error: err });
     res.status(500);
     res.end();
   });

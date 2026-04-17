@@ -1,7 +1,7 @@
 import React, { type Dispatch, useCallback, useMemo } from 'react';
 import { type NodeProps, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 import QGConfig from '@/components/core/app/QGConfig';
 import TTSSelect from '@/components/core/app/TTSSelect';
@@ -266,7 +266,12 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
         }));
 
         // Dynamic add or delete userFilesInput
-        const canUploadFiles = e.canSelectFile || e.canSelectImg;
+        const canUploadFiles =
+          e.canSelectFile ||
+          e.canSelectImg ||
+          e.canSelectVideo ||
+          e.canSelectAudio ||
+          e.canSelectCustomFileExtension;
         const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
         if (canUploadFiles) {
           !repeatKey &&

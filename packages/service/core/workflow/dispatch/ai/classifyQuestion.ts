@@ -1,25 +1,27 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { addLog } from '../../../../common/system/log';
 import { createLLMResponse } from '../../../ai/llm/request';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
-  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
@@ -68,6 +70,15 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     inputTokens: inputTokens,
     outputTokens: outputTokens
   });
+  props.usagePush([
+    {
+      moduleName: name,
+      totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+      model: modelName,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens
+    }
+  ]);
 
   return {
     data: {
@@ -88,16 +99,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: name,
-        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-        model: modelName,
-        inputTokens: inputTokens,
-        outputTokens: outputTokens
-      }
-    ]
+    }
   };
 };
 
@@ -108,12 +110,11 @@ const completions = async ({
   lastMemory,
   params: { agents, systemPrompt = '', userChatInput }
 }: ActionProps) => {
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getCQSystemPrompt({
               systemPrompt,
@@ -131,7 +132,6 @@ const completions = async ({
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: userChatInput
           }
@@ -161,7 +161,7 @@ const completions = async ({
     '';
 
   if (!id) {
-    addLog.warn('Classify error', { answer });
+    logger.warn('Classify question returned unknown type', { answer });
   }
 
   return {

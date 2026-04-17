@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, type BoxProps, Flex, type FlexProps } from '@chakra-ui/react';
 
-type ColorSchemaType =
+export type ColorSchemaType =
   | 'white'
   | 'blue'
   | 'green'

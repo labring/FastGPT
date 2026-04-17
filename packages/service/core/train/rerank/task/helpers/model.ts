@@ -13,5 +13,5 @@ export function isTunedModel(modelConfigId: string): boolean {
     return false;
   }
   // Only models created by training module have isTuned flag
-  return modelConfig.isTuned === true;
+  return (modelConfig as any).isTuned === true;
 }

@@ -197,7 +197,7 @@ describe('EvaluationTaskService Integration Tests', () => {
       '@fastgpt/service/core/evaluation/summary/queue'
     );
 
-    (createEvaluationUsage as any).mockResolvedValue({ billId: new Types.ObjectId() });
+    (createEvaluationUsage as any).mockResolvedValue({ usageId: new Types.ObjectId().toString() });
     (getEvaluationTaskStats as any).mockResolvedValue({
       total: 2,
       completed: 0,

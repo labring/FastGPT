@@ -120,7 +120,7 @@ const DataListContent = () => {
     refreshList
   } = useScrollPagination(getEvaluationDatasetDataList, {
     pageSize: 15,
-    params: scrollParams,
+    params: scrollParams as any,
     refreshDeps: [searchKey, status, collectionId], // 添加collectionId作为依赖
     EmptyTip: EmptyTipDom
   });

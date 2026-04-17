@@ -1,0 +1,47 @@
+---
+title: V4.8.8 (Includes Migration Script)
+description: FastGPT V4.8.8 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+### 2. Update images
+
+- Update the fastgpt image tag to v4.8.8-fix2
+- Update the commercial edition image tag to v4.8.8
+
+### 3. Run initialization
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv488' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will initialize inherited permissions for Knowledge Bases.
+
+-------
+
+## V4.8.8 Release Notes
+
+[View full release notes](https://github.com/labring/FastGPT/releases/tag/v4.8.8)
+
+1. New - Restructured system plugin architecture. Community members can now submit system plugins via PR. See: [How to Submit System Plugins to the FastGPT Community](https://fael3z0zfze.feishu.cn/wiki/ERZnw9R26iRRG0kXZRec6WL9nwh).
+2. New - DuckDuckGo system plugin.
+3. New - Lark webhook system plugin.
+4. New - Revamped variable input method. Prompt input fields and all Textarea inputs in workflows now support typing `/` to trigger variable selection, allowing you to directly pick any upstream output value without dynamic imports.
+5. Commercial - Knowledge Base permission inheritance.
+6. Improved - Mobile quick app switching interaction.
+7. Improved - Node icons.
+8. Improved - Added a dedicated copy button to chat references for easier copying. Added collapsible reference content.
+9. Improved - Upgraded OpenAI SDK with a custom Whisper model interface (the SDK's built-in Whisper interface doesn't seem to work well with standard FastAPI endpoints).
+10. Fixed - Permission table declaration issue.
+11. Fixed - Parallel execution nodes not recording run time correctly.
+12. Fixed - Run details not displaying nested node information correctly.
+13. Fixed - Simple Mode failing to load Knowledge Base configuration on first entry.
+14. Fixed - Log debug level configuration not taking effect.
+15. Fixed - When running plugins standalone, plugin input values were being variable-substituted, potentially causing downstream node variable issues.

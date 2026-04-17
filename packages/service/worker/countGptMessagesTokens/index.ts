@@ -6,11 +6,13 @@ import {
   type ChatCompletionContentPart,
   type ChatCompletionCreateParams,
   type ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { parentPort } from 'worker_threads';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const enc = new Tiktoken(cl100k_base.bpe_ranks, cl100k_base.special_tokens, cl100k_base.pat_str);
+const logger = getLogger(LogCategories.INFRA.WORKER);
 
 /* count messages tokens */
 parentPort?.on(
@@ -100,8 +102,8 @@ parentPort?.on(
               .join('');
           })();
 
-          // Only the last message computed reasoning_text
-          const reasoningText = index === messages.length - 1 ? item.reasoning_text || '' : '';
+          // Only the last message computed reasoning_content
+          const reasoningText = index === messages.length - 1 ? item.reasoning_content || '' : '';
 
           return (
             sum +
@@ -117,7 +119,7 @@ parentPort?.on(
         data: total
       });
     } catch (error) {
-      console.log(error);
+      logger.error('Token count worker failed', { error });
       parentPort?.postMessage({
         id,
         type: 'success',

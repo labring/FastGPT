@@ -16,6 +16,14 @@ type FileTypeSelectorValue = {
   customFileExtensionList?: string[];
 };
 
+const fileExtensionTypeTranslationMap = new Map<FileExtensionKeyType, string>([
+  ['canSelectFile', 'app:upload_file_extension_type_canSelectFile'],
+  ['canSelectImg', 'app:upload_file_extension_type_canSelectImg'],
+  ['canSelectVideo', 'app:upload_file_extension_type_canSelectVideo'],
+  ['canSelectAudio', 'app:upload_file_extension_type_canSelectAudio'],
+  ['canSelectCustomFileExtension', 'app:upload_file_extension_type_canSelectCustomFileExtension']
+]);
+
 export const FileTypeSelectorPanel = ({
   value,
   onChange
@@ -190,7 +198,7 @@ export const FileTypeSelectorPanel = ({
               onChange={(e) => handleTypeChange(type as FileExtensionKeyType, e.target.checked)}
             >
               <Box color={'myGray.900'} lineHeight={1}>
-                {t(`app:upload_file_extension_type_${type}`)}
+                {t(fileExtensionTypeTranslationMap.get(type as FileExtensionKeyType) || type)}
               </Box>
               <Box mt={1} fontSize={'xs'} color={'myGray.500'} wordBreak={'break-word'} w="full">
                 {exts.map((ext) => ext.slice(1)).join('/')}

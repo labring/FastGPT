@@ -3,6 +3,7 @@ import { connectionMongo, getMongoModel } from '../../../common/mongo';
 import { MemberGroupCollectionName } from './memberGroupSchema';
 import { type GroupMemberSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import { getLogger, LogCategories } from '../../../common/logger';
 const { Schema } = connectionMongo;
 
 export const GroupMemberCollectionName = 'team_group_members';
@@ -33,6 +34,8 @@ GroupMemberSchema.virtual('group', {
   justOne: true
 });
 
+const logger = getLogger(LogCategories.INFRA.MONGO);
+
 try {
   GroupMemberSchema.index({
     groupId: 1
@@ -42,7 +45,7 @@ try {
     tmbId: 1
   });
 } catch (error) {
-  console.log(error);
+  logger.error('Failed to build group member indexes', { error });
 }
 
 export const MongoGroupMemberModel = getMongoModel<GroupMemberSchemaType>(

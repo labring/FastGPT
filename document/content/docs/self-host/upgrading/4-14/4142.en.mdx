@@ -1,0 +1,46 @@
+---
+title: 'V4.14.2'
+description: 'FastGPT V4.14.2 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.14.2
+- Update FastGPT commercial edition image tag: v4.14.2
+- Update fastgpt-plugin image tag: v0.3.2
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+
+## New Features
+
+1. Refactored the underlying Agent Call mechanism with support for context compression during consecutive tool calls.
+2. New Template Marketplace UI.
+3. Quick knowledge base creation from the Agent editor page.
+
+## Improvements
+
+1. Template Marketplace cache duration set to 30 minutes.
+2. Custom separator chunk size now uses the maximum chunk size.
+3. Prevented logging from triggering recursive log storms; excluded log model from performance monitoring middleware.
+
+## Bug Fixes
+
+1. Simple app templates were not converted correctly.
+2. When tool calls contained two or more consecutive user selections, the second user selection behaved abnormally.
+3. Incorrect team app type in the portal.
+4. When an app was exported as MCP and used by other apps, global variables no longer need to be filled in.
+
+## Plugin Updates
+
+1. Fix: Sub-tool avatars were missing.
+2. Fix: Model avatars were missing.
+3. Fix: Incorrect mongoose dependency reference in Worker caused errors for tools running longer than 10 seconds.
+4. Improvement: Static files are no longer re-uploaded during hot reload in development mode.
+5. Added: 5118 SEO keyword mining tool.
+6. Added: Tavily content extraction advanced configuration; website sitemap tool.
+7. Added: WeChat Official Account toolset.
+8. Added: Document comparison tool.
+9. Added: Model presets for Kimi V2 and GPT 5.1.

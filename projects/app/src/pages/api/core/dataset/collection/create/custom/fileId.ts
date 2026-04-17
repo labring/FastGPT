@@ -17,7 +17,7 @@ import {
   adaptiveAdjustConfig,
   logAdaptiveAdjustments
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
-import type { CustomFileImportModeType } from '@fastgpt/global/common/system/types/index.d';
+import type { CustomFileImportModeType } from '@fastgpt/global/common/system/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
@@ -269,7 +269,7 @@ async function handler(
   logAdaptiveAdjustments(datasetId, adjustments);
 
   // 8. Assemble complete parameters
-  const { collectionId, insertResults } = await createCollectionAndInsertData({
+  const { collectionId, results: insertResults } = await createCollectionAndInsertData({
     dataset,
     createCollectionParams: {
       teamId,

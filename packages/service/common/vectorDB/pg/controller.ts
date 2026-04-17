@@ -1,8 +1,10 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
+
+const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -30,26 +32,26 @@ export const connectPg = async (): Promise<Pool> => {
   global.pgClient = pool;
 
   global.pgClient.on('error', async (err) => {
-    addLog.error(`[PG] error`, err);
+    logger.error('Postgres pool error', { error: err });
   });
   global.pgClient.on('connect', async () => {
-    addLog.info(`[PG] connect`);
+    logger.info('Postgres pool connected');
   });
   global.pgClient.on('remove', async (client) => {
-    addLog.warn('[PG] Connection removed from pool');
+    logger.warn('Postgres connection removed from pool');
   });
 
   try {
     await global.pgClient.connect();
     return global.pgClient;
   } catch (error) {
-    addLog.error(`[PG] connect error`, error);
+    logger.error('Postgres connection failed', { error });
     global.pgClient?.removeAllListeners();
     global.pgClient?.end();
     global.pgClient = null;
 
     await delay(1000);
-    addLog.warn(`[PG] retry connect`);
+    logger.warn('Postgres reconnecting after failure');
 
     return connectPg();
   }
@@ -126,10 +128,18 @@ class PgClass {
 
       if (time > 1000) {
         const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
-        addLog.warn(`[PG slow 2] time: ${time}ms, sql: ${safeSql}`);
+        logger.warn('Postgres slow query detected', {
+          level: 'slow-2',
+          durationMs: time,
+          sql: safeSql
+        });
       } else if (time > 300) {
         const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
-        addLog.warn(`[PG slow 1] time: ${time}ms, sql: ${safeSql}`);
+        logger.warn('Postgres slow query detected', {
+          level: 'slow-1',
+          durationMs: time,
+          sql: safeSql
+        });
       }
 
       return res;

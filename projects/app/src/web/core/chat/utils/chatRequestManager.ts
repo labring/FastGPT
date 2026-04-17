@@ -1,4 +1,4 @@
-import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 
 /**
  * 会话请求管理器

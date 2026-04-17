@@ -1,4 +1,4 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 
 export enum UsageSourceEnum {
   fastgpt = 'fastgpt',
@@ -8,6 +8,7 @@ export enum UsageSourceEnum {
   cronJob = 'cronJob',
   share = 'share',
   wecom = 'wecom',
+  wechat = 'wechat',
   feishu = 'feishu',
   dingtalk = 'dingtalk',
   official_account = 'official_account',
@@ -15,7 +16,8 @@ export enum UsageSourceEnum {
   mcp = 'mcp',
   evaluation = 'evaluation',
   optimize_prompt = 'optimize_prompt',
-  code_copilot = 'code_copilot'
+  code_copilot = 'code_copilot',
+  assist_generate_skill = 'assist_generate_skill'
 }
 
 export const UsageSourceMap = {
@@ -46,6 +48,9 @@ export const UsageSourceMap = {
   [UsageSourceEnum.wecom]: {
     label: i18nT('account_usage:wecom')
   },
+  [UsageSourceEnum.wechat]: {
+    label: i18nT('account_usage:wechat')
+  },
   [UsageSourceEnum.dingtalk]: {
     label: i18nT('account_usage:dingtalk')
   },
@@ -63,6 +68,9 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.code_copilot]: {
     label: i18nT('common:support.wallet.usage.Code Copilot')
+  },
+  [UsageSourceEnum.assist_generate_skill]: {
+    label: i18nT('common:support.wallet.usage.Assist Generate Skill')
   }
 };
 

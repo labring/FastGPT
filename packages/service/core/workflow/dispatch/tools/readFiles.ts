@@ -6,14 +6,14 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { axios } from '../../../../common/api/axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../utils/context';
+import { readFileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { addLog } from '../../../../common/system/log';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
-import { isInternalAddress } from '../../../../common/system/utils';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../dataset/utils';
 import { getFileS3Key } from '../../../../common/s3/utils';
 import { S3ChatSource } from '../../../../common/s3/sources/chat';
@@ -22,6 +22,9 @@ import { S3Buckets } from '../../../../common/s3/constants';
 import { S3Sources } from '../../../../common/s3/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 import https from 'https';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -105,24 +108,20 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   }
 };
 
-export const getHistoryFileLinks = (histories: ChatItemType[]) => {
+export const getHistoryFileLinks = (histories: ChatItemMiniType[]) => {
   return histories
     .filter((item) => {
       if (item.obj === ChatRoleEnum.Human) {
-        return item.value.filter((value) => value.type === 'file');
+        return item.value.some((value) => value.file);
       }
       return false;
     })
-    .map((item) => {
-      const value = item.value as UserChatItemValueItemType[];
-      const files = value
-        .map((item) => {
-          return item.file?.url;
-        })
-        .filter(Boolean) as string[];
-      return files;
-    })
-    .flat();
+    .flatMap((item) => {
+      if (item.obj === ChatRoleEnum.Human) {
+        return item.value.map((value) => value.file?.url).filter(Boolean) as string[];
+      }
+      return [];
+    });
 };
 
 export const getFileContentFromLinks = async ({
@@ -167,7 +166,7 @@ export const getFileContentFromLinks = async ({
 
         return url;
       } catch (error) {
-        addLog.warn(`Parse url error`, { error });
+        logger.warn('Failed to parse file URL', { url, error });
         return '';
       }
     })
@@ -191,8 +190,8 @@ export const getFileContentFromLinks = async ({
         }
 
         try {
-          if (isInternalAddress(url)) {
-            return Promise.reject('Url is invalid');
+          if (await isInternalAddress(url)) {
+            return Promise.reject(PRIVATE_URL_TEXT);
           }
 
           // Get file buffer data
@@ -226,7 +225,7 @@ export const getFileContentFromLinks = async ({
                   try {
                     return decodeURIComponent(encodedFilename);
                   } catch (error) {
-                    addLog.warn('Failed to decode filename*', { encodedFilename, error });
+                    logger.warn('Failed to decode filename*', { encodedFilename, error });
                   }
                 }
 
@@ -268,7 +267,7 @@ export const getFileContentFromLinks = async ({
             return detectFileEncoding(buffer);
           })();
 
-          const { rawText } = await readS3FileContentByBuffer({
+          const { rawText } = await readFileContentByBuffer({
             extension,
             teamId,
             tmbId,

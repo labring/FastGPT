@@ -11,7 +11,9 @@ import type {
   getChartDataResponse,
   getTotalDataQuery,
   getTotalDataResponse,
-  getAppChatLogsResponseType
+  getAppChatLogsResponseType,
+  GetLogUsersBody,
+  GetLogUsersResponse
 } from '@fastgpt/global/openapi/core/app/log/api';
 import type {
   DeleteChatCorrectionParams,
@@ -39,6 +41,9 @@ export const getAppTotalData = (data: getTotalDataQuery) =>
 
 export const getAppChartData = (data: getChartDataBody) =>
   POST<getChartDataResponse>('/proApi/core/app/logs/getChartData', data);
+
+export const getLogUsers = (data: GetLogUsersBody) =>
+  POST<GetLogUsersResponse>('/core/app/logs/getUsers', data, { maxQuantity: 1 });
 
 export const getKeywordQuote = (data: GetKeywordQuoteParams) =>
   POST<GetKeywordQuoteResponse>('/core/chat/quote/getKeywordQuote', data);

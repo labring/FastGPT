@@ -10,7 +10,7 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
@@ -278,7 +278,7 @@ async function handler(
         : enhanceConfig;
 
     // 7. 创建集合并插入数据
-    const { collectionId, insertResults } = await createCollectionAndInsertData({
+    const { collectionId, results: insertResults } = await createCollectionAndInsertData({
       dataset,
       rawText,
       backupParse: true,

@@ -3,7 +3,7 @@ import {
   DEFAULT_FILE_UPLOAD_LIMITS,
   FileUploadErrorEnum
 } from '@fastgpt/global/common/file/constants';
-import type { FileType } from './multer';
+type FileType = Express.Multer.File;
 
 export interface FileUploadLimits {
   maxFileCount?: number;

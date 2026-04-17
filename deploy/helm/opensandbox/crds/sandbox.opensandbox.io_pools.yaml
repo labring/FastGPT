@@ -1,0 +1,129 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: pools.sandbox.opensandbox.io
+spec:
+  group: sandbox.opensandbox.io
+  names:
+    kind: Pool
+    listKind: PoolList
+    plural: pools
+    singular: pool
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: The number of all nodes in pool.
+      jsonPath: .status.total
+      name: TOTAL
+      type: integer
+    - description: The number of allocated nodes in pool.
+      jsonPath: .status.allocated
+      name: ALLOCATED
+      type: integer
+    - description: The number of available nodes in pool.
+      jsonPath: .status.available
+      name: AVAILABLE
+      type: integer
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Pool is the Schema for the pools API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PoolSpec defines the desired state of Pool.
+            properties:
+              capacitySpec:
+                description: CapacitySpec controls the size of the resource pool.
+                properties:
+                  bufferMax:
+                    description: BufferMax is the maximum number of nodes kept in
+                      the warm buffer.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  bufferMin:
+                    description: BufferMin is the minimum number of nodes that must
+                      remain in the buffer.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  poolMax:
+                    description: PoolMax is the maximum total number of nodes allowed
+                      in the entire pool.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  poolMin:
+                    description: PoolMin is the minimum total size of the pool.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                required:
+                - bufferMax
+                - bufferMin
+                - poolMax
+                - poolMin
+                type: object
+              template:
+                description: Pod Template used to create pre-warmed nodes in the pool.
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - capacitySpec
+            type: object
+          status:
+            description: PoolStatus defines the observed state of Pool.
+            properties:
+              allocated:
+                description: Allocated is the number of nodes currently allocated
+                  to sandboxes.
+                format: int32
+                type: integer
+              available:
+                description: Available is the number of nodes currently available
+                  in the pool.
+                format: int32
+                type: integer
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the most recent generation observed for this BatchSandbox. It corresponds to the
+                  BatchSandbox's generation, which is updated on mutation by the API Server.
+                format: int64
+                type: integer
+              revision:
+                description: Revision is the latest version of pool
+                type: string
+              total:
+                description: Total is the total number of nodes in the pool.
+                format: int32
+                type: integer
+            required:
+            - allocated
+            - available
+            - revision
+            - total
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

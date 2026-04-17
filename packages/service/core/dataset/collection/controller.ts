@@ -2,11 +2,11 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import type {
   DatasetCollectionSchemaType,
-  DatasetSchemaType
+  DatasetSchemaType,
+  TableSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
@@ -39,6 +39,11 @@ import {
   DatasetVectorTableName
 } from '../../../common/vectorDB/constants';
 import { addLog } from '../../../common/system/log';
+import type {
+  CreateCollectionWithResultResponseType,
+  ApiCreateDatasetCollectionParams
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
@@ -57,13 +62,12 @@ export const createCollectionAndInsertData = async ({
 
   billId?: string;
   session?: ClientSession;
-}) => {
+}): Promise<CreateCollectionWithResultResponseType> => {
   addLog.debug('[createCollectionAndInsertData] Input params', {
     rawTextLength: rawText?.length,
     imageIdsCount: imageIds?.length,
     collectionType: createCollectionParams.type
-  });
-
+  });  
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
     createCollectionParams.trainingType = DatasetCollectionDataProcessModeEnum.chunk;
@@ -196,7 +200,7 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
 
-  const fn = async (session: ClientSession) => {
+  const fn = async (session: ClientSession): Promise<CreateCollectionWithResultResponseType> => {
     // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
       ...formatCreateCollectionParams,
@@ -276,7 +280,9 @@ export const createCollectionAndInsertData = async ({
 
     return {
       collectionId: String(collectionId),
-      insertResults
+      results: {
+        insertLen: insertResults.insertLen
+      }
     };
   };
 
@@ -286,9 +292,23 @@ export const createCollectionAndInsertData = async ({
   return mongoSessionRun(fn);
 };
 
-export type CreateOneCollectionParams = CreateDatasetCollectionParams & {
+export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   teamId: string;
   tmbId: string;
+  name: string;
+  type: DatasetCollectionTypeEnum;
+  fileId?: string;
+  rawLink?: string;
+  externalFileId?: string;
+  externalFileUrl?: string;
+  apiFileId?: string;
+  apiFileParentId?: string;
+  rawTextLength?: number;
+  hashRawText?: string;
+  createTime?: Date;
+  updateTime?: Date;
+  tableSchema?: TableSchemaType;
+  forbid?: boolean;
   session?: ClientSession;
 };
 export async function createOneCollection({ session, ...props }: CreateOneCollectionParams) {

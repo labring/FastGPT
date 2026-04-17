@@ -17,7 +17,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -30,6 +30,8 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
+import PriceTiersLabel from '../PriceTiersLabel';
+import TestModeBetaTag from '../TestModeBetaTag';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -67,32 +69,12 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
     const formatLLMModelList = llmModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.chat'),
-      priceLabel:
-        typeof item.inputPrice === 'number' ? (
-          <Box>
-            <Flex>
-              {`${t('common:Input')}: `}
-              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-                {item.inputPrice || 0}
-              </Box>
-              {`${t('common:support.wallet.subscription.point')}/1K tokens`}
-            </Flex>
-            <Flex>
-              {`${t('common:Output')}: `}
-              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-                {item.outputPrice || 0}
-              </Box>
-              {`${t('common:support.wallet.subscription.point')}/1K tokens`}
-            </Flex>
-          </Box>
-        ) : (
-          <Flex color={'myGray.700'}>
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice || 0}
-            </Box>
-            {`${t('common:support.wallet.subscription.point')}/1K tokens`}
-          </Flex>
-        ),
+      priceLabel: (
+        <PriceTiersLabel
+          config={item}
+          unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+        />
+      ),
       tagColor: 'blue'
     }));
     const formatVectorModelList = embeddingModelList.map((item) => ({
@@ -172,6 +154,7 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
       return {
         model: item.model,
         name: item.name,
+        testMode: item.testMode,
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: provider.name,
@@ -306,9 +289,12 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
                       ></Checkbox>
                     )}
                     <Avatar src={item.avatar} w={'1.2rem'} />
-                    <CopyBox value={item.name} color={'myGray.900'}>
-                      {item.name}
-                    </CopyBox>
+                    <Flex alignItems={'center'} gap={1} minW={0}>
+                      <CopyBox value={item.name} color={'myGray.900'}>
+                        {item.name}
+                      </CopyBox>
+                      {item.testMode && <TestModeBetaTag />}
+                    </Flex>
                   </HStack>
                 </Td>
                 <Td>

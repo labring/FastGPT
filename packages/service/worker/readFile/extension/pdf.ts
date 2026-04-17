@@ -4,6 +4,7 @@ import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 // pdfjs-dist does not export PasswordException directly, detect by name
 const isPdfPasswordError = (error: unknown): boolean => {
@@ -26,6 +27,7 @@ type TokenType = {
 };
 
 export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
+  const logger = getLogger(LogCategories.INFRA.WORKER);
   const readPDFPage = async (doc: any, pageNo: number) => {
     try {
       const page = await doc.getPage(pageNo);
@@ -63,7 +65,7 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
         })
         .join('');
     } catch (error) {
-      console.log('pdf read error', error);
+      logger.error('Failed to read pdf page', { pageNo, error });
       return '';
     }
   };

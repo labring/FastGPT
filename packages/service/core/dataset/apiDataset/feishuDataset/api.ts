@@ -1,13 +1,13 @@
 import type {
   APIFileItemType,
-  ApiFileReadContentResponse,
+  ApiFileReadContentResponseType,
   ApiDatasetDetailResponse,
-  FeishuServer
+  FeishuServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type Method } from 'axios';
-import { addLog } from '../../../../common/system/log';
 import { createProxyAxios, axios } from '../../../../common/api/axios';
+import { getLogger, LogCategories } from '../../../../common/logger';
 
 type ResponseDataType = {
   success: boolean;
@@ -31,8 +31,9 @@ type FeishuFileListResponse = {
 };
 
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
+const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
-export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
+export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServerType }) => {
   const instance = createProxyAxios({
     baseURL: feishuBaseUrl,
     timeout: 60000
@@ -60,13 +61,13 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
    */
   const checkRes = (data: ResponseDataType) => {
     if (data === undefined) {
-      addLog.info('yuque dataset data is empty');
+      logger.warn('Feishu dataset response data is empty');
       return Promise.reject('服务器异常');
     }
     return data.data;
   };
   const responseError = (err: any) => {
-    console.log('error->', '请求错误', err);
+    logger.error('Feishu dataset request failed', { error: err });
 
     if (!err) {
       return Promise.reject({ message: '未知错误' });
@@ -149,7 +150,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiFileReadContentResponse> => {
+  }): Promise<ApiFileReadContentResponseType> => {
     const [{ content }, { document }] = await Promise.all([
       request<{ content: string }>(
         `/open-apis/docx/v1/documents/${apiFileId}/raw_content`,

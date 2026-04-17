@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { type ImportSourceItemType } from '@/web/core/dataset/type.d';
+import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { Box, Button } from '@chakra-ui/react';
 import FileSelector, { type SelectFileItemType } from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
@@ -13,7 +13,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
+import { getUploadDatasetFilePresignedUrl } from '@/web/core/dataset/api/file';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 

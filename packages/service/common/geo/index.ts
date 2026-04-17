@@ -5,10 +5,13 @@ import { cleanupIntervalMs, dbPath, privateOrOtherLocationName } from './constan
 import type { LocationName } from './type';
 import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
+export type { NextApiRequest } from 'next';
 import { getClientIp } from 'request-ip';
-import { addLog } from '../system/log';
+import { getLogger } from '../logger';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
+
+const logger = getLogger(['GEO']);
 
 let reader: ReaderModel | null = null;
 
@@ -97,7 +100,10 @@ export function initGeo() {
     loadGeoDB();
   } catch (error) {
     clearCleanupInterval();
-    addLog.error(`Failed to load geo db`, error);
+    logger.error('Failed to load geo database', {
+      path: dbPath,
+      error
+    });
     throw error;
   }
 }

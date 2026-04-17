@@ -16,6 +16,141 @@ import EmptyTip from '../EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 
+type RenderListProps = {
+  index: number;
+  list: MultipleSelectProps['list'];
+  cloneValue: (string | undefined)[];
+  setCloneValue: React.Dispatch<React.SetStateAction<(string | undefined)[]>>;
+  onSelect: (val: (string | undefined)[]) => void;
+  onClose: () => void;
+  changeOnEverySelect: boolean;
+  emptyTip?: string;
+  maxH: number;
+  minWidth: string;
+  rowMinWidth: string;
+  MenuRef: React.MutableRefObject<(HTMLDivElement | null)[]>;
+  SelectedItemRef: React.MutableRefObject<(HTMLDivElement | null)[]>;
+};
+
+const RenderList = React.memo(function RenderList({
+  index,
+  list,
+  cloneValue,
+  setCloneValue,
+  onSelect,
+  onClose,
+  changeOnEverySelect,
+  emptyTip,
+  maxH,
+  minWidth,
+  rowMinWidth,
+  MenuRef,
+  SelectedItemRef
+}: RenderListProps) {
+  const { t } = useTranslation();
+  const selectedValue = cloneValue[index];
+  const selectedIndex = list.findIndex((item) => item.value === selectedValue);
+  const children = list[selectedIndex]?.children || [];
+
+  const currentScrollTop = MenuRef.current[index]?.scrollTop;
+  useEffect(() => {
+    if (currentScrollTop !== undefined && MenuRef.current[index]) {
+      MenuRef.current[index]!.scrollTop = currentScrollTop;
+    }
+  }, [currentScrollTop, index, MenuRef]);
+
+  return (
+    <>
+      <Box
+        ref={(ref) => {
+          MenuRef.current[index] = ref;
+        }}
+        className="nowheel"
+        flex={'1 0 auto'}
+        px={2}
+        borderLeft={index !== 0 ? 'base' : 'none'}
+        minW={index !== 0 ? minWidth : rowMinWidth}
+        maxH={`${maxH}px`}
+        overflowY={'auto'}
+        whiteSpace={'nowrap'}
+      >
+        {list.map((item) => {
+          const hasChildren = item.children && item.children.length > 0;
+
+          return (
+            <Flex
+              key={item.value}
+              ref={(ref) => {
+                if (item.value === selectedValue) {
+                  SelectedItemRef.current[index] = ref;
+                }
+              }}
+              py={1.5}
+              _notLast={{ mb: 1 }}
+              cursor={'pointer'}
+              px={1.5}
+              borderRadius={'sm'}
+              _hover={{
+                bg: 'primary.50'
+              }}
+              onClick={() => {
+                const newValue = [...cloneValue];
+
+                if (item.value === selectedValue) {
+                  for (let i = index; i < newValue.length; i++) {
+                    newValue[i] = undefined;
+                  }
+                  setCloneValue(newValue);
+                  onSelect(newValue);
+                } else {
+                  newValue[index] = item.value;
+                  setCloneValue(newValue);
+
+                  if (changeOnEverySelect || !hasChildren) {
+                    onSelect(newValue);
+                  }
+
+                  if (!hasChildren) {
+                    onClose();
+                  }
+                }
+              }}
+              {...(item.value === selectedValue
+                ? {
+                    bg: 'primary.50',
+                    color: 'primary.600'
+                  }
+                : {})}
+            >
+              {item.label}
+            </Flex>
+          );
+        })}
+        {list.length === 0 && (
+          <EmptyTip text={emptyTip ?? t('common:no_select_data')} pt={1} pb={3} />
+        )}
+      </Box>
+      {children.length > 0 && (
+        <RenderList
+          list={children}
+          index={index + 1}
+          cloneValue={cloneValue}
+          setCloneValue={setCloneValue}
+          onSelect={onSelect}
+          onClose={onClose}
+          changeOnEverySelect={changeOnEverySelect}
+          emptyTip={emptyTip}
+          maxH={maxH}
+          minWidth={minWidth}
+          rowMinWidth={rowMinWidth}
+          MenuRef={MenuRef}
+          SelectedItemRef={SelectedItemRef}
+        />
+      )}
+    </>
+  );
+});
+
 export const MultipleRowSelect = ({
   placeholder,
   label,
@@ -30,7 +165,6 @@ export const MultipleRowSelect = ({
 }: MultipleSelectProps & {
   rowMinWidth?: string;
 }) => {
-  const { t } = useTranslation();
   const ButtonRef = useRef<HTMLButtonElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -52,99 +186,6 @@ export const MultipleRowSelect = ({
   }, [isOpen]);
 
   const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
-
-  const RenderList = useCallback(
-    ({ index, list }: { index: number; list: MultipleSelectProps['list'] }) => {
-      const selectedValue = cloneValue[index];
-      const selectedIndex = list.findIndex((item) => item.value === selectedValue);
-      const children = list[selectedIndex]?.children || [];
-
-      // Store current scroll position before update
-      const currentScrollTop = MenuRef.current[index]?.scrollTop;
-      // Use useEffect to restore scroll position after render
-      useEffect(() => {
-        if (currentScrollTop !== undefined && MenuRef.current[index]) {
-          MenuRef.current[index]!.scrollTop = currentScrollTop;
-        }
-      }, [currentScrollTop, index]);
-
-      return (
-        <>
-          <Box
-            ref={(ref) => {
-              MenuRef.current[index] = ref;
-            }}
-            className="nowheel"
-            flex={'1 0 auto'}
-            px={2}
-            borderLeft={index !== 0 ? 'base' : 'none'}
-            minW={index !== 0 ? minWidth : rowMinWidth}
-            maxH={`${maxH}px`}
-            overflowY={'auto'}
-            whiteSpace={'nowrap'}
-          >
-            {list.map((item) => {
-              const hasChildren = item.children && item.children.length > 0;
-
-              return (
-                <Flex
-                  key={item.value}
-                  ref={(ref) => {
-                    if (item.value === selectedValue) {
-                      SelectedItemRef.current[index] = ref;
-                    }
-                  }}
-                  py={1.5}
-                  _notLast={{ mb: 1 }}
-                  cursor={'pointer'}
-                  px={1.5}
-                  borderRadius={'sm'}
-                  _hover={{
-                    bg: 'primary.50'
-                  }}
-                  onClick={() => {
-                    const newValue = [...cloneValue];
-
-                    if (item.value === selectedValue) {
-                      for (let i = index; i < newValue.length; i++) {
-                        newValue[i] = undefined;
-                      }
-                      setCloneValue(newValue);
-                      onSelect(newValue);
-                    } else {
-                      newValue[index] = item.value;
-                      setCloneValue(newValue);
-
-                      if (changeOnEverySelect || !hasChildren) {
-                        onSelect(newValue);
-                      }
-
-                      if (!hasChildren) {
-                        onClose();
-                      }
-                    }
-                  }}
-                  {...(item.value === selectedValue
-                    ? {
-                        bg: 'primary.50',
-                        color: 'primary.600'
-                      }
-                    : {})}
-                >
-                  {item.label}
-                </Flex>
-              );
-            })}
-            {list.length === 0 && (
-              <EmptyTip text={emptyTip ?? t('common:no_select_data')} pt={1} pb={3} />
-            )}
-          </Box>
-          {children.length > 0 && <RenderList list={children} index={index + 1} />}
-        </>
-      );
-    },
-    [changeOnEverySelect, cloneValue, emptyTip, maxH, minWidth, onClose, onSelect, rowMinWidth, t]
-  );
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -179,14 +220,15 @@ export const MultipleRowSelect = ({
           _active={{
             transform: 'none'
           }}
+          {...ButtonProps}
           {...(isOpen
             ? {
                 boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
                 borderColor: 'primary.600',
-                color: 'primary.700'
+                color: 'primary.700',
+                bg: 'white !important'
               }
             : {})}
-          {...ButtonProps}
         >
           <Flex alignItems={'center'}>
             <Box flex="1" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
@@ -220,7 +262,21 @@ export const MultipleRowSelect = ({
           display={'flex'}
           userSelect={'none'}
         >
-          <RenderList list={list} index={0} />
+          <RenderList
+            list={list}
+            index={0}
+            cloneValue={cloneValue}
+            setCloneValue={setCloneValue}
+            onSelect={onSelect}
+            onClose={onClose}
+            changeOnEverySelect={changeOnEverySelect}
+            emptyTip={emptyTip}
+            maxH={maxH}
+            minWidth={minWidth}
+            rowMinWidth={rowMinWidth}
+            MenuRef={MenuRef}
+            SelectedItemRef={SelectedItemRef}
+          />
         </MenuList>
       </Menu>
     </Box>
@@ -364,17 +420,18 @@ export const MultipleRowArraySelect = ({
         _hover={{
           borderColor: 'primary.500'
         }}
+        {...ButtonProps}
         {...(isOpen
           ? {
               borderColor: 'primary.600',
               color: 'primary.700',
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+              bg: 'white !important'
             }
           : {
               borderColor: 'myGray.200',
               boxShadow: 'none'
             })}
-        {...ButtonProps}
         onClick={() => (isOpen ? onClose() : onOpenSelect())}
         className="nowheel"
       >

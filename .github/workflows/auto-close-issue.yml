@@ -27,10 +27,10 @@ jobs:
 
           # Issue相关提示与标签
           stale-issue-message: >
-            This issue has not been updated for more than 3 months and is marked as stale.
+            This issue has not been updated for more than 90 days and is marked as stale.
             If there is no further activity within 7 days, it will be automatically closed. Please reply to this issue if you need to continue following up on it.
           close-issue-message: >
-            This issue has been automatically closed due to prolonged inactivity (more than 3 months plus a 7-day grace period).
+            This issue has been automatically closed due to prolonged inactivity (more than 90 days plus a 7-day grace period).
             If this issue still needs to be resolved, you can reopen it and supplement the relevant information.
           stale-issue-label: 'stale'
           close-issue-label: 'auto-closed'

@@ -4,13 +4,13 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDatasetByTmbId } from '@fastgpt/service/support/permission/dataset/auth';
-import type { GetQuotePermissionResponse } from './getPermission';
+import type { GetDatasetPermissionResponse as GetQuotePermissionResponse } from '@fastgpt/global/openapi/core/dataset/api';
 
 export type GetBatchQuotePermissionBody = {
   ids: string[];
 };
 
-export type GetBatchQuotePermissionResponse = Record<string, GetQuotePermissionResponse>;
+export type GetBatchQuotePermissionResponse = Record<string, GetQuotePermissionResponse | undefined>;
 
 async function handler(req: NextApiRequest): Promise<GetBatchQuotePermissionResponse> {
   const { ids } = req.body as GetBatchQuotePermissionBody;

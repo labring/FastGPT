@@ -1,5 +1,8 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import type { ImageCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import {
+  CreateImageCollectionFormSchema,
+  type CreateCollectionWithResultResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -8,8 +11,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { CreateCollectionResponse } from '@/global/core/dataset/api';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addDays, addSeconds } from 'date-fns';
 import fs from 'node:fs';
@@ -18,9 +20,7 @@ import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/u
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
-async function handler(
-  req: ApiRequestProps<ImageCreateDatasetCollectionParams>
-): CreateCollectionResponse {
+async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
 
   try {
@@ -29,7 +29,9 @@ async function handler(
       maxFileSize: global.feConfigs.uploadFileMaxSize
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
-    const { parentId, datasetId, collectionName } = result.data;
+    const { parentId, datasetId, collectionName } = CreateImageCollectionFormSchema.parse(
+      result.data
+    );
 
     const { dataset, teamId, tmbId } = await authDataset({
       datasetId,
@@ -42,8 +44,7 @@ async function handler(
     const planStatus = await getTeamPlanStatus({ teamId });
     await authFrequencyLimit({
       eventId: `${tmbId}-uploadfile`,
-      maxAmount:
-        planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+      maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
       expiredTime: addSeconds(new Date(), 30), // 30s
       num: result.fileMetadata.length
     });
@@ -66,7 +67,7 @@ async function handler(
       })
     );
 
-    const { collectionId, insertResults } = await createCollectionAndInsertData({
+    return createCollectionAndInsertData({
       dataset,
       imageIds,
       createCollectionParams: {
@@ -79,11 +80,6 @@ async function handler(
         trainingType: DatasetCollectionDataProcessModeEnum.imageParse
       }
     });
-
-    return {
-      collectionId,
-      results: insertResults
-    };
   } catch (error) {
     return Promise.reject(error);
   } finally {

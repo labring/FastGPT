@@ -1,9 +1,10 @@
-import { addLog } from '@fastgpt/service/common/system/log';
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
+import { getLogger, LogCategories } from '../logger';
 
 export const MONGO_URL = process.env.MONGODB_URI ?? '';
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 declare global {
   var mongodb: Mongoose | undefined;
@@ -18,7 +19,7 @@ export const connectionMongo = (() => {
 
 export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
   if (connectionMongo.models[name]) return connectionMongo.model<T>(name);
-  addLog.info(`Load model: ${name}`);
+  logger.info(`Load model: ${name}`);
 
   const model = connectionMongo.model(name, schema);
 
@@ -32,7 +33,7 @@ const syncMongoIndex = async (model: Model<any>) => {
     try {
       model.syncIndexes({ background: true });
     } catch (error: any) {
-      addLog.error('Create index error', error);
+      logger.error('Create index error', { error });
     }
   }
 };
@@ -54,13 +55,13 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
-      console.error('mongo error', error);
+      logger.error('Mongo connection error', { error });
     });
     db.connection.on('connected', async () => {
-      console.log('mongo connected');
+      logger.info('Mongo connected');
     });
     db.connection.on('disconnected', async () => {
-      console.error('mongo disconnected');
+      logger.error('Mongo disconnected');
     });
 
     await db.connect(url, {
@@ -79,7 +80,7 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     });
     return db;
   } catch (error) {
-    addLog.error('Mongo connect error', error);
+    logger.error('Mongo connect error', { error });
     await db.disconnect();
     await delay(1000);
     return connectMongo(db, url);

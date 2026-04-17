@@ -3,12 +3,14 @@ import {
   type ChatCompletionCreateParams,
   type ChatCompletionMessageParam,
   type ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { WorkerNameEnum, getWorkerController } from '../../../worker/utils';
 import type { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export const countGptMessagesTokens = async (
   messages: ChatCompletionMessageParam[],
@@ -32,7 +34,7 @@ export const countGptMessagesTokens = async (
 
     return total;
   } catch (error) {
-    addLog.error('Count token error', error);
+    logger.error('Token count worker failed, using fallback', { error });
     const total = messages.reduce((sum, item) => {
       if (item.content) {
         return sum + item.content.length * 0.5;
@@ -43,7 +45,7 @@ export const countGptMessagesTokens = async (
   }
 };
 
-export const countMessagesTokens = (messages: ChatItemType[]) => {
+export const countMessagesTokens = (messages: ChatItemMiniType[]) => {
   const adaptMessages = chats2GPTMessages({ messages, reserveId: true });
 
   return countGptMessagesTokens(adaptMessages);

@@ -15,9 +15,11 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import { UpdateDatasetDataBodySchema } from '@fastgpt/global/openapi/core/dataset/data/api';
 
-async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
-  const { dataId, q, a, indexes = [], metadata } = req.body;
+async function handler(req: ApiRequestProps) {
+  const { dataId, q, a, indexes = [] } = UpdateDatasetDataBodySchema.parse(req.body);
+  const { metadata } = req.body as UpdateDatasetDataProps;
 
   const {
     collection: {
@@ -121,6 +123,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
         agentModel,
         vectorModel,
         mode: trainingMode,
+        billId: tmbId,
         session,
         data: [
           {

@@ -216,7 +216,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     });
 
     return DatasetCollectionSyncResultEnum.success;
-  } else if (collection.name !== title) {
+  } else if (title && collection.name !== title) {
     await MongoDatasetCollection.updateOne({ _id: collection._id }, { $set: { name: title } });
     return DatasetCollectionSyncResultEnum.success;
   }
@@ -235,7 +235,7 @@ export const getTrainingModeByCollection = ({
   small2bigIndexes,
   syntheticIndex
 }: {
-  trainingType: DatasetCollectionDataProcessModeEnum;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
   imageIndex?: boolean;
   small2bigIndexes?: boolean;

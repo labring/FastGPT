@@ -3,7 +3,7 @@ import type {
   DBTableChange,
   TableStatusEnum
 } from '@/web/core/dataset/temp.d';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type {
   DatabaseCollectionsTable,
   DatabaseCollectionsBody,
@@ -160,7 +160,7 @@ export const transformChangesToUI = (
       ...table,
       tableName: table.tableName,
       description: table.description,
-      enabled: table.enabled,
+      enabled: !table.forbid,
       columns,
       status: table.status,
       hasColumnChanges

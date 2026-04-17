@@ -12,6 +12,7 @@ import { $createTextNode, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import type { VariableNode } from './plugins/VariablePlugin/node';
+import type { SkillNode } from './plugins/SkillLabelPlugin/node';
 import type {
   ListItemEditorNode,
   ListEditorNode,
@@ -22,7 +23,9 @@ import type {
 } from './type';
 import { TabStr } from './constants';
 
-export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
+export function registerLexicalTextEntity<
+  T extends TextNode | VariableLabelNode | VariableNode | SkillNode
+>(
   editor: LexicalEditor,
   getMatch: (text: string) => null | EntityMatch,
   targetNode: Klass<T>,
@@ -32,7 +35,9 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
     return node instanceof targetNode;
   };
 
-  const replaceWithSimpleText = (node: TextNode | VariableLabelNode | VariableNode): void => {
+  const replaceWithSimpleText = (
+    node: TextNode | VariableLabelNode | VariableNode | SkillNode
+  ): void => {
     const textNode = $createTextNode(node.getTextContent());
     textNode.setFormat(node.getFormat());
     node.replace(textNode);
@@ -432,6 +437,8 @@ const processListItem = ({
       itemText.push(TabStr);
     } else if (child.type === 'variableLabel' || child.type === 'Variable') {
       itemText.push(child.variableKey);
+    } else if (child.type === 'skill') {
+      itemText.push(`{{@${child.id}@}}`);
     } else if (child.type === 'list') {
       nestedLists.push(child);
     }
@@ -497,6 +504,11 @@ export const editorStateToText = (editor: LexicalEditor) => {
     // Handle custom variable nodes
     if (node.type === 'variableLabel' || node.type === 'Variable') {
       return node.variableKey || '';
+    }
+
+    // Handle skill nodes
+    if (node.type === 'skill') {
+      return `{{@${node.id}@}}`;
     }
 
     // Handle paragraph nodes - recursively process children

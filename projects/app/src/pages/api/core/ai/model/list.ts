@@ -1,7 +1,8 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 
 export type listQuery = {};
 
@@ -13,9 +14,11 @@ export type listResponse = {
   avatar: string | undefined;
   provider: string;
   model: string;
+  testMode?: boolean;
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
+  priceTiers?: ModelPriceTierType[];
 
   isActive: boolean;
   isCustom: boolean;
@@ -42,8 +45,10 @@ async function handler(
     charsPointsPrice: model.charsPointsPrice,
     inputPrice: model.inputPrice,
     outputPrice: model.outputPrice,
+    priceTiers: model.priceTiers,
     isActive: model.isActive ?? false,
     isCustom: model.isCustom ?? false,
+    testMode: model?.testMode,
 
     // Tag
     contextToken:

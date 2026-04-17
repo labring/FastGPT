@@ -1,37 +1,41 @@
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { type NextApiRequest } from 'next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type {
-  ApiDatasetServerType,
-  APIFileItemType
-} from '@fastgpt/global/core/dataset/apiDataset/type';
+import {
+  GetApiDatasetCatalogBodySchema,
+  GetApiDatasetCatalogResponseSchema,
+  type GetApiDatasetCatalogBody,
+  type GetApiDatasetCatalogResponse
+} from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 
-export type GetApiDatasetCataLogProps = {
-  parentId?: ParentIdType;
-  apiDatasetServer?: ApiDatasetServerType;
-};
-
-export type GetApiDatasetCataLogResponse = APIFileItemType[];
-
-async function handler(req: NextApiRequest) {
-  let { searchKey = '', parentId = null, apiDatasetServer } = req.body;
+async function handler(
+  req: ApiRequestProps<GetApiDatasetCatalogBody>
+): Promise<GetApiDatasetCatalogResponse> {
+  const {
+    parentId,
+    searchKey = '',
+    apiDatasetServer
+  } = GetApiDatasetCatalogBodySchema.parse(req.body);
 
   await authCert({ req, authToken: true });
 
   // Remove basePath from apiDatasetServer
-  Object.values(apiDatasetServer).forEach((server: any) => {
-    if (server.basePath) {
-      delete server.basePath;
-    }
-  });
+  if (apiDatasetServer) {
+    Object.values(apiDatasetServer).forEach((server) => {
+      if (server && 'basePath' in server && server.basePath) {
+        delete server.basePath;
+      }
+    });
+  }
 
   const data = await (
     await getApiDatasetRequest(apiDatasetServer)
-  ).listFiles({ parentId, searchKey });
+  ).listFiles({ parentId, searchKey: searchKey });
 
-  return data?.filter((item: APIFileItemType) => item.hasChild === true) || [];
+  const folders = data?.filter((item) => item.hasChild === true) ?? [];
+
+  return GetApiDatasetCatalogResponseSchema.parse(folders);
 }
 
 export default NextAPI(handler);

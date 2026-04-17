@@ -88,12 +88,12 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         AppTypeEnum.simple,
         AppTypeEnum.workflow,
         AppTypeEnum.workflowTool,
-        AppTypeEnum.assistant
+        AppTypeEnum.chatAgent
       ];
     }
     if (router.pathname.includes('/agent')) {
       return !type || type === 'all'
-        ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant]
+        ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.chatAgent]
         : [AppTypeEnum.folder, type];
     }
     return !type || type === 'all'

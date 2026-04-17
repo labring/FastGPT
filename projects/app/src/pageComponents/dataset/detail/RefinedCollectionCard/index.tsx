@@ -887,7 +887,7 @@ const CollectionCard = () => {
               } else {
                 await putDatasetCollectionById({
                   id: moveCollectionData.collectionId,
-                  parentId
+                  parentId: parentId ?? undefined
                 });
                 getData(pageNum);
                 setMoveCollectionData(undefined);

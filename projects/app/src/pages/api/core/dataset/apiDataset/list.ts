@@ -1,18 +1,19 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { type NextApiRequest } from 'next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  GetApiDatasetFileListBodySchema,
+  GetApiDatasetFileListResponseSchema,
+  type GetApiDatasetFileListBody,
+  type GetApiDatasetFileListResponse
+} from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 
-export type GetApiDatasetFileListProps = {
-  searchKey?: string;
-  parentId?: ParentIdType;
-  datasetId: string;
-};
-
-async function handler(req: NextApiRequest) {
-  let { searchKey = '', parentId = null, datasetId } = req.body;
+async function handler(
+  req: ApiRequestProps<GetApiDatasetFileListBody>
+): Promise<GetApiDatasetFileListResponse> {
+  const { datasetId, searchKey = '', parentId } = GetApiDatasetFileListBodySchema.parse(req.body);
 
   const { dataset } = await authDataset({
     req,
@@ -22,7 +23,11 @@ async function handler(req: NextApiRequest) {
     per: ReadPermissionVal
   });
 
-  return (await getApiDatasetRequest(dataset.apiDatasetServer)).listFiles({ searchKey, parentId });
+  const files = await (
+    await getApiDatasetRequest(dataset.apiDatasetServer)
+  ).listFiles({ searchKey: searchKey, parentId });
+
+  return GetApiDatasetFileListResponseSchema.parse(files);
 }
 
 export default NextAPI(handler);

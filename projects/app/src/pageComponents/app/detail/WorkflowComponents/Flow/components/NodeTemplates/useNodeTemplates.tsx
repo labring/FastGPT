@@ -111,7 +111,12 @@ export const useNodeTemplates = () => {
         return getTeamAppTemplates({
           parentId,
           searchKey: searchVal,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          type: [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.workflow,
+            ...(feConfigs?.show_skill ? [AppTypeEnum.chatAgent] : [])
+          ]
         }).then((res) => res.filter((app) => app.id !== appId));
       }
       if (type === TemplateTypeEnum.systemTools) {

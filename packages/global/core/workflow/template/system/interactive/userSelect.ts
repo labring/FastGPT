@@ -1,6 +1,6 @@
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 import { LangEnum } from '../../../../../common/i18n/type';
-import { getLang } from '../../../../../../web/hooks/useI18n';
+import { getLang } from '../../../../../common/i18n/utils';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
@@ -12,7 +12,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { type FlowNodeTemplateType } from '../../../type/node.d';
+import { type FlowNodeTemplateType } from '../../../type/node';
 
 const getUserSelectDiagram = () => {
   const currentLang = getLang();

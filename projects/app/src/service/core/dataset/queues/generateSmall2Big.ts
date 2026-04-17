@@ -44,9 +44,9 @@ const chunkAnswerText = async ({
   small2bigConfig?: small2bigConfigType;
 }): Promise<string[]> => {
   const {
-    chunkSize,
-    maxChildChunks,
-    overlapRatio,
+    chunkSize = 500,
+    maxChildChunks = 10,
+    overlapRatio = 0.1,
     paragraphChunkDeep,
     paragraphChunkMinSize,
     maxSize,

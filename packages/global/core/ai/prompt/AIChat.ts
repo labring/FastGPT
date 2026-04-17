@@ -1,8 +1,9 @@
-import { type PromptTemplateItem } from '../type.d';
-import { i18nT } from '../../../../web/i18n/utils';
+/* v8 ignore file */
+import { type PromptTemplateItem } from '../llm/type';
+import { i18nT } from '../../../common/i18n/utils';
 import { getPromptByVersion } from './utils';
 import { LangEnum } from '../../../common/i18n/type';
-import { getLang } from '../../../../web/hooks/useI18n';
+import { getLang } from '../../../common/i18n/utils';
 
 export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   {
@@ -133,7 +134,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 ## 回答要求
 - 选择其中一个或多个问答对进行回答。
 - 回答的内容应尽可能与 <Answer></Answer> 中的内容一致。
-- 如果没有相关的问答对，你需要澄清。
+- 如果没有相关的问答对，你需要澄清。 
 - 避免提及你是从 <QA></QA> 获取的知识，只需要回复答案。
 - 使用与问题相同的语言回答。
 

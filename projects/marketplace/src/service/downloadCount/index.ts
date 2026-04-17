@@ -1,6 +1,9 @@
 import { MongoDownloadCount } from '../mongo/models/download';
 import type { pluginTypeEnum } from '../mongo/models/download';
 import type z from 'zod';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.MODULE.DOWNLOAD);
 
 const BATCH_INTERVAL = 10000; // 10 seconds
 
@@ -64,9 +67,9 @@ const startBatchTimer = () => {
 
     try {
       await MongoDownloadCount.bulkWrite(bulkOps);
-      console.log(`Batch update download counts: ${bulkOps.length} items`);
+      logger.info(`Batch update download counts: ${bulkOps.length} items`);
     } catch (error) {
-      console.error('Batch update download counts failed:', error);
+      logger.error('Batch update download counts failed', { error });
     }
 
     // Clear cache

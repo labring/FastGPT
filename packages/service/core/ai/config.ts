@@ -1,13 +1,12 @@
 import OpenAI from '@fastgpt/global/core/ai';
 import type {
   ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
-  StreamChatType,
-  UnStreamChatType
-} from '@fastgpt/global/core/ai/type';
+  ChatCompletionCreateParamsStreaming
+} from '@fastgpt/global/core/ai/llm/type';
+import type { StreamChatType, UnStreamChatType } from '@fastgpt/global/core/ai/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../../global/common/i18n/utils';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getLLMModel } from './model';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';

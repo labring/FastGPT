@@ -26,8 +26,8 @@ import type {
   DBTableColumn,
   ApplyChangesBody,
   ApplyChangesResponse
-} from '@fastgpt/global/core/dataset/database/api.d';
-import { StatusEnum } from '@fastgpt/global/core/dataset/database/api.d';
+} from '@fastgpt/global/core/dataset/database/api';
+import { StatusEnum } from '@fastgpt/global/core/dataset/database/api';
 import type { ColumnSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
 
 // Check if column forbid status is inconsistent between database and collection

@@ -3,15 +3,15 @@ import { NextAPI } from '@/service/middleware/entry';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { i18nT } from '@fastgpt/web/i18n/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+const logger = getLogger(LogCategories.MODULE.AI.OPTIMIZE_PROMPT);
 
 type OptimizePromptBody = {
   originalPrompt: string;
@@ -153,7 +153,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       ]
     });
   } catch (error: any) {
-    addLog.error('Optimize prompt error', error);
+    logger.error('Optimize prompt error', { error });
     sseErrRes(res, error);
   }
   res.end();

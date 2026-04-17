@@ -1,0 +1,54 @@
+---
+title: V4.9.11 (Includes Upgrade Script)
+description: FastGPT V4.9.11 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.9.11
+- Update FastGPT Pro image tag: v4.9.11
+- mcp_server: no update required
+- Update Sandbox image tag: v4.9.11
+- AIProxy: no update required
+
+### 2. Run the Upgrade Script
+
+This script only needs to be run by Pro edition users.
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4911' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**Script Functions**
+
+1. Migrates third-party knowledge base API configurations.
+
+## New Features
+
+1. Pro edition supports image knowledge bases.
+2. Added node search functionality in the workflow editor.
+3. Sub-workflow version control in workflows now supports a "Keep Latest Version" option — no manual updates needed.
+4. Additional audit operation logs.
+5. Knowledge base now has an async document parsing queue — documents can be imported without waiting for parsing to complete.
+6. Third-party knowledge base development documentation. [View here](/docs/introduction/guide/knowledge_base/third_dataset/)
+
+## Improvements
+
+1. Raw text cache now uses GridFS storage for higher capacity.
+2. Added knowledge base template import option.
+
+## Bug Fixes
+
+1. Admin-declared global system tools in workflows unable to be version-managed.
+2. Context errors when an interactive node precedes a tool call node.
+3. Backup import failing to chunk content under 1,000 characters.
+4. Custom PDF parsing unable to save Base64 images.
+5. Non-stream requests not performing CITE marker replacement.
+6. Hidden security vulnerability in the Python sandbox.
+7. Missing confirm button when importing plugins via curl.

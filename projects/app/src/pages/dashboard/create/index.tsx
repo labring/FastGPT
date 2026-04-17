@@ -21,7 +21,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useRouter } from 'next/router';
-import { emptyTemplates } from '@/web/core/app/templates';
+import { getEmptyAppsTemplate } from '@/web/core/app/templates';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -60,6 +60,7 @@ type FormType = {
 };
 
 export type CreateAppType =
+  | AppTypeEnum.chatAgent
   | AppTypeEnum.simple
   | AppTypeEnum.workflow
   | AppTypeEnum.workflowTool
@@ -74,7 +75,7 @@ const CreateAppsPage = () => {
   const { parentId, appType } = query;
 
   const [selectedAppType, setSelectedAppType] = useState<CreateAppType>(
-    (appType as CreateAppType) || AppTypeEnum.workflow
+    (appType as CreateAppType) || AppTypeEnum.chatAgent
   );
   const [creatingTemplateId, setCreatingTemplateId] = useState<string | null>(null);
   const [toolModalType, setToolModalType] = useState<ToolModalAppType>();
@@ -169,13 +170,14 @@ const CreateAppsPage = () => {
         });
       }
 
-      const updatedNodes = updateDatasetSearchNodesLimit(emptyTemplates[appType].nodes);
+      const emptyTemplate = getEmptyAppsTemplate(t);
+      const updatedNodes = updateDatasetSearchNodesLimit(emptyTemplate[appType].nodes);
       return postCreateApp({
         ...baseParams,
         type: appType,
         modules: updatedNodes,
-        edges: emptyTemplates[appType].edges,
-        chatConfig: emptyTemplates[appType].chatConfig
+        edges: emptyTemplate[appType].edges,
+        chatConfig: emptyTemplate[appType].chatConfig
       });
     },
     {

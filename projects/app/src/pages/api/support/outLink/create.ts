@@ -1,6 +1,6 @@
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';

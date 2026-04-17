@@ -18,7 +18,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { clearToken } from '@/web/support/user/auth';
-import type { LoginSuccessResponse } from '@/global/support/api/userRes';
+import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useLocalStorageState, useMount } from 'ahooks';
@@ -60,7 +60,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     useLocalStorageState<string>('localCookieVersion');
 
   const loginSuccess = useCallback(
-    (res: LoginSuccessResponse) => {
+    (res: LoginSuccessResponseType) => {
       setUserInfo(res.user);
 
       const decodeLastRoute = decodeURIComponent(lastRoute);

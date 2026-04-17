@@ -6,23 +6,25 @@
 import React, { useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 
-import ChatTest from '../SimpleApp/ChatTest';
+import ChatTest from '../Edit/SimpleApp/ChatTest';
 import EditForm from './EditForm';
 import AssistantCard from './AssistantCard';
-import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { Form2WorkflowFnType } from '../Edit/FormComponent/type';
+import { form2AppWorkflow } from '../Edit/SimpleApp/utils';
 import { cardStyles } from '../constants';
 
-import styles from '../SimpleApp/styles.module.scss';
+import styles from '../Edit/FormComponent/styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type SimpleAppSnapshotType } from '../SimpleApp/useSnapshots';
+import { type SimpleAppSnapshotType } from '../Edit/FormComponent/useSnapshots';
 
 const Edit = ({
   appForm,
   setAppForm,
   setPast
 }: {
-  appForm: AppSimpleEditFormType;
-  setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+  appForm: AppFormEditFormType;
+  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
   setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
 }) => {
   const { isPc } = useSystem();
@@ -59,7 +61,7 @@ const Edit = ({
       )}
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
+          <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} form2WorkflowFn={form2AppWorkflow} />
         </Box>
       )}
     </Box>

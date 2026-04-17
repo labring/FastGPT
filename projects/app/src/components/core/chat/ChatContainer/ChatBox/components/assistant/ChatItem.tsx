@@ -6,7 +6,6 @@ import { formatChatValue2InputType } from '../../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../../index.module.scss';
 import {
-  ChatItemValueTypeEnum,
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -27,7 +26,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import ChatBoxDivider from '../../../../Divider';
 import { getSourceNameIcon, isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
-import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from '../../type';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 
 const colorMap = {
@@ -256,6 +255,7 @@ const AIContentCard = React.memo(function AIContentCard({
             key={key}
             value={value}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
+            isLastChild={isLastChild}
             isChatting={isChatting}
             hideCiteIcon={true}
           />
@@ -315,18 +315,18 @@ const ChatItem = (props: Props) => {
     if (chat.obj !== ChatRoleEnum.AI) return [chat.value];
 
     // Remove empty text node
-    const filterList = chat.value.filter((item, i) => {
-      if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
+    const filterList = chat.value.filter((item) => {
+      if ('text' in item && item.text && !item.text?.content?.trim() && !('interactive' in item && item.interactive)) {
         return false;
       }
-      return item;
+      return true;
     });
 
     const groupedValues: AIChatItemValueItemType[][] = [];
     let currentGroup: AIChatItemValueItemType[] = [];
 
     filterList.forEach((value) => {
-      if (value.type === 'interactive') {
+      if ('interactive' in value && value.interactive) {
         if (currentGroup.length > 0) {
           groupedValues.push(currentGroup);
           currentGroup = [];
@@ -348,12 +348,12 @@ const ChatItem = (props: Props) => {
       if (
         (lastGroup &&
           lastGroup[lastGroup.length - 1] &&
-          lastGroup[lastGroup.length - 1].type === ChatItemValueTypeEnum.interactive) ||
+          'interactive' in lastGroup[lastGroup.length - 1] &&
+          lastGroup[lastGroup.length - 1].interactive) ||
         groupedValues.length === 0
       ) {
         groupedValues.push([
           {
-            type: ChatItemValueTypeEnum.text,
             text: {
               content: ''
             }

@@ -1,4 +1,4 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -13,26 +13,26 @@ import {
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { filterSystemVariables, getNodeErrResponse, getHistories } from '../utils';
+import { getSystemVariables, getNodeErrResponse, getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
-  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-  [NodeOutputKeyEnum.history]: ChatItemType[];
+  [NodeOutputKeyEnum.history]: ChatItemMiniType[];
 }>;
 
 export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
@@ -58,7 +58,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
   const userInputFiles = (() => {
     if (fileUrlList) {
-      return fileUrlList.map((url) => parseUrlToFileType(url)).filter(Boolean);
+      return fileUrlList
+        .map((url) => parseUrlToFileType(url))
+        .filter((file): file is NonNullable<typeof file> => Boolean(file));
     }
     // Adapt version 4.8.13 upgrade
     return files;
@@ -98,13 +100,23 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const chatHistories = getHistories(history, histories);
 
     // Rewrite children app variables
-    const systemVariables = filterSystemVariables(variables);
     const { externalProvider } = await getUserChatInfo(appData.tmbId);
     const childrenRunVariables = {
-      ...systemVariables,
-      ...childrenAppVariables,
-      histories: chatHistories,
-      appId: String(appData._id),
+      ...(await getSystemVariables({
+        timezone: props.timezone,
+        runningAppInfo: {
+          id: String(appData._id),
+          teamId: appData.teamId,
+          tmbId: appData.tmbId,
+          name: appData.name
+        },
+        chatId: props.chatId,
+        responseChatItemId: props.responseChatItemId,
+        histories: chatHistories,
+        uid: props.uid,
+        chatConfig,
+        variables: childrenAppVariables
+      })),
       ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
     };
 
@@ -135,7 +147,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       customFeedbacks
     } = await runWorkflow({
       ...props,
-      usageId: undefined,
       lastInteractive: childrenInteractive,
       // Rewrite stream mode
       ...(system_forbid_stream
@@ -174,6 +185,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const { text } = chatValue2RuntimePrompt(assistantResponses);
 
     const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+    props.usagePush([
+      {
+        moduleName: appData.name,
+        totalPoints: usagePoints
+      }
+    ]);
 
     return {
       data: {
@@ -200,12 +217,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
         mergeSignId: props.node.nodeId
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: appData.name,
-          totalPoints: usagePoints
-        }
-      ],
       [DispatchNodeResponseKeyEnum.toolResponses]: text,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     };

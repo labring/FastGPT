@@ -1,0 +1,75 @@
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: sdk-pool-with-tasks
+  namespace: default
+spec:
+  template:
+    spec:
+      shareProcessNamespace: true  # task-executor需要
+
+      # Init container: 安装execd
+      initContainers:
+      - name: execd-installer
+        image: opensandbox/execd:v1.0.5
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            cp ./execd /opt/opensandbox/bin/execd && \
+            cp ./bootstrap.sh /opt/opensandbox/bin/bootstrap.sh && \
+            chmod +x /opt/opensandbox/bin/execd && \
+            chmod +x /opt/opensandbox/bin/bootstrap.sh
+        volumeMounts:
+        - name: opensandbox-bin
+          mountPath: /opt/opensandbox/bin
+
+      containers:
+      # 主容器：带execd
+      - name: sandbox-container
+        image: nginx:latest
+        command:
+        - /opt/opensandbox/bin/bootstrap.sh
+        - sleep
+        - infinity
+        env:
+        - name: EXECD
+          value: /opt/opensandbox/bin/execd
+        ports:
+        - containerPort: 44772
+          name: execd
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: opensandbox-bin
+          mountPath: /opt/opensandbox/bin
+
+      # task-executor sidecar: 支持自定义entrypoint
+      - name: task-executor
+        image: opensandbox/task-executor:dev
+        imagePullPolicy: Never  # 使用本地镜像
+        securityContext:
+          capabilities:
+            add: ["SYS_PTRACE"]
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+      volumes:
+      - name: opensandbox-bin
+        emptyDir: {}
+
+  capacitySpec:
+    bufferMax: 10
+    bufferMin: 2
+    poolMax: 20
+    poolMin: 5

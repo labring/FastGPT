@@ -25,14 +25,14 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     chatConfig,
     params,
     variables,
-    runtimeNodes,
+    runtimeNodesMap,
     workflowStreamResponse,
     externalProvider,
     runningAppInfo
   } = props;
 
   const { updateList } = params;
-  const nodeIds = runtimeNodes.map((node) => node.nodeId);
+  const nodeIds = Array.from(runtimeNodesMap.keys());
 
   const result = updateList.map((item) => {
     const variable = item.variable;
@@ -55,7 +55,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
           typeof item.value?.[1] === 'string'
             ? replaceEditorVariable({
                 text: item.value?.[1],
-                nodes: runtimeNodes,
+                nodesMap: runtimeNodesMap,
                 variables
               })
             : item.value?.[1];
@@ -65,7 +65,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
         return getReferenceVariableValue({
           value: item.value,
           variables,
-          nodes: runtimeNodes
+          nodesMap: runtimeNodesMap
         });
       }
     })();
@@ -75,15 +75,14 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     if (varNodeId === VARIABLE_NODE_ID) {
       variables[varKey] = value;
     } else {
+      const node = runtimeNodesMap.get(varNodeId);
       // Other nodes
-      runtimeNodes
-        .find((node) => node.nodeId === varNodeId)
-        ?.outputs?.find((output) => {
-          if (output.id === varKey) {
-            output.value = value;
-            return true;
-          }
-        });
+      node?.outputs?.find((output) => {
+        if (output.id === varKey) {
+          output.value = value;
+          return true;
+        }
+      });
     }
 
     return value;

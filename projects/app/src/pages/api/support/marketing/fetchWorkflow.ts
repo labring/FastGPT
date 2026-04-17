@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { isInternalAddress } from '@fastgpt/service/common/system/utils';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { type NextApiResponse } from 'next';
 
 export type FetchWorkflowBody = {
@@ -26,8 +26,8 @@ async function handler(
   if (!url) {
     return Promise.reject('Url is empty');
   }
-  if (isInternalAddress(url)) {
-    return Promise.reject('Url is invalid');
+  if (await isInternalAddress(url)) {
+    return Promise.reject(PRIVATE_URL_TEXT);
   }
 
   const { data } = await axios.get(url, {
@@ -39,6 +39,11 @@ async function handler(
     timeout: 30000,
     validateStatus: (status) => status < 500
   });
+
+  // Check type
+  if (typeof data !== 'object') {
+    return Promise.reject('Invalid data');
+  }
 
   return data;
 }

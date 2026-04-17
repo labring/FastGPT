@@ -8,7 +8,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
-import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
+import type { CreateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
@@ -42,14 +42,14 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
+  const { defaultModels, embeddingModelList, llmModelList, getVlmModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 
-  const form = useForm<CreateDatasetParams>({
+  const form = useForm<CreateDatasetBody>({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
@@ -58,8 +58,7 @@ const CreateModal = ({
       intro: '',
       vectorModel:
         defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
-      agentModel:
-        defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model,
+      agentModel: defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
       vlmModel: defaultModels.datasetImageLLM?.model
     }
   });
@@ -78,7 +77,7 @@ const CreateModal = ({
 
   /* create a new kb and router to it */
   const { runAsync: onclickCreate, loading: creating } = useRequest(
-    async (data: CreateDatasetParams) => {
+    async (data: CreateDatasetBody) => {
       // 对于文件数据库类型，移除不需要的参数
       const submitData = { ...data };
       if (isStructureDocument) {
@@ -236,7 +235,7 @@ const CreateModal = ({
               <AIModelSelector
                 w={['100%', '300px']}
                 value={agentModel}
-                list={datasetModelList.map((item) => ({
+                list={llmModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}

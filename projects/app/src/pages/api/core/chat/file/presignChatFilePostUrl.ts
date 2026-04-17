@@ -1,17 +1,15 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type CreatePostPresignedUrlResult } from '@fastgpt/service/common/s3/type';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
-import type { PresignChatFilePostUrlParams } from '@fastgpt/global/openapi/core/chat/controler/api';
+import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
-async function handler(
-  req: ApiRequestProps<PresignChatFilePostUrlParams>
-): Promise<CreatePostPresignedUrlResult> {
-  const { filename, appId, chatId, outLinkAuthData } = req.body;
+async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
+  const { filename, appId, chatId, outLinkAuthData } = PresignChatFilePostUrlSchema.parse(req.body);
 
   const { teamId, uid } = await authChatCrud({
     req,
@@ -24,8 +22,7 @@ async function handler(
   const planStatus = await getTeamPlanStatus({ teamId });
   await authFrequencyLimit({
     eventId: `${uid}-uploadfile`,
-    maxAmount:
-      planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
@@ -34,8 +31,7 @@ async function handler(
     chatId,
     filename,
     uId: uid,
-    maxFileSize:
-      planStatus.standardConstants?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+    maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
   });
 }
 

@@ -1,6 +1,9 @@
 import { MongoOpenApi } from './schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.OPENAPI.TOOLS);
+
 
 // API Key 生成常量
 const API_KEY_MIN_LENGTH = 52;
@@ -59,7 +62,7 @@ export function updateApiKeyUsedTime(id: string) {
   MongoOpenApi.findByIdAndUpdate(id, {
     lastUsedTime: new Date()
   }).catch((err) => {
-    console.log('update apiKey used time error', err);
+    logger.error('Failed to update API key last used time', { apiKeyId: id, error: err });
   });
 }
 
@@ -78,6 +81,6 @@ export function updateApiKeyUsage({
       }
     }
   ).catch((err) => {
-    console.log('update apiKey totalPoints error', err);
+    logger.error('Failed to update API key usage points', { apikey, error: err });
   });
 }

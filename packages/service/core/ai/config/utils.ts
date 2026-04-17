@@ -1,5 +1,5 @@
 import type { SystemDefaultModelType, SystemModelItemType } from '../type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoSystemModel } from './schema';
 import {
   type LLMModelItemType,
@@ -7,7 +7,7 @@ import {
   type TTSModelType,
   type STTModelType,
   type RerankModelItemType
-} from '@fastgpt/global/core/ai/model.d';
+} from '@fastgpt/global/core/ai/model.schema';
 import { debounce } from 'lodash';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
@@ -25,6 +25,8 @@ import { GET } from '../../../common/api/plusRequest';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
+import { getLogger, LogCategories } from '../../../common/logger';
+import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -32,7 +34,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   try {
     await preloadModelProviders();
   } catch (error) {
-    console.log('Load systen model error, please check fastgpt-plugin', error);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System model provider preload failed', { error });
     return Promise.reject(error);
   }
 
@@ -60,19 +63,12 @@ export const loadSystemModels = async (init = false, language = 'en') => {
   const pushModel = (model: SystemModelItemType) => {
     _systemModelList.push(model);
 
-    // Add default value
-    if (model.type === ModelTypeEnum.llm) {
-      model.datasetProcess = model.datasetProcess ?? true;
-      model.usedInClassify = model.usedInClassify ?? true;
-      model.usedInExtractFields = model.usedInExtractFields ?? true;
-      model.usedInToolCall = model.usedInToolCall ?? true;
-      model.useInEvaluation = model.useInEvaluation ?? true;
-    }
-
     if (model.isActive) {
       _systemActiveModelList.push(model);
 
       if (model.type === ModelTypeEnum.llm) {
+        model.priceTiers = getRuntimeResolvedPriceTiers(model);
+
         _llmModelMap.set(model.model, model);
         _llmModelMap.set(model.name, model);
         if (model.isDefault) {
@@ -86,6 +82,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         }
         if (model.isDefaultEvaluationModel) {
           _systemDefaultModel.evaluation = model;
+	}
+        if (model.model === process.env.HELPER_BOT_MODEL) {
+          _systemDefaultModel.helperBotLLM = model;
         }
       } else if (model.type === ModelTypeEnum.embedding) {
         _embeddingModelMap.set(model.model, model);
@@ -146,14 +145,15 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         isCustom: false,
 
         ...(model.type === ModelTypeEnum.llm && {
-          maxResponse: model.maxTokens || 4000
+          maxResponse: model.maxTokens ?? 16000
         }),
 
         ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm
           ? {
-              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 4000,
+              maxResponse: dbModel?.metadata?.maxResponse ?? model.maxTokens ?? 8000,
               defaultConfig: mergeObject(model.defaultConfig, dbModel?.metadata?.defaultConfig),
               fieldMap: mergeObject(model.fieldMap, dbModel?.metadata?.fieldMap),
+              /** @deprecated */
               maxTokens: undefined
             }
           : {})
@@ -171,15 +171,20 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       });
     });
 
+    // Sort model list
+    _systemActiveModelList.sort((a, b) => {
+      const providerA = getModelProvider(a.provider, language);
+      const providerB = getModelProvider(b.provider, language);
+      return providerA.order - providerB.order;
+    });
+
     // Default model check
     {
       if (!_systemDefaultModel.llm) {
         _systemDefaultModel.llm = Array.from(_llmModelMap.values())[0];
       }
       if (!_systemDefaultModel.datasetTextLLM) {
-        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values()).find(
-          (item) => item.datasetProcess
-        );
+        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelMap.values())[0];
       }
       if (!_systemDefaultModel.datasetImageLLM) {
         _systemDefaultModel.datasetImageLLM = Array.from(_llmModelMap.values()).find(
@@ -189,6 +194,11 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       if (!_systemDefaultModel.evaluation) {
         _systemDefaultModel.evaluation = Array.from(_llmModelMap.values()).find(
           (item) => item.useInEvaluation
+        );
+      }
+      if (!_systemDefaultModel.helperBotLLM) {
+        _systemDefaultModel.helperBotLLM = _systemActiveModelList.find(
+          (item) => item.type === ModelTypeEnum.llm
         );
       }
       if (!_systemDefaultModel.embedding) {
@@ -204,13 +214,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         _systemDefaultModel.rerank = Array.from(_reRankModelMap.values())[0];
       }
     }
-
-    // Sort model list
-    _systemActiveModelList.sort((a, b) => {
-      const providerA = getModelProvider(a.provider, language);
-      const providerB = getModelProvider(b.provider, language);
-      return providerA.order - providerB.order;
-    });
 
     // Set global value
     {
@@ -235,20 +238,14 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       })) as SystemModelItemType[];
     }
 
-    console.log(
-      JSON.stringify(
-        _systemActiveModelList.map((item) => ({
-          provider: item.provider,
-          model: item.model,
-          name: item.name
-        })),
-        null,
-        2
-      ),
-      `Load models success, total: ${_systemModelList.length}, active: ${_systemActiveModelList.length}`
-    );
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.debug('System models loaded', {
+      total: _systemModelList.length,
+      active: _systemActiveModelList.length
+    });
   } catch (error) {
-    console.error('Load models error', error);
+    const logger = getLogger(LogCategories.MODULE.AI.CONFIG);
+    logger.error('System models load failed', { error });
 
     return Promise.reject(error);
   }
@@ -310,6 +307,10 @@ export const cronRefreshModels = async () => {
 export interface PromptLoader {
   // Load Prompt from certain language
   loadTemplate(filename: string, locale: localeType, key: string): string;
+}
+
+declare global {
+  var promptLoader: PromptLoader;
 }
 
 // Default Loader

@@ -125,7 +125,6 @@ const InputFormEditModal = ({
             onTypeChange={(type) => {
               setValue('type', type as FlowNodeInputTypeEnum);
               setValue('defaultValue', '');
-              setValue('listReference', undefined);
             }}
           />
         </Stack>

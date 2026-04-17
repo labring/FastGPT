@@ -41,3 +41,8 @@ document/.source
 AGENTS.md
 projects/app/worker/
 projects/app/data/train/
+
+projects/app/worker/
+
+# Agent
+.codex

@@ -1,13 +1,10 @@
 /*
     Get one dataset collection detail
 */
-import type { NextApiRequest } from 'next';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -16,13 +13,15 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { GetCollectionDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import {
+  GetCollectionDetailQuerySchema,
+  GetCollectionDetailResponseSchema
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
-async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
-  const { id } = req.query as { id: string };
-
-  if (!id) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps): Promise<GetCollectionDetailResponseType> {
+  const { id } = GetCollectionDetailQuerySchema.parse(req.query);
 
   // 凭证校验
   const { collection, permission } = await authDatasetCollection({
@@ -79,7 +78,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
     )
   ]);
 
-  return {
+  return GetCollectionDetailResponseSchema.parse({
     ...default_prompt,
     ...collection,
     indexAmount: indexAmount ?? 0,
@@ -91,7 +90,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
     permission,
     file,
     errorCount
-  };
+  });
 }
 
 export default NextAPI(handler);

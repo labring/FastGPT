@@ -1,10 +1,10 @@
 import { MongoS3TTL } from './schema';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import { setCron } from '../system/cron';
 import { checkTimerLock } from '../system/timerLock/utils';
 import { TimerIdEnum } from '../system/timerLock/constants';
-import path from 'node:path';
-import { S3Error } from 'minio';
+
+const logger = getLogger(LogCategories.INFRA.S3);
 
 export async function clearExpiredMinioFiles() {
   try {
@@ -12,11 +12,11 @@ export async function clearExpiredMinioFiles() {
       expiredTime: { $lte: new Date() }
     }).lean();
     if (expiredFiles.length === 0) {
-      addLog.info('No expired minio files to clean');
+      logger.info('No expired S3 files to clean');
       return;
     }
 
-    addLog.info(`Found ${expiredFiles.length} expired minio files to clean`);
+    logger.info('Found expired S3 files to clean', { count: expiredFiles.length });
 
     let success = 0;
     let fail = 0;
@@ -31,25 +31,43 @@ export async function clearExpiredMinioFiles() {
           await MongoS3TTL.deleteOne({ _id: file._id });
 
           success++;
-          addLog.info(
-            `Deleted expired minio file: ${file.minioKey} from bucket: ${file.bucketName}`
-          );
+          logger.info('Deleted expired S3 object', {
+            key: file.minioKey,
+            bucketName: file.bucketName
+          });
         } else {
-          addLog.warn(`Bucket not found: ${file.bucketName}`);
+          logger.warn('S3 bucket not found for expired file', {
+            bucketName: file.bucketName,
+            key: file.minioKey
+          });
+          await MongoS3TTL.deleteOne({ minioKey: file.minioKey, bucketName: file.bucketName });
+          logger.info('Cleanup the expired document in MongoDB of S3 TTL', {
+            key: file.minioKey,
+            bucketName: file.bucketName
+          });
         }
       } catch (error) {
         fail++;
-        addLog.error(`Failed to delete minio file: ${file.minioKey}`, error);
+        logger.error('Failed to delete expired S3 object', {
+          key: file.minioKey,
+          bucketName: file.bucketName,
+          error
+        });
       }
     }
 
-    addLog.info(`Minio TTL cleanup completed. Success: ${success}, Failed: ${fail}`);
+    logger.info('S3 TTL cleanup completed', { success, fail });
   } catch (error) {
-    addLog.error('Error in clearExpiredMinioFiles', error);
+    logger.error('S3 TTL cleanup failed', {
+      error
+    });
   }
 }
 
 export function clearExpiredS3FilesCron() {
+  // 启动服务时执行一次
+  setTimeout(clearExpiredMinioFiles, 3000);
+
   // 每小时执行一次
   setCron('0 */1 * * *', async () => {
     if (

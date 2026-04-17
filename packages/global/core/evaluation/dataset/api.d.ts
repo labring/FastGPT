@@ -1,4 +1,4 @@
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../../openapi/api';
 import type {
   EvalDatasetCollectionSchemaType,
   EvalDatasetDataSchemaType,
@@ -31,17 +31,15 @@ export type listEvalDatasetCollectionBody = PaginationProps<{
   searchKey?: string;
 }>;
 
-export type listEvalDatasetCollectionResponse = PaginationResponse<
-  Pick<
-    EvalDatasetCollectionSchemaType,
-    '_id' | 'name' | 'description' | 'createTime' | 'updateTime'
-  > & {
-    creatorAvatar?: string;
-    creatorName?: string;
-    status: EvalDatasetCollectionStatus;
-    dataItemsCount: number;
-  }
->;
+export type listEvalDatasetCollectionResponse = Pick<
+  EvalDatasetCollectionSchemaType,
+  '_id' | 'name' | 'description' | 'createTime' | 'updateTime'
+> & {
+  creatorAvatar?: string;
+  creatorName?: string;
+  status: EvalDatasetCollectionStatus;
+  dataItemsCount: number;
+};
 
 export type listEvalDatasetCollectionV2Body = {
   searchKey?: string;
@@ -87,22 +85,20 @@ export type listEvalDatasetDataBody = PaginationProps<{
   qualityResult?: EvalDatasetDataQualityResultEnum;
 }>;
 
-export type listEvalDatasetDataResponse = PaginationResponse<
-  Pick<
-    EvalDatasetDataSchemaType,
-    | '_id'
-    | EvalDatasetDataKeyEnum.UserInput
-    | EvalDatasetDataKeyEnum.ActualOutput
-    | EvalDatasetDataKeyEnum.ExpectedOutput
-    | EvalDatasetDataKeyEnum.Context
-    | EvalDatasetDataKeyEnum.RetrievalContext
-    | 'qualityMetadata'
-    | 'synthesisMetadata'
-    | 'qualityResult'
-    | 'createFrom'
-    | 'createTime'
-    | 'updateTime'
-  >
+export type listEvalDatasetDataResponse = Pick<
+  EvalDatasetDataSchemaType,
+  | '_id'
+  | EvalDatasetDataKeyEnum.UserInput
+  | EvalDatasetDataKeyEnum.ActualOutput
+  | EvalDatasetDataKeyEnum.ExpectedOutput
+  | EvalDatasetDataKeyEnum.Context
+  | EvalDatasetDataKeyEnum.RetrievalContext
+  | 'qualityMetadata'
+  | 'synthesisMetadata'
+  | 'qualityResult'
+  | 'createFrom'
+  | 'createTime'
+  | 'updateTime'
 >;
 
 export type updateEvalDatasetDataBody = EvalDatasetDataBase & {

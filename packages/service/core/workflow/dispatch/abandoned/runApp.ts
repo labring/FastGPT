@@ -1,5 +1,5 @@
 /* Abandoned */
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { runWorkflow } from '../index';
@@ -21,12 +21,12 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
-  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   app: SelectAppItemType;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-  [NodeOutputKeyEnum.history]: ChatItemType[];
+  [NodeOutputKeyEnum.history]: ChatItemMiniType[];
 }>;
 
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
@@ -61,7 +61,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
     ...props,
-    usageId: undefined,
     runningAppInfo: {
       id: String(appData._id),
       name: appData.name,
@@ -107,12 +106,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       query: userChatInput,
       textOutput: text,
       totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: appData.name,
-        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
-      }
-    ]
+    }
   };
 };

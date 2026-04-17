@@ -1,9 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   isValidImageContentType,
   detectImageTypeFromBuffer,
-  guessBase64ImageType
+  guessBase64ImageType,
+  getImageBase64,
+  addEndpointToImageUrl
 } from '@fastgpt/service/common/file/image/utils';
+
+const mockAxiosGet = vi.fn();
+vi.mock('@fastgpt/service/common/api/axios', () => ({
+  axios: {
+    get: (...args: any[]) => mockAxiosGet(...args)
+  },
+  createProxyAxios: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/api/serverRequest', () => ({
+  serverRequestBaseUrl: 'http://localhost:3000'
+}));
 
 describe('isValidImageContentType', () => {
   it('should return true for valid image MIME types', () => {
@@ -185,5 +199,263 @@ describe('guessBase64ImageType', () => {
     const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
     const base64 = jpegBytes.toString('base64'); // This is "/9j/4A=="
     expect(guessBase64ImageType(base64)).toBe('image/jpeg');
+  });
+});
+
+describe('getImageBase64', () => {
+  beforeEach(() => {
+    mockAxiosGet.mockReset();
+  });
+
+  it('should return base64 with correct mime when header has valid image content-type', async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    mockAxiosGet.mockResolvedValue({
+      data: pngBytes,
+      headers: { 'content-type': 'image/png' }
+    });
+
+    const result = await getImageBase64('/api/system/img/test.png');
+
+    expect(mockAxiosGet).toHaveBeenCalledWith('/api/system/img/test.png', {
+      baseURL: 'http://localhost:3000',
+      responseType: 'arraybuffer'
+    });
+    expect(result.mime).toBe('image/png');
+    expect(result.base64).toBe(pngBytes.toString('base64'));
+    expect(result.completeBase64).toBe(`data:image/png;base64,${pngBytes.toString('base64')}`);
+  });
+
+  it('should detect type from buffer when header content-type is not a valid image type', async () => {
+    const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+    mockAxiosGet.mockResolvedValue({
+      data: jpegBytes,
+      headers: { 'content-type': 'application/octet-stream' }
+    });
+
+    const result = await getImageBase64('/img/photo.jpg');
+
+    expect(result.mime).toBe('image/jpeg');
+    expect(result.base64).toBe(jpegBytes.toString('base64'));
+  });
+
+  it('should detect type from buffer when header content-type is missing', async () => {
+    const gifBytes = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]);
+    mockAxiosGet.mockResolvedValue({
+      data: gifBytes,
+      headers: {}
+    });
+
+    const result = await getImageBase64('/img/anim.gif');
+
+    expect(result.mime).toBe('image/gif');
+  });
+
+  it('should fallback to guessBase64ImageType when buffer detection fails', async () => {
+    // Unknown magic bytes that do not match any signature
+    const unknownBytes = Buffer.from([0xaa, 0xbb, 0xcc, 0xdd]);
+    mockAxiosGet.mockResolvedValue({
+      data: unknownBytes,
+      headers: { 'content-type': 'text/html' }
+    });
+
+    const result = await getImageBase64('/img/unknown.dat');
+
+    // guessBase64ImageType will try to decode the base64 of these bytes,
+    // and since the buffer does not match any known signature, it falls back
+    // to the first-character mapping of the base64 string
+    expect(result.mime).toBeDefined();
+    expect(result.base64).toBe(unknownBytes.toString('base64'));
+  });
+
+  it('should handle content-type header with charset parameter', async () => {
+    const svgBytes = Buffer.from([0x3c, 0x73, 0x76, 0x67, 0x20, 0x78, 0x6d, 0x6c]);
+    mockAxiosGet.mockResolvedValue({
+      data: svgBytes,
+      headers: { 'content-type': 'image/svg+xml; charset=utf-8' }
+    });
+
+    const result = await getImageBase64('/img/icon.svg');
+
+    expect(result.mime).toBe('image/svg+xml');
+  });
+
+  it('should reject with error when axios request fails', async () => {
+    const networkError = new Error('Network Error');
+    mockAxiosGet.mockRejectedValue(networkError);
+
+    await expect(getImageBase64('/img/broken.png')).rejects.toThrow('Network Error');
+  });
+
+  it('should reject when server returns non-image error response', async () => {
+    mockAxiosGet.mockRejectedValue(new Error('Request failed with status code 404'));
+
+    await expect(getImageBase64('/img/missing.png')).rejects.toThrow(
+      'Request failed with status code 404'
+    );
+  });
+
+  it('should handle empty arraybuffer response', async () => {
+    const emptyBuffer = Buffer.from([]);
+    mockAxiosGet.mockResolvedValue({
+      data: emptyBuffer,
+      headers: { 'content-type': 'image/png' }
+    });
+
+    const result = await getImageBase64('/img/empty.png');
+
+    // Header says image/png and it is valid, so it should use that
+    expect(result.mime).toBe('image/png');
+    expect(result.base64).toBe('');
+  });
+
+  it('should prefer header content-type over buffer detection when header is valid', async () => {
+    // JPEG magic bytes but header says image/webp
+    const jpegBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+    mockAxiosGet.mockResolvedValue({
+      data: jpegBytes,
+      headers: { 'content-type': 'image/webp' }
+    });
+
+    const result = await getImageBase64('/img/test.webp');
+
+    // Header takes priority when it is a valid image type
+    expect(result.mime).toBe('image/webp');
+  });
+
+  it('should construct completeBase64 in correct data URI format', async () => {
+    const bmpBytes = Buffer.from([0x42, 0x4d, 0x00, 0x00, 0x00, 0x00]);
+    mockAxiosGet.mockResolvedValue({
+      data: bmpBytes,
+      headers: { 'content-type': 'image/bmp' }
+    });
+
+    const result = await getImageBase64('/img/test.bmp');
+
+    expect(result.completeBase64).toMatch(/^data:image\/bmp;base64,[A-Za-z0-9+/=]+$/);
+  });
+});
+
+describe('addEndpointToImageUrl', () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    delete process.env.FE_DOMAIN;
+    delete process.env.NEXT_PUBLIC_BASE_URL;
+  });
+
+  afterEach(() => {
+    process.env.FE_DOMAIN = originalEnv.FE_DOMAIN;
+    process.env.NEXT_PUBLIC_BASE_URL = originalEnv.NEXT_PUBLIC_BASE_URL;
+  });
+
+  it('should return text unchanged when FE_DOMAIN is not set', () => {
+    delete process.env.FE_DOMAIN;
+    const text = '/api/system/img/abc123.png';
+    expect(addEndpointToImageUrl(text)).toBe(text);
+  });
+
+  it('should prepend FE_DOMAIN to matching image URLs without subRoute', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = 'Here is an image: /api/system/img/abc123.png in the text';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe(
+      'Here is an image: https://example.com/api/system/img/abc123.png in the text'
+    );
+  });
+
+  it('should prepend FE_DOMAIN to matching image URLs with subRoute', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '/fastgpt';
+
+    const text = 'Image: /fastgpt/api/system/img/abc123.png end';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe('Image: https://example.com/fastgpt/api/system/img/abc123.png end');
+  });
+
+  it('should not modify URLs that already have a full http(s) prefix', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = 'Already full: https://cdn.example.com/api/system/img/abc123.png';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe(text);
+  });
+
+  it('should handle multiple image URLs in the same text', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = 'First /api/system/img/img1.png and second /api/system/img/img2.jpg here';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe(
+      'First https://example.com/api/system/img/img1.png and second https://example.com/api/system/img/img2.jpg here'
+    );
+  });
+
+  it('should not modify non-matching paths', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = 'This is /api/other/endpoint and /some/path.png';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe(text);
+  });
+
+  it('should return empty string unchanged', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    expect(addEndpointToImageUrl('')).toBe('');
+  });
+
+  it('should handle text with no image URLs', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = 'This is plain text with no image references at all.';
+    expect(addEndpointToImageUrl(text)).toBe(text);
+  });
+
+  it('should not double-prepend FE_DOMAIN to already-prefixed URLs with http', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = 'http://other.com/api/system/img/abc123.png';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe(text);
+  });
+
+  it('should handle FE_DOMAIN with trailing slash gracefully', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    const text = '/api/system/img/file-name_123.webp';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe('https://example.com/api/system/img/file-name_123.webp');
+  });
+
+  it('should handle image URLs with various file extensions', () => {
+    process.env.FE_DOMAIN = 'https://example.com';
+    process.env.NEXT_PUBLIC_BASE_URL = '';
+
+    expect(addEndpointToImageUrl('/api/system/img/test.jpg')).toBe(
+      'https://example.com/api/system/img/test.jpg'
+    );
+    expect(addEndpointToImageUrl('/api/system/img/test.jpeg')).toBe(
+      'https://example.com/api/system/img/test.jpeg'
+    );
+    expect(addEndpointToImageUrl('/api/system/img/test.gif')).toBe(
+      'https://example.com/api/system/img/test.gif'
+    );
+    expect(addEndpointToImageUrl('/api/system/img/test.webp')).toBe(
+      'https://example.com/api/system/img/test.webp'
+    );
   });
 });

@@ -15,7 +15,7 @@ import type {
   InsertVectorControllerPropsType
 } from '../type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getMilvusCollectionDefinitions,
@@ -24,6 +24,8 @@ import {
   type MilvusInsertRow
 } from './config';
 import { milvusVersionManager } from './version';
+
+const logger = getLogger(LogCategories.INFRA.VECTOR);
 
 export class MilvusCtrl implements VectorControllerType {
   constructor() {}
@@ -40,7 +42,7 @@ export class MilvusCtrl implements VectorControllerType {
     });
     await global.milvusClient.connectPromise;
 
-    addLog.info(`Milvus connected`);
+    logger.info('Milvus connected', { address: MILVUS_ADDRESS });
 
     return global.milvusClient;
   };
@@ -59,8 +61,8 @@ export class MilvusCtrl implements VectorControllerType {
         fields,
         index_params: indexParams,
         functions: functions // Milvus 2.6+ BM25 Function
-      });
-      addLog.info(`Create milvus collection ${name}`, result);
+      } as any);
+      logger.info(`Create milvus collection ${name}`, { result });
       return;
     }
   };
@@ -74,7 +76,7 @@ export class MilvusCtrl implements VectorControllerType {
       await client.loadCollectionSync({
         collection_name: collectionName
       });
-      addLog.info(`Milvus collection ${collectionName} load success`);
+      logger.info(`Milvus collection ${collectionName} load success`);
     }
   };
   init: VectorControllerType['init'] = async () => {
@@ -96,7 +98,9 @@ export class MilvusCtrl implements VectorControllerType {
       await client.useDatabase({
         db_name: DatasetVectorDbName
       });
-    } catch (error) {}
+    } catch (error) {
+      logger.warn('Milvus database initialization skipped or failed', { error });
+    }
 
     // 在版本检测完成后，动态生成集合定义
     const collectionDefinitions = getMilvusCollectionDefinitions();
@@ -152,7 +156,7 @@ export class MilvusCtrl implements VectorControllerType {
       if (textContents && textContents[index] && milvusVersionManager.supportsFullText()) {
         const rawText = textContents[index];
         if (rawText.length > MILVUS_TEXT_MAX_LENGTH) {
-          addLog.warn(
+          logger.warn(
             `[Milvus] text field truncated: original length ${rawText.length} exceeds max_length ${MILVUS_TEXT_MAX_LENGTH}, id=${row.id}, collectionId=${collectionId}`
           );
           row.text = rawText.slice(0, MILVUS_TEXT_MAX_LENGTH);
@@ -170,12 +174,11 @@ export class MilvusCtrl implements VectorControllerType {
 
     const result = await client.insert({
       collection_name: tableName,
-      skip_check_schema: true, // milvus 2.6 可能因为缓存导致 collection schema mismatch
       data
-    });
+    } as any);
 
     if (result.IDs === null) {
-      addLog.error(
+      logger.error(
         `[Milvus] insert error: ${result.status.error_code},detail: ${result.status.reason}`
       );
       return Promise.reject(

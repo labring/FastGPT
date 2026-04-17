@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/support/user/team/org/api';
 import type { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import type { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 

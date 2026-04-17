@@ -1,7 +1,7 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { Flex, type FlexProps, useTheme, Box, Tag, useDisclosure, Text } from '@chakra-ui/react';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatSiteItemType } from '../../type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -149,7 +149,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
       );
 
       // 已优化标签 - 只有存在correctionId时才显示
-      if (chat.correctionId) {
+      if ((chat as ChatItemType).correctionId) {
         controls.push(
           <MyTag
             mr={3}
@@ -199,7 +199,7 @@ const ChatItemController = ({ chat, onCorrectError }: ChatItemControllerProps & 
         );
       }
       // 使用新字段quoteList是检索最终结果，totalQuoteList是llm返回结果中带cite的逆向解释出来的
-      if (chat.quoteList && chat.quoteList.length === 0) {
+      if ((chat as ChatItemType).quoteList && (chat as ChatItemType).quoteList!.length === 0) {
         elements.push(
           <MyTag key="quote-list" colorSchema="pink" showDot={false}>
             <Flex alignItems={'center'}>

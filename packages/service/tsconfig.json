@@ -14,5 +14,6 @@
     "**/*.d.ts",
     "../../**/*.d.ts",
     "types/**/*.d.ts"
-  ]
+  ],
+  "moduleResolution": "bundler"
 }

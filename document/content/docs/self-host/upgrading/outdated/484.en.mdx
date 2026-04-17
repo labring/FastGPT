@@ -1,0 +1,34 @@
+---
+title: V4.8.4 (Includes Upgrade Script)
+description: FastGPT V4.8.4 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update Images
+
+- Update the fastgpt image tag to v4.8.4
+- Update the fastgpt-sandbox image tag to v4.8.4 (optional, no changes)
+- Update the commercial edition image tag to v4.8.4
+
+### 2. Commercial Edition Initialization
+
+From any terminal, send 1 HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT commercial edition domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/init/484' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+## V4.8.4 Release Notes
+
+1. New - Apps now use the new permission system.
+2. New - Apps now support folders.
+3. Improved - Text splitting now removes consecutive line breaks and tabs to avoid performance issues with large text.
+4. Critical Fix - Fixed system plugin runtime pool data pollution. Since data was loaded from memory, it caused global state contamination.
+5. Fixed - Debug mode showing abnormal connections when source and target content are identical.
+6. Fixed - Scheduled execution initialization error.
+7. Fixed - App invocation parameter passing error.
+8. Fixed - Incorrect nodeId when copying complex nodes with Ctrl+C/V.
+9. Adjusted global theme for the component library.

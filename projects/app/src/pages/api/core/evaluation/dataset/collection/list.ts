@@ -8,6 +8,7 @@ import type {
   listEvalDatasetCollectionBody,
   listEvalDatasetCollectionResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import {
   getCollectionStatus,
@@ -27,7 +28,7 @@ import {
 */
 async function handler(
   req: ApiRequestProps<listEvalDatasetCollectionBody, {}>
-): Promise<listEvalDatasetCollectionResponse> {
+): Promise<PaginationResponse<listEvalDatasetCollectionResponse>> {
   const { offset, pageSize } = parsePaginationRequest(req);
   const { searchKey } = req.body;
 

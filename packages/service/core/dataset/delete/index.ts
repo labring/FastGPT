@@ -32,7 +32,7 @@ export const addDatasetDeleteJob = (data: DatasetDeleteJobData) => {
     }
   });
 
-  const jobId = `${String(data.teamId)}:${String(data.datasetId)}`;
+  const jobId = `${String(data.teamId)}-${String(data.datasetId)}`;
 
   // 使用去重机制，避免重复删除
   return datasetDeleteQueue.add('delete_dataset', data, {

@@ -1,14 +1,13 @@
-import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { axios } from '../../api/axios';
-import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
+import { addLog } from '../../system/log';
 import { uploadImage2S3Bucket, jwtSignS3ObjectKey } from '../../s3/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addDays } from 'date-fns';
@@ -22,7 +21,6 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   getFormatText?: boolean;
-  metadata?: Record<string, any>;
   usageId?: string;
 };
 
@@ -158,7 +156,7 @@ export const readRawTextByLocalFile = async (
 
   const buffer = await fs.promises.readFile(path);
 
-  return readRawContentByFileBuffer({
+  return readFileContentByBuffer({
     extension,
     customPdfParse: params.customPdfParse,
     getFormatText: params.getFormatText,
@@ -166,89 +164,12 @@ export const readRawTextByLocalFile = async (
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata,
     filename,
     usageId: params.usageId
   });
 };
 
-export const readRawContentByFileBuffer = async ({
-  teamId,
-  tmbId,
-  extension,
-  buffer,
-  encoding,
-  metadata,
-  customPdfParse = false,
-  getFormatText = true,
-  filename,
-  usageId
-}: {
-  teamId: string;
-  tmbId: string;
-  extension: string;
-  buffer: Buffer;
-  encoding: string;
-  metadata?: Record<string, any>;
-  customPdfParse?: boolean;
-  getFormatText?: boolean;
-  filename?: string;
-  usageId?: string;
-}): Promise<ReadFileResponse> => {
-  const systemParse = () => readRawContentFromBuffer({ extension, encoding, buffer });
-
-  const getParseFn = (): (() => Promise<ReadFileResponse>) => {
-    if (!customPdfParse) return systemParse;
-    const cfg = global.systemEnv.customPdfParse;
-    const isDocumentType = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'html', 'csv'].includes(extension);
-    if (isDocumentType && cfg?.url) {
-      if (!cfg?.key) return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
-      return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
-    }
-    if (extension === 'pdf' && cfg?.doc2xKey)
-      return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });
-    return systemParse;
-  };
-
-  const start = Date.now();
-  addLog.debug(`Start parse file`, { extension });
-
-  let { rawText, formatText, imageList } = await getParseFn()();
-
-  addLog.debug(`Parse file success, time: ${Date.now() - start}ms`);
-
-  // upload inline images and replace uuid placeholders with real urls
-  if (imageList) {
-    await batchRun(imageList, async (item) => {
-      let src: string | null = null;
-      try {
-        src = await uploadMongoImg({
-          base64Img: `data:${item.mime};base64,${item.base64}`,
-          teamId,
-          metadata: { ...metadata, mime: item.mime }
-        });
-      } catch (error) {
-        addLog.warn('Upload file image error', { error });
-      }
-
-      if (src) {
-        rawText = rawText.replaceAll(item.uuid, src);
-        if (formatText) formatText = formatText.replaceAll(item.uuid, src);
-      } else {
-        // remove the entire markdown image syntax to avoid leaving broken placeholders
-        const imgPattern = new RegExp(`!\\[[^\\]]*\\]\\(${item.uuid}\\)`, 'g');
-        rawText = rawText.replace(imgPattern, '');
-        if (formatText) formatText = formatText.replace(imgPattern, '');
-      }
-    });
-  }
-
-  addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
-
-  return { rawText: getFormatText ? formatText || rawText : rawText };
-};
-
-export const readS3FileContentByBuffer = async ({
+export const readFileContentByBuffer = async ({
   teamId,
   tmbId,
   extension,

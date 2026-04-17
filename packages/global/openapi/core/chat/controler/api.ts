@@ -1,6 +1,9 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import z from 'zod';
+import { AppChatConfigTypeSchema } from '../../../../core/app/type';
+import { AppTypeEnum } from '../../../../core/app/constants';
+import { FlowNodeInputItemTypeSchema } from '../../../../core/workflow/type/io';
 
 /* Init */
 // Online chat
@@ -19,13 +22,25 @@ export const InitChatQuerySchema = z
   });
 export type InitChatQueryType = z.infer<typeof InitChatQuerySchema>;
 export const InitChatResponseSchema = z.object({
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: z.string().optional().describe('对话ID'),
   appId: ObjectIdSchema.describe('应用ID'),
   userAvatar: z.string().optional().describe('用户头像'),
-  title: z.string().min(1).describe('对话标题'),
+  title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
-  app: z.object({}).describe('应用配置')
+  app: z
+    .object({
+      chatConfig: AppChatConfigTypeSchema.optional().describe('聊天配置'),
+      chatModels: z.array(z.string()).optional().describe('聊天模型'),
+      name: z.string().min(1).describe('应用名称'),
+      avatar: z.string().describe('应用头像'),
+      intro: z.string().describe('应用简介'),
+      canUse: z.boolean().optional().describe('是否可用'),
+      type: z.enum(AppTypeEnum).describe('应用类型'),
+      pluginInputs: z.array(FlowNodeInputItemTypeSchema).describe('插件输入')
+    })
+    .describe('应用配置')
 });
+export type InitChatResponseType = z.infer<typeof InitChatResponseSchema>;
 
 /* ============ v2/chat/stop ============ */
 export const StopV2ChatSchema = z
@@ -56,42 +71,3 @@ export const StopV2ChatResponseSchema = z
     }
   });
 export type StopV2ChatResponse = z.infer<typeof StopV2ChatResponseSchema>;
-
-/* ============ chat file ============ */
-export const PresignChatFileGetUrlSchema = z
-  .object({
-    key: z.string().min(1).describe('文件key'),
-    appId: ObjectIdSchema.describe('应用ID'),
-    outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-  })
-  .meta({
-    example: {
-      key: '1234567890',
-      appId: '1234567890',
-      outLinkAuthData: {
-        shareId: '1234567890',
-        outLinkUid: '1234567890'
-      }
-    }
-  });
-export type PresignChatFileGetUrlParams = z.infer<typeof PresignChatFileGetUrlSchema>;
-
-export const PresignChatFilePostUrlSchema = z
-  .object({
-    filename: z.string().min(1).describe('文件名'),
-    appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('对话ID'),
-    outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-  })
-  .meta({
-    example: {
-      filename: '1234567890',
-      appId: '1234567890',
-      chatId: '1234567890',
-      outLinkAuthData: {
-        shareId: '1234567890',
-        outLinkUid: '1234567890'
-      }
-    }
-  });
-export type PresignChatFilePostUrlParams = z.infer<typeof PresignChatFilePostUrlSchema>;

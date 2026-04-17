@@ -1,0 +1,44 @@
+---
+title: V4.9.8
+description: FastGPT V4.9.8 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back Up Your Data
+
+### 2. Update Image Tags
+
+- Update FastGPT image tag: v4.9.8
+- Update FastGPT Pro image tag: v4.9.8
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. Support for parallel tool call execution.
+2. All built-in tasks switched from non-stream mode to stream mode to avoid compatibility issues with models that don't support non-stream mode. To override, you can force `stream=false` in the model's `Extra Body` parameters.
+3. Qwen3 model presets.
+4. Yuque knowledge base now supports setting a root directory.
+5. Configurable password expiration — users will be forced to change their password on next login after expiration.
+6. Password login now includes preLogin temporary key verification.
+7. Admin panel now supports configuring visibility of publishing channels and third-party knowledge bases.
+
+## Improvements
+
+1. Chat log list optimization to prevent memory overflow with large datasets.
+2. Token calculation worker is now preloaded to prevent thread blocking from concurrent creation during main tasks.
+3. Workflow node version control UI improvements.
+4. Web fetch and html2md optimization: now supports video and audio tag conversion.
+
+## Bug Fixes
+
+1. App list / knowledge base list: incorrect permission display for delete row actions.
+2. Opening knowledge base search parameters automatically enabling the rerank option.
+3. Incorrect API request format for LLM json_schema mode.
+4. Expired image indexes not properly cleared during retraining, causing image loss.
+5. Retraining permission issues.
+6. Documentation link URLs.
+7. Claude tool calls failing due to empty index values.
+8. Nested workflows with interactive nodes inside tool calls causing abnormal flow behavior.

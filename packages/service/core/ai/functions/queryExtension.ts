@@ -1,15 +1,17 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType, type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
-import { addLog } from '../../../common/system/log';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
 import json5 from 'json5';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { loadRequestMessages } from '../llm/utils';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getSynonymMappings, standardizeQuery } from '../../dataset/search/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 
 /*
   Query Extension - Semantic Search Enhancement
@@ -131,7 +133,7 @@ export const queryExtension = async ({
 }: {
   chatBg?: string;
   query: string;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   llmModel: string;
   embeddingModel: string;
   generateCount?: number;
@@ -216,7 +218,7 @@ assistant: ${chatBg}
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
   if (start === -1 || end === -1) {
-    addLog.warn('Query extension failed, not a valid JSON', {
+    logger.warn('Query extension returned invalid JSON', {
       answer
     });
     return {
@@ -275,7 +277,7 @@ assistant: ${chatBg}
       synonymRewriteResult: undefined
     };
   } catch (error) {
-    addLog.debug('Query extension failed', {
+    logger.warn('Query extension failed', {
       error,
       answer
     });
@@ -432,7 +434,7 @@ async function mergedQueryOptimization({
             };
           }
         } catch (innerE) {
-          addLog.debug('Failed to parse extracted JSON', { jsonStr, error: innerE });
+          logger.debug('Failed to parse extracted JSON', { jsonStr, error: innerE });
         }
       }
     }
@@ -445,7 +447,7 @@ async function mergedQueryOptimization({
       outputTokens
     };
   } catch (error) {
-    addLog.debug('Merged query optimization error', { error });
+    logger.debug('Merged query optimization error', { error });
     return {
       resolvedQuery: query,
       rewriteQueries: [],
@@ -494,7 +496,7 @@ export const queryExtensionForAssistant = async ({
     totalInputTokens += optimizationResult.inputTokens;
     totalOutputTokens += optimizationResult.outputTokens;
 
-    addLog.info('Merged query optimization completed', {
+    logger.info('Merged query optimization completed', {
       original: query,
       resolvedQuery: optimizationResult.resolvedQuery,
       rewriteQueries: optimizationResult.rewriteQueries
@@ -507,7 +509,7 @@ export const queryExtensionForAssistant = async ({
       query: optimizationResult.resolvedQuery
     });
 
-    addLog.info('Retrieved synonym mappings from all datasets', {
+    logger.info('Retrieved synonym mappings from all datasets', {
       query: optimizationResult.resolvedQuery,
       datasetCount: datasetIds.length,
       synonymCount: Object.keys(synonymDict).length,
@@ -539,7 +541,7 @@ export const queryExtensionForAssistant = async ({
       return true;
     });
 
-    addLog.info('Query extension for assistant completed', {
+    logger.info('Query extension for assistant completed', {
       originalQuery: query,
       extensionQueries,
       totalInputTokens,
@@ -563,7 +565,7 @@ export const queryExtensionForAssistant = async ({
       synonymRewriteResult
     };
   } catch (error) {
-    addLog.error('Query extension for assistant failed', { error });
+    logger.error('Query extension for assistant failed', { error });
     return {
       rawQuery: query,
       extensionQueries: [query],

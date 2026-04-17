@@ -42,6 +42,9 @@
   "content_to_retrieve": "Content to be searched",
   "content_to_search": "Content to be searched",
   "contextMenu.addComment": "Add comment",
+  "code_allow_packages": "Available dependencies",
+  "code_allow_packages_func": "Available packages: {{modules}}\nGlobal functions: {{globals}}",
+  "code_sandbox_intro": "Executing a script code in the sandbox can be used to perform complex data processing, but the syntax and available dependencies will be limited.",
   "context_menu.add_comment": "Add comment",
   "create_link_error": "Error occurred while creating the link.",
   "custom_feedback": "Custom feedback",
@@ -192,6 +195,13 @@
   "template.dataset_search_intro": "Retrieves relevant reference materials from the knowledge base using standard retrieval or multi-round intelligent retrieval.",
   "template.forbid_stream": "Disable output in streaming mode",
   "template.forbid_stream_desc": "Force nested apps to run in non-streaming mode.",
+  "reasoning_content": "Thinking text",
+  "template.agent_module": "Agent",
+  "template.agent_module_intro": "Associate required tools and Skills to enable AI-driven autonomous invocation and planning",
+  "agent.tools": "Tools",
+  "agent.prompt_skill_tip": "@ to select Skills and tools, \"/\" to select variables",
+  "agent.select_skill": "Select Skill",
+  "agent.select_tool": "Select Tool",
   "template.plugin_output": "Plugin output",
   "template.plugin_start": "Plugin input",
   "template.system_config": "System",
@@ -251,5 +261,6 @@
   "correction_data_hit_check": "Whether correction data is matched",
   "use_correction_data_reply": "Use correction data reply",
   "debug_file_url_input.doc_link_placeholder": "Document link",
-  "debug_file_url_input.add_doc_link": "Add document link"
+  "debug_file_url_input.add_doc_link": "Add document link",
+  "params_setting": "Parameters"
 }

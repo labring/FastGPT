@@ -112,6 +112,5 @@
   "team.manage_collaborators": "Manage collaborators",
   "team.no_collaborators": "No collaborators available.",
   "team.org.org": "Department",
-  "team.write_role_member": "Write permission",
-  "team.collaborator.added": "Added successfully."
+  "team.write_role_member": "Write permission"
 }

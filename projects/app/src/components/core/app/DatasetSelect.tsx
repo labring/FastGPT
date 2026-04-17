@@ -173,7 +173,7 @@ export const DatasetSelect = ({
               isSxfDesign={true}
               fontSize={'12px'}
               FirstPathDom={t('common:root_folder')}
-              onClick={(e) => setParentId(e)}
+              onClick={(e) => setParentId(e || '')}
             />
           )}
         </Box>
