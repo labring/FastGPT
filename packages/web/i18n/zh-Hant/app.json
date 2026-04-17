@@ -732,5 +732,7 @@
   "smart_qa_desc": "內建最佳實踐配置，關聯知識庫即可快速構建智能問答應用",
   "agent_desc": "關聯所需工具及Skill，可實現 AI 自主調用與規劃",
   "workflow_desc": "可通過流程編排，實現多系統交互、多分支邏輯、多 Agent 調用等複雜業務流",
-  "import_json_config": "導入 JSON 配置"
+  "import_json_config": "導入 JSON 配置",
+  "entry_point": "功能入口",
+  "entry_point_tip": "可以在对话框上常驻功能入口，用来切换应用中的不同能力，可在工作流中用判断器设置不同功能入口的分支流程。"
 }

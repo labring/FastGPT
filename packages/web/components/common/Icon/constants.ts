@@ -15,6 +15,7 @@ export const iconPaths = {
   code: () => import('./icons/code.svg'),
   codeCopilot: () => import('./icons/codeCopilot.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),
+  appEntry: () => import('./icons/app.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),
   comment: () => import('./icons/comment.svg'),
   mysql: () => import('./icons/mysql.svg'),

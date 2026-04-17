@@ -174,6 +174,7 @@ export type AppChatConfigType = {
   faqAnswerMode?: 'quote' | 'llm-summary';
   enableFallbackReply?: 'useFallbackReply' | 'llmReply';
   fallbackReply?: string;
+  entryPoints?: EntryPointItemType[];
 
   // plugin
   instruction?: string;
@@ -190,6 +191,13 @@ export type SettingAIDataType = {
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
+};
+
+// entry point
+export type EntryPointItemType = {
+  id: string;
+  name: string;
+  icon?: string; // S3 permanent image URL, optional
 };
 
 // variable

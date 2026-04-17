@@ -39,7 +39,7 @@ export const getGlobalVariableNode = ({
     showSourceHandle: false,
     showTargetHandle: false,
     avatar: 'core/workflow/template/variable',
-    name: t('common:core.module.Variable'),
+    name: t('workflow:template.system_config'),
     intro: '',
     unique: true,
     forbidDelete: true,

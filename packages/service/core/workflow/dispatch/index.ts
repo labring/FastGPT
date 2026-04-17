@@ -48,6 +48,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { anyValueDecrypt } from '../../../common/secret/utils';
 import { getUserChatInfo } from '../../../support/user/team/utils';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
@@ -1203,6 +1204,10 @@ const getSystemVariables = async ({
 
   return {
     ...variablesMap,
+    // 功能入口变量：不在 variablesConfig 中，从请求原始 variables 中直接透传
+    ...(variables[ENTRY_POINT_VARIABLE_KEY] !== undefined
+      ? { [ENTRY_POINT_VARIABLE_KEY]: variables[ENTRY_POINT_VARIABLE_KEY] }
+      : {}),
     // System var:
     userId: uid,
     appId: String(runningAppInfo.id),

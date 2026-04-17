@@ -1,5 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
 import React, { useRef } from 'react';
@@ -13,7 +14,8 @@ enum FnTypeEnum {
   file = 'file',
   visionModel = 'visionModel',
   instruction = 'instruction',
-  autoExec = 'autoExec'
+  autoExec = 'autoExec',
+  entryPoint = 'entryPoint'
 }
 
 const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
@@ -81,6 +83,12 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
       title: t('common:core.app.Auto execute'),
       desc: t('app:auto_execute_tip'),
       imgUrl: getImagePath('/imgs/app/autoExec.svg')
+    },
+    [FnTypeEnum.entryPoint]: {
+      icon: '/imgs/app/appEntryIcon.svg',
+      title: t('app:entry_point'),
+      desc: t('app:entry_point_tip'),
+      imgUrl: '/imgs/app/appEntry.svg'
     }
   });
   const data = map.current[type];
