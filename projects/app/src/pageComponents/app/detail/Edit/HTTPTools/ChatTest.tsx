@@ -11,7 +11,7 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
-import { postRunHTTPTool } from '@/web/core/app/api/tool';
+import { postRunHTTPTool } from '@/web/core/app/api/httpTools';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { valueTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getNodeInputTypeFromSchemaInputType } from '@fastgpt/global/core/app/jsonschema';

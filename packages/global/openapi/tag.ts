@@ -13,9 +13,10 @@ export const TagsMap = {
 
   // App 管理
   // Agent - common
-  appCommon: '通用应用管理',
+  appCommon: '应用管理',
   appPer: '应用权限',
   mcpTools: 'MCP 工具管理',
+  httpTools: 'HTTP 工具管理',
 
   /* ===== Chat ===== */
   chatPage: '对话页面通用',

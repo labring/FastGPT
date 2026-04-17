@@ -46,11 +46,10 @@ import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
-import { putUpdateHttpPlugin } from '@/web/core/app/api/tool';
+import { putUpdateHttpTool } from '@/web/core/app/api/httpTools';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import CurlImportModal from './CurlImportModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -202,7 +201,7 @@ const ManualToolModal = ({
         return [...existingToolList, newTool];
       })();
 
-      return putUpdateHttpPlugin({
+      return putUpdateHttpTool({
         appId: appDetail._id,
         toolList: updatedToolList
       });

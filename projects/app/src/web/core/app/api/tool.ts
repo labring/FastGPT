@@ -1,6 +1,4 @@
 import { GET, POST } from '@/web/common/api/request';
-import type { createHttpToolsBody } from '@/pages/api/core/app/httpTools/create';
-import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
 import type {
   FlowNodeTemplateType,
   NodeTemplateListItemType
@@ -21,17 +19,7 @@ import type {
   getToolVersionResponse
 } from '@/pages/api/core/app/tool/getVersionList';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import type { RunHTTPToolBody, RunHTTPToolResponse } from '@/pages/api/core/app/httpTools/runTool';
-import type {
-  UpdateMcpToolsBodyType,
-  CreateMcpToolsBodyType,
-  GetMcpChildrenQueryType,
-  GetMcpChildrenResponseType,
-  GetMcpToolsBodyType,
-  GetMcpToolsResponseType,
-  RunMcpToolBodyType,
-  RunMcpToolResponseType
-} from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import { getMcpChildren } from './mcpTools';
 
 /* ============ team plugin ============== */
 export const getTeamAppTemplates = async (data?: {
@@ -112,38 +100,3 @@ export const getToolPreviewNode = (data: GetPreviewNodeQuery) =>
 
 export const getToolVersionList = (data: getToolVersionListProps) =>
   POST<getToolVersionResponse>('/core/app/tool/getVersionList', data);
-
-/* ============ mcp tools ============== */
-export const postCreateMCPTools = (data: CreateMcpToolsBodyType) =>
-  POST<string>('/core/app/mcpTools/create', data);
-
-export const postUpdateMCPTools = (data: UpdateMcpToolsBodyType) =>
-  POST('/core/app/mcpTools/update', data);
-
-export const getMCPTools = (data: GetMcpToolsBodyType) =>
-  POST<GetMcpToolsResponseType>('/core/app/mcpTools/getTools', data);
-
-export const postRunMCPTool = (data: RunMcpToolBodyType) =>
-  POST<RunMcpToolResponseType>('/core/app/mcpTools/runTool', data, { timeout: 300000 });
-
-export const getMcpChildren = (data: GetMcpChildrenQueryType) =>
-  GET<GetMcpChildrenResponseType>('/core/app/mcpTools/getChildren', data);
-
-/* ============ http tools ============== */
-export const getApiSchemaByUrl = (url: string) =>
-  POST<Object>(
-    '/core/app/httpTools/getApiSchemaByUrl',
-    { url },
-    {
-      timeout: 30000
-    }
-  );
-
-export const postCreateHttpTools = (data: createHttpToolsBody) =>
-  POST<string>('/core/app/httpTools/create', data);
-
-export const putUpdateHttpPlugin = (data: UpdateHttpPluginBody) =>
-  POST('/core/app/httpTools/update', data);
-
-export const postRunHTTPTool = (data: RunHTTPToolBody) =>
-  POST<RunHTTPToolResponse>('/core/app/httpTools/runTool', data);

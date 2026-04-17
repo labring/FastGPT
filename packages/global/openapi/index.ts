@@ -28,7 +28,7 @@ export const openAPIDocument = createDocument({
   'x-tagGroups': [
     {
       name: '我的应用/工具管理',
-      tags: [TagsMap.appCommon, TagsMap.mcpTools, TagsMap.appPer]
+      tags: [TagsMap.appCommon, TagsMap.mcpTools, TagsMap.httpTools, TagsMap.appPer]
     },
     {
       name: 'Agent 应用',

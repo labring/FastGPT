@@ -12,7 +12,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { GetMcpToolsBodyType } from '@fastgpt/global/openapi/core/app/mcpTools/api';
-import { getMCPTools } from '@/web/core/app/api/tool';
+import { getMCPTools } from '@/web/core/app/api/mcpTools';
 import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
