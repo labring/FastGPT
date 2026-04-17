@@ -2,7 +2,9 @@ import {
   SseResponseEventEnum,
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
-  StreamResumePhaseEvent
+  StreamResumePhaseEvent,
+  StreamResumeUnavailableEvent,
+  StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   STREAM_RESUME_REQUEST_HEADER,
@@ -28,6 +30,7 @@ import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type StreamFetchProps = {
   url?: string;
@@ -40,11 +43,16 @@ export type StreamResponseType = {
 };
 export type ResumeStreamResponseType = StreamResponseType & {
   completedChat?: StreamNoNeedToBeResumeType;
+  resumeUnavailable?: ResumeUnavailableType;
 };
 export type ResumeStreamErrorType = {
   message: string;
   responseText: string;
   isStreamError?: boolean;
+};
+
+export type ResumeUnavailableType = {
+  reason: `${StreamResumeUnavailableReasonEnum}`;
 };
 
 const shouldSendStreamResumeHeader = (url: string) =>
@@ -368,9 +376,10 @@ function $ssefetch(params: SSEFetchParams) {
 type ResumeSSEFetchParams = {
   url: string;
   onmessage: StartChatFnProps['generatingMessage'];
+  onResumeUnavailable?: (data: ResumeUnavailableType) => void;
   controller: AbortController;
 };
-function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
+function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: ResumeSSEFetchParams) {
   const signal = controller.signal;
 
   return new Promise<ResumeStreamResponseType>(async (resolve, reject) => {
@@ -384,12 +393,13 @@ function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
     let finished = false;
     let resumePhase: StreamResumePhaseEnum = StreamResumePhaseEnum.catchup;
     let completedChat: StreamNoNeedToBeResumeType | undefined;
+    let resumeUnavailable: ResumeUnavailableType | undefined;
 
     const onfinish = () => {
       if (error !== undefined) {
         return onfailed();
       }
-      return resolve({ responseText, completedChat });
+      return resolve({ responseText, completedChat, resumeUnavailable });
     };
     const onfailed = (err?: any) => {
       finished = true;
@@ -491,6 +501,18 @@ function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
             return;
           }
 
+          if (event === StreamResumeUnavailableEvent) {
+            try {
+              resumeUnavailable = JSON.parse(data) as ResumeUnavailableType;
+            } catch {
+              resumeUnavailable = {
+                reason: StreamResumeUnavailableReasonEnum.mirrorUnavailable
+              };
+            }
+            onResumeUnavailable?.(resumeUnavailable);
+            return;
+          }
+
           if (data === '[DONE]') {
             return;
           }
@@ -574,15 +596,23 @@ export const streamFetch = ({
 type StreamResumeFetchParams = {
   appId: string;
   chatId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
   onmessage: StartChatFnProps['generatingMessage'];
+  onResumeUnavailable?: (data: ResumeUnavailableType) => void;
   controller: AbortController;
 };
 export function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { appId, chatId, onmessage, controller } = params;
+  const { appId, chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
   const query = new URLSearchParams({ appId, chatId });
+
+  Object.entries(outLinkAuthData || {}).forEach(([key, value]) => {
+    if (!value) return;
+    query.set(key, value);
+  });
+
   const url = `/api/core/chat/resume?${query}`;
 
-  return $resumefetch({ url, onmessage, controller });
+  return $resumefetch({ url, onmessage, onResumeUnavailable, controller });
 }
 
 export const onOptimizePrompt = async ({

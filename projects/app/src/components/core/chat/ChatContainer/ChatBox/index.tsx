@@ -662,31 +662,57 @@ const ChatBox = ({
     });
   });
 
-  const appendResumeAiPlaceholder = useMemoizedFn((responseChatId: string) => {
-    setChatRecords((state) => {
-      const lastItem = state[state.length - 1];
-      if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
-        return state;
-      }
+  const getResumeUnavailablePlaceholderText = useMemoizedFn(() =>
+    t('chat:resume_placeholder_generating')
+  );
 
-      return [
-        ...state,
-        {
-          id: responseChatId,
-          dataId: responseChatId,
-          obj: ChatRoleEnum.AI,
-          value: [
-            {
-              text: {
-                content: ''
-              }
-            }
-          ],
-          status: ChatStatusEnum.loading
+  const upsertResumeAiPlaceholder = useMemoizedFn(
+    (responseChatId: string, text = '', status: `${ChatStatusEnum}` = ChatStatusEnum.loading) => {
+      setChatRecords((state) => {
+        const lastItem = state[state.length - 1];
+        if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
+          if (!text) {
+            return state;
+          }
+
+          return state.map((item, index) =>
+            index !== state.length - 1
+              ? item
+              : {
+                  ...item,
+                  value: [
+                    {
+                      text: {
+                        content: text
+                      }
+                    }
+                  ],
+                  status,
+                  ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
+                }
+          );
         }
-      ];
-    });
-  });
+
+        return [
+          ...state,
+          {
+            id: responseChatId,
+            dataId: responseChatId,
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: text
+                }
+              }
+            ],
+            status,
+            ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
+          }
+        ];
+      });
+    }
+  );
 
   /**
    * user confirm send prompt
@@ -1255,14 +1281,24 @@ const ChatBox = ({
 
     (async () => {
       try {
-        const { responseText, completedChat } = await streamResumeFetch({
+        const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
           appId,
           chatId,
+          outLinkAuthData,
           controller,
+          onResumeUnavailable: () => {
+            if (resumeForChatId !== activeChatIdRef.current) return;
+            resumeFinalStatus = ChatGenerateStatusEnum.generating;
+            upsertResumeAiPlaceholder(
+              responseChatId,
+              getResumeUnavailablePlaceholderText(),
+              ChatStatusEnum.loading
+            );
+          },
           onmessage: (message) => {
             if (resumeForChatId !== activeChatIdRef.current) return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
-              appendResumeAiPlaceholder(responseChatId);
+              upsertResumeAiPlaceholder(responseChatId);
             }
             generatingMessage(message);
           }
@@ -1271,11 +1307,22 @@ const ChatBox = ({
         if (resumeForChatId !== activeChatIdRef.current) return;
 
         if (completedChat) {
+          resumeFinalStatus = completedChat.chatGenerateStatus;
           setChatRecords(
             completedChat.records.list.map((item) => ({
               ...item,
               status: ChatStatusEnum.finish
             }))
+          );
+          return;
+        }
+
+        if (resumeUnavailable) {
+          resumeFinalStatus = ChatGenerateStatusEnum.generating;
+          upsertResumeAiPlaceholder(
+            responseChatId,
+            getResumeUnavailablePlaceholderText(),
+            ChatStatusEnum.loading
           );
           return;
         }
@@ -1407,13 +1454,14 @@ const ChatBox = ({
     chatBoxData.chatGenerateStatus,
     generatingMessage,
     hasMeaningfulAiOutput,
+    getResumeUnavailablePlaceholderText,
     outLinkAuthData,
     resumeTargetAiDataId,
     scrollToBottom,
     setChatBoxData,
     setChatRecords,
     syncSidebarChatGenerateStatus,
-    appendResumeAiPlaceholder,
+    upsertResumeAiPlaceholder,
     t,
     toast
   ]);

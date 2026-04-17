@@ -66,7 +66,7 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
 import {
-  ensureGenerateChat,
+  tryStartGenerateChat,
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
@@ -107,6 +107,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
   const finalResponseChatItemId = responseChatItemId || getNanoid(24);
   let usePreparedRound = false;
+  let hasAcquiredGenerateSlot = false;
 
   try {
     if (!Array.isArray(messages)) {
@@ -274,6 +275,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     runningAppId = String(app._id);
     usePreparedRound = !interactive;
 
+    const canStartGenerate = await tryStartGenerateChat({
+      appId: runningAppId,
+      chatId: runningChatId,
+      teamId,
+      tmbId: String(tmbId),
+      source,
+      sourceName: sourceName || '',
+      shareId,
+      outLinkUid: outLinkUserId
+    });
+
+    if (!canStartGenerate) {
+      throw ChatErrEnum.chatIsGenerating;
+    }
+    hasAcquiredGenerateSlot = true;
+
     if (usePreparedRound) {
       await prepareChatRound({
         appId: runningAppId,
@@ -286,17 +303,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         outLinkUid: outLinkUserId,
         userContent: userQuestion,
         responseChatItemId: finalResponseChatItemId
-      });
-    } else {
-      await ensureGenerateChat({
-        appId: runningAppId,
-        chatId: runningChatId,
-        teamId,
-        tmbId: String(tmbId),
-        source,
-        sourceName: sourceName || '',
-        shareId,
-        outLinkUid: outLinkUserId
       });
     }
 
@@ -532,7 +538,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
-    if (runningAppId && runningChatId) {
+    if (hasAcquiredGenerateSlot && runningAppId && runningChatId) {
       if (usePreparedRound) {
         await failChatRound({
           appId: runningAppId,
@@ -565,8 +571,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await mirror?.shrinkTTLAfterComplete();
       res.end();
     } else {
+      const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
-        code: 500,
+        code: errKey === ChatErrEnum.chatIsGenerating ? 409 : 500,
         error: err
       });
     }

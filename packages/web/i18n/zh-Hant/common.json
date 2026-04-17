@@ -139,6 +139,7 @@
   "code_error.skill_error.un_auth_skill": "無權操作該技能",
   "code_error.skill_error.can_not_edit_admin_permission": "不能編輯管理員權限",
   "code_error.chat_error.un_auth": "沒有權限操作此對話記錄",
+  "code_error.chat_error.chat_generating": "目前對話仍在生成中，請等待完成後再發起新的請求",
   "code_error.error_code.400": "請求失敗",
   "code_error.error_code.401": "無存取權限",
   "code_error.error_code.403": "禁止存取",

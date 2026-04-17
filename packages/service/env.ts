@@ -6,8 +6,8 @@ const BoolSchema = z
   .transform((val) => val === 'true')
   .pipe(z.boolean());
 
-const NumSchema = z.coerce.number();
-const IntSchema = z.coerce.number().int().nonnegative();
+const NumSchema = z.coerce.number<number>();
+const IntSchema = NumSchema.int().nonnegative();
 
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
@@ -105,21 +105,13 @@ export const env = createEnv({
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
 
     /** Redis 流式镜像续期：生成中（秒） */
-    STREAM_RESUME_TTL_SECONDS: z.coerce
-      .number<number>()
-      .int()
-      .positive()
-      .default(5 * 60),
+    STREAM_RESUME_TTL_SECONDS: IntSchema.positive().default(5 * 60),
     /** 流结束后缩短 TTL，便于回收（秒） */
-    STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: z.coerce.number<number>().int().positive().default(30),
+    STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: IntSchema.positive().default(30),
     /** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建流恢复镜像 */
-    STREAM_RESUME_REDIS_MAXMEMORY_RATIO: z.coerce.number<number>().positive().max(1).default(0.5),
+    STREAM_RESUME_REDIS_MAXMEMORY_RATIO: NumSchema.positive().max(1).default(0.5),
     /** Redis 内存水位检测缓存时长（毫秒），避免每个流请求都调用 INFO MEMORY */
-    STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: z.coerce
-      .number<number>()
-      .int()
-      .positive()
-      .default(5000),
+    STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: IntSchema.positive().default(5000),
 
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)

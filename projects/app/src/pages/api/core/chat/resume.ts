@@ -11,14 +11,23 @@ import {
   DispatchNodeResponseKeyEnum,
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
-  StreamResumePhaseEvent
+  StreamResumePhaseEvent,
+  StreamResumeUnavailableEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { catchUpAllHistoryItems, _resume } from '@fastgpt/service/core/chat/resume';
+import {
+  STREAM_RESUME_TTL_SECONDS,
+  catchUpAllHistoryItems,
+  _resume,
+  getStreamResumeUnavailableState
+} from '@fastgpt/service/core/chat/resume';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 const completedChatPageSize = 10;
+const resumeUnavailablePollIntervalMs = 3000;
+const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
 const resumeGeneratingRequiresSseMessage =
   'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
@@ -34,6 +43,19 @@ const writeResumePhase = (res: NextApiResponse, phase: StreamResumePhaseEnum) =>
 const writeSseEvent = (res: NextApiResponse, event: string, data: string) => {
   if (isResponseClosed(res)) return;
   res.write(`event: ${event}\ndata: ${data}\n\n`);
+};
+
+const writeSseComment = (res: NextApiResponse, comment: string) => {
+  if (isResponseClosed(res)) return;
+  res.write(`: ${comment}\n\n`);
+};
+
+const writeResumeUnavailable = (
+  res: NextApiResponse,
+  data: Awaited<ReturnType<typeof getStreamResumeUnavailableState>>
+) => {
+  if (!data) return;
+  writeSseEvent(res, StreamResumeUnavailableEvent, JSON.stringify(data));
 };
 
 const initSseResponse = (res: NextApiResponse) => {
@@ -64,7 +86,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
     chatId,
     appId,
-    teamId: requestTeamId
+    teamId: requestTeamId,
+    teamToken,
+    shareId,
+    outLinkUid
   } = await ResumeStreamParamsSchema.parseAsync(req.query);
   const respondWithSse = shouldRespondWithSse(req);
 
@@ -73,6 +98,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     req,
     chatId,
     teamId: requestTeamId,
+    teamToken,
+    shareId,
+    outLinkUid,
     authToken: true
   });
 
@@ -122,6 +150,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
   };
 
+  const waitForCompletedChat = async () => {
+    const deadlineAt = Date.now() + resumeUnavailableMaxWaitMs;
+
+    while (!isResponseClosed(res)) {
+      const chat = await findCurrentChat();
+
+      if (chat.chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+        await makeSureTheCompletedChatHasBeenRead();
+        return findCompletedChat();
+      }
+
+      const remainingMs = deadlineAt - Date.now();
+      if (remainingMs <= 0) {
+        return;
+      }
+
+      writeSseComment(res, 'ping');
+      await delay(Math.min(resumeUnavailablePollIntervalMs, remainingMs));
+    }
+  };
+
   const { chatGenerateStatus } = await findCurrentChat();
 
   // Chat has been completed, no need to catch up history items and resume stream
@@ -156,7 +205,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.end();
   });
 
+  const unavailableState = await getStreamResumeUnavailableState({
+    teamId,
+    appId,
+    chatId
+  });
+
   writeResumePhase(res, StreamResumePhaseEnum.catchup);
+
+  if (unavailableState) {
+    writeResumeUnavailable(res, unavailableState);
+    const completedChat = await waitForCompletedChat();
+    if (completedChat) {
+      writeSseEvent(res, StreamResumeCompletedEvent, JSON.stringify(completedChat));
+    }
+    writeSseEvent(res, 'done', '[DONE]');
+    res.end();
+    return;
+  }
+
   const cursor = await catchUpAllHistoryItems({ res, teamId, appId, chatId });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);

@@ -1,6 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 import { ChatGenerateStatusEnum } from '../../../core/chat/constants';
+import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
@@ -55,12 +56,15 @@ export const ChatMessageSchema = z.object({
 });
 
 /* ============================================================================
- * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；query 仅 appId / chatId / teamId）
+ * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内、分享、团队域名鉴权）
  * ============================================================================ */
 
 export const ResumeStreamParamsSchema = z.object({
+  ...OutLinkChatAuthSchema.shape,
   appId: ObjectIdSchema,
   teamId: ObjectIdSchema.optional(),
+  shareId: z.string().optional(),
+  outLinkUid: z.string().optional(),
   chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
 });
 
