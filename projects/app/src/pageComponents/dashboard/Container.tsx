@@ -556,7 +556,7 @@ export const DashboardNavbar = ({
             />
 
             {/* 应用测评（Beta） */}
-            {userInfo?.team?.permission.hasEvaluationCreatePer && (
+            {feConfigs?.show_evaluation && userInfo?.team?.permission.hasEvaluationCreatePer && (
               <NavItem
                 icon="navbar/evaluationNew"
                 label={t('common:app_evaluation')}

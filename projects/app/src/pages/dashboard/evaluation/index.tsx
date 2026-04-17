@@ -3,19 +3,27 @@ import DashboardContainer from '../../../pageComponents/dashboard/Container';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { Flex } from '@chakra-ui/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import EvaluationTasks from './task/index';
 import EvaluationDatasets from './dataset/index';
 import EvaluationDimensions from './dimension/index';
 import { useRouter } from 'next/router';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type TabType = 'tasks' | 'datasets' | 'dimensions';
 
 const Evaluation = () => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { feConfigs } = useSystemStore();
   const { evaluationTab = 'tasks' } = router.query as { evaluationTab: TabType };
+
+  useEffect(() => {
+    if (feConfigs?.show_evaluation === false) {
+      router.replace('/dashboard');
+    }
+  }, [feConfigs?.show_evaluation, router]);
 
   const Tab = useMemo(() => {
     return (
