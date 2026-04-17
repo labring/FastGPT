@@ -130,7 +130,7 @@
   "parallel_run_execution_logic": "执行逻辑",
   "parallel_run_end_intro": "选择变量，作为并行执行的结果输出",
   "parallel_run_max_concurrency": "最大并发数",
-  "parallel_run_max_concurrency_tip": "同时并行执行的最大任务数，范围 1～系统上限（默认 5）。",
+  "parallel_run_max_concurrency_tip": "同时并行执行的最大任务数，范围 1～上限值（默认 5）。",
   "parallel_run_max_retry_times": "单轮报错重试次数",
   "parallel_run_max_retry_times_tip": "单个任务失败后的最大重试次数，范围 0～5（默认 3）。设为 0 表示失败不重试。",
   "can_not_parallel": "该节点不支持在并行执行节点中使用",

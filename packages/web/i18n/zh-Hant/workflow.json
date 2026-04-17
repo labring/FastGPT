@@ -130,7 +130,7 @@
   "parallel_run_execution_logic": "執行邏輯",
   "parallel_run_end_intro": "選擇變數，作為並行執行的結果輸出",
   "parallel_run_max_concurrency": "最大並發數",
-  "parallel_run_max_concurrency_tip": "同時並行執行的最大任務數，範圍 1～系統上限（預設 5）。",
+  "parallel_run_max_concurrency_tip": "同時並行執行的最大任務數，範圍 1～上限值（預設 5）。",
   "parallel_run_max_retry_times": "單輪報錯重試次數",
   "parallel_run_max_retry_times_tip": "單個任務失敗後的最大重試次數，範圍 0～5（預設 3）。設為 0 表示失敗不重試。",
   "can_not_parallel": "該節點不支援在並行執行節點中使用",

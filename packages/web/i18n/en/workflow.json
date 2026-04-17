@@ -130,7 +130,7 @@
   "parallel_run_execution_logic": "Execution Logic",
   "parallel_run_end_intro": "Select a variable as the output of the parallel run",
   "parallel_run_max_concurrency": "Max Concurrency",
-  "parallel_run_max_concurrency_tip": "Maximum number of tasks running in parallel (range: 1 to system limit, default 5).",
+  "parallel_run_max_concurrency_tip": "Maximum number of tasks running in parallel (range: 1 to the upper limit, default 5).",
   "parallel_run_max_retry_times": "Retry Times on Error",
   "parallel_run_max_retry_times_tip": "Maximum number of retries for a failed task (range: 0–5, default 3). Set to 0 to disable retries.",
   "can_not_parallel": "This node cannot be used inside a Parallel Run node",
