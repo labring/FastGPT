@@ -515,5 +515,16 @@
   "file": "文件",
   "name_or_description": "名称/描述",
   "website_label": "网站",
-  "database_table_label": "数据表"
+  "database_table_label": "数据表",
+  "new_dataset_title": "新建{{name}}",
+  "icon_and_name": "图标 & 名称",
+  "agent_model_label": "知识增强模型",
+  "agent_model_tip": "依据知识内容生成增强的索引，如问题、摘要等，是提升检索召回率的必要手段。",
+  "vlm_model_label": "图片解析模型",
+  "vlm_model_tip": "当知识中存在图片时，可配置图片解析模型，用于识别其中的文本和结构信息（如表格、流程图等）。",
+  "vector_model_tip": "将文本转化为用数值表示的向量，同时在知识问答过程中实现语义向量检索，是实现知识检索的必要能力。",
+  "website_url": "网站地址",
+  "website_url_placeholder": "请填写根地址，将读取根地址下所有静态网页",
+  "website_selector_label": "选择器",
+  "website_selector_placeholder": "CSS选择器，例如：body .content #document"
 }

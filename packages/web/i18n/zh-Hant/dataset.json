@@ -512,5 +512,16 @@
   "file": "檔案",
   "name_or_description": "名稱/描述",
   "website_label": "網站",
-  "database_table_label": "資料表"
+  "database_table_label": "資料表",
+  "new_dataset_title": "新建{{name}}",
+  "icon_and_name": "圖示 & 名稱",
+  "agent_model_label": "知識增強模型",
+  "agent_model_tip": "依據知識內容生成增強的索引，如問題、摘要等，是提升檢索召回率的必要手段。",
+  "vlm_model_label": "圖片解析模型",
+  "vlm_model_tip": "當知識中存在圖片時，可配置圖片解析模型，用於識別其中的文字和結構資訊（如表格、流程圖等）。",
+  "vector_model_tip": "將文字轉化為用數值表示的向量，同時在知識問答過程中實現語義向量檢索，是實現知識檢索的必要能力。",
+  "website_url": "網站地址",
+  "website_url_placeholder": "請填寫根地址，將讀取根地址下所有靜態網頁",
+  "website_selector_label": "選擇器",
+  "website_selector_placeholder": "CSS選擇器，例如：body .content #document"
 }

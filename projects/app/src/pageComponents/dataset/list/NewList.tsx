@@ -364,7 +364,6 @@ function NewList() {
     onDelDataset,
     onUpdateDataset,
     myDatasets,
-    folderDetail,
     isFetchingDatasets,
     hasMore,
     sentinelCallbackRef
@@ -422,11 +421,7 @@ function NewList() {
       {myDatasets.length > 0 && (
         <Grid
           py={4}
-          gridTemplateColumns={
-            folderDetail
-              ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-              : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
-          }
+          gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
           gridGap={3}
           alignItems={'stretch'}
         >
