@@ -243,28 +243,54 @@ echo "已下载 config.json"
 # ========== 替换 S3 访问地址 ==========
 if [ -n "$S3_ADDR" ]; then
     if $S3_CUSTOM; then
-        # 自定义输入：提取主机部分替换 docker-compose 中的 IP
-        S3_HOST="${S3_ADDR#http://}"
-        S3_HOST="${S3_HOST#https://}"
-        S3_HOST="${S3_HOST%%:*}"
-        S3_HOST="${S3_HOST%%/*}"
+        # 自定义输入：解析 scheme / host / port，整体替换模板中的完整地址
+        S3_RAW="$S3_ADDR"
+        if [[ "$S3_RAW" == https://* ]]; then
+            S3_SCHEME="https"
+            S3_RAW="${S3_RAW#https://}"
+        elif [[ "$S3_RAW" == http://* ]]; then
+            S3_SCHEME="http"
+            S3_RAW="${S3_RAW#http://}"
+        else
+            S3_SCHEME="http"
+        fi
+        S3_RAW="${S3_RAW%%/*}"
+        if [[ "$S3_RAW" == *:* ]]; then
+            S3_HOST="${S3_RAW%%:*}"
+            S3_PORT="${S3_RAW##*:}"
+        else
+            S3_HOST="$S3_RAW"
+            S3_PORT="9000"
+        fi
+        S3_NEW="${S3_SCHEME}://${S3_HOST}:${S3_PORT}"
     else
-        S3_HOST="$S3_ADDR"
+        S3_PORT="9000"
+        S3_NEW="http://${S3_ADDR}:9000"
     fi
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/192\.168\.0\.2/$S3_HOST/g" docker-compose.yml
+        sed -i '' "s|http://192\.168\.0\.2:9000|${S3_NEW}|g" docker-compose.yml
     else
-        sed -i "s/192\.168\.0\.2/$S3_HOST/g" docker-compose.yml
+        sed -i "s|http://192\.168\.0\.2:9000|${S3_NEW}|g" docker-compose.yml
+    fi
+    S3_ENDPOINT_RC=$?
+
+    # minio 容器内部始终监听 9000，只改宿主端口映射
+    if [ "$S3_PORT" != "9000" ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|- 9000:9000|- ${S3_PORT}:9000|g" docker-compose.yml
+        else
+            sed -i "s|- 9000:9000|- ${S3_PORT}:9000|g" docker-compose.yml
+        fi
     fi
 
-    if [ $? -eq 0 ]; then
-        echo "已更新 S3 访问地址为: $S3_DISPLAY"
+    if [ $S3_ENDPOINT_RC -eq 0 ]; then
+        echo "已更新 S3 访问地址为: $S3_NEW"
     else
-        echo "警告: 替换 S3 地址失败，请手动编辑 docker-compose.yml 中的 192.168.0.2"
+        echo "警告: 替换 S3 地址失败，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
     fi
 else
-    echo "警告: 未设置 S3 地址，请手动编辑 docker-compose.yml 中的 192.168.0.2"
+    echo "警告: 未设置 S3 地址，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
 fi
 
 # ========== 替换 MCP 访问地址 ==========
