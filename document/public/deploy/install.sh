@@ -316,6 +316,61 @@ else
     echo "警告: 未设置 MCP 地址，请手动编辑 config.json 中的 mcpServerProxyEndpoint"
 fi
 
+# ========== 检测并替换 docker.sock 路径 ==========
+# 某些发行版 / Docker Desktop / rootless 模式下，宿主机 docker.sock 不在 /var/run/docker.sock
+# 若路径错误，Docker 会把挂载目标在容器内创建为空目录，导致 volume-manager / opensandbox 无法调用 Docker API
+detect_docker_sock() {
+    # 1. DOCKER_HOST 环境变量
+    if [ -n "$DOCKER_HOST" ] && [[ "$DOCKER_HOST" == unix://* ]]; then
+        local sock="${DOCKER_HOST#unix://}"
+        [ -S "$sock" ] && { echo "$sock"; return 0; }
+    fi
+
+    # 2. docker context 当前上下文
+    if command -v docker &>/dev/null; then
+        local ctx
+        ctx=$(docker context inspect --format '{{ .Endpoints.docker.Host }}' 2>/dev/null)
+        if [[ "$ctx" == unix://* ]]; then
+            ctx="${ctx#unix://}"
+            [ -S "$ctx" ] && { echo "$ctx"; return 0; }
+        fi
+    fi
+
+    # 3. 常见路径依次探测
+    local candidates=(
+        "/var/run/docker.sock"
+        "/run/docker.sock"
+        "$HOME/.docker/run/docker.sock"         # macOS Docker Desktop
+        "$HOME/.docker/desktop/docker.sock"
+        "/run/user/$(id -u 2>/dev/null)/docker.sock"  # rootless
+    )
+    for p in "${candidates[@]}"; do
+        [ -S "$p" ] && { echo "$p"; return 0; }
+    done
+
+    return 1
+}
+
+HOST_SOCK=$(detect_docker_sock)
+if [ -n "$HOST_SOCK" ]; then
+    if [ "$HOST_SOCK" != "/var/run/docker.sock" ]; then
+        # 只改宿主侧路径（冒号左边），容器内仍为 /var/run/docker.sock
+        ESCAPED_SOCK=$(printf '%s' "$HOST_SOCK" | sed -e 's/[\/&|]/\\&/g')
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+        else
+            sed -i "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+        fi
+        echo "已检测到 Docker socket: $HOST_SOCK，已更新 docker-compose.yml 挂载路径"
+    else
+        echo "Docker socket 路径正常: /var/run/docker.sock"
+    fi
+else
+    echo "警告: 未检测到 Docker socket。请确认 Docker 正在运行，"
+    echo "      并手动编辑 docker-compose.yml，将两处 '- /var/run/docker.sock:/var/run/docker.sock'"
+    echo "      左侧改成宿主机实际的 socket 路径。"
+fi
+
 # ========== 完成 ==========
 echo ""
 echo "配置下载成功! 后续操作:"

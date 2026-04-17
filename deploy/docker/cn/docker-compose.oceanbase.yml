@@ -41,19 +41,19 @@ x-log-config: &x-log-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-ob:2881/mysql
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql
 
 
 services:
   # Vector DB
-  fastgpt-ob:
+  fastgpt-vector:
     image:  oceanbase/oceanbase-ce:4.3.5-lts
     container_name: fastgpt-ob
     restart: always
     # ports: # 生产环境建议不要暴露
     #   - 2881:2881
     networks:
-      - fastgpt
+      - data
     environment:
       # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
       - OB_SYS_PASSWORD=obsyspassword
@@ -88,7 +88,7 @@ services:
     container_name: fastgpt-mongo
     restart: always
     networks:
-      - fastgpt
+      - data
     command: mongod --keyFile /data/mongodb.key --replSet rs0
     environment:
       - MONGO_INITDB_ROOT_USERNAME=myusername
@@ -135,7 +135,7 @@ services:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
     container_name: fastgpt-redis
     networks:
-      - fastgpt
+      - data
     restart: always
     command: |
       redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
@@ -155,7 +155,7 @@ services:
       - 9000:9000
       - 9001:9001
     networks:
-      - fastgpt
+      - data
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
@@ -174,12 +174,17 @@ services:
     ports:
       - 3000:3000
     networks:
-      - fastgpt
+      - data
+      - app
+      - codesandbox
+      - opensandbox
+      - aiproxy
     depends_on:
       - fastgpt-mongo
+      - fastgpt-vector
+      - fastgpt-redis
+      - fastgpt-minio
       - fastgpt-code-sandbox
-      - fastgpt-ob
-
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
@@ -222,6 +227,7 @@ services:
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
+      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
       # Volume 持久化配置（opensandbox provider 下可选）
       AGENT_SANDBOX_ENABLE_VOLUME: true
       AGENT_SANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
@@ -260,7 +266,7 @@ services:
     container_name: fastgpt-code-sandbox
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.10
     networks:
-      - fastgpt
+      - codesandbox
     restart: always
     environment:
       <<: [*x-log-config]
@@ -305,7 +311,7 @@ services:
     container_name: fastgpt-mcp-server
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.10
     networks:
-      - fastgpt
+      - app
     ports:
       - 3003:3000
     restart: always
@@ -317,7 +323,8 @@ services:
     container_name: fastgpt-plugin
     restart: always
     networks:
-      - fastgpt
+      - data
+      - app
     environment:
       <<: [*x-share-db-config, *x-log-config]
       AUTH_TOKEN: *x-plugin-auth-token
@@ -344,11 +351,11 @@ services:
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
-      - fastgpt
+      - opensandbox
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载
+      - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载，需检查是否与主机的 socket 文件一致
     configs:
       - source: opensandbox-config
         target: /etc/opensandbox/config.toml
@@ -378,9 +385,9 @@ services:
     container_name: fastgpt-volume-manager
     restart: always
     networks:
-      - fastgpt
+      - opensandbox
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # Docker 模式必须挂载（只读即可）
+      - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载，需检查是否与主机的 socket 文件一致
     environment:
       PORT: 3000
       VM_RUNTIME: docker
@@ -409,7 +416,6 @@ services:
       fastgpt-aiproxy-pg:
         condition: service_healthy
     networks:
-      - fastgpt
       - aiproxy
     environment:
       # 对应 fastgpt 里的AIPROXY_API_TOKEN
@@ -448,9 +454,11 @@ services:
       timeout: 5s
       retries: 10
 networks:
-  fastgpt:
+  data:
+  app:
+  codesandbox:
+  opensandbox:
   aiproxy:
-  vector:
 
 volumes:
   fastgpt-pg:
@@ -482,7 +490,7 @@ configs:
       image = "registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-egress:v1.0.3"
 
       [docker]
-      network_mode = "bridge"
+      network_mode = "fastgpt_opensandbox"
       # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable (e.g. host.docker.internal or the host LAN IP).
       # It's required when server deployed with docker container under host.
       host_ip = "host.docker.internal"
