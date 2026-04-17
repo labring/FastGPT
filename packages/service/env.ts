@@ -7,7 +7,7 @@ const BoolSchema = z
   .pipe(z.boolean());
 
 const NumSchema = z.coerce.number<number>();
-const IntSchema = NumSchema.int();
+const IntSchema = NumSchema.int().nonnegative();
 
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);

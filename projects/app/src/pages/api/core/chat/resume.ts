@@ -15,6 +15,7 @@ import {
   StreamResumeUnavailableEvent
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
+  STREAM_RESUME_TTL_SECONDS,
   catchUpAllHistoryItems,
   _resume,
   getStreamResumeUnavailableState
@@ -22,9 +23,11 @@ import {
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 const completedChatPageSize = 10;
 const resumeUnavailablePollIntervalMs = 3000;
+const resumeUnavailableMaxWaitMs = STREAM_RESUME_TTL_SECONDS * 1000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
 const resumeGeneratingRequiresSseMessage =
   'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
@@ -40,6 +43,11 @@ const writeResumePhase = (res: NextApiResponse, phase: StreamResumePhaseEnum) =>
 const writeSseEvent = (res: NextApiResponse, event: string, data: string) => {
   if (isResponseClosed(res)) return;
   res.write(`event: ${event}\ndata: ${data}\n\n`);
+};
+
+const writeSseComment = (res: NextApiResponse, comment: string) => {
+  if (isResponseClosed(res)) return;
+  res.write(`: ${comment}\n\n`);
 };
 
 const writeResumeUnavailable = (
@@ -65,8 +73,6 @@ const shouldRespondWithSse = (req: NextApiRequest) => {
   }
   return accept?.includes('text/event-stream') ?? false;
 };
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export const config = {
   api: {
@@ -145,6 +151,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   const waitForCompletedChat = async () => {
+    const deadlineAt = Date.now() + resumeUnavailableMaxWaitMs;
+
     while (!isResponseClosed(res)) {
       const chat = await findCurrentChat();
 
@@ -153,7 +161,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return findCompletedChat();
       }
 
-      await sleep(resumeUnavailablePollIntervalMs);
+      const remainingMs = deadlineAt - Date.now();
+      if (remainingMs <= 0) {
+        return;
+      }
+
+      writeSseComment(res, 'ping');
+      await delay(Math.min(resumeUnavailablePollIntervalMs, remainingMs));
     }
   };
 

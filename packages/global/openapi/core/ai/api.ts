@@ -1,6 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 import { ChatGenerateStatusEnum } from '../../../core/chat/constants';
+import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
@@ -59,9 +60,9 @@ export const ChatMessageSchema = z.object({
  * ============================================================================ */
 
 export const ResumeStreamParamsSchema = z.object({
+  ...OutLinkChatAuthSchema.shape,
   appId: ObjectIdSchema,
   teamId: ObjectIdSchema.optional(),
-  teamToken: z.string().optional(),
   shareId: z.string().optional(),
   outLinkUid: z.string().optional(),
   chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })

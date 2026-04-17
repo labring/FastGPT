@@ -575,7 +575,7 @@ describe('stream resume api', () => {
 
       const { chunks, res } = await responsePromise;
 
-      expect(chunks).toHaveLength(4);
+      expect(chunks).toHaveLength(5);
       expect(chunks[0]).toBe(
         `event: ${StreamResumePhaseEvent}\ndata: ${StreamResumePhaseEnum.catchup}\n\n`
       );
@@ -584,12 +584,13 @@ describe('stream resume api', () => {
           reason: StreamResumeUnavailableReasonEnum.memoryPressure
         })}\n\n`
       );
-      expect(chunks[2]).toMatch(
+      expect(chunks[2]).toBe(': ping\n\n');
+      expect(chunks[3]).toMatch(
         new RegExp(`^event: ${StreamResumeCompletedEvent}\\ndata: .+\\n\\n$`)
       );
-      expect(chunks[3]).toBe('event: done\ndata: [DONE]\n\n');
+      expect(chunks[4]).toBe('event: done\ndata: [DONE]\n\n');
 
-      const payload = JSON.parse(chunks[2].replace(/^event: [^\n]+\ndata: /, '').trim()) as any;
+      const payload = JSON.parse(chunks[3].replace(/^event: [^\n]+\ndata: /, '').trim()) as any;
       expect(payload).toEqual({
         hasBeenRead: true,
         chatGenerateStatus: ChatGenerateStatusEnum.done,
@@ -618,6 +619,70 @@ describe('stream resume api', () => {
         { appId, chatId },
         { $set: { hasBeenRead: true } }
       );
+      expect(redis.call).not.toHaveBeenCalled();
+      expect(redis.duplicate).not.toHaveBeenCalled();
+      expect(res.end).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('should stop waiting after the resume ttl while keeping the sse connection alive', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(MongoChat.findOne).mockImplementation(() =>
+        createFindOneResult({
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.generating
+        })
+      );
+
+      const redis = getGlobalRedisConnection() as any;
+      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
+
+      await getStreamResumeMirror({
+        resumeRequestHeaderValue: 'true',
+        teamId,
+        appId,
+        chatId
+      });
+
+      redis.call = vi.fn();
+      redis.duplicate = vi.fn();
+
+      const responsePromise = invokeStreamingHandler(
+        {
+          teamId,
+          appId,
+          chatId
+        },
+        {
+          headers: {
+            accept: 'text/event-stream'
+          }
+        }
+      );
+
+      await vi.advanceTimersByTimeAsync(STREAM_RESUME_TTL_SECONDS * 1000 + 1);
+
+      const { chunks, res } = await responsePromise;
+
+      expect(chunks[0]).toBe(
+        `event: ${StreamResumePhaseEvent}\ndata: ${StreamResumePhaseEnum.catchup}\n\n`
+      );
+      expect(chunks[1]).toBe(
+        `event: ${StreamResumeUnavailableEvent}\ndata: ${JSON.stringify({
+          reason: StreamResumeUnavailableReasonEnum.memoryPressure
+        })}\n\n`
+      );
+      expect(chunks.some((chunk) => chunk === ': ping\n\n')).toBe(true);
+      expect(
+        chunks.some((chunk) => chunk.startsWith(`event: ${StreamResumeCompletedEvent}\n`))
+      ).toBe(false);
+      expect(chunks[chunks.length - 1]).toBe('event: done\ndata: [DONE]\n\n');
+      expect(MongoChat.updateOne).not.toHaveBeenCalled();
+      expect(getChatItems).not.toHaveBeenCalled();
       expect(redis.call).not.toHaveBeenCalled();
       expect(redis.duplicate).not.toHaveBeenCalled();
       expect(res.end).toHaveBeenCalledTimes(1);
