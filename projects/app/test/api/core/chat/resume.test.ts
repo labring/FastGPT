@@ -5,7 +5,9 @@ import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
-  StreamResumePhaseEvent
+  StreamResumePhaseEvent,
+  StreamResumeUnavailableEvent,
+  StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import handler from '@/pages/api/core/chat/resume';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -495,6 +497,88 @@ describe('stream resume api', () => {
     });
     expect(res.end).toHaveBeenCalledTimes(1);
   });
+
+  it('should emit a resume unavailable event when mirror creation was skipped by memory pressure', async () => {
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      })
+    );
+
+    const redis = getGlobalRedisConnection() as any;
+    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
+
+    await getStreamResumeMirror({
+      resumeRequestHeaderValue: 'true',
+      teamId,
+      appId,
+      chatId
+    });
+
+    redis.call = vi.fn();
+    redis.duplicate = vi.fn();
+
+    const { chunks, res } = await invokeStreamingHandler(
+      {
+        teamId,
+        appId,
+        chatId
+      },
+      {
+        headers: {
+          accept: 'text/event-stream'
+        }
+      }
+    );
+
+    expect(chunks).toEqual([
+      `event: ${StreamResumePhaseEvent}\ndata: ${StreamResumePhaseEnum.catchup}\n\n`,
+      `event: ${StreamResumeUnavailableEvent}\ndata: ${JSON.stringify({
+        reason: StreamResumeUnavailableReasonEnum.memoryPressure
+      })}\n\n`,
+      'event: done\ndata: [DONE]\n\n'
+    ]);
+    expect(redis.call).not.toHaveBeenCalled();
+    expect(redis.duplicate).not.toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalledTimes(1);
+  });
+
+  it('should forward share auth params to authChatCrud when resuming a shared chat', async () => {
+    vi.mocked(MongoChat.findOne).mockReturnValue(
+      createFindOneResult({
+        hasBeenRead: false,
+        chatGenerateStatus: ChatGenerateStatusEnum.done
+      })
+    );
+    vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as any);
+    vi.mocked(getChatItems).mockResolvedValue({
+      histories: [],
+      total: 0,
+      hasMorePrev: false,
+      hasMoreNext: false
+    } as any);
+
+    await Call(handler, {
+      query: {
+        appId,
+        chatId,
+        shareId: 'share-test',
+        outLinkUid: 'outlink-user'
+      }
+    });
+
+    expect(authChatCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId,
+        chatId,
+        shareId: 'share-test',
+        outLinkUid: 'outlink-user',
+        authToken: true
+      })
+    );
+  });
 });
 
 describe('stream resume helpers', () => {
@@ -531,6 +615,7 @@ describe('stream resume helpers', () => {
       const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
       const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
+      expect(delSpy).toHaveBeenCalledWith(keys.keyOfUnavailable);
       expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
       expect(redis.call).toHaveBeenNthCalledWith(
         1,
@@ -616,6 +701,7 @@ describe('stream resume helpers', () => {
     const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
     const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
+    expect(delSpy).toHaveBeenCalledWith(keys.keyOfUnavailable);
     expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
@@ -646,6 +732,7 @@ describe('stream resume helpers', () => {
   it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
     const redis = getGlobalRedisConnection() as any;
     const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+    const setSpy = vi.spyOn(redis, 'set');
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
     const mirror = await getStreamResumeMirror({
@@ -657,6 +744,14 @@ describe('stream resume helpers', () => {
 
     expect(mirror).toBeUndefined();
     expect(redis.info).toHaveBeenCalledTimes(1);
+    expect(setSpy).toHaveBeenCalledWith(
+      getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfUnavailable,
+      JSON.stringify({
+        reason: StreamResumeUnavailableReasonEnum.memoryPressure
+      }),
+      'EX',
+      STREAM_RESUME_TTL_SECONDS
+    );
   });
 
   it('should parse truthy stream resume request headers', () => {

@@ -55,12 +55,15 @@ export const ChatMessageSchema = z.object({
 });
 
 /* ============================================================================
- * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；query 仅 appId / chatId / teamId）
+ * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内、分享、团队域名鉴权）
  * ============================================================================ */
 
 export const ResumeStreamParamsSchema = z.object({
   appId: ObjectIdSchema,
   teamId: ObjectIdSchema.optional(),
+  teamToken: z.string().optional(),
+  shareId: z.string().optional(),
+  outLinkUid: z.string().optional(),
   chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
 });
 

@@ -2,6 +2,7 @@ import { env } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
 import type { NextApiResponse } from 'next';
+import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
@@ -44,7 +45,8 @@ export const getStreamResumeRedisKeys = ({
   appId,
   chatId
 }: StreamResumeRedisKeysParams) => ({
-  keyOfStream: `stream:resume:data:${teamId}:${appId}:${chatId}`
+  keyOfStream: `stream:resume:data:${teamId}:${appId}:${chatId}`,
+  keyOfUnavailable: `stream:resume:unavailable:${teamId}:${appId}:${chatId}`
 });
 
 type StreamResumeKeys = ReturnType<typeof getStreamResumeRedisKeys>;
@@ -54,6 +56,10 @@ const getRawRedisKey = (key: string) => `${FASTGPT_REDIS_PREFIX}${key}`;
 const getStreamResumeRedisRawKeys = (keys: StreamResumeKeys) => ({
   rawKeyOfStream: getRawRedisKey(keys.keyOfStream)
 });
+
+export type StreamResumeUnavailableState = {
+  reason: `${StreamResumeUnavailableReasonEnum}`;
+};
 
 const resumeRequestEnabledValues = new Set(['1', 'true', 'yes', 'on']);
 
@@ -181,6 +187,35 @@ const shrinkStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
   await redis.expire(keyOfStream, STREAM_RESUME_POST_COMPLETE_TTL_SECONDS);
 };
 
+const setStreamResumeUnavailableState = async (
+  keys: StreamResumeKeys,
+  state: StreamResumeUnavailableState
+) => {
+  const redis = getGlobalRedisConnection();
+  await redis.set(keys.keyOfUnavailable, JSON.stringify(state), 'EX', STREAM_RESUME_TTL_SECONDS);
+};
+
+const clearStreamResumeUnavailableState = async (keys: StreamResumeKeys) => {
+  const redis = getGlobalRedisConnection();
+  await redis.del(keys.keyOfUnavailable);
+};
+
+export const getStreamResumeUnavailableState = async (params: StreamResumeRedisKeysParams) => {
+  const redis = getGlobalRedisConnection();
+  const keys = getStreamResumeRedisKeys(params);
+  const state = await redis.get(keys.keyOfUnavailable);
+
+  if (!state) return;
+
+  try {
+    const parsed = JSON.parse(state) as StreamResumeUnavailableState;
+    if (!parsed?.reason) return;
+    return parsed;
+  } catch {
+    return;
+  }
+};
+
 const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEncoding) => {
   if (typeof chunk === 'string') return chunk;
   if (Buffer.isBuffer(chunk)) return chunk.toString(encoding || 'utf8');
@@ -189,8 +224,10 @@ const chunkToString = (chunk: string | Buffer | Uint8Array, encoding?: BufferEnc
 
 /** 新一轮流式开始前清空 Redis 镜像，否则 XADD 会接在旧 Stream 后面，续传会重复历史 */
 const clearStreamResumeMirrorKeys = async (keys: StreamResumeKeys) => {
-  const redis = getGlobalRedisConnection();
-  await redis.del(keys.keyOfStream);
+  await Promise.all([
+    clearStreamResumeUnavailableState(keys),
+    getGlobalRedisConnection().del(keys.keyOfStream)
+  ]);
 };
 
 export const mirrorChatStream = (params: StreamResumeRedisKeysParams) => {
@@ -244,7 +281,14 @@ export const getStreamResumeMirror = async ({
 }: StreamResumeRedisKeysParams & { resumeRequestHeaderValue?: ResumeRequestHeaderValue }) => {
   if (!isStreamResumeMirrorRequested(resumeRequestHeaderValue)) return;
 
+  const keys = getStreamResumeRedisKeys(params);
+
   if (await isRedisMemoryPressureBlockingStreamResume()) {
+    await setStreamResumeUnavailableState(keys, {
+      reason: StreamResumeUnavailableReasonEnum.memoryPressure
+    }).catch((error) => {
+      logger.warn('Failed to persist stream resume unavailable state', { params, error });
+    });
     return;
   }
 

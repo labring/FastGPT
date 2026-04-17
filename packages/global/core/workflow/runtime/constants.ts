@@ -32,10 +32,16 @@ export enum SseResponseEventEnum {
 
 export const StreamResumePhaseEvent = 'resumePhase';
 export const StreamResumeCompletedEvent = 'resumeCompleted';
+export const StreamResumeUnavailableEvent = 'resumeUnavailable';
 
 export enum StreamResumePhaseEnum {
   catchup = 'catchup',
   live = 'live'
+}
+
+export enum StreamResumeUnavailableReasonEnum {
+  memoryPressure = 'memoryPressure',
+  mirrorUnavailable = 'mirrorUnavailable'
 }
 
 export enum DispatchNodeResponseKeyEnum {

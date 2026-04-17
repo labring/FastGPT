@@ -44,7 +44,10 @@ import {
   rewriteHistoriesByInteractiveResponse
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  SseResponseEventEnum,
+  StreamResumeUnavailableReasonEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import ChatItem from './components/ChatItem';
@@ -662,11 +665,39 @@ const ChatBox = ({
     });
   });
 
-  const appendResumeAiPlaceholder = useMemoizedFn((responseChatId: string) => {
+  const getResumeUnavailablePlaceholderText = useMemoizedFn(
+    (reason?: `${StreamResumeUnavailableReasonEnum}`) => {
+      if (reason === StreamResumeUnavailableReasonEnum.memoryPressure) {
+        return t('chat:resume_unavailable_memory_pressure');
+      }
+      return t('chat:resume_unavailable');
+    }
+  );
+
+  const upsertResumeAiPlaceholder = useMemoizedFn((responseChatId: string, text = '') => {
     setChatRecords((state) => {
       const lastItem = state[state.length - 1];
       if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
-        return state;
+        if (!text) {
+          return state;
+        }
+
+        return state.map((item, index) =>
+          index !== state.length - 1
+            ? item
+            : {
+                ...item,
+                value: [
+                  {
+                    text: {
+                      content: text
+                    }
+                  }
+                ],
+                status: ChatStatusEnum.finish,
+                time: new Date()
+              }
+        );
       }
 
       return [
@@ -678,11 +709,12 @@ const ChatBox = ({
           value: [
             {
               text: {
-                content: ''
+                content: text
               }
             }
           ],
-          status: ChatStatusEnum.loading
+          status: text ? ChatStatusEnum.finish : ChatStatusEnum.loading,
+          ...(text ? { time: new Date() } : {})
         }
       ];
     });
@@ -1255,14 +1287,15 @@ const ChatBox = ({
 
     (async () => {
       try {
-        const { responseText, completedChat } = await streamResumeFetch({
+        const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
           appId,
           chatId,
+          outLinkAuthData,
           controller,
           onmessage: (message) => {
             if (resumeForChatId !== activeChatIdRef.current) return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
-              appendResumeAiPlaceholder(responseChatId);
+              upsertResumeAiPlaceholder(responseChatId);
             }
             generatingMessage(message);
           }
@@ -1276,6 +1309,15 @@ const ChatBox = ({
               ...item,
               status: ChatStatusEnum.finish
             }))
+          );
+          return;
+        }
+
+        if (resumeUnavailable) {
+          resumeFinalStatus = ChatGenerateStatusEnum.generating;
+          upsertResumeAiPlaceholder(
+            responseChatId,
+            getResumeUnavailablePlaceholderText(resumeUnavailable.reason)
           );
           return;
         }
@@ -1407,13 +1449,14 @@ const ChatBox = ({
     chatBoxData.chatGenerateStatus,
     generatingMessage,
     hasMeaningfulAiOutput,
+    getResumeUnavailablePlaceholderText,
     outLinkAuthData,
     resumeTargetAiDataId,
     scrollToBottom,
     setChatBoxData,
     setChatRecords,
     syncSidebarChatGenerateStatus,
-    appendResumeAiPlaceholder,
+    upsertResumeAiPlaceholder,
     t,
     toast
   ]);
