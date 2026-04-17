@@ -21,8 +21,16 @@ export interface ProcessedError {
   statusText: string;
   message: string;
   shouldClearCookie: boolean;
+  httpStatus: number;
   data?: any;
   zodError?: any;
+}
+
+/**
+ * 根据 ERROR_RESPONSE key 解析期望返回的 HTTP 状态码
+ */
+export function resolveHttpStatusForApiError(errResponseKey: string): number {
+  return ERROR_RESPONSE[errResponseKey]?.httpStatus ?? 500;
 }
 
 /**
@@ -58,6 +66,7 @@ export function processError(params: {
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message: ERROR_RESPONSE[errResponseKey].message,
       data: ERROR_RESPONSE[errResponseKey].data,
+      httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
       shouldClearCookie
     };
   }
@@ -95,6 +104,7 @@ export function processError(params: {
     statusText: 'error',
     message: replaceSensitiveText(msg),
     shouldClearCookie: false,
+    httpStatus: defaultCode,
     zodError
   };
 }
@@ -120,7 +130,7 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
-    res.status(500).json({
+    res.status(processedError.httpStatus).json({
       code: processedError.code,
       statusText: processedError.statusText,
       message: message || processedError.message,

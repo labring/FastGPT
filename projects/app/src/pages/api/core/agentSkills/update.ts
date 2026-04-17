@@ -37,11 +37,11 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     req.body as UpdateSkillBody;
 
   if (!skillId) {
-    return Promise.reject(SkillErrEnum.unExist);
+    return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
   if (!isValidObjectId(skillId)) {
-    return Promise.reject(SkillErrEnum.unExist);
+    return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
   const isMove = parentId !== undefined;

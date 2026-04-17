@@ -30,6 +30,9 @@ import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.DEPLOY);
 
 /**
  * Package and deploy a skill from sandbox, creating a new version.
@@ -40,7 +43,7 @@ async function handler(
   const { skillId, versionName } = req.body;
 
   if (!skillId || !isValidObjectId(skillId)) {
-    return Promise.reject(SkillErrEnum.unExist);
+    return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
   // Verify write permission via authSkill (replaces authUserPer + canModifySkill)
@@ -79,12 +82,17 @@ async function handler(
   // Validate the ZIP structure
   const validation = await validateZipStructure(packageBuffer);
   if (!validation.valid) {
+    logger.warn('Invalid skill package structure', { error: validation.error });
     return Promise.reject(SkillErrEnum.invalidSkillPackage);
   }
 
   // Extract SKILL.md from the ZIP
   const extractResult = await extractSkillPackage(packageBuffer);
   if (!extractResult.success || !extractResult.skillMd) {
+    logger.warn('SKILL.md not found or extraction failed in skill package', {
+      success: extractResult.success,
+      hasSkillMd: !!extractResult.skillMd
+    });
     return Promise.reject(SkillErrEnum.invalidSkillPackage);
   }
 

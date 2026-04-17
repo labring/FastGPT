@@ -26,7 +26,7 @@ async function handler(
   const { skillId } = req.query;
 
   if (!skillId) {
-    return Promise.reject(SkillErrEnum.unExist);
+    return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
   const {

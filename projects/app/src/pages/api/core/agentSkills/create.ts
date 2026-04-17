@@ -69,7 +69,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     return Promise.reject(SkillErrEnum.invalidSkillName);
   }
   if (name.length > 50) {
-    return Promise.reject(SkillErrEnum.invalidSkillName);
+    return Promise.reject(SkillErrEnum.skillNameTooLong);
   }
   if (description && description.length > 500) {
     return Promise.reject(SkillErrEnum.invalidDescription);

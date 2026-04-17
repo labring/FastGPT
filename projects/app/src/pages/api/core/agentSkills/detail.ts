@@ -17,7 +17,7 @@ async function handler(
   const { skillId } = req.query;
 
   if (!skillId || !isValidObjectId(skillId)) {
-    return Promise.reject(SkillErrEnum.unExist);
+    return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
   const { skill, permission } = await authSkill({

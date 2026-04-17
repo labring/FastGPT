@@ -22,8 +22,10 @@ import fs from 'fs/promises';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
 
 export const config = {
   api: {
@@ -94,11 +96,11 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     // Check archive size (multer already enforces the limit, this is a secondary guard)
     const stats = await fs.stat(file.path);
     if (stats.size > maxArchiveSize) {
-      return Promise.reject(
-        new UserError(
-          `Archive file size (${(stats.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum (${(maxArchiveSize / 1024 / 1024).toFixed(2)}MB)`
-        )
-      );
+      logger.warn('Archive file size exceeds maximum', {
+        sizeMB: (stats.size / 1024 / 1024).toFixed(2),
+        maxMB: (maxArchiveSize / 1024 / 1024).toFixed(2)
+      });
+      return Promise.reject(SkillErrEnum.archiveTooLarge);
     }
 
     // Extract archive to file map
@@ -106,12 +108,11 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     try {
       fileMap = await extractToFileMap(file.path, maxUncompressedBytes);
     } catch (err: any) {
-      return Promise.reject(
-        new UserError(`Failed to extract archive: ${err.message || 'Unknown error'}`)
-      );
+      logger.warn('Failed to extract archive', { error: err.message });
+      return Promise.reject(SkillErrEnum.archiveExtractionFailed);
     }
     if (Object.keys(fileMap).length === 0) {
-      return Promise.reject(new UserError('Archive is empty'));
+      return Promise.reject(SkillErrEnum.archiveEmpty);
     }
 
     // Derive package-level name from caller-supplied value or archive filename
@@ -162,11 +163,6 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
     })();
 
     return skillId;
-  } catch (err: any) {
-    if (err.message?.includes('already exists')) {
-      return Promise.reject(SkillErrEnum.skillNameExists);
-    }
-    throw err;
   } finally {
     multer.clearDiskTempFiles(filepaths);
   }

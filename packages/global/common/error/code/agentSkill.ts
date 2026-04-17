@@ -15,7 +15,13 @@ export enum SkillErrEnum {
   noStorage = 'noStorage',
   noFieldsToUpdate = 'noFieldsToUpdate',
   invalidArchiveFormat = 'invalidArchiveFormat',
-  invalidSkillPackage = 'invalidSkillPackage'
+  invalidSkillPackage = 'invalidSkillPackage',
+  invalidSkillId = 'invalidSkillId',
+  archiveEmpty = 'archiveEmpty',
+  archiveExtractionFailed = 'archiveExtractionFailed',
+  archiveTooLarge = 'archiveTooLarge',
+  missingImageRepository = 'missingImageRepository',
+  skillNameTooLong = 'skillNameTooLong'
 }
 const skillErrList = [
   {
@@ -32,31 +38,38 @@ const skillErrList = [
   },
   {
     statusText: SkillErrEnum.skillNameExists,
-    message: i18nT('common:code_error.skill_error.name_exists')
+    message: i18nT('common:code_error.skill_error.name_exists'),
+    httpStatus: 409
   },
   {
     statusText: SkillErrEnum.invalidSkillName,
-    message: i18nT('common:code_error.skill_error.invalid_name')
+    message: i18nT('common:code_error.skill_error.invalid_name'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.invalidDescription,
-    message: i18nT('common:code_error.skill_error.invalid_description')
+    message: i18nT('common:code_error.skill_error.invalid_description'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.invalidCategory,
-    message: i18nT('common:code_error.skill_error.invalid_category')
+    message: i18nT('common:code_error.skill_error.invalid_category'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.invalidConfig,
-    message: i18nT('common:code_error.skill_error.invalid_config')
+    message: i18nT('common:code_error.skill_error.invalid_config'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.missingModel,
-    message: i18nT('common:code_error.skill_error.missing_model')
+    message: i18nT('common:code_error.skill_error.missing_model'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.requirementsTooLong,
-    message: i18nT('common:code_error.skill_error.requirements_too_long')
+    message: i18nT('common:code_error.skill_error.requirements_too_long'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.noStorage,
@@ -64,15 +77,48 @@ const skillErrList = [
   },
   {
     statusText: SkillErrEnum.noFieldsToUpdate,
-    message: i18nT('common:code_error.skill_error.no_fields_to_update')
+    message: i18nT('common:code_error.skill_error.no_fields_to_update'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.invalidArchiveFormat,
-    message: i18nT('common:code_error.skill_error.invalid_archive_format')
+    message: i18nT('common:code_error.skill_error.invalid_archive_format'),
+    httpStatus: 400
   },
   {
     statusText: SkillErrEnum.invalidSkillPackage,
-    message: i18nT('common:code_error.skill_error.invalid_package')
+    message: i18nT('common:code_error.skill_error.invalid_package'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.invalidSkillId,
+    message: i18nT('common:code_error.skill_error.invalid_skill_id'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.archiveEmpty,
+    message: i18nT('common:code_error.skill_error.archive_empty'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.archiveExtractionFailed,
+    message: i18nT('common:code_error.skill_error.archive_extraction_failed'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.archiveTooLarge,
+    message: i18nT('common:code_error.skill_error.archive_too_large'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.missingImageRepository,
+    message: i18nT('common:code_error.skill_error.missing_image_repository'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.skillNameTooLong,
+    message: i18nT('common:code_error.skill_error.skill_name_too_long'),
+    httpStatus: 400
   }
 ];
 export default skillErrList.reduce((acc, cur, index) => {
@@ -82,7 +128,8 @@ export default skillErrList.reduce((acc, cur, index) => {
       code: 509000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
     }
   };
 }, {} as ErrType<`${SkillErrEnum}`>);
