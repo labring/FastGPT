@@ -33,9 +33,11 @@ vi.mock('@fastgpt/service/core/workflow/utils', () => ({
 }));
 
 const mockMongoAppFindOne = vi.fn();
+const mockMongoAppFind = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
-    findOne: (...args: any[]) => mockMongoAppFindOne(...args)
+    findOne: (...args: any[]) => mockMongoAppFindOne(...args),
+    find: (...args: any[]) => mockMongoAppFind(...args)
   }
 }));
 

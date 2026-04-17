@@ -90,8 +90,9 @@ export const parsetMcpToolConfig = (
       toolName: string;
     }
   | undefined => {
-  const replaceToolId = config.toolId.replace(`${AppToolSourceEnum.mcp}-`, '');
-  const [toolsetId, toolName] = replaceToolId.split('/');
+  const prefix = `${AppToolSourceEnum.mcp}-`;
+  if (!config.toolId.startsWith(prefix)) return undefined;
+  const [toolsetId, toolName] = config.toolId.slice(prefix.length).split('/');
   if (!toolsetId || !toolName) return undefined;
   return {
     toolsetId,

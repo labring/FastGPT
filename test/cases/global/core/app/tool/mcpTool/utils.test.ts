@@ -151,30 +151,12 @@ describe('mcpTool utils', () => {
   });
 
   describe('parsetMcpToolConfig', () => {
-    it('should return toolSetId directly when it is provided', () => {
-      const result = parsetMcpToolConfig({
-        toolSetId: 'toolset-123',
-        toolId: 'mcp-toolset-999/someTool'
-      });
-
-      expect(result).toBe('toolset-123');
-    });
-
-    it('should parse toolSetId from toolId when toolSetId is missing', () => {
+    it('should parse toolsetId and toolName from a valid toolId', () => {
       const result = parsetMcpToolConfig({
         toolId: 'mcp-toolset-456/someTool'
       });
 
-      expect(result).toBe('toolset-456');
-    });
-
-    it('should parse toolSetId from toolId when toolSetId is empty string', () => {
-      const result = parsetMcpToolConfig({
-        toolSetId: '',
-        toolId: 'mcp-toolset-789/searchTool'
-      });
-
-      expect(result).toBe('toolset-789');
+      expect(result).toEqual({ toolsetId: 'toolset-456', toolName: 'someTool' });
     });
 
     it('should return undefined when toolId does not match mcp- prefix pattern', () => {
@@ -193,7 +175,7 @@ describe('mcpTool utils', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should return undefined when toolSetId segment is empty in toolId', () => {
+    it('should return undefined when toolsetId segment is empty in toolId', () => {
       const result = parsetMcpToolConfig({
         toolId: 'mcp-/toolName'
       });
@@ -209,12 +191,12 @@ describe('mcpTool utils', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should parse toolSetId correctly when tool name contains additional slashes', () => {
+    it('should parse toolsetId correctly when tool name contains additional slashes', () => {
       const result = parsetMcpToolConfig({
         toolId: 'mcp-toolset-abc/namespace/nestedTool'
       });
 
-      expect(result).toBe('toolset-abc');
+      expect(result).toEqual({ toolsetId: 'toolset-abc', toolName: 'namespace' });
     });
   });
 });
