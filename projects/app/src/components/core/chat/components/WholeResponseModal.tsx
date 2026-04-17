@@ -105,7 +105,11 @@ export const WholeResponseContent = ({
       }, [isObject, value]);
 
       if (rawDom) {
-        return <RowRender label={label}>{rawDom}</RowRender>;
+        return (
+          <RowRender label={label} bg={'transparent'}>
+            {rawDom}
+          </RowRender>
+        );
       }
 
       if (val === undefined || val === '' || val === 'undefined') return null;
@@ -122,10 +126,18 @@ export const WholeResponseContent = ({
                 alignItems: 'center',
                 border: '1px solid',
                 borderColor: 'myGray.200',
-                color: 'myGray.900'
+                color: 'myGray.900',
+                bg: '#F7F8FA'
               })}
         >
-          <Markdown source={formatValue} />
+          <Box
+            sx={{
+              '& .markdown': { fontSize: '12px !important' },
+              '& .markdown pre': { fontSize: '12px !important' }
+            }}
+          >
+            <Markdown source={formatValue} />
+          </Box>
         </RowRender>
       );
     },
@@ -227,42 +239,41 @@ export const WholeResponseContent = ({
             <Row
               label={t('chat:llm_request_ids')}
               rawDom={
-                <Grid
-                  templateColumns={'repeat(auto-fill, minmax(250px, 1fr))'}
-                  gap={2}
-                  px={3}
-                  py={2}
-                >
+                <Grid templateColumns={'repeat(2, minmax(0, 1fr))'} gap={2}>
                   {activeModule.llmRequestIds.map((requestId, index) => (
                     <Flex
                       key={index}
+                      role={'group'}
                       alignItems={'center'}
-                      bg={'white'}
-                      border={'base'}
-                      borderRadius={'md'}
+                      gap={2}
+                      bg={'myGray.50'}
+                      borderRadius={'8px'}
                       px={3}
                       py={2}
                       cursor={'pointer'}
-                      _hover={{
-                        borderColor: 'primary.500',
-                        color: 'primary.600',
-                        boxShadow: 'sm'
-                      }}
+                      color={'myGray.900'}
+                      _hover={{ color: 'primary.600' }}
                       onClick={() => onOpenRequestIdDetail(requestId)}
                       title={t('common:Click_to_expand')}
                     >
                       <Box
                         flex={'1 0 0'}
-                        width={0}
-                        fontFamily={'monospace'}
-                        fontSize={'xs'}
+                        w={0}
+                        fontSize={'12px'}
+                        lineHeight={'18px'}
                         textOverflow={'ellipsis'}
                         overflow={'hidden'}
                         whiteSpace={'nowrap'}
                       >
                         {requestId}
                       </Box>
-                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} color={'myGray.500'} />
+                      <MyIcon
+                        name={'common/upperRight'}
+                        w={'16px'}
+                        h={'16px'}
+                        color={'myGray.500'}
+                        _groupHover={{ color: 'primary.600' }}
+                      />
                     </Flex>
                   ))}
                 </Grid>
