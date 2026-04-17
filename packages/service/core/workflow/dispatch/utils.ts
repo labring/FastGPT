@@ -506,7 +506,10 @@ export const rewriteRuntimeWorkFlow = async ({
       const toolset = toolsetMap.get(parseResult.toolsetId);
       const toolList = toolset?.modules?.[0].toolConfig?.mcpToolSet?.toolList;
       if (!toolList) return;
-      node.jsonSchema = toolList.find((tool) => tool.name === parseResult.toolName)?.inputSchema;
+      const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
+      if (!toolRaw) return;
+      node.jsonSchema = toolRaw.inputSchema;
+      node.intro = toolRaw.description;
     });
   }
 };

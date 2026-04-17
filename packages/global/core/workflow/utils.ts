@@ -333,10 +333,21 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
 export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
+  const toolConfig = (() => {
+    if (!toolSetNode?.toolConfig) return toolSetNode?.toolConfig;
+    if (!toolSetNode.toolConfig.httpToolSet) return toolSetNode.toolConfig;
+
+    const { apiSchemaStr, ...restHttpToolSet } = toolSetNode.toolConfig.httpToolSet;
+    return {
+      ...toolSetNode.toolConfig,
+      httpToolSet: restHttpToolSet
+    };
+  })();
+
   return {
     inputs: toolSetNode?.inputs || [],
     outputs: toolSetNode?.outputs || [],
-    toolConfig: toolSetNode?.toolConfig,
+    toolConfig,
     showSourceHandle: false,
     showTargetHandle: false
   };

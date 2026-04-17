@@ -70,6 +70,7 @@ export const getHTTPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
+    jsonSchema: tool.inputSchema,
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
     outputs: [
       ...jsonSchema2NodeOutput(tool.outputSchema),
@@ -103,7 +104,8 @@ export const pathData2ToolList = async (
           if (param.name && param.schema) {
             inputProperties[param.name] = {
               type: param.schema.type || 'any',
-              description: param.description || ''
+              description: param.description || '',
+              'x-tool-description': param.description || param.name
             };
 
             if (param.required) {
@@ -119,7 +121,8 @@ export const pathData2ToolList = async (
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
             inputProperties[key] = {
               type: value.type || 'any',
-              description: value.description || ''
+              description: value.description || '',
+              'x-tool-description': value.description || key
             };
           });
         }

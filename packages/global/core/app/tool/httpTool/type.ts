@@ -38,6 +38,6 @@ export const HttpToolConfigTypeSchema = z.object({
       formData: z.array(z.object({ key: z.string(), value: z.string() })).optional()
     })
     .optional(),
-  headerSecret: StoreSecretValueTypeSchema.optional()
+  headerSecret: StoreSecretValueTypeSchema.nullish()
 });
 export type HttpToolConfigType = z.infer<typeof HttpToolConfigTypeSchema>;

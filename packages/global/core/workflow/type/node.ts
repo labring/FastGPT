@@ -13,7 +13,7 @@ export const NodeToolConfigTypeSchema = z.object({
   mcpToolSet: z
     .object({
       url: z.string(),
-      headerSecret: StoreSecretValueTypeSchema.optional(),
+      headerSecret: StoreSecretValueTypeSchema.nullish(),
       toolList: z.array(McpToolConfigSchema)
     })
     .optional(),
@@ -45,7 +45,7 @@ export const NodeToolConfigTypeSchema = z.object({
       baseUrl: z.string().optional(),
       apiSchemaStr: z.string().optional(),
       customHeaders: z.string().optional(),
-      headerSecret: StoreSecretValueTypeSchema.optional()
+      headerSecret: StoreSecretValueTypeSchema.nullish()
     })
     .optional(),
   httpTool: z
