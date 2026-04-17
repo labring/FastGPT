@@ -352,6 +352,194 @@ export async function searchDatasetData(
     1. and 先生效
     2. and 标签和 null 不能共存，否则返回空数组
   */
+
+  // 新格式标签过滤：{ [tagName]: { $op: value } }[]
+  // key 为 tag 名称（跨 dataset 通用），后端按名称在每个 dataset 中分别查询 tagId + tagType
+  const filterCollectionByNewTagFormat = async ({
+    teamId,
+    datasetIds,
+    andConditions,
+    orConditions
+  }: {
+    teamId: string;
+    datasetIds: string[];
+    andConditions?: Record<string, Record<string, any>>[];
+    orConditions?: Record<string, Record<string, any>>[];
+  }): Promise<string[]> => {
+    if (!andConditions?.length && !orConditions?.length) return [];
+
+    // 收集所有条件中的 tag 名称
+    const allTagNames = [
+      ...(andConditions || []).map((cond) => Object.keys(cond)[0]),
+      ...(orConditions || []).map((cond) => Object.keys(cond)[0])
+    ].filter(Boolean);
+
+    // 按 dataset 批量查询 tag 名称 → tagId + tagType
+    const tagDocs = await MongoDatasetCollectionTags.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        tag: { $in: allTagNames }
+      },
+      '_id datasetId tag tagType',
+      { ...readFromSecondary }
+    ).lean();
+
+    // 按 datasetId 分组：{ datasetId → Map<tagName, { id, type }> }
+    const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
+    tagDocs.forEach((doc) => {
+      const dsId = String(doc.datasetId);
+      if (!datasetTagMap.has(dsId)) {
+        datasetTagMap.set(dsId, new Map());
+      }
+      datasetTagMap.get(dsId)!.set(doc.tag, {
+        id: String(doc._id),
+        type: (doc as any).tagType || 'string'
+      });
+    });
+
+    // 应用层 value 比较
+    const checkValue = (
+      opObj: Record<string, any>,
+      storedVal: string | number,
+      tagType: string
+    ): boolean => {
+      const op = Object.keys(opObj)[0];
+      const target = opObj[op];
+
+      if (op === '$empty') return storedVal === '' || storedVal === null || storedVal === undefined;
+      if (op === '$notEmpty')
+        return storedVal !== '' && storedVal !== null && storedVal !== undefined;
+      if (target === null) return false;
+
+      if (tagType === 'number') {
+        const sv = Number(storedVal);
+        const tv = Number(target);
+        if (isNaN(sv) || isNaN(tv)) return false;
+        switch (op) {
+          case '$eq':
+            return sv === tv;
+          case '$ne':
+            return sv !== tv;
+          case '$gt':
+            return sv > tv;
+          case '$lt':
+            return sv < tv;
+          case '$gte':
+            return sv >= tv;
+          case '$lte':
+            return sv <= tv;
+        }
+      } else if (tagType === 'datetime') {
+        const sv = typeof storedVal === 'number' ? storedVal : new Date(storedVal).getTime();
+        const tv = new Date(target).getTime();
+        if (isNaN(sv) || isNaN(tv)) return false;
+        switch (op) {
+          case '$eq':
+            return sv === tv;
+          case '$ne':
+            return sv !== tv;
+          case '$gt':
+            return sv > tv;
+          case '$lt':
+            return sv < tv;
+          case '$gte':
+            return sv >= tv;
+          case '$lte':
+            return sv <= tv;
+        }
+      } else {
+        const sv = String(storedVal);
+        const tv = String(target);
+        switch (op) {
+          case '$eq':
+            return sv === tv;
+          case '$ne':
+            return sv !== tv;
+          case '$contains':
+            return sv.toLowerCase().includes(tv.toLowerCase());
+          case '$notContains':
+            return !sv.toLowerCase().includes(tv.toLowerCase());
+          case '$startsWith':
+            return sv.toLowerCase().startsWith(tv.toLowerCase());
+          case '$endsWith':
+            return sv.toLowerCase().endsWith(tv.toLowerCase());
+          case '$regex':
+            try {
+              return new RegExp(tv, 'i').test(sv);
+            } catch {
+              return false;
+            }
+        }
+      }
+      return false;
+    };
+
+    // 针对每个 dataset 分别构建查询（同名 tag 在不同 dataset 中 id 不同）
+    const collectionIds: string[] = [];
+
+    for (const [datasetId, tagMap] of datasetTagMap) {
+      const andTagIds = (andConditions || [])
+        .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
+        .filter(Boolean) as string[];
+
+      const orTagIds = (orConditions || [])
+        .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
+        .filter(Boolean) as string[];
+
+      if (andTagIds.length === 0 && orTagIds.length === 0) continue;
+
+      // Step1: MongoDB 按 tagId 过滤（走 tags.tagId 索引）
+      // AND：所有 tagId 必须存在；纯 OR：任一 tagId 存在即可
+      const tagIdQuery: any =
+        andTagIds.length > 0
+          ? { 'tags.tagId': { $all: andTagIds } }
+          : { 'tags.tagId': { $in: orTagIds } };
+
+      const candidates = await MongoDatasetCollection.find(
+        { teamId, datasetId, ...tagIdQuery },
+        '_id tags',
+        { ...readFromSecondary }
+      ).lean();
+
+      // Step2: 应用层按 value 条件筛选
+      for (const col of candidates) {
+        const tagsArr = ((col.tags || []) as any[]).filter(
+          (t) => typeof t === 'object' && t !== null && t.tagId
+        );
+
+        // AND 条件：每个条件都要满足
+        const andOk = (andConditions || []).every((cond) => {
+          const tagName = Object.keys(cond)[0];
+          const tagInfo = tagMap.get(tagName);
+          if (!tagInfo) return false;
+          const tv = tagsArr.find((t) => t.tagId === tagInfo.id);
+          if (!tv) return false;
+          return checkValue(cond[tagName], tv.value, tagInfo.type);
+        });
+
+        if (!andOk) continue;
+
+        // OR 条件：至少一个满足（若无 OR 条件直接通过）
+        if (orConditions?.length) {
+          const orOk = orConditions.some((cond) => {
+            const tagName = Object.keys(cond)[0];
+            const tagInfo = tagMap.get(tagName);
+            if (!tagInfo) return false;
+            const tv = tagsArr.find((t) => t.tagId === tagInfo.id);
+            if (!tv) return false;
+            return checkValue(cond[tagName], tv.value, tagInfo.type);
+          });
+          if (!orOk) continue;
+        }
+
+        collectionIds.push(String(col._id));
+      }
+    }
+
+    return collectionIds;
+  };
+
   const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
     const getAllCollectionIds = async ({
       parentCollectionIds
@@ -421,10 +609,38 @@ export async function searchDatasetData(
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
 
-      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+      const andTags = jsonMatch?.tags?.$and as (string | null | Record<string, any>)[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as (string | null | Record<string, any>)[] | undefined;
 
-      if (andTags && andTags.length > 0) {
+      // 判断是否为新格式：$and 或 $or 的元素是对象 { [tagName]: { $op: value } }
+      const isNewTagFormat =
+        (Array.isArray(andTags) &&
+          andTags.length > 0 &&
+          typeof andTags[0] === 'object' &&
+          andTags[0] !== null) ||
+        (Array.isArray(orTags) &&
+          orTags.length > 0 &&
+          typeof orTags[0] === 'object' &&
+          orTags[0] !== null);
+
+      if (isNewTagFormat) {
+        // 新格式：基于 tag 名称 + value + operator 的过滤
+        const andConditions = (andTags || []).filter(
+          (item): item is Record<string, Record<string, any>> =>
+            typeof item === 'object' && item !== null
+        );
+        const orConditions = (orTags || []).filter(
+          (item): item is Record<string, Record<string, any>> =>
+            typeof item === 'object' && item !== null
+        );
+
+        tagCollectionIdList = await filterCollectionByNewTagFormat({
+          teamId,
+          datasetIds,
+          andConditions: andConditions.length > 0 ? andConditions : undefined,
+          orConditions: orConditions.length > 0 ? orConditions : undefined
+        });
+      } else if (andTags && andTags.length > 0) {
         const uniqueAndTags = Array.from(new Set(andTags));
         if (uniqueAndTags.includes(null) && uniqueAndTags.some((tag) => typeof tag === 'string')) {
           return [];
@@ -830,6 +1046,8 @@ export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
    * 若不传，则降级为使用 datasetIds（分组 ID）进行同义词检索。
    */
   synonymDatasetIds?: string[];
+  appId?: string; // 用于校正数据检索
+  faqAnswerMode?: 'quote' | 'llm-summary'; // FAQ 回答模式
   /** dispatch 层预计算的 queryExtension 结果，存在时跳过内部 LLM 调用，避免重复执行 */
   preComputedQueryExtension?: Awaited<ReturnType<typeof datasetSearchQueryExtension>>;
 };
@@ -839,6 +1057,8 @@ export const defaultSearchDatasetData = async ({
   datasetSearchExtensionBg,
   isAssistant,
   synonymDatasetIds,
+  appId,
+  faqAnswerMode,
   preComputedQueryExtension,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {

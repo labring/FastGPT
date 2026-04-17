@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import StatusFilter from './StatusFilter';
+import TagFilter from './TagFilter';
 import {
   Box,
   Flex,
@@ -49,27 +50,34 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from '../CollectionCard/Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { formatTime2YMDHM, formatTime2YMDHMUtc } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
-import TagsPopOver from '../CollectionCard/TagsPopOver';
+import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ExceptionInfoModal from './ExceptionInfoModal';
 import DatabaseExceptionModal from './DatabaseExceptionModal';
 import MoveCollectionDuplicateModal from './MoveCollectionDuplicateModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('../CollectionCard/EmptyCollectionTip'));
 const DatabaseListTable = dynamic(() => import('../CollectionCard/DatabaseListTable'));
+const SetTagsModal = dynamic(() => import('./SetTagsModal'));
+const BatchSetTagsModal = dynamic(() => import('./BatchSetTagsModal'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, loadDatasetDetail, allDatasetTags } = useContextSelector(
+    DatasetPageContext,
+    (v) => v
+  );
   const { feConfigs } = useSystemStore();
 
   const [exceptionInfoCollection, setExceptionInfoCollection] = useState<{
@@ -78,6 +86,8 @@ const CollectionCard = () => {
   const [databaseExceptionCollection, setDatabaseExceptionCollection] = useState<{
     collectionId: string;
   }>();
+  const [setTagsCollectionId, setSetTagsCollectionId] = useState<string | undefined>();
+  const [showBatchSetTags, setShowBatchSetTags] = useState(false);
 
   // Track if current getData call is from polling (to suppress loading state)
   const isPollingRef = useRef(false);
@@ -101,6 +111,7 @@ const CollectionCard = () => {
 
   const {
     collections,
+    displayedCollections,
     Pagination,
     total,
     getData,
@@ -121,7 +132,7 @@ const CollectionCard = () => {
   // Add file status icon
   const formatCollections = useMemo(
     () =>
-      collections.map((collection) => {
+      displayedCollections.map((collection) => {
         const icon = getCollectionIcon({ type: collection.type, name: collection.name });
         const status = (() => {
           // 文件夹类型不显示状态
@@ -166,7 +177,7 @@ const CollectionCard = () => {
           ...status
         };
       }),
-    [collections, t]
+    [displayedCollections, t]
   );
 
   const {
@@ -476,6 +487,14 @@ const CollectionCard = () => {
                           />
                         </HStack>
                       </Th>
+                      {feConfigs?.isPlus && (
+                        <Th py={4} w="180px">
+                          <HStack spacing={1}>
+                            <Box>{t('dataset:tag.tags')}</Box>
+                            <TagFilter />
+                          </HStack>
+                        </Th>
+                      )}
                       <Th py={4} w="150px">
                         <HStack
                           spacing={1}
@@ -572,9 +591,6 @@ const CollectionCard = () => {
                               </MyTooltip>
                             )}
                           </Flex>
-                          {feConfigs?.isPlus && !!collection.tags?.length && (
-                            <TagsPopOver currentCollection={collection} hoverBg={'white'} />
-                          )}
                         </Box>
                       </HStack>
                     </Td>
@@ -629,6 +645,87 @@ const CollectionCard = () => {
                             </MyTag>
                           )}
                         </Td>
+                        {feConfigs?.isPlus && (
+                          <Td py={2} w="180px" onClick={(e) => e.stopPropagation()}>
+                            {(() => {
+                              const tagValues = (collection.tags || []).filter(
+                                (t): t is CollectionTagValueType =>
+                                  typeof t === 'object' && t !== null
+                              );
+                              if (tagValues.length === 0) return <Box color="myGray.400">-</Box>;
+                              const visible = tagValues.slice(0, 2);
+                              const overflow = tagValues.slice(2);
+                              return (
+                                <Flex flexWrap={'wrap'} gap={1} align={'center'}>
+                                  {visible.map((tv, idx) => {
+                                    const tagDef = allDatasetTags.find((t) => t._id === tv.tagId);
+                                    return (
+                                      <Box
+                                        key={idx}
+                                        px={2}
+                                        py={'1px'}
+                                        fontSize={'xs'}
+                                        bg={'#F0FBFF'}
+                                        color={'#0884DD'}
+                                        borderRadius={'xs'}
+                                        whiteSpace={'nowrap'}
+                                      >
+                                        {tagDef
+                                          ? `${tagDef.tag}：${tagDef.tagType === 'datetime' ? formatTime2YMDHMUtc(Number(tv.value)) : tv.value}`
+                                          : tv.value}
+                                      </Box>
+                                    );
+                                  })}
+                                  {overflow.length > 0 && (
+                                    <MyPopover
+                                      hasArrow={false}
+                                      trigger={'hover'}
+                                      w={'160px'}
+                                      Trigger={
+                                        <Box
+                                          px={2}
+                                          py={'1px'}
+                                          bg={'#1118240D'}
+                                          borderRadius={'33px'}
+                                          fontSize={'xs'}
+                                          cursor={'pointer'}
+                                        >
+                                          {`+${overflow.length}`}
+                                        </Box>
+                                      }
+                                    >
+                                      {({}) => (
+                                        <Flex gap={1} p={3} flexWrap={'wrap'}>
+                                          {overflow.map((tv, idx) => {
+                                            const tagDef = allDatasetTags.find(
+                                              (t) => t._id === tv.tagId
+                                            );
+                                            return (
+                                              <Box
+                                                key={idx}
+                                                px={2}
+                                                py={'1px'}
+                                                fontSize={'xs'}
+                                                bg={'#F0FBFF'}
+                                                color={'#0884DD'}
+                                                borderRadius={'xs'}
+                                                whiteSpace={'nowrap'}
+                                              >
+                                                {tagDef
+                                                  ? `${tagDef.tag}：${tagDef.tagType === 'datetime' ? formatTime2YMDHMUtc(Number(tv.value)) : tv.value}`
+                                                  : tv.value}
+                                              </Box>
+                                            );
+                                          })}
+                                        </Flex>
+                                      )}
+                                    </MyPopover>
+                                  )}
+                                </Flex>
+                              );
+                            })()}
+                          </Td>
+                        )}
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
                           {formatTime2YMDHM(collection.createTime)}
                         </Td>
@@ -766,7 +863,20 @@ const CollectionCard = () => {
                                               })
                                           })
                                       }
-                                    ])
+                                    ]),
+                                ...(feConfigs?.isPlus
+                                  ? [
+                                      {
+                                        label: (
+                                          <Flex alignItems={'center'}>
+                                            <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
+                                            {t('dataset:tag.set_tags')}
+                                          </Flex>
+                                        ),
+                                        onClick: () => setSetTagsCollectionId(collection._id)
+                                      }
+                                    ]
+                                  : [])
                               ]
                             },
                             {
@@ -829,6 +939,11 @@ const CollectionCard = () => {
               >
                 {t('dataset:batch_delete')}
               </Button>
+              {feConfigs?.isPlus && (
+                <Button variant={'whiteBase'} onClick={() => setShowBatchSetTags(true)}>
+                  {t('dataset:tag.batch_set_tags')}
+                </Button>
+              )}
             </HStack>
           }
         >
@@ -942,6 +1057,25 @@ const CollectionCard = () => {
               } finally {
                 setIsMoveLoading(false);
               }
+            }}
+          />
+        )}
+
+        {!!setTagsCollectionId &&
+          (() => {
+            const col = formatCollections.find((c) => c._id === setTagsCollectionId);
+            return col ? (
+              <SetTagsModal collection={col} onClose={() => setSetTagsCollectionId(undefined)} />
+            ) : null;
+          })()}
+
+        {showBatchSetTags && (
+          <BatchSetTagsModal
+            selectedCollections={selectedItems}
+            datasetId={datasetDetail._id}
+            onClose={() => {
+              setShowBatchSetTags(false);
+              setSelectedItems([]);
             }}
           />
         )}

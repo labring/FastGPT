@@ -796,6 +796,7 @@
   "core.workflow.inputType.textarea": "多行輸入框",
   "core.workflow.inputType.timePointSelect": "時間點",
   "core.workflow.inputType.timeRangeSelect": "時間範圍",
+  "core.workflow.inputType.off": "關閉",
   "core.workflow.publish.OnRevert version": "點選回復至此版本",
   "core.workflow.publish.OnRevert version confirm": "確認回復至此版本？將為您儲存編輯中版本的設定，並為回復版本建立一個新的發布版本。",
   "core.workflow.publish.histories": "發布記錄",

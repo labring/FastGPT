@@ -1,6 +1,6 @@
 import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/model.d';
 import { PermissionTypeEnum } from '../../support/permission/constant';
-import { PushDatasetDataChunkProps } from './api';
+import type { PushDatasetDataChunkProps } from './api';
 import type {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -180,7 +180,7 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
   parentId?: string;
   name: string;
   type: DatasetCollectionTypeEnum;
-  tags?: string[];
+  tags?: (string | CollectionTagValueType)[];
 
   createTime: Date;
   updateTime: Date;
@@ -222,6 +222,7 @@ export type DatasetCollectionTagsSchemaType = {
   teamId: string;
   datasetId: string;
   tag: string;
+  tagType: DatasetTagTypeEnum;
 };
 
 export type DatasetDataIndexItemType = {
@@ -338,9 +339,18 @@ export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentMode
 };
 
 /* ================= tag ===================== */
+export type DatasetTagTypeEnum = 'string' | 'number' | 'datetime';
+
 export type DatasetTagType = {
   _id: string;
   tag: string;
+  tagType: DatasetTagTypeEnum;
+};
+
+// Collection 标签值（新格式 key-value）
+export type CollectionTagValueType = {
+  tagId: string; // 引用 dataset_collection_tags._id
+  value: string | number; // string 类型存字符串，datetime 类型存 UTC 毫秒时间戳（number）
 };
 
 export type TagUsageType = {

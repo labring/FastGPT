@@ -250,7 +250,11 @@ async function handler(
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null
         }),
-    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
+    ...(filterTags.length
+      ? {
+          $or: [{ tags: { $in: filterTags } }, { 'tags.tagId': { $in: filterTags } }]
+        }
+      : {})
   };
 
   const selectField = {
@@ -502,7 +506,7 @@ async function handleFieldSort({
       const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
       return {
         ...item,
-        tags: tagResults[index],
+        tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
         hasError,
@@ -524,7 +528,7 @@ async function handleFieldSort({
       });
       return {
         ...item,
-        tags: tagResults[index],
+        tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
         hasError,
@@ -984,10 +988,12 @@ async function handleStatusFilterWithMemoryPagination({
 
       // folder 返回 matchingStatuses 数组，文件返回 status 字段
       if (isFolder) {
+        const matchingStatuses =
+          folderMatchingStatusesMap.get(String(item._id)) || new Set([CollectionStatusEnum.ready]);
         return {
           ...item,
           tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-          matchingStatuses: Array.from((item as any).matchingStatuses) as CollectionStatusEnum[],
+          matchingStatuses: Array.from(matchingStatuses),
           permission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }

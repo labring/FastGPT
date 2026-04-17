@@ -280,7 +280,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                             ) {
                               onUpdateCollectionTag({
                                 tag: currentEditTagContent,
-                                _id: item._id
+                                _id: item._id,
+                                tagType: item.tagType
                               });
                             }
                             setCurrentEditTag(undefined);

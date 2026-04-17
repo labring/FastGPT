@@ -107,6 +107,9 @@ export type AppDatasetSearchParamsType = {
   // database
   generateSqlModel?: string;
 
+  // 标签过滤
+  collectionFilterMatch?: string;
+
   // 新增：检索模式（单轮/多轮）
   retrievalMode?: `${DatasetRetrievalModeEnum}`;
   // 新增：多轮智能检索使用的 LLM 模型

@@ -44,7 +44,9 @@ const TagsPopOver = ({
       (collectionTags
         ?.map((item) => {
           const tagObject = allDatasetTags.find((tag) => tag.tag === item);
-          return tagObject ?? null;
+          return tagObject
+            ? { _id: tagObject._id, tag: tagObject.tag, tagType: tagObject.tagType }
+            : null;
         })
         .filter((tag) => tag !== null) as DatasetTagType[]) || [],
     [collectionTags, allDatasetTags]

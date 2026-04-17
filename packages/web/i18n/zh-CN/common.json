@@ -805,6 +805,7 @@
   "core.workflow.inputType.textarea": "多行输入框",
   "core.workflow.inputType.timePointSelect": "时间点",
   "core.workflow.inputType.timeRangeSelect": "时间范围",
+  "core.workflow.inputType.off": "关闭",
   "core.workflow.publish.OnRevert version": "点击回退到该版本",
   "core.workflow.publish.OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
   "core.workflow.publish.histories": "发布记录",

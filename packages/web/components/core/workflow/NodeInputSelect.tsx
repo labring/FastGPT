@@ -102,6 +102,16 @@ const NodeInputSelect = ({
       type: FlowNodeInputTypeEnum.fileSelect,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.fileSelect].icon,
       title: t('common:core.workflow.inputType.Manual input')
+    },
+    {
+      type: FlowNodeInputTypeEnum.tagFilterConfig,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.tagFilterConfig].icon,
+      title: t('common:core.workflow.inputType.Manual input')
+    },
+    {
+      type: FlowNodeInputTypeEnum.off,
+      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.off].icon,
+      title: t('common:core.workflow.inputType.off')
     }
   ]);
 

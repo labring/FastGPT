@@ -31,7 +31,9 @@ export enum FlowNodeInputTypeEnum { // render ui
   fileSelect = 'fileSelect',
   timePointSelect = 'timePointSelect',
   timeRangeSelect = 'timeRangeSelect',
-  password = 'password'
+  password = 'password',
+  tagFilterConfig = 'tagFilterConfig', // 标签过滤 GUI 配置
+  off = 'off' // 关闭/不启用
 }
 export const FlowNodeInputMap: Record<
   FlowNodeInputTypeEnum,
@@ -104,6 +106,12 @@ export const FlowNodeInputMap: Record<
   },
   [FlowNodeInputTypeEnum.password]: {
     icon: 'core/workflow/inputType/password'
+  },
+  [FlowNodeInputTypeEnum.tagFilterConfig]: {
+    icon: 'core/workflow/inputType/input'
+  },
+  [FlowNodeInputTypeEnum.off]: {
+    icon: 'common/disable'
   }
 };
 

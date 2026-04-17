@@ -201,6 +201,7 @@
   "tag.add_new": "新增",
   "tag.cancel": "取消",
   "tag.delete_tag_confirm": "確定要刪除標籤嗎？",
+  "tag.hoverTagToFilter": "懸停標籤查看可選值",
   "tag.manage": "標籤管理",
   "tag.searchOrAddTag": "搜尋或新增標籤",
   "tag.tags": "標籤",
@@ -495,5 +496,16 @@
   "add_faq_modal_title": "新增 FAQ",
   "add_success_toast": "新增成功（#{{index}}）",
   "rebuilding_edit_tip": "索引生成中",
-  "training_cannot_edit": "正在處理中，無法編輯"
+  "training_cannot_edit": "正在處理中，無法編輯",
+  "tag.set_tags": "設定標籤",
+  "tag.batch_set_tags": "批次設定標籤",
+  "tag.tag_type": "標籤類型",
+  "tag.type_string": "String",
+  "tag.type_number": "Number",
+  "tag.type_datetime": "Datetime",
+  "tag.add_tag": "新增標籤",
+  "tag.tag_value": "標籤值",
+  "tag.files": "個檔案",
+  "tag.existing_tags_tip": "現有標籤（勾選需要編輯的標籤，編輯後對所選檔案都生效）",
+  "tag.new_tags_tip": "新標籤（將新增至每個所選檔案中）"
 }

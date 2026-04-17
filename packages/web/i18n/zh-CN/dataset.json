@@ -200,6 +200,7 @@
   "tag.add_new": "新建",
   "tag.cancel": "取消选择",
   "tag.delete_tag_confirm": "确定删除标签？",
+  "tag.hoverTagToFilter": "悬停标签查看可选值",
   "tag.manage": "标签管理",
   "tag.searchOrAddTag": "搜索或添加标签",
   "tag.tags": "标签",
@@ -498,5 +499,16 @@
   "add_faq_modal_title": "新增 FAQ",
   "add_success_toast": "新增成功（#{{index}}）",
   "rebuilding_edit_tip": "索引生成中",
-  "training_cannot_edit": "正在处理中，无法编辑"
+  "training_cannot_edit": "正在处理中，无法编辑",
+  "tag.set_tags": "设置标签",
+  "tag.batch_set_tags": "批量设置标签",
+  "tag.tag_type": "标签类型",
+  "tag.type_string": "String",
+  "tag.type_number": "Number",
+  "tag.type_datetime": "Datetime",
+  "tag.add_tag": "添加标签",
+  "tag.tag_value": "标签值",
+  "tag.files": "个文件",
+  "tag.existing_tags_tip": "已有标签（勾选需要编辑的标签，编辑后对所选文件都生效，当前没有对应标签的文件也将添加）",
+  "tag.new_tags_tip": "新标签（将添加在每个所选文件中）"
 }
