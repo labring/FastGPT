@@ -140,6 +140,7 @@
   "code_error.skill_error.un_auth_skill": "Unauthorized to Operate This Skill",
   "code_error.skill_error.can_not_edit_admin_permission": "Can not edit admin permission",
   "code_error.chat_error.un_auth": "Unauthorized to Operate This Chat Record",
+  "code_error.chat_error.chat_generating": "This chat is still generating. Please wait until it finishes before sending another request.",
   "code_error.error_code.400": "Request Failed",
   "code_error.error_code.401": "No Access Permission",
   "code_error.error_code.403": "Access Forbidden",

@@ -140,6 +140,7 @@
   "code_error.skill_error.un_auth_skill": "无权操作该技能",
   "code_error.skill_error.can_not_edit_admin_permission": "不能编辑管理员权限",
   "code_error.chat_error.un_auth": "没有权限操作此对话记录",
+  "code_error.chat_error.chat_generating": "当前对话正在生成中，请等待完成后再发起新的请求",
   "code_error.error_code.400": "请求失败",
   "code_error.error_code.401": "无访问权限",
   "code_error.error_code.403": "紧张访问",

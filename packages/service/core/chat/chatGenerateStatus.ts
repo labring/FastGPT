@@ -15,28 +15,70 @@ type EnsureGenerateChatParams = {
   shareId?: string;
   outLinkUid?: string;
 };
-export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
+
+const buildGeneratingChatUpdate = (params: EnsureGenerateChatParams) => {
   const now = new Date();
+
+  return {
+    now,
+    $set: {
+      ...params,
+      updateTime: now,
+      hasBeenRead: false,
+      chatGenerateStatus: ChatGenerateStatusEnum.generating
+    },
+    $setOnInsert: {
+      createTime: now
+    }
+  };
+};
+
+export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
+  const { $set, $setOnInsert } = buildGeneratingChatUpdate(params);
+
   await MongoChat.updateOne(
     {
       appId: params.appId,
       chatId: params.chatId
     },
     {
-      $set: {
-        ...params,
-        updateTime: now,
-        hasBeenRead: false,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating
-      },
-      $setOnInsert: {
-        createTime: now
-      }
+      $set,
+      $setOnInsert
     },
     {
       upsert: true
     }
   );
+};
+
+export const tryStartGenerateChat = async (params: EnsureGenerateChatParams) => {
+  const { $set, $setOnInsert } = buildGeneratingChatUpdate(params);
+
+  try {
+    await MongoChat.updateOne(
+      {
+        appId: params.appId,
+        chatId: params.chatId,
+        chatGenerateStatus: {
+          $ne: ChatGenerateStatusEnum.generating
+        }
+      },
+      {
+        $set,
+        $setOnInsert
+      },
+      {
+        upsert: true
+      }
+    );
+
+    return true;
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return false;
+    }
+    throw error;
+  }
 };
 
 type UpdateChatGenerateStatusParams = Pick<EnsureGenerateChatParams, 'appId' | 'chatId'> & {
