@@ -32,7 +32,7 @@ export const openAPIDocument = createDocument({
     },
     {
       name: 'Agent 应用',
-      tags: [TagsMap.appLog, TagsMap.publishChannel]
+      tags: [TagsMap.appLog, TagsMap.publishChannel, TagsMap.mcpServer]
     },
     {
       name: 'AI 相关',

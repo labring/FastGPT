@@ -3,20 +3,17 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authMcp } from '@fastgpt/service/support/permission/mcp/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
-
-export type deleteQuery = {
-  id: string;
-};
-
-export type deleteBody = {};
-
-export type deleteResponse = {};
+import {
+  McpDeleteQuerySchema,
+  McpDeleteResponseSchema,
+  type McpDeleteResponseType
+} from '@fastgpt/global/openapi/support/mcpServer/api';
 
 async function handler(
-  req: ApiRequestProps<deleteBody, deleteQuery>,
+  req: ApiRequestProps,
   res: ApiResponseType<any>
-): Promise<deleteResponse> {
-  const { id } = req.query;
+): Promise<McpDeleteResponseType> {
+  const { id } = McpDeleteQuerySchema.parse(req.query);
 
   await authMcp({
     req,
@@ -28,7 +25,7 @@ async function handler(
 
   await MongoMcpKey.deleteOne({ _id: id });
 
-  return {};
+  return McpDeleteResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

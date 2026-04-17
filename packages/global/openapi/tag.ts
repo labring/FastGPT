@@ -43,6 +43,7 @@ export const TagsMap = {
 
   // Publish Channel
   publishChannel: '发布渠道',
+  mcpServer: 'MCP 发布管理',
 
   /* Support */
   // Team

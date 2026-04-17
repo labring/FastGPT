@@ -23,7 +23,7 @@
     "timezones-list": "^3.0.2",
     "lodash": "catalog:",
     "zod": "catalog:",
-    "zod-openapi": "^5.4.3"
+    "zod-openapi": "^5.4.6"
   },
   "devDependencies": {
     "@types/lodash": "catalog:",

@@ -240,8 +240,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.12
       zod-openapi:
-        specifier: ^5.4.3
-        version: 5.4.3(zod@4.1.12)
+        specifier: ^5.4.6
+        version: 5.4.6(zod@4.1.12)
     devDependencies:
       '@types/js-yaml':
         specifier: ^4.0.9
@@ -11738,8 +11738,8 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
-  zod-openapi@5.4.3:
-    resolution: {integrity: sha512-6kJ/gJdvHZtuxjYHoMtkl2PixCwRuZ/s79dVkEr7arHvZGXfx7Cvh53X3HfJ5h9FzGelXOXlnyjwfX0sKEPByw==}
+  zod-openapi@5.4.6:
+    resolution: {integrity: sha512-P2jsOOBAq/6hCwUsMCjUATZ8szkMsV5VAwZENfyxp2Hc/XPJQpVwAgevWZc65xZauCwWB9LAn7zYeiCJFAEL+A==}
     engines: {node: '>=20'}
     peerDependencies:
       zod: ^3.25.74 || ^4.0.0
@@ -24725,7 +24725,7 @@ snapshots:
       compress-commons: 6.0.2
       readable-stream: 4.7.0
 
-  zod-openapi@5.4.3(zod@4.1.12):
+  zod-openapi@5.4.6(zod@4.1.12):
     dependencies:
       zod: 4.1.12
 

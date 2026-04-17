@@ -3,24 +3,9 @@ import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { FlowNodeOutputItemTypeSchema } from '../../../../core/workflow/type/io';
-import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
+import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 import z from 'zod';
-
-const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.omit({
-  invalidCondition: true
-}).extend({
-  invalidCondition: z.any().optional().meta({
-    description: 'Internal editor validation function. This field is not expected in API payloads.'
-  })
-});
-
-const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
-  outputs: true
-}).extend({
-  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
-});
 
 /* Get App Permission */
 export const GetAppPermissionQuerySchema = z.object({
