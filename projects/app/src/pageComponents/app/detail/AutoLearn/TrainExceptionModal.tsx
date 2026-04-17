@@ -6,11 +6,13 @@ import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/err
 const TrainExceptionModal = ({
   error,
   onClose,
-  onRetry
+  onRetry,
+  isRetrying = false
 }: {
   error: { taskId: string; errorMsg: EnhancedErrorMessage } | null;
   onClose: () => void;
   onRetry?: () => void;
+  isRetrying?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -35,8 +37,6 @@ const TrainExceptionModal = ({
     <MyModal
       isOpen={!!error} // 当 error 存在时显示
       onClose={onClose}
-      iconSrc="common/info"
-      iconColor={'primary.600'}
       title={t('app:exception_info')}
       minW={['90vw', '600px']}
     >
@@ -56,10 +56,15 @@ const TrainExceptionModal = ({
       </ModalBody>
       <ModalFooter px={9}>
         <Flex justifyContent={'flex-end'} gap={4}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} onClick={onClose} isDisabled={isRetrying}>
             {t('common:Close')}
           </Button>
-          <Button variant={'primary'} onClick={onRetry}>
+          <Button
+            variant={'primary'}
+            onClick={onRetry}
+            isLoading={isRetrying}
+            isDisabled={isRetrying}
+          >
             {t('app:retry')}
           </Button>
         </Flex>
