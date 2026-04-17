@@ -30,6 +30,7 @@ export const ParallelRunNode: FlowNodeTemplateType = {
   name: i18nT('workflow:parallel_run'),
   intro: i18nT('workflow:intro_parallel_run'),
   showStatus: true,
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/parallel_run/',
   inputs: [
     {
       key: NodeInputKeyEnum.nestedInputArray,

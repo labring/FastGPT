@@ -204,9 +204,19 @@ export type AggregatedParallelResults = {
  * - filteredArray: only successful items
  * - fullDetail: all items with success/failure status
  * - totalPoints, responseDetails, assistantResponses, customFeedbacks: merged from successful tasks
+ *
+ * responseDetails 返回"按任务聚合"的虚拟节点列表：每次任务包装成一个
+ * ChatHistoryItemResType，子工作流节点挂在 childrenResponses 下，
+ * 方便 UI 按任务维度折叠展示（而非平铺所有子节点）。
  */
 export const aggregateParallelResults = (
-  taskResults: ParallelTaskResult[]
+  taskResults: ParallelTaskResult[],
+  opts: {
+    /** loopInputArray，按原始 index 对齐；用于生成任务的输入展示 */
+    taskInputs: any[];
+    /** 并行节点 nodeId，用于生成任务虚拟节点的唯一 id */
+    parentNodeId: string;
+  }
 ): AggregatedParallelResults => {
   // Sort by input index so all output arrays are in input order
   const sorted = [...taskResults].sort((a, b) => a.index - b.index);
@@ -234,9 +244,30 @@ export const aggregateParallelResults = (
     // totalPoints is pre-accumulated across all retry attempts in the caller
     totalPoints += result.totalPoints;
 
+    const childrenResponses: ChatHistoryItemResType[] = result.response?.flowResponses ?? [];
+    const runningTime = childrenResponses.reduce(
+      (acc, r) => acc + (typeof r.runningTime === 'number' ? r.runningTime : 0),
+      0
+    );
+
+    const taskNodeId = `${opts.parentNodeId}_task_${result.index}`;
+    const taskWrapper: ChatHistoryItemResType = {
+      id: taskNodeId,
+      nodeId: taskNodeId,
+      moduleType: FlowNodeTypeEnum.parallelRun,
+      moduleName: i18nT('workflow:parallel_task'),
+      moduleNameArgs: { index: result.index + 1 },
+      runningTime: Math.round(runningTime * 100) / 100,
+      totalPoints: result.totalPoints,
+      loopInputValue: opts.taskInputs[result.index],
+      loopOutputValue: result.success ? result.data : undefined,
+      error: result.success ? undefined : result.error,
+      childrenResponses
+    };
+    responseDetails.push(taskWrapper);
+
     if (result.response) {
       const response = result.response;
-      responseDetails.push(...response.flowResponses);
       assistantResponses.push(...(response[DispatchNodeResponseKeyEnum.assistantResponses] || []));
 
       const feedbacks = response[DispatchNodeResponseKeyEnum.customFeedbacks];

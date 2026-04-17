@@ -50,7 +50,7 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
         <>
           <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
-            {t('workflow:loop_body')}
+            {t('workflow:parallel_run_execution_logic')}
           </FormLabel>
           <Box
             flex={1}

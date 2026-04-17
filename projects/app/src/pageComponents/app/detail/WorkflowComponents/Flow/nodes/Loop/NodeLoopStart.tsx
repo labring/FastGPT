@@ -99,12 +99,10 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <Box px={4} pt={2} w={'420px'}>
           <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
             <TableContainer>
-              <Table bg={'white'}>
+              <Table bg={'white'} variant={'workflow'}>
                 <Thead>
                   <Tr>
-                    <Th borderBottomLeftRadius={'none !important'}>
-                      {t('workflow:Variable_name')}
-                    </Th>
+                    <Th>{t('workflow:Variable_name')}</Th>
                     <Th>{t('common:core.workflow.Value type')}</Th>
                   </Tr>
                 </Thead>
