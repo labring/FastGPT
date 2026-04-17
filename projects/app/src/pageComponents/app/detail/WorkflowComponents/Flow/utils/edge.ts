@@ -22,6 +22,10 @@ export const getHandleIndex = (
 
   // userSelect: sort by option index
   if (flowNodeType === FlowNodeTypeEnum.userSelect) {
+    if (handleId.includes('ref_default')) {
+      return 0;
+    }
+
     const options = inputs?.find((i) => i.key === NodeInputKeyEnum.userSelectOptions)?.value;
     if (Array.isArray(options)) {
       const idx = options.findIndex((opt: any) => handleId.includes(opt.key));

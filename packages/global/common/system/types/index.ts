@@ -66,6 +66,7 @@ export type FastGPTFeConfigsType = {
   show_discount_coupon?: boolean;
   showWecomConfig?: boolean;
   show_user_operations?: boolean;
+  agent_users?: string[];
 
   show_dataset_feishu?: boolean;
   show_dataset_yuque?: boolean;
@@ -78,6 +79,7 @@ export type FastGPTFeConfigsType = {
 
   show_dataset_enhance?: boolean;
   show_batch_eval?: boolean;
+  show_evaluation?: boolean;
 
   concatMd?: string;
   docUrl?: string;

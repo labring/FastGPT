@@ -182,7 +182,7 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
                 ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
                 : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
             }
-            gridGap={5}
+            gridGap={3}
             alignItems={'stretch'}
           >
             {showCreateCard &&
@@ -197,7 +197,7 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
               ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
               : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
           }
-          gridGap={5}
+          gridGap={3}
           alignItems={'stretch'}
         >
           {showCreateCard &&
@@ -391,7 +391,7 @@ const ListCreateButton = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
       cursor={'pointer'}
       border={'base'}
       bg={'white'}
-      borderRadius={'10px'}
+      borderRadius={'8px'}
       position={'relative'}
       display={'flex'}
       flexDirection={'column'}
@@ -457,7 +457,7 @@ const ForbiddenCreateButton = () => {
       cursor={'not-allowed'}
       border={'base'}
       bg={'white'}
-      borderRadius={'10px'}
+      borderRadius={'8px'}
       position={'relative'}
       display={'flex'}
       flexDirection={'column'}

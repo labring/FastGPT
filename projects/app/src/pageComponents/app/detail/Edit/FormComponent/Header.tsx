@@ -203,7 +203,7 @@ const Header = ({
   });
 
   return (
-    <Box h={14}>
+    <Box h={'64px'}>
       {!isPc && (
         <Flex justifyContent={'center'}>
           <RouteTab />

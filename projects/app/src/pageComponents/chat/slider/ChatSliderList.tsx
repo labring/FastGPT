@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -13,7 +13,11 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
-const ChatSliderList = () => {
+type Props = {
+  isShareMode?: boolean;
+};
+
+const ChatSliderList = ({ isShareMode }: Props) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
@@ -26,6 +30,8 @@ const ChatSliderList = () => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const concatHistory = useMemo(() => {
     const formatHistories: {
@@ -68,31 +74,30 @@ const ChatSliderList = () => {
 
   return (
     <>
-      <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
+      <ScrollData flex={'1 0 0'} h={0} px={4} overflow={'overlay'}>
         {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}
             key={item.id}
             alignItems={'center'}
-            px={4}
-            h={'44px'}
+            pl={'8px'}
+            pr={'12px'}
+            h={'36px'}
             cursor={'pointer'}
             userSelect={'none'}
-            borderRadius={'md'}
-            fontSize={'sm'}
+            borderRadius={'6px'}
+            fontSize={'13px'}
+            lineHeight={'36px'}
             _hover={{
-              bg: 'myGray.50',
+              bg: isShareMode ? '#EBEDF0' : 'myGray.50',
               '& .more': {
                 display: 'block'
-              },
-              '& .time': {
-                display: isPc ? 'none' : 'block'
               }
             }}
             bg={item.top ? '#E6F6F6 !important' : ''}
             {...(item.id === activeChatId
               ? {
-                  backgroundColor: 'primary.50 !important',
+                  backgroundColor: 'primary.1 !important',
                   color: 'primary.600'
                 }
               : {
@@ -102,31 +107,20 @@ const ChatSliderList = () => {
                   }
                 })}
             {...(i !== concatHistory.length - 1 && {
-              mb: '8px'
+              mb: '4px'
             })}
           >
-            <MyIcon
-              name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
-              w={'16px'}
-            />
-            <Box flex={'1 0 0'} ml={3} className="textEllipsis" w={0}>
-              <MyTooltip label={item.customTitle || item.title} shouldWrapChildren={false}>
-                <Box className="textEllipsis">{item.customTitle || item.title}</Box>
-              </MyTooltip>
+            <Box flex={'1 0 0'} ml={'8px'} className="textEllipsis" w={0} color={'myGray.600'}>
+              <Box className="textEllipsis">{item.customTitle || item.title}</Box>
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
                 <Box
-                  className="time"
-                  display={'block'}
-                  fontWeight={'400'}
-                  fontSize={'mini'}
-                  color={'myGray.500'}
+                  className="more"
+                  display={['block', openMenuId === item.id ? 'block' : 'none']}
                 >
-                  {t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
-                </Box>
-                <Box className="more" display={['block', 'none']}>
                   <MyMenu
+                    onOpenChange={(isOpen) => setOpenMenuId(isOpen ? item.id : null)}
                     Button={
                       <IconButton
                         size={'xs'}

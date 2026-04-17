@@ -1,8 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  type TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import type { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';

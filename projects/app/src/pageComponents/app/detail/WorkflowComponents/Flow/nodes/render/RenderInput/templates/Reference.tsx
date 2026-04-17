@@ -5,6 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getNodeAllSource, filterWorkflowNodeOutputsByType } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
+  NodeInputKeyEnum,
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -26,6 +27,9 @@ import {
 } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { MySourceHandle } from '../../Handle';
+import { Position } from 'reactflow';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -156,15 +160,27 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
   }, [nodeId, getNodeById]);
 
+  const showAddHandle = item.key === NodeInputKeyEnum.userSelectOptions;
+
   return (
-    <ReferSelector
-      placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
-      list={referenceList}
-      value={item.value}
-      onSelect={onSelect}
-      popDirection={popDirection}
-      isArray={isArray}
-    />
+    <Box position={'relative'}>
+      <ReferSelector
+        placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
+        list={referenceList}
+        value={item.value}
+        onSelect={onSelect}
+        popDirection={popDirection}
+        isArray={isArray}
+      />
+      {showAddHandle && (
+        <MySourceHandle
+          nodeId={nodeId}
+          handleId={getHandleId(nodeId, 'source', 'ref_default')}
+          position={Position.Right}
+          translate={[34, 0]}
+        />
+      )}
+    </Box>
   );
 };
 

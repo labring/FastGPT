@@ -52,7 +52,8 @@ const ConnectDatabaseConfig = () => {
     clientType: (databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum,
     host: databaseConfig?.host || '',
     port:
-      databaseConfig?.port || getDefaultPort((databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum),
+      databaseConfig?.port ||
+      getDefaultPort((databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum),
     database: databaseConfig?.database || '',
     user: databaseConfig?.user || '',
     password: databaseConfig?.password || '',
@@ -85,7 +86,9 @@ const ConnectDatabaseConfig = () => {
           host: databaseConfig?.host || '',
           port:
             databaseConfig?.port ||
-            getDefaultPort((databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum),
+            getDefaultPort(
+              (databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum
+            ),
           database: databaseConfig?.database || '',
           user: databaseConfig?.user || '',
           password: databaseConfig?.password || '',

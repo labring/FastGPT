@@ -1,6 +1,6 @@
 import { SearchDataResponseItemSchema } from '../dataset/type';
 import type { ChatSourceEnum } from './constants';
-import { ChatFileTypeEnum, ChatRoleEnum } from './constants';
+import { ChatFileTypeEnum, ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import { AppSchemaTypeSchema, type AppSchemaType, type VariableItemType } from '../app/type';
@@ -183,6 +183,7 @@ export const AdminFbkSchema = z.object({
 export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 
 export const AIChatItemValueSchema = z.object({
+  type: z.enum(ChatItemValueTypeEnum).optional(),
   id: z.string().nullish(),
   stepId: z.string().nullish(),
   planId: z.string().nullish(),

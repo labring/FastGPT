@@ -1,6 +1,9 @@
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
-import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import type {
+  CollectionTagValueType,
+  DatasetCollectionSchemaType
+} from '@fastgpt/global/core/dataset/type.d';
+import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type.d';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import type {
   CollectionStatusEnum,
@@ -21,7 +24,7 @@ export type DatasetCollectionsListItemType = {
   updateTime: DatasetCollectionSchemaType['updateTime'];
   forbid?: DatasetCollectionSchemaType['forbid'];
   trainingType?: DatasetCollectionSchemaType['trainingType'];
-  tags?: string[];
+  tags?: (string | CollectionTagValueType)[];
 
   externalFileId?: string;
 

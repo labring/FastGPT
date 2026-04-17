@@ -24,8 +24,9 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitest/coverage-v8": "^3.0.9",
-    "eslint": "catalog:",
-    "eslint-config-next": "catalog:",
+    "dotenv": "^16.5.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.1.0",
     "husky": "^8.0.3",
     "i18next": "catalog:",
     "js-yaml": "catalog:",
@@ -51,6 +52,19 @@
       "pnpm initDocToc",
       "git add ."
     ]
+  },
+  "resolutions": {
+    "mdast-util-gfm-autolink-literal": "2.0.0"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "openai>zod": "*"
+      }
+    }
+  },
+  "mongodbMemoryServer": {
+    "systemBinary": "/usr/local/bin/mongodb/mongod"
   },
   "engines": {
     "node": ">=20",

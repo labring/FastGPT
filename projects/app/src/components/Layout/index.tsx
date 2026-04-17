@@ -86,6 +86,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     [router.pathname, router.query]
   );
   const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
+  // Dashboard/dataset/account/app/detail 页面使用新版侧边导航栏，不需要旧版 Navbar
+  const isDashboardPage = useMemo(
+    () =>
+      router.pathname.startsWith('/dashboard') ||
+      router.pathname.startsWith('/dataset') ||
+      router.pathname.startsWith('/account') ||
+      router.pathname === '/app/detail',
+    [router.pathname]
+  );
 
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
@@ -143,6 +152,13 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <>
             {isHideNavbar ? (
               <Auth>{children}</Auth>
+            ) : isDashboardPage ? (
+              // Dashboard 页面：DashboardContainer 内部已包含新版侧边栏，无需旧版 Navbar
+              <Auth>
+                <Box h={'100%'} overflow={'overlay'}>
+                  {children}
+                </Box>
+              </Auth>
             ) : (
               <Auth>
                 <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>

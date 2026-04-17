@@ -1,0 +1,85 @@
+# diting-rag-ts Configuration
+# 环境变量优先级高于本配置文件
+# YAML 字段名保持与 Python 版一致 (snake_case)
+
+# ===================
+# LLM 配置
+# ===================
+llm:
+  base_url: http://fastgpt-aiproxy.default:3000/v1
+  api_key: ""  # Leave empty if no API key needed
+  model: Qwen3-Next-80B-A3B-Instruct-FP8
+  max_tokens: 8192
+  timeout: 120000
+
+# ===================
+# Embedding 配置
+# ===================
+embedding:
+  base_url: http://fastgpt-aiproxy.default:3000/v1
+  api_key: ""
+  model: bge-m3
+  dimension: 1024
+  timeout: 60000
+
+# ===================
+# Reranker 配置 (可选)
+# ===================
+reranker:
+  base_url: http://fastgpt-aiproxy.default:3000/v1
+  api_key: ""
+  model: bge-reranker-large
+  top_n: 10
+  timeout: 60000
+
+# ===================
+# 向量数据库 (Vector DB)
+# ===================
+vector_db:
+  type: pgvector  # pgvector | milvus
+
+  # PGVector (if type: pgvector)
+  pg_url: postgresql://postgres:password@localhost:5432/postgres
+  # Or individual fields:
+  # pg_host: localhost
+  # pg_port: 5432
+  # pg_database: postgres
+  # pg_user: postgres
+  # pg_password: password
+
+  # Milvus (if type: milvus)
+  # milvus_address: localhost:19530
+  # milvus_token: ""
+  # milvus_database: default
+
+# ===================
+# 全文检索数据库 (Full-text DB)
+# ===================
+fulltext_db:
+  type: mongodb  # mongodb | opensearch
+
+  # MongoDB (if type: mongodb)
+  url: mongodb://localhost:27017
+  database: fastgpt
+
+  # OpenSearch (if type: opensearch, 预留)
+  # opensearch_url: http://localhost:9200
+  # opensearch_index: my_index
+
+# ===================
+# FastGPT 配置 (可选)
+# ===================
+fastgpt:
+  base_url: http://localhost:3000
+  api_key: ""
+
+# ===================
+# Agent 配置
+# ===================
+agent:
+  search_mode: mixedRecall  # embedding | fullTextRecall | mixedRecall
+  max_search_rounds: 5
+  max_tool_calls: 10
+  embedding_weight: 0.5
+  similarity: 0.0
+  rerank_top_k: 20

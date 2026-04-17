@@ -167,6 +167,7 @@ export type ChatSiteItemType = ChatItemMergeType & {
   _id?: string;
   id: string;
   dataId: string;
+  correctionId?: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
@@ -174,6 +175,7 @@ export type ChatSiteItemType = ChatItemMergeType & {
   time?: Date;
   durationSeconds?: number;
   rewriteStandardizedQuery?: string;
+  agenticSearchResult?: DispatchNodeResponseType['agenticSearchResult'];
   errorMsg?: string;
   deleteTime?: Date | null;
   collapseTop?: {

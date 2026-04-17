@@ -59,10 +59,10 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
         ...collection,
         ...data,
         updateTime: new Date(),
-        tags: await collectionTagsToTagLabel({
+        tags: (await collectionTagsToTagLabel({
           datasetId: collection.datasetId,
           tags: collection.tags
-        })
+        })) as string[] | undefined
       }
     });
 

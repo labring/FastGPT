@@ -21,7 +21,7 @@ export async function register() {
           initProPromptLoader
         },
         { initVectorStore },
-        { initRootUser },
+        { initRootUser, initAgentUsers },
         { startMongoWatch },
         { startCron },
         { startTrainingQueue },
@@ -108,6 +108,7 @@ export async function register() {
       // Load init data
       await Promise.all([
         initRootUser(),
+        initAgentUsers(),
         loadSystemModels(),
         loadSystemBuiltinMetrics(),
         getSystemTools(),

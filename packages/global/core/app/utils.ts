@@ -144,13 +144,14 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.generateSqlModel
       );
+      // Agentic Search
       defaultAppForm.dataset.retrievalMode = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetRetrievalMode
       );
       defaultAppForm.dataset.agenticSearchReasoning = findInputValueByKey(
         node.inputs,
-        NodeInputKeyEnum.datasetagenticSearchReasoning
+        NodeInputKeyEnum.datasetAgenticSearchReasoning
       );
 
       // 不单独配置，取AI配置中的模型即可
@@ -161,6 +162,11 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.agenticSearchRerankModel =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModel) ||
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModel);
+      // 标签过滤
+      defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.collectionFilterMatch
+      );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||

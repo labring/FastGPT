@@ -249,7 +249,7 @@ const TemplateMarket = ({
   return (
     <MyBox ref={containerRef} h={'100%'} isLoading={isCreating}>
       <Flex flexDirection={'column'} h={'100%'} py={6}>
-        <Flex alignItems={'center'} px={6} mb={5}>
+        <Flex alignItems={'center'} px={4} mb={5}>
           {isPc ? (
             <Box fontSize={'lg'} color={'myGray.900'} fontWeight={'medium'}>
               {t('app:template_market')}
@@ -303,7 +303,7 @@ const TemplateMarket = ({
           />
         </Flex>
 
-        <Box flex={'1 0 0'} px={6} overflow={'auto'}>
+        <Box flex={'1 0 0'} px={4} overflow={'auto'}>
           {searchKey ? (
             <>
               <Box fontSize={'lg'} color={'myGray.900'} mb={4}>
@@ -397,7 +397,7 @@ export default TemplateMarketContainer;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app', 'account']))
     }
   };
 }

@@ -21,7 +21,7 @@ import { useContextSelector } from 'use-context-selector';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import TagsPopOver from './CollectionCard/TagsPopOver';
+import TagsPopOver from './RefinedCollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';

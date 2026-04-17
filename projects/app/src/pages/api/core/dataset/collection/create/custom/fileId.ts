@@ -17,7 +17,11 @@ import {
   adaptiveAdjustConfig,
   logAdaptiveAdjustments
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
-import type { CustomFileImportModeType } from '@fastgpt/global/common/system/types';
+import type {
+  CustomFileImportModeType,
+  CustomFileImportConfigType
+} from '@fastgpt/global/common/system/types';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
@@ -31,7 +35,7 @@ export type CustomFileIdImportBody = {
   fileId: string; // Required: Uploaded file ID
   parentId?: string; // Optional: Parent directory ID
   name?: string; // Optional: Custom name (defaults to filename)
-  tags?: string[]; // Optional: Tags
+  tags?: CollectionTagValueType[]; // Optional: Tags
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
@@ -177,10 +181,11 @@ async function handler(
         });
 
         // Delete collection and related data (data and training records)
+        // delFile: false — the new file already occupies the same S3 key
         await delCollection({
           collections,
           delImg: true,
-          delFile: true,
+          delFile: false,
           session
         });
 
@@ -277,7 +282,7 @@ async function handler(
       datasetId,
       parentId: normalizedParentId,
       name: fileName,
-      tags,
+      tags: tags as unknown as string[],
       type: DatasetCollectionTypeEnum.file,
       fileId,
       metadata: {

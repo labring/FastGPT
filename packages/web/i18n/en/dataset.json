@@ -200,6 +200,7 @@
   "tag.add_new": "Add",
   "tag.cancel": "Deselect",
   "tag.delete_tag_confirm": "Are you sure you want to delete the tag?",
+  "tag.hoverTagToFilter": "Hover a tag to view values",
   "tag.manage": "Manage tags",
   "tag.searchOrAddTag": "Search or add",
   "tag.tags": "Tag",
@@ -210,6 +211,7 @@
   "template_import_mode_not_found": "Import mode not found or disabled: {{modeName}}",
   "template_mode": "Import from template",
   "template_unsupported_file_type": "Unsupported file type, only {{types}} are supported",
+  "template_excel_too_much_data": "Too many Q&A entries. Excel parsing failed. Please save the file as CSV format and re-upload.",
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The knowledge base contains indexes that are being trained or rebuilt.",
   "total_num_files": "Total files: {{total}}",
   "training.Error": "{{count}} groups encountered error.",
@@ -497,5 +499,16 @@
   "add_faq_modal_title": "Add FAQ",
   "add_success_toast": "Added successfully (#{{index}})",
   "rebuilding_edit_tip": "Generating indexes",
-  "training_cannot_edit": "Processing, cannot edit"
+  "training_cannot_edit": "Processing, cannot edit",
+  "tag.set_tags": "Set Tags",
+  "tag.batch_set_tags": "Batch Set Tags",
+  "tag.tag_type": "Tag Type",
+  "tag.type_string": "String",
+  "tag.type_number": "Number",
+  "tag.type_datetime": "Datetime",
+  "tag.add_tag": "Add Tag",
+  "tag.tag_value": "Tag Value",
+  "tag.files": "files",
+  "tag.existing_tags_tip": "Existing tags (check to edit, will apply to all selected files)",
+  "tag.new_tags_tip": "New tags (will be added to each selected file)"
 }

@@ -33,7 +33,9 @@ const PolicyTip = ({ isCenter }: { isCenter: boolean }) => {
               ),
               privacyLink: (
                 <Link
-                  href={feConfigs?.privacyProtocol || getDocPath('/docs/introduction/cloud/privacy/')}
+                  href={
+                    feConfigs?.privacyProtocol || getDocPath('/docs/introduction/cloud/privacy/')
+                  }
                   target={'_blank'}
                   color={'primary.700'}
                 />

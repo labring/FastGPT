@@ -7,6 +7,7 @@ import {
   useMemo,
   useCallback
 } from 'react';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
@@ -44,6 +45,9 @@ type CollectionPageContextType = {
   setSearchText: Dispatch<SetStateAction<string>>;
   filterTags: string[];
   setFilterTags: Dispatch<SetStateAction<string[]>>;
+  filterTagValues: Record<string, string[]>;
+  setFilterTagValues: Dispatch<SetStateAction<Record<string, string[]>>>;
+  displayedCollections: DatasetCollectionsListItemType[];
   statusFilter: CollectionStatusEnum | undefined;
   setStatusFilter: Dispatch<SetStateAction<CollectionStatusEnum | undefined>>;
   sortBy: 'name' | 'updateTime' | 'createTime' | 'dataAmount' | null;
@@ -84,6 +88,11 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   setFilterTags: function (value: SetStateAction<string[]>): void {
     throw new Error('Function not implemented.');
   },
+  filterTagValues: {},
+  setFilterTagValues: function (value: SetStateAction<Record<string, string[]>>): void {
+    throw new Error('Function not implemented.');
+  },
+  displayedCollections: [],
   statusFilter: undefined,
   setStatusFilter: function (value: SetStateAction<CollectionStatusEnum | undefined>): void {
     throw new Error('Function not implemented.');
@@ -114,6 +123,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterTagValues, setFilterTagValues] = useState<Record<string, string[]>>({});
   const [statusFilter, setStatusFilter] = useState<CollectionStatusEnum | undefined>(undefined);
   const [sortBy, setSortBy] = useState<'name' | 'updateTime' | 'createTime' | 'dataAmount' | null>(
     null
@@ -140,6 +150,21 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     // defaultRequest: false,
     refreshDeps: [parentId, searchText, filterTags, statusFilter, sortBy, sortOrder]
   });
+
+  const displayedCollections = useMemo(() => {
+    const hasValueFilter = Object.values(filterTagValues).some((v) => v.length > 0);
+    if (!hasValueFilter) return collections;
+    return collections.filter((col) => {
+      const colTags = ((col.tags || []) as (string | CollectionTagValueType)[]).filter(
+        (t): t is CollectionTagValueType => typeof t === 'object' && t !== null
+      );
+      return Object.entries(filterTagValues).some(
+        ([tagId, values]) =>
+          values.length > 0 &&
+          colTags.some((t) => t.tagId === tagId && values.includes(String(t.value)))
+      );
+    });
+  }, [collections, filterTagValues]);
 
   const syncDataset = useCallback(async () => {
     if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
@@ -218,6 +243,9 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       setSearchText,
       filterTags,
       setFilterTags,
+      filterTagValues,
+      setFilterTagValues,
+      displayedCollections,
       statusFilter,
       setStatusFilter,
       sortBy,
@@ -237,7 +265,9 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     [
       Pagination,
       collections,
+      displayedCollections,
       filterTags,
+      filterTagValues,
       getData,
       hasDatabaseConfig,
       handleOpenConfigPage,
@@ -248,6 +278,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       pageSize,
       searchText,
       setFilterTags,
+      setFilterTagValues,
       setSearchText,
       statusFilter,
       setStatusFilter,

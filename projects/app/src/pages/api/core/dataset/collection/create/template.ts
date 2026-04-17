@@ -44,14 +44,15 @@ async function handler(req: ApiRequestProps) {
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
-    const { datasetId, parentId, enhanceConfig: rawEnhanceConfig } =
-      CreateTemplateCollectionFormSchema.extend({
-        enhanceConfig: z.any().optional()
-      }).parse(result.data);
+    const {
+      datasetId,
+      parentId,
+      enhanceConfig: rawEnhanceConfig
+    } = CreateTemplateCollectionFormSchema.extend({
+      enhanceConfig: z.any().optional()
+    }).parse(result.data);
     const enhanceConfig: EnhanceConfig =
-      typeof rawEnhanceConfig === 'string'
-        ? JSON.parse(rawEnhanceConfig)
-        : rawEnhanceConfig || {};
+      typeof rawEnhanceConfig === 'string' ? JSON.parse(rawEnhanceConfig) : rawEnhanceConfig || {};
 
     if (!isCSVFile(filename)) {
       return Promise.reject('File must be a CSV file');

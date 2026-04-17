@@ -137,7 +137,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           agenticSearchLLMModel: input.value || prev.agenticSearchLLMModel
         }));
       }
-      if (input.key === NodeInputKeyEnum.datasetagenticSearchReasoning) {
+      if (input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning) {
         setAgenticSearchConfig((prev) => ({
           ...prev,
           agenticSearchReasoning: input.value ?? prev.agenticSearchReasoning
@@ -155,9 +155,23 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <>
-        <Flex alignItems={'center'} mb={3} fontWeight={'medium'} color={'myGray.600'}>
+        <Flex alignItems={'center'} mb={3} fontSize={'sm'}>
           {t('app:retrieval_config')}
-          <QuestionTip ml={1} label={t('app:retrieval_mode_tooltip')} />
+          <QuestionTip
+            ml={1}
+            label={
+              <Box lineHeight={'24px'} fontSize={'12px'}>
+                <Box>
+                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_single_title')}</span>
+                  <span>{t('app:retrieval_mode_single_desc')}</span>
+                </Box>
+                <Box>
+                  <span style={{ fontWeight: 600 }}>{t('app:retrieval_mode_multiple_title')}</span>
+                  <span>{t('app:retrieval_mode_multiple_desc')}</span>
+                </Box>
+              </Box>
+            }
+          />
         </Flex>
         <Box mb={3}>
           <RetrievalModeSelector
@@ -239,13 +253,13 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
             // 更新 agenticSearchReasoning
             const outputThinkingInput = inputs.find(
-              (input) => input.key === NodeInputKeyEnum.datasetagenticSearchReasoning
+              (input) => input.key === NodeInputKeyEnum.datasetAgenticSearchReasoning
             );
             if (outputThinkingInput) {
               onChangeNode({
                 nodeId,
                 type: 'updateInput',
-                key: NodeInputKeyEnum.datasetagenticSearchReasoning,
+                key: NodeInputKeyEnum.datasetAgenticSearchReasoning,
                 value: { ...outputThinkingInput, value: config.agenticSearchReasoning }
               });
             }

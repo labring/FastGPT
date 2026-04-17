@@ -87,6 +87,7 @@ type ChatItemContextType = {
   setCiteModalData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
   isVariableVisible: boolean;
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
+  isNoneWelcomeAndVariable: boolean;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -121,7 +122,8 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   isVariableVisible: true,
   setIsVariableVisible: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  isNoneWelcomeAndVariable: false
 });
 
 /* 
@@ -149,6 +151,19 @@ const ChatItemContextProvider = ({
   });
 
   const isPlugin = chatBoxData.app.type === AppTypeEnum.workflowTool;
+  const isAssistantType = chatBoxData.app.type === AppTypeEnum.assistant;
+
+  const isNoneWelcomeAndVariable = useMemo(() => {
+    const welcomeText = chatBoxData.app.chatConfig?.welcomeText;
+    const variableList = chatBoxData.app.chatConfig?.variables || [];
+    return (
+      !welcomeText && (variableList.length === 0 || (variableList.length !== 0 && isAssistantType))
+    );
+  }, [
+    chatBoxData.app.chatConfig?.welcomeText,
+    chatBoxData.app.chatConfig?.variables,
+    isAssistantType
+  ]);
 
   // plugin
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
@@ -220,7 +235,8 @@ const ChatItemContextProvider = ({
       datasetCiteData,
       setCiteModalData,
       isVariableVisible,
-      setIsVariableVisible
+      setIsVariableVisible,
+      isNoneWelcomeAndVariable
     };
   }, [
     chatBoxData,
@@ -240,7 +256,8 @@ const ChatItemContextProvider = ({
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,
-    setIsVariableVisible
+    setIsVariableVisible,
+    isNoneWelcomeAndVariable
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;

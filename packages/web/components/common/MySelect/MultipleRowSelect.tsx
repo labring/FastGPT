@@ -4,7 +4,6 @@ import {
   useDisclosure,
   Box,
   Flex,
-  useOutsideClick,
   Checkbox,
   css,
   Menu,
@@ -295,7 +294,7 @@ export const MultipleRowArraySelect = ({
   ButtonProps
 }: MultipleArraySelectProps) => {
   const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
+  const ButtonRef = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -305,11 +304,6 @@ export const MultipleRowArraySelect = ({
     return Array.isArray(value) ? value.filter((v) => Array.isArray(v)) : [];
   }, [value]);
 
-  // Close when clicking outside
-  useOutsideClick({
-    ref: ref,
-    handler: onClose
-  });
   const onChange = useCallback(
     (val: any[][]) => {
       // Filter invalid value
@@ -403,68 +397,87 @@ export const MultipleRowArraySelect = ({
   }, [onOpen]);
 
   return (
-    <Box ref={ref} position={'relative'}>
-      <Button
-        width={'100%'}
-        variant={'whitePrimaryOutline'}
-        size={'lg'}
-        fontSize={'sm'}
-        px={3}
-        outline={'none'}
-        rightIcon={<MyIcon name={'core/chat/chevronDown'} w="1rem" color={'myGray.500'} />}
-        iconSpacing={2}
-        h={'auto'}
-        _active={{
-          transform: 'none'
-        }}
-        _hover={{
-          borderColor: 'primary.500'
-        }}
-        {...ButtonProps}
-        {...(isOpen
-          ? {
-              borderColor: 'primary.600',
-              color: 'primary.700',
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-              bg: 'white !important'
-            }
-          : {
-              borderColor: 'myGray.200',
-              boxShadow: 'none'
-            })}
-        onClick={() => (isOpen ? onClose() : onOpenSelect())}
-        className="nowheel"
+    <Box
+      css={css({
+        '& div': {
+          width: 'auto !important'
+        }
+      })}
+    >
+      <Menu
+        autoSelect={false}
+        isOpen={isOpen}
+        onOpen={onOpenSelect}
+        onClose={onClose}
+        strategy={'fixed'}
+        placement={popDirection === 'top' ? 'top-start' : 'bottom-start'}
       >
-        <Box w={'100%'} textAlign={'left'}>
-          {label ?? placeholder}
-        </Box>
-      </Button>
-      {isOpen && (
-        <Box
-          position={'absolute'}
-          {...(popDirection === 'top'
+        <MenuButton
+          as={Button}
+          ref={ButtonRef}
+          width={'100%'}
+          variant={'whitePrimaryOutline'}
+          size={'lg'}
+          fontSize={'sm'}
+          px={3}
+          outline={'none'}
+          rightIcon={<MyIcon name={'core/chat/chevronDown'} w="1rem" color={'myGray.500'} />}
+          iconSpacing={2}
+          h={'auto'}
+          _active={{
+            transform: 'none'
+          }}
+          _hover={{
+            borderColor: 'primary.500'
+          }}
+          {...(isOpen
             ? {
-                transform: 'translateY(-105%)',
-                top: '0'
+                borderColor: 'primary.600',
+                color: 'primary.700',
+                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
               }
             : {
-                transform: 'translateY(105%)',
-                bottom: '0'
+                borderColor: 'myGray.200',
+                boxShadow: 'none'
               })}
-          py={2}
-          bg={'white'}
-          border={'1px solid #fff'}
-          boxShadow={'5'}
-          borderRadius={'md'}
-          zIndex={1000}
-          minW={'100%'}
-          w={'max-content'}
+          {...ButtonProps}
+          className="nowheel"
         >
-          <Flex>
-            <RenderList list={list} index={0} />
-          </Flex>
-        </Box>
-      )}
+          <Box w={'100%'} textAlign={'left'}>
+            {label ?? placeholder}
+          </Box>
+        </MenuButton>
+        <MenuList
+          className={ButtonProps?.className}
+          minW={(() => {
+            const w = ButtonRef.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+
+            const width = ButtonProps?.width;
+            return Array.isArray(width)
+              ? width.map((item) => `${item} !important`)
+              : `${width} !important`;
+          })()}
+          w={'auto'}
+          py={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={
+            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+          }
+          zIndex={99}
+          maxH={'40vh'}
+          overflowY={'auto'}
+          display={'flex'}
+          userSelect={'none'}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <RenderList list={list} index={0} />
+        </MenuList>
+      </Menu>
     </Box>
   );
 };

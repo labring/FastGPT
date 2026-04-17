@@ -12,8 +12,11 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "**/*.d.ts",
     "../../packages/**/*.ts",
-    "../../packages/**/*.tsx"
+    "../../packages/**/*.tsx",
+    "../../packages/**/*.d.ts",
+    "../../test/list.test.ts"
   ],
   "exclude": ["**/*.test.ts", "**/*.test.tsx", ".next", "dist", "coverage"]
 }

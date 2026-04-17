@@ -26,6 +26,7 @@ import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
   ssr: false
@@ -197,8 +198,44 @@ export const WholeResponseContent = ({
     [activeModule]
   );
 
+  const isDataSearch = useMemo(
+    () => activeModule.moduleType === FlowNodeTypeEnum.datasetSearchNode,
+    [activeModule]
+  );
+
   const quoteListDom = useMemo(() => {
-    if (!activeModule.quoteList || activeModule.quoteList.length === 0) return null;
+    const isEmpty = !activeModule.quoteList || activeModule.quoteList.length === 0;
+    if (isEmpty && isDataSearch) {
+      return (
+        <Row
+          label={
+            hasDatabase && hasOtherKnowledgeBase
+              ? t('chat:other_knowledge_base_search_results')
+              : t('chat:search_results')
+          }
+          value={t('chat:no_matching_knowledge')}
+        />
+      );
+    }
+    if (isEmpty) return null;
+    // 多轮智能检索逻辑
+    if (isAgenticMode) {
+      return (
+        <Row
+          label={t('chat:search_results')}
+          rawDom={
+            <QuoteList
+              chatItemDataId={dataId}
+              rawSearch={activeModule.quoteList!}
+              applicationId={appId}
+              chatId={chatId}
+              isAgenticMode={isAgenticMode}
+            />
+          }
+        />
+      );
+    }
+
     return (
       <>
         {hasDatabase && (
@@ -237,7 +274,7 @@ export const WholeResponseContent = ({
         )}
         {hasCorrectionRecord && (
           <Row
-            label={t('chat:response_search_results', { len: activeModule.quoteList.length })}
+            label={t('chat:response_search_results', { len: activeModule.quoteList?.length ?? 0 })}
             rawDom={
               <QuoteList
                 chatItemDataId={dataId}
@@ -262,7 +299,8 @@ export const WholeResponseContent = ({
     appId,
     chatId,
     t,
-    Row
+    Row,
+    isDataSearch
   ]);
 
   return activeModule ? (
@@ -400,7 +438,11 @@ export const WholeResponseContent = ({
                           >
                             {requestId}
                           </Box>
-                          <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} color={'myGray.500'} />
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            w={'0.8rem'}
+                            color={'myGray.500'}
+                          />
                         </Flex>
                       ))}
                     </Grid>

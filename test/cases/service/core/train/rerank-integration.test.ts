@@ -45,8 +45,15 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
-  synthesizeRerankTrainDatas: vi.fn()
+vi.mock('@fastgpt/service/core/train/rerank/external', () => ({}));
+
+vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
+  buildFineTuneData: vi.fn()
+}));
+
+// mongoSessionRun: execute the callback with a fake session object so transaction logic is testable
+vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
+  mongoSessionRun: vi.fn().mockImplementation(async (fn: any) => fn({}))
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/utils', async () => {
@@ -121,13 +128,12 @@ describe('Rerank Train Data Integration Tests', () => {
       ];
       (sampleDataFromDataset as any).mockResolvedValue(mockSamples);
 
-      // 3. Mock external service
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      // 3. Mock buildFineTuneData
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: '什么是人工智能？',
             positive: ['Artificial Intelligence is a field of computer science'],
@@ -172,7 +178,7 @@ describe('Rerank Train Data Integration Tests', () => {
         [datasetId1, datasetId2],
         expect.any(Object)
       );
-      expect(synthesizeRerankTrainDatas).toHaveBeenCalledTimes(1);
+      expect(buildFineTuneData).toHaveBeenCalledTimes(1);
       expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledTimes(1);
 
       expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledWith(
@@ -195,7 +201,7 @@ describe('Rerank Train Data Integration Tests', () => {
       );
     });
 
-    test('强制重新生成应该先清空旧数据', async () => {
+    test('强制重新生成应该原子性替换旧数据（先生成后删+插）', async () => {
       (MongoRerankTrainset.findById as any).mockResolvedValue({
         _id: trainsetId,
         teamId,
@@ -207,12 +213,11 @@ describe('Rerank Train Data Integration Tests', () => {
         { datasetId: datasetId1, dataId: 'data_001', q: 'q1', a: 'a1', indexes: [] }
       ]);
 
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: true,
-        data: [
+      (buildFineTuneData as any).mockReturnValue({
+        samples: [
           {
             query: 'Test',
             positive: ['Doc'],
@@ -241,9 +246,15 @@ describe('Rerank Train Data Integration Tests', () => {
         opts: { attempts: 1 }
       } as any);
 
-      // Force regeneration should delete old data first
+      // deleteMany is called inside mongoSessionRun with filter + session option
       expect(MongoRerankTrainsetData.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({ trainsetId })
+        expect.objectContaining({ trainsetId }),
+        expect.objectContaining({ session: expect.any(Object) })
+      );
+      // insertMany is also called inside the same transaction
+      expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ session: expect.any(Object) })
       );
     });
   });
@@ -261,12 +272,11 @@ describe('Rerank Train Data Integration Tests', () => {
         { datasetId: datasetId1, dataId: 'data_001', q: 'q1', a: 'a1', indexes: [] }
       ]);
 
-      const { synthesizeRerankTrainDatas } = await import(
-        '@fastgpt/service/core/train/rerank/external'
+      const { buildFineTuneData } = await import(
+        '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (synthesizeRerankTrainDatas as any).mockResolvedValue({
-        success: false,
-        error: 'DiTing service unavailable'
+      (buildFineTuneData as any).mockImplementation(() => {
+        throw new Error('DiTing service unavailable');
       });
 
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});

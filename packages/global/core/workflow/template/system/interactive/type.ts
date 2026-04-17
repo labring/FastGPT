@@ -116,7 +116,11 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   minLength: z.number().optional(), // password
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
-  list: z.array(z.object({ label: z.string(), value: z.string() })).optional() // select
+  list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
+  listInputType: z.enum([FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.custom]).optional(), // select list input type
+  listReference: z
+    .union([z.tuple([z.string(), z.string()]), z.array(z.tuple([z.string(), z.string()]))])
+    .optional() // reference value
 });
 export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({

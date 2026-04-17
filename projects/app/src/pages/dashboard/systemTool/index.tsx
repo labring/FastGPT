@@ -1,3 +1,4 @@
+// @file 系统工具市场页面，展示可安装的系统工具列表
 'use client';
 
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -23,6 +24,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getTeamToolDetail } from '@/web/core/plugin/team/api';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -67,6 +69,14 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { data: tags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
+
+  const toolTabList = useMemo(
+    () => [
+      { label: t('common:navbar.Tools'), value: 'my', path: '/dashboard/tool' },
+      { label: t('common:navbar.system_tool'), value: 'system', path: '/dashboard/systemTool' }
+    ],
+    [t]
+  );
 
   // TODO: 把 filter 放到后端
   const [tools, setTools] = useState<GetTeamPluginListResponseType>([]);
@@ -146,231 +156,236 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   }, [tools, searchText, selectedTagIds, installedFilter, tags, i18n.language]);
 
   return (
-    <Box h={'full'}>
-      <MyBox
-        bg={'white'}
-        h={'full'}
-        rounded={'8px'}
-        position={'relative'}
-        display={'flex'}
-        flexDirection={'column'}
-        isLoading={loadingTools && displayTools.length === 0}
-      >
-        <Box px={8} flexShrink={0}>
-          {isPc && (
-            <Flex alignItems={'center'}>
-              <Box
-                mt={8}
-                mb={4}
-                fontSize={'20px'}
-                fontWeight={'medium'}
-                color={'myGray.900'}
-                flex={'1 0 0'}
-              >
-                {t('app:core.module.template.System Tools')}
-              </Box>
-              {feConfigs?.docUrl && (
-                <Button
-                  mr={4}
-                  onClick={() =>
-                    window.open(
-                      getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
-                      '_blank'
-                    )
-                  }
-                >
-                  {t('app:toolkit_contribute_resource')}
-                </Button>
-              )}
-              {feConfigs?.submitPluginRequestUrl && (
-                <Button
-                  variant={'whiteBase'}
-                  onClick={() => {
-                    window.open(feConfigs.submitPluginRequestUrl);
-                  }}
-                >
-                  {t('app:toolkit_marketplace_submit_request')}
-                </Button>
-              )}
-            </Flex>
-          )}
-          {/* Tags */}
-          <Flex mt={2} mb={3} alignItems={'center'}>
-            <Flex alignItems={'start'} flex={'1 0 0'} w={0} mr={[3, 10]}>
-              {!isPc && (
-                <Box mr={2} mt={2}>
-                  {MenuIcon}
+    <Flex flexDirection={'column'} h={'full'}>
+      <Box flex={'1 0 0'} h={0} px={4} pb={4}>
+        <MyBox
+          h={'full'}
+          rounded={'8px'}
+          position={'relative'}
+          display={'flex'}
+          flexDirection={'column'}
+          isLoading={loadingTools && displayTools.length === 0}
+        >
+          <Box px={4} flexShrink={0}>
+            {isPc && (
+              <Flex alignItems={'center'} position={'relative'} mt={8} mb={4}>
+                <Box fontSize={'20px'} fontWeight={'medium'} color={'myGray.900'} flex={1}>
+                  {t('app:core.module.template.System Tools')}
                 </Box>
-              )}
-              {isPc && (
-                <Flex
-                  alignItems={'center'}
-                  transition={'all 0.3s'}
-                  w={isSearchExpanded ? '320px' : 'auto'}
-                  mr={4}
-                >
-                  {isSearchExpanded ? (
-                    <InputGroup>
-                      <MyIcon
-                        position={'absolute'}
-                        zIndex={10}
-                        left={2.5}
-                        name={'common/searchLight'}
-                        w={5}
-                        color={'primary.600'}
-                        top={'50%'}
-                        transform={'translateY(-50%)'}
-                      />
-                      <Input
-                        px={8}
-                        h={'35px'}
-                        borderRadius={'md'}
-                        placeholder={t('common:search_tool')}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        autoFocus
-                        onBlur={() => {
-                          if (!searchText) {
-                            setIsSearchExpanded(false);
-                          }
-                        }}
-                      />
-                      {searchText && (
+                <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+                  <MyTabs
+                    tabs={toolTabList}
+                    value="system"
+                    onChange={(value) => {
+                      const tab = toolTabList.find((t) => t.value === value);
+                      if (tab) router.push(tab.path);
+                    }}
+                  />
+                </Box>
+                <Flex flex={1} justifyContent={'flex-end'} gap={4}>
+                  {feConfigs?.docUrl && (
+                    <Button
+                      onClick={() =>
+                        window.open(
+                          getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
+                          '_blank'
+                        )
+                      }
+                    >
+                      {t('app:toolkit_contribute_resource')}
+                    </Button>
+                  )}
+                  {feConfigs?.submitPluginRequestUrl && (
+                    <Button
+                      variant={'whiteBase'}
+                      onClick={() => {
+                        window.open(feConfigs.submitPluginRequestUrl);
+                      }}
+                    >
+                      {t('app:toolkit_marketplace_submit_request')}
+                    </Button>
+                  )}
+                </Flex>
+              </Flex>
+            )}
+            {/* Tags */}
+            <Flex mt={2} mb={3} alignItems={'center'}>
+              <Flex alignItems={'start'} flex={'1 0 0'} w={0} mr={[3, 10]}>
+                {!isPc && (
+                  <Box mr={2} mt={2}>
+                    {MenuIcon}
+                  </Box>
+                )}
+                {isPc && (
+                  <Flex
+                    alignItems={'center'}
+                    transition={'all 0.3s'}
+                    w={isSearchExpanded ? '320px' : 'auto'}
+                    mr={4}
+                  >
+                    {isSearchExpanded ? (
+                      <InputGroup>
                         <MyIcon
                           position={'absolute'}
                           zIndex={10}
-                          right={2.5}
-                          name={'common/closeLight'}
-                          w={4}
+                          left={2.5}
+                          name={'common/searchLight'}
+                          w={5}
+                          color={'primary.600'}
                           top={'50%'}
                           transform={'translateY(-50%)'}
-                          color={'myGray.500'}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            setSearchText('');
-                            setIsSearchExpanded(false);
+                        />
+                        <Input
+                          px={8}
+                          h={'35px'}
+                          borderRadius={'md'}
+                          placeholder={t('common:search_tool')}
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          autoFocus
+                          onBlur={() => {
+                            if (!searchText) {
+                              setIsSearchExpanded(false);
+                            }
                           }}
                         />
-                      )}
-                    </InputGroup>
-                  ) : (
-                    <Flex
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      cursor={'pointer'}
-                      borderRadius={'md'}
-                      _hover={{ bg: 'myGray.100' }}
-                      onClick={() => setIsSearchExpanded(true)}
-                      p={2}
-                      h={'35px'}
-                      border={'1px solid'}
-                      borderColor={'myGray.200'}
-                    >
-                      <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
-                      <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.500'}>
-                        {t('common:Search')}
-                      </Box>
-                    </Flex>
-                  )}
-                </Flex>
-              )}
-              <Box flex={'1'} overflow={'auto'} mb={-1}>
-                <ToolTagFilterBox
-                  tags={tags}
-                  selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
-                />
-              </Box>
-            </Flex>
-
-            <MyMenu
-              trigger="hover"
-              Button={
-                <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
-                  <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
-                  <Box fontSize={'12px'}>
-                    {installedFilter === 'installed'
-                      ? t('app:toolkit_installed')
-                      : installedFilter === 'uninstalled'
-                        ? t('app:toolkit_uninstalled')
-                        : t('common:All')}
-                  </Box>
-                </Flex>
-              }
-              menuList={[
-                {
-                  children: [
-                    {
-                      label: t('common:All'),
-                      onClick: () => setInstalledFilter('all'),
-                      isActive: installedFilter === 'all'
-                    },
-                    {
-                      label: t('app:toolkit_installed'),
-                      onClick: () => setInstalledFilter('installed'),
-                      isActive: installedFilter === 'installed'
-                    },
-                    {
-                      label: t('app:toolkit_uninstalled'),
-                      onClick: () => setInstalledFilter('uninstalled'),
-                      isActive: installedFilter === 'uninstalled'
-                    }
-                  ]
-                }
-              ]}
-            />
-          </Flex>
-        </Box>
-
-        <Box flex={1} overflowY={'auto'} px={8} pb={6}>
-          {displayTools.length > 0 ? (
-            <Grid
-              gridTemplateColumns={[
-                '1fr',
-                'repeat(2,1fr)',
-                'repeat(2,1fr)',
-                'repeat(3,1fr)',
-                'repeat(4,1fr)'
-              ]}
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {displayTools.map((tool) => {
-                return (
-                  <ToolCard
-                    key={tool.id}
-                    item={tool}
-                    systemTitle={feConfigs?.systemTitle}
-                    mode="team"
-                    onInstall={() => toggleInstall({ pluginId: tool.id, installed: true })}
-                    onDelete={() => toggleInstall({ pluginId: tool.id, installed: false })}
-                    onClickCard={() => setSelectedTool(tool)}
-                    isInstallingOrDeleting={loadingPluginIds.has(tool.id)}
+                        {searchText && (
+                          <MyIcon
+                            position={'absolute'}
+                            zIndex={10}
+                            right={2.5}
+                            name={'common/closeLight'}
+                            w={4}
+                            top={'50%'}
+                            transform={'translateY(-50%)'}
+                            color={'myGray.500'}
+                            cursor={'pointer'}
+                            onClick={() => {
+                              setSearchText('');
+                              setIsSearchExpanded(false);
+                            }}
+                          />
+                        )}
+                      </InputGroup>
+                    ) : (
+                      <Flex
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        cursor={'pointer'}
+                        borderRadius={'md'}
+                        _hover={{ bg: 'myGray.100' }}
+                        onClick={() => setIsSearchExpanded(true)}
+                        p={2}
+                        h={'35px'}
+                        border={'1px solid'}
+                        borderColor={'myGray.200'}
+                      >
+                        <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
+                        <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.500'}>
+                          {t('common:Search')}
+                        </Box>
+                      </Flex>
+                    )}
+                  </Flex>
+                )}
+                <Box flex={'1'} overflow={'auto'} mb={-1}>
+                  <ToolTagFilterBox
+                    tags={tags}
+                    selectedTagIds={selectedTagIds}
+                    onTagSelect={setSelectedTagIds}
                   />
-                );
-              })}
-            </Grid>
-          ) : (
-            <VStack>
-              {!loadingTools && (
-                <>
-                  <EmptyTip pb={4} />
-                  {userInfo?.username === 'root' && (
-                    <Button
-                      onClick={() => {
-                        router.push('/config/tool');
-                      }}
-                      w={'160px'}
-                    >
-                      {t('app:click_to_config')}
-                    </Button>
-                  )}
-                </>
-              )}
-            </VStack>
-          )}
-        </Box>
-      </MyBox>
+                </Box>
+              </Flex>
+
+              <MyMenu
+                trigger="hover"
+                Button={
+                  <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
+                    <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
+                    <Box fontSize={'12px'}>
+                      {installedFilter === 'installed'
+                        ? t('app:toolkit_installed')
+                        : installedFilter === 'uninstalled'
+                          ? t('app:toolkit_uninstalled')
+                          : t('common:All')}
+                    </Box>
+                  </Flex>
+                }
+                menuList={[
+                  {
+                    children: [
+                      {
+                        label: t('common:All'),
+                        onClick: () => setInstalledFilter('all'),
+                        isActive: installedFilter === 'all'
+                      },
+                      {
+                        label: t('app:toolkit_installed'),
+                        onClick: () => setInstalledFilter('installed'),
+                        isActive: installedFilter === 'installed'
+                      },
+                      {
+                        label: t('app:toolkit_uninstalled'),
+                        onClick: () => setInstalledFilter('uninstalled'),
+                        isActive: installedFilter === 'uninstalled'
+                      }
+                    ]
+                  }
+                ]}
+              />
+            </Flex>
+          </Box>
+
+          <Box flex={1} overflowY={'auto'} px={4} pb={6}>
+            {displayTools.length > 0 ? (
+              <Grid
+                gridTemplateColumns={[
+                  '1fr',
+                  'repeat(2,1fr)',
+                  'repeat(2,1fr)',
+                  'repeat(3,1fr)',
+                  'repeat(4,1fr)'
+                ]}
+                gridGap={3}
+                alignItems={'stretch'}
+              >
+                {displayTools.map((tool) => {
+                  return (
+                    <ToolCard
+                      key={tool.id}
+                      item={tool}
+                      systemTitle={feConfigs?.systemTitle}
+                      mode="team"
+                      onInstall={() => toggleInstall({ pluginId: tool.id, installed: true })}
+                      onDelete={() => toggleInstall({ pluginId: tool.id, installed: false })}
+                      onClickCard={() => setSelectedTool(tool)}
+                      isInstallingOrDeleting={loadingPluginIds.has(tool.id)}
+                    />
+                  );
+                })}
+              </Grid>
+            ) : (
+              <VStack>
+                {!loadingTools && (
+                  <>
+                    <EmptyTip pb={4} />
+                    {userInfo?.username === 'root' && (
+                      <Button
+                        onClick={() => {
+                          router.push('/config/tool');
+                        }}
+                        w={'160px'}
+                      >
+                        {t('app:click_to_config')}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </VStack>
+            )}
+          </Box>
+        </MyBox>
+      </Box>
 
       {!!selectedTool && (
         <ToolDetailDrawer
@@ -394,7 +409,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           mode="team"
         />
       )}
-    </Box>
+    </Flex>
   );
 };
 
@@ -411,7 +426,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app']))
+      ...(await serviceSideProps(content, ['app', 'account']))
     }
   };
 }

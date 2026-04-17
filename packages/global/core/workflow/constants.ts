@@ -203,8 +203,8 @@ export enum NodeInputKeyEnum {
   datasetRetrievalMode = 'retrievalMode',
   // 多轮智能检索专用
   datasetAgenticSearchLLMModel = 'agenticSearchLLMModel',
-  datasetagenticSearchReasoning = 'agenticSearchReasoning',
   datasetAgenticSearchRerankModel = 'agenticSearchRerankModel',
+  datasetAgenticSearchReasoning = 'agenticSearchReasoning',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',

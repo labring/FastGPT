@@ -308,6 +308,7 @@ export const datasetSearchQueryExtension = async ({
       inputTokens: 0,
       outputTokens: 0,
       embeddingTokens: 0,
+      extensionQueries: [] as string[],
       synonymRewriteResult
     };
     return {

@@ -21,6 +21,8 @@ import ChatRecordContextProvider, {
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import ChatBoxContextProvider from '@/components/core/chat/ChatContainer/ChatBox/Provider';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatHistory = dynamic(
@@ -212,7 +214,9 @@ const Render = (props: Props) => {
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={params}>
-        <DetailLogsModal {...props} />
+        <ChatBoxContextProvider appId={appId} chatId={chatId} chatType={ChatTypeEnum.log}>
+          <DetailLogsModal {...props} />
+        </ChatBoxContextProvider>
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

@@ -5,7 +5,7 @@ import Edit from './Edit';
 
 const HTTPTools = () => {
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]} bg={'myGray.25'}>
+    <Flex h={'100%'} flexDirection={'column'} px={[3, 4]} py={3}>
       <Header />
       <Edit />
     </Flex>

@@ -165,8 +165,15 @@ const AIContentCard = React.memo(function AIContentCard({
 });
 
 const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
-  const { avatar, statusBoxData, children, isLastChild, questionGuides = [], chat, hideCiteIcon } =
-    props;
+  const {
+    avatar,
+    statusBoxData,
+    children,
+    isLastChild,
+    questionGuides = [],
+    chat,
+    hideCiteIcon
+  } = props;
 
   const { t } = useTranslation();
   const { isPc } = useSystem();

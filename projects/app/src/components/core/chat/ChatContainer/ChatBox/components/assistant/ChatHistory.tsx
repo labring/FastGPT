@@ -5,7 +5,7 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ChatSiteItemType } from '../../type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import ChatItem from './ChatItem';
+import SfChatItem from '../SfChatItem';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -202,20 +202,21 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
               <Box key={item.dataId}>
                 <Box py={item.hideInUI ? 0 : 5}>
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
-                    <ChatItem
+                    <SfChatItem
                       type={item.obj}
                       chat={item}
                       isLastChild={index === chatRecords.length - 1}
-                      onCorrectError={handleCorrectError}
+                      showExtraInfo
                     />
                   )}
                   {item.obj === ChatRoleEnum.AI && (
-                    <ChatItem
+                    <SfChatItem
                       type={item.obj}
                       chat={item}
                       isLastChild={index === chatRecords.length - 1}
-                      onCorrectError={handleCorrectError}
+                      onCorrectError={() => handleCorrectError(item.dataId)}
                       datasetReadPerMap={datasetReadPerMap}
+                      showExtraInfo
                       {...{
                         statusBoxData
                       }}
@@ -256,7 +257,7 @@ const ChatHistory = ({ showMarkIcon, statusBoxData, onCloseCustomFeedback }: Cha
                           </Box>
                         </Box>
                       )}
-                    </ChatItem>
+                    </SfChatItem>
                   )}
                 </Box>
               </Box>

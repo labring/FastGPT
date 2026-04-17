@@ -461,7 +461,6 @@ const HomeChatWindow = () => {
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
           <ChatHistorySidebar
             title={appId === homeAppId ? t('chat:history_slider.home.title') : undefined}
-            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
       ) : (
@@ -480,24 +479,26 @@ const HomeChatWindow = () => {
         flexDirection={'column'}
       >
         {isPc ? (
-          <Flex
-            py={3}
-            bg="white"
-            fontWeight={500}
-            color="myGray.600"
-            alignItems="center"
-            justifyContent="center"
-            borderBottom="sm"
-          >
-            {(() => {
-              const currentHistory = histories.find((h) => h.chatId === chatId);
-              return (
-                currentHistory?.customTitle ||
-                currentHistory?.title ||
-                t('common:core.chat.New Chat')
-              );
-            })()}
-          </Flex>
+          chatRecords.length > 0 && (
+            <Flex
+              py={3}
+              bg="white"
+              fontWeight={500}
+              color="myGray.600"
+              alignItems="center"
+              justifyContent="center"
+              borderBottom="sm"
+            >
+              {(() => {
+                const currentHistory = histories.find((h) => h.chatId === chatId);
+                return (
+                  currentHistory?.customTitle ||
+                  currentHistory?.title ||
+                  t('common:core.chat.New Chat')
+                );
+              })()}
+            </Flex>
+          )
         ) : (
           <ChatHeader
             pane={pane}

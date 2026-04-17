@@ -30,6 +30,12 @@ import {
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import {
+  DashboardNavbar,
+  SIDEBAR_EXPANDED_WIDTH,
+  SIDEBAR_COLLAPSED_WIDTH
+} from '@/pageComponents/dashboard/Container';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -69,6 +75,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   const router = useRouter();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
 
   // Use custom hook for URL params management
   const { searchText, tagIds, updateParams } = useSearchParams();
@@ -428,323 +437,334 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   }
 
   return (
-    <Box h={'full'} py={6} pr={6}>
-      <MyBox
-        bg={'white'}
-        h={'full'}
-        rounded={'8px'}
+    <>
+      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
+      <Box
+        h={'100%'}
+        pl={isPc ? sidebarWidth : 0}
         position={'relative'}
-        display={'flex'}
-        flexDirection={'column'}
-        isLoading={loadingTools && displayTools.length === 0}
+        bg={'white'}
+        transition="padding-left 0.2s ease"
       >
-        <Box px={8} flexShrink={0} position={'relative'} zIndex={'999'}>
-          <MyIconButton
-            icon={'common/closeLight'}
-            size={'6'}
-            onClick={() => router.push('/config/tool')}
-            position={'absolute'}
-            top={4}
-            zIndex={1000}
-            {...(showCompactSearch ? { right: 4 } : { left: 4 })}
-          />
-          {!showCompactSearch && (
-            <Flex gap={3} position={'absolute'} right={4} top={4}>
-              {updatableTools.length > 0 && (
-                <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
-                  {t('app:toolkit_updatable')} ({updatableTools.length})
-                </Button>
-              )}
-              {feConfigs?.docUrl && (
-                <Button
-                  onClick={() => {
-                    const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
-                    if (url) {
-                      window.open(url, '_blank');
-                    }
-                  }}
-                >
-                  {t('app:toolkit_contribute_resource')}
-                </Button>
-              )}
-              {feConfigs?.submitPluginRequestUrl && (
-                <Button
-                  variant={'whiteBase'}
-                  onClick={() => {
-                    window.open(feConfigs.submitPluginRequestUrl);
-                  }}
-                >
-                  {t('app:toolkit_marketplace_submit_request')}
-                </Button>
-              )}
-            </Flex>
-          )}
-
-          <Box
-            h={showCompactSearch ? '90px' : '0'}
-            overflow={'hidden'}
-            position={'absolute'}
+        <Box h={'full'} py={6} pr={6}>
+          <MyBox
             bg={'white'}
-            right={0}
-            left={0}
-            roundedTop={'md'}
-            px={8}
+            h={'full'}
+            rounded={'8px'}
+            position={'relative'}
+            display={'flex'}
+            flexDirection={'column'}
+            isLoading={loadingTools && displayTools.length === 0}
           >
-            <Box
-              opacity={showCompactSearch ? 1 : 0}
-              transition={'opacity 0.15s ease-out'}
-              pointerEvents={showCompactSearch ? 'auto' : 'none'}
-            >
-              <Flex mt={2} pt={4} alignItems={'start'}>
-                <Flex
-                  alignItems={'center'}
-                  transition={'all 0.3s'}
-                  w={isSearchExpanded ? '320px' : 'auto'}
-                  mr={4}
-                  flexShrink={0}
-                >
-                  {isSearchExpanded ? (
-                    <InputGroup>
-                      <MyIcon
-                        position={'absolute'}
-                        zIndex={10}
-                        left={2.5}
-                        name={'common/searchLight'}
-                        w={5}
-                        color={'primary.600'}
-                        top={'50%'}
-                        transform={'translateY(-50%)'}
-                      />
-                      <Input
-                        px={8}
-                        h={10}
-                        borderRadius={'md'}
-                        placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
-                      />
-                      {inputValue && (
-                        <MyIcon
-                          position={'absolute'}
-                          zIndex={10}
-                          right={2.5}
-                          name={'common/closeLight'}
-                          w={4}
-                          top={'50%'}
-                          transform={'translateY(-50%)'}
-                          color={'myGray.500'}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            setInputValue('');
-                          }}
-                        />
-                      )}
-                    </InputGroup>
-                  ) : (
-                    <Flex
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      cursor={'pointer'}
-                      borderRadius={'10px'}
-                      _hover={{ borderColor: 'primary.600' }}
-                      px={2}
-                      h={'35px'}
-                      border={'1px solid'}
-                      borderColor={'myGray.200'}
-                      onClick={() => setIsSearchExpanded(true)}
+            <Box px={8} flexShrink={0} position={'relative'} zIndex={'999'}>
+              <MyIconButton
+                icon={'common/closeLight'}
+                size={'6'}
+                onClick={() => router.push('/config/tool')}
+                position={'absolute'}
+                top={4}
+                zIndex={1000}
+                {...(showCompactSearch ? { right: 4 } : { left: 4 })}
+              />
+              {!showCompactSearch && (
+                <Flex gap={3} position={'absolute'} right={4} top={4}>
+                  {updatableTools.length > 0 && (
+                    <Button variant="whitePrimary" onClick={() => setShowBatchUpdateDrawer(true)}>
+                      {t('app:toolkit_updatable')} ({updatableTools.length})
+                    </Button>
+                  )}
+                  {feConfigs?.docUrl && (
+                    <Button
+                      onClick={() => {
+                        const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
+                        if (url) {
+                          window.open(url, '_blank');
+                        }
+                      }}
                     >
-                      <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
-                      <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
-                        {t('common:Search')}
-                      </Box>
-                    </Flex>
+                      {t('app:toolkit_contribute_resource')}
+                    </Button>
+                  )}
+                  {feConfigs?.submitPluginRequestUrl && (
+                    <Button
+                      variant={'whiteBase'}
+                      onClick={() => {
+                        window.open(feConfigs.submitPluginRequestUrl);
+                      }}
+                    >
+                      {t('app:toolkit_marketplace_submit_request')}
+                    </Button>
                   )}
                 </Flex>
-                <Box overflow={'auto'} mr={6} mb={-1}>
-                  <ToolTagFilterBox
-                    tags={allTags}
-                    selectedTagIds={tagIds}
-                    onTagSelect={handleTagSelect}
-                  />
-                </Box>
-              </Flex>
-            </Box>
-          </Box>
-        </Box>
+              )}
 
-        <ScrollData flex={1} pb={3}>
-          <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
-            <Box
-              position={'relative'}
-              display={'inline-flex'}
-              px={4}
-              py={1}
-              borderRadius={'4px'}
-              fontSize={'11px'}
-              fontWeight={'medium'}
-              lineHeight={'16px'}
-              letterSpacing={'0.5px'}
-              bgGradient={'linear(180deg, #F9BDFD 0%, #80B8FF 100%)'}
-              _before={{
-                content: '""',
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '4px',
-                padding: '1px',
-                background: 'linear-gradient(180deg, #F9BDFD 0%, #80B8FF 100%)',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude'
-              }}
-              sx={{
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
-              }}
-            >
-              Assets for FastGPT
-            </Box>
-            <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
-              {t('app:toolkit_marketplace_title')}
-            </Box>
-            <Box>
-              <InputGroup position={'relative'}>
-                <MyIcon
-                  position={'absolute'}
-                  zIndex={10}
-                  left={2.5}
-                  name={'common/searchLight'}
-                  w={5}
-                  top={'50%'}
-                  transform={'translateY(-50%)'}
-                  color={'myGray.600'}
-                />
-                <Input
-                  fontSize="sm"
-                  bg={'white'}
-                  pl={8}
-                  w={'560px'}
-                  h={12}
-                  borderRadius={'10px'}
-                  placeholder={t('app:toolkit_marketplace_search_placeholder')}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                />
-              </InputGroup>
-            </Box>
-          </VStack>
-
-          <Box px={8} pb={6}>
-            <Flex
-              mt={2}
-              mb={4}
-              alignItems={'center'}
-              opacity={showCompactSearch ? 0 : 1}
-              transition={'opacity 0.15s ease-out'}
-              pointerEvents={showCompactSearch ? 'none' : 'auto'}
-              userSelect={'none'}
-            >
-              <Box flex={'1'} overflow={'auto'} mb={-1}>
-                <ToolTagFilterBox
-                  tags={allTags}
-                  selectedTagIds={tagIds}
-                  onTagSelect={handleTagSelect}
-                />
-              </Box>
-              <MyMenu
-                trigger="hover"
-                Button={
-                  <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
-                    <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
-                    <Box fontSize={'12px'}>
-                      {installedFilter ? t('app:toolkit_uninstalled') : t('common:All')}
+              <Box
+                h={showCompactSearch ? '90px' : '0'}
+                overflow={'hidden'}
+                position={'absolute'}
+                bg={'white'}
+                right={0}
+                left={0}
+                roundedTop={'md'}
+                px={8}
+              >
+                <Box
+                  opacity={showCompactSearch ? 1 : 0}
+                  transition={'opacity 0.15s ease-out'}
+                  pointerEvents={showCompactSearch ? 'auto' : 'none'}
+                >
+                  <Flex mt={2} pt={4} alignItems={'start'}>
+                    <Flex
+                      alignItems={'center'}
+                      transition={'all 0.3s'}
+                      w={isSearchExpanded ? '320px' : 'auto'}
+                      mr={4}
+                      flexShrink={0}
+                    >
+                      {isSearchExpanded ? (
+                        <InputGroup>
+                          <MyIcon
+                            position={'absolute'}
+                            zIndex={10}
+                            left={2.5}
+                            name={'common/searchLight'}
+                            w={5}
+                            color={'primary.600'}
+                            top={'50%'}
+                            transform={'translateY(-50%)'}
+                          />
+                          <Input
+                            px={8}
+                            h={10}
+                            borderRadius={'md'}
+                            placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                          />
+                          {inputValue && (
+                            <MyIcon
+                              position={'absolute'}
+                              zIndex={10}
+                              right={2.5}
+                              name={'common/closeLight'}
+                              w={4}
+                              top={'50%'}
+                              transform={'translateY(-50%)'}
+                              color={'myGray.500'}
+                              cursor={'pointer'}
+                              onClick={() => {
+                                setInputValue('');
+                              }}
+                            />
+                          )}
+                        </InputGroup>
+                      ) : (
+                        <Flex
+                          alignItems={'center'}
+                          justifyContent={'center'}
+                          cursor={'pointer'}
+                          borderRadius={'10px'}
+                          _hover={{ borderColor: 'primary.600' }}
+                          px={2}
+                          h={'35px'}
+                          border={'1px solid'}
+                          borderColor={'myGray.200'}
+                          onClick={() => setIsSearchExpanded(true)}
+                        >
+                          <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
+                          <Box fontSize={'16px'} fontWeight={'medium'} color={'myGray.500'}>
+                            {t('common:Search')}
+                          </Box>
+                        </Flex>
+                      )}
+                    </Flex>
+                    <Box overflow={'auto'} mr={6} mb={-1}>
+                      <ToolTagFilterBox
+                        tags={allTags}
+                        selectedTagIds={tagIds}
+                        onTagSelect={handleTagSelect}
+                      />
                     </Box>
                   </Flex>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        label: t('common:All'),
-                        onClick: () => setInstalledFilter(false),
-                        isActive: !installedFilter
-                      },
-                      {
-                        label: t('app:toolkit_uninstalled'),
-                        onClick: () => setInstalledFilter(true),
-                        isActive: installedFilter
-                      }
-                    ]
-                  }
-                ]}
-              />
-            </Flex>
-            {displayTools.length > 0 ? (
-              <Grid
-                gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
-                gridGap={5}
-                alignItems={'stretch'}
-              >
-                {displayTools.map((tool) => {
-                  return (
-                    <ToolCard
-                      key={tool.id}
-                      item={tool}
-                      mode="admin"
-                      isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
-                      isUpdating={updatingToolIds.has(tool.id)}
-                      onInstall={() => handleInstallTool(tool)}
-                      onDelete={() => handleDeleteTool(tool)}
-                      onUpdate={() => handleUpdateTool(tool)}
-                      onClickCard={() => setSelectedTool(tool)}
+                </Box>
+              </Box>
+            </Box>
+
+            <ScrollData flex={1} pb={3}>
+              <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
+                <Box
+                  position={'relative'}
+                  display={'inline-flex'}
+                  px={4}
+                  py={1}
+                  borderRadius={'4px'}
+                  fontSize={'11px'}
+                  fontWeight={'medium'}
+                  lineHeight={'16px'}
+                  letterSpacing={'0.5px'}
+                  bgGradient={'linear(180deg, #F9BDFD 0%, #80B8FF 100%)'}
+                  _before={{
+                    content: '""',
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '4px',
+                    padding: '1px',
+                    background: 'linear-gradient(180deg, #F9BDFD 0%, #80B8FF 100%)',
+                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                    WebkitMaskComposite: 'xor',
+                    maskComposite: 'exclude'
+                  }}
+                  sx={{
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  Assets for FastGPT
+                </Box>
+                <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
+                  {t('app:toolkit_marketplace_title')}
+                </Box>
+                <Box>
+                  <InputGroup position={'relative'}>
+                    <MyIcon
+                      position={'absolute'}
+                      zIndex={10}
+                      left={2.5}
+                      name={'common/searchLight'}
+                      w={5}
+                      top={'50%'}
+                      transform={'translateY(-50%)'}
+                      color={'myGray.600'}
                     />
-                  );
-                })}
-              </Grid>
-            ) : (
-              <EmptyTip />
-            )}
-          </Box>
-        </ScrollData>
-      </MyBox>
+                    <Input
+                      fontSize="sm"
+                      bg={'white'}
+                      pl={8}
+                      w={'560px'}
+                      h={12}
+                      borderRadius={'10px'}
+                      placeholder={t('app:toolkit_marketplace_search_placeholder')}
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
+                    />
+                  </InputGroup>
+                </Box>
+              </VStack>
 
-      {!!selectedTool && (
-        <ToolDetailDrawer
-          onClose={() => setSelectedTool(null)}
-          selectedTool={selectedTool}
-          showPoint={false}
-          onToggleInstall={() => {
-            if (selectedTool.status === 3) {
-              handleDeleteTool(selectedTool);
-            } else {
-              handleInstallTool(selectedTool);
-            }
-          }}
-          onUpdate={() => handleUpdateTool(selectedTool)}
-          isUpdating={updatingToolIds.has(selectedTool.id)}
-          isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
-          mode="admin"
-          // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
-          //@ts-ignore
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
-        />
-      )}
+              <Box px={8} pb={6}>
+                <Flex
+                  mt={2}
+                  mb={4}
+                  alignItems={'center'}
+                  opacity={showCompactSearch ? 0 : 1}
+                  transition={'opacity 0.15s ease-out'}
+                  pointerEvents={showCompactSearch ? 'none' : 'auto'}
+                  userSelect={'none'}
+                >
+                  <Box flex={'1'} overflow={'auto'} mb={-1}>
+                    <ToolTagFilterBox
+                      tags={allTags}
+                      selectedTagIds={tagIds}
+                      onTagSelect={handleTagSelect}
+                    />
+                  </Box>
+                  <MyMenu
+                    trigger="hover"
+                    Button={
+                      <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
+                        <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
+                        <Box fontSize={'12px'}>
+                          {installedFilter ? t('app:toolkit_uninstalled') : t('common:All')}
+                        </Box>
+                      </Flex>
+                    }
+                    menuList={[
+                      {
+                        children: [
+                          {
+                            label: t('common:All'),
+                            onClick: () => setInstalledFilter(false),
+                            isActive: !installedFilter
+                          },
+                          {
+                            label: t('app:toolkit_uninstalled'),
+                            onClick: () => setInstalledFilter(true),
+                            isActive: installedFilter
+                          }
+                        ]
+                      }
+                    ]}
+                  />
+                </Flex>
+                {displayTools.length > 0 ? (
+                  <Grid
+                    gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+                    gridGap={5}
+                    alignItems={'stretch'}
+                  >
+                    {displayTools.map((tool) => {
+                      return (
+                        <ToolCard
+                          key={tool.id}
+                          item={tool}
+                          mode="admin"
+                          isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
+                          isUpdating={updatingToolIds.has(tool.id)}
+                          onInstall={() => handleInstallTool(tool)}
+                          onDelete={() => handleDeleteTool(tool)}
+                          onUpdate={() => handleUpdateTool(tool)}
+                          onClickCard={() => setSelectedTool(tool)}
+                        />
+                      );
+                    })}
+                  </Grid>
+                ) : (
+                  <EmptyTip />
+                )}
+              </Box>
+            </ScrollData>
+          </MyBox>
 
-      {showBatchUpdateDrawer && (
-        <BatchUpdateDrawer
-          isOpen={showBatchUpdateDrawer}
-          onClose={() => setShowBatchUpdateDrawer(false)}
-          updatableTools={updatableTools}
-          onBatchUpdate={handleBatchUpdate}
-          isBatchUpdating={isBatchUpdating}
-          //@ts-ignore
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
-        />
-      )}
-    </Box>
+          {!!selectedTool && (
+            <ToolDetailDrawer
+              onClose={() => setSelectedTool(null)}
+              selectedTool={selectedTool}
+              showPoint={false}
+              onToggleInstall={() => {
+                if (selectedTool.status === 3) {
+                  handleDeleteTool(selectedTool);
+                } else {
+                  handleInstallTool(selectedTool);
+                }
+              }}
+              onUpdate={() => handleUpdateTool(selectedTool)}
+              isUpdating={updatingToolIds.has(selectedTool.id)}
+              isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
+              mode="admin"
+              // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
+              //@ts-ignore
+              onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
+            />
+          )}
+
+          {showBatchUpdateDrawer && (
+            <BatchUpdateDrawer
+              isOpen={showBatchUpdateDrawer}
+              onClose={() => setShowBatchUpdateDrawer(false)}
+              updatableTools={updatableTools}
+              onBatchUpdate={handleBatchUpdate}
+              isBatchUpdating={isBatchUpdating}
+              //@ts-ignore
+              onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
+            />
+          )}
+        </Box>
+      </Box>
+    </>
   );
 };
 

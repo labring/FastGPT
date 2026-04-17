@@ -58,42 +58,74 @@ const accordionButtonStyle = {
   }
 };
 
+const reasoningAccordionButtonStyle = {
+  w: 'auto',
+  bg: 'transparent',
+  borderRadius: '2px',
+  p: 0,
+  _hover: {
+    bg: 'transparent'
+  }
+};
+
 const RenderResoningContent = React.memo(function RenderResoningContent({
   content,
   isChatting,
   isLastResponseValue,
-  isDisabled
+  isDisabled,
+  durationSeconds
 }: {
   content: string;
   isChatting: boolean;
   isLastResponseValue: boolean;
   isDisabled?: boolean;
+  durationSeconds?: number;
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
+  const isDone = !showAnimation;
 
   return (
     <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
-        <AccordionButton {...accordionButtonStyle} py={1}>
-          <HStack mr={2} spacing={1}>
-            <MyIcon name={'core/chat/think'} w={'0.85rem'} />
-            <Box fontSize={'sm'}>{t('chat:ai_reasoning')}</Box>
+        <AccordionButton {...reasoningAccordionButtonStyle}>
+          <HStack spacing={2}>
+            <MyIcon name={'core/chat/deepThing'} w={'14px'} flexShrink={0} />
+            <Box
+              fontSize={'xs'}
+              color={'myGray.800' /* Gray modern/900 */}
+              lineHeight={'18px'}
+              fontWeight={500}
+            >
+              {isDone && durationSeconds
+                ? t('chat:ai_reasoning_done', { seconds: Math.round(durationSeconds) })
+                : t('chat:ai_reasoning')}
+            </Box>
+            {showAnimation && <MyIcon name={'common/loading'} w={'14px'} />}
           </HStack>
-
-          {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
-          <AccordionIcon color={'myGray.600'} ml={5} />
+          <AccordionIcon
+            color={'myGray.550' /* HJ/color/light/general/surface/on-surface-low */}
+            ml={1}
+            opacity={0.8}
+          />
         </AccordionButton>
         <AccordionPanel
-          py={0}
-          pr={0}
-          pl={3}
+          py={2}
+          px={4}
           mt={2}
+          bg={'white'}
           borderLeft={'2px solid'}
-          borderColor={'myGray.300'}
-          color={'myGray.500'}
+          borderColor={'myGray.200' /* Blue Gray/L30 */}
+          color={'myWhite.800' /* Gray/D30 */}
+          fontSize={'xs'}
+          lineHeight={'20px'}
         >
-          <Markdown source={content} showAnimation={showAnimation} isDisabled={isDisabled} />
+          <Markdown
+            source={content}
+            showAnimation={showAnimation}
+            citeStyle="index"
+            isDisabled={isDisabled}
+          />
         </AccordionPanel>
       </AccordionItem>
     </Accordion>
@@ -135,6 +167,7 @@ const RenderText = React.memo(function RenderText({
   return (
     <Markdown
       source={source}
+      citeStyle="index"
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
       onOpenCiteModal={onOpenCiteModal}
@@ -465,7 +498,8 @@ const AIResponseBox = ({
   isLastChild,
   isChatting,
   onOpenCiteModal,
-  hideCiteIcon
+  hideCiteIcon,
+  durationSeconds
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
@@ -474,6 +508,7 @@ const AIResponseBox = ({
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
+  durationSeconds?: number;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
@@ -500,6 +535,7 @@ const AIResponseBox = ({
         isLastResponseValue={isLastResponseValue}
         content={value.reasoning.content}
         isDisabled={disableStreamingInteraction}
+        durationSeconds={durationSeconds}
       />
     );
   }

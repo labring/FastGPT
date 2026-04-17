@@ -268,6 +268,8 @@
   "system_params": "系統參數",
   "pdf_parse_config": "PDF 解析配置",
   "usage_limits": "使用限制",
+  "feature_switches": "功能開關",
+  "show_evaluation": "Agent 評估頁面",
   "sidebar_config": "側邊欄配置",
   "system_name": "系統名",
   "system_short_name": "系統簡稱（顯示在導航區域）",

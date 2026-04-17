@@ -33,9 +33,17 @@ export const ConnectionSourceHandle = ({
       if (node?.isFolded) {
         const firstHandleId = (() => {
           if (node.flowNodeType === FlowNodeTypeEnum.userSelect) {
-            const options = node?.inputs?.find(
+            const userSelectInput = node?.inputs?.find(
               (input) => input.key === NodeInputKeyEnum.userSelectOptions
-            )?.value;
+            );
+            const renderType =
+              userSelectInput?.renderTypeList?.[userSelectInput.selectedTypeIndex || 0];
+
+            if (renderType === 'reference') {
+              return getHandleId(nodeId, 'source', 'ref_default');
+            }
+
+            const options = userSelectInput?.value;
             if (options && options.length > 0) {
               return getHandleId(nodeId, 'source', options[0].key);
             }

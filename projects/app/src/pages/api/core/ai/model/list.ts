@@ -22,6 +22,7 @@ export type listResponse = {
 
   isActive: boolean;
   isCustom: boolean;
+  isTuned: boolean;
 
   // Tag
   contextToken?: number;
@@ -49,6 +50,7 @@ async function handler(
     isActive: model.isActive ?? false,
     isCustom: model.isCustom ?? false,
     testMode: model?.testMode,
+    isTuned: model.isTuned ?? false,
 
     // Tag
     contextToken:

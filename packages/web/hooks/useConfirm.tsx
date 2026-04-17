@@ -13,6 +13,8 @@ import { Trans, useTranslation } from 'next-i18next';
 import MyModal from '../components/common/MyModal';
 import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from './useMemoEnhance';
+import { useToast } from './useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const useConfirm = (props?: {
   title?: string;
@@ -83,6 +85,8 @@ export const useConfirm = (props?: {
       return onOpen;
     }
   );
+
+  const { toast } = useToast();
 
   const ConfirmModal = useMemoizedFn(
     ({
@@ -190,7 +194,12 @@ export const useConfirm = (props?: {
                   try {
                     typeof confirmCb.current === 'function' && (await confirmCb.current());
                     onClose();
-                  } catch (error) {}
+                  } catch (error) {
+                    toast({
+                      status: 'error',
+                      title: getErrText(error)
+                    });
+                  }
                   setRequesting(false);
                 }}
               >

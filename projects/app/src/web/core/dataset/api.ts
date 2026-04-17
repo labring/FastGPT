@@ -11,6 +11,7 @@ import type {
   DatasetSynonymSchemaType,
   TagUsageType
 } from '@fastgpt/global/core/dataset/type';
+import type { DatasetTagTypeEnum } from '@fastgpt/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
@@ -23,7 +24,9 @@ import type {
   reTrainingDatasetFileCollectionParams,
   LinkCreateDatasetCollectionParams,
   TextCreateDatasetCollectionParams,
-  UpdateDatasetCollectionTagParams
+  UpdateDatasetCollectionTagParams,
+  SetCollectionTagsParams,
+  BatchSetCollectionTagsParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
   DatabaseSearchTestResponse,
@@ -354,6 +357,14 @@ export const getTagUsage = (datasetId: string) =>
   GET<TagUsageType[]>(`/proApi/core/dataset/tag/tagUsage?datasetId=${datasetId}`);
 export const getAllTags = (datasetId: string) =>
   GET<{ list: DatasetTagType[] }>(`/proApi/core/dataset/tag/getAllTags?datasetId=${datasetId}`);
+export const setCollectionTags = (data: SetCollectionTagsParams) =>
+  POST(`/proApi/core/dataset/tag/setCollectionTags`, data);
+export const batchSetCollectionTags = (data: BatchSetCollectionTagsParams) =>
+  POST(`/proApi/core/dataset/tag/batchSetCollectionTags`, data);
+export const batchUpsertCollectionTags = (data: {
+  datasetId: string;
+  tags: { tag: string; tagType?: DatasetTagTypeEnum }[];
+}) => POST(`/proApi/core/dataset/tag/batchUpsert`, data);
 
 /* =============================== data ==================================== */
 /* get dataset list */

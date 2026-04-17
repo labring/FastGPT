@@ -70,11 +70,6 @@ const ToolMenu = ({
           },
           {
             children: [
-              // {
-              //   icon: 'core/app/appApiLight',
-              //   label: `HTML ${t('common:Export')}`,
-              //   onClick: () => onExportChat({ type: 'html', history })
-              // },
               {
                 icon: 'file/markdown',
                 label: `Markdown ${t('common:Export')}`,
@@ -89,11 +84,6 @@ const ToolMenu = ({
                     }
                   ]
                 : [])
-              // {
-              //   icon: 'core/chat/export/pdf',
-              //   label: `PDF ${t('common:Export')}`,
-              //   onClick: () => onExportChat({ type: 'pdf', history })
-              // }
             ]
           }
         ]}

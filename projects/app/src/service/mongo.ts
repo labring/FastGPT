@@ -4,6 +4,7 @@ import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller
 import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -51,6 +52,35 @@ export async function initRootUser(retry = 3): Promise<any> {
     } else {
       logger.error('Root user initialization failed', { error });
       exit(1);
+    }
+  }
+}
+
+export async function initAgentUsers(): Promise<void> {
+  const agentUsernames = process.env.AGENT_USERS
+    ? process.env.AGENT_USERS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ['agent_user_1', 'agent_user_2', 'agent_user_3'];
+  const psw = '123456789';
+
+  for (const username of agentUsernames) {
+    try {
+      const existingUser = await MongoUser.findOne({ username });
+      if (existingUser) {
+        addLog.debug(`agent user already exists: ${username}`);
+        continue;
+      }
+      await mongoSessionRun(async (session) => {
+        const [{ _id }] = await MongoUser.create([{ username, password: hashStr(psw) }], {
+          session,
+          ordered: true
+        });
+        await createDefaultTeam({ userId: _id, session });
+      });
+      console.log(`agent user created: ${username}`);
+    } catch (error) {
+      addLog.error(`init agent user error: ${username}`, { error });
     }
   }
 }

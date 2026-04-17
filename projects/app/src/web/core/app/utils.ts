@@ -1,4 +1,8 @@
-import { type AppChatConfigType, type AppDetailType, type AppSchemaType } from '@fastgpt/global/core/app/type';
+import {
+  type AppChatConfigType,
+  type AppDetailType,
+  type AppSchemaType
+} from '@fastgpt/global/core/app/type';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -35,7 +39,10 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
-import { Input_Template_File_Link, Input_Template_UserChatInput } from '@fastgpt/global/core/workflow/template/input';
+import {
+  Input_Template_File_Link,
+  Input_Template_UserChatInput
+} from '@fastgpt/global/core/workflow/template/input';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type WorkflowType = {
@@ -342,7 +349,7 @@ export function form2AppWorkflow(
           value: formData.dataset.retrievalMode
         },
         {
-          key: NodeInputKeyEnum.datasetagenticSearchReasoning,
+          key: NodeInputKeyEnum.datasetAgenticSearchReasoning,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
@@ -361,6 +368,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
           value: formData.aiSettings.model
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.collectionFilterMatch
         }
       ],
       outputs: DatasetSearchModule.outputs

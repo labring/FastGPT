@@ -10,7 +10,8 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
@@ -26,6 +27,7 @@ export type CustomTemplateImportQuery = {};
 export type CustomTemplateImportBody = {
   datasetId: string;
   parentId?: string; // Optional: Parent directory ID
+  tags?: CollectionTagValueType[]; // Optional: Tags
   overwriteDuplicate?: boolean; // Optional: Whether to overwrite duplicate files (default false)
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
@@ -42,6 +44,11 @@ async function parseFileToCSV(buffer: Buffer, extension: string): Promise<string
     // Excel文件直接解析，使用通用的 Excel 解析方法
     const csvText = excelBufferToCSV(buffer);
     if (!csvText) {
+      // node-xlsx（SheetJS）对过大文件会静默返回空 sheet，而非抛出异常
+      // 空 Excel 文件通常 < 20KB；超过 500KB 仍为空说明有数据但无法解析
+      if (buffer.length > 500 * 1024) {
+        throw new Error(i18nT('dataset:template_excel_too_much_data'));
+      }
       throw new Error(i18nT('dataset:template_excel_file_empty'));
     }
     return csvText;
@@ -90,6 +97,8 @@ async function handler(
     const file = result.fileMetadata;
     const data = result.data;
     filePaths.push(file.path);
+
+    const { tags } = data;
 
     const extension = decodeURIComponent(file.originalname).split('.').pop()?.toLowerCase();
     if (!extension || !SUPPORTED_EXTENSIONS.includes(extension)) {
@@ -288,8 +297,8 @@ async function handler(
         datasetId: dataset._id,
         parentId: normalizedParentId,
         name: fileName,
+        tags: tags as unknown as string[],
         type: DatasetCollectionTypeEnum.file,
-        fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: finalEnhanceConfig.autoIndexes || false,
         small2bigIndexes: finalEnhanceConfig.small2bigIndexes || false,

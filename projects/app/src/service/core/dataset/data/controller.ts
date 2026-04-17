@@ -8,7 +8,10 @@ import {
   type DatasetDataIndexItemType,
   type DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
-import type { CreateDatasetDataProps, UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
+import type {
+  CreateDatasetDataProps,
+  UpdateDatasetDataProps
+} from '@fastgpt/global/core/dataset/controller';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';

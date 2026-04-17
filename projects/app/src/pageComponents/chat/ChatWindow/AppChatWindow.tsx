@@ -8,7 +8,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -51,9 +51,18 @@ const AppChatWindow = () => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const isNoneWelcomeAndVariable = useContextSelector(
+    ChatItemContext,
+    (v) => v.isNoneWelcomeAndVariable
+  );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+  const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
+
+  const isShowHeader = useMemo(() => {
+    return !isNoneWelcomeAndVariable || (isChatRecordsLoaded && chatRecords.length !== 0);
+  }, [isNoneWelcomeAndVariable, isChatRecordsLoaded, chatRecords]);
 
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
@@ -200,13 +209,15 @@ const AppChatWindow = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        <ChatHeader
-          pane={pane}
-          chatSettings={chatSettings}
-          showHistory
-          history={chatRecords}
-          totalRecordsCount={totalRecordsCount}
-        />
+        {isShowHeader && (
+          <ChatHeader
+            pane={pane}
+            chatSettings={chatSettings}
+            showHistory
+            history={chatRecords}
+            totalRecordsCount={totalRecordsCount}
+          />
+        )}
 
         <Box flex={'1 0 0'} bg={'white'}>
           {isPlugin ? (

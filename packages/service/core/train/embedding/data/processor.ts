@@ -12,7 +12,7 @@ import {
   EmbeddingTrainsetStatusEnum
 } from '@fastgpt/global/core/train/embedding/constants';
 import { addLog } from '../../../../common/system/log';
-import { synthesizeEmbeddingTrainDatas } from '../external';
+import { buildFineTuneData } from '../../common/synthesize/buildFineTuneData';
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
@@ -21,6 +21,7 @@ import {
   EmbeddingTrainErrEnum,
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 
 /** Embedding train data generation processor */
 export const embeddingTrainDataGenerateProcessor: Processor<
@@ -67,14 +68,6 @@ export const embeddingTrainDataGenerateProcessor: Processor<
     { status: EmbeddingTrainsetStatusEnum.generating }
   );
 
-  // Delete old data if force regenerate
-  if (generateConfig.forceRegenerate) {
-    await MongoEmbeddingTrainsetData.deleteMany({
-      trainsetId,
-      source: EmbeddingTrainDataSourceEnum.dataset
-    });
-  }
-
   // 4. Sample data from datasets
   const samples = await sampleDataFromDataset(targetDatasetIds, {
     datasetType: generateConfig.sampleSize ? 'random' : 'train',
@@ -90,42 +83,31 @@ export const embeddingTrainDataGenerateProcessor: Processor<
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
-  // 5. Call DiTing service to generate training data
-  let ditingResponse;
-  try {
-    ditingResponse = await synthesizeEmbeddingTrainDatas({
-      samples: samples.map((s) => ({
-        datasetId: s.datasetId,
-        dataId: s.dataId,
-        q: s.q,
-        a: s.a,
-        indexes: formatSynthesisIndexesToPairs(s.indexes)
-      })),
-      config: generateConfig
-    });
-  } catch (ditingError) {
-    const error = createEmbeddingEnhancedError(
-      null,
-      EmbeddingTrainErrEnum.embeddingTrainsetGenDitingFailed,
-      EmbeddingTrainSuggestionEnum.embeddingTrainsetGenDitingFailed,
-      (ditingError as Error).message
-    );
-    throw new TrainsetGenerationRetriableError(error);
-  }
+  // 5. Generate training data
+  const result = buildFineTuneData({
+    items: samples.map((s) => ({
+      dataId: s.dataId,
+      datasetId: s.datasetId,
+      q: s.q,
+      a: s.a,
+      indexes: formatSynthesisIndexesToPairs(s.indexes)
+    })),
+    minNegativeSamples: generateConfig.minNegativeSamples,
+    maxNegativeSamples: generateConfig.maxNegativeSamples,
+    includeOriginalQ: generateConfig.includeOriginalQ
+  });
 
-  // 6. Check if DiTing returned valid data
-  if (!ditingResponse.success || !ditingResponse.data || ditingResponse.data.length === 0) {
+  if (result.samples.length === 0) {
     const error = createEmbeddingEnhancedError(
       null,
       EmbeddingTrainErrEnum.embeddingTrainsetGenDitingNoData,
-      EmbeddingTrainSuggestionEnum.embeddingTrainsetGenDitingNoData,
-      ditingResponse.error
+      EmbeddingTrainSuggestionEnum.embeddingTrainsetGenDitingNoData
     );
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 7. Save training data to database
-  const trainData = ditingResponse.data.map((item) => ({
+  // 6. Save training data to database
+  const trainData = result.samples.map((item) => ({
     trainsetId,
     teamId: trainset.teamId,
     query: item.query,
@@ -145,7 +127,21 @@ export const embeddingTrainDataGenerateProcessor: Processor<
   }));
 
   try {
-    await MongoEmbeddingTrainsetData.insertMany(trainData);
+    if (generateConfig.forceRegenerate) {
+      // Atomically delete old data and insert new data.
+      // Deleting after generation succeeds means sampling/build failures cannot destroy existing data.
+      // The transaction guarantees that a DB failure during delete/insert rolls back both operations,
+      // keeping old data intact so the next retry can succeed.
+      await mongoSessionRun(async (session) => {
+        await MongoEmbeddingTrainsetData.deleteMany(
+          { trainsetId, source: EmbeddingTrainDataSourceEnum.dataset },
+          { session }
+        );
+        await MongoEmbeddingTrainsetData.insertMany(trainData, { session });
+      });
+    } else {
+      await MongoEmbeddingTrainsetData.insertMany(trainData);
+    }
   } catch (dbError) {
     const error = createEmbeddingEnhancedError(
       null,
@@ -156,7 +152,7 @@ export const embeddingTrainDataGenerateProcessor: Processor<
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 8. Update trainset status to ready
+  // 7. Update trainset status to ready
   await MongoEmbeddingTrainset.updateOne(
     { _id: trainsetId },
     {

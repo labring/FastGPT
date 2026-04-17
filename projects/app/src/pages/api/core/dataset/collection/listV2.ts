@@ -27,8 +27,6 @@ import {
   ListCollectionV2ResponseSchema,
   type ListCollectionV2ResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
-import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 // 计算单个文件（非 folder）的状态
 function getFileStatus(item: {
@@ -218,7 +216,11 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   let pageSize = Math.min(Number(rawPageSize ?? 10), 100);
   let offset =
     rawOffset !== undefined ? Number(rawOffset) : (Number(rawPageNum ?? 1) - 1) * pageSize;
-  const { sortBy = 'updateTime', sortOrder = 'desc', status } = req.body as {
+  const {
+    sortBy = 'updateTime',
+    sortOrder = 'desc',
+    status
+  } = req.body as {
     sortBy?: 'name' | 'updateTime' | 'createTime' | 'dataAmount';
     sortOrder?: 'asc' | 'desc';
     status?: CollectionStatusEnum | CollectionStatusEnum[];
@@ -257,7 +259,11 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       : {
           parentId: parentId ? new Types.ObjectId(parentId) : null
         }),
-    ...(filterTags.length ? { tags: { $in: filterTags } } : {})
+    ...(filterTags.length
+      ? {
+          $or: [{ tags: { $in: filterTags } }, { 'tags.tagId': { $in: filterTags } }]
+        }
+      : {})
   };
 
   const selectField = {
@@ -386,7 +392,7 @@ async function handleFieldSort({
   permission: any;
   isDatabaseDataset: boolean;
   isStructureDocument: boolean;
-}): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+}): Promise<ListCollectionV2ResponseType> {
   const sortDirection = sortOrder === 'asc' ? 1 : -1;
   const sortOption: Record<string, 1 | -1> = { [sortBy]: sortDirection };
 
@@ -508,7 +514,7 @@ async function handleFieldSort({
       const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
       return {
         ...item,
-        tags: tagResults[index],
+        tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
         hasError,
@@ -530,7 +536,7 @@ async function handleFieldSort({
       });
       return {
         ...item,
-        tags: tagResults[index],
+        tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
         hasError,
@@ -546,7 +552,7 @@ async function handleFieldSort({
     }
   });
 
-  return { list, total };
+  return ListCollectionV2ResponseSchema.parse({ list, total });
 }
 
 // 按分块数排序或状态筛选的处理函数
@@ -578,7 +584,7 @@ async function handleDataAmountSortOrStatusFilter({
   permission: any;
   isDatabaseDataset: boolean;
   isStructureDocument: boolean;
-}): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+}): Promise<ListCollectionV2ResponseType> {
   const teamIdObj = new Types.ObjectId(teamId);
   const datasetIdObj = new Types.ObjectId(datasetId);
   const sortDirection = sortOrder === 'asc' ? 1 : -1;
@@ -819,7 +825,7 @@ async function handleStatusFilterWithMemoryPagination({
   permission: any;
   isDatabaseDataset: boolean;
   isStructureDocument: boolean;
-}): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+}): Promise<ListCollectionV2ResponseType> {
   const teamIdObj = new Types.ObjectId(teamId);
   const datasetIdObj = new Types.ObjectId(datasetId);
 
@@ -990,10 +996,12 @@ async function handleStatusFilterWithMemoryPagination({
 
       // folder 返回 matchingStatuses 数组，文件返回 status 字段
       if (isFolder) {
+        const matchingStatuses =
+          folderMatchingStatusesMap.get(String(item._id)) || new Set([CollectionStatusEnum.ready]);
         return {
           ...item,
           tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-          matchingStatuses: Array.from((item as any).matchingStatuses) as CollectionStatusEnum[],
+          matchingStatuses: Array.from(matchingStatuses),
           permission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }

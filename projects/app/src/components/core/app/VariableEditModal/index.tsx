@@ -26,7 +26,7 @@ const VariableEditModal = ({
   variables: VariableItemType[];
   onChange: (variables: VariableItemType[]) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
   const onSubmitError = useSubmitErrorHandler();
@@ -46,6 +46,8 @@ const VariableEditModal = ({
     const item = inputTypeList.flat().find((item) => item.value === type);
     return item?.defaultValueType;
   }, [inputTypeList, type]);
+
+  const inputTypeColumns = i18n.language === 'en' ? 2 : 3;
 
   const handleTypeChange = useCallback(
     (newType: string) => {
@@ -158,6 +160,7 @@ const VariableEditModal = ({
           <InputTypeSelector
             inputTypeList={inputTypeList}
             selectedType={type}
+            columns={inputTypeColumns}
             onTypeChange={handleTypeChange}
           />
         </Stack>

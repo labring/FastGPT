@@ -64,7 +64,7 @@ const MultipleRetrievalModal = ({
               {t('app:smart_customer_service_ai_model')}
               <QuestionTip ml={0.5} label={t('app:retrieval_multiple_ai_model_tip')} />
             </FormLabel>
-            <Box flex={'0 0 260px'}>
+            <Box flex={'0 0 340px'}>
               <SelectAiModel
                 width="100%"
                 value={agenticSearchLLMModel}
@@ -80,7 +80,7 @@ const MultipleRetrievalModal = ({
 
         <HStack mt={hideAiModel ? 0 : 4} justifyContent={'space-between'}>
           <FormLabel>{t('app:smart_customer_service_rerank_model')}</FormLabel>
-          <Box flex={'0 0 260px'}>
+          <Box flex={'0 0 340px'}>
             <SelectAiModel
               width="100%"
               value={agenticSearchRerankModel}

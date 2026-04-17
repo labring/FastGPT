@@ -1,37 +1,14 @@
-import {
-  synthesizeEmbeddingTrainDatas as synthesizeEmbeddingTrainDatasReal,
-  synthesizeEmbeddingEvalData as synthesizeEmbeddingEvalDataReal,
-  evaluateEmbeddingModel as evaluateEmbeddingModelReal
-} from './diting/client';
-import {
-  mockSynthesizeEmbeddingTrainDatas,
-  mockSynthesizeEmbeddingEvalData,
-  mockEvaluateEmbeddingModel
-} from './diting/mock';
+import { synthesizeEvalData } from '../../common/external/diting';
 
-// Use mock or real implementation based on environment (unified USE_DITING_MOCK variable)
 const USE_MOCK = process.env.USE_DITING_MOCK === 'true';
 
-export const synthesizeEmbeddingTrainDatas = USE_MOCK
-  ? mockSynthesizeEmbeddingTrainDatas
-  : synthesizeEmbeddingTrainDatasReal;
-
-export const synthesizeEmbeddingEvalData = USE_MOCK
-  ? mockSynthesizeEmbeddingEvalData
-  : synthesizeEmbeddingEvalDataReal;
-
-export const evaluateEmbeddingModel = USE_MOCK
-  ? mockEvaluateEmbeddingModel
-  : evaluateEmbeddingModelReal;
+// Re-export with embedding-specific name for backward compatibility
+export const synthesizeEmbeddingEvalData = synthesizeEvalData;
 
 export type {
-  DiTingSyntheticEmbeddingTrainDatasRequest,
-  DiTingSyntheticEmbeddingTrainDatasResponse,
-  DiTingSyntheticEmbeddingEvalDataRequest,
-  DiTingSyntheticEmbeddingEvalDataResponse,
-  DiTingEvaluateEmbeddingRequest,
-  DiTingEvaluateEmbeddingResponse
-} from './diting/types';
+  DiTingSyntheticEvalDataRequest as DiTingSyntheticEmbeddingEvalDataRequest,
+  DiTingSyntheticEvalDataResponse as DiTingSyntheticEmbeddingEvalDataResponse
+} from '../../common/external/diting';
 
 // SFT Bridge - re-export from common package
 export {

@@ -15,6 +15,7 @@ import {
   logAdaptiveAdjustments
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
 import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
 
 // Request body type
 export type CustomLinkImportBody = {
@@ -22,7 +23,7 @@ export type CustomLinkImportBody = {
   link: string; // Required: Web page link
   parentId?: string; // Optional: Parent directory ID
   name?: string; // Optional: Custom name (defaults to extracted from link)
-  tags?: string[]; // Optional: Tags
+  tags?: CollectionTagValueType[]; // Optional: Tags
   enableEnhance?: boolean; // Optional: Whether to enable enhance config (default true)
 };
 
@@ -128,7 +129,7 @@ async function handler(
       datasetId,
       parentId,
       name: name || extractNameFromLink(link),
-      tags,
+      tags: tags as unknown as string[],
       type: DatasetCollectionTypeEnum.link,
       rawLink: link,
       metadata: {

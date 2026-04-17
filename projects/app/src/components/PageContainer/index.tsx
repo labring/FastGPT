@@ -13,9 +13,8 @@ const PageContainer = ({
       <MyBox
         isLoading={isLoading}
         h={'100%'}
-        borderColor={'borderColor.base'}
-        borderWidth={[0, 1]}
-        boxShadow={'1.5'}
+        borderColor={'borderColor.low'}
+        borderWidth={'0px 1px 0px 0px'}
         overflow={'overlay'}
         bg={'myGray.25'}
         borderRadius={[0, '16px']}

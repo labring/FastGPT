@@ -1,14 +1,17 @@
 import { resolve } from 'path';
+import { config as loadDotenv } from 'dotenv';
 import { defineConfig } from 'vitest/config';
+
+// 加载 .env.local，让 globalSetup 也能获取本地环境变量（如 MONGOMS_SYSTEM_BINARY）
+loadDotenv({ path: resolve('.env.local'), override: false });
 
 export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('projects/app/src'),
-      '@fastgpt/global': resolve('packages/global'),
-      '@fastgpt/service': resolve('packages/service'),
-      '@fastgpt/web': resolve('packages/web'),
-      '@test': resolve('test')
+      '@fastgpt': resolve('packages'),
+      '@test': resolve('test'),
+      'diting-rag-ts': resolve('packages/diting-rag-ts/src')
     }
   },
   test: {

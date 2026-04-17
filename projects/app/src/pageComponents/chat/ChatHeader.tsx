@@ -54,12 +54,7 @@ const ChatHeader = ({
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const { source, chatId } = useChatStore();
-  const histories = useContextSelector(ChatContext, (v) => v.histories);
-
-  // 从 histories 中获取标题，与左侧列表保持一致
-  const currentHistory = histories.find((h) => h.chatId === chatId);
-  const headerTitle = currentHistory?.customTitle || currentHistory?.title;
+  const { source } = useChatStore();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
@@ -70,17 +65,17 @@ const ChatHeader = ({
   return isPc && isPlugin ? null : (
     <Flex
       alignItems={'center'}
-      px={[3, 5]}
+      px={[3, 6]}
       minH={['46px', '60px']}
-      borderBottom={'sm'}
       color={'myGray.900'}
+      bg={'blue.25'}
       fontSize={'sm'}
     >
       {isPc ? (
         <>
           <PcHeader
             totalRecordsCount={totalRecordsCount}
-            title={headerTitle || t('common:core.chat.New Chat')}
+            title={chatData.title || t('common:core.chat.New Chat')}
             chatModels={chatData.app.chatModels}
             chatId={chatData.chatId || ''}
           />
@@ -302,12 +297,17 @@ export const PcHeader = ({
 
   return (
     <>
-      <MyTooltip label={chatId ? t('common:chat_chatId', { chatId }) : ''}>
+      <MyTooltip
+        label={chatId ? t('common:chat_chatId', { chatId }) : ''}
+        shouldWrapChildren={false}
+      >
         <Box
           mr={3}
           maxW={'200px'}
           className="textEllipsis"
-          color={'myGray.1000'}
+          color={'myWhite.1000'}
+          fontWeight={600}
+          fontSize={'14px'}
           cursor={'pointer'}
           onClick={() => {
             copyData(chatId);
@@ -316,15 +316,13 @@ export const PcHeader = ({
           {title}
         </Box>
       </MyTooltip>
-      <MyTag>
-        <MyIcon name={'history'} w={'14px'} />
-        <Box ml={1}>
-          {totalRecordsCount === 0
-            ? t('common:core.chat.New Chat')
-            : t('common:core.chat.History Amount', { amount: totalRecordsCount })}
-        </Box>
-      </MyTag>
-      {!!chatModels && chatModels.length > 0 && (
+      {totalRecordsCount !== 0 && (
+        <MyTag colorSchema="lightBlue">
+          <MyIcon name={'history'} w={'14px'} />
+          <Box ml={1}>{t('common:core.chat.History Amount', { amount: totalRecordsCount })}</Box>
+        </MyTag>
+      )}
+      {/* {!!chatModels && chatModels.length > 0 && (
         <MyTooltip label={chatModels.join(',')}>
           <MyTag ml={2} colorSchema={'green'}>
             <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
@@ -333,7 +331,7 @@ export const PcHeader = ({
             </Box>
           </MyTag>
         </MyTooltip>
-      )}
+      )} */}
     </>
   );
 };

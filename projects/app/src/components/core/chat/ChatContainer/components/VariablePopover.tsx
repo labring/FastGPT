@@ -78,7 +78,13 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
       trigger={'click'}
       closeOnBlur={true}
       Trigger={
-        <Button variant={'whiteBase'} size={'sm'} leftIcon={<MyIcon name={'edit'} w={4} />}>
+        <Button
+          variant={'outline'}
+          border={'none'}
+          color="#475466"
+          size={'sm'}
+          leftIcon={<MyIcon name={'edit'} w={4} />}
+        >
           {t('common:core.module.Variable')}
         </Button>
       }
@@ -108,7 +114,6 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
                   inputType={variableInputTypeToInputType(item.type)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
                 />
               ))}
             </Box>
@@ -141,7 +146,6 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
                   inputType={variableInputTypeToInputType(item.type)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
                 />
               ))}
             </Box>
@@ -160,7 +164,6 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
                   inputType={variableInputTypeToInputType(item.type)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
-                  bg={'myGray.50'}
                 />
               ))}
             </Box>

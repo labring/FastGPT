@@ -19,7 +19,8 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId
+  getHandleId,
+  isValidReferenceValue
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -116,7 +117,16 @@ export const storeNode2FlowNode = ({
           ...templateInput,
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-          selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
+          renderTypeList:
+            storeNode.flowNodeType === FlowNodeTypeEnum.userSelect &&
+            templateInput.key === NodeInputKeyEnum.userSelectOptions
+              ? templateInput.renderTypeList
+              : storeInput.renderTypeList ?? templateInput.renderTypeList,
+          selectedTypeIndex:
+            storeNode.flowNodeType === FlowNodeTypeEnum.userSelect &&
+            templateInput.key === NodeInputKeyEnum.userSelectOptions
+              ? storeInput.selectedTypeIndex ?? 0
+              : storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value
         };
       })
@@ -460,15 +470,34 @@ export const checkWorkflowNodeAndConnection = ({
       }
     }
     if (data.flowNodeType === FlowNodeTypeEnum.userSelect) {
-      const configValue = data.inputs.find(
+      const optionInput = data.inputs.find(
         (input) => input.key === NodeInputKeyEnum.userSelectOptions
-      )?.value;
-      if (
-        !configValue ||
-        configValue.length === 0 ||
-        configValue.some((item: any) => !item.value)
-      ) {
-        return [data.nodeId];
+      );
+      const renderType = optionInput?.renderTypeList?.[optionInput.selectedTypeIndex || 0];
+
+      if (renderType === FlowNodeInputTypeEnum.reference) {
+        const nodeIds = nodes.map((node) => node.data.nodeId);
+        const isValidReference = optionInput?.valueType?.startsWith('array')
+          ? Array.isArray(optionInput?.value) &&
+            optionInput.value.every((item) => isValidReferenceValue(item, nodeIds))
+          : isValidReferenceValue(optionInput?.value, nodeIds);
+        const referenceHandleId = getHandleId(data.nodeId, 'source', 'ref_default');
+        const referenceEdgeCount = edges.filter(
+          (edge) => edge.sourceHandle === referenceHandleId
+        ).length;
+
+        if (!isValidReference || referenceEdgeCount > 1) {
+          return [data.nodeId];
+        }
+      } else {
+        const configValue = optionInput?.value;
+        if (
+          !Array.isArray(configValue) ||
+          configValue.length === 0 ||
+          configValue.some((item: any) => !item.value)
+        ) {
+          return [data.nodeId];
+        }
       }
     }
     if (data.flowNodeType === FlowNodeTypeEnum.formInput) {

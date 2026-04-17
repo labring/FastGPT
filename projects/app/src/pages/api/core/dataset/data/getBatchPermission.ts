@@ -10,7 +10,10 @@ export type GetBatchQuotePermissionBody = {
   ids: string[];
 };
 
-export type GetBatchQuotePermissionResponse = Record<string, GetQuotePermissionResponse | undefined>;
+export type GetBatchQuotePermissionResponse = Record<
+  string,
+  GetQuotePermissionResponse | undefined
+>;
 
 async function handler(req: NextApiRequest): Promise<GetBatchQuotePermissionResponse> {
   const { ids } = req.body as GetBatchQuotePermissionBody;

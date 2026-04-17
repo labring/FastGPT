@@ -130,7 +130,7 @@ const ToolCard = ({
       pb={3}
       border={'base'}
       bg={'white'}
-      borderRadius={'10px'}
+      borderRadius={'8px'}
       display={'flex'}
       flexDirection={'column'}
       cursor={onClickCard ? 'pointer' : 'default'}
@@ -140,7 +140,6 @@ const ToolCard = ({
         onClickCard?.();
       }}
       _hover={{
-        boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
         '& .install-button': {
           display: 'flex'
         },

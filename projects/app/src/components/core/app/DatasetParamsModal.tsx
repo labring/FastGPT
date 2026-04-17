@@ -51,6 +51,7 @@ const DatasetParamsModal = ({
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
+  collectionFilterMatch,
   maxTokens,
   hasDatabaseKnowledge = false,
   hasOtherKnowledge = true,
@@ -100,7 +101,8 @@ const DatasetParamsModal = ({
         datasetSearchUsingExtensionQuery,
         datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
         datasetSearchExtensionBg,
-        generateSqlModel: hasDatabaseKnowledge ? generateSqlModel || defaultModels.llm?.model : ''
+        generateSqlModel: hasDatabaseKnowledge ? generateSqlModel || defaultModels.llm?.model : '',
+        collectionFilterMatch
       }
     });
 

@@ -4,10 +4,7 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import {
-  getAssistantRetrievalResults,
-  getAssistantQuoteList
-} from '@/web/core/chat/api';
+import { getAssistantRetrievalResults, getAssistantQuoteList } from '@/web/core/chat/api';
 import { getChatResData } from '@/web/core/chat/record/api';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -23,9 +20,12 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import Markdown from '@/components/Markdown';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 // 兜底回复切换节点 ID（用于判断是否走了 LLM 回复分支）
 const FALLBACK_REPLY_SWITCH_NODE_ID = 'ekVOtsUJMYWg4col';
+
+const maxCount = 5;
 
 // 扩展类型，添加 score 字段和从 rawItem 中补充的字段
 type AssistantDatasetCiteItemWithScore = AssistantDatasetCiteItemType & {
@@ -46,6 +46,36 @@ interface ChatDetailModalProps {
   outLinkAuthData?: any;
 }
 
+const NodeToggleIcon = ({ isOpen, canExpand = true }: { isOpen: boolean; canExpand?: boolean }) => {
+  const color = canExpand ? (isOpen ? 'blue.600' : 'myGray.450') : 'rgba(99, 122, 153, 1)';
+  const bg = canExpand && isOpen ? '#EAF3FF' : '';
+
+  return (
+    <Flex
+      w={'20px'}
+      h="20px"
+      mr={2}
+      borderRadius={'50%'}
+      bg={bg}
+      justifyContent={'center'}
+      alignItems={'center'}
+      position="relative"
+      zIndex={1}
+    >
+      <MyIcon
+        name={isOpen ? 'core/chat/chevronDown' : 'core/chat/chevronRight'}
+        w={'16px'}
+        h={'16px'}
+        color={color}
+      />
+    </Flex>
+  );
+};
+
+const getNodeItemStyle = (isOpen: boolean) => {
+  return isOpen ? { borderLeft: '1px dashed #91BBF2' } : { borderLeft: 'none' };
+};
+
 // 问题改写节点
 const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
   const { t } = useTranslation();
@@ -63,6 +93,9 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
     return Number(time.toFixed(2));
   }, [data]);
 
+  // 有改写内容才允许展开
+  const canExpand = !!rewrittenQuery;
+
   // 处理复制操作
   const handleCopy = useCallback(
     (e: React.MouseEvent) => {
@@ -72,22 +105,19 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
     [copyData, rewrittenQuery]
   );
 
+  const { borderLeft } = getNodeItemStyle(isOpen);
+
   return (
-    <Box>
+    <Box position="relative">
+      <Box position="absolute" left={'9px'} top={'24px'} bottom={0} borderLeft={borderLeft} />
       <Flex
         alignItems={'center'}
         justifyContent={'space-between'}
-        cursor={'pointer'}
-        onClick={onToggle}
+        cursor={canExpand ? 'pointer' : 'default'}
+        onClick={canExpand ? onToggle : undefined}
       >
         <Flex alignItems={'center'} flex={1}>
-          <MyIcon
-            name={isOpen ? 'common/solidChevronDown' : 'common/solidChevronRight'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            mr={2}
-          />
+          <NodeToggleIcon isOpen={isOpen} canExpand={canExpand} />
           <Box
             fontSize={'sm'}
             fontWeight={'medium'}
@@ -96,6 +126,11 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
             alignItems={'center'}
           >
             {t('chat:question_rewrite')}
+            {!rewrittenQuery && (
+              <MyTag colorSchema="blue" ml={2}>
+                {t('chat:no_rewrite_needed')}
+              </MyTag>
+            )}
             {rewrittenQuery && (
               <MyTooltip label={t('common:Copy')}>
                 <Box
@@ -116,23 +151,19 @@ const QuestionRewriteNode = ({ data }: { data?: ChatHistoryItemResType }) => {
       </Flex>
 
       {isOpen && (
-        <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
-          {rewrittenQuery ? (
-            <Box
-              borderRadius={'6px'}
-              border={'1px solid'}
-              borderColor={'borderColor.low'}
-              p={'12px 16px'}
-            >
-              <Markdown source={rewrittenQuery} />
-            </Box>
-          ) : (
-            <Box fontSize={'sm'} color={'myGray.600'}>
-              {t('chat:no_rewrite_needed')}
-            </Box>
-          )}
+        <Box pl={'28px'} pt={2} pb={0}>
+          <Box
+            borderRadius={'6px'}
+            border={'1px solid'}
+            bg="myGray.35"
+            borderColor={'borderColor.low'}
+            p={'12px 16px'}
+          >
+            <Markdown source={rewrittenQuery} />
+          </Box>
         </Box>
       )}
+      <Box h={6} />
     </Box>
   );
 };
@@ -195,6 +226,14 @@ const KnowledgeRecallNode = ({
   // 判断是否使用 FaqContentCard：只有当 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq' 时
   const shouldUseFaqCard = data?.retrievalType === 'correction' || data?.retrievalType === 'faq';
 
+  const [isShowAll, setIsShowAll] = useState(false);
+  const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
+
+  // 判断检索模式是否为 agentic（不要求 agenticSearchResult 存在，用于无结果时的标题显示）
+  const isAgenticRetrievalMode = useMemo(() => {
+    return data?.retrievalMode === DatasetRetrievalModeEnum.agentic;
+  }, [data]);
+
   // 统计不同 sourceType 的数量
   const sourceTypeStats = useMemo(() => {
     const stats = {
@@ -216,43 +255,52 @@ const KnowledgeRecallNode = ({
     return stats;
   }, [mergedList]);
 
-  // 生成统计文本
-  const statsText = useMemo(() => {
+  // 标题行 Tag 文本（加载完成后生效）
+  const recallTag = useMemo(() => {
+    if (isLoading) return '';
+    if (data?.retrievalType === 'faq') return t('chat:tag_faq_direct');
+    if (data?.retrievalType === 'correction') return t('chat:faq_matched_correction');
+    if (mergedList.length === 0) return t('chat:tag_no_recall');
+
     const parts: string[] = [];
-
-    if (sourceTypeStats.sql > 0) {
+    if (sourceTypeStats.sql > 0)
       parts.push(t('chat:recall_stats_sql', { count: sourceTypeStats.sql }));
-    }
-    if (sourceTypeStats.chunk > 0) {
+    if (sourceTypeStats.chunk > 0)
       parts.push(t('chat:recall_stats_chunk', { count: sourceTypeStats.chunk }));
-    }
-    if (sourceTypeStats.faq > 0) {
+    if (sourceTypeStats.faq > 0)
       parts.push(t('chat:recall_stats_faq', { count: sourceTypeStats.faq }));
-    }
+    return parts.join(t('common:list_separator'));
+  }, [isLoading, data?.retrievalType, mergedList.length, sourceTypeStats, t]);
 
-    if (parts.length === 0) return '';
+  // 有数据或加载中才允许展开
+  const canExpand = !!isLoading || mergedList.length > 0;
 
-    return `${t('chat:recall_stats_prefix')} ${parts.join(t('common:list_separator'))}`;
-  }, [sourceTypeStats, t]);
+  const { borderLeft } = getNodeItemStyle(isOpen);
 
   return (
-    <Box>
+    <Box position="relative">
+      <Box position="absolute" left={'9px'} top={'24px'} bottom={0} borderLeft={borderLeft} />
       <Flex
         alignItems={'center'}
         justifyContent={'space-between'}
-        cursor={'pointer'}
-        onClick={onToggle}
+        cursor={canExpand ? 'pointer' : 'default'}
+        onClick={canExpand ? onToggle : undefined}
       >
-        <Flex alignItems={'center'} flex={1}>
-          <MyIcon
-            name={isOpen ? 'common/solidChevronDown' : 'common/solidChevronRight'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            mr={2}
-          />
-          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-            {t('chat:knowledge_recall')}
+        <Flex alignItems={'center'} flex={1} mb={1}>
+          <NodeToggleIcon isOpen={isOpen} canExpand={canExpand} />
+          <Box
+            fontSize={'sm'}
+            fontWeight={'medium'}
+            color={'myGray.900'}
+            display={'flex'}
+            alignItems={'center'}
+          >
+            {isAgenticRetrievalMode ? t('chat:agentic_search') : t('chat:knowledge_recall')}
+            {recallTag && (
+              <MyTag colorSchema="blue" ml={2}>
+                {recallTag}
+              </MyTag>
+            )}
           </Box>
         </Flex>
         <Box fontSize={'xs'} color={'myGray.500'}>
@@ -261,20 +309,14 @@ const KnowledgeRecallNode = ({
       </Flex>
 
       {isOpen && (
-        <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
+        <Box pl={'28px'} pt={2} pb={0}>
           <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
             {!isLoading && (
               <>
                 {mergedList.length > 0 ? (
                   <>
-                    {/* 统计文本 */}
-                    {statsText && (
-                      <Box fontSize={'12px'} color={'myGray.600'} mb={2}>
-                        {statsText}
-                      </Box>
-                    )}
                     <Flex flexDirection={'column'} gap={3}>
-                      {mergedList.map((item, index) => {
+                      {displayList.map((item, index) => {
                         // 如果 datasetSearchNode 的 retrievalType 为 'correction' 或 'faq'，使用 FaqContentCard
                         if (shouldUseFaqCard) {
                           return (
@@ -337,6 +379,16 @@ const KnowledgeRecallNode = ({
                         );
                       })}
                     </Flex>
+                    {!isShowAll && mergedList.length > maxCount && (
+                      <Button
+                        mt={3}
+                        onClick={() => setIsShowAll(true)}
+                        w="100%"
+                        variant={'primaryOutline'}
+                      >
+                        {t('chat:view_all_knowledge', { count: mergedList.length })}
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <Box fontSize={'sm'} color={'myGray.600'}>
@@ -348,6 +400,7 @@ const KnowledgeRecallNode = ({
           </MyBox>
         </Box>
       )}
+      <Box h={6} />
     </Box>
   );
 };
@@ -366,23 +419,23 @@ const AgenticSearchNode = ({ data }: { data?: ChatHistoryItemResType }) => {
     return Number(time.toFixed(2));
   }, [data]);
 
+  // 有推理文本才允许展开
+  const canExpand = !!reasoningText;
+
+  const { borderLeft } = getNodeItemStyle(isOpen);
+
   return (
-    <Box>
+    <Box position="relative">
+      <Box position="absolute" left={'9px'} top={'24px'} bottom={0} borderLeft={borderLeft} />
       <Flex
         alignItems={'center'}
         justifyContent={'space-between'}
-        cursor={'pointer'}
-        onClick={onToggle}
+        cursor={canExpand ? 'pointer' : 'default'}
+        onClick={canExpand ? onToggle : undefined}
       >
         <Flex alignItems={'center'} flex={1}>
-          <MyIcon
-            name={isOpen ? 'common/solidChevronDown' : 'common/solidChevronRight'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            mr={2}
-          />
-          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+          <NodeToggleIcon isOpen={isOpen} canExpand={canExpand} />
+          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} bg="myGray.35">
             {t('chat:agentic_search')}
           </Box>
         </Flex>
@@ -392,23 +445,18 @@ const AgenticSearchNode = ({ data }: { data?: ChatHistoryItemResType }) => {
       </Flex>
 
       {isOpen && (
-        <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
-          {reasoningText ? (
-            <Box
-              borderRadius={'6px'}
-              border={'1px solid'}
-              borderColor={'borderColor.low'}
-              p={'12px 16px'}
-            >
-              <Markdown source={reasoningText} />
-            </Box>
-          ) : (
-            <Box fontSize={'sm'} color={'myGray.600'}>
-              -
-            </Box>
-          )}
+        <Box pl={'28px'} pt={2} pb={0}>
+          <Box
+            borderRadius={'6px'}
+            border={'1px solid'}
+            borderColor={'borderColor.low'}
+            p={'12px 16px'}
+          >
+            <Markdown source={reasoningText} />
+          </Box>
         </Box>
       )}
+      <Box h={6} />
     </Box>
   );
 };
@@ -482,29 +530,28 @@ const KnowledgeRerankNode = ({
   // 判断是否使用重排:从 data 中获取 searchUsingReRank
   const searchUsingReRank = data?.searchUsingReRank || false;
 
-  const maxCount = 5;
   const [isShowAll, setIsShowAll] = useState(false);
   const displayList = isShowAll ? mergedList : mergedList.slice(0, maxCount);
 
   // 当未使用重排时，隐藏知识重排节点（agentic 模式始终显示）
   if (!isAgenticMode && !searchUsingReRank && !hasError) return null;
 
+  // 有数据、加载中或有错误时才允许展开
+  const canExpand = !!isLoading || mergedList.length > 0 || hasError;
+
+  const { borderLeft } = getNodeItemStyle(isOpen);
+
   return (
-    <Box>
+    <Box position="relative">
+      <Box position="absolute" left={'9px'} top={'24px'} bottom={0} borderLeft={borderLeft} />
       <Flex
         alignItems={'center'}
         justifyContent={'space-between'}
-        cursor={'pointer'}
-        onClick={onToggle}
+        cursor={canExpand ? 'pointer' : 'default'}
+        onClick={canExpand ? onToggle : undefined}
       >
         <Flex alignItems={'center'} flex={1}>
-          <MyIcon
-            name={isOpen ? 'common/solidChevronDown' : 'common/solidChevronRight'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            mr={2}
-          />
+          <NodeToggleIcon isOpen={isOpen} canExpand={canExpand} />
           <Box
             fontSize={'sm'}
             fontWeight={'medium'}
@@ -512,7 +559,25 @@ const KnowledgeRerankNode = ({
             display={'flex'}
             alignItems={'center'}
           >
-            {isAgenticMode ? t('chat:summarize_retrieval_results') : t('chat:knowledge_rerank')}
+            {isAgenticMode ? (
+              <Flex alignItems={'center'}>
+                <Box>{t('chat:summarize_retrieval_results')} </Box>
+                <MyTag colorSchema="blue" ml={1}>
+                  {t('chat:summarize_retrieval_results_count', { count: mergedList.length })}
+                </MyTag>
+              </Flex>
+            ) : (
+              <>
+                {t('chat:knowledge_rerank')}
+                {!hasError && !isLoading && (
+                  <MyTag colorSchema="blue" ml={2}>
+                    {mergedList.length > 0
+                      ? t('chat:summarize_retrieval_results_count', { count: mergedList.length })
+                      : t('chat:no_rerank_passed')}
+                  </MyTag>
+                )}
+              </>
+            )}
             {hasError && (
               <MyIcon name={'common/error'} w={'16px'} h={'16px'} color={'red.600'} ml={1} />
             )}
@@ -527,7 +592,7 @@ const KnowledgeRerankNode = ({
       </Flex>
 
       {isOpen && (
-        <Box ml={2} pl={4} pt={2} pb={0} borderLeft={'1px dashed'} borderColor={'myGray.250'}>
+        <Box pl={'28px'} pt={2} pb={0}>
           <MyBox isLoading={isLoading} minH={isLoading ? '100px' : 'auto'}>
             {!isLoading && (
               <>
@@ -536,89 +601,86 @@ const KnowledgeRerankNode = ({
                     {errorText}
                   </Box>
                 ) : (
-                  <>
-                    {mergedList.length > 0 ? (
-                      <>
-                        <Flex flexDirection={'column'} gap={3}>
-                          {displayList.map((item, index) => {
-                            // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
-                            const descriptionList = [];
+                  mergedList.length > 0 && (
+                    <>
+                      <Flex flexDirection={'column'} gap={3}>
+                        {displayList.map((item, index) => {
+                          // 构造描述列表 - 显示综合分数、重排分数和召回排名，按固定顺序显示
+                          const descriptionList = [];
 
-                            // 从 score 数组中提取分数信息，按固定顺序添加
-                            if (item.score && Array.isArray(item.score)) {
-                              const rrfScore = item.score.find((s) => s.type === 'rrf');
-                              const reRankScore = item.score.find((s) => s.type === 'reRank');
+                          // 从 score 数组中提取分数信息，按固定顺序添加
+                          if (item.score && Array.isArray(item.score)) {
+                            const rrfScore = item.score.find((s) => s.type === 'rrf');
+                            const reRankScore = item.score.find((s) => s.type === 'reRank');
 
-                              if (rrfScore) {
-                                descriptionList.push(
-                                  `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
-                                );
-                              }
-                              if (reRankScore) {
-                                descriptionList.push(
-                                  `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
-                                );
-                              }
+                            if (rrfScore) {
+                              descriptionList.push(
+                                `${t('chat:combined_score')}${rrfScore.value.toFixed(4)}`
+                              );
                             }
-
-                            // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
-                            let recallRank = '-';
-                            if (item.retrievalRank !== undefined) {
-                              recallRank = `${item.retrievalRank + 1}`;
+                            if (reRankScore) {
+                              descriptionList.push(
+                                `${t('chat:rerank_score')}${reRankScore.value.toFixed(4)}`
+                              );
                             }
+                          }
+
+                          // 计算召回排名：从 rawQuoteList 中的 retrievalRank 字段获取（从 0 开始，显示时 +1）
+                          let recallRank = '-';
+                          if (item.retrievalRank !== undefined) {
+                            recallRank = `${item.retrievalRank + 1}`;
+                          }
+                          // 多轮智能检索不显示
+                          !isAgenticMode &&
                             descriptionList.push(`${t('chat:recall_rank')}${recallRank}`);
 
-                            // 使用 TOP1、TOP2 格式作为标题
-                            const title = `TOP${index + 1}`;
+                          // 使用 TOP1、TOP2 格式作为标题
+                          const title = `TOP${index + 1}`;
 
-                            // 计算 linkText 和 linkUrl
-                            let linkText = '';
-                            let linkUrl = '';
+                          // 计算 linkText 和 linkUrl
+                          let linkText = '';
+                          let linkUrl = '';
 
-                            if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
-                              linkText = `${item.sourceName || ''} / #${item.index}`;
-                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
-                            } else if (item.sourceType === 'sql') {
-                              linkText = item.sourceName || '';
-                              linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
-                            }
+                          if (item.sourceType === 'faq' || item.sourceType === 'chunk') {
+                            linkText = `${item.sourceName || ''} / #${item.index}`;
+                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}&collectionId=${item.collectionId || ''}&currentTab=dataCard&activeId=${item._id || ''}`;
+                          } else if (item.sourceType === 'sql') {
+                            linkText = item.sourceName || '';
+                            linkUrl = `/dataset/detail?datasetId=${item.datasetId || ''}`;
+                          }
 
-                            return (
-                              <ChunkInfoCard
-                                key={item._id || index}
-                                title={title}
-                                descriptionList={descriptionList}
-                                linkText={linkText}
-                                linkUrl={linkUrl}
-                                q={item.q}
-                                a={item.a}
-                              />
-                            );
-                          })}
-                        </Flex>
-                        {!isShowAll && mergedList.length > maxCount && (
-                          <Button
-                            mt={3}
-                            onClick={() => setIsShowAll(true)}
-                            w="100%"
-                            variant={'primaryOutline'}
-                          >
-                            {t('chat:view_all_knowledge', { count: mergedList.length })}
-                          </Button>
-                        )}
-                      </>
-                    ) : (
-                      <Box fontSize={'sm'} color={'myGray.600'}>
-                        {t('chat:no_rerank_passed')}
-                      </Box>
-                    )}
-                  </>
+                          return (
+                            <ChunkInfoCard
+                              key={item._id || index}
+                              title={title}
+                              descriptionList={descriptionList}
+                              linkText={linkText}
+                              linkUrl={linkUrl}
+                              q={item.q}
+                              a={item.a}
+                            />
+                          );
+                        })}
+                      </Flex>
+                      {!isShowAll && mergedList.length > maxCount && (
+                        <Button
+                          mt={3}
+                          onClick={() => setIsShowAll(true)}
+                          w="100%"
+                          variant={'primaryOutline'}
+                        >
+                          {t('chat:view_all_knowledge', { count: mergedList.length })}
+                        </Button>
+                      )}
+                    </>
+                  )
                 )}
               </>
             )}
           </MyBox>
         </Box>
       )}
+      <Box h={6} />
     </Box>
   );
 };
@@ -721,7 +783,8 @@ const FinalAnswerNode = ({
   );
 
   return (
-    <Box>
+    <Box position="relative">
+      {isOpen && <Box position="absolute" left={'9px'} top={'24px'} bottom={0} />}
       <Flex
         alignItems={'center'}
         justifyContent={'space-between'}
@@ -729,13 +792,7 @@ const FinalAnswerNode = ({
         onClick={onToggle}
       >
         <Flex alignItems={'center'} flex={1}>
-          <MyIcon
-            name={isOpen ? 'common/solidChevronDown' : 'common/solidChevronRight'}
-            w={'16px'}
-            h={'16px'}
-            color={'myGray.500'}
-            mr={2}
-          />
+          <NodeToggleIcon isOpen={isOpen} />
           <Box
             fontSize={'sm'}
             fontWeight={'medium'}
@@ -744,6 +801,11 @@ const FinalAnswerNode = ({
             alignItems={'center'}
           >
             {t('chat:final_answer')}
+            {isFallback && (
+              <MyTag colorSchema="blue" ml={2}>
+                {t('chat:fallback_reply')}
+              </MyTag>
+            )}
             {finalAnswer && !isError && (
               <MyTooltip label={t('common:Copy')}>
                 <Box
@@ -767,15 +829,9 @@ const FinalAnswerNode = ({
       </Flex>
 
       {isOpen && (
-        <Box ml={2} pl={4} pt={2} pb={0}>
+        <Box pl={'28px'} pt={2} pb={0}>
           {finalAnswer && (
             <>
-              {/* 兜底回复说明文本 */}
-              {isFallback && (
-                <Box fontSize={'12px'} lineHeight={'16px'} color={'myGray.600'} mb={2}>
-                  {t('chat:fallback_reply')}
-                </Box>
-              )}
               {/* 错误状态：直接显示错误文本，不带边框 */}
               {isError ? (
                 <Box fontSize={'sm'} color={'red.600'}>
@@ -785,6 +841,7 @@ const FinalAnswerNode = ({
                 <Box
                   borderRadius={'6px'}
                   border={'1px solid'}
+                  bg="myGray.35"
                   borderColor={'borderColor.low'}
                   p={'12px'}
                 >
@@ -975,21 +1032,25 @@ const ChatDetailModal = ({
       maxH={['90vh', '700px']}
       h={['90vh', '80vh']}
       isLoading={loading}
-      iconSrc="/imgs/modal/wholeRecord.svg"
       title={t('chat:chat_details')}
     >
       <ModalBody>
         {!loading && (
           <>
             {/* 用户问题区域 */}
-            <Box bg={'primary.50'} px={4} py={3} mb={4} borderRadius={6}>
-              <Box fontSize={'sm'} lineHeight={'22px'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
+            <Box bg={'blue.50'} px={4} py={3} mb={4} borderRadius={6}>
+              <Box
+                fontSize={'sm'}
+                lineHeight={'22px'}
+                color={'myWhite.1000'}
+                whiteSpace={'pre-wrap'}
+              >
                 {userQuestion}
               </Box>
             </Box>
 
             {/* 工作流节点列表 - 固定四个节点 */}
-            <Box flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={6}>
+            <Box flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'}>
               <QuestionRewriteNode
                 data={workflowNodes.find(
                   (node) => node.moduleType === FlowNodeTypeEnum.datasetSearchNode

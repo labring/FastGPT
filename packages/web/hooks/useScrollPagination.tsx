@@ -191,7 +191,7 @@ export function useScrollPagination<
     showErrorToast = true,
     disabled = false,
     pollingInterval,
-
+    showNoMore = true,
     ...props
   }: {
     scrollLoadType?: 'top' | 'bottom';
@@ -201,6 +201,7 @@ export function useScrollPagination<
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
     disabled?: boolean;
+    showNoMore?: boolean;
     pollingInterval?: number;
   } & Parameters<typeof useRequest>[1]
 ) {
@@ -357,7 +358,7 @@ export function useScrollPagination<
                 loadData({ init: false });
               }}
             >
-              {loadText}
+              {loadText === t('common:request_end') && !showNoMore ? null : loadText}
             </Box>
           )}
           {isEmpty && EmptyTip}

@@ -61,7 +61,11 @@ const Edit = ({
       )}
       {isPc && (
         <Box flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} form2WorkflowFn={form2AppWorkflow} />
+          <ChatTest
+            appForm={appForm}
+            setRenderEdit={setRenderEdit}
+            form2WorkflowFn={form2AppWorkflow}
+          />
         </Box>
       )}
     </Box>

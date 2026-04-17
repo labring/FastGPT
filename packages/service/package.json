@@ -36,6 +36,7 @@
     "date-fns": "catalog:",
     "dayjs": "catalog:",
     "decompress": "^4.2.1",
+    "diting-rag-ts": "workspace:*",
     "domino-ext": "^2.1.4",
     "encoding": "^0.1.13",
     "file-type": "^19.0.0",

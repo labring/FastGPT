@@ -94,6 +94,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       customPdfParse,
       sourceId: fileId
     });
+
     if (rawTextBuffer) {
       return {
         rawText: rawTextBuffer.text,

@@ -171,10 +171,7 @@ const InputTypeConfig = ({
 
   const { referenceList } = useReference({
     nodeId: nodeId ?? '',
-    valueType:
-      inputType === FlowNodeInputTypeEnum.multipleSelect
-        ? WorkflowIOValueTypeEnum.arrayString
-        : WorkflowIOValueTypeEnum.string
+    valueType: WorkflowIOValueTypeEnum.arrayString
   });
 
   const {
@@ -356,7 +353,7 @@ const InputTypeConfig = ({
 
       return commonData;
     },
-    [inputType]
+    [inputType, type]
   );
 
   return (
@@ -828,7 +825,10 @@ const InputTypeConfig = ({
                   onChange={(newType) => {
                     setValue('listInputType', newType);
                     setValue('listReference', undefined);
-                    setValue('defaultValue', '');
+                    setValue(
+                      'defaultValue',
+                      inputType === FlowNodeInputTypeEnum.multipleSelect ? [] : ''
+                    );
                   }}
                 />
               </Flex>
@@ -841,21 +841,13 @@ const InputTypeConfig = ({
                   {t('workflow:list_options_variable')}
                 </FormLabel>
                 <Box flex={1}>
-                  {inputType === FlowNodeInputTypeEnum.multipleSelect ? (
-                    <ReferSelector
-                      isArray={true}
-                      list={referenceList}
-                      value={listReference as [string, string][]}
-                      onSelect={(val) => setValue('listReference', val)}
-                      listLayout="wrap"
-                    />
-                  ) : (
-                    <ReferSelector
-                      list={referenceList}
-                      value={listReference as [string, string]}
-                      onSelect={(val) => setValue('listReference', val)}
-                    />
-                  )}
+                  <ReferSelector
+                    isArray={true}
+                    list={referenceList}
+                    value={listReference as [string, string][]}
+                    onSelect={(val) => setValue('listReference', val)}
+                    listLayout="wrap"
+                  />
                 </Box>
               </Flex>
             )}
@@ -908,7 +900,7 @@ const InputTypeConfig = ({
                       gap={4}
                     >
                       {mergedSelectEnums.map((item, i) => (
-                        <Draggable key={i} draggableId={i.toString()} index={i}>
+                        <Draggable key={item.id} draggableId={item.id} index={i}>
                           {(provided, snapshot) => (
                             <Box
                               ref={provided.innerRef}
@@ -940,8 +932,8 @@ const InputTypeConfig = ({
                                     })}
                                   />
                                 </FormControl>
-                                {selectEnums.length > 1 && (
-                                  <Flex>
+                                <Flex>
+                                  {selectEnums.length > 1 && (
                                     <MyIcon
                                       ml={3}
                                       name={'delete'}
@@ -952,18 +944,28 @@ const InputTypeConfig = ({
                                       _hover={{ bg: 'red.100' }}
                                       onClick={() => removeEnums(i)}
                                     />
-                                    <Box {...provided.dragHandleProps}>
-                                      <MyIcon
-                                        name={'drag'}
-                                        cursor={'pointer'}
-                                        p={2}
-                                        borderRadius={'md'}
-                                        _hover={{ color: 'primary.600' }}
-                                        w={'16px'}
-                                      />
-                                    </Box>
-                                  </Flex>
-                                )}
+                                  )}
+                                  <Box
+                                    {...provided.dragHandleProps}
+                                    ml={selectEnums.length > 1 ? 0 : 3}
+                                    opacity={selectEnums.length > 1 ? 1 : 0.4}
+                                    cursor={selectEnums.length > 1 ? 'pointer' : 'not-allowed'}
+                                    pointerEvents={selectEnums.length > 1 ? 'auto' : 'none'}
+                                  >
+                                    <MyIcon
+                                      name={'drag'}
+                                      cursor={selectEnums.length > 1 ? 'pointer' : 'not-allowed'}
+                                      p={2}
+                                      borderRadius={'md'}
+                                      _hover={
+                                        selectEnums.length > 1
+                                          ? { color: 'primary.600' }
+                                          : undefined
+                                      }
+                                      w={'16px'}
+                                    />
+                                  </Box>
+                                </Flex>
                               </Flex>
                             </Box>
                           )}

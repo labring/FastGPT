@@ -93,7 +93,14 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.hidden]: undefined,
   [FlowNodeInputTypeEnum.custom]: undefined,
   [FlowNodeInputTypeEnum.selectSkill]: undefined,
-  [FlowNodeInputTypeEnum.selectTool]: undefined
+  [FlowNodeInputTypeEnum.selectTool]: undefined,
+  [FlowNodeInputTypeEnum.tagFilterConfig]: {
+    Component: dynamic(() => import('./templates/TagFilterConfigInput')),
+    LableRightComponent: dynamic(() =>
+      import('./templates/TagFilterConfigInput').then((mod) => mod.TagFilterLogicToggle)
+    )
+  },
+  [FlowNodeInputTypeEnum.off]: undefined
 };
 
 const hideLabelTypeList = [FlowNodeInputTypeEnum.addInputParam];

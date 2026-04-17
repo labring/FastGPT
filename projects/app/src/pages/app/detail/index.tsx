@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -10,6 +10,8 @@ import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/cont
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { TabEnum } from '@/pageComponents/app/detail/context';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { DashboardNavbar, SIDEBAR_COLLAPSED_WIDTH } from '@/pageComponents/dashboard/Container';
 
 const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'));
 const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'));
@@ -40,7 +42,7 @@ const AppDetail = () => {
   return (
     <>
       <NextHead title={appDetail.name} icon={appDetail.avatar}></NextHead>
-      <Box h={'100%'} position={'relative'} bg={'myGray.25'}>
+      <Box h={'100%'} position={'relative'} bg={'transparent'}>
         {!appDetail._id ? (
           <Loading fixed={false} />
         ) : (
@@ -60,9 +62,24 @@ const AppDetail = () => {
 };
 
 const Provider = () => {
+  const { isPc } = useSystem();
+  const [isCollapsed] = useState(true);
+  const sidebarWidth = SIDEBAR_COLLAPSED_WIDTH;
+
   return (
     <AppContextProvider>
-      <AppDetail />
+      {isPc && (
+        <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} hideCollapseButton />
+      )}
+      <Box
+        h={'100%'}
+        pl={isPc ? sidebarWidth : 0}
+        position={'relative'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
+        transition="padding-left 0.2s ease"
+      >
+        <AppDetail />
+      </Box>
     </AppContextProvider>
   );
 };
@@ -78,6 +95,7 @@ export async function getServerSideProps(context: any) {
         'file',
         'publish',
         'workflow',
+        'skill',
         'dashboard_evaluation',
         'evaluation',
         'train',

@@ -24,7 +24,6 @@ type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
 
-
 const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
 // 哪些路由不需要 Layout
 const routesWithoutLayout = ['/openapi'];

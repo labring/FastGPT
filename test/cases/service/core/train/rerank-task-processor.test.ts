@@ -93,6 +93,7 @@ vi.mock('@fastgpt/service/core/train/rerank/data/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/evaluation/dataset/evalDatasetCollectionSchema', () => ({
+  EvalDatasetCollectionName: 'eval_dataset_collections',
   MongoEvalDatasetCollection: {
     create: vi.fn()
   }
@@ -110,13 +111,16 @@ vi.mock('@fastgpt/service/core/train/rerank/external', () => ({
   createSFTTask: vi.fn(),
   querySFTTaskStatus: vi.fn(),
   synthesizeRerankEvalData: vi.fn(),
-  evaluateRerankModel: vi.fn(),
   SFTTaskStatus: {
     pending: 'pending',
     running: 'running',
     completed: 'completed',
     failed: 'failed'
   }
+}));
+
+vi.mock('@fastgpt/service/core/train/rerank/task/helpers/evaluate-model', () => ({
+  evaluateRerankModelHelper: vi.fn()
 }));
 
 vi.mock('fs', () => {
@@ -259,8 +263,12 @@ describe('Rerank Train Task Processor', () => {
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
       );
-      const { createSFTTask, querySFTTaskStatus, synthesizeRerankEvalData, evaluateRerankModel } =
-        await import('@fastgpt/service/core/train/rerank/external');
+      const { createSFTTask, querySFTTaskStatus, synthesizeRerankEvalData } = await import(
+        '@fastgpt/service/core/train/rerank/external'
+      );
+      const { evaluateRerankModelHelper } = await import(
+        '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model'
+      );
 
       // Mock initial task
       const mockTask = createMockTask();
@@ -369,18 +377,19 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerankModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              rerank_top10_ndcg: 0.85,
-              rerank_top10_mrr: 0.9,
-              rerank_top10_precision: 0.82,
-              rerank_top10_recall: 0.78
-            }
-          }
-        }
+      (evaluateRerankModelHelper as any).mockResolvedValue({
+        detailed_results: {
+          rerank_top10_ndcg: 0.85,
+          rerank_top10_mrr: 0.9,
+          rerank_top10_precision: 0.82,
+          rerank_top10_recall: 0.78
+        },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       // Mock dataset search
@@ -505,30 +514,34 @@ describe('Rerank Train Task Processor', () => {
 
       // Verify evaluation stage
       expect(synthesizeRerankEvalData).toHaveBeenCalled(); // called multiple times in generate_evaldataset stage (MIN_EVAL_QA_COUNT)
-      expect(evaluateRerankModel).toHaveBeenCalledTimes(2);
+      expect(evaluateRerankModelHelper).toHaveBeenCalledTimes(2);
 
       // Verify final result saving contains complete evaluation data
       // Each stage's data is stored under the corresponding checkpointData key
       expect(checkpointData.generate_evaldataset).toBeDefined();
       expect(checkpointData.generate_evaldataset.evalDatasetId).toBe('eval_dataset_123');
       expect(checkpointData.eval_basemodel).toBeDefined();
-      expect(checkpointData.eval_basemodel.baseModelEvalResult).toEqual({
-        detailed_results: {
-          rerank_top10_ndcg: 0.85,
-          rerank_top10_mrr: 0.9,
-          rerank_top10_precision: 0.82,
-          rerank_top10_recall: 0.78
-        }
-      });
+      expect(checkpointData.eval_basemodel.baseModelEvalResult).toEqual(
+        expect.objectContaining({
+          detailed_results: {
+            rerank_top10_ndcg: 0.85,
+            rerank_top10_mrr: 0.9,
+            rerank_top10_precision: 0.82,
+            rerank_top10_recall: 0.78
+          }
+        })
+      );
       expect(checkpointData.eval_tunedmodel).toBeDefined();
-      expect(checkpointData.eval_tunedmodel.tunedModelEvalResult).toEqual({
-        detailed_results: {
-          rerank_top10_ndcg: 0.85,
-          rerank_top10_mrr: 0.9,
-          rerank_top10_precision: 0.82,
-          rerank_top10_recall: 0.78
-        }
-      });
+      expect(checkpointData.eval_tunedmodel.tunedModelEvalResult).toEqual(
+        expect.objectContaining({
+          detailed_results: {
+            rerank_top10_ndcg: 0.85,
+            rerank_top10_mrr: 0.9,
+            rerank_top10_precision: 0.82,
+            rerank_top10_recall: 0.78
+          }
+        })
+      );
 
       // Verify final result saving
       const { MongoRerankTrainTask } = await import(
@@ -537,28 +550,28 @@ describe('Rerank Train Task Processor', () => {
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
         expect.objectContaining({
-          result: {
+          result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
             tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
-            baseModelEvalResult: {
+            baseModelEvalResult: expect.objectContaining({
               detailed_results: {
                 rerank_top10_ndcg: 0.85,
                 rerank_top10_mrr: 0.9,
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            tunedModelEvalResult: {
+            }),
+            tunedModelEvalResult: expect.objectContaining({
               detailed_results: {
                 rerank_top10_ndcg: 0.85,
                 rerank_top10_mrr: 0.9,
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            }
-          }
+            })
+          })
         })
       );
     });
@@ -630,8 +643,11 @@ describe('Rerank Train Task Processor', () => {
       });
 
       // Mock remaining stages succeed
-      const { synthesizeRerankEvalData, evaluateRerankModel } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
+      );
+      const { evaluateRerankModelHelper } = await import(
+        '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model'
       );
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
@@ -699,18 +715,19 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerankModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              rerank_top10_ndcg: 0.85,
-              rerank_top10_mrr: 0.9,
-              rerank_top10_precision: 0.82,
-              rerank_top10_recall: 0.78
-            }
-          }
-        }
+      (evaluateRerankModelHelper as any).mockResolvedValue({
+        detailed_results: {
+          rerank_top10_ndcg: 0.85,
+          rerank_top10_mrr: 0.9,
+          rerank_top10_precision: 0.82,
+          rerank_top10_recall: 0.78
+        },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       await rerankTrainTaskProcessor({
@@ -750,28 +767,28 @@ describe('Rerank Train Task Processor', () => {
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
         expect.objectContaining({
-          result: {
+          result: expect.objectContaining({
             trainDatasetId: 'trainset_1', // use existing preparing data, not regenerated
             trainDatasetFilePath: '/tmp/test.jsonl', // use existing preparing data, not regenerated
             tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
-            baseModelEvalResult: {
+            baseModelEvalResult: expect.objectContaining({
               detailed_results: {
                 rerank_top10_ndcg: 0.85,
                 rerank_top10_mrr: 0.9,
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            tunedModelEvalResult: {
+            }),
+            tunedModelEvalResult: expect.objectContaining({
               detailed_results: {
                 rerank_top10_ndcg: 0.85,
                 rerank_top10_mrr: 0.9,
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            }
-          }
+            })
+          })
         })
       );
     });
@@ -874,14 +891,17 @@ describe('Rerank Train Task Processor', () => {
         requestAuth: 'test-api-key'
       });
 
-      const { evaluateRerankModel } = await import('@fastgpt/service/core/train/rerank/external');
-      (evaluateRerankModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: { overall_ndcg: 0.8, overall_mrr: 0.85, overall_precision: 0.82 }
-          }
-        }
+      const { evaluateRerankModelHelper } = await import(
+        '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model'
+      );
+      (evaluateRerankModelHelper as any).mockResolvedValue({
+        detailed_results: { overall_ndcg: 0.8, overall_mrr: 0.85, overall_precision: 0.82 },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       // Mock SFT operations to fail at finetuning stage
@@ -1054,8 +1074,11 @@ describe('Rerank Train Task Processor', () => {
       (fs.unlink as any).mockResolvedValue(undefined);
 
       // Mock remaining stages
-      const { synthesizeRerankEvalData, evaluateRerankModel } = await import(
+      const { synthesizeRerankEvalData } = await import(
         '@fastgpt/service/core/train/rerank/external'
+      );
+      const { evaluateRerankModelHelper } = await import(
+        '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model'
       );
       const { createRerankModelConfig } = await import(
         '@fastgpt/service/core/train/rerank/model/controller'
@@ -1123,18 +1146,19 @@ describe('Rerank Train Task Processor', () => {
           }
         }
       });
-      (evaluateRerankModel as any).mockResolvedValue({
-        success: true,
-        data: {
-          runLogs: {
-            detailed_results: {
-              rerank_top10_ndcg: 0.85,
-              rerank_top10_mrr: 0.9,
-              rerank_top10_precision: 0.82,
-              rerank_top10_recall: 0.78
-            }
-          }
-        }
+      (evaluateRerankModelHelper as any).mockResolvedValue({
+        detailed_results: {
+          rerank_top10_ndcg: 0.85,
+          rerank_top10_mrr: 0.9,
+          rerank_top10_precision: 0.82,
+          rerank_top10_recall: 0.78
+        },
+        retrieval_ranks: [],
+        total_rows: 1,
+        expect_count: 1,
+        mrr_scores: {},
+        ndcg_scores: {},
+        map_scores: {}
       });
 
       // Note: getRerankTrainTask is already mocked above with data evolution pattern
@@ -1161,28 +1185,28 @@ describe('Rerank Train Task Processor', () => {
       expect(MongoRerankTrainTask.updateOne).toHaveBeenCalledWith(
         { _id: mockTaskId },
         expect.objectContaining({
-          result: {
+          result: expect.objectContaining({
             trainDatasetId: expect.any(String),
             trainDatasetFilePath: expect.any(String),
             tunedModelId: 'tuned-model',
             evalDatasetId: 'eval_dataset_123',
-            baseModelEvalResult: {
+            baseModelEvalResult: expect.objectContaining({
               detailed_results: {
                 rerank_top10_ndcg: 0.85,
                 rerank_top10_mrr: 0.9,
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            },
-            tunedModelEvalResult: {
+            }),
+            tunedModelEvalResult: expect.objectContaining({
               detailed_results: {
                 rerank_top10_ndcg: 0.85,
                 rerank_top10_mrr: 0.9,
                 rerank_top10_precision: 0.82,
                 rerank_top10_recall: 0.78
               }
-            }
-          }
+            })
+          })
         })
       );
     });

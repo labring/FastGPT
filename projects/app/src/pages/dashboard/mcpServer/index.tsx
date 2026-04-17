@@ -13,18 +13,19 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  Card
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteMcpServer, getMcpServerList } from '@/web/support/mcp/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import InfoBanner from '@fastgpt/web/components/common/InfoBanner';
 import EditMcpModal, {
   defaultForm,
   type EditMcForm
 } from '@/pageComponents/dashboard/mcp/EditModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import dynamic from 'next/dynamic';
 import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -64,16 +65,18 @@ const McpServer = () => {
     <>
       <DashboardContainer>
         {({ MenuIcon }) => (
-          <MyBox isLoading={isLoading} h={'100%'} p={6}>
+          <MyBox
+            isLoading={isLoading}
+            h={'100%'}
+            px={4}
+            pb={3}
+            display={'flex'}
+            flexDirection={'column'}
+          >
             {isPc ? (
-              <Flex alignItems={'flex-end'} justifyContent={'space-between'}>
-                <Box>
-                  <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                    {t('dashboard_mcp:mcp_server')}
-                  </Box>
-                  <Box fontSize={'xs'} color={'myGray.500'}>
-                    {t('dashboard_mcp:mcp_server_description')}
-                  </Box>
+              <Flex alignItems={'center'} justifyContent={'space-between'} h={'64px'}>
+                <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
+                  {t('dashboard_mcp:mcp_server')}
                 </Box>
                 <Button
                   isDisabled={!userInfo?.permission.hasApikeyCreatePer}
@@ -90,9 +93,6 @@ const McpServer = () => {
                     {t('dashboard_mcp:mcp_server')}
                   </Box>
                 </HStack>
-                <Box fontSize={'xs'} color={'myGray.500'}>
-                  {t('dashboard_mcp:mcp_server_description')}
-                </Box>
                 <Flex mt={2} justifyContent={'flex-end'}>
                   <Button
                     isDisabled={!userInfo?.permission.hasApikeyCreatePer}
@@ -103,67 +103,67 @@ const McpServer = () => {
                 </Flex>
               </>
             )}
+            <Card flex={1} px={4} display={'flex'} flexDirection={'column'}>
+              <InfoBanner my={4}>{t('dashboard_mcp:mcp_server_description')}</InfoBanner>
+              {/* table */}
+              <TableContainer overflowY={'auto'} fontSize={'sm'}>
+                <Table>
+                  <Thead>
+                    <Tr>
+                      <Th>{t('dashboard_mcp:mcp_name')}</Th>
+                      <Th>{t('dashboard_mcp:mcp_apps')}</Th>
+                      <Th w={'311px'}>{t('common:Action')}</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {mcpServerList.map((mcp) => {
+                      return (
+                        <Tr key={mcp._id} _hover={{ bg: 'myGray.100' }} h={'50px'}>
+                          <Td>{mcp.name}</Td>
+                          <Td>{mcp.apps.length}</Td>
+                          <Td h={'50px'} w={'311px'} py={'10px'}>
+                            <HStack spacing={2}>
+                              <Button
+                                variant={'whiteBase'}
+                                size={'sm'}
+                                onClick={() => setUsageWay(mcp)}
+                              >
+                                {t('dashboard_mcp:start_use')}
+                              </Button>
+                              <Button
+                                variant={'whiteBase'}
+                                size={'sm'}
+                                onClick={() =>
+                                  setEditMcp({
+                                    id: mcp._id,
+                                    name: mcp.name,
+                                    apps: mcp.apps
+                                  })
+                                }
+                              >
+                                {t('common:Edit')}
+                              </Button>
 
-            {/* table */}
-            <TableContainer mt={4} bg={'white'} borderRadius={'md'}>
-              <Table>
-                <Thead>
-                  <Tr borderBottom={'base'}>
-                    <Th bg={'white'}>{t('dashboard_mcp:mcp_name')}</Th>
-                    <Th bg={'white'}>{t('dashboard_mcp:mcp_apps')}</Th>
-                    <Th bg={'white'}></Th>
-                  </Tr>
-                </Thead>
-                <Tbody fontSize={'sm'}>
-                  {mcpServerList.map((mcp) => {
-                    return (
-                      <Tr key={mcp._id} fontWeight={500} fontSize={'sm'} color={'myGray.900'}>
-                        <Td>{mcp.name}</Td>
-                        <Td>{mcp.apps.length}</Td>
-                        <Td>
-                          <HStack>
-                            <Button
-                              mr={4}
-                              variant={'whiteBase'}
-                              size={'sm'}
-                              onClick={() => setUsageWay(mcp)}
-                            >
-                              {t('dashboard_mcp:start_use')}
-                            </Button>
-                            <MyIconButton
-                              icon="edit"
-                              onClick={() =>
-                                setEditMcp({
-                                  id: mcp._id,
-                                  name: mcp.name,
-                                  apps: mcp.apps
-                                })
-                              }
-                            />
-
-                            <PopoverConfirm
-                              Trigger={
-                                <Box>
-                                  <MyIconButton
-                                    icon="delete"
-                                    hoverBg="red.50"
-                                    hoverColor={'red.600'}
-                                  />
-                                </Box>
-                              }
-                              type="delete"
-                              content={t('dashboard_mcp:delete_mcp_server_confirm_tip')}
-                              onConfirm={() => onDeleteMcpServer(mcp._id)}
-                            />
-                          </HStack>
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                </Tbody>
-              </Table>
-              {mcpServerList.length === 0 && <EmptyTip />}
-            </TableContainer>
+                              <PopoverConfirm
+                                Trigger={
+                                  <Button variant={'whiteBase'} size={'sm'}>
+                                    {t('common:Delete')}
+                                  </Button>
+                                }
+                                type="delete"
+                                content={t('dashboard_mcp:delete_mcp_server_confirm_tip')}
+                                onConfirm={() => onDeleteMcpServer(mcp._id)}
+                              />
+                            </HStack>
+                          </Td>
+                        </Tr>
+                      );
+                    })}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+              {mcpServerList.length === 0 && <EmptyTip flex={1} py={0} justifyContent={'center'} />}
+            </Card>
           </MyBox>
         )}
       </DashboardContainer>
@@ -188,7 +188,7 @@ export default McpServer;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dashboard_mcp']))
+      ...(await serviceSideProps(content, ['dashboard_mcp', 'account']))
     }
   };
 }

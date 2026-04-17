@@ -12,7 +12,7 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, mdTextFormat } from './utils';
+import { CodeClassNameEnum, mdTextFormat, convertMdImagesToHtml } from './utils';
 import { useCreation } from 'ahooks';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
@@ -36,6 +36,7 @@ type Props = {
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
   hideCiteIcon?: boolean;
+  citeStyle?: 'icon' | 'index';
 } & AProps;
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -52,10 +53,23 @@ const MarkdownRender = ({
   isDisabled,
   forbidZhFormat,
   hideCiteIcon,
+  citeStyle,
 
   chatAuthData,
   onOpenCiteModal
 }: Props) => {
+  const citeIndexMap = useMemo(() => {
+    if (citeStyle !== 'index') return undefined;
+    const map = new Map<string, number>();
+    const regex = /[\[【]([a-f0-9]{24})[\]】]\((?:CITE|QUOTE)[^)]*\)/g;
+    let match;
+    let index = 1;
+    while ((match = regex.exec(source)) !== null) {
+      if (!map.has(match[1])) map.set(match[1], index++);
+    }
+    return map;
+  }, [citeStyle, source]);
+
   const components = useCreation(() => {
     return {
       img: (props: any) => <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />,
@@ -69,14 +83,16 @@ const MarkdownRender = ({
           chatAuthData={chatAuthData}
           onOpenCiteModal={onOpenCiteModal}
           hideCiteIcon={hideCiteIcon}
+          citeStyle={citeStyle}
+          citeIndexMap={citeIndexMap}
         />
       )
     };
-  }, [chatAuthData, onOpenCiteModal, showAnimation]);
+  }, [chatAuthData, onOpenCiteModal, showAnimation, citeStyle, citeIndexMap]);
 
   const formatSource = useMemo(() => {
-    if (showAnimation || forbidZhFormat) return source;
-    return mdTextFormat(source);
+    const text = showAnimation || forbidZhFormat ? source : mdTextFormat(source);
+    return convertMdImagesToHtml(text);
   }, [forbidZhFormat, showAnimation, source]);
 
   const urlTransform = useCallback((val: string) => {

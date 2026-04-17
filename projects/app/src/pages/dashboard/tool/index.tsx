@@ -1,5 +1,6 @@
+// @file 工具工作台页面，展示我的工具和系统工具列表
 'use client';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
@@ -35,6 +36,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import ToolModal from '@/pages/dashboard/create/ToolModal';
 import type { ToolModalAppType } from '@/pages/dashboard/create/ToolModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -95,6 +97,16 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     errorToast: 'Error'
   });
 
+  const toolTabList = useMemo(
+    () => [
+      { label: t('common:navbar.Tools'), value: 'my', path: '/dashboard/tool' },
+      { label: t('common:navbar.system_tool'), value: 'system', path: '/dashboard/systemTool' }
+    ],
+    [t]
+  );
+
+  const isSystemTool = router.pathname === '/dashboard/systemTool';
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex gap={5} flex={'1 0 0'} h={0}>
@@ -102,17 +114,17 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
+          pr={folderDetail ? 4 : 4}
+          pl={4}
           pt={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
-              <Box>
+          <Box display={'grid'} gridTemplateColumns={'1fr auto 1fr'} alignItems={'center'} gap={3}>
+            <Box>
+              {!isPc ? (
+                MenuIcon
+              ) : paths.length > 0 ? (
                 <FolderPath
                   paths={paths}
                   hoverStyle={{ bg: 'myGray.200' }}
@@ -126,14 +138,25 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     });
                   }}
                 />
-              </Box>
-            ) : (
-              <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-                {t('common:navbar.Tools')}
-              </Box>
-            )}
-            <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
+              ) : (
+                <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
+                  {t('common:navbar.Tools')}
+                </Box>
+              )}
+            </Box>
+            <Box>
+              {isPc && paths.length === 0 && (
+                <MyTabs
+                  tabs={toolTabList}
+                  value={isSystemTool ? 'system' : 'my'}
+                  onChange={(value) => {
+                    const tab = toolTabList.find((t) => t.value === value);
+                    if (tab) router.push(tab.path);
+                  }}
+                />
+              )}
+            </Box>
+            <Flex justifyContent={'flex-end'} alignItems={'center'} gap={3}>
               {isPc && (
                 <>
                   <MySelect
@@ -233,7 +256,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-          </Flex>
+          </Box>
 
           {!isPc && (
             <Box mt={2}>
@@ -242,7 +265,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   maxW={['auto', '250px']}
                   value={searchKey}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
+                  placeholder={t('app:search_tool')}
                   maxLength={30}
                 />
               }
@@ -335,7 +358,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user']))
+      ...(await serviceSideProps(content, ['app', 'user', 'account']))
     }
   };
 }

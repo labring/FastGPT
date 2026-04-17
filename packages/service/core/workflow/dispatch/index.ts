@@ -5,6 +5,7 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   NodeEdgeGroups,
   NodeEdgeGroupsMap,
@@ -1673,14 +1674,19 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
 /* Merge consecutive text messages into one */
 const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
   const result: AIChatItemValueItemType[] = [];
-  // 合并连续的text
+  // 合并连续的text和连续的reasoning
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
-    if (item.text) {
+    const lastItem = result[result.length - 1];
+    if (item.type === ChatItemValueTypeEnum.text) {
       let text = item.text?.content || '';
-      const lastItem = result[result.length - 1];
-      if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
+      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
         lastItem.text.content += text;
+        continue;
+      }
+    } else if (item.type === ChatItemValueTypeEnum.reasoning) {
+      if (lastItem && lastItem.type === ChatItemValueTypeEnum.reasoning && lastItem.reasoning) {
+        lastItem.reasoning.content += item.reasoning?.content || '';
         continue;
       }
     }

@@ -10,6 +10,7 @@ import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/templa
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 
@@ -22,6 +23,37 @@ type FormInputResponse = DispatchNodeResultType<{
   [key: string]: any;
 }>;
 
+const formatReferenceList = (value: any): { label: string; value: string }[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        const text = String(item);
+        return {
+          label: text,
+          value: text
+        };
+      }
+
+      if (typeof item === 'object' && item !== null) {
+        const record = item as Record<string, any>;
+        const text = record.value ?? record.label ?? record.name;
+
+        if (text !== undefined && text !== null) {
+          const valueText = String(text);
+          return {
+            label: valueText,
+            value: valueText
+          };
+        }
+      }
+
+      return undefined;
+    })
+    .filter((item): item is { label: string; value: string } => !!item);
+};
+
 /* 
   用户输入都内容，将会以 JSON 字符串格式进入工作流，可以从 query 的 text 中获取。
 */
@@ -31,9 +63,33 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     node,
     params: { description, userInputForms },
     query,
-    lastInteractive
+    lastInteractive,
+    runtimeNodes,
+    variables
   } = props;
   const { isEntry } = node;
+
+  const resolvedUserInputForms = userInputForms.map((form) => {
+    if (![FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(form.type)) {
+      return form;
+    }
+
+    if (form.listInputType !== FlowNodeInputTypeEnum.reference || !form.listReference) {
+      return form;
+    }
+
+    const resolvedReferenceValue = getReferenceVariableValue({
+      value: form.listReference,
+      nodesMap: new Map(runtimeNodes.map((node) => [node.nodeId, node])),
+      variables
+    });
+
+    return {
+      ...form,
+      list: formatReferenceList(resolvedReferenceValue),
+      listInputType: FlowNodeInputTypeEnum.custom as const
+    };
+  });
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userInput') {
@@ -42,7 +98,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         type: 'userInput',
         params: {
           description,
-          inputForm: userInputForms
+          inputForm: resolvedUserInputForms
         }
       }
     };
@@ -62,7 +118,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
 
   const userInputVal = Object.entries(rawUserInputVal).reduce(
     (acc, [key, value]) => {
-      const inputConfig = userInputForms.find((form) => form.key === key);
+      const inputConfig = resolvedUserInputForms.find((form) => form.key === key);
 
       if (inputConfig?.type === FlowNodeInputTypeEnum.password) {
         acc[key] = anyValueDecrypt(value);

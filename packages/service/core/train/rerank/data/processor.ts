@@ -12,7 +12,7 @@ import {
   RerankTrainsetStatusEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
-import { synthesizeRerankTrainDatas } from '../external';
+import { buildFineTuneData } from '../../common/synthesize/buildFineTuneData';
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
@@ -21,6 +21,7 @@ import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
+import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 
 /** Rerank train data generation processor */
 export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerateJobData> = async (
@@ -67,14 +68,6 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     { status: RerankTrainsetStatusEnum.generating }
   );
 
-  // Delete old data if force regenerate
-  if (generateConfig.forceRegenerate) {
-    await MongoRerankTrainsetData.deleteMany({
-      trainsetId,
-      source: RerankTrainDataSourceEnum.dataset
-    });
-  }
-
   // 4. Sample data from datasets
   const samples = await sampleDataFromDataset(targetDatasetIds, {
     datasetType: generateConfig.sampleSize ? 'random' : 'train',
@@ -90,42 +83,31 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
-  // 5. Call DiTing service to generate training data
-  let ditingResponse;
-  try {
-    ditingResponse = await synthesizeRerankTrainDatas({
-      samples: samples.map((s) => ({
-        datasetId: s.datasetId,
-        dataId: s.dataId,
-        q: s.q,
-        a: s.a,
-        indexes: formatSynthesisIndexesToPairs(s.indexes)
-      })),
-      config: generateConfig
-    });
-  } catch (ditingError) {
-    const error = createRerankEnhancedError(
-      null,
-      RerankTrainErrEnum.rerankTrainsetGenDitingFailed,
-      RerankTrainSuggestionEnum.rerankTrainsetGenDitingFailed,
-      (ditingError as Error).message
-    );
-    throw new TrainsetGenerationRetriableError(error);
-  }
+  // 5. Generate training data
+  const result = buildFineTuneData({
+    items: samples.map((s) => ({
+      dataId: s.dataId,
+      datasetId: s.datasetId,
+      q: s.q,
+      a: s.a,
+      indexes: formatSynthesisIndexesToPairs(s.indexes)
+    })),
+    minNegativeSamples: generateConfig.minNegativeSamples,
+    maxNegativeSamples: generateConfig.maxNegativeSamples,
+    includeOriginalQ: generateConfig.includeOriginalQ
+  });
 
-  // 6. Check if DiTing returned valid data
-  if (!ditingResponse.success || !ditingResponse.data || ditingResponse.data.length === 0) {
+  if (result.samples.length === 0) {
     const error = createRerankEnhancedError(
       null,
       RerankTrainErrEnum.rerankTrainsetGenDitingNoData,
-      RerankTrainSuggestionEnum.rerankTrainsetGenDitingNoData,
-      ditingResponse.error
+      RerankTrainSuggestionEnum.rerankTrainsetGenDitingNoData
     );
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 7. Save training data to database (no appId field)
-  const trainData = ditingResponse.data.map((item) => ({
+  // 6. Save training data to database (no appId field)
+  const trainData = result.samples.map((item) => ({
     trainsetId,
     teamId: trainset.teamId,
     query: item.query,
@@ -145,7 +127,21 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
   }));
 
   try {
-    await MongoRerankTrainsetData.insertMany(trainData);
+    if (generateConfig.forceRegenerate) {
+      // Atomically delete old data and insert new data.
+      // Deleting after generation succeeds means sampling/build failures cannot destroy existing data.
+      // The transaction guarantees that a DB failure during delete/insert rolls back both operations,
+      // keeping old data intact so the next retry can succeed.
+      await mongoSessionRun(async (session) => {
+        await MongoRerankTrainsetData.deleteMany(
+          { trainsetId, source: RerankTrainDataSourceEnum.dataset },
+          { session }
+        );
+        await MongoRerankTrainsetData.insertMany(trainData, { session });
+      });
+    } else {
+      await MongoRerankTrainsetData.insertMany(trainData);
+    }
   } catch (dbError) {
     const error = createRerankEnhancedError(
       null,
@@ -156,7 +152,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationRetriableError(error);
   }
 
-  // 8. Update trainset status to ready
+  // 7. Update trainset status to ready
   await MongoRerankTrainset.updateOne(
     { _id: trainsetId },
     {

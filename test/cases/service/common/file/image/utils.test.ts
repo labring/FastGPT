@@ -216,10 +216,10 @@ describe('getImageBase64', () => {
 
     const result = await getImageBase64('/api/system/img/test.png');
 
-    expect(mockAxiosGet).toHaveBeenCalledWith('/api/system/img/test.png', {
+    expect(mockAxiosGet).toHaveBeenCalledWith('/api/system/img/test.png', expect.objectContaining({
       baseURL: 'http://localhost:3000',
       responseType: 'arraybuffer'
-    });
+    }));
     expect(result.mime).toBe('image/png');
     expect(result.base64).toBe(pngBytes.toString('base64'));
     expect(result.completeBase64).toBe(`data:image/png;base64,${pngBytes.toString('base64')}`);

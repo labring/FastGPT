@@ -41,8 +41,8 @@ document/.source
 AGENTS.md
 projects/app/worker/
 projects/app/data/train/
-
-projects/app/worker/
-
 # Agent
 .codex
+
+# diting-rag-ts（source-based，无需 dist）
+packages/diting-rag-ts/dist/

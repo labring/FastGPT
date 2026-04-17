@@ -6,8 +6,15 @@
       "Edit",
       "WebFetch",
       "MCP",
+<<<<<<< HEAD
       "Agent(*)",
       "mcp__ide__getDiagnostics"
+=======
+      "Agent(*)"
+    ],
+    "additionalDirectories": [
+      "/data/home/cz/diting"
+>>>>>>> origin/develop-1.3.0
     ]
   }
 }

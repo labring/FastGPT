@@ -60,17 +60,20 @@ export const ChunkSettingsSchema = z.object({
   small2bigIndexes: z.boolean().optional().meta({ description: '小到大索引' }),
   syntheticIndex: z.boolean().optional().meta({ description: '合成索引' }),
   hypeIndexPrompt: z.string().optional().meta({ description: '超级索引提示词' }),
-  small2bigConfig: z.object({
-    chunkSize: z.number().optional(),
-    customSplitChar: z.string().optional(),
-    overlap: z.number().optional(),
-    overlapRatio: z.number().optional(),
-    maxChildChunks: z.number().optional(),
-    paragraphChunkDeep: z.number().optional(),
-    paragraphChunkMinSize: z.number().optional(),
-    maxSize: z.number().optional(),
-    customReg: z.array(z.string()).optional()
-  }).optional().meta({ description: '小到大索引配置' }),
+  small2bigConfig: z
+    .object({
+      chunkSize: z.number().optional(),
+      customSplitChar: z.string().optional(),
+      overlap: z.number().optional(),
+      overlapRatio: z.number().optional(),
+      maxChildChunks: z.number().optional(),
+      paragraphChunkDeep: z.number().optional(),
+      paragraphChunkMinSize: z.number().optional(),
+      maxSize: z.number().optional(),
+      customReg: z.array(z.string()).optional()
+    })
+    .optional()
+    .meta({ description: '小到大索引配置' }),
   autoIndexesPrompt: z.string().optional().meta({ description: '自动索引提示词' }),
   imageIndexPrompt: z.string().optional().meta({ description: '图片索引提示词' }),
   qaPrompt: z.string().optional().meta({ description: 'QA 拆分提示词' })
@@ -132,6 +135,16 @@ export const DatasetSchema = z
   .meta({ description: '知识库' });
 export type DatasetSchemaType = z.infer<typeof DatasetSchema>;
 
+/* ===== Collection tag value ===== */
+export type CollectionTagValueType = {
+  tagId: string; // 引用 dataset_collection_tags._id
+  value: string | number; // string 类型存字符串，datetime 类型存 UTC 毫秒时间戳（number）
+};
+export const CollectionTagValueSchema = z.object({
+  tagId: z.string().meta({ description: '标签 ID' }),
+  value: z.union([z.string(), z.number()]).meta({ description: '标签值' })
+});
+
 /* ===== Collection ===== */
 export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   trainingType: true
@@ -190,10 +203,13 @@ export const DatasetDataIndexItemSchema = z.object({
   dataId: z.string().meta({ description: 'vectorDB ID' }),
   text: z.string().meta({ description: '索引文本' }),
   synId: z.number().optional().meta({ description: '合成对 ID' }),
-  synonymMetadata: z.object({
-    synonymFileIds: z.array(z.string()),
-    transformations: z.array(z.any())
-  }).optional().meta({ description: '同义词转换元数据' })
+  synonymMetadata: z
+    .object({
+      synonymFileIds: z.array(z.string()),
+      transformations: z.array(z.any())
+    })
+    .optional()
+    .meta({ description: '同义词转换元数据' })
 });
 const DatasetDataIndexOptionalSchema = DatasetDataIndexItemSchema.omit({ dataId: true }).extend({
   dataId: z.string().optional().meta({
@@ -231,7 +247,10 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   rebuilding: z.boolean().optional().meta({ description: '重建中' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' }),
-  synonymProcessing: z.enum(['standardize', 'restore']).optional().meta({ description: '同义词处理状态' }),
+  synonymProcessing: z
+    .enum(['standardize', 'restore'])
+    .optional()
+    .meta({ description: '同义词处理状态' }),
   synonymFileIds: z.array(z.string()).optional().meta({ description: '同义词文件 ID' })
 });
 export type DatasetDataSchemaType = z.infer<typeof DatasetDataSchema>;
@@ -325,7 +344,8 @@ export type DatasetItemType = z.infer<typeof DatasetItemSchema>;
 /* ================= tag ===================== */
 export const DatasetTagSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '标签 ID' }),
-  tag: z.string().meta({ description: '标签' })
+  tag: z.string().meta({ description: '标签' }),
+  tagType: z.enum(['string', 'number', 'datetime']).optional().meta({ description: '标签类型' })
 });
 export type DatasetTagType = z.infer<typeof DatasetTagSchema>;
 

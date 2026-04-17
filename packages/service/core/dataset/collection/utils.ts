@@ -3,7 +3,10 @@ import type { ClientSession } from '../../../common/mongo';
 import { Types } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import type {
+  CollectionTagValueType,
+  CollectionWithDatasetType
+} from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -85,64 +88,97 @@ export const createOrGetCollectionTags = async ({
   teamId,
   session
 }: {
-  tags?: string[];
+  tags?: (string | CollectionTagValueType)[];
   datasetId: string;
   teamId: string;
   session?: ClientSession;
 }) => {
   if (!tags) return undefined;
-
   if (tags.length === 0) return [];
 
+  // 分离旧格式（string 内容）和新格式（key-value）
+  const stringContents = tags.filter((t): t is string => typeof t === 'string');
+  const kvItems = tags.filter(
+    (t): t is CollectionTagValueType => typeof t === 'object' && t !== null
+  );
+
+  // 合并所有需要查找/创建的 tag 内容
+  const allTagContents = [
+    ...stringContents,
+    ...kvItems.map((t) => t.tagId) // 输入时 tagId 为 tag 内容值
+  ];
+
+  if (allTagContents.length === 0) return [];
+
   const existingTags = await MongoDatasetCollectionTags.find(
-    {
-      teamId,
-      datasetId,
-      tag: { $in: tags }
-    },
+    { teamId, datasetId, tag: { $in: allTagContents } },
     undefined,
     { session }
   ).lean();
 
-  const existingTagContents = existingTags.map((tag) => tag.tag);
-  const newTagContents = tags.filter((tag) => !existingTagContents.includes(tag));
+  const existingTagMap = new Map(existingTags.map((t) => [t.tag, t._id]));
 
-  const newTags = await MongoDatasetCollectionTags.insertMany(
-    newTagContents.map((tagContent) => ({
-      teamId,
-      datasetId,
-      tag: tagContent
-    })),
-    { session, ordered: true }
-  );
+  const newTagContents = allTagContents.filter((content) => !existingTagMap.has(content));
+  if (newTagContents.length > 0) {
+    const newTags = await MongoDatasetCollectionTags.insertMany(
+      newTagContents.map((tagContent) => ({ teamId, datasetId, tag: tagContent })),
+      { session, ordered: true }
+    );
+    newTags.forEach((t) => existingTagMap.set(t.tag, t._id));
+  }
 
-  return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag._id)];
+  // 旧格式返回 ObjectId，新格式返回 { tagId: resolvedId, value }
+  const resolvedStringIds = stringContents.map((content) => existingTagMap.get(content)!);
+  const resolvedKvItems: CollectionTagValueType[] = kvItems.map((t) => ({
+    tagId: String(existingTagMap.get(t.tagId)!),
+    value: t.value
+  }));
+
+  return [...resolvedStringIds, ...resolvedKvItems];
 };
 
+/**
+ * 将集合的标签 ID/对象列表转换为可展示的标签标识列表。
+ *
+ * - 旧格式（字符串 ObjectId）：查询数据库，将 ID 映射为对应的标签名称字符串。
+ * - 新格式（CollectionTagValueType 对象）：直接透传，无需查询。
+ *
+ * @param datasetId - 所属知识库 ID，用于查询旧格式标签
+ * @param tags - 待转换的标签列表（可为 undefined）
+ * @returns 转换后的标签列表；若入参为空或结果为空则返回 undefined
+ */
 export const collectionTagsToTagLabel = async ({
   datasetId,
   tags
 }: {
   datasetId: string;
-  tags?: string[];
-}) => {
+  tags?: (string | CollectionTagValueType)[];
+}): Promise<(string | CollectionTagValueType)[] | undefined> => {
   if (!tags) return undefined;
   if (tags.length === 0) return;
 
-  // Get all the tags
-  const collectionTags = await MongoDatasetCollectionTags.find({ datasetId }, undefined, {
-    ...readFromSecondary
-  }).lean();
-  const tagsMap = new Map<string, string>();
-  collectionTags.forEach((tag) => {
-    tagsMap.set(String(tag._id), tag.tag);
-  });
+  // 分离新旧格式
+  const oldFormatIds = tags.filter((t): t is string => typeof t === 'string');
+  const newFormatItems = tags.filter(
+    (t): t is CollectionTagValueType => typeof t === 'object' && t !== null
+  );
 
-  return tags
-    .map((tag) => {
-      return tagsMap.get(tag) || '';
-    })
-    .filter(Boolean);
+  // 旧格式：ObjectId → 标签名
+  let oldFormatLabels: string[] = [];
+  if (oldFormatIds.length > 0) {
+    const collectionTags = await MongoDatasetCollectionTags.find({ datasetId }, undefined, {
+      ...readFromSecondary
+    }).lean();
+    const tagsMap = new Map<string, string>();
+    collectionTags.forEach((tag) => {
+      tagsMap.set(String(tag._id), tag.tag);
+    });
+    oldFormatLabels = oldFormatIds.map((tag) => tagsMap.get(tag) || '').filter(Boolean);
+  }
+
+  // 新格式：直接返回
+  const result: (string | CollectionTagValueType)[] = [...oldFormatLabels, ...newFormatItems];
+  return result.length > 0 ? result : undefined;
 };
 
 export const syncCollection = async (collection: CollectionWithDatasetType) => {
@@ -207,10 +243,10 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
           ...collection,
           name: title || collection.name,
           updateTime: new Date(),
-          tags: await collectionTagsToTagLabel({
+          tags: (await collectionTagsToTagLabel({
             datasetId: collection.datasetId,
             tags: collection.tags
-          })
+          })) as string[] | undefined
         }
       });
     });

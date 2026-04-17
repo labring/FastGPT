@@ -41,6 +41,7 @@ const BaseModelItemSchema = z.object({
 
   isActive: z.boolean().optional(),
   isCustom: z.boolean().optional(),
+  isTuned: z.boolean().optional(), // Whether this is a fine-tuned model created by training module
   isDefault: z.boolean().optional(),
 
   // If has requestUrl, it will request the model directly

@@ -45,7 +45,7 @@ import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from '../CollectionCard/Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import HeaderTagPopOver from '../CollectionCard/HeaderTagPopOver';
+import HeaderTagPopOver from './HeaderTagPopOver';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';

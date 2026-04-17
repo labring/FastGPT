@@ -5,10 +5,7 @@ import { MessageCardStyle } from '../../constants';
 import { formatChatValue2InputType } from '../../utils';
 import Markdown from '@/components/Markdown';
 import styles from '../../index.module.scss';
-import {
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from '../FilesBox';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
@@ -61,7 +58,7 @@ type Props = BasicProps & {
 };
 
 // 轻量级引用展示组件
-const SimpleCitationDisplay = React.memo(
+export const SimpleCitationDisplay = React.memo(
   function SimpleCitationDisplay({
     historyItem,
     datasetReadPerMap
@@ -123,21 +120,21 @@ const SimpleCitationDisplay = React.memo(
       <>
         {/* 引用头部 */}
         <Flex
-          mt={3}
+          mt={2}
           height={'24px'}
           alignItems={'center'}
           cursor={'pointer'}
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <MyIcon name="core/chat/quoteBg" w={'14px'} h={'14px'} mr={2} />
-          <Box fontSize={'12px'} lineHeight={'12px'} color={'#333'} fontWeight={500} mr={2}>
+          <Box fontSize={'12px'} lineHeight={'12px'} color={'myWhite.1000'} fontWeight={500} mr={2}>
             {t('app:chat_item_citation_source', { count: citationList.length })}
           </Box>
           <MyIcon
             name={isExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
             w={'12px'}
             h={'12px'}
-            color={'#485164'}
+            color={'myGray.550'}
           />
         </Flex>
 
@@ -145,9 +142,10 @@ const SimpleCitationDisplay = React.memo(
         {isExpanded && (
           <Box
             mt={2}
-            background={'#FAFBFC'}
+            background={'myGray.25'} /* Blue Gray/L70 ------------ #FAFBFC */
             borderRadius={'4px'}
-            p={3}
+            py={'16px'}
+            px={'12px'}
             gap={2}
             display="flex"
             flexDirection="column"
@@ -160,7 +158,7 @@ const SimpleCitationDisplay = React.memo(
                 <Flex
                   height={'16px'}
                   alignItems={'center'}
-                  pl={'12px'}
+                  gap={'4px'}
                   cursor={item.noPermission ? 'not-allowed' : 'pointer'}
                   opacity={item.noPermission ? 0.5 : 1}
                   onClick={() => {
@@ -180,8 +178,8 @@ const SimpleCitationDisplay = React.memo(
                     alignItems={'center'}
                     justifyContent={'center'}
                     fontSize={'10px'}
-                    color={'#909499'}
-                    background={'#F0F2F5'}
+                    color={'myWhite.850'}
+                    background={'myGray.150'}
                     borderRadius={'10px'}
                     mr={'5px'}
                     flexShrink={0}
@@ -191,9 +189,9 @@ const SimpleCitationDisplay = React.memo(
                   <Box
                     className="citation-file-name"
                     fontSize={'12px'}
-                    lineHeight={'14px'}
-                    color={item.noPermission ? '#909499' : '#1A7EFF'}
-                    ml={1}
+                    lineHeight={'16px'}
+                    color={item.noPermission ? 'myWhite.850' : 'blue.700'}
+                    noOfLines={1}
                   >
                     {item.displayText}
                   </Box>
@@ -210,8 +208,9 @@ const SimpleCitationDisplay = React.memo(
     prevProps.datasetReadPerMap === nextProps.datasetReadPerMap
 );
 
-const HumanContentCard = React.memo(
+export const HumanContentCard = React.memo(
   function HumanContentCard({ chatValue }: { chatValue: ChatItemValueItemType[] }) {
+    window.console.log(chatValue, formatChatValue2InputType(chatValue));
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     return (
       <Flex
@@ -316,7 +315,12 @@ const ChatItem = (props: Props) => {
 
     // Remove empty text node
     const filterList = chat.value.filter((item) => {
-      if ('text' in item && item.text && !item.text?.content?.trim() && !('interactive' in item && item.interactive)) {
+      if (
+        'text' in item &&
+        item.text &&
+        !item.text?.content?.trim() &&
+        !('interactive' in item && item.interactive)
+      ) {
         return false;
       }
       return true;
@@ -456,7 +460,7 @@ const ChatItem = (props: Props) => {
                   isChatting={isChatting}
                 />
                 <SimpleCitationDisplay historyItem={chat} datasetReadPerMap={datasetReadPerMap} />
-                <Box color="#CCCCCC" mt={2} fontSize={'0.85rem'}>
+                <Box color={'myWhite.700'} mt={2} fontSize={'0.85rem'}>
                   {t('app:chat_item_cost_time')} {chat.durationSeconds}s
                 </Box>
               </>

@@ -14,24 +14,20 @@ import {
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { type ChatItemType, type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 import { getPaginationChatItems } from '@fastgpt/service/core/chat/controller';
-import {
-  GetPaginationRecordsBodySchema
-} from '@fastgpt/global/openapi/core/chat/record/api';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { GetPaginationRecordsBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 
-// Type for chat item with rewriteStandardizedQuery property using intersection type
+// Type for chat item with rewriteStandardizedQuery and agenticSearchResult property using intersection type
 type ChatItemWithRewrite = ChatItemType & {
   rewriteStandardizedQuery?: string;
+  agenticSearchResult?: ChatHistoryItemResType['agenticSearchResult'];
 };
 
-export async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-) {
+export async function handler(req: ApiRequestProps, _res: NextApiResponse) {
   const chatLogsFilter =
     ((req.body as any)?.chatLogsFilter as `${ChatLogsFilterEnum}`) ?? ChatLogsFilterEnum.all;
   const {
@@ -159,6 +155,14 @@ export async function handler(
           if (standardizedQuery) {
             item.rewriteStandardizedQuery = standardizedQuery;
           }
+        }
+      }
+    }
+    if (item.obj === ChatRoleEnum.AI && item.responseData) {
+      for (const response of item.responseData) {
+        if (response.agenticSearchResult) {
+          item.agenticSearchResult = response.agenticSearchResult;
+          break;
         }
       }
     }

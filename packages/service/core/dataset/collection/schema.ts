@@ -87,7 +87,7 @@ const DatasetCollectionSchema = new Schema({
     required: true
   },
   tags: {
-    type: [String],
+    type: [],
     default: []
   },
 
@@ -183,8 +183,10 @@ try {
     updateTime: -1
   });
 
-  // Tag filter
+  // Tag filter (旧格式: tags 为 ObjectId 数组)
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
+  // Tag filter (新格式: tags 为 { tagId, value } 对象数组，按 tagId 过滤走此索引)
+  DatasetCollectionSchema.index({ 'tags.tagId': 1 });
   // create time filter
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
 
