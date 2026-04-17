@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum, NodeColorSchemaEnum, NodeGradients } from '../node/constant';
+import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';

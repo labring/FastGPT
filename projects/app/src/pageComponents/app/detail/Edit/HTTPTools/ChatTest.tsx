@@ -77,7 +77,6 @@ const ChatTest = ({
       }
     }
   );
-  console.log(currentTool);
 
   return (
     <Flex h={'full'} gap={2}>

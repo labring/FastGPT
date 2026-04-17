@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   getMCPToolSetRuntimeNode,
   getMCPToolRuntimeNode,
-  getMCPParentId
+  parsetMcpToolConfig
 } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
   FlowNodeTypeEnum,
@@ -150,40 +150,71 @@ describe('mcpTool utils', () => {
     });
   });
 
-  describe('getMCPParentId', () => {
-    it('should extract parentId from mcp-parentId/toolName format', () => {
-      const result = getMCPParentId('mcp-123456/searchTool');
-      expect(result).toBe('123456');
+  describe('parsetMcpToolConfig', () => {
+    it('should return toolSetId directly when it is provided', () => {
+      const result = parsetMcpToolConfig({
+        toolSetId: 'toolset-123',
+        toolId: 'mcp-toolset-999/someTool'
+      });
+
+      expect(result).toBe('toolset-123');
     });
 
-    it('should extract parentId from parentId/toolName format', () => {
-      const result = getMCPParentId('123456/searchTool');
-      expect(result).toBe('123456');
+    it('should parse toolSetId from toolId when toolSetId is missing', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'mcp-toolset-456/someTool'
+      });
+
+      expect(result).toBe('toolset-456');
     });
 
-    it('should extract parentId from mcp-parentId format (no tool name)', () => {
-      const result = getMCPParentId('mcp-123456');
-      expect(result).toBe('123456');
+    it('should parse toolSetId from toolId when toolSetId is empty string', () => {
+      const result = parsetMcpToolConfig({
+        toolSetId: '',
+        toolId: 'mcp-toolset-789/searchTool'
+      });
+
+      expect(result).toBe('toolset-789');
     });
 
-    it('should handle complex parentId with multiple dashes', () => {
-      const result = getMCPParentId('mcp-abc-def-123/toolName');
-      expect(result).toBe('123');
+    it('should return undefined when toolId does not match mcp- prefix pattern', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'system-foo/bar'
+      });
+
+      expect(result).toBeUndefined();
     });
 
-    it('should handle parentId without prefix', () => {
-      const result = getMCPParentId('507f1f77bcf86cd799439011/myTool');
-      expect(result).toBe('507f1f77bcf86cd799439011');
+    it('should return undefined when toolId has no slash separator', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'mcp-toolset-no-tool'
+      });
+
+      expect(result).toBeUndefined();
     });
 
-    it('should return empty string for empty string input', () => {
-      const result = getMCPParentId('');
-      expect(result).toBe('');
+    it('should return undefined when toolSetId segment is empty in toolId', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'mcp-/toolName'
+      });
+
+      expect(result).toBeUndefined();
     });
 
-    it('should handle id with only prefix', () => {
-      const result = getMCPParentId('mcp-');
-      expect(result).toBe('');
+    it('should return undefined when toolId is empty string', () => {
+      const result = parsetMcpToolConfig({
+        toolId: ''
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should parse toolSetId correctly when tool name contains additional slashes', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'mcp-toolset-abc/namespace/nestedTool'
+      });
+
+      expect(result).toBe('toolset-abc');
     });
   });
 });

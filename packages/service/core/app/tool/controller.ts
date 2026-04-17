@@ -402,10 +402,10 @@ export async function getChildAppPreviewNode({
     else if (source === AppToolSourceEnum.mcp) {
       const [parentId, toolName] = pluginId.split('/');
       // 1. get parentApp
-      const item = await MongoApp.findById(parentId).lean();
-      if (!item) return Promise.reject(PluginErrEnum.unExist);
+      const toolset = await MongoApp.findById(parentId).lean();
+      if (!toolset) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const version = await getAppVersionById({ appId: parentId, versionId, app: toolset });
       const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {
@@ -413,21 +413,23 @@ export async function getChildAppPreviewNode({
           return toolConfig.toolList.find((item) => item.name === toolName);
         }
         // old mcp toolset
-        return (await getMCPChildren(item)).find((item) => item.name === toolName);
+        return (await getMCPChildren(toolset)).find((item) => item.name === toolName);
       })();
       if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
-        avatar: item.avatar,
+        avatar: toolset.avatar,
         id: appId,
-        name: tool.name,
+        name: `${toolset.name}/${tool.name}`,
+        intro: tool.description,
         templateType: FlowNodeTemplateTypeEnum.tools,
+        // workflow 仅用于推断 IO
         workflow: {
           nodes: [
             getMCPToolRuntimeNode({
               nodeId: getNanoid(6),
-              toolSetId: item._id,
-              toolsetName: item.name,
-              avatar: item.avatar,
+              toolSetId: toolset._id,
+              toolsetName: toolset.name,
+              avatar: toolset.avatar,
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
@@ -444,10 +446,10 @@ export async function getChildAppPreviewNode({
     // http tool
     else if (source === AppToolSourceEnum.http) {
       const [parentId, toolName] = pluginId.split('/');
-      const item = await MongoApp.findById(parentId).lean();
-      if (!item) return Promise.reject(PluginErrEnum.unExist);
+      const toolset = await MongoApp.findById(parentId).lean();
+      if (!toolset) return Promise.reject(PluginErrEnum.unExist);
 
-      const version = await getAppVersionById({ appId: parentId, versionId, app: item });
+      const version = await getAppVersionById({ appId: parentId, versionId, app: toolset });
       const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {
@@ -457,23 +459,24 @@ export async function getChildAppPreviewNode({
       })();
       if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
-        avatar: item.avatar,
+        avatar: toolset.avatar,
         id: appId,
-        name: tool.name,
+        name: `${toolset.name}/${tool.name}`,
+        intro: tool.description,
         templateType: FlowNodeTemplateTypeEnum.tools,
         workflow: {
           nodes: [
             getHTTPToolRuntimeNode({
               nodeId: getNanoid(6),
-              toolSetId: item._id,
-              toolsetName: item.name,
+              toolSetId: toolset._id,
+              toolsetName: toolset.name,
               tool: {
                 description: tool.description,
                 inputSchema: tool.inputSchema,
                 outputSchema: tool.outputSchema,
                 name: tool.name
               },
-              avatar: item.avatar
+              avatar: toolset.avatar
             })
           ],
           edges: []
@@ -552,12 +555,11 @@ export async function getChildAppPreviewNode({
       };
     }
 
-    // Mcp
+    // Mcp toolset
     if (
       !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
       app.workflow.nodes.length === 1
     ) {
-      // mcp tools
       return {
         flowNodeType: FlowNodeTypeEnum.toolSet,
         nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })

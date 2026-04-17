@@ -1548,6 +1548,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           const startTime = Date.now();
 
           await rewriteRuntimeWorkFlow({
+            teamId: data.runningAppInfo.teamId,
             nodes: data.runtimeNodes,
             edges: data.runtimeEdges,
             lang: data.lang

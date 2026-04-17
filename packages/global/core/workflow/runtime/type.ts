@@ -29,6 +29,7 @@ import { type UserChatItemValueItemType } from '../../chat/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
+import type { JSONSchemaInputType } from '../../app/jsonschema';
 
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
@@ -135,6 +136,7 @@ export type RuntimeNodeItemType = {
 
   // Tool
   toolConfig?: StoreNodeItemType['toolConfig'];
+  jsonSchema?: JSONSchemaInputType;
 
   // catch error
   catchError?: boolean;

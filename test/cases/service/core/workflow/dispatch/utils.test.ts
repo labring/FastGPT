@@ -694,7 +694,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const edges = [makeEdge('n1', 'n2')];
     const originalNodesLen = nodes.length;
     const originalEdgesLen = edges.length;
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
     expect(nodes.length).toBe(originalNodesLen);
     expect(edges.length).toBe(originalEdgesLen);
   });
@@ -712,7 +712,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const childNode = makeNode('child1', 'systemTool');
     mockGetSystemToolRunTimeNodeFromSystemToolset.mockResolvedValue([childNode]);
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts1')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'child1')).toBeDefined();
@@ -740,7 +740,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     });
     mockGetMCPChildren.mockResolvedValue([{ name: 'tool1', description: 'desc', inputSchema: {} }]);
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toBeDefined();
@@ -762,7 +762,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts3')).toBeUndefined();
   });
@@ -787,7 +787,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
     ];
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
