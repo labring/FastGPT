@@ -183,7 +183,7 @@ export async function initSystemConfig() {
       show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
-      show_evaluation: process.env.SHOW_EVALUATION === 'true',
+      show_evaluation: fastgptConfig.feConfigs?.show_evaluation ?? (process.env.SHOW_EVALUATION === 'true'),
       payFormUrl: process.env.PAY_FORM_URL || ''
     },
     systemEnv: {
@@ -254,3 +254,4 @@ export async function initAppTemplateTypes() {
     console.error('Error initializing system templates:', error);
   }
 }
+
