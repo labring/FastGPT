@@ -45,9 +45,17 @@ type UseNestedNodeResult = {
  * Returns only what the component JSX needs (nodeWidth, nodeHeight, inputBoxRef).
  */
 export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNestedNodeResult => {
-  const { getNodeById, nodeIds, nodeAmount, getNodeList, systemConfigNode } = useContextSelector(
+  const { getNodeById, nodeIds, childNodeIds, getNodeList, systemConfigNode } = useContextSelector(
     WorkflowBufferDataContext,
-    (v) => v
+    (v) => {
+      return {
+        getNodeById: v.getNodeById,
+        nodeIds: v.nodeIds,
+        childNodeIds: v.childrenNodeIdListMap[nodeId],
+        getNodeList: v.getNodeList,
+        systemConfigNode: v.systemConfigNode
+      };
+    }
   );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -122,12 +130,6 @@ export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNeste
   }, [nestedInputArray, newValueType, nodeId, onChangeNode]);
 
   // ── 3. Maintain childrenNodeIdList ──────────────────────────────────────────
-  const childrenNodeIdList = useMemoEnhance(() => {
-    return getNodeList()
-      .filter((node) => node.parentNodeId === nodeId)
-      .map((node) => node.nodeId);
-  }, [nodeId, getNodeList, nodeAmount]);
-
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -135,16 +137,17 @@ export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNeste
       key: NodeInputKeyEnum.childrenNodeIdList,
       value: {
         ...Input_Template_Children_Node_List,
-        value: childrenNodeIdList
+        value: childNodeIds
       }
     });
-    resetParentNodeSizeAndPosition(nodeId);
-  }, [childrenNodeIdList, nodeId, onChangeNode, resetParentNodeSizeAndPosition]);
+    // 等待 ReactFlow 完成新子节点的宽高测量后再计算,否则 bounds 会少算整个新节点
+    const timer = setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50);
+    return () => clearTimeout(timer);
+  }, [childNodeIds, nodeId, onChangeNode, resetParentNodeSizeAndPosition]);
 
   // ── 4 & 5. Measure input-box height, sync and re-layout ────────────────────
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const size = useSize(inputBoxRef);
-
   useEffect(() => {
     if (!size?.height) return;
 
@@ -158,10 +161,8 @@ export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNeste
       }
     });
 
-    setTimeout(() => {
-      resetParentNodeSizeAndPosition(nodeId);
-    }, 50);
-
+    const timer = setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [size?.height]);
 

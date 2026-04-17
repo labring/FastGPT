@@ -113,7 +113,7 @@ const ChatSchema = new Schema({
       ChatGenerateStatusEnum.done,
       ChatGenerateStatusEnum.error
     ],
-    default: ChatGenerateStatusEnum.generating
+    default: ChatGenerateStatusEnum.done
   },
   hasBeenRead: {
     type: Boolean,

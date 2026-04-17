@@ -218,7 +218,7 @@ const generateProdFile = async () => {
       replace(template, 'cn', VectorEnum.zilliz)
     ),
     fs.promises.writeFile(
-      path.join(process.cwd(), 'docker', 'global', 'docker-compose.ziliiz.yml'),
+      path.join(process.cwd(), 'docker', 'global', 'docker-compose.zilliz.yml'),
       replace(template, 'global', VectorEnum.zilliz)
     ),
     fs.promises.writeFile(

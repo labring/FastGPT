@@ -210,7 +210,7 @@ echo "正在下载配置文件..."
 # 构建下载链接（处理 global 下 zilliz 文件名差异）
 VECTOR_FILE="$VECTOR"
 if [ "$REGION" == "global" ] && [ "$VECTOR" == "zilliz" ]; then
-    VECTOR_FILE="ziliiz"
+    VECTOR_FILE="zilliz"
 fi
 
 if [ "$REGION" == "cn" ]; then

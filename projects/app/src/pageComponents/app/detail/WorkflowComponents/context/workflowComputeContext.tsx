@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import type { Node } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowActionsContext } from './workflowActionsContext';
 import { useMemoizedFn } from 'ahooks';
 
 // 创建 Context
