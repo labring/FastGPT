@@ -117,15 +117,15 @@ const ChatTest = ({
 
             {activeTab === 'input' ? (
               <Box flex={1} px={[2, 5]} overflow={'auto'}>
-                {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 ? (
+                {Object.keys(currentTool?.inputSchema?.properties || {}).length > 0 ? (
                   <>
                     <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
-                      {Object.entries(currentTool?.inputSchema.properties || {}).map(
+                      {Object.entries(currentTool?.inputSchema?.properties || {}).map(
                         ([paramName, paramInfo]) => {
                           const inputType = valueTypeToInputType(
                             getNodeInputTypeFromSchemaInputType({ type: paramInfo.type })
                           );
-                          const required = currentTool?.inputSchema.required?.includes(paramName);
+                          const required = currentTool?.inputSchema?.required?.includes(paramName);
 
                           return (
                             <LabelAndFormRender

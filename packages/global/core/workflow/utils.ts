@@ -18,7 +18,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import { type StoreNodeItemType } from './type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
   AppTTSConfigType,
@@ -333,15 +333,37 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
 export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
-  const toolConfig = (() => {
-    if (!toolSetNode?.toolConfig) return toolSetNode?.toolConfig;
-    if (!toolSetNode.toolConfig.httpToolSet) return toolSetNode.toolConfig;
+  // 加工 toolConfig, 移除一些无需返回客户端以及无需单独存储到 node 的数据。
+  const toolConfig: NodeToolConfigType | undefined = (() => {
+    if (!toolSetNode?.toolConfig) return undefined;
 
-    const { apiSchemaStr, ...restHttpToolSet } = toolSetNode.toolConfig.httpToolSet;
-    return {
-      ...toolSetNode.toolConfig,
-      httpToolSet: restHttpToolSet
-    };
+    if (toolSetNode.toolConfig.httpToolSet) {
+      const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
+        const { requestSchema, inputSchema, outputSchema, ...restTool } = tool;
+        return restTool;
+      });
+      return {
+        ...toolSetNode.toolConfig,
+        httpToolSet: {
+          toolList
+        }
+      };
+    }
+    if (toolSetNode.toolConfig.mcpToolSet) {
+      const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
+        const { inputSchema, ...restTool } = tool;
+        return restTool;
+      });
+      return {
+        ...toolSetNode.toolConfig,
+        mcpToolSet: {
+          url: '',
+          toolList: formatToolList
+        }
+      };
+    }
+
+    return toolSetNode.toolConfig;
   })();
 
   return {

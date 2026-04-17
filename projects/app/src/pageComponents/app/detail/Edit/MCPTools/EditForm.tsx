@@ -231,11 +231,11 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
         </Box>
 
         <Box mt={3}>
-          {Object.entries(tool.inputSchema.properties || {}).map(
+          {Object.entries(tool.inputSchema?.properties || {}).map(
             ([paramName, paramInfo]: [string, JsonSchemaPropertiesItemType]) => (
               <Box key={paramName} py={2} borderBottom={'1px solid'} borderColor={'myGray.150'}>
                 <Flex alignItems="center">
-                  {tool.inputSchema.required?.includes(paramName) && (
+                  {tool.inputSchema?.required?.includes(paramName) && (
                     <Box mr={1} color="red.500">
                       *
                     </Box>

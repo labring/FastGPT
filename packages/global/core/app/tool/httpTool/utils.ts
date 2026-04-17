@@ -70,7 +70,7 @@ export const getHTTPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
-    jsonSchema: tool.inputSchema,
+    jsonSchema: tool.requestSchema,
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
     outputs: [
       ...jsonSchema2NodeOutput(tool.outputSchema),
@@ -98,10 +98,12 @@ export const pathData2ToolList = async (
       const inputRequired: string[] = [];
       const outputProperties: Record<string, JsonSchemaPropertiesItemType> = {};
       const outputRequired: string[] = [];
+      let requestSchema = undefined;
 
       if (pathItem.params && Array.isArray(pathItem.params)) {
         pathItem.params.forEach((param) => {
           if (param.name && param.schema) {
+            requestSchema = param.schema;
             inputProperties[param.name] = {
               type: param.schema.type || 'any',
               description: param.description || '',
@@ -115,7 +117,7 @@ export const pathData2ToolList = async (
         });
       }
       if (pathItem.request?.content?.['application/json']?.schema) {
-        const requestSchema = pathItem.request.content['application/json'].schema;
+        requestSchema = pathItem.request.content['application/json'].schema;
 
         if (requestSchema.properties) {
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
@@ -158,6 +160,7 @@ export const pathData2ToolList = async (
         description: pathItem.description || pathItem.name,
         path: pathItem.path,
         method: pathItem.method?.toLowerCase(),
+        requestSchema,
         inputSchema: {
           type: 'object',
           properties: inputProperties,

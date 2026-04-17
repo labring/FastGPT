@@ -400,7 +400,8 @@ export async function getChildAppPreviewNode({
     }
     // mcp tool
     else if (source === AppToolSourceEnum.mcp) {
-      const [parentId, toolName] = pluginId.split('/');
+      const [parentId, ...rest] = pluginId.split('/');
+      const toolName = rest.join('/');
       // 1. get parentApp
       const toolset = await MongoApp.findById(parentId).lean();
       if (!toolset) return Promise.reject(PluginErrEnum.unExist);
@@ -445,7 +446,9 @@ export async function getChildAppPreviewNode({
     }
     // http tool
     else if (source === AppToolSourceEnum.http) {
-      const [parentId, toolName] = pluginId.split('/');
+      console.log('pluginId', pluginId);
+      const [parentId, ...rest] = pluginId.split('/');
+      const toolName = rest.join('/');
       const toolset = await MongoApp.findById(parentId).lean();
       if (!toolset) return Promise.reject(PluginErrEnum.unExist);
 
@@ -555,7 +558,7 @@ export async function getChildAppPreviewNode({
       };
     }
 
-    // Mcp toolset
+    // Mcp toolset/Http toolset
     if (
       !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
       app.workflow.nodes.length === 1

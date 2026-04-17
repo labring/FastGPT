@@ -103,12 +103,12 @@ const ManualToolModal = ({
       path: editingTool.path,
       headerSecret: editingTool.headerSecret || {},
       customParams: editingTool
-        ? Object.entries(editingTool.inputSchema.properties || {}).map(
+        ? Object.entries(editingTool.inputSchema?.properties || {}).map(
             ([key, value]: [string, any]) => ({
               key,
               description: value.description || '',
               type: value.type || 'string',
-              required: editingTool.inputSchema.required?.includes(key) || false,
+              required: editingTool.inputSchema?.required?.includes(key) || false,
               isTool: !!value['x-tool-description']
             })
           )

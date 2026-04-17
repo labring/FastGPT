@@ -40,6 +40,7 @@ import { presignVariablesFileUrls } from '../../chat/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getMcpToolsets } from '../../app/tool/mcpTool/entity';
+import { getHTTPToolList } from '../../app/http';
 
 /* get system variable */
 export const getSystemVariables = async ({
@@ -449,7 +450,12 @@ export const rewriteRuntimeWorkFlow = async ({
             pushEdges(newToolNode.nodeId);
           });
         } else if (httpToolsetVal) {
-          httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
+          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          if (!app) continue;
+
+          const toolList = await getHTTPToolList(app);
+
+          toolList.forEach((tool: HttpToolConfigType, index: number) => {
             const newToolNode = getHTTPToolRuntimeNode({
               tool,
               nodeId: `${toolSetNode.nodeId}${index}`,
