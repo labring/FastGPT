@@ -498,51 +498,132 @@ describe('stream resume api', () => {
     expect(res.end).toHaveBeenCalledTimes(1);
   });
 
-  it('should emit a resume unavailable event when mirror creation was skipped by memory pressure', async () => {
-    vi.mocked(MongoChat.findOne).mockReturnValue(
-      createFindOneResult({
-        hasBeenRead: false,
-        chatGenerateStatus: ChatGenerateStatusEnum.generating
-      })
-    );
+  it('should emit a resume unavailable event and later push completed chat records', async () => {
+    vi.useFakeTimers();
+    try {
+      const chatStates = [
+        {
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.generating
+        },
+        {
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.generating
+        },
+        {
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.done
+        },
+        {
+          hasBeenRead: false,
+          chatGenerateStatus: ChatGenerateStatusEnum.done
+        }
+      ];
 
-    const redis = getGlobalRedisConnection() as any;
-    const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
-    redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
+      vi.mocked(MongoChat.findOne).mockImplementation(() =>
+        createFindOneResult(chatStates.shift())
+      );
+      vi.mocked(MongoChat.updateOne).mockResolvedValue({ acknowledged: true } as any);
+      vi.mocked(getChatItems).mockResolvedValue({
+        histories: [
+          {
+            dataId: 'ai-response-pressure',
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: 'final answer after pressure recovered'
+                }
+              }
+            ],
+            time: new Date('2026-04-07T12:02:00.000Z')
+          }
+        ],
+        total: 1,
+        hasMorePrev: false,
+        hasMoreNext: false
+      } as any);
 
-    await getStreamResumeMirror({
-      resumeRequestHeaderValue: 'true',
-      teamId,
-      appId,
-      chatId
-    });
+      const redis = getGlobalRedisConnection() as any;
+      const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
+      redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
-    redis.call = vi.fn();
-    redis.duplicate = vi.fn();
-
-    const { chunks, res } = await invokeStreamingHandler(
-      {
+      await getStreamResumeMirror({
+        resumeRequestHeaderValue: 'true',
         teamId,
         appId,
         chatId
-      },
-      {
-        headers: {
-          accept: 'text/event-stream'
-        }
-      }
-    );
+      });
 
-    expect(chunks).toEqual([
-      `event: ${StreamResumePhaseEvent}\ndata: ${StreamResumePhaseEnum.catchup}\n\n`,
-      `event: ${StreamResumeUnavailableEvent}\ndata: ${JSON.stringify({
-        reason: StreamResumeUnavailableReasonEnum.memoryPressure
-      })}\n\n`,
-      'event: done\ndata: [DONE]\n\n'
-    ]);
-    expect(redis.call).not.toHaveBeenCalled();
-    expect(redis.duplicate).not.toHaveBeenCalled();
-    expect(res.end).toHaveBeenCalledTimes(1);
+      redis.call = vi.fn();
+      redis.duplicate = vi.fn();
+
+      const responsePromise = invokeStreamingHandler(
+        {
+          teamId,
+          appId,
+          chatId
+        },
+        {
+          headers: {
+            accept: 'text/event-stream'
+          }
+        }
+      );
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      const { chunks, res } = await responsePromise;
+
+      expect(chunks).toHaveLength(4);
+      expect(chunks[0]).toBe(
+        `event: ${StreamResumePhaseEvent}\ndata: ${StreamResumePhaseEnum.catchup}\n\n`
+      );
+      expect(chunks[1]).toBe(
+        `event: ${StreamResumeUnavailableEvent}\ndata: ${JSON.stringify({
+          reason: StreamResumeUnavailableReasonEnum.memoryPressure
+        })}\n\n`
+      );
+      expect(chunks[2]).toMatch(
+        new RegExp(`^event: ${StreamResumeCompletedEvent}\\ndata: .+\\n\\n$`)
+      );
+      expect(chunks[3]).toBe('event: done\ndata: [DONE]\n\n');
+
+      const payload = JSON.parse(chunks[2].replace(/^event: [^\n]+\ndata: /, '').trim()) as any;
+      expect(payload).toEqual({
+        hasBeenRead: true,
+        chatGenerateStatus: ChatGenerateStatusEnum.done,
+        records: {
+          list: [
+            {
+              dataId: 'ai-response-pressure',
+              id: 'ai-response-pressure',
+              obj: ChatRoleEnum.AI,
+              value: [
+                {
+                  text: {
+                    content: 'final answer after pressure recovered'
+                  }
+                }
+              ],
+              time: '2026-04-07T12:02:00.000Z'
+            }
+          ],
+          total: 1,
+          hasMorePrev: false,
+          hasMoreNext: false
+        }
+      });
+      expect(MongoChat.updateOne).toHaveBeenCalledWith(
+        { appId, chatId },
+        { $set: { hasBeenRead: true } }
+      );
+      expect(redis.call).not.toHaveBeenCalled();
+      expect(redis.duplicate).not.toHaveBeenCalled();
+      expect(res.end).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('should forward share auth params to authChatCrud when resuming a shared chat', async () => {

@@ -65,6 +65,7 @@
   "internal_variables_tip": "内部变量仅调试时可见",
   "invalid_share_url": "无效的分享链接",
   "is_chatting": "正在聊天中...请等待结束",
+  "resume_placeholder_generating": "生成中",
   "resume_unavailable": "当前无法恢复正在生成的流式内容，请稍后查看最终回答。",
   "resume_unavailable_memory_pressure": "当前服务资源紧张，暂不提供流式恢复。请稍后查看最终回答。",
   "llm_request_detail": "LLM 请求详情",

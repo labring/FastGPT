@@ -24,6 +24,7 @@ import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 
 const completedChatPageSize = 10;
+const resumeUnavailablePollIntervalMs = 3000;
 type CurrentChatState = Pick<StreamNoNeedToBeResumeType, 'chatGenerateStatus' | 'hasBeenRead'>;
 const resumeGeneratingRequiresSseMessage =
   'This chat is still generating. Retry /api/core/chat/resume with Accept: text/event-stream.';
@@ -64,6 +65,8 @@ const shouldRespondWithSse = (req: NextApiRequest) => {
   }
   return accept?.includes('text/event-stream') ?? false;
 };
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export const config = {
   api: {
@@ -141,6 +144,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
   };
 
+  const waitForCompletedChat = async () => {
+    while (!isResponseClosed(res)) {
+      const chat = await findCurrentChat();
+
+      if (chat.chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+        await makeSureTheCompletedChatHasBeenRead();
+        return findCompletedChat();
+      }
+
+      await sleep(resumeUnavailablePollIntervalMs);
+    }
+  };
+
   const { chatGenerateStatus } = await findCurrentChat();
 
   // Chat has been completed, no need to catch up history items and resume stream
@@ -185,6 +201,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (unavailableState) {
     writeResumeUnavailable(res, unavailableState);
+    const completedChat = await waitForCompletedChat();
+    if (completedChat) {
+      writeSseEvent(res, StreamResumeCompletedEvent, JSON.stringify(completedChat));
+    }
     writeSseEvent(res, 'done', '[DONE]');
     res.end();
     return;

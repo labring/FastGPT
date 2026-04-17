@@ -376,9 +376,10 @@ function $ssefetch(params: SSEFetchParams) {
 type ResumeSSEFetchParams = {
   url: string;
   onmessage: StartChatFnProps['generatingMessage'];
+  onResumeUnavailable?: (data: ResumeUnavailableType) => void;
   controller: AbortController;
 };
-function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
+function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: ResumeSSEFetchParams) {
   const signal = controller.signal;
 
   return new Promise<ResumeStreamResponseType>(async (resolve, reject) => {
@@ -508,6 +509,7 @@ function $resumefetch({ url, onmessage, controller }: ResumeSSEFetchParams) {
                 reason: StreamResumeUnavailableReasonEnum.mirrorUnavailable
               };
             }
+            onResumeUnavailable?.(resumeUnavailable);
             return;
           }
 
@@ -596,10 +598,11 @@ type StreamResumeFetchParams = {
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   onmessage: StartChatFnProps['generatingMessage'];
+  onResumeUnavailable?: (data: ResumeUnavailableType) => void;
   controller: AbortController;
 };
 export function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { appId, chatId, outLinkAuthData, onmessage, controller } = params;
+  const { appId, chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
   const query = new URLSearchParams({ appId, chatId });
 
   Object.entries(outLinkAuthData || {}).forEach(([key, value]) => {
@@ -609,7 +612,7 @@ export function streamResumeFetch(params: StreamResumeFetchParams) {
 
   const url = `/api/core/chat/resume?${query}`;
 
-  return $resumefetch({ url, onmessage, controller });
+  return $resumefetch({ url, onmessage, onResumeUnavailable, controller });
 }
 
 export const onOptimizePrompt = async ({
