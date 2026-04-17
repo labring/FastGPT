@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import ModelTable from '@/components/core/ai/ModelTable';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -61,7 +60,7 @@ const ModelProvider = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_model', 'user']))
+      ...(await serviceSideProps(content, ['account', 'account_model', 'user', 'app']))
     }
   };
 }
@@ -69,14 +68,9 @@ export async function getServerSideProps(content: any) {
 export default ModelProvider;
 
 const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { userInfo } = useUserStore();
-  const isRoot = userInfo?.username === 'root';
   return (
-    <>
-      {isRoot && <Flex justifyContent={'space-between'}>{Tab}</Flex>}
-      <Box flex={'1 0 0'}>
-        <ModelTable permissionConfig={true} />
-      </Box>
-    </>
+    <Box flex={'1 0 0'} overflow={'hidden'}>
+      <ModelTable permissionConfig={true} Tab={Tab} />
+    </Box>
   );
 };
