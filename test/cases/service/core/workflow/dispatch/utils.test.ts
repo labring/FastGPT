@@ -46,6 +46,11 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   getMCPChildren: (...args: any[]) => mockGetMCPChildren(...args)
 }));
 
+const mockGetHTTPToolList = vi.fn();
+vi.mock('@fastgpt/service/core/app/http', () => ({
+  getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
+}));
+
 describe('getWorkflowResponseWrite', () => {
   const mockRes = () => {
     const res: any = { closed: false };
@@ -775,12 +780,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       name: 'HTTPTool',
       avatar: 'avatar.png',
       toolConfig: {
-        httpToolSet: {
-          toolList: [
-            { name: 'api1', description: 'desc1', url: 'http://example.com/api1' },
-            { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
-          ]
-        }
+        httpToolSet: {}
       }
     } as any);
     const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
@@ -788,6 +788,14 @@ describe('rewriteRuntimeWorkFlow', () => {
     const edges = [
       makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
     ];
+
+    mockMongoAppFindOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
+    });
+    mockGetHTTPToolList.mockResolvedValue([
+      { name: 'api1', description: 'desc1', url: 'http://example.com/api1' },
+      { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
+    ]);
 
     await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
