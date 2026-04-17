@@ -359,8 +359,6 @@ export async function cancelRerankTrainTask(taskId: string): Promise<void> {
     return Promise.reject(RerankTrainErrEnum.rerankTaskCannotCancel);
   }
 
-  await updateRerankTaskStatus(taskId, RerankTrainTaskStatusEnum.cancelled);
-
   // Remove BullMQ job (force clean if active)
   await removeRerankTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
@@ -378,6 +376,8 @@ export async function cancelRerankTrainTask(taskId: string): Promise<void> {
     });
     addLog.info('Triggered async SFT task cancellation', { taskId, sftTaskId });
   }
+
+  await updateRerankTaskStatus(taskId, RerankTrainTaskStatusEnum.cancelled);
 
   addLog.info('Cancelled rerank train task', { taskId });
 }

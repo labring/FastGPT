@@ -349,9 +349,6 @@ export async function cancelEmbeddingTrainTask(taskId: string): Promise<void> {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskNotExist);
   }
 
-  // Remove BullMQ job (force clean if active)
-  await removeEmbeddingTrainTaskJob(taskId, { forceCleanActiveJobs: true });
-
   if (
     task.status === EmbeddingTrainTaskStatusEnum.completed ||
     task.status === EmbeddingTrainTaskStatusEnum.failed ||
@@ -360,7 +357,8 @@ export async function cancelEmbeddingTrainTask(taskId: string): Promise<void> {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTaskCannotCancel);
   }
 
-  await updateEmbeddingTaskStatus(taskId, EmbeddingTrainTaskStatusEnum.cancelled);
+  // Remove BullMQ job (force clean if active)
+  await removeEmbeddingTrainTaskJob(taskId, { forceCleanActiveJobs: true });
 
   // Cancel SFT task if finetuning has started (async non-blocking)
   const sftTaskId = task.checkpoint?.data?.finetuning?.sftTaskId;
@@ -376,6 +374,8 @@ export async function cancelEmbeddingTrainTask(taskId: string): Promise<void> {
     });
     addLog.info('Triggered async SFT task cancellation', { taskId, sftTaskId });
   }
+
+  await updateEmbeddingTaskStatus(taskId, EmbeddingTrainTaskStatusEnum.cancelled);
 
   addLog.info('Cancelled embedding train task', { taskId });
 }
