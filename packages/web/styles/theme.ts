@@ -834,7 +834,7 @@ export const theme = extendTheme({
       25: '#FFF2F2',
       50: '#FAE1E1',
       100: '#FABBBB',
-      200: '##F59393',
+      200: '#F59393',
       300: '#F07878',
       400: '#EB5E5E',
       500: '#EB5252',

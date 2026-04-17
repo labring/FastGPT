@@ -133,6 +133,7 @@ export const iconPaths = {
   'common/upRightArrowLight': () => import('./icons/common/upRightArrowLight.svg'),
   'common/uploadFileFill': () => import('./icons/common/uploadFileFill.svg'),
   'common/upperRight': () => import('./icons/common/upperRight.svg'),
+  'common/user': () => import('./icons/common/user.svg'),
   'common/userInfo': () => import('./icons/common/userInfo.svg'),
   'common/variable': () => import('./icons/common/variable.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),

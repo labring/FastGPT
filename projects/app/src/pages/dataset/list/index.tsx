@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import FolderPath from '@/components/common/folder/Path';
-import List from '@/pageComponents/dataset/list/List';
+import List from '@/pageComponents/dataset/list/NewList';
 import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
@@ -124,7 +124,7 @@ const Dataset = () => {
                   value={searchKey}
                   bg={'white'}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_name_intro')}
+                  placeholder={t('dataset:name_or_description')}
                   maxLength={30}
                 />
               )}
@@ -237,7 +237,7 @@ const Dataset = () => {
                 maxW={['auto', '250px']}
                 value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('app:search_name_intro')}
+                placeholder={t('dataset:name_or_description')}
                 maxLength={30}
               />
             </Box>
