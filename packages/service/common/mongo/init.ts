@@ -4,6 +4,14 @@ import type { Mongoose } from 'mongoose';
 
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 
+let isShuttingDown = false;
+process.once('SIGTERM', () => {
+  isShuttingDown = true;
+});
+process.once('SIGINT', () => {
+  isShuttingDown = true;
+});
+
 /**
  * connect MongoDB and init data
  */
@@ -62,6 +70,11 @@ export async function connectMongo(props: {
     addLog.error('Mongo connect error', error);
 
     await db.disconnect();
+
+    if (isShuttingDown) {
+      addLog.info('Process is shutting down, stop MongoDB reconnect');
+      return db;
+    }
 
     await delay(1000);
     return connectMongo(props);
