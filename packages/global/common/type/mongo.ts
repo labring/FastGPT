@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 
 export const ObjectIdSchema = z.preprocess(
   (value) => (typeof value === 'object' ? String(value) : value),

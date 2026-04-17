@@ -1,5 +1,5 @@
-import { getQueue, getWorker, QueueNames } from '../bullmq';
-import { getLogger, LogCategories } from '../logger';
+import { getQueue, getWorker, QueueNames } from '../../bullmq';
+import { getLogger, LogCategories } from '../../logger';
 import path from 'path';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 
@@ -15,8 +15,8 @@ export type S3MQJobData = {
 const jobOption = {
   attempts: 10,
   removeOnFail: {
-    count: 10000, // 保留10000个失败任务
-    age: 14 * 24 * 60 * 60 // 14 days
+    count: 10000,
+    age: 14 * 24 * 60 * 60
   },
   removeOnComplete: true,
   backoff: {
@@ -28,17 +28,12 @@ const jobOption = {
 export const addS3DelJob = async (data: S3MQJobData): Promise<void> => {
   const queue = getQueue<S3MQJobData>(QueueNames.s3FileDelete);
   const jobId = (() => {
-    if (data.key) {
-      return data.key;
-    }
-    if (data.keys) {
-      return undefined;
-    }
-    if (data.prefix) {
-      return `${data.bucketName}-${data.prefix}`;
-    }
+    if (data.key) return data.key;
+    if (data.keys) return undefined;
+    if (data.prefix) return `${data.bucketName}:${data.prefix}`;
     throw new Error('Invalid s3 delete job data');
   })();
+
   await queue.add('delete-s3-files', data, { jobId, ...jobOption });
 };
 

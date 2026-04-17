@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { OAuthEnum } from '../../../../../support/user/constant';
 import { TrackRegisterParamsSchema } from '../../../../../support/marketing/type';
 import { LanguageSchema } from '../../../../../common/i18n/type';
-import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
 import { UserSchema } from '../../../../../support/user/type';
+import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
 
 const OpenAPITeamTmbItemSchema = TeamTmbItemSchema.omit({
   permission: true

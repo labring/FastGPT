@@ -37,19 +37,24 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
-import { getMCPTools, postCreateHttpTools, postCreateMCPTools } from '@/web/core/app/api/tool';
+import { postCreateHttpTools } from '@/web/core/app/api/httpTools';
+import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/mcpTools';
 import { headerValue2StoreHeader } from '@/components/common/secret/HeaderAuthConfig';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import AppTypeCard from '@/pageComponents/app/create/AppTypeCard';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import {
+  type HttpToolType,
+  HttpToolTypeEnum
+} from '@fastgpt/global/core/app/tool/httpTool/constants';
 
 type FormType = {
   avatar: string;
   name: string;
   // http
-  createType?: 'batch' | 'manual';
+  createType?: HttpToolType;
   // mcp
   mcpUrl?: string;
   mcpHeaderSecret?: any;
@@ -89,7 +94,7 @@ const CreateAppsPage = () => {
     defaultValues: {
       avatar: createAppTypeMap[selectedAppType]?.icon || '',
       name: '',
-      createType: 'batch',
+      createType: HttpToolTypeEnum.batch,
       mcpUrl: '',
       mcpHeaderSecret: {},
       mcpToolList: []
@@ -147,7 +152,7 @@ const CreateAppsPage = () => {
       if (appType === AppTypeEnum.httpToolSet) {
         return postCreateHttpTools({
           ...baseParams,
-          createType: createType || 'batch'
+          createType: createType || HttpToolTypeEnum.batch
         });
       }
 
@@ -539,18 +544,18 @@ const CreateAppsPage = () => {
                   list={[
                     {
                       title: t('app:type.Http batch'),
-                      value: 'batch',
+                      value: HttpToolTypeEnum.batch,
                       desc: t('app:type.Http batch tip')
                     },
                     {
                       title: t('app:type.Http manual'),
-                      value: 'manual',
+                      value: HttpToolTypeEnum.manual,
                       desc: t('app:type.Http manual tip')
                     }
                   ]}
-                  value={createType || 'batch'}
+                  value={createType || HttpToolTypeEnum.batch}
                   fontSize={'xs'}
-                  onChange={(e) => setValue('createType', e as 'batch' | 'manual')}
+                  onChange={(e) => setValue('createType', e as HttpToolType)}
                   defaultBg={'white'}
                   activeBg={'white'}
                   py={2}

@@ -6,10 +6,7 @@ import type {
   EmbeddingModelItemType,
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.schema';
-import type {
-  AiproxyMapProviderType,
-  I18nStringStrictType
-} from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 
 export type SystemModelSchemaType = {
@@ -41,7 +38,7 @@ declare global {
   var ModelProviderRawCache: { provider: string; value: I18nStringStrictType; avatar: string }[];
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
-  var aiproxyIdMapCache: AiproxyMapProviderType;
+  var aiproxyChannelsCache: AIProxyChannelsType;
 
   var systemModelList: SystemModelItemType[];
   // var systemModelMap: Map<string, SystemModelItemType>;

@@ -1,8 +1,8 @@
-import { MongoS3TTL } from './schema';
-import { getLogger, LogCategories } from '../logger';
-import { setCron } from '../system/cron';
-import { checkTimerLock } from '../system/timerLock/utils';
-import { TimerIdEnum } from '../system/timerLock/constants';
+import { MongoS3TTL } from '../models/ttl';
+import { getLogger, LogCategories } from '../../logger';
+import { setCron } from '../../system/cron';
+import { checkTimerLock } from '../../system/timerLock/utils';
+import { TimerIdEnum } from '../../system/timerLock/constants';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -65,10 +65,8 @@ export async function clearExpiredMinioFiles() {
 }
 
 export function clearExpiredS3FilesCron() {
-  // 启动服务时执行一次
   setTimeout(clearExpiredMinioFiles, 3000);
 
-  // 每小时执行一次
   setCron('0 */1 * * *', async () => {
     if (
       await checkTimerLock({

@@ -18,6 +18,7 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
+  ensurePendingChatRoundItems,
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
@@ -64,6 +65,12 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import {
+  ensureGenerateChat,
+  updateChatGenerateStatus
+} from '@fastgpt/service/core/chat/chatGenerateStatus';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -89,6 +96,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   } = CompletionsPropsSchema.parse(req.body);
 
   const startTime = Date.now();
+  let runningChatId: string | undefined;
+  let runningAppId: string | undefined;
 
   const originIp = getIpFromRequest(req);
 
@@ -240,6 +249,50 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
+    const saveChatId = chatId || getNanoid(24);
+    const source = (() => {
+      if (shareId) {
+        return ChatSourceEnum.share;
+      }
+      if (authType === 'apikey') {
+        return ChatSourceEnum.api;
+      }
+      if (spaceTeamId) {
+        return ChatSourceEnum.team;
+      }
+      return ChatSourceEnum.online;
+    })();
+
+    runningChatId = saveChatId;
+    runningAppId = String(app._id);
+
+    await ensureGenerateChat({
+      appId: runningAppId,
+      chatId: runningChatId,
+      teamId,
+      tmbId: tmbId,
+      source,
+      sourceName: sourceName || '',
+      shareId,
+      outLinkUid: outLinkUserId
+    });
+
+    // 流式 + 站内 online：工作流 dispatch 走 v2 管道；与 HTTP 路径是 /v1 还是 /v2 无关
+    const shouldUseWorkflowStreamV2 = stream && source === ChatSourceEnum.online;
+    const workflowApiVersion = shouldUseWorkflowStreamV2 ? 'v2' : 'v1';
+    // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/core/chat/resume 承担
+
+    if (!interactive) {
+      await ensurePendingChatRoundItems({
+        chatId: saveChatId,
+        appId: runningAppId,
+        teamId,
+        tmbId: String(tmbId),
+        userContent: userQuestion,
+        responseChatItemId
+      });
+    }
+
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
@@ -247,8 +300,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       id: chatId,
       showNodeStatus: showRunningStatus
     });
-
-    const saveChatId = chatId || getNanoid(24);
 
     /* start flow controller */
     const {
@@ -262,7 +313,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
-          apiVersion: 'v1',
+          apiVersion: workflowApiVersion,
           res,
           lang: getLocale(req),
           requestOrigin: req.headers.origin,
@@ -298,19 +349,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // save chat
-    const source = (() => {
-      if (shareId) {
-        return ChatSourceEnum.share;
-      }
-      if (authType === 'apikey') {
-        return ChatSourceEnum.api;
-      }
-      if (spaceTeamId) {
-        return ChatSourceEnum.team;
-      }
-      return ChatSourceEnum.online;
-    })();
-
     const newTitle = isPlugin
       ? variables.cTime || formatTime2YMDHM(new Date())
       : getChatTitleFromChatMessage(userQuestion);
@@ -352,6 +390,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await pushChatRecords(params);
     }
 
+    await updateChatGenerateStatus({
+      appId: runningAppId,
+      chatId: runningChatId,
+      status: ChatGenerateStatusEnum.done
+    });
+
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
     if (isOwnerUse && source === ChatSourceEnum.online) {
       await recordAppUsage({
@@ -375,12 +419,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           finish_reason: 'stop'
         })
       });
-      responseWrite({
-        res,
-        event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
-      });
-
       // 特殊输配(data 不是{})
       if (detail) {
         responseWrite({
@@ -389,6 +427,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           data: JSON.stringify(feResponseData)
         });
       }
+
+      responseWrite({
+        res,
+        event: detail ? SseResponseEventEnum.answer : undefined,
+        data: '[DONE]'
+      });
 
       res.end();
     } else {
@@ -496,6 +540,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
+    if (runningAppId && runningChatId) {
+      await updateChatGenerateStatus({
+        appId: runningAppId,
+        chatId: runningChatId,
+        status: ChatGenerateStatusEnum.error
+      });
+    }
     if (stream) {
       sseErrRes(res, err);
       res.end();

@@ -39,7 +39,7 @@ async function handler(
     { rawKey: fileKey, filename },
     {
       expiredHours: 1,
-      maxFileSize: planStatus.standard?.maxUploadFileSize || global.feConfigs.uploadFileMaxSize
+      maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
     }
   );
 }

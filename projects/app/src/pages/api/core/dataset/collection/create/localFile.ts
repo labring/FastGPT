@@ -10,6 +10,9 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
+import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
@@ -17,7 +20,8 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize,
+      allowedExtensions: parseAllowedExtensions(documentFileType)
     });
     filepaths.push(result.fileMetadata.path);
 
@@ -27,6 +31,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       authApiKey: true,
       per: WritePermissionVal,
       datasetId: result.data.datasetId
+    });
+
+    // Check dataset limit
+    await checkDatasetIndexLimit({
+      teamId,
+      insertLen: 1
     });
 
     const collectionData = CreateCollectionByLocalFileBodySchema.parse(result.data);

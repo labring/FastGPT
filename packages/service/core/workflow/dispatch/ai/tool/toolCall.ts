@@ -84,7 +84,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         type: 'function',
         function: {
           name: item.nodeId,
-          description: item.intro || item.name,
+          description: `${item.name}: ${item.toolDescription || item.intro}`,
           parameters: item.jsonSchema
         }
       };

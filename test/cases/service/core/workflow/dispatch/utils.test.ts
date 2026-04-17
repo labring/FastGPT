@@ -11,7 +11,8 @@ import {
   filterSystemVariables,
   formatHttpError,
   rewriteRuntimeWorkFlow,
-  getNodeErrResponse
+  getNodeErrResponse,
+  safePoints
 } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -32,15 +33,22 @@ vi.mock('@fastgpt/service/core/workflow/utils', () => ({
 }));
 
 const mockMongoAppFindOne = vi.fn();
+const mockMongoAppFind = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
-    findOne: (...args: any[]) => mockMongoAppFindOne(...args)
+    findOne: (...args: any[]) => mockMongoAppFindOne(...args),
+    find: (...args: any[]) => mockMongoAppFind(...args)
   }
 }));
 
 const mockGetMCPChildren = vi.fn();
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
   getMCPChildren: (...args: any[]) => mockGetMCPChildren(...args)
+}));
+
+const mockGetHTTPToolList = vi.fn();
+vi.mock('@fastgpt/service/core/app/http', () => ({
+  getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
 }));
 
 describe('getWorkflowResponseWrite', () => {
@@ -154,6 +162,30 @@ describe('getWorkflowResponseWrite', () => {
     const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
     fn({ event: SseResponseEventEnum.answer, data: { text: 'hi' } });
     expect(responseWrite).toHaveBeenCalledWith(expect.objectContaining({ event: undefined }));
+  });
+
+  it('should continue mirroring direct chunks after response is closed', () => {
+    const res = mockRes();
+    res.closed = true;
+    const enqueueRaw = vi.fn();
+    vi.mocked(responseWrite).mockClear();
+
+    const fn = getWorkflowResponseWrite({
+      res,
+      detail: true,
+      streamResponse: true,
+      streamResumeMirror: {
+        enqueueRaw
+      }
+    });
+
+    fn({
+      event: SseResponseEventEnum.answer,
+      data: '[DONE]'
+    });
+
+    expect(enqueueRaw).toHaveBeenCalledWith(expect.stringContaining('data: [DONE]'));
+    expect(responseWrite).not.toHaveBeenCalled();
   });
 });
 
@@ -669,7 +701,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const edges = [makeEdge('n1', 'n2')];
     const originalNodesLen = nodes.length;
     const originalEdgesLen = edges.length;
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
     expect(nodes.length).toBe(originalNodesLen);
     expect(edges.length).toBe(originalEdgesLen);
   });
@@ -687,7 +719,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     const childNode = makeNode('child1', 'systemTool');
     mockGetSystemToolRunTimeNodeFromSystemToolset.mockResolvedValue([childNode]);
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts1')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'child1')).toBeDefined();
@@ -715,7 +747,7 @@ describe('rewriteRuntimeWorkFlow', () => {
     });
     mockGetMCPChildren.mockResolvedValue([{ name: 'tool1', description: 'desc', inputSchema: {} }]);
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toBeDefined();
@@ -737,7 +769,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       lean: vi.fn().mockResolvedValue(null)
     });
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts3')).toBeUndefined();
   });
@@ -748,12 +780,7 @@ describe('rewriteRuntimeWorkFlow', () => {
       name: 'HTTPTool',
       avatar: 'avatar.png',
       toolConfig: {
-        httpToolSet: {
-          toolList: [
-            { name: 'api1', description: 'desc1', url: 'http://example.com/api1' },
-            { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
-          ]
-        }
+        httpToolSet: {}
       }
     } as any);
     const parentNode = makeNode('parent', FlowNodeTypeEnum.chatNode);
@@ -762,7 +789,15 @@ describe('rewriteRuntimeWorkFlow', () => {
       makeEdge('parent', 'ts4', { sourceHandle: 'out', targetHandle: 'selectedTools' })
     ];
 
-    await rewriteRuntimeWorkFlow({ nodes, edges });
+    mockMongoAppFindOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ _id: 'http-plugin-1', name: 'HTTPApp' })
+    });
+    mockGetHTTPToolList.mockResolvedValue([
+      { name: 'api1', description: 'desc1', url: 'http://example.com/api1' },
+      { name: 'api2', description: 'desc2', url: 'http://example.com/api2' }
+    ]);
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
 
     expect(nodes.find((n) => n.nodeId === 'ts4')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts40')).toBeDefined();
@@ -830,5 +865,31 @@ describe('getNodeErrResponse', () => {
     expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail'
     });
+  });
+});
+
+// ─── safePoints ───────────────────────────────────────────────────────────────
+describe('safePoints', () => {
+  it('正常数值 → 原样返回', () => {
+    expect(safePoints(42)).toBe(42);
+    expect(safePoints(0)).toBe(0);
+    expect(safePoints(3.14)).toBe(3.14);
+  });
+
+  it('NaN → 0', () => {
+    expect(safePoints(NaN)).toBe(0);
+  });
+
+  it('Infinity → 0', () => {
+    expect(safePoints(Infinity)).toBe(0);
+    expect(safePoints(-Infinity)).toBe(0);
+  });
+
+  it('null → 0', () => {
+    expect(safePoints(null)).toBe(0);
+  });
+
+  it('undefined → 0', () => {
+    expect(safePoints(undefined)).toBe(0);
   });
 });

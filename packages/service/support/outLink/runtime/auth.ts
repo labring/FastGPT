@@ -8,8 +8,8 @@ import { axios } from '../../../common/api/axios';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { addMinutes } from 'date-fns';
-import { S3_KEY_PATH_INVALID_CHARS } from '../../../common/s3/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { S3_KEY_PATH_INVALID_CHARS } from '../../../common/s3/config/constants';
 
 export type TokenAuthResponseType = {
   success: boolean;

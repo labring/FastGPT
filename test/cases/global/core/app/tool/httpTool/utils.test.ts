@@ -213,8 +213,30 @@ describe('httpTool utils', () => {
       expect(result[0].inputSchema.properties).toHaveProperty('id');
       expect(result[0].inputSchema.properties?.id.type).toBe('string');
       expect(result[0].inputSchema.properties?.id.description).toBe('User ID');
+      expect(result[0].inputSchema.properties?.id['x-tool-description']).toBe('User ID');
+      expect(result[0].inputSchema.properties?.fields['x-tool-description']).toBe(
+        'Fields to return'
+      );
       expect(result[0].inputSchema.required).toContain('id');
       expect(result[0].inputSchema.required).not.toContain('fields');
+    });
+
+    it('should fallback x-tool-description to param name when description missing', async () => {
+      const pathData: PathDataType[] = [
+        {
+          name: 'noDescTool',
+          description: '',
+          method: 'GET',
+          path: '/x',
+          params: [{ name: 'foo', schema: { type: 'string' } }],
+          request: {},
+          response: {}
+        }
+      ];
+
+      const result = await pathData2ToolList(pathData);
+
+      expect(result[0].inputSchema.properties?.foo['x-tool-description']).toBe('foo');
     });
 
     it('should extract request body schema', async () => {
@@ -246,6 +268,8 @@ describe('httpTool utils', () => {
 
       expect(result[0].inputSchema.properties).toHaveProperty('name');
       expect(result[0].inputSchema.properties).toHaveProperty('email');
+      expect(result[0].inputSchema.properties?.name['x-tool-description']).toBe('User name');
+      expect(result[0].inputSchema.properties?.email['x-tool-description']).toBe('User email');
       expect(result[0].inputSchema.required).toContain('name');
       expect(result[0].inputSchema.required).toContain('email');
     });

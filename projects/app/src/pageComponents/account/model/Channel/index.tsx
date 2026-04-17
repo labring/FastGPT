@@ -42,9 +42,8 @@ const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language as localeType;
   const { userInfo } = useUserStore();
-  const { aiproxyIdMap, getModelProvider } = useSystemStore();
+  const { aiproxyChannels } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -124,18 +123,19 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             </Thead>
             <Tbody>
               {channelList.map((item) => {
-                const providerData = aiproxyIdMap[item.type] || {
-                  name: channelProviders[item.type]?.name || 'Invalid provider',
-                  provider: 'Other'
+                const providerData = aiproxyChannels.find(
+                  (channel) => channel.channelId === item.type
+                ) || {
+                  name: 'Invalid provider',
+                  avatar: 'model/huggingface'
                 };
-                const provider = getModelProvider(providerData?.provider, i18n.language);
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
                     <Td>{item.id}</Td>
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
-                        <Avatar src={provider?.avatar} w={'1rem'} />
+                        <Avatar src={providerData.avatar} w={'1rem'} />
                         <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
                       </HStack>
                     </Td>

@@ -35,7 +35,7 @@ async function handler(req: ApiRequestProps) {
     // 1. Mark as deleted
     await MongoDataset.updateMany(
       {
-        _id: datasetIds,
+        _id: { $in: datasetIds },
         teamId
       },
       {

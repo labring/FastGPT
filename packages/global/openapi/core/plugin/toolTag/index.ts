@@ -1,7 +1,7 @@
 import type { OpenAPIPath } from '../../../type';
 import { GetPluginToolTagsResponseSchema } from './api';
 import { TagsMap } from '../../../tag';
-import { z } from 'zod';
+import z from 'zod';
 
 export const PluginToolTagPath: OpenAPIPath = {
   '/core/plugin/toolTag/list': {

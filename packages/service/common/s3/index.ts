@@ -1,7 +1,7 @@
 import { S3PublicBucket } from './buckets/public';
 import { S3PrivateBucket } from './buckets/private';
 import { getLogger, LogCategories } from '../logger';
-import { startS3DelWorker } from './mq';
+import { startS3DelWorker } from './queue/delete';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 

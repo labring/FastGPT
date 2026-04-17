@@ -11,10 +11,17 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLock/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
+  const timerId = `lock_training_data--${teamId}`;
+
+  // 5 分钟闸门：并发/多节点调用时，只有首个抢到锁的会执行；TTL 作为兜底
+  const acquired = await checkTimerLock({ timerId, lockMinuted: 30 });
+  if (!acquired) return;
+
   try {
     await MongoDatasetTraining.updateMany(
       {
@@ -24,7 +31,12 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
         lockTime: new Date('2999/5/5')
       }
     );
-  } catch (error) {}
+  } catch (error) {
+    logger.error('lockTrainingDataByTeamId failed', { teamId, error });
+  } finally {
+    // 执行完立即释放锁
+    await deleteTimerLock({ timerId }).catch(() => {});
+  }
 };
 
 export const pushDataListToTrainingQueue = async ({

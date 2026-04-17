@@ -28,6 +28,7 @@ packages/
     │   ├── schema.ts         # App 主表 Mongoose Schema
     │   ├── entity.ts         # findById / create / updateById 等基础操作封装
     │   ├── service.ts        # 聚合业务逻辑（跨子功能协调），不允许互相引用，只允许单向依赖，跨 service 的协调需由上层通过 props 传入另一个 service 或者衍生方法
+    │   ├── auth.ts           # 鉴权相关（如有）
     │   ├── utils.ts          # 纯函数工具，无副作用，可独立单测
     │   ├── version/
     │   │   ├── schema.ts
@@ -87,7 +88,8 @@ const service2 = (props: {id:string; service1: typeof service1 }) => {
 - 一个目录内无需拆子功能时，直接放 `schema.ts` + `entity.ts` + `service.ts` + `utils.ts`
 - 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`
 
-## 使用 `type` 进行类型声明，不使用 `interface`
+## 代码风格
+### 使用 `type` 进行类型声明，不使用 `interface`
 
 ```typescript
 // ❌ 不好的实践
@@ -105,7 +107,7 @@ type User = {
 
 ---
 
-## 使用 IIFE 写法来取代 if/else 进行变量条件赋值。
+### 使用 IIFE 写法来取代 if/else 进行变量条件赋值。
 
 ```typescript
 // ❌ 不好的实践
@@ -126,7 +128,7 @@ const value = (() => {
 
 ---
 
-## 类型推导：Zod schema 同时承担校验和类型
+### 类型推导：Zod schema 同时承担校验和类型
 
 用 `z.infer` 从 schema 推导类型，不重复手写相同结构的 type。
 
@@ -158,7 +160,7 @@ onProgress?.({ phase: 'creatingContainer' });
 
 ---
 
-## 空值合并取默认值
+### 空值合并取默认值
 
 用 `??` 取代 `||` 处理默认值，避免 `0`、`false`、`''` 被错误覆盖。
 
@@ -174,7 +176,7 @@ const text = item?.value ?? '';
 
 ---
 
-## 解构重命名
+### 解构重命名
 
 同名变量来自多个来源时，解构时重命名，避免命名冲突。
 
@@ -192,7 +194,7 @@ const inputTokens = guidanceUsage.inputTokens + generateUsage.inputTokens;
 
 ---
 
-## 类型守卫
+### 类型守卫
 
 用 `is` 关键字收窄 `unknown` / `any` 类型，替代强制断言。
 
@@ -213,7 +215,7 @@ if (isValidNumber(value)) {
 
 ---
 
-## 非关键清理用 `.catch()` 链
+### 非关键清理用 `.catch()` 链
 
 次要的清理操作（不影响主流程）用 `.catch()` 吞掉错误，不污染主 try/catch。
 
@@ -231,7 +233,7 @@ await client.delete().catch(() => {});
 
 ---
 
-## 函数参数不超过 2 个，多参数用对象传递
+### 函数参数不超过 2 个，多参数用对象传递
 
 独立参数不超过 2 个，超过时改为对象参数，便于扩展且无需关心顺序。
 
@@ -245,7 +247,7 @@ function createVersion(data: { skillId: string; teamId: string; tmbId: string; v
 
 ---
 
-## 数据写操作函数支持可选 session 参数
+### 数据写操作函数支持可选 session 参数
 
 涉及数据库写操作的函数统一支持可选的 `session` 参数，便于上层组合事务。事务统一通过 `mongoSessionRun` 发起，内部自动处理 startTransaction / commit / abort / retry。
 

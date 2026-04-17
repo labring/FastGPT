@@ -77,6 +77,7 @@ const SelectFile = React.memo(function SelectFile() {
                 url,
                 file,
                 headers,
+                maxSize,
                 onUploadProgress: (e) => {
                   if (!e.total) return;
                   const percent = Math.round((e.loaded / e.total) * 100);

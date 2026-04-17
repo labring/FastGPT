@@ -119,16 +119,11 @@ TrainingDataSchema.virtual('data', {
   justOne: true
 });
 
-try {
-  // lock training data(teamId); delete training data
-  TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
-  // get training data and sort
-  TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
-  TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
-} catch (error) {
-  const logger = getLogger(LogCategories.INFRA.MONGO);
-  logger.error('Failed to build dataset training indexes', { error });
-}
+// lock training data(teamId); delete training data
+TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
+// get training data and sort
+TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
+TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
 
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
   DatasetTrainingCollectionName,

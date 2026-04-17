@@ -2,7 +2,11 @@ import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VariableInputEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
@@ -27,7 +31,6 @@ import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { WorkflowResponseType } from './type';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -35,6 +38,9 @@ import { anyValueDecrypt } from '../../../common/secret/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { presignVariablesFileUrls } from '../../chat/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getMcpToolsets } from '../../app/tool/mcpTool/entity';
+import { getHTTPToolList } from '../../app/http';
 
 /* get system variable */
 export const getSystemVariables = async ({
@@ -105,16 +111,42 @@ export const getWorkflowResponseWrite = ({
   detail,
   streamResponse,
   id = getNanoid(24),
-  showNodeStatus = true
+  showNodeStatus = true,
+  streamResumeMirror
 }: {
   res?: NextApiResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;
   showNodeStatus?: boolean;
+  streamResumeMirror?: {
+    enqueueRaw?: (chunk: string) => Promise<void> | void;
+  };
 }) => {
+  const writeStreamChunk = ({ event, data }: { event?: string; data: string }) => {
+    if (!streamResponse) return;
+
+    const raw = `${event ? `event: ${event}\n` : ''}data: ${data}\n\n`;
+
+    void streamResumeMirror?.enqueueRaw?.(raw);
+
+    if (!res || res.closed || res.writableEnded || res.destroyed) return;
+
+    responseWrite({
+      res,
+      event,
+      data
+    });
+  };
+
   const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
-    if (!res || res.closed || !streamResponse) return;
+    if (typeof data === 'string') {
+      writeStreamChunk({ event, data });
+      return;
+    }
+
+    if (!streamResponse) return;
+    if (!event) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -132,8 +164,7 @@ export const getWorkflowResponseWrite = ({
     };
     if (!showNodeStatus && statusEvent[event]) return;
 
-    responseWrite({
-      res,
+    writeStreamChunk({
       event: detail ? event : undefined,
       data: JSON.stringify({
         ...data,
@@ -159,7 +190,7 @@ export const getWorkflowChildResponseWrite = ({
   };
 };
 
-/* 
+/*
   Filter orphan edges from workflow.
   Orphan edges are edges that have a source or target that is not in the nodes array.
   This is used to prevent errors when the workflow is edited and the nodes are not updated.
@@ -353,96 +384,139 @@ export const formatHttpError = (error: any) => {
  * @returns
  */
 export const rewriteRuntimeWorkFlow = async ({
+  teamId,
   nodes,
   edges,
   lang
 }: {
+  teamId: string;
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
-  const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+  /* Toolset 展开 */
+  // TODO: 待性能优化
+  {
+    const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+    if (toolSetNodes.length > 0) {
+      const nodeIdsToRemove = new Set<string>();
 
-  if (toolSetNodes.length === 0) {
-    return;
-  }
+      for (const toolSetNode of toolSetNodes) {
+        nodeIdsToRemove.add(toolSetNode.nodeId);
 
-  const nodeIdsToRemove = new Set<string>();
+        const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
+        const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
+        const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
 
-  for (const toolSetNode of toolSetNodes) {
-    nodeIdsToRemove.add(toolSetNode.nodeId);
+        const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+        const pushEdges = (nodeId: string) => {
+          for (const inEdge of incomingEdges) {
+            edges.push({
+              source: inEdge.source,
+              target: nodeId,
+              sourceHandle: inEdge.sourceHandle,
+              targetHandle: 'selectedTools',
+              status: inEdge.status
+            });
+          }
+        };
 
-    const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
-    const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
-    const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
+        // systemTool
+        if (systemToolId) {
+          const children = await getSystemToolRunTimeNodeFromSystemToolset({
+            toolSetNode,
+            lang
+          });
+          children.forEach((node) => {
+            nodes.push(node);
+            pushEdges(node.nodeId);
+          });
+        } else if (mcpToolsetVal) {
+          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          if (!app) continue;
+          const toolList = await getMCPChildren(app);
 
-    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
-    const pushEdges = (nodeId: string) => {
-      for (const inEdge of incomingEdges) {
-        edges.push({
-          source: inEdge.source,
-          target: nodeId,
-          sourceHandle: inEdge.sourceHandle,
-          targetHandle: 'selectedTools',
-          status: inEdge.status
-        });
+          // mcpToolsetVal.toolId: 旧版 MCP
+          const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
+          toolList.forEach((tool, index) => {
+            const newToolNode = getMCPToolRuntimeNode({
+              nodeId: `${toolSetNode.nodeId}${index}`,
+              toolSetId,
+              toolsetName: toolSetNode.name,
+              avatar: toolSetNode.avatar,
+              tool
+            });
+            nodes.push(newToolNode);
+            pushEdges(newToolNode.nodeId);
+          });
+        } else if (httpToolsetVal) {
+          const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
+          if (!app) continue;
+
+          const toolList = await getHTTPToolList(app);
+
+          toolList.forEach((tool: HttpToolConfigType, index: number) => {
+            const newToolNode = getHTTPToolRuntimeNode({
+              tool,
+              nodeId: `${toolSetNode.nodeId}${index}`,
+              avatar: toolSetNode.avatar,
+              toolSetId: toolSetNode.pluginId!,
+              toolsetName: toolSetNode.name
+            });
+            nodes.push(newToolNode);
+            pushEdges(newToolNode.nodeId);
+          });
+        }
       }
-    };
 
-    // systemTool
-    if (systemToolId) {
-      const children = await getSystemToolRunTimeNodeFromSystemToolset({
-        toolSetNode,
-        lang
-      });
-      children.forEach((node) => {
-        nodes.push(node);
-        pushEdges(node.nodeId);
-      });
-    } else if (mcpToolsetVal) {
-      const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
-      if (!app) continue;
-      const toolList = await getMCPChildren(app);
+      for (let i = nodes.length - 1; i >= 0; i--) {
+        if (nodeIdsToRemove.has(nodes[i].nodeId)) {
+          nodes.splice(i, 1);
+        }
+      }
 
-      // mcpToolsetVal.toolId: 旧版 MCP
-      const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
-
-      toolList.forEach((tool, index) => {
-        const newToolNode = getMCPToolRuntimeNode({
-          nodeId: `${toolSetNode.nodeId}${index}`,
-          toolSetId,
-          toolsetName: toolSetNode.name,
-          avatar: toolSetNode.avatar,
-          tool
-        });
-        nodes.push(newToolNode);
-        pushEdges(newToolNode.nodeId);
-      });
-    } else if (httpToolsetVal) {
-      httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
-        const newToolNode = getHTTPToolRuntimeNode({
-          tool,
-          nodeId: `${toolSetNode.nodeId}${index}`,
-          avatar: toolSetNode.avatar,
-          toolSetId: toolSetNode.pluginId!,
-          toolsetName: toolSetNode.name
-        });
-        nodes.push(newToolNode);
-        pushEdges(newToolNode.nodeId);
-      });
+      for (let i = edges.length - 1; i >= 0; i--) {
+        if (nodeIdsToRemove.has(edges[i].target)) {
+          edges.splice(i, 1);
+        }
+      }
     }
   }
 
-  for (let i = nodes.length - 1; i >= 0; i--) {
-    if (nodeIdsToRemove.has(nodes[i].nodeId)) {
-      nodes.splice(i, 1);
-    }
-  }
-
-  for (let i = edges.length - 1; i >= 0; i--) {
-    if (nodeIdsToRemove.has(edges[i].target)) {
-      edges.splice(i, 1);
-    }
+  /* MCP tool 获取原始 schema 加入到 jsonschema 字段里 */
+  {
+    const mcpToolNodes = nodes.filter(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.tool && node.toolConfig?.mcpTool
+    );
+    const parseMcpToolConfigs = mcpToolNodes
+      .map((node) => parsetMcpToolConfig(node.toolConfig?.mcpTool!))
+      .filter(Boolean) as { toolsetId: string; toolName: string }[];
+    // 批量获取 toolset
+    const toolsets = await getMcpToolsets({
+      teamId,
+      ids: parseMcpToolConfigs.map((config) => config.toolsetId),
+      field: {
+        _id: true,
+        modules: true
+      }
+    });
+    const toolsetMap = new Map<string, (typeof toolsets)[number]>();
+    toolsets.forEach((toolset) => {
+      toolsetMap.set(String(toolset._id), toolset);
+    });
+    mcpToolNodes.forEach((node) => {
+      const mcpTool = node.toolConfig?.mcpTool;
+      if (!mcpTool) return;
+      const parseResult = parsetMcpToolConfig(mcpTool);
+      if (!parseResult) return;
+      const toolset = toolsetMap.get(parseResult.toolsetId);
+      const toolList = toolset?.modules?.[0].toolConfig?.mcpToolSet?.toolList;
+      if (!toolList) return;
+      const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
+      if (!toolRaw) return;
+      node.jsonSchema = toolRaw.inputSchema;
+      node.intro = toolRaw.description;
+    });
   }
 };
 
@@ -480,4 +554,43 @@ export const getNodeErrResponse = ({
       ...(typeof customErr === 'object' ? customErr : {})
     }
   };
+};
+
+/**
+ * Coerce a points value to a finite number, defaulting to 0 for
+ * NaN / Infinity / null / undefined.
+ */
+export const safePoints = (val: number | undefined | null): number =>
+  Number.isFinite(val) ? (val as number) : 0;
+
+/**
+ * Mutates nodes in-place: sets the nestedStart node as entry and injects the
+ * current item / 1-based index into its inputs.
+ *
+ * Shared by loop and parallelRun dispatchers.
+ */
+export const injectNestedStartInputs = ({
+  nodes,
+  childrenNodeIdList,
+  item,
+  index
+}: {
+  nodes: RuntimeNodeItemType[];
+  childrenNodeIdList: string[];
+  item: any;
+  index: number;
+}): void => {
+  nodes.forEach((node) => {
+    if (!childrenNodeIdList.includes(node.nodeId)) return;
+    if (node.flowNodeType === FlowNodeTypeEnum.nestedStart) {
+      node.isEntry = true;
+      node.inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.nestedStartInput) {
+          input.value = item;
+        } else if (input.key === NodeInputKeyEnum.nestedStartIndex) {
+          input.value = index + 1; // 1-based
+        }
+      });
+    }
+  });
 };

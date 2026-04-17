@@ -266,23 +266,45 @@ const NodeCopilot = ({
           }
         });
       });
+      const existingOutputIdMap = new Map(dynamicOutputs.map((output) => [output.key, output.id]));
+      const nextOutputKeys = new Set(outputs.map((output) => output.label));
       dynamicOutputs.forEach((output) => {
-        onChangeNode({ nodeId, type: 'delOutput', key: output.key });
+        if (!nextOutputKeys.has(output.key)) {
+          onChangeNode({ nodeId, type: 'delOutput', key: output.key });
+        }
       });
       outputs.forEach((output) => {
-        onChangeNode({
-          nodeId,
-          type: 'addOutput',
-          value: {
-            id: nanoid(),
-            type: FlowNodeOutputTypeEnum.dynamic,
+        const existingId = existingOutputIdMap.get(output.label);
+        if (existingId) {
+          onChangeNode({
+            nodeId,
+            type: 'updateOutput',
             key: output.label,
-            valueType: output.type as WorkflowIOValueTypeEnum,
-            label: output.label,
-            valueDesc: '',
-            description: ''
-          }
-        });
+            value: {
+              id: existingId,
+              type: FlowNodeOutputTypeEnum.dynamic,
+              key: output.label,
+              valueType: output.type as WorkflowIOValueTypeEnum,
+              label: output.label,
+              valueDesc: '',
+              description: ''
+            }
+          });
+        } else {
+          onChangeNode({
+            nodeId,
+            type: 'addOutput',
+            value: {
+              id: nanoid(),
+              type: FlowNodeOutputTypeEnum.dynamic,
+              key: output.label,
+              valueType: output.type as WorkflowIOValueTypeEnum,
+              label: output.label,
+              valueDesc: '',
+              description: ''
+            }
+          });
+        }
       });
       setOptimizerInput('');
 

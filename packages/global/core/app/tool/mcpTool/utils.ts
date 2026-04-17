@@ -7,6 +7,7 @@ import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { jsonSchema2NodeInput } from '../../jsonschema';
 import { getNanoid } from '../../../../common/string/tools';
 import { AppToolSourceEnum } from '../constants';
+import type { NodeToolConfigType } from '../../../workflow/type/node';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
@@ -63,6 +64,7 @@ export const getMCPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.mcp}-${toolSetId}/${tool.name}` // When runtool is used, parentId and toolname will be employed
       }
     },
+    jsonSchema: tool.inputSchema,
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }),
     outputs: [
       {
@@ -80,11 +82,20 @@ export const getMCPToolRuntimeNode = ({
   };
 };
 
-/**
- * Get the parent id of the mcp toolset
- * mcp-123123/toolName ==> 123123
- * 123123/toolName ==> 123123
- * @param id mcp-parentId/name or parentId/name
- * @returns parentId
- */
-export const getMCPParentId = (id: string) => id.split('-').pop()?.split('/')[0];
+export const parsetMcpToolConfig = (
+  config: NonNullable<NodeToolConfigType['mcpTool']>
+):
+  | {
+      toolsetId: string;
+      toolName: string;
+    }
+  | undefined => {
+  const prefix = `${AppToolSourceEnum.mcp}-`;
+  if (!config.toolId.startsWith(prefix)) return undefined;
+  const [toolsetId, toolName] = config.toolId.slice(prefix.length).split('/');
+  if (!toolsetId || !toolName) return undefined;
+  return {
+    toolsetId,
+    toolName
+  };
+};

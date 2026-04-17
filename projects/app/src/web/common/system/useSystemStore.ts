@@ -59,7 +59,7 @@ type State = {
 
   modelProviders: Record<langType, ModelProviderItemType[]>;
   modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
-  aiproxyIdMap: NonNullable<InitDateResponse['aiproxyIdMap']>;
+  aiproxyChannels: NonNullable<InitDateResponse['aiproxyChannels']>;
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
@@ -162,7 +162,7 @@ export const useSystemStore = create<State>()(
           'zh-CN': {},
           'zh-Hant': {}
         },
-        aiproxyIdMap: {},
+        aiproxyChannels: [],
         defaultModels: {},
         llmModelList: [],
         embeddingModelList: [],
@@ -231,7 +231,7 @@ export const useSystemStore = create<State>()(
               state.modelProviders = ModelProviderListCache ?? state.modelProviders;
               state.modelProviderMap = ModelProviderMapCache ?? state.modelProviderMap;
             }
-            state.aiproxyIdMap = res.aiproxyIdMap ?? state.aiproxyIdMap;
+            state.aiproxyChannels = res.aiproxyChannels ?? state.aiproxyChannels;
 
             state.llmModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
@@ -266,7 +266,7 @@ export const useSystemStore = create<State>()(
 
           modelProviders: state.modelProviders,
           modelProviderMap: state.modelProviderMap,
-          aiproxyIdMap: state.aiproxyIdMap,
+          aiproxyChannels: state.aiproxyChannels,
           defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
           embeddingModelList: state.embeddingModelList,

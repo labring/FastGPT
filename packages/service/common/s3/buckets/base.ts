@@ -10,18 +10,23 @@ import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type createPreviewUrlParams,
-  CreateGetPresignedUrlParamsSchema
-} from '../type';
-import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
-import { getSystemMaxFileSize, Mimes } from '../constants';
+  CreateGetPresignedUrlParamsSchema,
+  CreatePostPresignedUrlOptionsSchema,
+  type CreatePostPresignedUrlResult
+} from '../contracts/type';
+import { storageDownloadMode, getSystemMaxFileSize } from '../config/constants';
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import { createUploadConstraints } from '../utils/uploadConstraints';
 import path from 'node:path';
-import { MongoS3TTL } from '../schema';
+import { MongoS3TTL } from '../models/ttl';
 import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
-import { addS3DelJob } from '../mq';
-import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../type';
+import { addS3DelJob } from '../queue/delete';
+import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../contracts/type';
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
+import { jwtSignS3DownloadToken, jwtSignS3UploadToken } from '../security/token';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -66,18 +71,39 @@ export class S3BaseBucket {
   }
 
   async checkBucketHealth() {
-    await this.createPresignedPutUrl({
-      rawKey: 'health-check.txt',
-      filename: 'health-check.txt',
+    const key = `health-check/${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
+    const filename = 'health-check.txt';
+
+    await this.client.uploadObject({
+      key,
+      body: 'ok',
+      contentType: 'text/plain',
       metadata: {
-        contentDisposition: 'attachment; filename="health-check.txt"',
-        originFilename: 'health-check.txt',
+        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
+        originFilename: filename,
         uploadTime: new Date().toISOString()
       }
     });
+
+    try {
+      await Promise.all([
+        this.client.getObjectMetadata({ key }),
+        this._externalClient?.checkObjectExists({ key })
+      ]);
+    } finally {
+      await this.client.deleteObject({ key }).catch((err) => {
+        if (isFileNotFoundError(err)) {
+          return Promise.resolve();
+        }
+        logger.warn('S3 health check cleanup failed', {
+          key,
+          code: err?.code,
+          error: err
+        });
+      });
+    }
   }
 
-  // TODO: 加到 MQ 里保障幂等
   async move({ from, to }: { from: string; to: string }): Promise<void> {
     await this.copy({ from, to, options: { temporary: false } });
     await this.removeObject(from);
@@ -131,26 +157,26 @@ export class S3BaseBucket {
   async createPresignedPutUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
-  ): Promise<CreatePostPresignedUrlResponseType> {
+  ): Promise<CreatePostPresignedUrlResult> {
     try {
-      const { expiredHours, maxFileSize = getSystemMaxFileSize() } = options;
+      const {
+        expiredHours,
+        maxFileSize = getSystemMaxFileSize(),
+        uploadConstraints
+      } = CreatePostPresignedUrlOptionsSchema.parse(options);
       const formatMaxFileSize = maxFileSize * 1024 * 1024;
       const filename = params.filename;
-      const ext = path.extname(filename).toLowerCase();
-      const contentType = Mimes[ext as keyof typeof Mimes] ?? 'application/octet-stream';
-      const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
-
-      const { metadata, url } = await this.externalClient.generatePresignedPutUrl({
-        key: params.rawKey,
-        expiredSeconds,
-        contentType,
-        metadata: {
-          contentDisposition: `attachment; filename="${encodeURIComponent(filename)}"`,
-          originFilename: encodeURIComponent(filename),
-          uploadTime: new Date().toISOString(),
-          ...params.metadata
-        }
+      const resolvedUploadConstraints = createUploadConstraints({
+        filename,
+        uploadConstraints
       });
+      const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
+      const metadata = {
+        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
+        originFilename: encodeURIComponent(filename),
+        uploadTime: new Date().toISOString(),
+        ...params.metadata
+      };
 
       if (expiredHours) {
         await MongoS3TTL.create({
@@ -161,19 +187,41 @@ export class S3BaseBucket {
       }
 
       return {
-        url: url,
+        url: jwtSignS3UploadToken({
+          objectKey: params.rawKey,
+          bucketName: this.bucketName,
+          expiredTime: addMinutes(new Date(), Math.ceil(expiredSeconds / 60)),
+          maxSize: formatMaxFileSize,
+          uploadConstraints: resolvedUploadConstraints,
+          metadata
+        }),
         key: params.rawKey,
         headers: {
-          ...metadata
+          'content-type': resolvedUploadConstraints.defaultContentType
         },
         maxSize: formatMaxFileSize
       };
     } catch (error) {
-      logger.error('Failed to create S3 presigned PUT URL', {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (
+        message === S3ErrEnum.invalidUploadFileType ||
+        message === S3ErrEnum.uploadFileTypeMismatch
+      ) {
+        logger.info('Rejected S3 upload request', {
+          key: params.rawKey,
+          filename: params.filename,
+          message
+        });
+        return Promise.reject(error);
+      }
+
+      logger.error('Failed to create S3 upload URL', {
         key: params.rawKey,
         filename: params.filename,
         error
       });
+
       return Promise.reject('Failed to create presigned put url');
     }
   }
@@ -181,8 +229,21 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours } = parsed;
+    const { key, expiredHours, mode } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
+
+    if ((mode || storageDownloadMode) === 'proxy') {
+      return {
+        bucket: this.bucketName,
+        key,
+        url: jwtSignS3DownloadToken({
+          objectKey: key,
+          bucketName: this.bucketName,
+          expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
+          filename: path.basename(key)
+        })
+      };
+    }
 
     return await this.externalClient.generatePresignedGetUrl({ key, expiredSeconds: expires });
   }

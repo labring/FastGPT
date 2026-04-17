@@ -11,6 +11,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
@@ -25,6 +26,7 @@ const ChatSliderList = () => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
 
   const concatHistory = useMemo(() => {
     const formatHistories: {
@@ -33,13 +35,21 @@ const ChatSliderList = () => {
       customTitle?: string;
       top?: boolean;
       updateTime: Date;
+      chatGenerateStatus?: ChatGenerateStatusEnum;
+      hasBeenRead?: boolean;
     }[] = histories.map((item) => {
+      const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
+
       return {
         id: item.chatId,
         title: item.title,
         customTitle: item.customTitle,
         top: item.top,
-        updateTime: item.updateTime
+        updateTime: item.updateTime,
+        chatGenerateStatus: isActiveChat
+          ? chatBoxData.chatGenerateStatus ?? item.chatGenerateStatus
+          : item.chatGenerateStatus,
+        hasBeenRead: isActiveChat ? chatBoxData.hasBeenRead ?? item.hasBeenRead : item.hasBeenRead
       };
     });
 
@@ -49,15 +59,27 @@ const ChatSliderList = () => {
       customTitle?: string;
       top?: boolean;
       updateTime: Date;
+      chatGenerateStatus?: ChatGenerateStatusEnum;
+      hasBeenRead?: boolean;
     } = {
       id: activeChatId,
       title: t('common:core.chat.New Chat'),
-      updateTime: new Date()
+      updateTime: new Date(),
+      chatGenerateStatus:
+        chatBoxData.chatId === activeChatId ? chatBoxData.chatGenerateStatus : undefined,
+      hasBeenRead: chatBoxData.chatId === activeChatId ? chatBoxData.hasBeenRead : undefined
     };
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
-  }, [activeChatId, histories, t]);
+  }, [
+    activeChatId,
+    histories,
+    t,
+    chatBoxData.chatId,
+    chatBoxData.chatGenerateStatus,
+    chatBoxData.hasBeenRead
+  ]);
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -83,6 +105,9 @@ const ChatSliderList = () => {
               bg: 'myGray.50',
               '& .more': {
                 display: 'block'
+              },
+              '& .unreadDot': {
+                display: 'none'
               },
               '& .time': {
                 display: isPc ? 'none' : 'block'
@@ -113,15 +138,33 @@ const ChatSliderList = () => {
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
-                <Box
-                  className="time"
-                  display={'block'}
-                  fontWeight={'400'}
-                  fontSize={'mini'}
-                  color={'myGray.500'}
-                >
-                  {t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
-                </Box>
+                {item.hasBeenRead === false &&
+                item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? (
+                  <Box
+                    className="unreadDot"
+                    w={'8px'}
+                    h={'8px'}
+                    borderRadius={'full'}
+                    bg={'primary.500'}
+                    flexShrink={0}
+                  />
+                ) : (
+                  <Box
+                    className="time"
+                    display={'block'}
+                    fontWeight={'400'}
+                    fontSize={'mini'}
+                    color={
+                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                        ? 'primary.600'
+                        : 'myGray.500'
+                    }
+                  >
+                    {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                      ? t('chat:history_generating')
+                      : t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
+                  </Box>
+                )}
                 <Box className="more" display={['block', 'none']}>
                   <MyMenu
                     Button={

@@ -5,6 +5,7 @@ import { stream2Encoding } from '@fastgpt/service/common/file/gridfs/utils';
 import { authFileToken } from '@fastgpt/service/support/permission/auth/file';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 
 const previewableExtensions = [
   'jpg',
@@ -45,10 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
     res.setHeader('Cache-Control', 'public, max-age=31536000');
-    res.setHeader(
-      'Content-Disposition',
-      `${disposition}; filename="${encodeURIComponent(filename)}"`
-    );
+    res.setHeader('Content-Disposition', getContentDisposition({ filename, type: disposition }));
     if (file.contentLength) {
       res.setHeader('Content-Length', file.contentLength);
     }

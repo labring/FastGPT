@@ -33,7 +33,7 @@
       interval: 30s
       timeout: 20s
       retries: 3
-  fastgpt-milvus-standalone:
+  fastgpt-vector:
     container_name: fastgpt-milvus-standalone
     image: ${{milvus-standalone.image}}:${{milvus-standalone.tag}}
     command: ['milvus', 'run', 'standalone']
@@ -43,8 +43,7 @@
       ETCD_ENDPOINTS: fastgpt-milvus-etcd:2379
       MINIO_ADDRESS: fastgpt-milvus-minio:9000
     networks:
-      - fastgpt
-      - vector
+      - data
     volumes:
       - fastgpt-milvus-data:/var/lib/milvus
     healthcheck:

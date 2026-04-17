@@ -683,15 +683,18 @@ describe('appData2FlowNodeIO', () => {
         canSelectCustomFileExtension: true
       }
     }
-  ])('should include file link input when fileSelectConfig allows $title', ({ fileSelectConfig }) => {
-    const result = appData2FlowNodeIO({
-      chatConfig: {
-        fileSelectConfig
-      }
-    });
-    const fileLinkInput = result.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
-    expect(fileLinkInput).toBeDefined();
-  });
+  ])(
+    'should include file link input when fileSelectConfig allows $title',
+    ({ fileSelectConfig }) => {
+      const result = appData2FlowNodeIO({
+        chatConfig: {
+          fileSelectConfig
+        }
+      });
+      const fileLinkInput = result.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
+      expect(fileLinkInput).toBeDefined();
+    }
+  );
 
   it('should not include file link input when fileSelectConfig disallows both', () => {
     const result = appData2FlowNodeIO({
@@ -748,6 +751,36 @@ describe('appData2FlowNodeIO', () => {
 
     const switchVar = result.inputs.find((i) => i.key === 'switchVar');
     expect(switchVar?.renderTypeList).toContain(FlowNodeInputTypeEnum.switch);
+  });
+
+  it('should preserve defaultValue on variable inputs', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'var1',
+            label: 'Variable 1',
+            type: VariableInputEnum.input,
+            description: '',
+            defaultValue: 'hello'
+          },
+          {
+            key: 'numVar',
+            label: 'Num',
+            type: VariableInputEnum.numberInput,
+            description: '',
+            defaultValue: 42
+          }
+        ]
+      }
+    });
+    const var1 = result.inputs.find((i) => i.key === 'var1');
+    expect(var1?.defaultValue).toBe('hello');
+    expect(var1?.value).toBe('hello');
+
+    const numVar = result.inputs.find((i) => i.key === 'numVar');
+    expect(numVar?.defaultValue).toBe(42);
+    expect(numVar?.value).toBe(42);
   });
 
   it('should handle variable with list/enums', () => {

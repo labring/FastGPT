@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { HelperBotTypeEnumSchema } from '@fastgpt/global/core/chat/helperBot/type';
 
 export const HelperBotFileUploadSchema = z.object({
@@ -6,7 +6,7 @@ export const HelperBotFileUploadSchema = z.object({
   chatId: z.string().nonempty(),
   userId: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional()
+  expiredTime: z.coerce.date().optional()
 });
 export type CheckHelperBotFileKeys = z.infer<typeof HelperBotFileUploadSchema>;
 

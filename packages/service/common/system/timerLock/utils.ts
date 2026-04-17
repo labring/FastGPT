@@ -46,3 +46,13 @@ export const cleanTimerLock = async ({
     { session }
   );
 };
+
+export const deleteTimerLock = async ({
+  timerId,
+  session
+}: {
+  timerId: string;
+  session?: ClientSession;
+}) => {
+  await MongoTimerLock.deleteOne({ timerId }, { session });
+};

@@ -43,6 +43,16 @@ export const deleteTeamAllDatasets = async (teamId: string) => {
     teamId,
     datasetIds: datasets.map((d) => d._id)
   });
+  await MongoDataset.updateMany(
+    {
+      teamId
+    },
+    {
+      $set: {
+        deleteTime: new Date()
+      }
+    }
+  );
   await Promise.all(
     datasets.map((dataset) => {
       if (dataset.parentId) return;
