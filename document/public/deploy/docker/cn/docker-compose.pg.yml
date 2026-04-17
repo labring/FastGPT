@@ -161,14 +161,22 @@ services:
       - opensandbox
       - aiproxy
     depends_on:
-      - fastgpt-mongo
-      - fastgpt-vector
-      - fastgpt-redis
-      - fastgpt-minio
-      - fastgpt-code-sandbox
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-vector:
+        condition: service_healthy
+      fastgpt-redis:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+      fastgpt-code-sandbox:
+        condition: service_healthy
+      fastgpt-plugin:
+        condition: service_healthy
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
+      HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       FE_DOMAIN: http://localhost:3000
@@ -282,9 +290,13 @@ services:
       SANDBOX_JS_ALLOWED_MODULES: lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring
       # Python allowed modules whitelist (comma-separated)
       SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
-
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test: [
+        'CMD',                                                                                                                                                        
+        'bun',                                                               
+        '-e',
+        "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+      ]     
       interval: 30s
       timeout: 20s
       retries: 3
@@ -316,6 +328,8 @@ services:
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-plugin
     depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
       fastgpt-minio:
         condition: service_healthy
     healthcheck:
@@ -343,7 +357,13 @@ services:
     environment:
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          'import urllib.request,sys; sys.exit(0 if urllib.request.urlopen("http://localhost:8090/health",timeout=3).status==200 else 1)'
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
