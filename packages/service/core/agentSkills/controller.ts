@@ -12,6 +12,7 @@ import { createVersion } from './version/controller';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteSkillRelatedSandboxes } from './sandboxController';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -197,7 +198,7 @@ export async function importSkill(
   // Check for duplicate name before creating
   const nameExists = await checkSkillNameExists(skill.name, teamId, parentId || null);
   if (nameExists) {
-    throw new Error('Skill with this name already exists');
+    throw SkillErrEnum.skillNameExists;
   }
 
   // Create skill record first

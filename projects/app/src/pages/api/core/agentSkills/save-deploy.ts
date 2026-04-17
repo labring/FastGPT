@@ -1,5 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
+import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateCurrentStorage } from '@fastgpt/service/core/agentSkills/controller';
@@ -28,166 +27,156 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.DEPLOY);
 
 /**
  * Package and deploy a skill from sandbox, creating a new version.
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(
+  req: ApiRequestProps<SaveDeploySkillBody>
+): Promise<SaveDeploySkillResponse> {
+  const { skillId, versionName } = req.body;
+
+  if (!skillId || !isValidObjectId(skillId)) {
+    return Promise.reject(SkillErrEnum.invalidSkillId);
+  }
+
+  // Verify write permission via authSkill (replaces authUserPer + canModifySkill)
+  const { teamId, tmbId, skill } = await authSkill({
+    req,
+    skillId,
+    per: WritePermissionVal,
+    authToken: true,
+    authApiKey: true
+  });
+
+  // Fetch the edit-debug sandbox
+  const sandboxInfo = await MongoSandboxInstance.findOne({
+    appId: skillId,
+    chatId: 'edit-debug',
+    status: SandboxStatusEnum.running,
+    'metadata.sandboxType': SandboxTypeEnum.editDebug
+  });
+
+  if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {
+    return Promise.reject(new UserError('Edit sandbox not found or not running'));
+  }
+
+  // Package the skill directory from the sandbox
+  let packageBuffer: Buffer;
   try {
-    if (req.method !== 'POST') {
-      return jsonRes(res, { code: 405, error: 'Method not allowed' });
-    }
-
-    const { skillId, versionName } = req.body as SaveDeploySkillBody;
-
-    if (!skillId) {
-      return jsonRes(res, { code: 400, error: 'skillId is required' });
-    }
-
-    if (!isValidObjectId(skillId)) {
-      return jsonRes(res, { code: 400, error: 'Invalid skill ID format' });
-    }
-
-    // Verify write permission via authSkill (replaces authUserPer + canModifySkill)
-    const { teamId, tmbId, skill } = await authSkill({
-      req,
-      skillId,
-      per: WritePermissionVal,
-      authToken: true,
-      authApiKey: true
+    packageBuffer = await packageSkillInSandbox({
+      providerSandboxId: sandboxInfo.metadata?.providerSandboxId ?? sandboxInfo.sandboxId
     });
-
-    // Fetch the edit-debug sandbox
-    const sandboxInfo = await MongoSandboxInstance.findOne({
-      appId: skillId,
-      chatId: 'edit-debug',
-      status: SandboxStatusEnum.running,
-      'metadata.sandboxType': SandboxTypeEnum.editDebug
-    });
-
-    if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {
-      return jsonRes(res, {
-        code: 404,
-        error: 'Edit sandbox not found or not running'
-      });
-    }
-
-    // Package the skill directory from the sandbox
-    let packageBuffer: Buffer;
-    try {
-      packageBuffer = await packageSkillInSandbox({
-        providerSandboxId: sandboxInfo.metadata?.providerSandboxId ?? sandboxInfo.sandboxId
-      });
-    } catch (error: any) {
-      return jsonRes(res, {
-        code: 500,
-        error: `Failed to package skill directory: ${error.message || 'Unknown error'}`
-      });
-    }
-
-    // Validate the ZIP structure
-    const validation = await validateZipStructure(packageBuffer);
-    if (!validation.valid) {
-      return jsonRes(res, {
-        code: 500,
-        error: `Invalid skill package structure: ${validation.error || 'Unknown error'}`
-      });
-    }
-
-    // Extract SKILL.md from the ZIP
-    const extractResult = await extractSkillPackage(packageBuffer);
-    if (!extractResult.success || !extractResult.skillMd) {
-      return jsonRes(res, { code: 500, error: 'SKILL.md not found in package' });
-    }
-
-    // Parse skill metadata from SKILL.md frontmatter
-    const { skill: skillMetadata, error: parseError } = extractSkillFromMarkdown(
-      extractResult.skillMd
+  } catch (error: any) {
+    return Promise.reject(
+      new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)
     );
-    if (parseError || !skillMetadata) {
-      return jsonRes(res, {
-        code: 500,
-        error: `Failed to parse SKILL.md: ${parseError || 'Unknown error'}`
-      });
-    }
+  }
 
-    // Standardize the ZIP package (ensure the root folder is named after the skill)
-    let standardizedPackageBuffer: Buffer;
+  // Validate the ZIP structure
+  const validation = await validateZipStructure(packageBuffer);
+  if (!validation.valid) {
+    logger.warn('Invalid skill package structure', { error: validation.error });
+    return Promise.reject(SkillErrEnum.invalidSkillPackage);
+  }
+
+  // Extract SKILL.md from the ZIP
+  const extractResult = await extractSkillPackage(packageBuffer);
+  if (!extractResult.success || !extractResult.skillMd) {
+    logger.warn('SKILL.md not found or extraction failed in skill package', {
+      success: extractResult.success,
+      hasSkillMd: !!extractResult.skillMd
+    });
+    return Promise.reject(SkillErrEnum.invalidSkillPackage);
+  }
+
+  // Parse skill metadata from SKILL.md frontmatter
+  const { skill: skillMetadata, error: parseError } = extractSkillFromMarkdown(
+    extractResult.skillMd
+  );
+  if (parseError || !skillMetadata) {
+    return Promise.reject(
+      new UserError(`Failed to parse SKILL.md: ${parseError || 'Unknown error'}`)
+    );
+  }
+
+  // Standardize the ZIP package (ensure the root folder is named after the skill)
+  let standardizedPackageBuffer: Buffer;
+  try {
+    const { buffer } = await standardizeSkillPackage(packageBuffer, skillMetadata.name);
+    standardizedPackageBuffer = buffer;
+  } catch (error: any) {
+    return Promise.reject(
+      new UserError(`Failed to standardize skill package: ${error.message || 'Unknown error'}`)
+    );
+  }
+
+  // Transaction: create version record and upload package
+  const response = await mongoSessionRun(async (session) => {
+    const nextVersion = await getNextVersionNumber(skillId, session);
+
+    let storageInfo;
     try {
-      const { buffer } = await standardizeSkillPackage(packageBuffer, skillMetadata.name);
-      standardizedPackageBuffer = buffer;
-    } catch (error: any) {
-      return jsonRes(res, {
-        code: 500,
-        error: `Failed to standardize skill package: ${error.message || 'Unknown error'}`
-      });
-    }
-
-    // Transaction: create version record and upload package
-    const response = await mongoSessionRun(async (session) => {
-      const nextVersion = await getNextVersionNumber(skillId, session);
-
-      let storageInfo;
-      try {
-        storageInfo = await uploadSkillPackage({
-          teamId,
-          skillId,
-          version: nextVersion,
-          zipBuffer: standardizedPackageBuffer
-        });
-      } catch (error: any) {
-        throw new Error(`Failed to upload package: ${error.message || 'Unknown error'}`);
-      }
-
-      await createVersion(
-        {
-          skillId,
-          tmbId,
-          version: nextVersion,
-          versionName: versionName || `v${nextVersion}`,
-          storage: storageInfo
-        },
-        session
-      );
-      await updateCurrentStorage(skillId, storageInfo, session);
-      await MongoAgentSkills.updateOne(
-        { _id: skillId },
-        {
-          $set: {
-            currentVersion: nextVersion,
-            versionCount: nextVersion + 1,
-            updateTime: new Date()
-          }
-        },
-        { session }
-      );
-      await setActiveVersion(skillId, nextVersion, session);
-
-      return {
+      storageInfo = await uploadSkillPackage({
+        teamId,
         skillId,
         version: nextVersion,
-        versionName: versionName || `v${nextVersion}`,
-        storage: { bucket: storageInfo.bucket, key: storageInfo.key, size: storageInfo.size },
-        createdAt: new Date().toISOString()
-      };
-    });
-
-    // Record audit log asynchronously to avoid blocking the response
-    (async () => {
-      addAuditLog({
-        tmbId,
-        teamId,
-        event: AuditEventEnum.DEPLOY_SKILL,
-        params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
+        zipBuffer: standardizedPackageBuffer
       });
-    })();
+    } catch (error: any) {
+      throw new UserError(`Failed to upload package: ${error.message || 'Unknown error'}`);
+    }
 
-    jsonRes<SaveDeploySkillResponse>(res, { data: response });
-  } catch (err: any) {
-    console.error('[API] Save-deploy skill error:', err);
-    jsonRes(res, {
-      code: 500,
-      error: err.message || 'Failed to save and deploy skill'
+    await createVersion(
+      {
+        skillId,
+        tmbId,
+        version: nextVersion,
+        versionName: versionName || `v${nextVersion}`,
+        storage: storageInfo
+      },
+      session
+    );
+    await updateCurrentStorage(skillId, storageInfo, session);
+    await MongoAgentSkills.updateOne(
+      { _id: skillId },
+      {
+        $set: {
+          currentVersion: nextVersion,
+          versionCount: nextVersion + 1,
+          updateTime: new Date()
+        }
+      },
+      { session }
+    );
+    await setActiveVersion(skillId, nextVersion, session);
+
+    return {
+      skillId,
+      version: nextVersion,
+      versionName: versionName || `v${nextVersion}`,
+      storage: { bucket: storageInfo.bucket, key: storageInfo.key, size: storageInfo.size },
+      createdAt: new Date().toISOString()
+    };
+  });
+
+  // Record audit log asynchronously to avoid blocking the response
+  (async () => {
+    addAuditLog({
+      tmbId,
+      teamId,
+      event: AuditEventEnum.DEPLOY_SKILL,
+      params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
-  }
+  })();
+
+  return response;
 }
+
+export default NextAPI(handler);
