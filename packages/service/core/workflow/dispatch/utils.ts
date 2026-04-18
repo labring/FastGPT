@@ -25,7 +25,10 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import {
+  getHTTPToolRuntimeNode,
+  parseHttpToolConfig
+} from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoApp } from '../../../core/app/schema';
 import { getMCPChildren } from '../../../core/app/mcp';
@@ -396,7 +399,7 @@ export const rewriteRuntimeWorkFlow = async ({
 }) => {
   /* Toolset 展开 */
   // TODO: 待性能优化
-  {
+  const parseToolset = async () => {
     const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
     if (toolSetNodes.length > 0) {
       const nodeIdsToRemove = new Set<string>();
@@ -481,10 +484,10 @@ export const rewriteRuntimeWorkFlow = async ({
         }
       }
     }
-  }
+  };
 
   /* MCP tool 获取原始 schema 加入到 jsonschema 字段里 */
-  {
+  const parseMcpTool = async () => {
     const mcpToolNodes = nodes.filter(
       (node) => node.flowNodeType === FlowNodeTypeEnum.tool && node.toolConfig?.mcpTool
     );
@@ -517,7 +520,47 @@ export const rewriteRuntimeWorkFlow = async ({
       node.jsonSchema = toolRaw.inputSchema;
       node.intro = toolRaw.description;
     });
-  }
+  };
+
+  /* Http tool 获取原始 schema 加入到 jsonschema 字段里 */
+  const parseHttpTool = async () => {
+    const httpToolNodes = nodes.filter(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.tool && node.toolConfig?.httpTool
+    );
+    const parseHttpToolConfigs = httpToolNodes
+      .map((node) => parseHttpToolConfig(node.toolConfig?.httpTool!))
+      .filter(Boolean) as { toolsetId: string; toolName: string }[];
+    // 批量获取 toolset
+    const toolsets = await MongoApp.find(
+      {
+        teamId,
+        _id: { $in: parseHttpToolConfigs.map((config) => config.toolsetId) }
+      },
+      {
+        _id: true,
+        modules: true
+      }
+    ).lean();
+    const toolsetMap = new Map<string, (typeof toolsets)[number]>();
+    toolsets.forEach((toolset) => {
+      toolsetMap.set(String(toolset._id), toolset);
+    });
+    httpToolNodes.forEach((node) => {
+      const httpTool = node.toolConfig?.httpTool;
+      if (!httpTool) return;
+      const parseResult = parseHttpToolConfig(httpTool);
+      if (!parseResult) return;
+      const toolset = toolsetMap.get(parseResult.toolsetId);
+      const toolList = toolset?.modules?.[0].toolConfig?.httpToolSet?.toolList;
+      if (!toolList) return;
+      const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
+      if (!toolRaw) return;
+      node.jsonSchema = toolRaw.requestSchema;
+      node.intro = toolRaw.description;
+    });
+  };
+
+  await Promise.all([parseToolset(), parseMcpTool(), parseHttpTool()]);
 };
 
 export const getNodeErrResponse = ({

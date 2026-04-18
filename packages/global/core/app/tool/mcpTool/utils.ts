@@ -92,7 +92,8 @@ export const parsetMcpToolConfig = (
   | undefined => {
   const prefix = `${AppToolSourceEnum.mcp}-`;
   if (!config.toolId.startsWith(prefix)) return undefined;
-  const [toolsetId, toolName] = config.toolId.slice(prefix.length).split('/');
+  const [toolsetId, ...rest] = config.toolId.slice(prefix.length).split('/');
+  const toolName = rest.join('/');
   if (!toolsetId || !toolName) return undefined;
   return {
     toolsetId,
