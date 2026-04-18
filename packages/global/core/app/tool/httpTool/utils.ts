@@ -8,6 +8,7 @@ import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
 import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
+import type { NodeToolConfigType } from '../../../workflow/type/node';
 
 export const getHTTPToolSetRuntimeNode = ({
   name,
@@ -86,6 +87,25 @@ export const getHTTPToolRuntimeNode = ({
     ],
     name: `${toolsetName}/${tool.name}`,
     version: ''
+  };
+};
+
+export const parseHttpToolConfig = (
+  config: NonNullable<NodeToolConfigType['httpTool']>
+):
+  | {
+      toolsetId: string;
+      toolName: string;
+    }
+  | undefined => {
+  const prefix = `${AppToolSourceEnum.http}-`;
+  if (!config.toolId.startsWith(prefix)) return undefined;
+  const [toolsetId, ...rest] = config.toolId.slice(prefix.length).split('/');
+  const toolName = rest.join('/');
+  if (!toolsetId || !toolName) return undefined;
+  return {
+    toolsetId,
+    toolName
   };
 };
 

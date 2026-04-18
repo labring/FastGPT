@@ -191,12 +191,28 @@ describe('mcpTool utils', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should parse toolsetId correctly when tool name contains additional slashes', () => {
+    it('should preserve slashes inside tool name', () => {
       const result = parsetMcpToolConfig({
         toolId: 'mcp-toolset-abc/namespace/nestedTool'
       });
 
-      expect(result).toEqual({ toolsetId: 'toolset-abc', toolName: 'namespace' });
+      expect(result).toEqual({ toolsetId: 'toolset-abc', toolName: 'namespace/nestedTool' });
+    });
+
+    it('should preserve multiple slashes inside tool name', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'mcp-toolset-xyz/a/b/c/d'
+      });
+
+      expect(result).toEqual({ toolsetId: 'toolset-xyz', toolName: 'a/b/c/d' });
+    });
+
+    it('should return undefined when toolName segment is empty in toolId', () => {
+      const result = parsetMcpToolConfig({
+        toolId: 'mcp-toolset-abc/'
+      });
+
+      expect(result).toBeUndefined();
     });
   });
 });

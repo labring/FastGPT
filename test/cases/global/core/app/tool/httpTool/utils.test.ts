@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   getHTTPToolSetRuntimeNode,
   getHTTPToolRuntimeNode,
+  parseHttpToolConfig,
   pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import {
@@ -156,6 +157,72 @@ describe('httpTool utils', () => {
       expect(rawResponseOutput?.valueType).toBe(WorkflowIOValueTypeEnum.any);
       expect(rawResponseOutput?.type).toBe(FlowNodeOutputTypeEnum.static);
       expect(rawResponseOutput?.required).toBe(true);
+    });
+  });
+
+  describe('parseHttpToolConfig', () => {
+    it('should parse toolsetId and toolName from a valid toolId', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-toolset-456/someTool'
+      });
+
+      expect(result).toEqual({ toolsetId: 'toolset-456', toolName: 'someTool' });
+    });
+
+    it('should return undefined when toolId does not match http- prefix pattern', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'mcp-foo/bar'
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when toolId has no slash separator', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-toolset-no-tool'
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when toolsetId segment is empty in toolId', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-/toolName'
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when toolName segment is empty in toolId', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-toolset-abc/'
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when toolId is empty string', () => {
+      const result = parseHttpToolConfig({
+        toolId: ''
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should preserve slashes inside tool name', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-toolset-abc/namespace/nestedTool'
+      });
+
+      expect(result).toEqual({ toolsetId: 'toolset-abc', toolName: 'namespace/nestedTool' });
+    });
+
+    it('should preserve multiple slashes inside tool name', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-toolset-xyz/a/b/c/d'
+      });
+
+      expect(result).toEqual({ toolsetId: 'toolset-xyz', toolName: 'a/b/c/d' });
     });
   });
 

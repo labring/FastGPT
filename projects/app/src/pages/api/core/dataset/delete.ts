@@ -30,6 +30,10 @@ async function handler(req: ApiRequestProps) {
     fields: '_id'
   });
   const datasetIds = deleteDatasets.map((d) => d._id);
+  await deleteDatasetsImmediate({
+    teamId,
+    datasetIds
+  });
 
   await mongoSessionRun(async (session) => {
     // 1. Mark as deleted
@@ -45,11 +49,6 @@ async function handler(req: ApiRequestProps) {
         session
       }
     );
-
-    await deleteDatasetsImmediate({
-      teamId,
-      datasetIds
-    });
 
     // 2. Add to delete queue
     await addDatasetDeleteJob({

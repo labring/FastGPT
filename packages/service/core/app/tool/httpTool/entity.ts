@@ -1,7 +1,7 @@
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoApp } from '../../schema';
 
-export const getMcpToolsets = ({
+export const getHttpToolsets = ({
   teamId,
   ids,
   field
