@@ -43,6 +43,7 @@ import { presignVariablesFileUrls } from '../../chat/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getMcpToolsets } from '../../app/tool/mcpTool/entity';
+import { getHttpToolsets } from '../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../app/http';
 
 /* get system variable */
@@ -531,16 +532,14 @@ export const rewriteRuntimeWorkFlow = async ({
       .map((node) => parseHttpToolConfig(node.toolConfig?.httpTool!))
       .filter(Boolean) as { toolsetId: string; toolName: string }[];
     // 批量获取 toolset
-    const toolsets = await MongoApp.find(
-      {
-        teamId,
-        _id: { $in: parseHttpToolConfigs.map((config) => config.toolsetId) }
-      },
-      {
+    const toolsets = await getHttpToolsets({
+      teamId,
+      ids: parseHttpToolConfigs.map((config) => config.toolsetId),
+      field: {
         _id: true,
         modules: true
       }
-    ).lean();
+    });
     const toolsetMap = new Map<string, (typeof toolsets)[number]>();
     toolsets.forEach((toolset) => {
       toolsetMap.set(String(toolset._id), toolset);

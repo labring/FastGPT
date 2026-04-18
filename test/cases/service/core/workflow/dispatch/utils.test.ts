@@ -804,6 +804,170 @@ describe('rewriteRuntimeWorkFlow', () => {
     expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
     expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
   });
+
+  // Helper: route MongoApp.find responses by the toolsetId it queries, since
+  // parseMcpTool and parseHttpTool may both hit MongoApp.find in parallel.
+  const setupFindByIdMap = (idToDoc: Record<string, any>) => {
+    mockMongoAppFind.mockImplementation((query: any) => {
+      const ids: string[] = query?._id?.$in ?? [];
+      const docs = ids.map((id) => idToDoc[id]).filter(Boolean);
+      return { lean: vi.fn().mockResolvedValue(docs) };
+    });
+  };
+
+  it('should inject jsonSchema and intro for standalone MCP tool nodes', async () => {
+    const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        mcpTool: { toolId: 'mcp-toolset-1/toolA' }
+      }
+    } as any);
+    const nodes = [mcpToolNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    const toolAInputSchema = {
+      type: 'object',
+      properties: { x: { type: 'string' } }
+    };
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolA',
+                    description: 'tool A description',
+                    inputSchema: toolAInputSchema
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(mcpToolNode.jsonSchema).toEqual(toolAInputSchema);
+    expect(mcpToolNode.intro).toBe('tool A description');
+  });
+
+  it('should inject jsonSchema and intro for standalone HTTP tool nodes', async () => {
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        httpTool: { toolId: 'http-toolset-1/toolB' }
+      }
+    } as any);
+    const nodes = [httpToolNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    const toolBRequestSchema = {
+      type: 'object',
+      properties: { y: { type: 'number' } }
+    };
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolB',
+                    description: 'tool B description',
+                    requestSchema: toolBRequestSchema
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(httpToolNode.jsonSchema).toEqual(toolBRequestSchema);
+    expect(httpToolNode.intro).toBe('tool B description');
+  });
+
+  it('should preserve tool names containing slashes when injecting schema', async () => {
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        httpTool: { toolId: 'http-toolset-1/namespace/toolC' }
+      }
+    } as any);
+    const nodes = [httpToolNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'namespace/toolC',
+                    description: 'nested tool',
+                    requestSchema: { type: 'object' }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(httpToolNode.jsonSchema).toEqual({ type: 'object' });
+    expect(httpToolNode.intro).toBe('nested tool');
+  });
+
+  it('should skip schema injection when toolset is not found', async () => {
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        httpTool: { toolId: 'http-missing/toolX' }
+      },
+      intro: 'original',
+      jsonSchema: { type: 'original' }
+    } as any);
+    const nodes = [httpToolNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    setupFindByIdMap({});
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
+    expect(httpToolNode.intro).toBe('original');
+  });
+
+  it('should skip schema injection when toolId prefix does not match', async () => {
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      toolConfig: {
+        httpTool: { toolId: 'mcp-toolset-1/toolA' }
+      },
+      intro: 'original',
+      jsonSchema: { type: 'original' }
+    } as any);
+    const nodes = [httpToolNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    setupFindByIdMap({});
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(httpToolNode.jsonSchema).toEqual({ type: 'original' });
+    expect(httpToolNode.intro).toBe('original');
+  });
 });
 
 describe('getNodeErrResponse', () => {

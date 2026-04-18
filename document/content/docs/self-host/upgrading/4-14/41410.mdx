@@ -9,7 +9,7 @@ description: 'FastGPT V4.14.10 更新说明'
 
 以下针对的是 `docker compose` 部署方案的配置调整，使用`sealos`的商业版用户，可私信支持人员，提供在线的沙盒服务方案。
 
-参考[最新 yml 部署文件](https://github.com/labring/FastGPT/blob/main/deploy/docker/cn/docker-compose.pg.yml)，调整本底 yml 文件，加入以下内容：
+参考[最新 yml 部署文件](https://github.com/labring/FastGPT/blob/main/deploy/docker/cn/docker-compose.pg.yml)，调整本地 yml 文件，加入以下内容：
 
 1. 在文件顶部增加 `x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'` 变量配置。
 2. 增加 5 组 services: `opensandbox-server`,`opensandbox-agent-sandbox-image`,`opensandbox-execd-image`,`opensandbox-egress-image`,`fastgpt-volume-manager`

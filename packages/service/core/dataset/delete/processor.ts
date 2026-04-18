@@ -60,6 +60,7 @@ export const deleteTeamAllDatasets = async (teamId: string) => {
     );
     await Promise.all(
       datasets.map((dataset) => {
+        // 有 parentId 的忽略，只需要删 root 下的即可。
         if (dataset.parentId) return;
         return addDatasetDeleteJob({
           teamId,
