@@ -19,6 +19,16 @@ export async function mockSynthesizeEvalData(
 
   await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
+  if (process.env.MOCK_DITING_SYNTH_FAIL === 'true') {
+    return {
+      success: false,
+      requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      status: 'failed',
+      error: 'Mock synthesis failed',
+      usages: []
+    };
+  }
+
   const contextText = request.inputData.context.join('\n');
   const question = `Question based on: ${contextText.slice(0, 50)}...`;
   const answer = `Answer based on context: ${contextText.slice(0, 100)}...`;

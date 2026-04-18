@@ -120,7 +120,7 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
-    res.status(500).json({
+    res.status(processedError.code).json({
       code: processedError.code,
       statusText: processedError.statusText,
       message: message || processedError.message,

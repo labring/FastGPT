@@ -26,7 +26,7 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
 }));
 
 // Mock job cleanup
-vi.mock('@fastgpt/service/core/evaluation/utils/mq', () => ({
+vi.mock('@fastgpt/service/common/bullmq/utils', () => ({
   createJobCleaner: vi.fn(() => ({
     cleanAllJobsByFilter: vi.fn().mockResolvedValue({
       queue: 'test-queue',
