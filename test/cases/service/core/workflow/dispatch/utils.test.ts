@@ -12,8 +12,11 @@ import {
   formatHttpError,
   rewriteRuntimeWorkFlow,
   getNodeErrResponse,
-  safePoints
+  safePoints,
+  getSystemVariables
 } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -49,6 +52,11 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
 const mockGetHTTPToolList = vi.fn();
 vi.mock('@fastgpt/service/core/app/http', () => ({
   getHTTPToolList: (...args: any[]) => mockGetHTTPToolList(...args)
+}));
+
+const mockPresignVariablesFileUrls = vi.fn();
+vi.mock('@fastgpt/service/core/chat/utils', () => ({
+  presignVariablesFileUrls: (...args: any[]) => mockPresignVariablesFileUrls(...args)
 }));
 
 describe('getWorkflowResponseWrite', () => {
@@ -1055,5 +1063,308 @@ describe('safePoints', () => {
 
   it('undefined → 0', () => {
     expect(safePoints(undefined)).toBe(0);
+  });
+});
+
+describe('getSystemVariables', () => {
+  const baseArgs = {
+    timezone: 'Asia/Shanghai',
+    runningAppInfo: { id: 'app-123' } as any,
+    chatId: 'chat-1',
+    responseChatItemId: 'rci-1',
+    histories: [],
+    uid: 'user-1',
+    chatConfig: {} as any,
+    variables: {}
+  };
+
+  it('should return only system variables when chatConfig has no variables', async () => {
+    const result = await getSystemVariables(baseArgs);
+    expect(result.userId).toBe('user-1');
+    expect(result.appId).toBe('app-123');
+    expect(result.chatId).toBe('chat-1');
+    expect(result.responseChatItemId).toBe('rci-1');
+    expect(result.histories).toEqual([]);
+    expect(typeof result.cTime).toBe('string');
+  });
+
+  it('should return only system variables when chatConfig is undefined', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: undefined as any
+    });
+    expect(result.userId).toBe('user-1');
+    expect(result.appId).toBe('app-123');
+    expect((result as any).custom).toBeUndefined();
+  });
+
+  it('should coerce runningAppInfo.id to string', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      runningAppInfo: { id: 42 } as any
+    });
+    expect(result.appId).toBe('42');
+  });
+
+  it('should default histories to [] when not provided', async () => {
+    const { histories, ...rest } = baseArgs;
+    const result = await getSystemVariables(rest as any);
+    expect(result.histories).toEqual([]);
+  });
+
+  it('should preserve provided histories', async () => {
+    const histories = [{ obj: 'Human', value: [] }] as any;
+    const result = await getSystemVariables({
+      ...baseArgs,
+      histories
+    });
+    expect(result.histories).toBe(histories);
+  });
+
+  it('should decrypt password variable from item.label', async () => {
+    const encrypted = encryptSecret('plain-value');
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'pwdKey',
+            label: 'pwdLabel',
+            type: VariableInputEnum.password,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      } as any,
+      variables: {
+        pwdLabel: JSON.stringify({ value: '', secret: encrypted })
+      }
+    });
+    expect((result as any).pwdKey).toBe('plain-value');
+  });
+
+  it('should decrypt password variable from item.key when label missing', async () => {
+    const encrypted = encryptSecret('key-value');
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'pwdKey',
+            label: 'pwdLabel',
+            type: VariableInputEnum.password,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      } as any,
+      variables: {
+        pwdKey: { value: '', secret: encrypted }
+      }
+    });
+    expect((result as any).pwdKey).toBe('key-value');
+  });
+
+  it('should fall back to defaultValue for password variable', async () => {
+    const encrypted = encryptSecret('default-value');
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'pwdKey',
+            label: 'pwdLabel',
+            type: VariableInputEnum.password,
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: { value: '', secret: encrypted }
+          }
+        ]
+      } as any,
+      variables: {}
+    });
+    expect((result as any).pwdKey).toBe('default-value');
+  });
+
+  it('should map file variables to their url list', async () => {
+    mockPresignVariablesFileUrls.mockResolvedValueOnce({
+      fileKey: [
+        { key: 'a', url: 'http://example.com/a' },
+        { key: 'b', url: 'http://example.com/b' }
+      ]
+    });
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'fileKey',
+            label: 'fileLabel',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      } as any,
+      variables: {
+        fileKey: [{ key: 'a' }, { key: 'b' }]
+      }
+    });
+    expect((result as any).fileKey).toEqual(['http://example.com/a', 'http://example.com/b']);
+  });
+
+  it('should return undefined for file variable when presign returns no entry', async () => {
+    mockPresignVariablesFileUrls.mockResolvedValueOnce({});
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'fileKey',
+            label: 'fileLabel',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      } as any,
+      variables: {}
+    });
+    expect((result as any).fileKey).toBeUndefined();
+  });
+
+  it('should use variables[label] when provided (API input)', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'myKey',
+            label: 'myLabel',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      } as any,
+      variables: {
+        myLabel: 'from-label'
+      }
+    });
+    expect((result as any).myKey).toBe('from-label');
+  });
+
+  it('should use variables[key] when label missing (Web input)', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'myKey',
+            label: 'myLabel',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      } as any,
+      variables: {
+        myKey: 'from-key'
+      }
+    });
+    expect((result as any).myKey).toBe('from-key');
+  });
+
+  it('should fall back to defaultValue when neither label nor key provided', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'myKey',
+            label: 'myLabel',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string,
+            defaultValue: 'fallback'
+          }
+        ]
+      } as any,
+      variables: {}
+    });
+    expect((result as any).myKey).toBe('fallback');
+  });
+
+  it('should format value by valueType (number)', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'n',
+            label: 'nLabel',
+            type: VariableInputEnum.numberInput,
+            valueType: WorkflowIOValueTypeEnum.number
+          }
+        ]
+      } as any,
+      variables: {
+        nLabel: '42'
+      }
+    });
+    expect((result as any).n).toBe(42);
+  });
+
+  it('should prefer label over key when both present', async () => {
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'dup',
+            label: 'dupLabel',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      } as any,
+      variables: {
+        dupLabel: 'label-wins',
+        dup: 'key-loses'
+      }
+    });
+    expect((result as any).dup).toBe('label-wins');
+  });
+
+  it('should process multiple variables in the same call', async () => {
+    mockPresignVariablesFileUrls.mockResolvedValueOnce({
+      f: [{ key: 'k', url: 'http://example.com/k' }]
+    });
+    const encrypted = encryptSecret('pwd-plain');
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'a',
+            label: 'aLabel',
+            type: VariableInputEnum.input,
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: 'f',
+            label: 'fLabel',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          },
+          {
+            key: 'p',
+            label: 'pLabel',
+            type: VariableInputEnum.password,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      } as any,
+      variables: {
+        aLabel: 'alpha',
+        f: [{ key: 'k' }],
+        pLabel: JSON.stringify({ value: '', secret: encrypted })
+      }
+    });
+    expect((result as any).a).toBe('alpha');
+    expect((result as any).f).toEqual(['http://example.com/k']);
+    expect((result as any).p).toBe('pwd-plain');
   });
 });
