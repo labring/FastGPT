@@ -4,7 +4,11 @@ import { AppTypeEnum } from './constants';
 import type { NodeInputKeyEnum } from '../workflow/constants';
 import { VariableInputEnum } from '../workflow/constants';
 import { InputComponentPropsTypeSchema, type SelectedDatasetType } from '../workflow/type/io';
-import { DatasetSearchModeEnum, DatasetRetrievalModeEnum, RerankMethodEnum } from '../dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetRetrievalModeEnum,
+  RerankMethodEnum
+} from '../dataset/constants';
 import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
@@ -83,9 +87,18 @@ export const AppChatConfigTypeSchema = z.object({
   faqAnswerMode: z.enum(['quote', 'llm-summary']).optional(),
   enableFallbackReply: z.enum(['useFallbackReply', 'llmReply']).optional(),
   fallbackReply: z.string().optional(),
+  entryPoints: z
+    .array(z.object({ id: z.string(), name: z.string(), icon: z.string().optional() }))
+    .optional(),
   instruction: z.string().optional()
 });
 export type AppChatConfigType = z.infer<typeof AppChatConfigTypeSchema>;
+
+export type EntryPointItemType = {
+  id: string;
+  name: string;
+  icon?: string;
+};
 
 // Mongo Collection
 export const AppSchemaTypeSchema = z.object({

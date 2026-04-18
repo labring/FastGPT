@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../common/response';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { type NextApiResponse } from 'next';
 import {
   DispatchNodeResponseKeyEnum,
@@ -91,6 +92,10 @@ export const getSystemVariables = async ({
 
   return {
     ...variablesMap,
+    // 功能入口变量：不在 variablesConfig 中，从请求原始 variables 中直接透传
+    ...(variables[ENTRY_POINT_VARIABLE_KEY] !== undefined
+      ? { [ENTRY_POINT_VARIABLE_KEY]: variables[ENTRY_POINT_VARIABLE_KEY] }
+      : {}),
     // System var:
     userId: uid,
     appId: String(runningAppInfo.id),

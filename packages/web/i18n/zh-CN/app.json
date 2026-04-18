@@ -902,5 +902,8 @@
   "create_new_app": "新建应用",
   "smart_qa_desc": "内置最佳实践配置，关联知识库即可快速构建智能问答应用",
   "agent_desc": "关联所需工具及Skill，可实现 AI 自主调用与规划",
-  "workflow_desc": "可通过流程编排，实现多系统交互、多分支逻辑、多 Agent 调用等复杂业务流"
+  "workflow_desc": "可通过流程编排，实现多系统交互、多分支逻辑、多 Agent 调用等复杂业务流",
+  "import_json_config": "导入 JSON 配置",
+  "entry_point": "功能入口",
+  "entry_point_tip": "可以在对话框上常驻功能入口，用来切换应用中的不同能力，可在工作流中用判断器设置不同功能入口的分支流程。"
 }

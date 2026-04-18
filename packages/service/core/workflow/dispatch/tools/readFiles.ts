@@ -8,7 +8,7 @@ import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { parseUrlToFileType } from '../../utils/context';
-import { readFileContentByBuffer } from '../../../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { addDays } from 'date-fns';
@@ -68,7 +68,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
   // 只要系统配置了自定义解析服务 url，且 App 没有显式禁用（=== false），则自动启用
   const hasCustomParseUrl = !!global.systemEnv?.customPdfParse?.url;
-  const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse !== false && hasCustomParseUrl;
+  const customPdfParse =
+    chatConfig?.fileSelectConfig?.customPdfParse !== false && hasCustomParseUrl;
 
   // Get files from histories
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
@@ -267,7 +268,7 @@ export const getFileContentFromLinks = async ({
             return detectFileEncoding(buffer);
           })();
 
-          const { rawText } = await readFileContentByBuffer({
+          const { rawText } = await readS3FileContentByBuffer({
             extension,
             teamId,
             tmbId,
@@ -314,4 +315,3 @@ export const getFileContentFromLinks = async ({
     readFilesResult
   };
 };
-

@@ -1,7 +1,7 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { Box, type FlexProps } from '@chakra-ui/react';
+import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -267,7 +267,7 @@ const FileSelector = ({
               : t('file:select_and_drag_file_tip')}
           </Box>
           {/* file type */}
-          <Box color={'myGray.500'} fontSize={'xs'}>
+          <Box color={'myGray.500'} fontSize={'xs'} textAlign={'center'}>
             {t('file:support_file_type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>

@@ -55,6 +55,15 @@ export const useValidateFieldName = () => {
         }
       }
 
+      // 4. 检查是否使用了系统保留前缀 system_
+      if (trimmedLabel.startsWith('system_')) {
+        toast({
+          status: 'warning',
+          title: t('app:systemval_conflict_globalval')
+        });
+        return false;
+      }
+
       return true;
     },
     [t, toast]

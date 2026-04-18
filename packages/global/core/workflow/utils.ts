@@ -28,7 +28,8 @@ import type {
   AppChatConfigType,
   AppAutoExecuteConfigType,
   AppQGConfigType,
-  AppSchemaType
+  AppSchema,
+  EntryPointItemType
 } from '../app/type';
 import { type EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -113,6 +114,9 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.autoExecute)?.value ??
     defaultAutoExecuteConfig;
 
+  const entryPoints: EntryPointItemType[] =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.entryPoints)?.value ?? [];
+
   return {
     welcomeText,
     variables,
@@ -122,7 +126,8 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     scheduledTriggerConfig,
     chatInputGuide,
     instruction,
-    autoExecute
+    autoExecute,
+    entryPoints
   };
 };
 
@@ -149,7 +154,8 @@ export const getAppChatConfig = ({
     scheduledTriggerConfig,
     chatInputGuide,
     instruction,
-    autoExecute
+    autoExecute,
+    entryPoints
   } = splitGuideModule(systemConfigNode);
 
   const config: AppChatConfigType = {
@@ -160,6 +166,7 @@ export const getAppChatConfig = ({
     chatInputGuide,
     instruction,
     autoExecute,
+    entryPoints,
     ...chatConfig,
     variables: storeVariables ?? chatConfig?.variables ?? variables,
     welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
@@ -432,7 +439,7 @@ export const removeUnauthModels = async ({
   modules,
   allowedModels = new Set()
 }: {
-  modules: AppSchemaType['modules'];
+  modules: AppSchema['modules'];
   allowedModels?: Set<string>;
 }) => {
   if (modules) {

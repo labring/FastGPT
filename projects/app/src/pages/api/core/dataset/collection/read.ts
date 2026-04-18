@@ -14,6 +14,7 @@ import {
   ReadCollectionSourceResponseSchema,
   type ReadCollectionSourceResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceResponseType> {
   const { collectionId, appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken } =
@@ -88,6 +89,21 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
       }
       if (collection.externalFileUrl) {
         return collection.externalFileUrl;
+      }
+    }
+    if (collection.type === DatasetCollectionTypeEnum.images) {
+      const imageData = await MongoDatasetData.findOne(
+        { collectionId: collection._id },
+        { imageId: 1 }
+      ).lean();
+      if (imageData?.imageId && isS3ObjectKey(imageData.imageId, 'dataset')) {
+        return (
+          await getS3DatasetSource().createGetDatasetFileURL({
+            key: imageData.imageId,
+            expiredHours: 1,
+            external: true
+          })
+        ).url;
       }
     }
 

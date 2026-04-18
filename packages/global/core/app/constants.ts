@@ -37,7 +37,12 @@ export const ToolTypeList = [
   AppTypeEnum.httpToolSet,
   AppTypeEnum.workflowTool
 ];
-export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow, AppTypeEnum.assistant];
+export const AppTypeList = [
+  AppTypeEnum.simple,
+  AppTypeEnum.chatAgent,
+  AppTypeEnum.workflow,
+  AppTypeEnum.assistant
+];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
@@ -146,6 +151,8 @@ export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
   }
 ];
 
+export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
+
 export const defaultFileExtensionTypes = {
   canSelectFile: ['.pdf', '.docx', '.pptx', '.xls', '.xlsx', '.txt', '.md', '.html', '.csv'],
   canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],
@@ -187,4 +194,3 @@ export const getUploadFileType = ({
   }
   return types.join(', ');
 };
-

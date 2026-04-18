@@ -5,7 +5,7 @@ import {
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
 import { axios } from '../../common/api/axios';
-import { readFileContentByBuffer } from '../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
@@ -120,7 +120,7 @@ export const readFileRawTextByUrl = async ({
             datasetId,
             filename: 'file'
           });
-          return readFileContentByBuffer({
+          return readS3FileContentByBuffer({
             customPdfParse,
             getFormatText,
             extension,

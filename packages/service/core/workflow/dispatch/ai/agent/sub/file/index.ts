@@ -5,7 +5,7 @@ import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
-import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';
+import { readS3FileContentByBuffer } from '../../../../../../../common/file/read/utils';
 import { getLLMModel } from '../../../../../../ai/model';
 import { compressLargeContent } from '../../../../../../ai/llm/compress';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
@@ -104,7 +104,7 @@ export const dispatchFileRead = async ({
           })();
 
           // Read file
-          const { rawText } = await readFileContentByBuffer({
+          const { rawText } = await readS3FileContentByBuffer({
             extension,
             teamId,
             tmbId,
