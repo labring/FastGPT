@@ -734,7 +734,7 @@
   "workflow_desc": "可通過流程編排，實現多系統交互、多分支邏輯、多 Agent 調用等複雜業務流",
   "import_json_config": "導入 JSON 配置",
   "chat_agent_beta_tip": "Agent 模式處於測試階段，未來可能會進行比較大的交互/調度邏輯變更，建議僅在線使用，勿接入到自己的生產系統中。\n\nAgent 模式消耗的積分是普通應用的數十倍，請謹慎使用。",
-  "chat_agent_description": "由AI驅動的Agent系統，可自行做決策、制定步驟、調用工具，並全程支持交互，適合流程不固定的任務。",
+  "chat_agent_description": "關聯所需工具及Skill，可實現 AI 自主調用與規劃",
   "chat_agent_intro": "讓AI助手自主調用工具",
   "empty_folder": "(空文件夾)",
   "helper_bot": "輔助生成",
@@ -752,7 +752,7 @@
   "tool_select": "選擇工具",
   "tools": "工具",
   "tools_tip": "聲明模型可用的工具，可以實現與外部系統交互等擴展能力",
-  "type.Chat_Agent_v2": "對話 Agent V2(Beta)",
+  "type.Chat_Agent_v2": "Agent",
   "use_agent_sandbox": "虛擬機",
   "use_computer_desc": "開啟後，AI 將獲得一個虛擬機器環境，執行指令、操作檔案、執行程式碼。\n每个会话共享一个虚拟机环境。",
   "wait_for_config": "等待配置"

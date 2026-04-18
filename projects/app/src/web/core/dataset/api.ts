@@ -1,5 +1,4 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import type { DatasetTagTypeEnum } from '@fastgpt/global/core/dataset/type';
 import type {
   GetPathProps,
   ParentTreePathItemType
