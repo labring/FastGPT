@@ -327,6 +327,8 @@ export type DatasetListItemType = {
   private?: boolean;
   sourceMember?: SourceMemberType;
   dataCount?: number;
+  appCount?: number;
+  fileCount?: number;
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {

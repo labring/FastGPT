@@ -75,6 +75,28 @@ describe('Rerank Train External Mocks', () => {
       expect(response.requestId).toBeDefined();
       expect(response.data?.qaPair.question).toBeDefined();
     });
+
+    test('当 MOCK_DITING_SYNTH_FAIL=true 时应返回失败响应', async () => {
+      const { mockSynthesizeEvalData } = await import(
+        '@fastgpt/service/core/train/common/external/diting/mock'
+      );
+
+      process.env.MOCK_DITING_SYNTH_FAIL = 'true';
+      try {
+        const response = await mockSynthesizeEvalData({
+          synthesizerConfig: { synthesizerName: 'eval_q_a_synthesizer' },
+          inputData: { context: ['Question 1', 'Answer 1'] },
+          llm_config: { name: 'Qwen3-32B' }
+        });
+
+        expect(response.success).toBe(false);
+        expect(response.status).toBe('failed');
+        expect(response.error).toBeDefined();
+        expect(response.data).toBeUndefined();
+      } finally {
+        delete process.env.MOCK_DITING_SYNTH_FAIL;
+      }
+    });
   });
 
   describe('SFT Bridge Service Mocks', () => {
@@ -155,6 +177,27 @@ describe('Rerank Train External Mocks', () => {
       expect(response.message).toBeDefined();
       expect(response.message).toContain('not found');
     });
+
+    test('当 MOCK_SFT_RERANK_FAIL=true 时任务应最终进入 failed 状态', async () => {
+      process.env.MOCK_SFT_RERANK_FAIL = 'true';
+      try {
+        const createRes = await createSFTTask({
+          datasetFile: Buffer.from('test'),
+          taskType: 'rerank',
+          parameters: {}
+        });
+
+        // 等待超过 9 秒，进入失败判断分支
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        const statusRes = await querySFTTaskStatus({ taskId: createRes.task_id });
+
+        expect(statusRes.status).toBe(SFTTaskStatus.failed);
+        expect(statusRes.error).toBeDefined();
+        expect(statusRes.endpoint).toBeUndefined();
+      } finally {
+        delete process.env.MOCK_SFT_RERANK_FAIL;
+      }
+    }, 12000);
 
     test('不同任务类型应被正确记录', async () => {
       const rerankTask = await createSFTTask({

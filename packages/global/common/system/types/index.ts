@@ -67,7 +67,6 @@ export type FastGPTFeConfigsType = {
   showWecomConfig?: boolean;
   show_user_operations?: boolean;
   agent_users?: string[];
-
   show_dataset_feishu?: boolean;
   show_dataset_yuque?: boolean;
   show_publish_feishu?: boolean;

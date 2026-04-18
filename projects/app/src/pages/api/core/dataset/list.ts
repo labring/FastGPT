@@ -1,6 +1,8 @@
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
@@ -163,6 +165,45 @@ async function handler(req: ApiRequestProps) {
     });
   }
 
+  // For non-folder datasets, count appCount and fileCount
+  const nonFolderDatasets = myDatasets.filter((d) => d.type !== DatasetTypeEnum.folder);
+  const appCountMap = new Map<string, number>();
+  const fileCountMap = new Map<string, number>();
+  if (nonFolderDatasets.length > 0) {
+    const [appCounts, fileCounts] = await Promise.all([
+      Promise.all(
+        nonFolderDatasets.map((dataset) =>
+          MongoApp.countDocuments({
+            teamId,
+            modules: {
+              $elemMatch: {
+                inputs: {
+                  $elemMatch: {
+                    key: 'datasets',
+                    'value.datasetId': String(dataset._id)
+                  }
+                }
+              }
+            }
+          })
+        )
+      ),
+      Promise.all(
+        nonFolderDatasets.map((dataset) =>
+          MongoDatasetCollection.countDocuments({
+            datasetId: dataset._id,
+            type: { $ne: DatasetCollectionTypeEnum.folder },
+            deleteTime: null
+          })
+        )
+      )
+    ]);
+    nonFolderDatasets.forEach((dataset, index) => {
+      appCountMap.set(String(dataset._id), appCounts[index]);
+      fileCountMap.set(String(dataset._id), fileCounts[index]);
+    });
+  }
+
   const formatDatasets = myDatasets
     .map((dataset) => {
       const { Per, privateDataset } = (() => {
@@ -219,7 +260,11 @@ async function handler(req: ApiRequestProps) {
         permission: Per,
         private: privateDataset,
         ...(scene !== undefined &&
-          dataCountMap && { dataCount: dataCountMap.get(String(dataset._id)) || 0 }) // dataCount used by evaluation scene
+          dataCountMap && { dataCount: dataCountMap.get(String(dataset._id)) || 0 }), // dataCount used by evaluation scene
+        ...(dataset.type !== DatasetTypeEnum.folder && {
+          appCount: appCountMap.get(String(dataset._id)) ?? 0,
+          fileCount: fileCountMap.get(String(dataset._id)) ?? 0
+        })
       };
     })
     .filter((app) => app.permission.hasReadPer);

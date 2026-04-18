@@ -7,7 +7,7 @@ import {
   useMemo,
   useCallback
 } from 'react';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
@@ -16,11 +16,10 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
-import { getDatasetCollections } from '@/web/core/dataset/api/collection';
-import { postDatasetSync } from '@/web/core/dataset/api';
+import { getDatasetCollections, postDatasetSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
@@ -155,7 +154,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     const hasValueFilter = Object.values(filterTagValues).some((v) => v.length > 0);
     if (!hasValueFilter) return collections;
     return collections.filter((col) => {
-      const colTags = ((col.tags || []) as (string | CollectionTagValueType)[]).filter(
+      const colTags = (col.tags || []).filter(
         (t): t is CollectionTagValueType => typeof t === 'object' && t !== null
       );
       return Object.entries(filterTagValues).some(

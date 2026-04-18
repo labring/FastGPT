@@ -1,6 +1,7 @@
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { delCollectionRelatedSource } from './collection/controller';
 import { type ClientSession } from '../../common/mongo';
 import { MongoDatasetTraining } from './training/schema';
@@ -8,14 +9,12 @@ import { MongoDatasetData } from './data/schema';
 import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { retryFn } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   DBDatasetVectorTableName,
   DBDatasetValueVectorTableName,
   DatasetVectorTableName
 } from '../../common/vectorDB/constants';
-import { addLog } from '../../common/system/log';
 import { getS3DatasetSource } from '../../common/s3/sources/dataset';
 
 /* ============= dataset ========== */
@@ -29,34 +28,71 @@ export async function findDatasetAndAllChildren({
   datasetId: string;
   fields?: string;
 }): Promise<DatasetSchemaType[]> {
-  const find = async (id: string) => {
-    const children = await MongoDataset.find(
-      {
-        teamId,
-        parentId: id
-      },
-      fields
-    ).lean();
-
-    let datasets = children;
-
-    for (const child of children) {
-      const grandChildrenIds = await find(child._id);
-      datasets = datasets.concat(grandChildrenIds);
-    }
-
-    return datasets;
-  };
-  const [dataset, childDatasets] = await Promise.all([
-    MongoDataset.findById(datasetId).lean(),
-    find(datasetId)
-  ]);
-
-  if (!dataset) {
+  const rootDataset = await MongoDataset.findById(datasetId, fields).lean();
+  if (!rootDataset) {
     return Promise.reject(new UserError('Dataset not found'));
   }
 
-  return [dataset, ...childDatasets];
+  const allDatasets: DatasetSchemaType[] = [rootDataset];
+  let currentQueue = [datasetId];
+
+  // BFS：每层一次批量查询，复杂度从 O(N) 降为 O(depth)
+  while (currentQueue.length > 0) {
+    const children = await MongoDataset.find(
+      { teamId, parentId: { $in: currentQueue } },
+      fields
+    ).lean();
+    allDatasets.push(...children);
+    currentQueue = children.map((c) => String(c._id));
+  }
+
+  return allDatasets;
+}
+
+/**
+ * Expand folder-type dataset IDs to their non-folder descendant IDs.
+ * Non-folder IDs are kept as-is. Duplicates are removed.
+ * BFS 批量查询：每层一次数据库查询，复杂度 O(depth)。
+ */
+export async function expandFolderDatasetIds(
+  teamId: string,
+  datasetIds: string[]
+): Promise<string[]> {
+  const inputDatasets = await MongoDataset.find(
+    { _id: { $in: datasetIds }, teamId },
+    '_id type'
+  ).lean();
+
+  const nonFolderIds: string[] = [];
+  let folderQueue: string[] = [];
+
+  for (const dataset of inputDatasets) {
+    if (dataset.type === DatasetTypeEnum.folder) {
+      folderQueue.push(String(dataset._id));
+    } else {
+      nonFolderIds.push(String(dataset._id));
+    }
+  }
+
+  // BFS：每层对所有 folder 子节点批量查询一次
+  while (folderQueue.length > 0) {
+    const children = await MongoDataset.find(
+      { parentId: { $in: folderQueue }, teamId },
+      '_id type'
+    ).lean();
+
+    folderQueue = [];
+
+    for (const child of children) {
+      if (child.type === DatasetTypeEnum.folder) {
+        folderQueue.push(String(child._id));
+      } else {
+        nonFolderIds.push(String(child._id));
+      }
+    }
+  }
+
+  return [...new Set(nonFolderIds)];
 }
 
 export async function getCollectionWithDataset(collectionId: string) {
@@ -120,8 +156,8 @@ export async function delDatasetRelevantData({
   await delCollectionRelatedSource({ collections });
   // Delete vector data
   deleteDatasetDataVector({ teamId, datasetIds, tableName: DBDatasetVectorTableName }),
-  deleteDatasetDataVector({ teamId, datasetIds, tableName: DBDatasetValueVectorTableName }),
-  deleteDatasetDataVector({ teamId, datasetIds, tableName: DatasetVectorTableName })
+    deleteDatasetDataVector({ teamId, datasetIds, tableName: DBDatasetValueVectorTableName }),
+    deleteDatasetDataVector({ teamId, datasetIds, tableName: DatasetVectorTableName });
 
   // delete collections
   await MongoDatasetCollection.deleteMany({

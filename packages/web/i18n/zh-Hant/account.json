@@ -108,7 +108,7 @@
   "model.vision_tip": "如果模型支援圖片識別，則開啟該開關。",
   "model.voices": "聲音角色",
   "model.voices_tip": "透過一個陣列設定多個，例如：\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
-  "model_provider": "模型提供者",
+  "model_provider": "模型管理",
   "month": "月",
   "no": "否",
   "notifications": "通知",

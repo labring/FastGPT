@@ -161,8 +161,6 @@ const ApiDatasetForm = ({
               {t('dataset:api_url')}
             </FormLabel>
             <Input
-              bg={'myWhite.600'}
-              placeholder={t('dataset:api_url')}
               maxLength={200}
               {...register('apiDatasetServer.apiServer.baseUrl', { required: true })}
             />
@@ -172,7 +170,6 @@ const ApiDatasetForm = ({
               Authorization
             </FormLabel>
             <Input
-              bg={'myWhite.600'}
               placeholder={t('dataset:request_headers')}
               maxLength={2000}
               {...register('apiDatasetServer.apiServer.authorization')}
@@ -184,52 +181,31 @@ const ApiDatasetForm = ({
       )}
       {type === DatasetTypeEnum.feishu && (
         <>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
               App ID
-            </Flex>
+            </FormLabel>
             <Input
-              bg={'myWhite.600'}
               placeholder={'App ID'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.appId', { required: true })}
             />
           </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
               App secret
-            </Flex>
+            </FormLabel>
             <Input
-              bg={'myWhite.600'}
               placeholder={'App secret'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.appSecret', { required: true })}
             />
           </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
               Folder token
-            </Flex>
+            </FormLabel>
             <Input
-              bg={'myWhite.600'}
               placeholder={'Folder token'}
               maxLength={200}
               {...register('apiDatasetServer.feishuServer.folderToken', { required: true })}
@@ -246,8 +222,6 @@ const ApiDatasetForm = ({
               User ID
             </FormLabel>
             <Input
-              bg={'myWhite.600'}
-              placeholder={'User ID'}
               maxLength={200}
               {...register('apiDatasetServer.yuqueServer.userId', { required: true })}
             />
@@ -257,8 +231,6 @@ const ApiDatasetForm = ({
               Token
             </FormLabel>
             <Input
-              bg={'myWhite.600'}
-              placeholder={'Token'}
               maxLength={200}
               {...register('apiDatasetServer.yuqueServer.token', { required: true })}
             />

@@ -17,11 +17,11 @@ const FormLabel = ({
       flexShrink={0}
       display={'flex'}
       alignItems={'center'}
-      gap={'2px'}
+      position={'relative'}
       {...props}
     >
       {required && (
-        <Box color={'red.600'} lineHeight={1}>
+        <Box color={'red.600'} lineHeight={1} position={'absolute'} left={'-8px'}>
           *
         </Box>
       )}

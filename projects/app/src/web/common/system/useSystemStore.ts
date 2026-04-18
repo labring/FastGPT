@@ -66,6 +66,7 @@ type State = {
   ttsModelList: TTSModelType[];
   reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
+  datasetModelList: LLMModelItemType[];
   myModelList: {
     modelSet: Set<string>;
     versionKey: string;
@@ -74,6 +75,7 @@ type State = {
   loadOperationalAd: () => Promise<void>;
   getMyModelList: () => Promise<Set<string>>;
   getVlmModelList: () => LLMModelItemType[];
+  getDatasetModelList: () => LLMModelItemType[];
   getModelProviders: (language?: string) => ModelProviderItemType[];
   getModelProvider: (provider?: string, language?: string) => ModelProviderItemType;
 
@@ -169,6 +171,7 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
+        datasetModelList: [],
         myModelList: {
           modelSet: new Set(),
           versionKey: ''
@@ -206,6 +209,9 @@ export const useSystemStore = create<State>()(
 
         getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);
+        },
+        getDatasetModelList: () => {
+          return get().llmModelList;
         },
         getModelProviders(language = 'en') {
           return get().modelProviders[language as langType] ?? [];

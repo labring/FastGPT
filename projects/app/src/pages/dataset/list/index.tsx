@@ -5,9 +5,9 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import FolderPath from '@/components/common/folder/Path';
-import List from '@/pageComponents/dataset/list/List';
-import { DatasetsContext } from '../../../pageComponents/dataset/list/context';
-import DatasetContextProvider from '../../../pageComponents/dataset/list/context';
+import List from '@/pageComponents/dataset/list/NewList';
+import { DatasetsContext } from '@/pageComponents/dataset/list/context';
+import DatasetContextProvider from '@/pageComponents/dataset/list/context';
 import { useContextSelector } from 'use-context-selector';
 import MultipleMenu from '@fastgpt/web/components/common/MyMenu/Multiple';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -15,8 +15,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { type EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import dynamic from 'next/dynamic';
-import { postCreateDatasetFolder, resumeInheritPer } from '@/web/core/dataset/api';
-import FolderSlideCard from '@/components/common/folder/SlideCard';
+import { postCreateDatasetFolder, resumeInheritPer, postChangeOwner } from '@/web/core/dataset/api';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
@@ -43,6 +42,8 @@ const EditFolderModal = dynamic(
 
 const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateModal'));
 
+const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
+
 const Dataset = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
@@ -57,17 +58,17 @@ const Dataset = () => {
     loadMyDatasets,
     refetchFolderDetail,
     folderDetail,
-    setMoveDatasetId,
-    onDelDataset,
     onUpdateDataset,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    setEditedDataset
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
+  const [folderPerOpen, setFolderPerOpen] = useState(false);
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
@@ -124,11 +125,32 @@ const Dataset = () => {
                   value={searchKey}
                   bg={'white'}
                   onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_name_intro')}
+                  placeholder={t('dataset:name_or_description')}
                   maxLength={30}
                 />
               )}
 
+              {folderDetail && folderDetail.permission.hasWritePer && (
+                <Button
+                  variant={'whiteBase'}
+                  px={5}
+                  onClick={() =>
+                    setEditedDataset({
+                      id: folderDetail._id,
+                      name: folderDetail.name,
+                      intro: folderDetail.intro,
+                      avatar: folderDetail.avatar
+                    })
+                  }
+                >
+                  {t('common:Edit')}
+                </Button>
+              )}
+              {folderDetail && folderDetail.permission.hasManagePer && (
+                <Button variant={'whiteBase'} px={5} onClick={() => setFolderPerOpen(true)}>
+                  {t('common:permission.Permission')}
+                </Button>
+              )}
               {(folderDetail
                 ? folderDetail.permission.hasWritePer
                 : userInfo?.team?.permission.hasDatasetCreatePer) && (
@@ -237,7 +259,7 @@ const Dataset = () => {
                 maxW={['auto', '250px']}
                 value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('app:search_name_intro')}
+                placeholder={t('dataset:name_or_description')}
                 maxLength={30}
               />
             </Box>
@@ -247,56 +269,6 @@ const Dataset = () => {
             <List />
           </Box>
         </Flex>
-
-        {!!folderDetail && isPc && (
-          <Box ml="6" h={'100%'} pb={4} overflow={'auto'}>
-            <FolderSlideCard
-              resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
-              isInheritPermission={folderDetail.inheritPermission}
-              hasParent={!!folderDetail.parentId}
-              refetchResource={() => Promise.all([refetchFolderDetail(), loadMyDatasets()])}
-              refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
-              name={folderDetail.name}
-              intro={folderDetail.intro}
-              onEdit={() => {
-                setEditFolderData({
-                  id: folderDetail._id,
-                  name: folderDetail.name,
-                  intro: folderDetail.intro
-                });
-              }}
-              onMove={() => setMoveDatasetId(folderDetail._id)}
-              deleteTip={t('common:dataset.deleteFolderTips')}
-              onDelete={() =>
-                onDelDataset(folderDetail._id).then(() => {
-                  router.replace({
-                    query: {
-                      ...router.query,
-                      parentId: folderDetail.parentId
-                    }
-                  });
-                })
-              }
-              managePer={{
-                defaultRole: ReadRoleVal,
-                permission: folderDetail.permission,
-                onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
-                roleList: DatasetRoleList,
-                onUpdateCollaborators: (params) =>
-                  postUpdateDatasetCollaborators({
-                    ...params,
-                    datasetId: folderDetail._id
-                  }),
-                onDelOneCollaborator: async (params) =>
-                  deleteDatasetCollaborators({
-                    ...params,
-                    datasetId: folderDetail._id
-                  }),
-                refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
-              }}
-            />
-          </Box>
-        )}
       </Flex>
 
       {!!editFolderData && (
@@ -336,13 +308,44 @@ const Dataset = () => {
           parentId={parentId || undefined}
         />
       )}
+      {folderPerOpen && !!folderDetail && (
+        <ConfigPerModal
+          onChangeOwner={(tmbId: string) =>
+            postChangeOwner({ datasetId: folderDetail._id, ownerId: tmbId }).then(() =>
+              Promise.all([refetchFolderDetail(), loadMyDatasets()])
+            )
+          }
+          hasParent={!!folderDetail.parentId}
+          refetchResource={() => Promise.all([refetchFolderDetail(), loadMyDatasets()])}
+          isInheritPermission={folderDetail.inheritPermission}
+          resumeInheritPermission={() =>
+            resumeInheritPer(folderDetail._id).then(() =>
+              Promise.all([refetchFolderDetail(), loadMyDatasets()])
+            )
+          }
+          avatar={folderDetail.avatar}
+          name={folderDetail.name}
+          managePer={{
+            defaultRole: ReadRoleVal,
+            permission: folderDetail.permission,
+            onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
+            roleList: DatasetRoleList,
+            onUpdateCollaborators: (params) =>
+              postUpdateDatasetCollaborators({ ...params, datasetId: folderDetail._id }),
+            onDelOneCollaborator: async (params) =>
+              deleteDatasetCollaborators({ ...params, datasetId: folderDetail._id }),
+            refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
+          }}
+          onClose={() => setFolderPerOpen(false)}
+        />
+      )}
     </MyBox>
   );
 };
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dataset', 'user', 'app']))
+      ...(await serviceSideProps(content, ['dataset', 'user', 'app', 'common']))
     }
   };
 }

@@ -1,4 +1,5 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import type { DatasetTagTypeEnum } from '@fastgpt/global/core/dataset/type';
 import type {
   GetPathProps,
   ParentTreePathItemType
@@ -11,7 +12,6 @@ import type {
   DatasetSynonymSchemaType,
   TagUsageType
 } from '@fastgpt/global/core/dataset/type';
-import type { DatasetTagTypeEnum } from '@fastgpt/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq.d';
 import type {
   AddTagsToCollectionsParams,
@@ -363,7 +363,7 @@ export const batchSetCollectionTags = (data: BatchSetCollectionTagsParams) =>
   POST(`/proApi/core/dataset/tag/batchSetCollectionTags`, data);
 export const batchUpsertCollectionTags = (data: {
   datasetId: string;
-  tags: { tag: string; tagType?: DatasetTagTypeEnum }[];
+  tags: { tag: string; tagType?: any }[];
 }) => POST(`/proApi/core/dataset/tag/batchUpsert`, data);
 
 /* =============================== data ==================================== */

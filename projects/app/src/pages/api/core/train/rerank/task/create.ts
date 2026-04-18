@@ -18,6 +18,7 @@ import type {
 } from '@fastgpt/global/core/train/rerank/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { expandFolderDatasetIds } from '@fastgpt/service/core/dataset/controller';
 
 async function handler(
   req: NextApiRequest,
@@ -44,7 +45,13 @@ async function handler(
   // 2. Validate training environment (SFT Bridge and DiTing availability)
   await validateTrainingEnvironment();
 
-  // 3. Validate existence and team ownership of referenced resources
+  // 3. Expand folder-type datasets to their non-folder children
+  const expandedDatasetIds = await expandFolderDatasetIds(teamId, datasetIds);
+  if (!expandedDatasetIds.length) {
+    return Promise.reject(RerankTrainErrEnum.rerankValidationNoDatasetConfigured);
+  }
+
+  // 4. Validate existence and team ownership of referenced resources
   if (trainsetId) {
     // Exact mode: verify trainset exists and belongs to the current team
     await authRerankTrainset({
@@ -67,14 +74,14 @@ async function handler(
   }
 
   // Verify dataset synthesis indexes are ready
-  await validateDatasetSynthesisIndexes(datasetIds);
+  await validateDatasetSynthesisIndexes(expandedDatasetIds);
 
-  // 4. Create task (controller checks for existing running tasks internally)
+  // 5. Create task (controller checks for existing running tasks internally)
   const task = await createRerankTrainTask({
     baseModelId,
     trainsetId,
     evalDatasetId,
-    datasetIds,
+    datasetIds: expandedDatasetIds,
     newModelName,
     teamId,
     tmbId,
@@ -83,7 +90,7 @@ async function handler(
   });
   const taskId = String(task._id);
 
-  // 5. Enqueue the task
+  // 6. Enqueue the task
   const job = await rerankTrainTaskQueue.add(
     `train-${taskId}`,
     { taskId },
@@ -93,10 +100,10 @@ async function handler(
     }
   );
 
-  // 6. Persist jobId for later retry/status tracking
+  // 7. Persist jobId for later retry/status tracking
   await MongoRerankTrainTask.updateOne({ _id: taskId }, { jobId: job.id as string });
 
-  // 7. Audit log
+  // 8. Audit log
   (async () => {
     addAuditLog({
       tmbId,

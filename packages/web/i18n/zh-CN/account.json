@@ -108,7 +108,7 @@
   "model.vision_tip": "如果模型支持图片识别，则打开该开关。",
   "model.voices": "声音角色",
   "model.voices_tip": "通过一个数组配置多个，例如：\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
-  "model_provider": "模型提供商",
+  "model_provider": "模型管理",
   "month": "月",
   "no": "否",
   "notifications": "通知",

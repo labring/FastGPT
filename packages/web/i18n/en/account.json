@@ -123,7 +123,7 @@
   "model.vision_tip": "Enable this if the model supports image recognition.",
   "model.voices": "Voice role",
   "model.voices_tip": "Configure multiple roles using an array. Example:\n[\n  {\n    \"label\": \"Alloy\",\n    \"value\": \"alloy\"\n  },\n  {\n    \"label\": \"Echo\",\n    \"value\": \"echo\"\n  }\n]",
-  "model_provider": "Models",
+  "model_provider": "Model Management",
   "month": "month",
   "no": "no",
   "notifications": "Notifications",

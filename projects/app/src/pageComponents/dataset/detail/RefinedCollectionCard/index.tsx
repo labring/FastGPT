@@ -60,8 +60,7 @@ import ExceptionInfoModal from './ExceptionInfoModal';
 import DatabaseExceptionModal from './DatabaseExceptionModal';
 import MoveCollectionDuplicateModal from './MoveCollectionDuplicateModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
 const Header = dynamic(() => import('./Header'));
@@ -649,9 +648,7 @@ const CollectionCard = () => {
                         {feConfigs?.isPlus && (
                           <Td py={2} w="180px" onClick={(e) => e.stopPropagation()}>
                             {(() => {
-                              const tagValues = (
-                                (collection.tags || []) as (string | CollectionTagValueType)[]
-                              ).filter(
+                              const tagValues = (collection.tags || []).filter(
                                 (t): t is CollectionTagValueType =>
                                   typeof t === 'object' && t !== null
                               );
@@ -1030,7 +1027,7 @@ const CollectionCard = () => {
               try {
                 await putDatasetCollectionById({
                   id: moveDuplicateData.collectionId,
-                  parentId: moveDuplicateData.parentId
+                  parentId: moveDuplicateData.parentId ?? undefined
                 });
                 getData(pageNum);
                 setMoveCollectionData(undefined);
@@ -1068,16 +1065,13 @@ const CollectionCard = () => {
           (() => {
             const col = formatCollections.find((c) => c._id === setTagsCollectionId);
             return col ? (
-              <SetTagsModal
-                collection={col as unknown as DatasetCollectionsListItemType}
-                onClose={() => setSetTagsCollectionId(undefined)}
-              />
+              <SetTagsModal collection={col} onClose={() => setSetTagsCollectionId(undefined)} />
             ) : null;
           })()}
 
         {showBatchSetTags && (
           <BatchSetTagsModal
-            selectedCollections={selectedItems as unknown as DatasetCollectionsListItemType[]}
+            selectedCollections={selectedItems}
             datasetId={datasetDetail._id}
             onClose={() => {
               setShowBatchSetTags(false);

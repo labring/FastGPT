@@ -58,4 +58,4 @@ export const CHANNEL_CREATE_TIMEOUT = 30000; // 30 seconds
 /** Channel availability poll interval (milliseconds) */
 export const CHANNEL_AVAILABILITY_POLL_INTERVAL = 10000; // 10 seconds
 /** Channel availability maximum polling duration (milliseconds) */
-export const CHANNEL_AVAILABILITY_MAX_DURATION = 1800000; // 30 minutes
+export const CHANNEL_AVAILABILITY_MAX_DURATION = 300000; // 5 minutes

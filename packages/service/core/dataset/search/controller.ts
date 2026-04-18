@@ -67,7 +67,6 @@ import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays } from 'date-fns';
 import { milvusVersionManager } from '../../../common/vectorDB/milvus/version';
 import { MilvusCtrl } from '../../../common/vectorDB/milvus/index';
-import { getLogger, LogCategories } from '../../../common/logger';
 import { datasetDataSelectField, datasetCollectionSelectField } from './base';
 import { extractChunkSynonyms } from './synonym';
 import { jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
@@ -79,8 +78,6 @@ import {
   milvusHybridRecall,
   dedupeByContent
 } from './capabilities';
-
-const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 export type SearchDatasetDataProps = {
   histories: ChatItemMiniType[];
@@ -887,7 +884,7 @@ export async function searchDatasetData(
           .map((item, index) => {
             const collection = collectionMaps.get(String(item.collectionId));
             if (!collection) {
-              logger.warn('Dataset collection not found during recall', {
+              addLog.warn('Dataset collection not found during recall', {
                 collectionId: item.collectionId,
                 dataId: item.id
               });
@@ -896,7 +893,7 @@ export async function searchDatasetData(
 
             const data = dataMaps.get(String(item.id));
             if (!data) {
-              logger.warn('Dataset data not found during recall', {
+              addLog.warn('Dataset data not found during recall', {
                 dataId: item.id,
                 collectionId: item.collectionId
               });
@@ -1258,7 +1255,7 @@ export async function searchDatasetData(
         .map((item, index) => {
           const collection = collectionMaps.get(String(item.collectionId));
           if (!collection) {
-            logger.warn('Dataset collection not found during full-text recall', {
+            addLog.warn('Dataset collection not found during full-text recall', {
               collectionId: item.collectionId,
               dataId: item.dataId
             });
@@ -1267,7 +1264,7 @@ export async function searchDatasetData(
 
           const data = dataMaps.get(String(item.dataId));
           if (!data) {
-            logger.warn('Dataset data not found during full-text recall', {
+            addLog.warn('Dataset data not found during full-text recall', {
               dataId: item.dataId,
               collectionId: item.collectionId
             });
@@ -1796,7 +1793,8 @@ const mergeAndGetSchema = async ({
 
     const tableName = collection.name;
     const primaryKeys = collection.tableSchema?.primaryKeys || [];
-    const foreignKyes = collection.tableSchema?.foreignKeys.map((fk: ForeignKeySchemaType) => fk.column) || [];
+    const foreignKyes =
+      collection.tableSchema?.foreignKeys.map((fk: ForeignKeySchemaType) => fk.column) || [];
 
     // Collect all unique columns from all results for this collection
     const allRetrievedColumns = new Set<string>([...primaryKeys, ...foreignKyes]);

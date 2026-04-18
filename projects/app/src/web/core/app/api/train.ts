@@ -5,13 +5,49 @@ import type {
   RetryRerankTrainTaskRequest,
   RetryRerankTrainTaskResponse,
   DeleteRerankTrainTaskRequest,
-  DeleteRerankTrainTaskResponse
+  DeleteRerankTrainTaskResponse,
+  ListRerankTrainTasksRequest,
+  ListRerankTrainTasksResponse,
+  CancelRerankTrainTaskRequest,
+  CancelRerankTrainTaskResponse
 } from '@fastgpt/global/core/train/rerank/api';
-import type { ListRerankTrainTasksRequest } from '@fastgpt/global/core/train/rerank/api';
-import type { ListRerankTrainTasksResponse } from '@fastgpt/global/core/train/rerank/api';
+import type {
+  CreateEmbeddingTrainTaskRequest,
+  CreateEmbeddingTrainTaskResponse,
+  ListEmbeddingTrainTasksRequest,
+  ListEmbeddingTrainTasksResponse,
+  RetryEmbeddingTrainTaskRequest,
+  RetryEmbeddingTrainTaskResponse,
+  DeleteEmbeddingTrainTaskRequest,
+  DeleteEmbeddingTrainTaskResponse
+} from '@fastgpt/global/core/train/embedding/api';
 
 /**
- * 创建训练任务
+ * 向量模型创建训练任务
+ */
+export const createEmbeddingTrainTask = (data: CreateEmbeddingTrainTaskRequest) =>
+  POST<CreateEmbeddingTrainTaskResponse>('/core/train/embedding/task/create', data);
+
+/**
+ * 向量模型获取训练任务列表
+ */
+export const getEmbeddingTrainTaskList = (data: ListEmbeddingTrainTasksRequest) =>
+  POST<ListEmbeddingTrainTasksResponse>('/core/train/embedding/task/list', data);
+
+/**
+ * 向量模型重试训练任务
+ */
+export const retryEmbeddingTrainTask = (data: RetryEmbeddingTrainTaskRequest) =>
+  POST<RetryEmbeddingTrainTaskResponse>('/core/train/embedding/task/retry', data);
+
+/**
+ * 向量模型删除训练任务
+ */
+export const deleteEmbeddingTrainTask = (data: DeleteEmbeddingTrainTaskRequest) =>
+  DELETE<DeleteEmbeddingTrainTaskResponse>('/core/train/embedding/task/delete', data);
+
+/**
+ * 重排模型创建训练任务
  */
 export const createRerankTrainTask = (data: CreateRerankTrainTaskRequest) =>
   POST<CreateRerankTrainTaskResponse>('/core/train/rerank/task/create', data);

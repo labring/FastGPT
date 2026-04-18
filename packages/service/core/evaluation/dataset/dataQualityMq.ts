@@ -8,7 +8,7 @@ import {
   type JobCleanupResult,
   type JobCleanupOptions,
   checkBullMQHealth
-} from '../utils/mq';
+} from '../../../common/bullmq/utils';
 
 export type EvalDatasetDataQualityData = {
   dataId: string;

@@ -59,10 +59,7 @@ import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 import { MongoApp } from '../../../app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { getLogger, LogCategories } from '../../../../common/logger';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-
-const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
 /**
  * 从全局变量中获取 faqAnswerMode 配置
@@ -1156,7 +1153,7 @@ export async function dispatchDatasetSearch(
           : 'No results'
     };
   } catch (error) {
-    logger.error('Dataset search dispatch failed', { error });
+    addLog.error('Dataset search dispatch failed', { error });
     return getNodeErrResponse({ error });
   }
 }

@@ -6,6 +6,14 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 
+let isShuttingDown = false;
+process.once('SIGTERM', () => {
+  isShuttingDown = true;
+});
+process.once('SIGINT', () => {
+  isShuttingDown = true;
+});
+
 /**
  * connect MongoDB and init data
  */
@@ -67,6 +75,11 @@ export async function connectMongo(props: {
     logger.error('MongoDB connection failed, will retry', { error });
 
     await db.disconnect();
+
+    if (isShuttingDown) {
+      logger.info('Process is shutting down, stop MongoDB reconnect');
+      return db;
+    }
 
     await delay(1000);
     return connectMongo(props);

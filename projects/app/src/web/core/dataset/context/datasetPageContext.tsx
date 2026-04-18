@@ -39,7 +39,7 @@ type DatasetPageContextType = {
   loadAllDatasetTags: () => Promise<DatasetTagType[]>;
   checkedDatasetTag: DatasetTagType[];
   setCheckedDatasetTag: React.Dispatch<SetStateAction<DatasetTagType[]>>;
-  onCreateCollectionTag: (tag: string, tagType?: string) => Promise<void>;
+  onCreateCollectionTag: (tag: string) => Promise<void>;
   isCreateCollectionTagLoading: boolean;
   searchTagKey: string;
   setSearchTagKey: Dispatch<SetStateAction<string>>;
@@ -158,7 +158,7 @@ export const DatasetPageContextProvider = ({
     }
   );
   const { runAsync: onCreateCollectionTag, loading: isCreateCollectionTagLoading } = useRequest(
-    (tag: string, tagType?: string) =>
+    (tag: string) =>
       postCreateDatasetCollectionTag({
         datasetId: datasetDetail._id,
         tag

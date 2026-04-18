@@ -76,6 +76,28 @@ describe('Embedding Train External Mocks', () => {
       expect(response.requestId).toBeDefined();
       expect(response.data?.qaPair.question).toBeDefined();
     });
+
+    test('当 MOCK_DITING_SYNTH_FAIL=true 时应返回失败响应', async () => {
+      const { mockSynthesizeEvalData } = await import(
+        '@fastgpt/service/core/train/common/external/diting/mock'
+      );
+
+      process.env.MOCK_DITING_SYNTH_FAIL = 'true';
+      try {
+        const response = await mockSynthesizeEvalData({
+          synthesizerConfig: { synthesizerName: 'eval_q_a_synthesizer' },
+          inputData: { context: ['向量数据库简介', '向量是高维空间中的点'] },
+          llm_config: { name: 'Qwen3-32B' }
+        });
+
+        expect(response.success).toBe(false);
+        expect(response.status).toBe('failed');
+        expect(response.error).toBeDefined();
+        expect(response.data).toBeUndefined();
+      } finally {
+        delete process.env.MOCK_DITING_SYNTH_FAIL;
+      }
+    });
   });
 
   describe('SFT Bridge Service Mocks (embed taskType)', () => {
@@ -173,6 +195,27 @@ describe('Embedding Train External Mocks', () => {
       expect(response.error).toBeDefined();
       expect(response.message).toContain('not found');
     });
+
+    test('当 MOCK_SFT_EMBED_FAIL=true 时任务应最终进入 failed 状态', async () => {
+      process.env.MOCK_SFT_EMBED_FAIL = 'true';
+      try {
+        const createRes = await createSFTTask({
+          datasetFile: Buffer.from('test'),
+          taskType: 'embed',
+          parameters: {}
+        });
+
+        // 等待超过 9 秒，进入失败判断分支
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+        const statusRes = await querySFTTaskStatus({ taskId: createRes.task_id });
+
+        expect(statusRes.status).toBe(SFTTaskStatus.failed);
+        expect(statusRes.error).toBeDefined();
+        expect(statusRes.endpoint).toBeUndefined();
+      } finally {
+        delete process.env.MOCK_SFT_EMBED_FAIL;
+      }
+    }, 12000);
   });
 
   describe('Mock 数据一致性', () => {

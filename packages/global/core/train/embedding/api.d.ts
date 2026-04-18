@@ -150,5 +150,5 @@ export type CancelEmbeddingTrainTaskRequest = TaskIdQuery;
 export type CancelEmbeddingTrainTaskResponse = MessageResponse;
 
 // Delete Training Task
-export type DeleteEmbeddingTrainTaskRequest = TaskIdQuery;
+export type DeleteEmbeddingTrainTaskRequest = TaskIdQuery & { force?: string };
 export type DeleteEmbeddingTrainTaskResponse = MessageResponse;

@@ -1,5 +1,10 @@
 import { getQueue, QueueNames } from '../../../../common/bullmq';
 import { DEFAULT_JOB_BACKOFF_DELAY } from '../constants';
+import {
+  createJobCleaner,
+  type JobCleanupOptions,
+  type JobCleanupResult
+} from '../../../../common/bullmq/utils';
 
 export type EmbeddingTrainTaskJobData = {
   taskId: string;
@@ -16,3 +21,15 @@ export const embeddingTrainTaskQueue = getQueue<EmbeddingTrainTaskJobData>(
     }
   }
 );
+
+export const removeEmbeddingTrainTaskJob = (
+  taskId: string,
+  options?: JobCleanupOptions
+): Promise<JobCleanupResult> => {
+  const cleaner = createJobCleaner(options);
+  return cleaner.cleanAllJobsByFilter(
+    embeddingTrainTaskQueue,
+    (job) => String(job.data?.taskId) === String(taskId),
+    QueueNames.embeddingTrainTask
+  );
+};
