@@ -34,26 +34,37 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
   });
 
   useLayoutEffect(() => {
+    const buildOption = (userOption: any) => {
+      const userToolbox = userOption.toolbox || {};
+      const userFeature = userToolbox.feature || {};
+      return {
+        ...userOption,
+        toolbox: {
+          ...userToolbox,
+          // show: true,
+          feature: {
+            saveAsImage: {},
+            ...userFeature
+          }
+        }
+      };
+    };
+
     const option = (() => {
+      // First try json5 parse (safe, handles JSON5 syntax like comments/trailing commas)
       try {
         const userOption = json5.parse(code.trim());
-        const userToolbox = userOption.toolbox || {};
-        const userFeature = userToolbox.feature || {};
+        return buildOption(userOption);
+      } catch (_e) {}
 
-        const parse = {
-          ...userOption,
-          toolbox: {
-            ...userToolbox,
-            // show: true,
-            feature: {
-              saveAsImage: {},
-              ...userFeature
-            }
-          }
-        };
-
-        return parse;
-      } catch (error) {}
+      // Fallback: evaluate as JS expression to support formatter functions and other JS values
+      try {
+        // eslint-disable-next-line no-new-func
+        const userOption = new Function(`return (${code.trim()})`)();
+        if (userOption && typeof userOption === 'object') {
+          return buildOption(userOption);
+        }
+      } catch (_e) {}
     })();
 
     setOption(option ?? {});
