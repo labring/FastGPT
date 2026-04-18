@@ -38,10 +38,10 @@ async function handler(
   // Normalize parentId: convert empty string to undefined
   const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : undefined;
 
-  // 查询数据库中该知识库下指定文件夹内所有文件类型的集合名称
+  // 查询数据库中该知识库下指定文件夹内所有文件类型的集合名称（含图片类型）
   const query: Record<string, any> = {
     datasetId,
-    type: DatasetCollectionTypeEnum.file
+    type: { $in: [DatasetCollectionTypeEnum.file, DatasetCollectionTypeEnum.images] }
   };
 
   // 处理 parentId 查询条件

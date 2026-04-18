@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
+import { documentAndImageFileType } from '@fastgpt/global/common/file/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -33,10 +33,15 @@ import {
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 
 const MAX_LINKS_COUNT = 10;
-
-const fileType = documentFileType;
+const fileType = documentAndImageFileType;
+const imageExtensions = new Set(['.jpg', '.jpeg', '.png']);
+const isImageFile = (filename: string) => {
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+  return imageExtensions.has(ext);
+};
 
 interface GeneralImportModalProps {
   isOpen: boolean;
@@ -60,9 +65,14 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [uploadingLinks, setUploadingLinks] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
   const [enableEnhance, setEnableEnhance] = useState(true);
 
   const successFiles = selectFiles.filter((item) => !item.errorMsg && !item.isUploading);
+  // 图片在上传阶段已通过 /images API 创建 collection，confirm 阶段只处理文档文件
+  const docSuccessFiles = successFiles.filter((file) => !isImageFile(file.sourceName));
+  // 图片文件：选中后直接进入 successFiles，等确认阶段做重名校验后创建 collection
+  const imageSuccessFiles = successFiles.filter((file) => isImageFile(file.sourceName));
 
   // 验证链接格式
   const isValidUrl = useCallback((url: string) => {
@@ -105,8 +115,12 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
 
   const { runAsync: onSelectFiles, loading: uploading } = useRequest(
     async (files: SelectFileItemType[]) => {
+      // 图片文件：已由 onBefore 添加到列表（isUploading: false），等确认阶段做重名校验后再创建 collection
+      const docFiles = files.filter(({ file }) => !isImageFile(file.name));
+
+      // 文档文件：走原 S3 上传流程
       await Promise.all(
-        files.map(async ({ fileId, file }) => {
+        docFiles.map(async ({ fileId, file }) => {
           try {
             const { url, key, headers } = await getUploadDatasetFilePresignedUrl({
               filename: file.name,
@@ -179,7 +193,7 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
                 sourceName: file.name,
                 sourceSize: formatFileSize(file.size),
                 icon: getFileIcon(file.name),
-                isUploading: true,
+                isUploading: !isImageFile(file.name), // 图片不需要预上传
                 uploadedFileRate: 0
               };
             })
@@ -214,6 +228,34 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       );
     },
     [datasetId, parentId, toast, enableEnhance]
+  );
+
+  // 创建图片 collection（每张图片一个 collection，确认阶段调用以便支持重名校验）
+  const uploadImageCollections = useCallback(
+    async (files: ImportSourceItemType[], overwriteDuplicate = false) => {
+      if (files.length === 0) return;
+      await Promise.all(
+        files
+          .filter((item) => !!item.file)
+          .map(async (item) => {
+            try {
+              await createImageDatasetCollection({
+                datasetId,
+                parentId,
+                collectionName: item.sourceName,
+                files: [item.file!],
+                overwriteDuplicate
+              });
+            } catch (error) {
+              toast({
+                title: t(getErrText(error)),
+                status: 'error'
+              });
+            }
+          })
+      );
+    },
+    [datasetId, parentId, t, toast]
   );
 
   // 上传链接集合
@@ -265,9 +307,10 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       return;
     }
 
-    // 如果有文件，先进行重名校验
-    if (successFiles.length > 0) {
-      const fileNames = successFiles.map((file) => file.sourceName);
+    // 对文档和图片文件进行重名校验
+    const allSuccessFiles = [...docSuccessFiles, ...imageSuccessFiles];
+    if (allSuccessFiles.length > 0) {
+      const fileNames = allSuccessFiles.map((file) => file.sourceName);
       const checkResult = await postCheckDuplicateCollection({
         datasetId,
         parentId: parentId || undefined,
@@ -281,19 +324,27 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       }
     }
 
-    // 上传文件
-    await uploadFileCollections(successFiles);
-
-    // 上传链接
-    await uploadLinkCollections();
+    setConfirmLoading(true);
+    try {
+      // 创建文档 collection
+      await uploadFileCollections(docSuccessFiles);
+      // 创建图片 collection
+      await uploadImageCollections(imageSuccessFiles);
+      // 上传链接
+      await uploadLinkCollections();
+    } finally {
+      setConfirmLoading(false);
+    }
 
     onFinish?.();
     onClose();
   }, [
     parsedLinks.length,
     linkValidation.isValid,
-    successFiles,
+    docSuccessFiles,
+    imageSuccessFiles,
     uploadFileCollections,
+    uploadImageCollections,
     uploadLinkCollections,
     onClose,
     onFinish,
@@ -309,9 +360,18 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
   }, [onClose]);
 
   const handleSkipDuplicates = useCallback(async () => {
-    const filesToUpload = successFiles.filter((file) => !duplicateFiles.includes(file.sourceName));
+    const docFilesToUpload = docSuccessFiles.filter(
+      (file) => !duplicateFiles.includes(file.sourceName)
+    );
+    const imageFilesToUpload = imageSuccessFiles.filter(
+      (file) => !duplicateFiles.includes(file.sourceName)
+    );
 
-    if (filesToUpload.length === 0 && linkValidation.validLinks.length === 0) {
+    if (
+      docFilesToUpload.length === 0 &&
+      imageFilesToUpload.length === 0 &&
+      linkValidation.validLinks.length === 0
+    ) {
       toast({
         title: t('dataset:upload_other_files'),
         status: 'warning'
@@ -320,20 +380,25 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
       return;
     }
 
-    // 上传非重名文件
-    await uploadFileCollections(filesToUpload);
-
-    // 上传链接
-    await uploadLinkCollections();
+    setConfirmLoading(true);
+    try {
+      await uploadFileCollections(docFilesToUpload);
+      await uploadImageCollections(imageFilesToUpload);
+      await uploadLinkCollections();
+    } finally {
+      setConfirmLoading(false);
+    }
 
     setShowDuplicateModal(false);
     onFinish?.();
     onClose();
   }, [
-    successFiles,
+    docSuccessFiles,
+    imageSuccessFiles,
     duplicateFiles,
     linkValidation,
     uploadFileCollections,
+    uploadImageCollections,
     uploadLinkCollections,
     onClose,
     onFinish,
@@ -342,31 +407,51 @@ const GeneralImportModal: React.FC<GeneralImportModalProps> = ({
   ]);
 
   const handleContinueUpload = useCallback(async () => {
-    // 上传所有文件（包括重名文件）
-    await uploadFileCollections(successFiles);
-
-    // 上传链接
-    await uploadLinkCollections();
-
+    setConfirmLoading(true);
+    try {
+      await uploadFileCollections(docSuccessFiles);
+      await uploadImageCollections(imageSuccessFiles);
+      await uploadLinkCollections();
+    } finally {
+      setConfirmLoading(false);
+    }
     setShowDuplicateModal(false);
     onFinish?.();
     onClose();
-  }, [successFiles, uploadFileCollections, uploadLinkCollections, onClose, onFinish]);
+  }, [
+    docSuccessFiles,
+    imageSuccessFiles,
+    uploadFileCollections,
+    uploadImageCollections,
+    uploadLinkCollections,
+    onClose,
+    onFinish
+  ]);
 
   const handleReplaceFiles = useCallback(async () => {
-    // 上传所有文件，重名文件设置 overwriteDuplicate 为 true
-    await uploadFileCollections(successFiles, true);
-
-    // 上传链接
-    await uploadLinkCollections();
-
+    setConfirmLoading(true);
+    try {
+      await uploadFileCollections(docSuccessFiles, true);
+      await uploadImageCollections(imageSuccessFiles, true);
+      await uploadLinkCollections();
+    } finally {
+      setConfirmLoading(false);
+    }
     setShowDuplicateModal(false);
     onFinish?.();
     onClose();
-  }, [successFiles, uploadFileCollections, uploadLinkCollections, onClose, onFinish]);
+  }, [
+    docSuccessFiles,
+    imageSuccessFiles,
+    uploadFileCollections,
+    uploadImageCollections,
+    uploadLinkCollections,
+    onClose,
+    onFinish
+  ]);
 
   const isConfirmDisabled = parsedLinks.length === 0 && successFiles.length === 0;
-  const isLoading = uploading || uploadingLinks;
+  const isLoading = uploading || uploadingLinks || confirmLoading;
 
   return (
     <>

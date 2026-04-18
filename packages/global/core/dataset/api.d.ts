@@ -116,6 +116,7 @@ export type ExternalFileCreateDatasetCollectionParams = ApiCreateDatasetCollecti
 };
 export type ImageCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   collectionName: string;
+  overwriteDuplicate?: boolean;
 };
 
 /* ================= tag ===================== */

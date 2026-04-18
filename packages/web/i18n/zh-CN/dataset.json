@@ -429,6 +429,7 @@
   "processing": "处理中",
   "view_original": "查看原文",
   "download_file": "下载文件",
+  "view_image": "查看原图",
   "confirm_delete_index": "确认删除该索引？",
   "confirm_delete_faq": "确认删除该 FAQ？",
   "confirm_delete_chunk": "确认删除该分块？",
