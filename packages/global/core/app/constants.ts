@@ -88,6 +88,8 @@ export const AssistantGlobalVarKey = {
   ENABLE_FALLBACK_REPLY: 'vKEVhtS6'
 } as const;
 
+export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
+
 export const defaultFileExtensionTypes = {
   canSelectFile: ['.pdf', '.docx', '.pptx', '.xls', '.xlsx', '.txt', '.md', '.html', '.csv'],
   canSelectImg: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'],

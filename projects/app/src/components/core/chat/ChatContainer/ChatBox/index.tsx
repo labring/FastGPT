@@ -69,7 +69,7 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { getDatasetDataBatchPermission } from '@/web/core/dataset/api';
@@ -86,6 +86,7 @@ const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
 const AppChatEmptyBox = dynamic(() => import('./components/AppChatEmptyBox'));
+const EntryPointBar = dynamic(() => import('./components/EntryPointBar'));
 
 const sx = {
   borderRadius: '12px',
@@ -153,6 +154,7 @@ const ChatBox = ({
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
+  const [selectedEntryPoint, setSelectedEntryPoint] = useState<string | null>(null);
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
@@ -188,6 +190,7 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const entryPoints = useContextSelector(ChatBoxContext, (v) => v.entryPoints);
 
   // 批量查询数据集权限（所有消息只发一次请求）
   const [datasetReadPerMap, setDatasetReadPerMap] = useState<Record<string, boolean>>({});
@@ -613,6 +616,11 @@ const ChatBox = ({
             }
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
+
+          // 总是传递功能入口变量，取消选中时传空字符串，清除上次的值
+          if (entryPoints?.length > 0) {
+            requestVariables[ENTRY_POINT_VARIABLE_KEY] = selectedEntryPoint || '';
+          }
 
           const humanChatId = getNanoid(24);
           const responseChatId = getNanoid(24);
@@ -1051,9 +1059,18 @@ const ChatBox = ({
   useEffect(() => {
     setQuestionGuide([]);
     setValue('chatStarted', false);
+    setSelectedEntryPoint(null);
     // 不再在切换会话时中止请求，让后台请求继续完成
     // abortRequest('leave');
   }, [chatId, appId, setValue]);
+
+  // 首次进来或入口列表变化时，默认选中第一个功能入口
+  useEffect(() => {
+    if (entryPoints?.length > 0 && !selectedEntryPoint) {
+      setSelectedEntryPoint(entryPoints[0].name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryPoints?.map((item) => item.id).join(',')]);
 
   const canSendPrompt = onStartChat && chatStarted && active && !lastInteractive;
 
@@ -1490,13 +1507,24 @@ const ChatBox = ({
                 <ChatHomeVariablesForm chatForm={chatForm} />
               </Box>
             ) : (
-              <ChatInput
-                onSendMessage={sendPrompt}
-                onStop={() => abortRequest('stop')}
-                TextareaDom={TextareaDom}
-                resetInputVal={resetInputVal}
-                chatForm={chatForm}
-              />
+              <Box w={'100%'} position="relative" mt={entryPoints.length > 0 ? 10 : 0}>
+                {entryPoints.length > 0 && (
+                  <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
+                    <EntryPointBar
+                      entryPoints={entryPoints}
+                      selected={selectedEntryPoint}
+                      onChange={setSelectedEntryPoint}
+                    />
+                  </Box>
+                )}
+                <ChatInput
+                  onSendMessage={sendPrompt}
+                  onStop={() => abortRequest('stop')}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                />
+              </Box>
             )}
           </Flex>
         </MyBox>
@@ -1524,7 +1552,22 @@ const ChatBox = ({
             px={[2, 4]}
           >
             <AppChatEmptyBox />
-            <Box w={'100%'} maxW={['100%', 'min(738px, 92%)']} sx={sx}>
+            <Box
+              w={'100%'}
+              maxW={['100%', 'min(738px, 92%)']}
+              sx={sx}
+              position="relative"
+              mt={entryPoints.length > 0 ? 10 : 0}
+            >
+              {entryPoints.length > 0 && (
+                <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
+                  <EntryPointBar
+                    entryPoints={entryPoints}
+                    selected={selectedEntryPoint}
+                    onChange={setSelectedEntryPoint}
+                  />
+                </Box>
+              )}
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}
@@ -1540,13 +1583,25 @@ const ChatBox = ({
           {AppChatRenderBox}
           {canSendPrompt && (
             <Box
-              m={['0 auto 10px', '10px auto']}
+              mx={'auto'}
+              mt={entryPoints.length > 0 ? 10 : ['0', '10px']}
+              mb={['10px', '10px']}
               w={'100%'}
               maxW={['100%', 'min(738px, 92%)']}
               sx={sx}
+              position="relative"
             >
               {showWorkorder && <WorkorderEntrance />}
 
+              {entryPoints.length > 0 && (
+                <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
+                  <EntryPointBar
+                    entryPoints={entryPoints}
+                    selected={selectedEntryPoint}
+                    onChange={setSelectedEntryPoint}
+                  />
+                </Box>
+              )}
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}

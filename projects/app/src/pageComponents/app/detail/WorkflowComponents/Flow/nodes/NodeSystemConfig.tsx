@@ -16,9 +16,11 @@ import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import {
   type AppChatConfigType,
   type AppDetailType,
+  type EntryPointItemType,
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
 import VariableEdit from '@/components/core/app/VariableEdit';
+import EntryPointEdit from '@/components/core/app/EntryPointEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
@@ -67,6 +69,10 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <WelcomeText {...componentsProps} />
           <Box mt={2} pt={2}>
             <ChatStartVariable {...componentsProps} />
+          </Box>
+          {/* 系统配置区块：功能入口与全局变量分隔 */}
+          <Box mt={2} pt={2} borderTop={'base'} borderColor={'myGray.200'}>
+            <EntryPointConfig {...componentsProps} />
           </Box>
           <Box mt={3} pt={3} borderTop={'base'} borderColor={'myGray.200'}>
             <FileSelectConfig {...componentsProps} />
@@ -134,6 +140,26 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
   const { zoom } = useViewport();
 
   return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} zoom={zoom} />;
+}
+
+function EntryPointConfig({ chatConfig, setAppDetail }: ComponentProps) {
+  const entryPoints = chatConfig.entryPoints ?? [];
+  const { zoom } = useViewport();
+
+  const updateEntryPoints = useCallback(
+    (list: EntryPointItemType[]) => {
+      setAppDetail((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          entryPoints: list
+        }
+      }));
+    },
+    [setAppDetail]
+  );
+
+  return <EntryPointEdit entryPoints={entryPoints} onChange={updateEntryPoints} zoom={zoom} />;
 }
 
 function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {

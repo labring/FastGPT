@@ -34,7 +34,8 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
+import { defaultAppSelectFileConfig, ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import DebugFileUrlInput from '../components/DebugFileUrlInput';
 
 const MyRightDrawer = dynamic(
@@ -43,7 +44,8 @@ const MyRightDrawer = dynamic(
 
 enum TabEnum {
   global = 'global',
-  node = 'node'
+  node = 'node',
+  entryPoint = 'entryPoint'
 }
 
 export const useDebug = () => {
@@ -153,6 +155,8 @@ export const useDebug = () => {
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
 
     if (!runtimeNode) return <></>;
+
+    const entryPoints = appDetail.chatConfig?.entryPoints ?? [];
     const renderInputs = runtimeNode.inputs.filter((input) => {
       if (runtimeNode.flowNodeType === FlowNodeTypeEnum.pluginInput) return true;
       if (checkInputIsReference(input)) return true;
@@ -259,7 +263,7 @@ export const useDebug = () => {
         px={0}
       >
         <Box flex={'1 0 0'} overflow={'auto'} px={6}>
-          {variables.length > 0 && (
+          {(variables.length > 0 || entryPoints.length > 0) && (
             <LightRowTabs<TabEnum>
               gap={3}
               ml={-2}
@@ -267,7 +271,12 @@ export const useDebug = () => {
               inlineStyles={{}}
               list={[
                 { label: t('workflow:Node_variables'), value: TabEnum.node },
-                { label: t('common:core.module.Variable'), value: TabEnum.global }
+                ...(variables.length > 0
+                  ? [{ label: t('common:core.module.Variable'), value: TabEnum.global }]
+                  : []),
+                ...(entryPoints.length > 0
+                  ? [{ label: t('workflow:entry_point'), value: TabEnum.entryPoint }]
+                  : [])
               ]}
               value={currentTab}
               onChange={setCurrentTab}
@@ -344,6 +353,17 @@ export const useDebug = () => {
                 bg={'myGray.50'}
               />
             ))}
+          </Box>
+          <Box display={currentTab === TabEnum.entryPoint ? 'block' : 'none'}>
+            <LabelAndFormRender
+              label={t('workflow:entry_point')}
+              required={false}
+              inputType={InputTypeEnum.select}
+              list={entryPoints.map((item) => ({ label: item.name, value: item.name }))}
+              form={variablesForm}
+              fieldName={`variables.${ENTRY_POINT_VARIABLE_KEY}`}
+              bg={'myGray.50'}
+            />
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>

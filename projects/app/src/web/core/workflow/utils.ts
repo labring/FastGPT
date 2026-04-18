@@ -34,6 +34,7 @@ import {
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
@@ -676,7 +677,13 @@ export const checkWorkflowNodeAndConnection = ({
 };
 
 /* ====== Variables ======= */
-/* get workflowStart output to global variables */
+/* 获取工作流流程开始节点的系统配置变量列表
+ * 系统配置列表包含：
+ * 1. 全局变量（从 chatConfig.variables）
+ * 2. 功能入口变量（从 chatConfig.entryPoints）
+ * 3. 工作流系统变量
+ * 此函数的调用方均自动受益：节点的变量选择器下拉选项中都会出现这些系统配置
+ */
 export const getWorkflowGlobalVariables = ({
   systemConfigNode,
   chatConfig
@@ -684,15 +691,23 @@ export const getWorkflowGlobalVariables = ({
   systemConfigNode?: StoreNodeItemType;
   chatConfig: AppChatConfigType;
 }): EditorVariablePickerType[] => {
-  const globalVariables = formatEditorVariablePickerIcon(
-    getAppChatConfig({
-      chatConfig,
-      systemConfigNode,
-      isPublicFetch: true
-    })?.variables || []
-  );
+  const appChatConfig = getAppChatConfig({ chatConfig, systemConfigNode, isPublicFetch: true });
+  const globalVariables = formatEditorVariablePickerIcon(appChatConfig?.variables || []);
 
-  return [...globalVariables, ...workflowSystemVariables];
+  // 若配置了功能入口，将其添加到系统配置列表中
+  const entryPointVariable: EditorVariablePickerType[] =
+    (appChatConfig?.entryPoints?.length ?? 0) > 0
+      ? [
+          {
+            key: ENTRY_POINT_VARIABLE_KEY,
+            label: 'workflow:entry_point',
+            valueType: WorkflowIOValueTypeEnum.string,
+            required: false
+          }
+        ]
+      : [];
+
+  return [...globalVariables, ...entryPointVariable, ...workflowSystemVariables];
 };
 
 /* ====== Snapshot ======= */
