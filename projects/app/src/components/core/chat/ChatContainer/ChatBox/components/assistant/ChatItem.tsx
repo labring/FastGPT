@@ -121,7 +121,7 @@ export const SimpleCitationDisplay = React.memo(
         {/* 引用头部 */}
         <Flex
           mt={2}
-          mb="32px"
+          mb="24px"
           height={'24px'}
           alignItems={'center'}
           cursor={'pointer'}

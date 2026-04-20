@@ -1,7 +1,7 @@
 {
   "Action": "操作",
   "Evaluation_app": "評測應用",
-  "Evaluation_app_tip": "支持簡易應用，不含有用戶交互節點的工作流。\n暫不支持插件。",
+  "Evaluation_app_tip": "支持簡易應用，不含有用戶交互節點的工作流。\n暫不支持工具。",
   "Evaluation_file": "評測文件",
   "Evaluation_model": "評測模型",
   "Executor": "執行人",
@@ -160,7 +160,7 @@
   "create_new_task_modal": "新建任務",
   "task_name_input": "任務名",
   "evaluation_app_select": "評測應用",
-  "evaluation_app_support_tip": "當前支持簡易應用和工作流，暫不支持插件。",
+  "evaluation_app_support_tip": "當前支持簡易應用和工作流，暫不支持工具。",
   "evaluation_app_select_placeholder": "請選擇評測應用",
   "evaluation_app_version_select": "評測應用版本",
   "evaluation_app_version_select_placeholder": "請選擇評測應用版本",

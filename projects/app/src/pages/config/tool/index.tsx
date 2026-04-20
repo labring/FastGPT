@@ -64,7 +64,7 @@ const ToolProvider = () => {
       <Flex h={'100%'} flexDirection={'column'} py={4} px={6}>
         <Flex alignItems={'center'} flexShrink={0}>
           <Box flex={'1'} color={'myGray.900'}>
-            {t('common:navbar.plugin')}
+            {t('common:system_tool_manage')}
           </Box>
           <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
             {t('app:toolkit_tags_manage')}

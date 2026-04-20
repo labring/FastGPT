@@ -126,7 +126,7 @@ const ChatController = ({
                   _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                   onClick={handleViewDetail}
                 >
-                  <MyIcon name={'common/userInfo'} w={'12px'} color="myGray.450" />
+                  <MyIcon name={'common/userInfo'} w={'12px'} />
                   <Box>{t('common:Detail')}</Box>
                 </Flex>
               </MyTooltip>
@@ -145,7 +145,7 @@ const ChatController = ({
                     _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                     onClick={onCorrectError}
                   >
-                    <MyIcon name={'kbTest'} w={'12px'} color="myGray.450" />
+                    <MyIcon name={'kbTest'} w={'12px'} />
                     <Box>{t('app:chat_item_correct_error')}</Box>
                   </Flex>
                 </MyTooltip>
@@ -162,7 +162,7 @@ const ChatController = ({
             <MyIcon
               {...controlIconStyle}
               name={'copy'}
-              _hover={{ color: 'primary.600' }}
+              _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
               onClick={() => copyData(chatText)}
             />
           </MyTooltip>
@@ -171,7 +171,7 @@ const ChatController = ({
               <MyIcon
                 {...controlIconStyle}
                 name={'common/retryLight'}
-                _hover={{ color: 'green.500' }}
+                _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                 onClick={onRetry}
               />
             </MyTooltip>
@@ -181,7 +181,7 @@ const ChatController = ({
               <MyIcon
                 {...controlIconStyle}
                 name={'delete'}
-                _hover={{ color: 'red.600' }}
+                _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                 onClick={onDelete}
               />
             </MyTooltip>
@@ -191,7 +191,7 @@ const ChatController = ({
               <MyIcon
                 {...controlIconStyle}
                 name={'core/app/markLight'}
-                _hover={{ color: '#67c13b' }}
+                _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                 onClick={onMark}
               />
             </MyTooltip>
@@ -255,7 +255,8 @@ const ChatController = ({
                       {...(!!chat.userGoodFeedback
                         ? {
                             color: 'white',
-                            bg: 'green.500'
+                            bg: 'green.500',
+                            borderRadius: '4px'
                           }
                         : {
                             _hover: { color: 'green.600' }
@@ -270,7 +271,8 @@ const ChatController = ({
                       {...(!!chat.userBadFeedback
                         ? {
                             color: 'white',
-                            bg: 'yellow.500'
+                            bg: 'yellow.500',
+                            borderRadius: '4px'
                           }
                         : {
                             _hover: { color: 'yellow.500' }

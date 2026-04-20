@@ -57,10 +57,7 @@ export const mdTextFormat = (text: string) => {
   text = text.replace(/(https?:\/\/[^\s，。！？；：、]+)([，。！？；：、])/g, '$1 $2');
 
   // 去掉引用前多余的换行，防止引用徽章另起一行显示
-  text = text.replace(
-    /\n+((?:\[[a-f0-9]{24}\]\((?:CITE|QUOTE)[^)]*\)\s*)+)(?=\n|$)/g,
-    '$1'
-  );
+  text = text.replace(/\n+((?:\[[a-f0-9]{24}\]\((?:CITE|QUOTE)[^)]*\)\s*)+)(?=\n|$)/g, '$1');
 
   return text;
 };
