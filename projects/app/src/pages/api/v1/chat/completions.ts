@@ -64,11 +64,6 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import {
-  ensureGenerateChat,
-  updateChatGenerateStatus
-} from '@fastgpt/service/core/chat/chatGenerateStatus';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -95,8 +90,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   } = CompletionsPropsSchema.parse(req.body);
 
   const startTime = Date.now();
-  let runningChatId: string | undefined;
-  let runningAppId: string | undefined;
 
   const originIp = getIpFromRequest(req);
 
@@ -262,25 +255,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    runningChatId = saveChatId;
-    runningAppId = String(app._id);
-
-    await ensureGenerateChat({
-      appId: runningAppId,
-      chatId: runningChatId,
-      teamId,
-      tmbId: tmbId,
-      source,
-      sourceName: sourceName || '',
-      shareId,
-      outLinkUid: outLinkUserId
-    });
-
-    // 流式 + 站内 online：工作流 dispatch 走 v2 管道；与 HTTP 路径是 /v1 还是 /v2 无关
-    const shouldUseWorkflowStreamV2 = stream && source === ChatSourceEnum.online;
-    const workflowApiVersion = shouldUseWorkflowStreamV2 ? 'v2' : 'v1';
-    // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/core/chat/resume 承担
-
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
@@ -301,7 +275,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
-          apiVersion: workflowApiVersion,
+          apiVersion: 'v1',
           res,
           lang: getLocale(req),
           requestOrigin: req.headers.origin,
@@ -377,12 +351,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } else {
       await pushChatRecords(params);
     }
-
-    await updateChatGenerateStatus({
-      appId: runningAppId,
-      chatId: runningChatId,
-      status: ChatGenerateStatusEnum.done
-    });
 
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
     if (isOwnerUse && source === ChatSourceEnum.online) {
@@ -528,13 +496,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
-    if (runningAppId && runningChatId) {
-      await updateChatGenerateStatus({
-        appId: runningAppId,
-        chatId: runningChatId,
-        status: ChatGenerateStatusEnum.error
-      });
-    }
     if (stream) {
       sseErrRes(res, err);
       res.end();
