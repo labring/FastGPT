@@ -387,72 +387,6 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
   });
 };
 
-export const ensurePendingChatRoundItems = async (params: EnsurePendingChatRoundParams) => {
-  const { chatId, appId, teamId, tmbId, responseChatItemId } = params;
-  if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
-
-  const humanDataId = params.userContent.dataId ?? responseChatItemId;
-
-  const existingAi = await MongoChatItem.findOne({
-    appId,
-    chatId,
-    dataId: responseChatItemId,
-    obj: ChatRoleEnum.AI
-  })
-    .select('_id')
-    .lean();
-
-  if (existingAi) return;
-
-  const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
-    ...params.userContent,
-    dataId: humanDataId,
-    obj: ChatRoleEnum.Human
-  };
-
-  userPayload.value?.forEach((item) => {
-    if ('file' in item && item.file?.key) {
-      item.file.url = '';
-    }
-  });
-
-  const aiPlaceholder: AIChatItemType & { dataId: string } = {
-    dataId: responseChatItemId,
-    obj: ChatRoleEnum.AI,
-    value: []
-  };
-
-  await mongoSessionRun(async (session) => {
-    const upsertOpts = { session, upsert: true };
-    await MongoChatItem.updateOne(
-      { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
-      {
-        $setOnInsert: {
-          teamId,
-          tmbId,
-          chatId,
-          appId,
-          ...userPayload
-        }
-      },
-      upsertOpts
-    );
-    await MongoChatItem.updateOne(
-      { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
-      {
-        $setOnInsert: {
-          teamId,
-          tmbId,
-          chatId,
-          appId,
-          ...aiPlaceholder
-        }
-      },
-      upsertOpts
-    );
-  });
-};
-
 export const finalizeChatRound = async (props: Props) => {
   beforeProcess(props);
 
@@ -771,96 +705,30 @@ export const pushChatRecords = async (props: Props) => {
       errorMsg
     });
     const processedContent = [userContent, aiResponse];
-    const humanRoundDataId = (processedContent[0] as { dataId?: string }).dataId as string;
-    const aiRoundDataId = (processedContent[1] as { dataId?: string }).dataId as string;
 
     await mongoSessionRun(async (session) => {
-      const humanExisting = await MongoChatItem.findOne({
-        appId,
-        chatId,
-        dataId: humanRoundDataId,
-        obj: ChatRoleEnum.Human
-      }).session(session);
-      const aiExisting = await MongoChatItem.findOne({
-        appId,
-        chatId,
-        dataId: aiRoundDataId,
-        obj: ChatRoleEnum.AI
-      }).session(session);
+      const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi, dataId }] = await MongoChatItem.create(
+        processedContent.map((item) => ({
+          chatId,
+          teamId,
+          tmbId,
+          appId,
+          ...item
+        })),
+        { session, ordered: true, ...writePrimary }
+      );
 
-      let chatItemIdHuman: unknown;
-      let chatItemIdAi: unknown;
-      let responseDataId = aiRoundDataId;
-
-      if (humanExisting && aiExisting) {
-        await MongoChatItem.updateOne(
-          { _id: humanExisting._id },
-          {
-            $set: {
-              ...(processedContent[0] as Record<string, unknown>),
-              obj: ChatRoleEnum.Human
-            }
-          },
-          { session }
-        );
-        await MongoChatItem.updateOne(
-          { _id: aiExisting._id },
-          {
-            $set: {
-              ...(processedContent[1] as Record<string, unknown>),
-              obj: ChatRoleEnum.AI
-            }
-          },
-          { session }
-        );
-
-        await MongoChatItemResponse.deleteMany(
-          { appId, chatId, chatItemDataId: aiRoundDataId },
-          { session }
-        );
-
-        if (nodeResponses?.length) {
-          await MongoChatItemResponse.create(
-            nodeResponses.map((item) => ({
-              teamId,
-              appId,
-              chatId,
-              chatItemDataId: aiRoundDataId,
-              data: item
-            })),
-            { session, ordered: true }
-          );
-        }
-
-        chatItemIdHuman = humanExisting._id;
-        chatItemIdAi = aiExisting._id;
-      } else {
-        const [humanCreated, aiCreated] = await MongoChatItem.create(
-          processedContent.map((item) => ({
-            chatId,
+      if (nodeResponses) {
+        await MongoChatItemResponse.create(
+          nodeResponses.map((item) => ({
             teamId,
-            tmbId,
             appId,
-            ...item
+            chatId,
+            chatItemDataId: dataId,
+            data: item
           })),
-          { session, ordered: true }
+          { session, ordered: true, ...writePrimary }
         );
-        chatItemIdHuman = humanCreated._id;
-        chatItemIdAi = aiCreated._id;
-        responseDataId = aiCreated.dataId;
-
-        if (nodeResponses) {
-          await MongoChatItemResponse.create(
-            nodeResponses.map((item) => ({
-              teamId,
-              appId,
-              chatId,
-              chatItemDataId: responseDataId,
-              data: item
-            })),
-            { session, ordered: true }
-          );
-        }
       }
 
       await MongoChat.updateOne(
@@ -894,7 +762,8 @@ export const pushChatRecords = async (props: Props) => {
         },
         {
           session,
-          upsert: true
+          upsert: true,
+          ...writePrimary
         }
       );
 

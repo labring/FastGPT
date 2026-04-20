@@ -1,6 +1,11 @@
 import z from 'zod';
 
-export const ParentIdSchema = z.string().nullish();
+export const ParentIdSchema = z
+  .preprocess(
+    (value) => (value !== null && typeof value === 'object' ? String(value) : value),
+    z.string().regex(/^([0-9a-fA-F]{24})?$/)
+  )
+  .nullish();
 export type ParentIdType = string | null | undefined;
 
 export const GetPathPropsSchema = z.object({
