@@ -79,7 +79,7 @@ export async function runFinetuneStage(task: EmbeddingTrainTaskSchemaType): Prom
     const createResponse = await createSFTTask({
       datasetFile,
       taskType: 'embed', // Key difference from rerank (SFT Bridge uses 'embed' for embedding)
-      trainType: task.trainType || 'lora',
+      trainMethod: task.trainMethod || 'lora',
       parameters: {
         learning_rate: DEFAULT_SFT_BRIDGE_LEARNING_RATE,
         epochs: 3,

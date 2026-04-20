@@ -1,10 +1,8 @@
 import { addLog } from '../../../common/system/log';
 import { MongoDatasetData } from '../../dataset/data/schema';
 import { Types } from 'mongoose';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import type { GenericEnhancedErrorMessage } from '@fastgpt/global/core/train/common/error';
-import { TRAIN_DATA_SPLIT_RATIO, DEFAULT_MAX_SAMPLE_PAIRS } from './constants';
+import { TRAIN_DATA_SPLIT_RATIO } from './constants';
 
 /**
  * Concurrency control utility using promise limiting
@@ -57,142 +55,197 @@ export function pLimit(concurrency: number): <T>(fn: () => Promise<T>) => Promis
   return run;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Chunk quality filter (ported from filter_chunks.py)
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Dataset item returned from sampleDataFromDataset
+ * Quality filter configuration for sampleDataFromDataset.
+ * Corresponds to ChunkFilter constructor parameters in filter_chunks.py.
  */
-export type DatasetSelectItem = {
-  datasetId: string;
-  dataId: string;
-  q: string;
-  a: string;
-  indexes: DatasetDataIndexItemType[];
+export type ChunkFilterConfig = {
+  minLength?: number; // 默认 50
+  maxLength?: number; // 默认 3000
+  minWords?: number; // 默认 10
+  maxRepetitionRatio?: number; // 默认 0.5
+  minQualityScore?: number; // 默认 0.65
+  enableTocFilter?: boolean; // 默认 true
+  enablePaginationFilter?: boolean; // 默认 true
+  enableMetadataFilter?: boolean; // 默认 true
 };
 
-/**
- * Distribute samples evenly to limit total pairs (pair-aware allocation)
- *
- * Uses two-phase allocation strategy for O(n) complexity.
- * All allocations are in units of PAIR_SIZE (2) to preserve synthesis index pair integrity.
- *
- * - Phase 1: Allocate base pairs to each data item based on average
- * - Phase 2: Distribute remaining pairs in round-robin fashion
- *
- * @param allData - All sampled data items (indexes should be pre-filtered and sorted by synId)
- * @param maxPairs - Maximum total pairs allowed (not indexes)
- * @returns Data items with evenly distributed indexes (always sliced at pair boundaries)
- */
-function distributeSamplesEvenly<
-  T extends {
-    indexes: any[];
-  }
->(allData: T[], maxPairs: number): T[] {
-  if (allData.length === 0) {
-    return [];
-  }
+const DEFAULT_FILTER_CONFIG: Required<ChunkFilterConfig> = {
+  minLength: 50,
+  maxLength: 3000,
+  minWords: 10,
+  maxRepetitionRatio: 0.5,
+  minQualityScore: 0.65,
+  enableTocFilter: true,
+  enablePaginationFilter: true,
+  enableMetadataFilter: true
+};
 
-  const PAIR_SIZE = 2;
-
-  // Convert to pair-based calculations
-  const pairCapacities = allData.map((data) => Math.floor(data.indexes.length / PAIR_SIZE));
-  const totalAvailablePairs = pairCapacities.reduce((sum, c) => sum + c, 0);
-
-  // If total available pairs within limit, return all (trimmed to complete pairs)
-  if (totalAvailablePairs <= maxPairs) {
-    addLog.info('Total available pairs within limit, returning all data', {
-      totalAvailablePairs,
-      totalAvailableIndexes: totalAvailablePairs * PAIR_SIZE,
-      maxPairs
-    });
-    return allData
-      .map((data, i) => ({
-        ...data,
-        indexes: data.indexes.slice(0, pairCapacities[i] * PAIR_SIZE)
-      }))
-      .filter((data) => data.indexes.length > 0);
-  }
-
-  const dataCount = allData.length;
-  const assignments = new Array(dataCount).fill(0); // pair counts
-  let remaining = maxPairs;
-
-  // Calculate ideal pair allocation per data item
-  const idealPairsPerData = maxPairs / dataCount;
-
-  // Phase 1: Allocate base pairs (floor of ideal, capped by actual pair capacity)
-  for (let i = 0; i < dataCount; i++) {
-    const canAssign = Math.min(Math.floor(idealPairsPerData), pairCapacities[i]);
-    assignments[i] = canAssign;
-    remaining -= canAssign;
-  }
-
-  addLog.info('Phase 1 allocation completed', {
-    idealPairsPerData,
-    allocatedPairs: maxPairs - remaining,
-    remaining
-  });
-
-  // Calculate total available capacity for optimization
-  let totalCapacity = 0;
-  for (let i = 0; i < dataCount; i++) {
-    totalCapacity += Math.max(0, pairCapacities[i] - assignments[i]);
-  }
-
-  // Optimization: If remaining quota exceeds total capacity, fill all at once
-  if (remaining >= totalCapacity) {
-    addLog.info('Fast path: Filling all available capacity', {
-      remaining,
-      totalCapacity
-    });
-
-    for (let i = 0; i < dataCount; i++) {
-      const canAdd = Math.max(0, pairCapacities[i] - assignments[i]);
-      assignments[i] += canAdd;
-      remaining -= canAdd;
-    }
-  } else {
-    // Phase 2: Distribute remaining pairs in round-robin fashion
-    let lastRoundAdded = true;
-
-    while (remaining > 0 && lastRoundAdded) {
-      lastRoundAdded = false;
-
-      for (let i = 0; i < dataCount && remaining > 0; i++) {
-        if (i < allData.length && assignments[i] < pairCapacities[i]) {
-          assignments[i]++;
-          remaining--;
-          lastRoundAdded = true;
-        }
-      }
-    }
-  }
-
-  const nonZeroAssignments = assignments.filter((c: number) => c > 0);
-  const dataItemsIncluded = nonZeroAssignments.length;
-  const totalAllocatedPairs = maxPairs - remaining;
-
-  addLog.info('Phase 2 allocation completed', {
-    totalAllocatedPairs,
-    totalAllocatedIndexes: totalAllocatedPairs * PAIR_SIZE,
-    maxPairs,
-    dataItemsIncluded,
-    avgPairsPerData: dataItemsIncluded > 0 ? totalAllocatedPairs / dataItemsIncluded : 0
-  });
-
-  // Generate final result - convert pair assignments to index slicing
-  const result: T[] = allData
-    .map((data, i) => {
-      if (assignments[i] > 0) {
-        return {
-          ...data,
-          indexes: data.indexes.slice(0, assignments[i] * PAIR_SIZE)
-        };
-      }
-      return null;
-    })
-    .filter((data): data is T => data !== null);
-
-  return result;
+/** 对应 Python pipeline 的 clean_text() */
+export function cleanText(text: string): string {
+  if (!text) return '';
+  // HTML entity decode (&amp; &nbsp; etc.)
+  let t = text.replace(/&[a-zA-Z]+;/g, ' ').replace(/&#\d+;/g, ' ');
+  // Remove HTML tags
+  t = t.replace(/<[^>]+>/g, ' ');
+  // Normalize whitespace: multi spaces/tabs → single space, 3+ newlines → 2 newlines
+  t = t.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n');
+  // Trim each line
+  t = t
+    .split('\n')
+    .map((l) => l.trim())
+    .join('\n');
+  return t.trim();
 }
+
+function isChineseDominant(text: string): boolean {
+  const chinese = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+  return chinese > text.length * 0.3;
+}
+
+function calcRepetitionRatio(text: string): number {
+  if (text.length === 0) return 0;
+  const freq = new Map<string, number>();
+  for (const ch of text) {
+    if (ch !== ' ' && ch !== '\t' && ch !== '\n' && ch !== '\r') {
+      freq.set(ch, (freq.get(ch) ?? 0) + 1);
+    }
+  }
+  if (freq.size === 0) return 0;
+  const maxCount = Math.max(...freq.values());
+  return maxCount / text.length;
+}
+
+function calcSpecialCharRatio(text: string): number {
+  if (text.length === 0) return 0;
+  const special = (
+    text.match(/[^\w\s\u4e00-\u9fff，。！？、；：""''（）《》\[\].,!?;:()\'"<>-]/g) || []
+  ).length;
+  return special / text.length;
+}
+
+const TOC_PATTERNS = [
+  /^\s*目\s*录\s*$/m,
+  /^\s*Table\s+of\s+Contents\s*$/im,
+  /^\s*CONTENTS\s*$/m,
+  /(?:第[一二三四五六七八九十\d]+章|Chapter\s+\d+).*?\.{3,}\s*\d+/,
+  /^\s*\d+\.\d+.*?\.{3,}\s*\d+/m,
+  /^\s*[一二三四五六七八九十]\s*[、.]\s*.{1,30}\s*\.{3,}\s*\d+/m
+];
+
+function isToc(text: string): boolean {
+  for (const re of TOC_PATTERNS) {
+    if (re.test(text)) return true;
+  }
+  return (text.match(/\.{3,}/g) || []).length >= 3;
+}
+
+const PAGINATION_PATTERNS = [
+  /^\s*[-–—]\s*\d+\s*[-–—]\s*$/m,
+  /^\s*第\s*\d+\s*页\s*$/m,
+  /^\s*Page\s+\d+\s*$/im,
+  /^\s*\d+\s*\/\s*\d+\s*$/m
+];
+
+function isPagination(text: string): boolean {
+  return PAGINATION_PATTERNS.some((re) => re.test(text));
+}
+
+const METADATA_PATTERNS = [
+  /^(?:公司|企业|机构|部门)?内部资料\s*[，,]?\s*(?:注意保密|严禁外传)?\s*$/m,
+  /^保密(?:等级|级别)[:：]\s*(?:一般|秘密|机密|绝密)\s*$/m,
+  /^(?:打印|编制|审核|批准)(?:时间|日期|人)[:：]/m,
+  /^\s*(?:版本|Version)[:：]\s*[\d.]+\s*$/m
+];
+
+function isMetadata(text: string): boolean {
+  return METADATA_PATTERNS.some((re) => re.test(text));
+}
+
+function calcQualityScore(text: string): number {
+  const total = text.length;
+  if (total === 0) return 0;
+
+  // Char entropy
+  const freq = new Map<string, number>();
+  for (const ch of text) freq.set(ch, (freq.get(ch) ?? 0) + 1);
+  let charEntropy = 0;
+  for (const cnt of freq.values()) {
+    const p = cnt / total;
+    charEntropy -= p * Math.log2(p);
+  }
+
+  // Root TTR (word diversity)
+  const words = isChineseDominant(text) ? text.split('') : text.match(/\b\w+\b/gi) || [];
+  const totalWords = words.length;
+  const uniqueWords = new Set(words.map((w) => w.toLowerCase())).size;
+  const rootTtr = totalWords > 0 ? uniqueWords / Math.sqrt(totalWords) : 0;
+
+  // Anti-noise metrics
+  const zhPunct = '，。！？；：、""\'\'（）《》【】「」…—·';
+  const allPunct = new Set('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' + zhPunct);
+  let punctCount = 0;
+  let digitCount = 0;
+  for (const ch of text) {
+    if (allPunct.has(ch)) punctCount++;
+    if (ch >= '0' && ch <= '9') digitCount++;
+  }
+  const punctRatio = punctCount / total;
+  const digitRatio = digitCount / total;
+  const hasDotPattern = /\.{3,}/.test(text) ? 1 : 0;
+  const hasNumberPrefix = /^\s*\d+[\.)]\s+/.test(text) ? 1 : 0;
+
+  // Normalized scores
+  const normEntropy = Math.min(Math.max((charEntropy - 2.0) / 3.0, 0), 1);
+  const normDiversity = Math.min(rootTtr / 10.0, 1);
+  const noisePenalty =
+    punctRatio * 1.5 + digitRatio * 2.0 + hasDotPattern * 0.8 + hasNumberPrefix * 0.7;
+  const normAntiNoise = Math.max(0, 1 - noisePenalty);
+  const normLength = Math.min(total / 200, 1);
+
+  return 0.25 * normEntropy + 0.25 * normDiversity + 0.35 * normAntiNoise + 0.15 * normLength;
+}
+
+/** Check if a doc passes all quality filters (Step 0a). Returns false if should be discarded. */
+function isValidChunk(q: string, config: Required<ChunkFilterConfig>): boolean {
+  if (!q.trim()) return false;
+  if (q.length < config.minLength) return false;
+  if (q.length > config.maxLength) return false;
+
+  const wordCount = isChineseDominant(q) ? q.length : (q.match(/\S+/g) || []).length;
+  if (wordCount < config.minWords) return false;
+
+  if (calcRepetitionRatio(q) > config.maxRepetitionRatio) return false;
+  if (config.enableTocFilter && isToc(q)) return false;
+  if (config.enablePaginationFilter && isPagination(q)) return false;
+  if (config.enableMetadataFilter && isMetadata(q)) return false;
+  if (calcSpecialCharRatio(q) > 0.5) return false;
+  if (calcQualityScore(q) < config.minQualityScore) return false;
+
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dataset item types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Lightweight sampling result from sampleDataFromDataset.
+ * Contains only ID fields — content is fetched on-demand by downstream consumers.
+ */
+export type SampledDataItem = {
+  dataId: string;
+  datasetId: string;
+  collectionId: string;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Hash a string to a 32-bit unsigned integer (djb2 variant)
@@ -220,243 +273,239 @@ function seededRandom(seed: number): () => number {
 }
 
 /**
- * Sample dataset chunks for training or evaluation
+ * Two-pass quota allocation.
+ * Returns how many items to take from each KB (in the same order as datasetIds).
  *
- * Supports three sampling modes:
- * 1. Train mode (datasetType: 'train'): Use first 80% of data
- * 2. Eval mode (datasetType: 'eval'): Use last 20% of data
- * 3. Random mode (datasetType: 'random'): Random sampling (requires sampleSize parameter)
+ * When sampleSize is undefined: take all available (kbCounts[i]) from each KB.
+ * When sampleSize=M: proportional allocation with remainder redistribution.
+ */
+function computeQuotas(
+  kbCounts: number[],
+  sampleSize: number | undefined,
+  weights: Record<string, number> | undefined,
+  datasetIds: string[]
+): number[] {
+  if (sampleSize === undefined) {
+    return [...kbCounts];
+  }
+
+  const n = kbCounts.length;
+  const M = sampleSize;
+
+  const rawWeights = datasetIds.map((id) => weights?.[id] ?? 1);
+  const sumW = rawWeights.reduce((s, w) => s + w, 0);
+  const wNorm = rawWeights.map((w) => (sumW > 0 ? w / sumW : 1 / n));
+
+  // Round 1: proportional allocation
+  const samples = kbCounts.map((kc, i) => Math.min(kc, Math.floor(M * wNorm[i])));
+  let remaining = M - samples.reduce((s, v) => s + v, 0);
+
+  // Round 2: redistribute remainder to unsatisfied KBs by remaining capacity
+  if (remaining > 0) {
+    const unsatisfied = kbCounts
+      .map((kc, i) => ({ i, avail: kc - samples[i] }))
+      .filter(({ avail }) => avail > 0);
+    const totalCap = unsatisfied.reduce((s, { avail }) => s + avail, 0);
+
+    if (totalCap > 0) {
+      for (const { i, avail } of unsatisfied) {
+        const extra = Math.round((remaining * avail) / totalCap);
+        samples[i] += Math.min(extra, avail);
+      }
+    }
+
+    // Boundary correction: if rounding caused overshoot, reduce from largest
+    let total = samples.reduce((s, v) => s + v, 0);
+    for (let iter = 0; total > M && iter < n * 2; iter++) {
+      const maxIdx = samples.reduce((mi, v, i) => (v > samples[mi] ? i : mi), 0);
+      if (samples[maxIdx] > 0) {
+        samples[maxIdx]--;
+        total--;
+      }
+    }
+  }
+
+  return samples;
+}
+
+/**
+ * Apply quality filter to raw MongoDB docs, returning lightweight SampledDataItem[].
+ * Only q is used for quality checks; content (a, indexes) is NOT loaded.
+ */
+function filterToSampledItems(
+  rawDocs: any[],
+  config: Required<ChunkFilterConfig>
+): SampledDataItem[] {
+  const result: SampledDataItem[] = [];
+
+  for (const doc of rawDocs) {
+    const rawQ: string = doc.q ?? '';
+
+    if (!rawQ.trim()) continue;
+
+    const cleanedQ = cleanText(rawQ.trim());
+
+    if (cleanedQ.length < 10) continue;
+
+    if (!isValidChunk(cleanedQ, config)) continue;
+
+    result.push({
+      dataId: doc._id.toString(),
+      datasetId: doc.datasetId.toString(),
+      collectionId: doc.collectionId?.toString() ?? ''
+    });
+  }
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main sampling function
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Sample dataset chunks for training or evaluation.
  *
- * For train/eval modes, implements even distribution sampling to limit total pairs:
- * - Each pair contains 2 synthesis indexes with the same synId
- * - Pairs are distributed evenly across data items
- * - Continue until maxSamplePairs limit is reached
+ * Step 0: Quality filter + cleanText (full migration from filter_chunks.py).
+ * Step 1: Compute kb_count[i] from valid data count.
+ * Step 2: Two-pass quota allocation (when sampleSize specified).
+ * Step 3: Take data by mode (train=front 80%, eval=back 20%, random=shuffled).
  *
  * @param datasetIds - Dataset ID list
- * @param options - Sampling options
- * @param options.datasetType - Sampling mode: 'train' | 'eval' | 'random', default 'train'
- * @param options.sampleSize - Random sample size (only for datasetType='random')
- * @param options.maxSamplePairs - Max total pairs for train/eval mode (default: DEFAULT_MAX_SAMPLE_PAIRS)
+ * @param options.datasetType - Sampling mode, default 'train':
+ *   - 'train': deterministic shuffle, take first 80% of valid docs
+ *   - 'eval':  deterministic shuffle, take last 20% of valid docs
+ *   - 'random': random shuffle, take ALL valid docs (no train/eval split)
+ * @param options.sampleSize - Total sample budget M for quota allocation.
+ *   Optional for all modes; when omitted, takes all available docs per KB.
+ *   Required when weights are specified.
+ * @param options.weights - Per-KB sampling weights (requires sampleSize)
+ * @param options.filterConfig - Quality filter configuration
  */
 export async function sampleDataFromDataset(
   datasetIds: string[],
   options: {
     datasetType?: 'train' | 'eval' | 'random';
     sampleSize?: number;
-    maxSamplePairs?: number;
+    weights?: Record<string, number>;
+    filterConfig?: ChunkFilterConfig;
   } = {}
-): Promise<DatasetSelectItem[]> {
-  // Maximum total pairs to sample in train/eval mode (configurable via MAX_SAMPLE_PAIRS env)
-  const MAX_SAMPLE_PAIRS = parseInt(
-    process.env.MAX_SAMPLE_PAIRS || String(DEFAULT_MAX_SAMPLE_PAIRS),
-    10
-  );
-  const { sampleSize, datasetType = 'train', maxSamplePairs = MAX_SAMPLE_PAIRS } = options;
+): Promise<SampledDataItem[]> {
+  const { sampleSize, datasetType = 'train', weights, filterConfig } = options;
+  const config = { ...DEFAULT_FILTER_CONFIG, ...filterConfig };
 
-  if (datasetType === 'random' && !sampleSize) {
-    throw new Error('sampleSize is required when datasetType is "random"');
-  }
-  if (datasetType !== 'random' && sampleSize) {
-    addLog.warn('sampleSize is ignored when datasetType is not "random"', {
-      datasetType,
-      sampleSize
-    });
+  if (weights && !sampleSize) {
+    throw new Error('sampleSize is required when weights are specified');
   }
 
-  const allSamples: DatasetSelectItem[] = [];
+  // Only fetch _id, q, datasetId, collectionId — drop a and indexes.
+  // check 11 (indexes not empty) is pushed to the DB query via 'indexes.0': { $exists: true }.
+  const selectFields = '_id q datasetId collectionId';
+
+  // Step 0 + 1: Quality filter + compute kb_count per KB
+  const kbValidDocs: SampledDataItem[][] = [];
+  const kbCounts: number[] = [];
 
   for (const datasetId of datasetIds) {
-    addLog.info('Sampling data from dataset', {
-      datasetId,
-      datasetType,
-      sampleSize
-    });
-
     const match = {
-      datasetId: new Types.ObjectId(datasetId)
+      datasetId: new Types.ObjectId(datasetId),
+      'indexes.0': { $exists: true }
     };
 
-    let sampleData;
+    addLog.info('Sampling data from dataset', { datasetId, datasetType, sampleSize });
 
-    const totalCount = await MongoDatasetData.countDocuments(match);
+    const rawDocs = await MongoDatasetData.find(match).select(selectFields).lean();
 
-    if (totalCount === 0) {
-      addLog.warn('No data found in dataset', { datasetId });
+    const validDocs = filterToSampledItems(rawDocs, config);
+    const totalValid = validDocs.length;
+
+    addLog.info('Quality filter result', {
+      datasetId,
+      rawCount: rawDocs.length,
+      validCount: totalValid
+    });
+
+    if (totalValid === 0) {
+      addLog.warn('No valid data found in dataset after quality filter', { datasetId });
+      kbValidDocs.push([]);
+      kbCounts.push(0);
       continue;
     }
 
-    if (datasetType === 'random') {
-      addLog.info('Using random sampling mode', {
-        datasetId,
-        sampleSize
-      });
-
-      sampleData = await MongoDatasetData.aggregate([
-        {
-          $match: match
-        },
-        {
-          $sample: { size: sampleSize! }
-        },
-        {
-          $project: {
-            _id: 1,
-            q: 1,
-            a: 1,
-            indexes: 1,
-            datasetId: 1,
-            collectionId: 1
-          }
-        }
-      ]);
-    } else {
-      // Fetch all IDs and apply a deterministic Fisher-Yates shuffle seeded by datasetId,
-      // so train (first 80%) and eval (last 20%) always use the same permutation.
-      const allDocs = await MongoDatasetData.find(match).select('_id').lean();
-      const shuffledIds = allDocs.map((doc: any) => doc._id);
-
+    // Deterministic shuffle for train/eval (same permutation ensures disjoint sets)
+    if (datasetType !== 'random') {
       const rng = seededRandom(hashString(datasetId));
-      for (let i = shuffledIds.length - 1; i > 0; i--) {
+      for (let i = totalValid - 1; i > 0; i--) {
         const j = Math.floor(rng() * (i + 1));
-        [shuffledIds[i], shuffledIds[j]] = [shuffledIds[j], shuffledIds[i]];
+        [validDocs[i], validDocs[j]] = [validDocs[j], validDocs[i]];
       }
-
-      const trainCount = Math.floor(shuffledIds.length * TRAIN_DATA_SPLIT_RATIO);
-
-      // Use find() instead of aggregate() for _id-based queries.
-      // aggregate() has inconsistent _id type casting when documents use externally-assigned _ids,
-      // causing $match to fail. find() handles type casting correctly via Mongoose.
-      const selectFields = '_id q a indexes datasetId collectionId';
-
-      if (datasetType === 'eval') {
-        const evalIds = shuffledIds.slice(trainCount);
-
-        addLog.info('Using eval dataset mode (last 20% of shuffled data)', {
-          datasetId,
-          totalCount: shuffledIds.length,
-          trainCount,
-          evalCount: evalIds.length
-        });
-
-        sampleData = await MongoDatasetData.find({ _id: { $in: evalIds } })
-          .select(selectFields)
-          .lean();
-      } else {
-        const trainIds = shuffledIds.slice(0, trainCount);
-
-        addLog.info('Using train dataset mode (first 80% of shuffled data)', {
-          datasetId,
-          totalCount: shuffledIds.length,
-          trainCount
-        });
-
-        sampleData = await MongoDatasetData.find({ _id: { $in: trainIds } })
-          .select(selectFields)
-          .lean();
+    } else {
+      // random mode: shuffle with Math.random()
+      for (let i = totalValid - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [validDocs[i], validDocs[j]] = [validDocs[j], validDocs[i]];
       }
     }
 
-    addLog.info('Dataset sampling result', {
-      datasetId,
-      datasetType,
-      sampleCount: sampleData.length
-    });
+    // Step 1: kb_count[i]
+    const trainCount = Math.floor(totalValid * TRAIN_DATA_SPLIT_RATIO);
+    let kbCount: number;
+    if (datasetType === 'eval') {
+      kbCount = totalValid - trainCount;
+    } else if (datasetType === 'random') {
+      kbCount = totalValid;
+    } else {
+      kbCount = trainCount;
+    }
 
-    const formattedData = sampleData.map((doc) => {
-      // Filter to only keep synthesis indexes with synId
-      const allSynthesisIndexes = (doc.indexes as DatasetDataIndexItemType[]).filter(
-        (idx) => idx.type === DatasetDataIndexTypeEnum.synthesis && idx.synId !== undefined
-      );
-
-      // Count indexes per synId to identify complete pairs
-      const synIdCounts = new Map<number, number>();
-      for (const idx of allSynthesisIndexes) {
-        const synId = idx.synId!;
-        synIdCounts.set(synId, (synIdCounts.get(synId) || 0) + 1);
-      }
-
-      // Keep only indexes from complete pairs (synId with exactly 2 indexes)
-      const validSynIds = new Set<number>();
-      let discardedCount = 0;
-      for (const [synId, count] of synIdCounts) {
-        if (count === 2) {
-          validSynIds.add(synId);
-        } else {
-          discardedCount += count;
-          addLog.warn('Incomplete synthesis pair, discarding', {
-            dataId: doc._id.toString(),
-            synId,
-            count
-          });
-        }
-      }
-
-      // Filter to only keep complete pairs and sort by synId
-      const synthesisIndexes = allSynthesisIndexes
-        .filter((idx) => validSynIds.has(idx.synId!))
-        .sort((a, b) => (a.synId ?? 0) - (b.synId ?? 0));
-
-      return {
-        datasetId: doc.datasetId.toString(),
-        dataId: doc._id.toString(),
-        q: doc.q,
-        a: doc.a,
-        indexes: synthesisIndexes,
-        discardedCount
-      };
-    });
-
-    const totalDiscarded = formattedData.reduce((sum, d) => sum + d.discardedCount, 0);
-    const filtered = formattedData.filter((item) => item.indexes.length >= 2);
-
-    addLog.info('Filtered synthesis indexes', {
-      datasetId,
-      beforeFilter: sampleData.length,
-      afterFilter: filtered.length,
-      totalSynthesisIndexes: filtered.reduce((sum, d) => sum + d.indexes.length, 0),
-      totalDiscardedIndexes: totalDiscarded
-    });
-
-    // Remove discardedCount from final data
-    allSamples.push(...filtered.map(({ discardedCount, ...rest }) => rest));
+    kbValidDocs.push(validDocs);
+    kbCounts.push(kbCount);
   }
 
-  // Apply even distribution for train/eval modes to limit total indexes
-  let finalSamples = allSamples;
-  if (datasetType !== 'random') {
-    const totalPairsBefore = Math.floor(
-      allSamples.reduce((sum, data) => sum + data.indexes.length, 0) / 2
-    );
+  // Step 2: Quota allocation
+  const samplesPerKb = computeQuotas(kbCounts, sampleSize, weights, datasetIds);
 
-    addLog.info('Applying even distribution to limit total pairs', {
+  // Step 3: Take data according to quota
+  const allSamples: SampledDataItem[] = [];
+
+  for (let i = 0; i < datasetIds.length; i++) {
+    const validDocs = kbValidDocs[i];
+    const quota = samplesPerKb[i];
+    if (quota === 0 || validDocs.length === 0) continue;
+
+    const totalValid = validDocs.length;
+    const trainCount = Math.floor(totalValid * TRAIN_DATA_SPLIT_RATIO);
+
+    let selected: SampledDataItem[];
+    if (datasetType === 'eval') {
+      selected = validDocs.slice(trainCount, trainCount + quota);
+    } else {
+      selected = validDocs.slice(0, quota);
+    }
+
+    addLog.info('Dataset quota allocated', {
+      datasetId: datasetIds[i],
       datasetType,
-      totalSamplesBefore: allSamples.length,
-      totalPairsBefore,
-      maxSamplePairs
+      totalValid,
+      quota,
+      selected: selected.length
     });
 
-    finalSamples = distributeSamplesEvenly(allSamples, maxSamplePairs);
-
-    const totalPairsAfter = Math.floor(
-      finalSamples.reduce((sum, data) => sum + data.indexes.length, 0) / 2
-    );
-
-    addLog.info('Even distribution applied', {
-      totalSamplesAfter: finalSamples.length,
-      totalPairsAfter,
-      pairsReduced: totalPairsBefore - totalPairsAfter
-    });
+    allSamples.push(...selected);
   }
 
   addLog.info('Final sampling result', {
     totalDatasets: datasetIds.length,
     datasetType,
-    totalSamples: finalSamples.length,
-    totalPairs: Math.floor(finalSamples.reduce((sum, data) => sum + data.indexes.length, 0) / 2)
+    totalSamples: allSamples.length
   });
 
-  return finalSamples;
+  return allSamples;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared utility functions (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Build model endpoint configuration
@@ -585,49 +634,42 @@ export function makeCreateEnhancedError<
   };
 }
 
+/** sampled data item enriched with q/a content */
+export type SampledDataWithContent = SampledDataItem & { q: string; a: string };
+
 /**
- * Format synthesis indexes to pairs for DiTing API
+ * Fetch q/a content for sampled items from MongoDB.
  *
- * Extracts synthesis-type indexes and pairs them by synId into 2-element arrays.
- * Each data chunk contains 10 synthesis indexes paired into 5 groups.
+ * Items whose document cannot be found in the DB (e.g. deleted after sampling)
+ * are silently dropped. The caller is responsible for handling a shorter-than-
+ * expected result list (typically by checking against MIN_EVAL_QA_COUNT).
  *
- * @param indexes - Raw index array (all types)
- * @returns 2D array where each pair contains two texts from the same synId
+ * @param items - Sampled data items to enrich
+ * @returns Items with q/a content, missing documents omitted
  */
-export function formatSynthesisIndexesToPairs(indexes: DatasetDataIndexItemType[]): string[][] {
-  if (!indexes || !Array.isArray(indexes) || indexes.length === 0) {
-    return [];
+export async function fetchSampledContent(
+  items: SampledDataItem[]
+): Promise<SampledDataWithContent[]> {
+  if (items.length === 0) return [];
+  const ids = items.map((i) => new Types.ObjectId(i.dataId));
+  const docs = await MongoDatasetData.find({ _id: { $in: ids } })
+    .select('_id q a')
+    .lean();
+  const docMap = new Map(docs.map((d: any) => [d._id.toString(), d]));
+  const result = items
+    .filter((item) => docMap.has(item.dataId))
+    .map((item) => ({
+      ...item,
+      q: (docMap.get(item.dataId) as any).q ?? '',
+      a: (docMap.get(item.dataId) as any).a ?? ''
+    }));
+  if (result.length < items.length) {
+    const missingIds = items.filter((item) => !docMap.has(item.dataId)).map((item) => item.dataId);
+    addLog.warn('Some sampled documents not found in DB, skipping', {
+      requested: items.length,
+      found: result.length,
+      missingIds
+    });
   }
-
-  const synthesisIndexes = indexes.filter(
-    (idx) => idx.type === DatasetDataIndexTypeEnum.synthesis && idx.synId !== undefined
-  );
-
-  const groupedBySynId = new Map<number, string[]>();
-  for (const idx of synthesisIndexes) {
-    const synId = idx.synId!;
-    if (!groupedBySynId.has(synId)) {
-      groupedBySynId.set(synId, []);
-    }
-    groupedBySynId.get(synId)!.push(idx.text);
-  }
-
-  const pairs: string[][] = [];
-  const sortedSynIds = Array.from(groupedBySynId.keys()).sort((a, b) => a - b);
-  for (const synId of sortedSynIds) {
-    const texts = groupedBySynId.get(synId)!;
-    if (texts.length === 2) {
-      pairs.push([texts[0], texts[1]]);
-    } else {
-      addLog.warn('Unexpected synthesis index count for synId', {
-        synId,
-        count: texts.length
-      });
-      if (texts.length > 0) {
-        pairs.push(texts.slice(0, 2));
-      }
-    }
-  }
-
-  return pairs;
+  return result;
 }

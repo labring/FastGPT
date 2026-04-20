@@ -3,9 +3,10 @@ import type {
   RerankTrainDataSourceEnum,
   RerankTrainTaskStatusEnum,
   RerankTaskCheckpointStageEnum,
-  RerankTrainTypeEnum
+  RerankTrainMethodEnum
 } from './constants';
 import type { EnhancedErrorMessage } from './error';
+import type { DatasetDataIndexTypeEnum } from '../../dataset/data/constants';
 
 /**
  * Detailed evaluation results from DiTing
@@ -140,10 +141,12 @@ export type RerankTrainsetDataSchemaType = {
 
     generateConfig?: {
       sampleSize?: number;
+      weights?: Record<string, number>;
       forceRegenerate?: boolean;
+      indexType: `${DatasetDataIndexTypeEnum}`;
+      negativeStrategy?: 1 | 2 | 3 | 4;
       minNegativeSamples?: number;
       maxNegativeSamples?: number;
-      includeOriginalQ?: boolean;
     };
   };
 
@@ -165,8 +168,8 @@ export type RerankTrainTaskSchemaType = {
     model: string;
   };
 
-  /** Training type: lora or ptuning, defaults to lora */
-  trainType?: `${RerankTrainTypeEnum}`;
+  /** Training type: lora or task_tuning, defaults to lora */
+  trainMethod?: `${RerankTrainMethodEnum}`;
   /** Train dataset ID (exact mode: passed at create; auto mode: written by generate_trainset stage) */
   trainsetId?: string;
   /** Eval dataset ID (exact mode: passed at create; auto mode: written by generate_evaldataset stage) */
@@ -175,6 +178,16 @@ export type RerankTrainTaskSchemaType = {
   datasetIds: string[];
   /** Optional name for the trained model */
   newModelName?: string;
+
+  /** Trainset synthesis config stored at task level — passed to data generation queue */
+  generateConfig?: {
+    sampleSize?: number;
+    weights?: Record<string, number>;
+    indexType: `${DatasetDataIndexTypeEnum}`;
+    negativeStrategy?: 1 | 2 | 3 | 4;
+    minNegativeSamples?: number;
+    maxNegativeSamples?: number;
+  };
 
   status: RerankTrainTaskStatusEnum;
 

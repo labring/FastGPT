@@ -7,7 +7,7 @@ import type {
 import type {
   RerankTrainDataSourceEnum,
   RerankTrainTaskStatusEnum,
-  RerankTrainTypeEnum
+  RerankTrainMethodEnum
 } from './constants';
 
 import type {
@@ -17,6 +17,7 @@ import type {
   DataIdQuery,
   SortParams
 } from '../common/api';
+import type { DatasetDataIndexTypeEnum } from '../../dataset/data/constants';
 
 // ===== Trainset API =====
 
@@ -51,12 +52,14 @@ export type GenerateRerankTrainDataRequest = {
   datasetIds: string[]; // Required: Knowledge base IDs to generate data from
   generateConfig?: {
     /** FastGPT internal parameters */
-    sampleSize?: number; // Sample size per dataset, default uses 80% of all dataset chunks
+    sampleSize?: number; // Total sample budget M (optional for train/eval modes)
+    weights?: Record<string, number>; // Per-KB sampling weights (requires sampleSize)
     forceRegenerate?: boolean; // Whether to force regeneration
-    /** DiTing API parameters (defaults handled by DiTing server) */
+    /** buildFineTuneData parameters */
+    indexType: `${DatasetDataIndexTypeEnum}`; // Index type to use as query
+    negativeStrategy?: 1 | 2 | 3 | 4; // Negative sampling strategy, default 2
     minNegativeSamples?: number; // Min negative samples per sample, default 1
-    maxNegativeSamples?: number; // Max negative samples per sample, default 7
-    includeOriginalQ?: boolean; // Whether to include original question, default true
+    maxNegativeSamples?: number; // Max negative samples per sample, default 10
   };
 };
 export type GenerateRerankTrainDataResponse = {
@@ -113,7 +116,17 @@ export type CreateRerankTrainTaskRequest = {
   baseModelId: string; // Base model ID (BaseModelItemType.model)
   newModelName?: string; // Optional name for the trained model
   name?: string;
-  trainType?: `${RerankTrainTypeEnum}`; // Training type: lora or ptuning, defaults to lora
+  trainMethod?: `${RerankTrainMethodEnum}`; // Training type: lora or task_tuning, defaults to lora
+
+  /** Trainset synthesis config — used when auto-generating the trainset (trainsetId absent) */
+  generateConfig?: {
+    sampleSize?: number;
+    weights?: Record<string, number>;
+    indexType: `${DatasetDataIndexTypeEnum}`;
+    negativeStrategy?: 1 | 2 | 3 | 4;
+    minNegativeSamples?: number;
+    maxNegativeSamples?: number;
+  };
 };
 export type CreateRerankTrainTaskResponse = RerankTrainTaskSchemaType;
 

@@ -3,7 +3,7 @@ import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/reran
 import {
   RerankTrainTaskStatusEnum,
   RerankTaskCheckpointStageEnum,
-  RerankTrainTypeEnum
+  RerankTrainMethodEnum
 } from '@fastgpt/global/core/train/rerank/constants';
 
 /** Rerank training task schema */
@@ -60,10 +60,14 @@ const RerankTrainTaskSchema = new connectionMongo.Schema({
     type: String,
     required: false // optional name for the trained model
   },
-  trainType: {
+  generateConfig: {
+    type: connectionMongo.Schema.Types.Mixed,
+    required: false // trainset synthesis config: indexType, negativeStrategy, sampleSize, etc.
+  },
+  trainMethod: {
     type: String,
-    enum: Object.values(RerankTrainTypeEnum),
-    default: RerankTrainTypeEnum.lora,
+    enum: Object.values(RerankTrainMethodEnum),
+    default: RerankTrainMethodEnum.lora,
     required: false // defaults to lora for backward compatibility
   },
   status: {

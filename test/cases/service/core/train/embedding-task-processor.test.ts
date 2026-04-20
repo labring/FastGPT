@@ -165,7 +165,8 @@ vi.mock('@fastgpt/service/core/train/embedding/utils', async () => {
   const actual = await vi.importActual('@fastgpt/service/core/train/embedding/utils');
   return {
     ...actual,
-    sampleDataFromDataset: vi.fn()
+    sampleDataFromDataset: vi.fn(),
+    fetchSampledContent: vi.fn()
   };
 });
 
@@ -240,21 +241,35 @@ describe('Embedding Train Task Processor', () => {
     });
 
     // Set default sampleDataFromDataset mock
-    const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/embedding/utils');
+    const { sampleDataFromDataset, fetchSampledContent } = await import(
+      '@fastgpt/service/core/train/embedding/utils'
+    );
     (sampleDataFromDataset as any).mockResolvedValue([
       {
         datasetId: 'dataset_001',
-        dataId: 'data_001',
-        q: 'Test query 1',
-        a: 'Test answer 1',
-        indexes: [{ type: 'custom', dataId: 'idx_001', text: 'Test context 1' }]
+        dataId: '507f1f77bcf86cd799439020',
+        collectionId: '507f1f77bcf86cd799439030'
       },
       {
         datasetId: 'dataset_002',
-        dataId: 'data_002',
-        q: 'Test query 2',
-        a: 'Test answer 2',
-        indexes: [{ type: 'custom', dataId: 'idx_002', text: 'Test context 2' }]
+        dataId: '507f1f77bcf86cd799439021',
+        collectionId: '507f1f77bcf86cd799439031'
+      }
+    ]);
+    (fetchSampledContent as any).mockResolvedValue([
+      {
+        datasetId: 'dataset_001',
+        dataId: '507f1f77bcf86cd799439020',
+        collectionId: '507f1f77bcf86cd799439030',
+        q: 'mock question 1',
+        a: 'mock answer 1'
+      },
+      {
+        datasetId: 'dataset_002',
+        dataId: '507f1f77bcf86cd799439021',
+        collectionId: '507f1f77bcf86cd799439031',
+        q: 'mock question 2',
+        a: 'mock answer 2'
       }
     ]);
   });
@@ -360,7 +375,7 @@ describe('Embedding Train Task Processor', () => {
         lean: vi.fn().mockResolvedValue([
           {
             userInput: 'Test eval question',
-            expectedContextIds: ['data_001']
+            expectedContextIds: ['507f1f77bcf86cd799439020']
             // Note: no retrievalContextsFull - embedding difference from rerank
           }
         ])
@@ -670,7 +685,7 @@ describe('Embedding Train Task Processor', () => {
         lean: vi.fn().mockResolvedValue([
           {
             userInput: 'Test eval question',
-            expectedContextIds: ['data_001']
+            expectedContextIds: ['507f1f77bcf86cd799439020']
           }
         ])
       });
@@ -952,7 +967,7 @@ describe('Embedding Train Task Processor', () => {
         lean: vi.fn().mockResolvedValue([
           {
             userInput: 'Test eval question',
-            expectedContextIds: ['data_001']
+            expectedContextIds: ['507f1f77bcf86cd799439020']
           }
         ])
       });
@@ -1171,9 +1186,8 @@ describe('Embedding Train Task Processor', () => {
       (sampleDataFromDataset as any).mockResolvedValue([
         {
           datasetId: 'dataset_001',
-          dataId: 'data_001',
-          q: 'Sample question 1',
-          a: 'Sample answer 1'
+          dataId: '507f1f77bcf86cd799439020',
+          collectionId: '507f1f77bcf86cd799439030'
         }
       ]);
 
@@ -1244,7 +1258,7 @@ describe('Embedding Train Task Processor', () => {
             userInput: 'Generated question 1',
             expectedOutput: 'Generated answer 1',
             retrievalContextsFull: [], // embedding: empty array, not populated
-            expectedContextIds: ['data_001']
+            expectedContextIds: ['507f1f77bcf86cd799439020']
           })
         ])
       );

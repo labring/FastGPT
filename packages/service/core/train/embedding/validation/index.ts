@@ -9,4 +9,4 @@ export {
   validateSFTBridgeAccess,
   validateDiTingAccess
 } from './environment';
-export { validateDatasetSynthesisIndexes } from './dataset';
+export { validateDatasetTargetIndexes } from './dataset';

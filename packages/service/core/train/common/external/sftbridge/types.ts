@@ -1,10 +1,12 @@
 import type { ReadStream } from 'fs';
+import type { EmbeddingTrainMethodEnum } from '@fastgpt/global/core/train/embedding/constants';
+import type { RerankTrainMethodEnum } from '@fastgpt/global/core/train/rerank/constants';
 
 /** Create SFT task request (multipart/form-data) */
 export type CreateSFTTaskRequest = {
   datasetFile: Buffer | ReadStream;
   taskType: 'rerank' | 'embed';
-  trainType?: 'lora' | 'ptuning'; // Training type: lora or ptuning
+  trainMethod?: `${EmbeddingTrainMethodEnum}` | `${RerankTrainMethodEnum}`; // Training type: lora or task_tuning
   parameters?: {
     learning_rate?: number;
     epochs?: number;

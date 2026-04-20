@@ -46,6 +46,7 @@ export enum RerankTrainErrEnum {
   rerankPrepareTimeout = 'rerankPrepareTimeout',
   rerankPrepareFileSystemError = 'rerankPrepareFileSystemError',
   rerankPrepareDataEmptyAfterWrite = 'rerankPrepareDataEmptyAfterWrite',
+  rerankPrepareMissingGenerateConfig = 'rerankPrepareMissingGenerateConfig',
 
   // === Finetuning Stage Errors ===
   rerankFinetuneDataPathNotFound = 'rerankFinetuneDataPathNotFound',
@@ -141,6 +142,7 @@ export enum EmbeddingTrainErrEnum {
   embeddingPrepareTimeout = 'embeddingPrepareTimeout',
   embeddingPrepareFileSystemError = 'embeddingPrepareFileSystemError',
   embeddingPrepareDataEmptyAfterWrite = 'embeddingPrepareDataEmptyAfterWrite',
+  embeddingPrepareMissingGenerateConfig = 'embeddingPrepareMissingGenerateConfig',
 
   // === Finetuning Stage Errors ===
   embeddingFinetuneDataPathNotFound = 'embeddingFinetuneDataPathNotFound',
@@ -239,6 +241,7 @@ export enum RerankTrainSuggestionEnum {
   rerankPrepareTimeout = 'rerankPrepareTimeout',
   rerankPrepareFileSystemError = 'rerankPrepareFileSystemError',
   rerankPrepareDataEmptyAfterWrite = 'rerankPrepareDataEmptyAfterWrite',
+  rerankPrepareMissingGenerateConfig = 'rerankPrepareMissingGenerateConfig',
 
   // === Finetuning Stage Errors ===
   rerankFinetuneDataPathNotFound = 'rerankFinetuneDataPathNotFound',
@@ -337,6 +340,7 @@ export enum EmbeddingTrainSuggestionEnum {
   embeddingPrepareTimeout = 'embeddingPrepareTimeout',
   embeddingPrepareFileSystemError = 'embeddingPrepareFileSystemError',
   embeddingPrepareDataEmptyAfterWrite = 'embeddingPrepareDataEmptyAfterWrite',
+  embeddingPrepareMissingGenerateConfig = 'embeddingPrepareMissingGenerateConfig',
 
   // === Finetuning Stage Errors ===
   embeddingFinetuneDataPathNotFound = 'embeddingFinetuneDataPathNotFound',

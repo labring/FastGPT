@@ -3,7 +3,10 @@ import * as path from 'path';
 import { MongoEmbeddingTrainTask } from './schema';
 import type { EmbeddingTrainTaskSchemaType } from '@fastgpt/global/core/train/embedding/type';
 import type { EmbeddingTaskCheckpointStageEnum } from '@fastgpt/global/core/train/embedding/constants';
-import { EmbeddingTrainTaskStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
+import {
+  EmbeddingTrainMethodEnum,
+  EmbeddingTrainTaskStatusEnum
+} from '@fastgpt/global/core/train/embedding/constants';
 import { addLog } from '../../../../common/system/log';
 import { getEmbeddingModel } from '../../../ai/model';
 import type { ClientSession } from '../../../../common/mongo';
@@ -41,7 +44,15 @@ export async function createEmbeddingTrainTask(params: {
   teamId: string;
   tmbId: string;
   name?: string;
-  trainType?: string;
+  trainMethod?: string;
+  generateConfig?: {
+    sampleSize?: number;
+    weights?: Record<string, number>;
+    indexType: string;
+    negativeStrategy?: 1 | 2 | 3 | 4;
+    minNegativeSamples?: number;
+    maxNegativeSamples?: number;
+  };
 }): Promise<EmbeddingTrainTaskSchemaType> {
   const {
     baseModelId,
@@ -52,7 +63,8 @@ export async function createEmbeddingTrainTask(params: {
     teamId,
     tmbId,
     name,
-    trainType
+    trainMethod,
+    generateConfig
   } = params;
 
   // Reject disabled models
@@ -79,12 +91,13 @@ export async function createEmbeddingTrainTask(params: {
       evalDatasetId: evalDatasetId || undefined,
       datasetIds: datasetIds?.length ? datasetIds : undefined,
       newModelName: newModelName || undefined,
+      generateConfig: generateConfig || undefined,
       teamId,
       tmbId,
       name: name || `Embedding Training - ${new Date().toLocaleDateString()}`,
       baseModelId,
       baseModelEndpoint,
-      trainType: trainType || 'lora',
+      trainMethod: trainMethod || EmbeddingTrainMethodEnum.task_tuning,
       status: EmbeddingTrainTaskStatusEnum.pending,
       checkpoint: {
         stage: null,

@@ -1,11 +1,17 @@
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+
 /** Training modules shared constants */
+
+// ===== Index Type Configuration =====
+/** Default index type for trainset generation. Configurable via TRAIN_DEFAULT_INDEX_TYPE env var. */
+export const DEFAULT_TRAIN_INDEX_TYPE: `${DatasetDataIndexTypeEnum}` =
+  (process.env.TRAIN_DEFAULT_INDEX_TYPE as `${DatasetDataIndexTypeEnum}`) ??
+  DatasetDataIndexTypeEnum.question;
 
 // ===== Data Sampling =====
 /** Default train/evaluation data split ratio (80% for training, 20% for evaluation) */
 export const TRAIN_DATA_SPLIT_RATIO = 0.8;
-/** Default maximum total pairs to sample in train/eval mode (each pair = 2 synthesis indexes) */
-export const DEFAULT_MAX_SAMPLE_PAIRS = 5000;
-/** Minimum number of eval QA pairs required (used to validate sampledData and final DiTing output) */
+/** Minimum number of eval QA pairs required (used to validate sampledData and final output) */
 export const MIN_EVAL_QA_COUNT = 200;
 
 // ===== DiTing Service Configuration =====

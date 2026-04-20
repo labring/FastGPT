@@ -3,7 +3,7 @@ import type { EmbeddingTrainTaskSchemaType } from '@fastgpt/global/core/train/em
 import {
   EmbeddingTrainTaskStatusEnum,
   EmbeddingTaskCheckpointStageEnum,
-  EmbeddingTrainTypeEnum
+  EmbeddingTrainMethodEnum
 } from '@fastgpt/global/core/train/embedding/constants';
 
 /** Embedding training task schema */
@@ -60,10 +60,14 @@ const EmbeddingTrainTaskSchema = new connectionMongo.Schema({
     type: String,
     required: false // optional name for the trained model
   },
-  trainType: {
+  generateConfig: {
+    type: connectionMongo.Schema.Types.Mixed,
+    required: false // trainset synthesis config: indexType, negativeStrategy, sampleSize, etc.
+  },
+  trainMethod: {
     type: String,
-    enum: Object.values(EmbeddingTrainTypeEnum),
-    default: EmbeddingTrainTypeEnum.lora,
+    enum: Object.values(EmbeddingTrainMethodEnum),
+    default: EmbeddingTrainMethodEnum.lora,
     required: false // defaults to lora for backward compatibility
   },
   status: {

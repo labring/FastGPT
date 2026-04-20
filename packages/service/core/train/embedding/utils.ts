@@ -10,10 +10,10 @@ import {
 import {
   pLimit,
   sampleDataFromDataset,
+  fetchSampledContent,
   buildModelEndpoint,
   getTrainStageKey,
   formatTrainTaskError,
-  formatSynthesisIndexesToPairs,
   makeCreateEnhancedError
 } from '../common/utils';
 
@@ -21,10 +21,10 @@ import {
 export {
   pLimit,
   sampleDataFromDataset,
+  fetchSampledContent,
   buildModelEndpoint,
   getTrainStageKey,
-  formatTrainTaskError,
-  formatSynthesisIndexesToPairs
+  formatTrainTaskError
 };
 
 /**

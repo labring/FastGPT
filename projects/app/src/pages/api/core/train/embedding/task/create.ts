@@ -5,8 +5,9 @@ import { WritePermissionVal, ReadPermissionVal } from '@fastgpt/global/support/p
 import { createEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/controller';
 import {
   validateTrainingEnvironment,
-  validateDatasetSynthesisIndexes
+  validateDatasetTargetIndexes
 } from '@fastgpt/service/core/train/embedding/validation';
+import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
 import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/schema';
 import { authEmbeddingTrainset } from '@fastgpt/service/support/permission/train/embedding/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
@@ -24,8 +25,16 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateEmbeddingTrainTaskResponse>
 ): Promise<CreateEmbeddingTrainTaskResponse> {
-  const { baseModelId, trainsetId, evalDatasetId, datasetIds, newModelName, name, trainType } =
-    req.body as CreateEmbeddingTrainTaskRequest;
+  const {
+    baseModelId,
+    trainsetId,
+    evalDatasetId,
+    datasetIds,
+    newModelName,
+    name,
+    trainMethod,
+    generateConfig
+  } = req.body as CreateEmbeddingTrainTaskRequest;
 
   if (!baseModelId) {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingValidationBaseModelNotConfigured);
@@ -73,8 +82,15 @@ async function handler(
     });
   }
 
-  // Verify dataset synthesis indexes are ready
-  await validateDatasetSynthesisIndexes(expandedDatasetIds);
+  // Step 1: Auto mode without generateConfig → build default
+  let normalizedGenerateConfig = generateConfig;
+  if (!generateConfig && !trainsetId) {
+    normalizedGenerateConfig = { indexType: DEFAULT_TRAIN_INDEX_TYPE };
+  }
+  // Step 2: Validate dataset indexes whenever generateConfig is present
+  if (normalizedGenerateConfig) {
+    await validateDatasetTargetIndexes(expandedDatasetIds, normalizedGenerateConfig.indexType);
+  }
 
   // 5. Create task (controller checks for existing running tasks internally)
   const task = await createEmbeddingTrainTask({
@@ -86,7 +102,8 @@ async function handler(
     teamId,
     tmbId,
     name,
-    trainType
+    trainMethod,
+    generateConfig: normalizedGenerateConfig
   });
   const taskId = String(task._id);
 

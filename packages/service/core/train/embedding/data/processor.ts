@@ -2,17 +2,13 @@ import type { Processor } from 'bullmq';
 import type { EmbeddingTrainDataGenerateJobData } from './mq';
 import { MongoEmbeddingTrainsetData } from './schema';
 import { MongoEmbeddingTrainset } from '../trainset/schema';
-import {
-  sampleDataFromDataset,
-  createEmbeddingEnhancedError,
-  formatSynthesisIndexesToPairs
-} from '../utils';
+import { sampleDataFromDataset, createEmbeddingEnhancedError } from '../utils';
 import {
   EmbeddingTrainDataSourceEnum,
   EmbeddingTrainsetStatusEnum
 } from '@fastgpt/global/core/train/embedding/constants';
 import { addLog } from '../../../../common/system/log';
-import { buildFineTuneData } from '../../common/synthesize/buildFineTuneData';
+import { buildFineTuneDataStream } from '../../common/synthesize/buildFineTuneData';
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
@@ -21,13 +17,14 @@ import {
   EmbeddingTrainErrEnum,
   EmbeddingTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
-import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
+
+const SAVE_BATCH_SIZE = 1000;
 
 /** Embedding train data generation processor */
 export const embeddingTrainDataGenerateProcessor: Processor<
   EmbeddingTrainDataGenerateJobData
 > = async (job) => {
-  const { trainsetId, datasetIds, generateConfig = {} } = job.data;
+  const { trainsetId, datasetIds, generateConfig } = job.data;
 
   // 1. Check if trainset exists
   const trainset = await MongoEmbeddingTrainset.findById(trainsetId);
@@ -68,13 +65,14 @@ export const embeddingTrainDataGenerateProcessor: Processor<
     { status: EmbeddingTrainsetStatusEnum.generating }
   );
 
-  // 4. Sample data from datasets
-  const samples = await sampleDataFromDataset(targetDatasetIds, {
-    datasetType: generateConfig.sampleSize ? 'random' : 'train',
-    sampleSize: generateConfig.sampleSize
+  // 4. Sample data IDs from datasets (lightweight — no q/a/indexes loaded)
+  const sampledItems = await sampleDataFromDataset(targetDatasetIds, {
+    datasetType: 'train',
+    sampleSize: generateConfig.sampleSize,
+    weights: generateConfig.weights
   });
 
-  if (samples.length === 0) {
+  if (sampledItems.length === 0) {
     const error = createEmbeddingEnhancedError(
       null,
       EmbeddingTrainErrEnum.embeddingTrainsetGenDatasetEmpty,
@@ -83,64 +81,52 @@ export const embeddingTrainDataGenerateProcessor: Processor<
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
-  // 5. Generate training data
-  const result = buildFineTuneData({
-    items: samples.map((s) => ({
-      dataId: s.dataId,
-      datasetId: s.datasetId,
-      q: s.q,
-      a: s.a,
-      indexes: formatSynthesisIndexesToPairs(s.indexes)
-    })),
-    minNegativeSamples: generateConfig.minNegativeSamples,
-    maxNegativeSamples: generateConfig.maxNegativeSamples,
-    includeOriginalQ: generateConfig.includeOriginalQ
-  });
-
-  if (result.samples.length === 0) {
-    const error = createEmbeddingEnhancedError(
-      null,
-      EmbeddingTrainErrEnum.embeddingTrainsetGenDitingNoData,
-      EmbeddingTrainSuggestionEnum.embeddingTrainsetGenDitingNoData
-    );
-    throw new TrainsetGenerationRetriableError(error);
+  // 5. forceRegenerate: delete old data before streaming new data
+  if (generateConfig.forceRegenerate) {
+    await MongoEmbeddingTrainsetData.deleteMany({
+      trainsetId,
+      source: EmbeddingTrainDataSourceEnum.dataset
+    });
   }
 
-  // 6. Save training data to database
-  const trainData = result.samples.map((item) => ({
-    trainsetId,
-    teamId: trainset.teamId,
-    query: item.query,
-    positiveDocs: item.positive,
-    negativeDocs: item.negatives,
-    source: EmbeddingTrainDataSourceEnum.dataset,
-    metadata: {
-      sourceInfo: {
-        datasetInfo: {
-          dataId: item.sourceId,
-          datasetId: item.datasetId
-        }
-      },
-      generateConfig: generateConfig
-    },
-    createTime: new Date()
-  }));
+  // 6. Stream training samples and batch-insert
+  let saveBatch: any[] = [];
+  let totalGenerated = 0;
 
   try {
-    if (generateConfig.forceRegenerate) {
-      // Atomically delete old data and insert new data.
-      // Deleting after generation succeeds means sampling/build failures cannot destroy existing data.
-      // The transaction guarantees that a DB failure during delete/insert rolls back both operations,
-      // keeping old data intact so the next retry can succeed.
-      await mongoSessionRun(async (session) => {
-        await MongoEmbeddingTrainsetData.deleteMany(
-          { trainsetId, source: EmbeddingTrainDataSourceEnum.dataset },
-          { session }
-        );
-        await MongoEmbeddingTrainsetData.insertMany(trainData, { session });
+    for await (const sample of buildFineTuneDataStream({
+      sampledItems,
+      indexType: generateConfig.indexType,
+      negativeStrategy: generateConfig.negativeStrategy ?? 2,
+      minNegativeSamples: generateConfig.minNegativeSamples,
+      maxNegativeSamples: generateConfig.maxNegativeSamples
+    })) {
+      saveBatch.push({
+        trainsetId,
+        teamId: trainset.teamId,
+        query: sample.query,
+        positiveDocs: sample.positive,
+        negativeDocs: sample.negatives,
+        source: EmbeddingTrainDataSourceEnum.dataset,
+        metadata: {
+          sourceInfo: {
+            datasetInfo: { dataId: sample.sourceId, datasetId: sample.datasetId }
+          },
+          generateConfig
+        },
+        createTime: new Date()
       });
-    } else {
-      await MongoEmbeddingTrainsetData.insertMany(trainData);
+      totalGenerated++;
+
+      if (saveBatch.length >= SAVE_BATCH_SIZE) {
+        await MongoEmbeddingTrainsetData.insertMany(saveBatch);
+        saveBatch = [];
+        await new Promise((r) => setImmediate(r)); // 让 GC 有机会回收上批对象
+      }
+    }
+
+    if (saveBatch.length > 0) {
+      await MongoEmbeddingTrainsetData.insertMany(saveBatch);
     }
   } catch (dbError) {
     const error = createEmbeddingEnhancedError(
@@ -148,6 +134,15 @@ export const embeddingTrainDataGenerateProcessor: Processor<
       EmbeddingTrainErrEnum.embeddingTrainsetGenDatabaseError,
       EmbeddingTrainSuggestionEnum.embeddingTrainsetGenDatabaseError,
       (dbError as Error).message
+    );
+    throw new TrainsetGenerationRetriableError(error);
+  }
+
+  if (totalGenerated === 0) {
+    const error = createEmbeddingEnhancedError(
+      null,
+      EmbeddingTrainErrEnum.embeddingTrainsetGenDitingNoData,
+      EmbeddingTrainSuggestionEnum.embeddingTrainsetGenDitingNoData
     );
     throw new TrainsetGenerationRetriableError(error);
   }
@@ -164,6 +159,6 @@ export const embeddingTrainDataGenerateProcessor: Processor<
   addLog.info('Generated embedding train data from datasets', {
     trainsetId,
     datasetCount: targetDatasetIds.length,
-    dataCount: trainData.length
+    dataCount: totalGenerated
   });
 };

@@ -45,7 +45,7 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
   addLog.debug('SFT Bridge create optimization task', {
     url,
     taskType: request.taskType,
-    trainType: request.trainType,
+    trainMethod: request.trainMethod,
     hasParameters: !!request.parameters
   });
 
@@ -57,8 +57,8 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
     });
     formData.append('task_type', request.taskType);
 
-    if (request.trainType) {
-      formData.append('train_type', request.trainType);
+    if (request.trainMethod) {
+      formData.append('training_method', request.trainMethod);
     }
 
     if (request.parameters) {

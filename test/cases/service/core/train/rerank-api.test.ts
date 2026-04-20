@@ -63,7 +63,7 @@ vi.mock('@fastgpt/service/common/bullmq', () => ({
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({}));
 
 vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
-  buildFineTuneData: vi.fn()
+  buildFineTuneDataStream: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/utils', async () => {
@@ -130,26 +130,23 @@ describe('Rerank Train Data API', () => {
         {
           datasetId: datasetId1,
           dataId: 'data_1',
-          q: 'Test question',
-          a: 'Test answer',
-          indexes: []
+          collectionId: 'col_1'
         }
       ]);
 
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: 'Test query',
-            positive: ['Test positive'],
-            negatives: ['Test negative'],
-            sourceId: 'data_1',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: 'Test query',
+          positive: ['Test positive'],
+          negatives: ['Test negative'],
+          sourceId: 'data_1',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
 
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([{ _id: 'train_data_1' }]);
 
@@ -178,9 +175,7 @@ describe('Rerank Train Data API', () => {
     test('训练集不存在时应返回错误', async () => {
       vi.clearAllMocks();
 
-      (MongoRerankTrainset.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue(null)
-      });
+      (MongoRerankTrainset.findById as any).mockResolvedValue(null);
 
       try {
         const { rerankTrainDataGenerateProcessor } = await import(
@@ -203,11 +198,9 @@ describe('Rerank Train Data API', () => {
     test('训练集正在生成时应返回错误', async () => {
       vi.clearAllMocks();
 
-      (MongoRerankTrainset.findById as any).mockReturnValue({
-        lean: vi.fn().mockResolvedValue({
-          _id: trainsetId,
-          status: RerankTrainsetStatusEnum.generating
-        })
+      (MongoRerankTrainset.findById as any).mockResolvedValue({
+        _id: trainsetId,
+        status: RerankTrainsetStatusEnum.generating
       });
 
       try {
