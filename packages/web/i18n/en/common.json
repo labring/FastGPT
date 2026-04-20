@@ -782,6 +782,7 @@
   "failed": "Failed",
   "field_name": "Field Name",
   "filter_sensitive_info": "Filter sensitive information",
+  "filter_sensitive_info_tip": "Sensitive information includes temporary keys used by system tools (leaks may cause unexpected charges, so export carefully) and dataset information configured in dataset search nodes.",
   "folder.empty": "No More Items in This Directory",
   "folder.open_dataset": "Open Dataset",
   "folder_description": "Folder Description",
