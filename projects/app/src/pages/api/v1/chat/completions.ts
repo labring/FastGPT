@@ -18,7 +18,6 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
-  ensurePendingChatRoundItems,
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
@@ -281,17 +280,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const shouldUseWorkflowStreamV2 = stream && source === ChatSourceEnum.online;
     const workflowApiVersion = shouldUseWorkflowStreamV2 ? 'v2' : 'v1';
     // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/core/chat/resume 承担
-
-    if (!interactive) {
-      await ensurePendingChatRoundItems({
-        chatId: saveChatId,
-        appId: runningAppId,
-        teamId,
-        tmbId: String(tmbId),
-        userContent: userQuestion,
-        responseChatItemId
-      });
-    }
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,

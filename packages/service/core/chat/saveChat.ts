@@ -391,10 +391,7 @@ export const ensurePendingChatRoundItems = async (params: EnsurePendingChatRound
   const { chatId, appId, teamId, tmbId, responseChatItemId } = params;
   if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
 
-  const humanDataId = ensurePreparedHumanDataId({
-    userContent: params.userContent,
-    responseChatItemId
-  });
+  const humanDataId = params.userContent.dataId ?? responseChatItemId;
 
   const existingAi = await MongoChatItem.findOne({
     appId,
@@ -778,103 +775,92 @@ export const pushChatRecords = async (props: Props) => {
     const aiRoundDataId = (processedContent[1] as { dataId?: string }).dataId as string;
 
     await mongoSessionRun(async (session) => {
-      // Compatibility fallback: older pending rounds could reuse the AI dataId for the human item.
-      const lookupHumanDataId = humanRoundDataId ?? aiRoundDataId;
+      const humanExisting = await MongoChatItem.findOne({
+        appId,
+        chatId,
+        dataId: humanRoundDataId,
+        obj: ChatRoleEnum.Human
+      }).session(session);
+      const aiExisting = await MongoChatItem.findOne({
+        appId,
+        chatId,
+        dataId: aiRoundDataId,
+        obj: ChatRoleEnum.AI
+      }).session(session);
 
-      const [humanExisting, aiExisting] = await Promise.all([
-        lookupHumanDataId
-          ? MongoChatItem.findOne({
-              appId,
-              chatId,
-              dataId: lookupHumanDataId,
+      let chatItemIdHuman: unknown;
+      let chatItemIdAi: unknown;
+      let responseDataId = aiRoundDataId;
+
+      if (humanExisting && aiExisting) {
+        await MongoChatItem.updateOne(
+          { _id: humanExisting._id },
+          {
+            $set: {
+              ...(processedContent[0] as Record<string, unknown>),
               obj: ChatRoleEnum.Human
-            }).session(session)
-          : Promise.resolve(null),
-        aiRoundDataId
-          ? MongoChatItem.findOne({
+            }
+          },
+          { session }
+        );
+        await MongoChatItem.updateOne(
+          { _id: aiExisting._id },
+          {
+            $set: {
+              ...(processedContent[1] as Record<string, unknown>),
+              obj: ChatRoleEnum.AI
+            }
+          },
+          { session }
+        );
+
+        await MongoChatItemResponse.deleteMany(
+          { appId, chatId, chatItemDataId: aiRoundDataId },
+          { session }
+        );
+
+        if (nodeResponses?.length) {
+          await MongoChatItemResponse.create(
+            nodeResponses.map((item) => ({
+              teamId,
               appId,
               chatId,
-              dataId: aiRoundDataId,
-              obj: ChatRoleEnum.AI
-            }).session(session)
-          : Promise.resolve(null)
-      ]);
+              chatItemDataId: aiRoundDataId,
+              data: item
+            })),
+            { session, ordered: true }
+          );
+        }
 
-      const [humanDoc, aiDoc] = await Promise.all([
-        humanExisting
-          ? MongoChatItem.findOneAndUpdate(
-              { _id: humanExisting._id },
-              {
-                $set: {
-                  ...(processedContent[0] as Record<string, unknown>),
-                  obj: ChatRoleEnum.Human
-                }
-              },
-              {
-                session,
-                new: true
-              }
-            )
-          : MongoChatItem.create(
-              [
-                {
-                  chatId,
-                  teamId,
-                  tmbId,
-                  appId,
-                  ...processedContent[0]
-                }
-              ],
-              { session, ordered: true }
-            ).then(([doc]) => doc),
-        aiExisting
-          ? MongoChatItem.findOneAndUpdate(
-              { _id: aiExisting._id },
-              {
-                $set: {
-                  ...(processedContent[1] as Record<string, unknown>),
-                  obj: ChatRoleEnum.AI
-                }
-              },
-              {
-                session,
-                new: true
-              }
-            )
-          : MongoChatItem.create(
-              [
-                {
-                  chatId,
-                  teamId,
-                  tmbId,
-                  appId,
-                  ...processedContent[1]
-                }
-              ],
-              { session, ordered: true }
-            ).then(([doc]) => doc)
-      ]);
-
-      if (!humanDoc || !aiDoc) {
-        throw new Error(`Failed to save chat round items: ${chatId}`);
-      }
-
-      await MongoChatItemResponse.deleteMany(
-        { appId, chatId, chatItemDataId: aiDoc.dataId },
-        { session }
-      );
-
-      if (nodeResponses?.length) {
-        await MongoChatItemResponse.create(
-          nodeResponses.map((item) => ({
-            teamId,
-            appId,
+        chatItemIdHuman = humanExisting._id;
+        chatItemIdAi = aiExisting._id;
+      } else {
+        const [humanCreated, aiCreated] = await MongoChatItem.create(
+          processedContent.map((item) => ({
             chatId,
-            chatItemDataId: aiDoc.dataId,
-            data: item
+            teamId,
+            tmbId,
+            appId,
+            ...item
           })),
           { session, ordered: true }
         );
+        chatItemIdHuman = humanCreated._id;
+        chatItemIdAi = aiCreated._id;
+        responseDataId = aiCreated.dataId;
+
+        if (nodeResponses) {
+          await MongoChatItemResponse.create(
+            nodeResponses.map((item) => ({
+              teamId,
+              appId,
+              chatId,
+              chatItemDataId: responseDataId,
+              data: item
+            })),
+            { session, ordered: true }
+          );
+        }
       }
 
       await MongoChat.updateOne(
@@ -921,8 +907,8 @@ export const pushChatRecords = async (props: Props) => {
 
       pushChatLog({
         chatId,
-        chatItemIdHuman: String(humanDoc._id),
-        chatItemIdAi: String(aiDoc._id),
+        chatItemIdHuman: String(chatItemIdHuman),
+        chatItemIdAi: String(chatItemIdAi),
         appId
       });
     });
