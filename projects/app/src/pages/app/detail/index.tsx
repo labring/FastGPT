@@ -98,7 +98,6 @@ export async function getServerSideProps(context: any) {
         'skill',
         'dashboard_evaluation',
         'evaluation',
-        'train',
         'database_client',
         'skill'
       ]))

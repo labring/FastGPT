@@ -34,7 +34,7 @@ import type {
 } from '@fastgpt/global/core/train/embedding/api';
 import type { EnhancedErrorMessage as RerankEnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import type { EnhancedErrorMessage as EmbeddingEnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
-import TrainExceptionModal from '@/pageComponents/app/detail/AutoLearn/TrainExceptionModal';
+import TrainExceptionModal from './TrainExceptionModal';
 import { getDatasets } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getEmbeddingTrainTaskList, getRerankTrainTaskList } from '@/web/core/app/api/train';

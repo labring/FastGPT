@@ -1,7 +1,10 @@
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
+import type { EnhancedErrorMessage as RerankEnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
+import type { EnhancedErrorMessage as EmbeddingEnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
+
+type TrainTaskErrorMessage = RerankEnhancedErrorMessage | EmbeddingEnhancedErrorMessage;
 
 const TrainExceptionModal = ({
   error,
@@ -9,7 +12,7 @@ const TrainExceptionModal = ({
   onRetry,
   isRetrying = false
 }: {
-  error: { taskId: string; errorMsg: EnhancedErrorMessage } | null;
+  error: { taskId: string; errorMsg: TrainTaskErrorMessage } | null;
   onClose: () => void;
   onRetry?: () => void;
   isRetrying?: boolean;

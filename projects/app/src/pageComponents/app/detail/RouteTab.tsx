@@ -31,7 +31,6 @@ const RouteTab = () => {
             { label: t('app:chat_logs'), value: TabEnum.logs }
           ]
         : []),
-      { label: t('app:auto_learning'), value: TabEnum.autoLearn },
       ...(appDetail.permission.hasWritePer
         ? [
             {
