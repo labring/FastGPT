@@ -203,8 +203,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           trainingType: collection.trainingType,
           autoIndexes: collection.autoIndexes,
           imageIndex: collection.imageIndex,
-          small2bigIndexes: collection.small2bigIndexes,
-          syntheticIndex: collection.syntheticIndex
+          small2bigIndexes: collection.small2bigIndexes
         });
 
         const isBackupMode =

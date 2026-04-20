@@ -75,5 +75,10 @@
   "usage_detail": "使用詳細資訊",
   "user_type": "類型",
   "wechat": "微信個人號",
-  "wecom": "企業微信"
+  "wecom": "企業微信",
+  "evaluation_summary_generation": "評估-總結生成",
+  "generate_answer": "產生應用回答",
+  "hype_index":"構建高質量的假定問題索引",
+  "synonym_standardize": "同義詞標準化",
+  "synonym_restore": "同義詞恢復"
 }

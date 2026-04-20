@@ -123,16 +123,6 @@ export function adaptiveAdjustConfig(params: AdaptiveConfigParams): AdaptiveConf
     adjustedEnhanceConfig.hypeIndexes = false;
   }
 
-  if (adjustedEnhanceConfig.syntheticIndex && !hasAgentModel) {
-    adjustments.push({
-      field: 'syntheticIndex',
-      originalValue: true,
-      adjustedValue: false,
-      reason: 'Agent model not configured or not available for this dataset'
-    });
-    adjustedEnhanceConfig.syntheticIndex = false;
-  }
-
   // 3. Check PDF parsing service - auto-enable if url configured, explicit false disables it
   if ('parseConfig' in modeConfig && modeConfig.parseConfig) {
     const parseConfig = modeConfig.parseConfig as { customPdfParse?: boolean };

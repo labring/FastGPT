@@ -261,21 +261,19 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 
 /*
   QA: 独立进程
-  Chunk: Image Index -> Synthesis -> Auto index -> chunk index
-  Template: Small2Big -> Synthesis -> Auto -> chunk
+  Chunk: Image Index -> Auto index -> chunk index
+  Template: Small2Big -> Auto -> chunk
 */
 export const getTrainingModeByCollection = ({
   trainingType,
   autoIndexes,
   imageIndex,
-  small2bigIndexes,
-  syntheticIndex
+  small2bigIndexes
 }: {
   trainingType?: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
   imageIndex?: boolean;
   small2bigIndexes?: boolean;
-  syntheticIndex?: boolean;
 }) => {
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.imageParse &&
@@ -291,13 +289,10 @@ export const getTrainingModeByCollection = ({
     return TrainingModeEnum.databaseSchema;
   }
 
-  // Template: small2big -> synthesis -> auto -> chunk
+  // Template: small2big -> auto -> chunk
   if (trainingType === DatasetCollectionDataProcessModeEnum.template) {
     if (small2bigIndexes) {
       return TrainingModeEnum.small2Big;
-    }
-    if (syntheticIndex) {
-      return TrainingModeEnum.synthesis;
     }
     if (autoIndexes && global.feConfigs?.isPlus) {
       return TrainingModeEnum.auto;
@@ -306,16 +301,13 @@ export const getTrainingModeByCollection = ({
     return TrainingModeEnum.chunk;
   }
 
-  // Chunk 模式的处理链：image -> synthesis -> auto -> chunk
+  // Chunk 模式的处理链：image -> auto -> chunk
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
     imageIndex &&
     global.feConfigs?.isPlus
   ) {
     return TrainingModeEnum.image;
-  }
-  if (trainingType === DatasetCollectionDataProcessModeEnum.chunk && syntheticIndex) {
-    return TrainingModeEnum.synthesis;
   }
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.chunk &&

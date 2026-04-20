@@ -77,14 +77,7 @@ const DatasetDataSchema = new Schema({
           type: Object
         },
         synId: {
-          type: Number,
-          validate: {
-            validator: function (this: any, v: number) {
-              if (this.type === DatasetDataIndexTypeEnum.synthesis) return v !== undefined;
-              return true;
-            },
-            message: 'synId is required when type is synthesis'
-          }
+          type: Number
         }
       }
     ],

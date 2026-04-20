@@ -265,7 +265,6 @@ async function handler(
           hypeIndexes: false,
           indexPrefixTitle: false,
           small2bigIndexes: false,
-          syntheticIndex: false,
           small2bigConfig: undefined
         }
       : adjustedEnhanceConfig;
@@ -324,7 +323,6 @@ async function handler(
       hypeIndexes: finalEnhanceConfig.hypeIndexes ?? false,
       indexPrefixTitle: finalEnhanceConfig.indexPrefixTitle ?? false,
       small2bigIndexes: finalEnhanceConfig.small2bigIndexes ?? false,
-      syntheticIndex: finalEnhanceConfig.syntheticIndex,
       small2bigConfig: finalEnhanceConfig.small2bigConfig,
 
       // Prompt config

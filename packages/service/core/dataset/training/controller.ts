@@ -102,11 +102,7 @@ export const pushDataListToTrainingQueue = async ({
         weight: vectorModelData.weight
       };
     }
-    if (
-      mode === TrainingModeEnum.qa ||
-      mode === TrainingModeEnum.auto ||
-      mode === TrainingModeEnum.synthesis
-    ) {
+    if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
       return {
         maxToken: getLLMMaxChunkSize(agentModelData),
         model: agentModelData.model,

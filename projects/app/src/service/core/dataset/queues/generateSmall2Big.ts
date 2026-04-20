@@ -25,7 +25,6 @@ type PopulateType = {
     small2bigConfig?: small2bigConfigType;
     indexSize?: number;
     autoIndexes?: boolean;
-    syntheticIndex?: boolean;
   };
 };
 
@@ -119,8 +118,7 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: data.collection?.autoIndexes,
         imageIndex: false,
-        small2bigIndexes: false,
-        syntheticIndex: data.collection?.syntheticIndex
+        small2bigIndexes: false
       });
 
       // 更新当前训练记录到下一阶段
@@ -196,7 +194,7 @@ export async function generateSmall2Big(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'small2bigConfig indexSize autoIndexes syntheticIndex'
+                select: 'small2bigConfig indexSize autoIndexes'
               }
             ])
             .lean();

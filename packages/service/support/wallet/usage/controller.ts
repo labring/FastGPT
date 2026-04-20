@@ -241,16 +241,6 @@ export const createTrainingUsage = async ({
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
-              },
-              {
-                teamId,
-                usageId: result._id,
-                itemType: UsageItemTypeEnum.training_synthesis,
-                name: i18nT('account_usage:synthesis'),
-                model: agentModel,
-                amount: 0,
-                inputTokens: 0,
-                outputTokens: 0
               }
             ]
           : []),
