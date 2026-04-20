@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   type Props,
+  ensurePendingChatRoundItems,
   failChatRound,
   finalizeChatRound,
   prepareChatRound,
@@ -478,6 +479,163 @@ describe('pushChatRecords', () => {
   });
 
   describe('prepared chat round lifecycle', () => {
+    it('should ensure pending round uses a distinct human dataId', async () => {
+      const responseChatItemId = 'pending-ai-item';
+      const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
+
+      await ensurePendingChatRoundItems({
+        chatId: props.chatId,
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        userContent: props.userContent,
+        responseChatItemId
+      });
+
+      expect(props.userContent.dataId).toBeDefined();
+      expect(props.userContent.dataId).not.toBe(responseChatItemId);
+
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
+      expect(chatItems).toHaveLength(2);
+
+      const humanItem = chatItems.find((item) => item.obj === ChatRoleEnum.Human);
+      expect(humanItem?.dataId).toBe(props.userContent.dataId);
+
+      const aiItem = chatItems.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.dataId).toBe(responseChatItemId);
+    });
+
+    it('should complete ensured pending round without creating duplicate chat items', async () => {
+      const responseChatItemId = 'pending-ai-finalize';
+      const props = createMockProps(
+        {
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: 'Answer from pending round'
+                }
+              }
+            ],
+            responseData: [
+              {
+                nodeId: 'node-1',
+                id: 'resp-pending-1',
+                moduleType: FlowNodeTypeEnum.chatNode,
+                moduleName: 'Chat',
+                runningTime: 0.4,
+                totalPoints: 2
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await ensurePendingChatRoundItems({
+        chatId: props.chatId,
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        userContent: props.userContent,
+        responseChatItemId
+      });
+
+      await pushChatRecords(props);
+
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
+      expect(chatItems).toHaveLength(2);
+
+      const humanItem = chatItems.find((item) => item.obj === ChatRoleEnum.Human);
+      expect(humanItem?.dataId).toBe(props.userContent.dataId);
+
+      const aiItem = chatItems.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.dataId).toBe(responseChatItemId);
+      expect(aiItem?.value[0].text?.content).toBe('Answer from pending round');
+
+      const responses = await MongoChatItemResponse.find({
+        appId: testAppId,
+        chatId: props.chatId,
+        chatItemDataId: responseChatItemId
+      });
+      expect(responses).toHaveLength(1);
+      expect(responses[0].data.id).toBe('resp-pending-1');
+    });
+
+    it('should reuse legacy pending placeholders that share the AI dataId', async () => {
+      const responseChatItemId = 'legacy-pending-ai';
+      const props = createMockProps(
+        {
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: 'Recovered answer'
+                }
+              }
+            ],
+            responseData: [
+              {
+                nodeId: 'node-1',
+                id: 'resp-legacy-1',
+                moduleType: FlowNodeTypeEnum.chatNode,
+                moduleName: 'Chat',
+                runningTime: 0.6,
+                totalPoints: 4
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoChatItem.create(
+        [
+          {
+            chatId: props.chatId,
+            teamId: testTeamId,
+            tmbId: testTmbId,
+            appId: testAppId,
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: props.userContent.value
+          },
+          {
+            chatId: props.chatId,
+            teamId: testTeamId,
+            tmbId: testTmbId,
+            appId: testAppId,
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: []
+          }
+        ],
+        { ordered: true }
+      );
+
+      await pushChatRecords(props);
+
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
+      expect(chatItems).toHaveLength(2);
+
+      const aiItems = chatItems.filter((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItems).toHaveLength(1);
+      expect(aiItems[0].dataId).toBe(responseChatItemId);
+      expect(aiItems[0].value[0].text?.content).toBe('Recovered answer');
+
+      const responses = await MongoChatItemResponse.find({
+        appId: testAppId,
+        chatId: props.chatId,
+        chatItemDataId: responseChatItemId
+      });
+      expect(responses).toHaveLength(1);
+      expect(responses[0].data.id).toBe('resp-legacy-1');
+    });
+
     it('should prepare chat and placeholders in generating status', async () => {
       const responseChatItemId = 'prepared-ai-item';
       const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
