@@ -1,6 +1,6 @@
 import z from 'zod';
 
-export const ParentIdSchema = z.string().nullish();
+export const ParentIdSchema = z.coerce.string().nullish();
 export type ParentIdType = string | null | undefined;
 
 export const GetPathPropsSchema = z.object({

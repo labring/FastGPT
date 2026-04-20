@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getParents } from '@/pages/api/core/dataset/paths';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { GetDatasetPathsResponseSchema } from '@fastgpt/global/openapi/core/dataset/api';
+
+class FakeObjectId {
+  constructor(private readonly hex: string) {}
+  toString() {
+    return this.hex;
+  }
+}
 
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: {
@@ -60,6 +68,34 @@ describe('getParents', () => {
       { parentId: 'parent1-id', parentName: 'Parent1' },
       { parentId: 'child-id', parentName: 'Child' }
     ]);
+  });
+
+  it('should coerce ObjectId-like values through the response schema', async () => {
+    const childHex = '69e5ca9ce4f63f23d53848da';
+    const parentHex = '69e5ca9ce4f63f23d53848db';
+    const childObjectId = new FakeObjectId(childHex);
+    const parentObjectId = new FakeObjectId(parentHex);
+
+    vi.mocked(MongoDataset.findById)
+      .mockResolvedValueOnce({
+        name: 'Child',
+        parentId: parentObjectId
+      })
+      .mockResolvedValueOnce({
+        name: 'Parent',
+        parentId: null
+      });
+
+    const result = await getParents(childObjectId as unknown as string);
+    const parsed = GetDatasetPathsResponseSchema.parse(result);
+
+    expect(parsed).toEqual([
+      { parentId: parentHex, parentName: 'Parent' },
+      { parentId: childHex, parentName: 'Child' }
+    ]);
+    for (const item of parsed) {
+      expect(typeof item.parentId).toBe('string');
+    }
   });
 
   it('should handle circular references gracefully', async () => {
