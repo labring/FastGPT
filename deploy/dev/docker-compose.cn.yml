@@ -265,6 +265,8 @@ services:
       - 8090:8090
     networks:
       - fastgpt
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载
     configs:

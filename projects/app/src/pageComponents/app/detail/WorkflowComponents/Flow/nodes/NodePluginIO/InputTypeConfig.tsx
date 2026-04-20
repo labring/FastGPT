@@ -165,6 +165,32 @@ const InputTypeConfig = ({
     ...listValue[index]
   }));
 
+  const handleRemoveEnum = useCallback(
+    (index: number) => {
+      const removedValue = mergedSelectEnums[index]?.value;
+      removeEnums(index);
+
+      if (!removedValue) return;
+
+      if (inputType === FlowNodeInputTypeEnum.multipleSelect) {
+        const cur = getValues('defaultValue');
+        if (Array.isArray(cur) && cur.includes(removedValue)) {
+          setValue(
+            'defaultValue',
+            cur.filter((v: string) => v !== removedValue)
+          );
+        }
+      } else if (inputType === FlowNodeInputTypeEnum.select) {
+        if (getValues('defaultValue') === removedValue) {
+          setValue('defaultValue', '');
+        }
+      }
+    },
+    [mergedSelectEnums, removeEnums, inputType, getValues, setValue]
+  );
+
+  const isLastEnumEmpty = !mergedSelectEnums[mergedSelectEnums.length - 1]?.label;
+
   const valueTypeSelectList = Object.values(FlowValueTypeMap)
     .filter((item) => !item.abandon)
     .map((item) => ({
@@ -263,9 +289,21 @@ const InputTypeConfig = ({
           commonData.min = data.min;
           break;
         case FlowNodeInputTypeEnum.select:
-        case FlowNodeInputTypeEnum.multipleSelect:
-          commonData.list = data.list;
+        case FlowNodeInputTypeEnum.multipleSelect: {
+          const cleanList = (data.list ?? []).filter(
+            (item: { label?: string; value?: string }) => !!item?.label
+          );
+          commonData.list = cleanList;
+          const validValues = new Set(cleanList.map((item: { value: string }) => item.value));
+          if (inputType === FlowNodeInputTypeEnum.multipleSelect) {
+            commonData.defaultValue = Array.isArray(commonData.defaultValue)
+              ? commonData.defaultValue.filter((v: string) => validValues.has(v))
+              : commonData.defaultValue;
+          } else if (commonData.defaultValue && !validValues.has(commonData.defaultValue)) {
+            commonData.defaultValue = '';
+          }
           break;
+        }
         case FlowNodeInputTypeEnum.addInputParam:
           commonData.customInputConfig = data.customInputConfig;
           break;
@@ -853,7 +891,7 @@ const InputTypeConfig = ({
                                   p={2}
                                   borderRadius={'md'}
                                   _hover={{ bg: 'red.100' }}
-                                  onClick={() => removeEnums(i)}
+                                  onClick={() => handleRemoveEnum(i)}
                                 />
                                 <Box {...provided.dragHandleProps}>
                                   <MyIcon
@@ -878,7 +916,11 @@ const InputTypeConfig = ({
             <Button
               variant={'whiteBase'}
               leftIcon={<MyIcon name={'common/addLight'} w={'16px'} />}
-              onClick={() => appendEnums({ label: '', value: '' })}
+              onClick={() => {
+                if (isLastEnumEmpty) return;
+                appendEnums({ label: '', value: '' });
+              }}
+              isDisabled={isLastEnumEmpty}
               fontWeight={'medium'}
               fontSize={'12px'}
               w={'24'}

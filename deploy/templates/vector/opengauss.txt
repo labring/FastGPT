@@ -1,10 +1,10 @@
-  vectorDB:
+  fastgpt-vector:
     image: opengauss/opengauss:7.0.0-RC1
-    container_name: opengauss
+    container_name: fastgpt-opengauss
     restart: always
     privileged: true
     networks:
-      - fastgpt
+      - data
     environment:
       # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
       - GS_USERNAME=gaussdb       # 默认会创建 gaussdb 用户

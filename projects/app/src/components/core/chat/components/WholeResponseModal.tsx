@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import Markdown from '@/components/Markdown';
 import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
@@ -27,6 +27,7 @@ const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestI
 type sideTabItemType = {
   moduleLogo?: string;
   moduleName: string;
+  moduleNameArgs?: Record<string, any>;
   runningTime?: number;
   moduleType: string;
   // nodeId:string; // abandon
@@ -59,18 +60,20 @@ export const WholeResponseContent = ({
   }, [activeModule]);
 
   const RowRender = useCallback(
-    ({
-      children,
-      mb,
-      label,
-      ...props
-    }: { children: React.ReactNode; label: string } & BoxProps) => {
+    ({ children, label, ...props }: { children: React.ReactNode; label: string } & BoxProps) => {
       return (
-        <Box mb={3}>
-          <Box fontSize={'sm'} mb={mb} color={'myGray.800'} flex={'0 0 90px'}>
-            {label}:
+        <Box>
+          <Box
+            fontSize={'12px'}
+            lineHeight={'18px'}
+            mb={2}
+            color={'myGray.900'}
+            fontWeight={500}
+            letterSpacing={'0.5px'}
+          >
+            {label}
           </Box>
-          <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
+          <Box borderRadius={'6px'} fontSize={'12px'} bg={'myGray.50'} {...props}>
             {children}
           </Box>
         </Box>
@@ -103,7 +106,7 @@ export const WholeResponseContent = ({
 
       if (rawDom) {
         return (
-          <RowRender label={label} mb={1}>
+          <RowRender label={label} bg={'transparent'}>
             {rawDom}
           </RowRender>
         );
@@ -114,14 +117,27 @@ export const WholeResponseContent = ({
       return (
         <RowRender
           label={label}
-          mb={isObject ? 0 : 1}
           {...(isObject
-            ? { my: 2, transform: 'translateY(-3px)' }
-            : value
-              ? { px: 3, py: 2, border: 'base' }
-              : {})}
+            ? { bg: 'transparent' }
+            : {
+                minH: '32px',
+                px: 3,
+                display: 'flex',
+                alignItems: 'center',
+                border: '1px solid',
+                borderColor: 'myGray.200',
+                color: 'myGray.900',
+                bg: '#F7F8FA'
+              })}
         >
-          <Markdown source={formatValue} />
+          <Box
+            sx={{
+              '& .markdown': { fontSize: '12px !important' },
+              '& .markdown pre': { fontSize: '12px !important' }
+            }}
+          >
+            <Markdown source={formatValue} />
+          </Box>
         </RowRender>
       );
     },
@@ -132,8 +148,11 @@ export const WholeResponseContent = ({
     <Box
       h={'100%'}
       ref={ContentRef}
-      py={2}
-      px={4}
+      py={3}
+      px={hideTabs ? 4 : 3}
+      display={'flex'}
+      flexDirection={'column'}
+      gap={3}
       {...(hideTabs
         ? {}
         : {
@@ -143,7 +162,10 @@ export const WholeResponseContent = ({
     >
       {/* common info */}
       <>
-        <Row label={t('chat:response.node_name')} value={t(activeModule.moduleName as any)} />
+        <Row
+          label={t('chat:response.node_name')}
+          value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
+        />
         {activeModule?.totalPoints !== undefined && (
           <Row
             label={t('common:support.wallet.usage.Total points')}
@@ -217,42 +239,41 @@ export const WholeResponseContent = ({
             <Row
               label={t('chat:llm_request_ids')}
               rawDom={
-                <Grid
-                  templateColumns={'repeat(auto-fill, minmax(250px, 1fr))'}
-                  gap={2}
-                  px={3}
-                  py={2}
-                >
+                <Grid templateColumns={'repeat(2, minmax(0, 1fr))'} gap={2}>
                   {activeModule.llmRequestIds.map((requestId, index) => (
                     <Flex
                       key={index}
+                      role={'group'}
                       alignItems={'center'}
-                      bg={'white'}
-                      border={'base'}
-                      borderRadius={'md'}
+                      gap={2}
+                      bg={'myGray.50'}
+                      borderRadius={'8px'}
                       px={3}
                       py={2}
                       cursor={'pointer'}
-                      _hover={{
-                        borderColor: 'primary.500',
-                        color: 'primary.600',
-                        boxShadow: 'sm'
-                      }}
+                      color={'myGray.900'}
+                      _hover={{ color: 'primary.600' }}
                       onClick={() => onOpenRequestIdDetail(requestId)}
                       title={t('common:Click_to_expand')}
                     >
                       <Box
                         flex={'1 0 0'}
-                        width={0}
-                        fontFamily={'monospace'}
-                        fontSize={'xs'}
+                        w={0}
+                        fontSize={'12px'}
+                        lineHeight={'18px'}
                         textOverflow={'ellipsis'}
                         overflow={'hidden'}
                         whiteSpace={'nowrap'}
                       >
                         {requestId}
                       </Box>
-                      <MyIcon name={'common/rightArrowLight'} w={'0.8rem'} color={'myGray.500'} />
+                      <MyIcon
+                        name={'common/upperRight'}
+                        w={'16px'}
+                        h={'16px'}
+                        color={'myGray.500'}
+                        _groupHover={{ color: 'primary.600' }}
+                      />
                     </Flex>
                   ))}
                 </Grid>
@@ -497,6 +518,20 @@ export const WholeResponseContent = ({
       <Row label={t('common:core.chat.response.loop_input')} value={activeModule?.loopInput} />
       <Row label={t('common:core.chat.response.loop_output')} value={activeModule?.loopResult} />
 
+      {/* parallel */}
+      <Row
+        label={t('common:core.chat.response.parallel_input')}
+        value={activeModule?.parallelInput}
+      />
+      <Row
+        label={t('common:core.chat.response.parallel_output')}
+        value={activeModule?.parallelResult}
+      />
+      <Row
+        label={t('common:core.chat.response.parallel_run_detail')}
+        value={activeModule?.parallelRunDetail}
+      />
+
       {/* loopStart */}
       <Row
         label={t('common:core.chat.response.loop_input_element')}
@@ -577,7 +612,7 @@ const SideTabItem = ({
             </NormalSideTabItem>
           </Flex>
           {isShowAccordion && (
-            <Box position={'relative'}>
+            <Flex flexDirection={'column'} gap={1} position={'relative'}>
               {sideBarItem.children.map((item) => (
                 <SideTabItem
                   value={value}
@@ -587,7 +622,7 @@ const SideTabItem = ({
                   index={index + 1}
                 />
               ))}
-            </Box>
+            </Flex>
           )}
         </>
       );
@@ -610,6 +645,7 @@ const SideTabItem = ({
       children?: React.ReactNode;
     }) => {
       const leftIndex = index > 3 ? 3 : index;
+      const leftPad = leftIndex === 0 ? '8px' : `${8 + leftIndex * 32}px`;
       return (
         <Flex
           alignItems={'center'}
@@ -618,11 +654,12 @@ const SideTabItem = ({
           }}
           background={value === sideBarItem.id ? 'myGray.100' : ''}
           _hover={{ background: 'myGray.100' }}
-          p={2}
+          py={'6px'}
+          pl={leftPad}
+          pr={'4px'}
           width={'100%'}
           cursor={'pointer'}
-          pl={leftIndex === 0 ? '0.5rem' : `${1.5 * leftIndex + 0.5}rem`}
-          borderRadius={'md'}
+          borderRadius={'6px'}
           position={'relative'}
         >
           <Avatar
@@ -633,23 +670,35 @@ const SideTabItem = ({
               )?.avatar
             }
             alt={''}
-            w={'1.5rem'}
-            h={'1.5rem'}
-            borderRadius={'sm'}
+            w={'24px'}
+            h={'24px'}
+            borderRadius={'4px'}
           />
           <Box ml={2}>
-            <Box fontSize={'xs'} fontWeight={'bold'}>
-              {t(sideBarItem.moduleName as any)}
+            <Box
+              fontSize={'12px'}
+              lineHeight={'16px'}
+              fontWeight={500}
+              color={'myGray.900'}
+              letterSpacing={'0.5px'}
+            >
+              {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
             </Box>
-            <Box fontSize={'2xs'} color={'myGray.500'}>
+            <Box
+              fontSize={'11px'}
+              lineHeight={'16px'}
+              fontWeight={500}
+              color={'myGray.500'}
+              letterSpacing={'0.5px'}
+            >
               {t(sideBarItem.runningTime as any) + 's'}
             </Box>
           </Box>
           <Box
-            h={'20px'}
-            w={'20px'}
+            h={'24px'}
+            w={'24px'}
             position={'absolute'}
-            right={2}
+            right={'4px'}
             top={'50%'}
             transform={'translateY(-50%)'}
           >
@@ -724,6 +773,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.loopDetail)) {
               helper(item.loopDetail);
             }
+            if (Array.isArray(item.parallelDetail)) {
+              helper(item.parallelDetail);
+            }
             if (Array.isArray(item.childrenResponses)) {
               helper(item.childrenResponses);
             }
@@ -754,19 +806,18 @@ export const ResponseBox = React.memo(function ResponseBox({
     function pretreatmentResponse(res: ChatHistoryItemResType[]): sideTabItemType[] {
       return res.map((item) => {
         let children: sideTabItemType[] = [];
-        if (
-          !!(item?.toolDetail || item?.pluginDetail || item?.loopDetail || item?.childrenResponses)
-        ) {
-          if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
-          if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
-          if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
-          if (item?.childrenResponses)
-            children.push(...pretreatmentResponse(item?.childrenResponses));
-        }
+
+        if (item?.toolDetail) children.push(...pretreatmentResponse(item?.toolDetail));
+        if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
+        if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
+        if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
+        if (item?.childrenResponses)
+          children.push(...pretreatmentResponse(item?.childrenResponses));
 
         return {
           moduleLogo: item.moduleLogo,
           moduleName: item.moduleName,
+          moduleNameArgs: item.moduleNameArgs,
           runningTime: item.runningTime,
           moduleType: item.moduleType,
           id: item.id ?? item.nodeId,
@@ -796,19 +847,21 @@ export const ResponseBox = React.memo(function ResponseBox({
       isMobile?: boolean;
     }) => {
       return (
-        <>
+        <Flex flexDirection={'column'} gap={1}>
           {response.map((item) => (
-            <Box
+            <Flex
               key={item.id}
+              flexDirection={'column'}
+              gap={1}
               bg={isMobile ? 'myGray.100' : ''}
               m={isMobile ? 3 : 0}
               borderRadius={'md'}
-              minW={'12rem'}
+              w={isMobile ? 'auto' : '180px'}
             >
               <SideTabItem value={value} onChange={onChange} sideBarItem={item} index={0} />
-            </Box>
+            </Flex>
           ))}
-        </>
+        </Flex>
       );
     },
     []
@@ -817,17 +870,31 @@ export const ResponseBox = React.memo(function ResponseBox({
   return (
     <>
       {isPc && !useMobile ? (
-        <Flex overflow={'hidden'} height={'100%'}>
-          <Box flex={'2 0 0'} w={0} borderRight={'sm'} p={3}>
-            <Box overflow={'auto'} height={'100%'}>
-              <WholeResponseSideTab
-                response={sliderResponseList}
-                value={currentNodeId}
-                onChange={setCurrentNodeId}
-              />
-            </Box>
+        <Flex
+          overflow={'hidden'}
+          height={'100%'}
+          mx={'32px'}
+          bg={'myGray.25'}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          borderRadius={'12px'}
+        >
+          <Box
+            w={'204px'}
+            flexShrink={0}
+            borderRight={'1px solid'}
+            borderColor={'myGray.200'}
+            p={3}
+            overflowY={'auto'}
+            overflowX={'hidden'}
+          >
+            <WholeResponseSideTab
+              response={sliderResponseList}
+              value={currentNodeId}
+              onChange={setCurrentNodeId}
+            />
           </Box>
-          <Box flex={'5 0 0'} w={0} height={'100%'}>
+          <Box flex={'1 0 0'} w={0} height={'100%'}>
             <WholeResponseContent
               dataId={dataId}
               activeModule={activeModule}
@@ -890,7 +957,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                 />
 
                 <Box ml={1.5} lineHeight={'1.25rem'} alignItems={'center'}>
-                  {t(activeModule.moduleName as any)}
+                  {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>
               <Box flex={'1 0 0'}>
@@ -939,23 +1006,29 @@ const WholeResponseModal = ({
       isCentered
       isOpen={true}
       onClose={onClose}
-      h={['90vh', '80vh']}
       isLoading={isLoading}
+      w={['90vw', '880px']}
+      maxW={['90vw', '880px']}
+      h={['90vh', '80vh']}
       maxH={['90vh', '700px']}
-      minW={['90vw', '880px']}
-      iconSrc="/imgs/modal/wholeRecord.svg"
+      px={0}
+      py={8}
+      headerPx={'32px'}
       title={
-        <Flex alignItems={'center'}>
-          {t('common:core.chat.response.Complete Response')}
-          <QuestionTip ml={2} label={t('chat:question_tip')}></QuestionTip>
+        <Flex alignItems={'center'} gap={2}>
+          <Box fontSize={'20px'} lineHeight={'26px'} letterSpacing={'0.15px'} fontWeight={500}>
+            {t('common:core.chat.response.Complete Response')}
+          </Box>
+          <QuestionTip label={t('chat:question_tip')} />
         </Flex>
       }
     >
-      {!!response?.length ? (
-        <ResponseBox response={response} dataId={dataId} chatTime={chatTime} />
-      ) : (
-        <EmptyTip text={t('chat:no_workflow_response')} />
-      )}
+      {!isLoading &&
+        (!!response?.length ? (
+          <ResponseBox response={response} dataId={dataId} chatTime={chatTime} />
+        ) : (
+          <EmptyTip text={t('chat:no_workflow_response')} />
+        ))}
     </MyModal>
   );
 };

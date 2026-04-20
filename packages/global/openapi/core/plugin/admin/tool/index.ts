@@ -11,7 +11,7 @@ import {
   UpdateToolOrderBodySchema
 } from './api';
 import { TagsMap } from '../../../../tag';
-import { z } from 'zod';
+import z from 'zod';
 import { AdminSystemToolDetailSchema } from '../../../../../core/plugin/admin/tool/type';
 import { SystemToolTagPath } from './tag';
 

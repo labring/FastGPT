@@ -4,6 +4,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { FlowNodeInputItemTypeSchema } from '../../../../core/workflow/type/io';
+import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
 
 /* Init */
 // Online chat
@@ -21,12 +22,24 @@ export const InitChatQuerySchema = z
     }
   });
 export type InitChatQueryType = z.infer<typeof InitChatQuerySchema>;
+
+/** 团队空间 init：`/api/core/chat/team/init` */
+export const InitTeamChatQuerySchema = z.object({
+  teamId: z.string().min(1),
+  appId: z.string().min(1),
+  chatId: z.string().optional(),
+  teamToken: z.string().min(1)
+});
+export type InitTeamChatQueryType = z.infer<typeof InitTeamChatQuerySchema>;
+
 export const InitChatResponseSchema = z.object({
   chatId: z.string().optional().describe('对话ID'),
   appId: ObjectIdSchema.describe('应用ID'),
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
+  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional().describe('对话生成状态'),
+  hasBeenRead: z.boolean().optional().describe('是否已读'),
   app: z
     .object({
       chatConfig: AppChatConfigTypeSchema.optional().describe('聊天配置'),

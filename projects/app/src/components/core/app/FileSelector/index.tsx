@@ -23,7 +23,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { z } from 'zod';
+import z from 'zod';
 import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -62,6 +62,10 @@ const FileSelector = ({
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const runtimeFileSelectConfig = useContextSelector(
+    WorkflowRuntimeContext,
+    (v) => v.runtimeFileSelectConfig
+  );
   const setFileUploadingCount = useContextSelector(
     WorkflowRuntimeContext,
     (v) => v.setFileUploadingCount
@@ -127,6 +131,7 @@ const FileSelector = ({
               filename: file.rawFile.name,
               appId,
               chatId,
+              fileSelectConfig: runtimeFileSelectConfig,
               outLinkAuthData
             });
 
@@ -176,7 +181,14 @@ const FileSelector = ({
         })
       );
     },
-    [handleChangeFiles, setFileUploadingCount, appId, chatId, outLinkAuthData]
+    [
+      handleChangeFiles,
+      setFileUploadingCount,
+      appId,
+      chatId,
+      runtimeFileSelectConfig,
+      outLinkAuthData
+    ]
   );
 
   // Selector props

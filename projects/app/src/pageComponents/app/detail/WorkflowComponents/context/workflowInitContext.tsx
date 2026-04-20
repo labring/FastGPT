@@ -76,6 +76,7 @@ export type WorkflowDataContextType = {
   onEdgesChange: OnChange<EdgeChange>;
   forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
   llmMaxQuoteContext: number;
+  childrenNodeIdListMap: Record<string, string[]>;
 };
 export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>({
   basicNodeTemplates: [],
@@ -112,7 +113,8 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
     throw new Error('Function not implemented.');
   },
   forbiddenSaveSnapshot: { current: false },
-  llmMaxQuoteContext: 0
+  llmMaxQuoteContext: 0,
+  childrenNodeIdListMap: {}
 });
 
 const WorkflowInitContextProvider = ({
@@ -130,6 +132,7 @@ const WorkflowInitContextProvider = ({
     const nodeIds: string[] = [];
     const nodeList: FlowNodeItemType[] = [];
     const nodesMap: Record<string, FlowNodeItemType> = {};
+    const childrenNodeIdListMap: Record<string, string[]> = {};
     const selectedNodesMap: Record<string, boolean> = {};
     const foldedNodesMap: Record<string, boolean> = {};
     const compareNodeList: any[] = [];
@@ -171,6 +174,13 @@ const WorkflowInitContextProvider = ({
         })
       });
 
+      if (node.data.parentNodeId) {
+        childrenNodeIdListMap[node.data.parentNodeId] = [
+          ...(childrenNodeIdListMap[node.data.parentNodeId] || []),
+          node.data.nodeId
+        ];
+      }
+
       if (node.selected) {
         selectedNodesMap[node.data.nodeId] = true;
       }
@@ -209,6 +219,7 @@ const WorkflowInitContextProvider = ({
       nodeIds,
       nodeList,
       nodesMap,
+      childrenNodeIdListMap,
       selectedNodesMap,
       workflowStartNode,
       systemConfigNode,
@@ -231,6 +242,10 @@ const WorkflowInitContextProvider = ({
   const selectedNodesMap = useMemoEnhance(
     () => nodeFormat.selectedNodesMap,
     [nodeFormat.selectedNodesMap]
+  );
+  const childrenNodeIdListMap = useMemoEnhance(
+    () => nodeFormat.childrenNodeIdListMap,
+    [nodeFormat.childrenNodeIdListMap]
   );
   const workflowStartNode = useMemoEnhance(
     () => nodeFormat.workflowStartNode,
@@ -362,7 +377,8 @@ const WorkflowInitContextProvider = ({
       onEdgesChange,
       forbiddenSaveSnapshot,
       llmMaxQuoteContext,
-      nodeAmount: nodeList.length
+      nodeAmount: nodeList.length,
+      childrenNodeIdListMap
     };
   }, [
     nodeIds,
@@ -382,7 +398,8 @@ const WorkflowInitContextProvider = ({
     setEdges,
     onEdgesChange,
     llmMaxQuoteContext,
-    nodeList.length
+    nodeList.length,
+    childrenNodeIdListMap
   ]);
 
   return (

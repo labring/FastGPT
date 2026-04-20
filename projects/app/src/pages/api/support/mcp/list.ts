@@ -1,20 +1,16 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
-import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
-
-export type listQuery = {};
-
-export type listBody = {};
-
-export type listResponse = McpKeyType[];
+import {
+  McpListResponseSchema,
+  type McpListResponseType
+} from '@fastgpt/global/openapi/support/mcpServer/api';
 
 async function handler(
-  req: ApiRequestProps<listBody, listQuery>,
+  req: ApiRequestProps,
   res: ApiResponseType<any>
-): Promise<listResponse> {
+): Promise<McpListResponseType> {
   const { teamId, tmbId, permission } = await authUserPer({
     req,
     authToken: true,
@@ -28,7 +24,7 @@ async function handler(
     return await MongoMcpKey.find({ teamId, tmbId }).lean().sort({ _id: -1 });
   })();
 
-  return list;
+  return McpListResponseSchema.parse(list);
 }
 
 export default NextAPI(handler);

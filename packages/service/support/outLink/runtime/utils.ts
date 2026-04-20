@@ -157,9 +157,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
           data
         }: {
           write?: (text: string) => void;
-          event: SseResponseEventEnum;
-          data: Record<string, any>;
+          event?: SseResponseEventEnum;
+          data: string | Record<string, any>;
         }) => {
+          if (!event || typeof data === 'string') return;
+
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             try {
               const text = data.choices?.[0]?.delta?.content;

@@ -134,9 +134,10 @@ export const jsonSchema2NodeInput = ({
   jsonSchema,
   schemaType
 }: {
-  jsonSchema: JSONSchemaInputType;
+  jsonSchema?: JSONSchemaInputType;
   schemaType: 'mcp' | 'http';
 }): FlowNodeInputItemType[] => {
+  if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     key,
     label: key,
@@ -148,8 +149,9 @@ export const jsonSchema2NodeInput = ({
   }));
 };
 export const jsonSchema2NodeOutput = (
-  jsonSchema: JSONSchemaOutputType
+  jsonSchema?: JSONSchemaOutputType
 ): FlowNodeOutputItemType[] => {
+  if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     id: key,
     key,

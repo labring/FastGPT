@@ -5,10 +5,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import type {
-  AiproxyMapProviderType,
-  I18nStringStrictType
-} from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 export type InitDateResponse = {
   bufferId?: string;
@@ -20,7 +17,7 @@ export type InitDateResponse = {
   activeModelList?: SystemModelItemType[];
   defaultModels?: SystemDefaultModelType;
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
-  aiproxyIdMap?: AiproxyMapProviderType;
+  aiproxyChannels?: AIProxyChannelsType;
 };
 
 async function handler(
@@ -47,7 +44,7 @@ async function handler(
       activeModelList: global.systemActiveDesensitizedModels,
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyChannels: global.aiproxyChannelsCache
     };
   } catch (error) {
     const referer = req.headers.referer;
@@ -56,7 +53,7 @@ async function handler(
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
         modelProviders: global.ModelProviderRawCache,
-        aiproxyIdMap: global.aiproxyIdMapCache,
+        aiproxyChannels: global.aiproxyChannelsCache,
         activeModelList: global.systemActiveDesensitizedModels
       };
     }
@@ -66,7 +63,7 @@ async function handler(
       return {
         bufferId: unAuthBufferId,
         modelProviders: global.ModelProviderRawCache,
-        aiproxyIdMap: global.aiproxyIdMapCache
+        aiproxyChannels: global.aiproxyChannelsCache
       };
     }
 
@@ -74,7 +71,7 @@ async function handler(
       bufferId: unAuthBufferId,
       feConfigs: global.feConfigs,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyChannels: global.aiproxyChannelsCache
     };
   }
 }

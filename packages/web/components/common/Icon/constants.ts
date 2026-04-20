@@ -337,6 +337,11 @@ export const iconPaths = {
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/loopStartLinear': () =>
     import('./icons/core/workflow/template/loopStartLinear.tsx'),
+  'core/workflow/template/parallelRun': () =>
+    import('./icons/core/workflow/template/parallelRun.svg'),
+  'core/workflow/template/parallelRunLinear': () =>
+    import('./icons/core/workflow/template/parallelRunLinear.tsx'),
+  'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
   'core/workflow/template/pluginOutputLinear': () =>
@@ -428,6 +433,11 @@ export const iconPaths = {
   key: () => import('./icons/key.svg'),
   keyPrimary: () => import('./icons/keyPrimary.svg'),
   loading: () => import('./icons/loading.svg'),
+  'math/divide': () => import('./icons/math/divide.svg'),
+  'math/equal': () => import('./icons/math/equal.svg'),
+  'math/minus': () => import('./icons/math/minus.svg'),
+  'math/plus': () => import('./icons/math/plus.svg'),
+  'math/times': () => import('./icons/math/times.svg'),
   mcp: () => import('./icons/mcp.svg'),
   menu: () => import('./icons/menu.svg'),
   minus: () => import('./icons/minus.svg'),

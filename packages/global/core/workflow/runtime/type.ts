@@ -29,6 +29,7 @@ import { type UserChatItemValueItemType } from '../../chat/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
+import type { JSONSchemaInputType } from '../../app/jsonschema';
 
 /*
   1. 输入线分类：普通线(实际上就是从 start 直接过来的分支）和递归线（可以追溯到自身的分支）
@@ -135,6 +136,7 @@ export type RuntimeNodeItemType = {
 
   // Tool
   toolConfig?: StoreNodeItemType['toolConfig'];
+  jsonSchema?: JSONSchemaInputType;
 
   // catch error
   catchError?: boolean;
@@ -145,6 +147,10 @@ export const DispatchNodeResponseSchema = z
   .object({
     // common
     moduleLogo: z.string().optional().meta({ description: '模块 logo' }),
+    moduleNameArgs: z
+      .record(z.string(), z.any())
+      .optional()
+      .meta({ description: '模块名 i18n 插值参数' }),
     runningTime: z.number().optional().meta({ description: '运行时间: 毫秒' }),
     query: z.string().optional().meta({ description: '查询语句' }),
     textOutput: z.string().optional().meta({ description: '文本输出' }),
@@ -295,6 +301,18 @@ export const DispatchNodeResponseSchema = z
     loopDetail: z.array(z.any()).optional().meta({ description: '循环详情' }),
     loopInputValue: z.any().optional().meta({ description: '循环输入值' }),
     loopOutputValue: z.any().optional().meta({ description: '循环输出值' }),
+
+    // parallel run
+    parallelInput: z.array(z.any()).optional().meta({ description: '并行输入' }),
+    parallelResult: z.array(z.any()).optional().meta({ description: '并行结果' }),
+    parallelRunDetail: z
+      .array(z.any())
+      .optional()
+      .meta({ description: '各任务执行摘要（成功/失败状态）' }),
+    parallelDetail: z
+      .array(z.any())
+      .optional()
+      .meta({ description: '成功任务子工作流完整响应列表' }),
 
     childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
 

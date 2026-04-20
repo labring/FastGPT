@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { InformLevelEnum } from '../../../../../support/user/inform/constants';
 
 // Send system inform

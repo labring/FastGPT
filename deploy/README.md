@@ -51,7 +51,7 @@ vector.vector.db = String(vectordb);
       replace(template, 'cn', VectorEnum.vector)
     ),
     fs.promises.writeFile(
-      path.join(process.cwd(), 'docker', 'global', 'docker-compose.ziliiz.yml'),
+      path.join(process.cwd(), 'docker', 'global', 'docker-compose.zilliz.yml'),
       replace(template, 'global', VectorEnum.vector)
     ),
 ```

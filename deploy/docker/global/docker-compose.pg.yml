@@ -41,16 +41,16 @@ x-log-config: &x-log-config
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
-  PG_URL: postgresql://username:password@fastgpt-pg:5432/postgres
+  PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres
 
 services:
   # Vector DB
-  fastgpt-pg:
+  fastgpt-vector:
     image: pgvector/pgvector:0.8.0-pg15
     container_name: fastgpt-pg
     restart: always
     networks:
-      - fastgpt
+      - data
     environment:
       # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
       - POSTGRES_USER=username
@@ -69,7 +69,7 @@ services:
     container_name: fastgpt-mongo
     restart: always
     networks:
-      - fastgpt
+      - data
     command: mongod --keyFile /data/mongodb.key --replSet rs0
     environment:
       - MONGO_INITDB_ROOT_USERNAME=myusername
@@ -116,7 +116,7 @@ services:
     image: redis:7.2-alpine
     container_name: fastgpt-redis
     networks:
-      - fastgpt
+      - data
     restart: always
     command: |
       redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
@@ -136,7 +136,7 @@ services:
       - 9000:9000
       - 9001:9001
     networks:
-      - fastgpt
+      - data
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
@@ -155,15 +155,28 @@ services:
     ports:
       - 3000:3000
     networks:
-      - fastgpt
+      - data
+      - app
+      - codesandbox
+      - opensandbox
+      - aiproxy
     depends_on:
-      - fastgpt-mongo
-      - fastgpt-code-sandbox
-      - fastgpt-pg
-
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-vector:
+        condition: service_healthy
+      fastgpt-redis:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+      fastgpt-code-sandbox:
+        condition: service_healthy
+      fastgpt-plugin:
+        condition: service_healthy
     restart: always
     environment:
       <<: [*x-share-db-config, *x-vec-config, *x-log-config]
+      HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       FE_DOMAIN: http://localhost:3000
@@ -203,6 +216,7 @@ services:
       AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt-agent-sandbox
       AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
+      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
       # Volume 持久化配置（opensandbox provider 下可选）
       AGENT_SANDBOX_ENABLE_VOLUME: true
       AGENT_SANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
@@ -241,7 +255,7 @@ services:
     container_name: fastgpt-code-sandbox
     image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.10
     networks:
-      - fastgpt
+      - codesandbox
     restart: always
     environment:
       <<: [*x-log-config]
@@ -276,9 +290,13 @@ services:
       SANDBOX_JS_ALLOWED_MODULES: lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring
       # Python allowed modules whitelist (comma-separated)
       SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
-
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test: [
+        'CMD',                                                                                                                                                        
+        'bun',                                                               
+        '-e',
+        "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+      ]     
       interval: 30s
       timeout: 20s
       retries: 3
@@ -286,7 +304,7 @@ services:
     container_name: fastgpt-mcp-server
     image: ghcr.io/labring/fastgpt-mcp_server:v4.14.10
     networks:
-      - fastgpt
+      - app
     ports:
       - 3003:3000
     restart: always
@@ -298,7 +316,8 @@ services:
     container_name: fastgpt-plugin
     restart: always
     networks:
-      - fastgpt
+      - data
+      - app
     environment:
       <<: [*x-share-db-config, *x-log-config]
       AUTH_TOKEN: *x-plugin-auth-token
@@ -309,6 +328,8 @@ services:
       # 传递给 OTLP 收集器的服务名称
       LOG_OTEL_SERVICE_NAME: fastgpt-plugin
     depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
       fastgpt-minio:
         condition: service_healthy
     healthcheck:
@@ -325,16 +346,24 @@ services:
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
-      - fastgpt
+      - opensandbox
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载
+      - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载，需检查是否与主机的 socket 文件一致
     configs:
       - source: opensandbox-config
         target: /etc/opensandbox/config.toml
     environment:
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          'import urllib.request,sys; sys.exit(0 if urllib.request.urlopen("http://localhost:8090/health",timeout=3).status==200 else 1)'
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -357,9 +386,9 @@ services:
     container_name: fastgpt-volume-manager
     restart: always
     networks:
-      - fastgpt
+      - opensandbox
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # Docker 模式必须挂载（只读即可）
+      - /var/run/docker.sock:/var/run/docker.sock # Docker 模式必须挂载，需检查是否与主机的 socket 文件一致
     environment:
       PORT: 3000
       VM_RUNTIME: docker
@@ -388,7 +417,6 @@ services:
       fastgpt-aiproxy-pg:
         condition: service_healthy
     networks:
-      - fastgpt
       - aiproxy
     environment:
       # 对应 fastgpt 里的AIPROXY_API_TOKEN
@@ -427,9 +455,11 @@ services:
       timeout: 5s
       retries: 10
 networks:
-  fastgpt:
+  data:
+  app:
+  codesandbox:
+  opensandbox:
   aiproxy:
-  vector:
 
 volumes:
   fastgpt-pg:
@@ -461,7 +491,7 @@ configs:
       image = "opensandbox/egress:v1.0.3"
 
       [docker]
-      network_mode = "bridge"
+      network_mode = "fastgpt_opensandbox"
       # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable (e.g. host.docker.internal or the host LAN IP).
       # It's required when server deployed with docker container under host.
       host_ip = "host.docker.internal"

@@ -30,6 +30,20 @@ export enum SseResponseEventEnum {
   topAgentConfig = 'topAgentConfig' // form data for TopAgent
 }
 
+export const StreamResumePhaseEvent = 'resumePhase';
+export const StreamResumeCompletedEvent = 'resumeCompleted';
+export const StreamResumeUnavailableEvent = 'resumeUnavailable';
+
+export enum StreamResumePhaseEnum {
+  catchup = 'catchup',
+  live = 'live'
+}
+
+export enum StreamResumeUnavailableReasonEnum {
+  memoryPressure = 'memoryPressure',
+  mirrorUnavailable = 'mirrorUnavailable'
+}
+
 export enum DispatchNodeResponseKeyEnum {
   answerText = 'answerText', // answer text
   reasoningText = 'reasoningText', // reasoning text

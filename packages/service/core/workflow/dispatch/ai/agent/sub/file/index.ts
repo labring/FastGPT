@@ -2,7 +2,10 @@ import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../../../../common
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import {
+  detectFileEncoding,
+  parseContentDispositionFilename
+} from '@fastgpt/global/common/file/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getS3RawTextSource } from '../../../../../../../common/s3/sources/rawText/index';
 import { readFileContentByBuffer } from '../../../../../../../common/file/read/utils';
@@ -76,15 +79,7 @@ export const dispatchFileRead = async ({
           // Get file name
           const filename = (() => {
             const contentDisposition = response.headers['content-disposition'];
-            if (contentDisposition) {
-              const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-              const matches = filenameRegex.exec(contentDisposition);
-              if (matches != null && matches[1]) {
-                return decodeURIComponent(matches[1].replace(/['"]/g, ''));
-              }
-            }
-
-            return url;
+            return parseContentDispositionFilename(contentDisposition) || url;
           })();
           // Extension
           const extension = parseFileExtensionFromUrl(filename);

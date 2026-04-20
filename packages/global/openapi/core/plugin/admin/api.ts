@@ -1,5 +1,5 @@
 import { I18nStringSchema, I18nUnioStringSchema } from '../../../../core/plugin/type';
-import { z } from 'zod';
+import z from 'zod';
 
 /* ============ Pkg Plugin ============== */
 // 1. Get Pkg Plugin Upload URL Schema

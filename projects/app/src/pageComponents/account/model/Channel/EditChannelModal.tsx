@@ -58,7 +58,7 @@ const EditChannelModal = ({
   onSuccess: () => void;
 }) => {
   const { t, i18n } = useTranslation();
-  const { defaultModels, aiproxyIdMap, getModelProvider } = useSystemStore();
+  const { defaultModels, aiproxyChannels, getModelProvider } = useSystemStore();
   const isEdit = defaultConfig.id !== 0;
 
   const { register, handleSubmit, watch, setValue } = useForm({
@@ -69,24 +69,25 @@ const EditChannelModal = ({
   const { data: providerList = [] } = useRequest(
     () =>
       getChannelProviders().then((res) => {
-        return Object.entries(res)
-          .map(([key, value]) => {
-            const mapData = aiproxyIdMap[key as any] ?? {
-              name: value.name,
-              provider: 'Other'
-            };
-            const provider = getModelProvider(mapData.provider, i18n.language);
+        return aiproxyChannels
+          .map((channel) => {
+            const mapData = res[channel.channelId];
 
-            return {
-              order: provider.order,
-              defaultBaseUrl: value.defaultBaseUrl,
-              keyHelp: value.keyHelp,
-              icon: mapData?.avatar ?? provider.avatar,
-              label: parseI18nString(mapData.name, i18n.language as localeType),
-              value: Number(key)
-            };
+            if (!mapData) {
+              return [];
+            }
+
+            return [
+              {
+                defaultBaseUrl: mapData.defaultBaseUrl,
+                keyHelp: mapData.keyHelp,
+                icon: channel.avatar,
+                label: parseI18nString(channel.name, i18n.language as localeType),
+                value: channel.channelId
+              }
+            ];
           })
-          .sort((a, b) => a.order - b.order);
+          .flat();
       }),
     {
       manual: false
@@ -126,27 +127,17 @@ const EditChannelModal = ({
     manual: false
   });
   const modelList = useMemo(() => {
-    const currentProvider = aiproxyIdMap[providerType] ?? defaultProvider;
-    return systemModelList
-      .map((item) => {
-        const provider = getModelProvider(item.provider, i18n.language);
+    return systemModelList.map((item) => {
+      const provider = getModelProvider(item.provider, i18n.language);
 
-        return {
-          provider: item.provider,
-          icon: provider?.avatar,
-          label: item.model,
-          value: item.model
-        };
-      })
-      .sort((a, b) => {
-        // sort by provider, same provider first
-        if (a.provider === currentProvider.provider && b.provider !== currentProvider.provider)
-          return -1;
-        if (a.provider !== currentProvider.provider && b.provider === currentProvider.provider)
-          return 1;
-        return 0;
-      });
-  }, [aiproxyIdMap, getModelProvider, i18n.language, providerType, systemModelList]);
+      return {
+        provider: item.provider,
+        icon: provider?.avatar,
+        label: item.model,
+        value: item.model
+      };
+    });
+  }, [getModelProvider, i18n.language, systemModelList]);
 
   const modelMapping = watch('model_mapping');
 

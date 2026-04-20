@@ -31,6 +31,8 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -290,27 +292,19 @@ export const datasetParseQueue = async (): Promise<any> => {
         });
 
         // Check dataset limit
-        try {
-          await checkDatasetIndexLimit({
-            teamId: data.teamId,
-            insertLen: predictDataLimitLength(trainingMode, chunks)
-          });
-        } catch (error) {
-          logger.info('Parse queue dataset limit exceeded, locking task', {
-            trainingId: data._id,
-            datasetId: data.datasetId,
-            collectionId: data.collectionId
-          });
-          await MongoDatasetTraining.updateOne(
-            {
-              _id: data._id
-            },
-            {
-              errorMsg: getErrText(error, 'Over dataset limit'),
-              lockTime: new Date('2999/5/5')
-            }
-          );
-        }
+        await checkDatasetIndexLimit({
+          teamId: data.teamId,
+          insertLen: Math.round(predictDataLimitLength(trainingMode, chunks) * 0.7)
+        });
+
+        const trainingData = chunks.map((item, index) => ({
+          ...item,
+          indexes: item.indexes?.map((text) => ({
+            type: DatasetDataIndexTypeEnum.custom,
+            text
+          })),
+          chunkIndex: index
+        }));
 
         await mongoSessionRun(async (session) => {
           // 5. Update collection title(Link)
@@ -325,15 +319,6 @@ export const datasetParseQueue = async (): Promise<any> => {
           );
 
           // 6. Push to chunk queue
-          const trainingData = chunks.map((item, index) => ({
-            ...item,
-            indexes: item.indexes?.map((text) => ({
-              type: DatasetDataIndexTypeEnum.custom,
-              text
-            })),
-            chunkIndex: index
-          }));
-
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -367,6 +352,25 @@ export const datasetParseQueue = async (): Promise<any> => {
           collectionId: data.collectionId
         });
       } catch (err) {
+        if (err === TeamErrEnum.datasetSizeNotEnough) {
+          logger.info('Parse queue dataset limit exceeded, locking task', {
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId
+          });
+          await MongoDatasetTraining.updateOne(
+            {
+              _id: data._id
+            },
+            {
+              errorMsg: i18nT('common:code_error.team_error.dataset_size_not_enough'),
+              lockTime: new Date('2999/5/5')
+            }
+          );
+
+          continue;
+        }
+
         logger.error('Parse queue task failed', {
           error: err,
           trainingId: data._id,

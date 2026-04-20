@@ -1,438 +1,878 @@
-# 并行执行节点（ParallelRun）设计文档
+# 并行执行节点（ParallelRun）设计文档 v3
 
-> 需求：在工作流中新增一个"并行执行"节点，和现有"批量执行（Loop）"节点并列。  
-> 原则：**完全不改动旧的批量执行节点功能**，新增独立的节点类型与 dispatch。  
-> 参考：[PR #6675](https://github.com/labring/FastGPT/pull/6675)（仅作参考，不直接复用其改动）
+> 需求：在工作流中新增"并行执行"节点，和现有的串行"批量执行（Loop）"并列。  
+> 原则：**完全不改动旧 Loop 节点的行为与文件**；parallelRun 作为新容器节点，**直接复用现有的 loopStart / loopEnd 作为其 Start/End 子节点**；通过 enum 改名（value 保持）统一语义。  
+> 参考：[PR #6675](https://github.com/labring/FastGPT/pull/6675)
 
----
-
-## 1. 背景与需求
-
-### 1.1 现状
-FastGPT 工作流目前已有 `loop` / `loopStart` / `loopEnd` 三个节点，构成"批量执行"功能：
-- **执行方式**：`for await` 串行遍历输入数组，逐项执行循环体子工作流
-- **核心实现**：`packages/service/core/workflow/dispatch/loop/runLoop.ts`
-- **变量作用域**：后一轮能继承前一轮产生的 `newVariables`（有状态累积）
-
-### 1.2 新需求
-新增一个**并行执行**节点，使数组中各元素对应的子工作流可以**并发执行**，提升吞吐（例如并行调用多个 LLM、并行抓取多个 URL 等场景）。
-
-### 1.3 约束
-1. 旧的 `loop` 节点行为 0 改动（包括变量累积语义、交互响应断点等）
-2. 新节点必须是独立的 `flowNodeType`，独立的 dispatch，独立的 i18n key
-3. UI 在概念上与 Loop 相同（父容器 + Start + End），但允许用户直观看到两者是不同的能力
+## 版本变迁
+- v1：独立 parallelRunStart/End + 复制 NodeLoop
+- v2：独立类型 + 抽 hook + 迁移 nested 目录
+- **v3（当前）**：复用 loopStart/loopEnd 作为通用"嵌套容器起/终点"，通过 enum 改名但保持 value 兼容，最小化改动
 
 ---
 
-## 2. 关键问题：NodeLoop 组件是否可复用？
+## 1. 需求与约束
 
-### 结论
-**部分可复用，但不建议直接共享组件实例，建议"复制-适配"策略。**
+### 1.1 需求
+新增并行执行节点，使输入数组中各元素对应的子工作流可以并发执行，典型场景：批量 LLM 调用、并行抓取 URL、并行数据处理。
 
-### 详细分析
-
-| 维度 | 现状（NodeLoop） | Parallel 需求 | 可复用性 |
-|------|-----------------|--------------|---------|
-| **容器与子节点维护** | `getNodeList().filter(n => n.parentNodeId === nodeId)` | 完全一样 | ✅ 可复用，但代码内联 |
-| **尺寸/偏移同步** | `useSize` + `resetParentNodeSizeAndPosition` | 完全一样 | ✅ 可复用 |
-| **数组类型推导** | 读 `loopInputArray.value[0]` → 推导 valueType | 完全一样 | ✅ 可复用 |
-| **输入字段 key** | `NodeInputKeyEnum.loopInputArray` | 可以共用（或新建 parallelInputArray）| ⚠️ 需决策 |
-| **输出字段 key** | `NodeOutputKeyEnum.loopArray` | 语义一样，可共用 key | ⚠️ 需决策 |
-| **并发限制输入** | 无 | 需要新增（可选输入）| ❌ 需要扩展 |
-| **parentNodeId 关系** | ReactFlow 层级管理 | 完全一样 | ✅ 可复用 |
-| **connection handle 限制** | `ConnectionHandle.tsx` 里限制子节点间连接 | 完全一样 | ✅ 可复用 |
-
-### 方案权衡
-
-**方案 A：直接复用 NodeLoop 组件（不推荐）**
-- 方式：让 `FlowNodeTypeEnum.parallel` 也映射到 `NodeLoop` 组件
-- 问题：
-  1. NodeLoop 内部硬编码了 `t('workflow:loop_body')` 文案
-  2. 类型推导 hooks 硬依赖 `loopInputArray` / `loopArray` key
-  3. 后续要给并行节点加"并发数"输入，会污染 Loop 节点
-
-**方案 B：抽取公共 Hook + 共享 shell 组件（中等复杂度）**
-- 方式：抽取 `useParentContainerNode(nodeId)` 和 `useArrayInputType()` 两个 hook，NodeLoop / NodeParallel 共享
-- 问题：抽取需要触碰 NodeLoop 源码，违反"旧功能完全不变"的承诺（虽然只是重构，但引入回归风险）
-
-**方案 C：复制 NodeLoop 为 NodeParallel（推荐 ✅）**
-- 方式：完整复制 `NodeLoop.tsx` → `NodeParallel.tsx`，并做以下调整：
-  1. 更换 i18n key（`parallel_body` 替代 `loop_body`）
-  2. 读取 `parallelInputArray` / `parallelArray` 等独立 key（或继续用 loop key，见下文决策）
-  3. 新增"并发数上限"输入字段渲染逻辑（读 `parallelMaxConcurrency`）
-  4. 其余 90% 逻辑不变
-- 优点：
-  1. 0 风险污染旧 NodeLoop
-  2. 代码清晰独立，后续两节点演进互不影响
-  3. 符合项目"保持简单、避免过早抽象"的原则
-- 缺点：存在 ~60 行代码重复（可接受）
-
-**最终决策：采用方案 C**。如果未来出现第三个同类节点（比如带条件的 loop），再考虑抽取 hook。
+### 1.2 关键约束（来自 user）
+1. **旧 Loop 节点 0 改动**（不破坏变量累积语义、交互响应断点等）
+2. **能复用就复用**：Start / End 节点、组件 UI、Hook 都应尽量抽取共享
+3. **env 上限要反映到前端**：作为并发数输入的 max 校验与提示
+4. **单个任务失败处理**：结果输出（`parallelRunArray`）中**过滤掉失败项**；完整节点响应中带完整状态数组 `[{success, data}, ...]`
+5. **交互节点禁止**：前端阻塞用户把交互节点拖入并行体；极端情况下（API 导入绕过前端），后端**忽略**该任务输出而不 reject
+6. **抽 hook**：UI 通用逻辑抽成共享 hook
 
 ---
 
-## 3. 关键设计决策
+## 2. 核心策略：复用 loopStart/loopEnd + Enum 改名
+
+### 2.1 关键事实（v3 新发现）
+
+原先 v2 认为 `unique: true` 是全局唯一，会阻止 loopStart 在多个容器下共存。**深入调查后发现这是误解**：
+
+| 检查点 | 文件 | 实际作用 |
+|-------|-----|---------|
+| `useNodeTemplates.tsx:42-48` | `getNodeList().some(...)` + 模板列表过滤 | **仅隐藏模板面板里的可见项**，防止用户手动拖第二个 |
+| `useKeyboard.tsx:52,71` | 复制时过滤 | 复制粘贴时去掉 unique 节点 + 整个 loop 禁止复制 |
+| `list.tsx:325-340` 自动创建 | `newNodes.push(startNode, endNode)` | **完全不经过 unique 检查** |
+
+**现状**：`loop` 节点本身**没有** `unique: true`。用户可以在同一工作流里拖 N 个 Loop，每个 Loop 自动生成自己的 loopStart + loopEnd。**多个 loopStart 节点并存早已是现状**。
+
+**推论**：parallelRun 节点**可以直接把 loopStart / loopEnd 作为自己的 Start/End 子节点**，unique 检查完全不干扰。
+
+### 2.2 loopStart/loopEnd 前端组件的硬编码：不是障碍
+
+- `NodeLoopStart.tsx:41` 读父节点的 `NodeInputKeyEnum.loopInputArray`
+- `NodeLoopEnd.tsx:63-66` 写父节点的 `NodeOutputKeyEnum.loopArray`
+
+**只要 parallelRun 节点的输入/输出也用这两个 key，这两个组件 0 改动就能工作**。
+
+### 2.3 Enum 改名策略（user 指定）
+
+**原则**：**enum 键名改为语义通用的 `nested*`，TypeScript 值保持原字符串不变**。
+
+这样做：
+- ✅ 代码里写 `NodeInputKeyEnum.nestedInputArray` 语义清晰
+- ✅ 运行时序列化数据仍是 `"loopInputArray"`，数据库/JSON 导出完全兼容
+- ✅ 不需要数据迁移
+- ✅ 复用 NodeLoopStart/End 组件 0 改动
+
+### 2.4 完整改名清单
+
+#### `FlowNodeTypeEnum`
+```typescript
+export enum FlowNodeTypeEnum {
+  loop = 'loop',                    // 保持（旧 Loop 节点）
+  nestedStart = 'loopStart',        // 改名（原 loopStart），作为所有嵌套容器的起点
+  nestedEnd = 'loopEnd',            // 改名（原 loopEnd），作为所有嵌套容器的终点
+  parallelRun = 'parallelRun',      // 新增
+  // ...
+}
+```
+
+#### `NodeInputKeyEnum`
+```typescript
+nestedInputArray = 'loopInputArray',        // 改名
+nestedStartInput = 'loopStartInput',        // 改名
+nestedStartIndex = 'loopStartIndex',        // 改名
+nestedEndInput = 'loopEndInput',            // 改名
+nestedNodeInputHeight = 'loopNodeInputHeight', // 改名
+parallelRunMaxConcurrency = 'parallelRunMaxConcurrency', // 新增
+```
+
+#### `NodeOutputKeyEnum`
+```typescript
+nestedArrayResult = 'loopArray',            // 改名
+nestedStartInput = 'loopStartInput',        // 改名
+nestedStartIndex = 'loopStartIndex',        // 改名
+```
+
+#### 常量
+```typescript
+// packages/global/core/workflow/template/input.ts
+Input_Template_NESTED_NODE_OFFSET  // 原 Input_Template_LOOP_NODE_OFFSET
+// 内部的 key 字段引用也相应改为 NodeInputKeyEnum.nestedNodeInputHeight
+```
+
+### 2.5 改名影响范围（已 grep 统计）
+
+| 改名项 | 影响源文件数 |
+|-------|------------|
+| `NodeInputKeyEnum.loop*` | 12 个源文件 |
+| `NodeOutputKeyEnum.loop*` | 6 个源文件 |
+| `FlowNodeTypeEnum.loopStart/End` | 7 个源文件 |
+| `Input_Template_LOOP_NODE_OFFSET` | 3 个源文件 |
+
+**总计约 15-18 个源文件**（有重叠），全部是**机械式替换**（IDE rename symbol），0 运行时行为变更。
+
+### 2.6 决策总结
+
+**方案 A 完整版**：
+1. 改名现有 loop 相关 enum 键为 `nested*`，value 保持
+2. `FlowNodeTypeEnum.loopStart` / `loopEnd` 改名为 `nestedStart` / `nestedEnd`（值保持）
+3. **新增** `FlowNodeTypeEnum.parallelRun`
+4. **新增** 1 个后端 dispatch（`runParallelRun.ts`）
+5. **新增** 1 个前端节点组件（`NodeParallelRun.tsx`）
+6. parallelRun 节点的输入数组复用 `nestedInputArray`（即原 loopInputArray），输出数组复用 `nestedArrayResult`
+7. parallelRun 节点的 Start/End 直接复用 `nestedStart` / `nestedEnd`，0 新组件、0 新 dispatch、0 新 i18n Start/End 文案
+8. **0 改动** `NodeLoop.tsx` / `NodeLoopStart.tsx` / `NodeLoopEnd.tsx` / `runLoop.ts` / `runLoopStart.ts` / `runLoopEnd.ts` 的运行时逻辑（只有 enum 键名的引用替换）
+
+**不需要做的事**（相对 v2）：
+- ❌ 不抽 `useContainerNode` / `useContainerChildIO` hook
+- ❌ 不建 `ContainerNodeShell.tsx`
+- ❌ 不迁移 `Loop/` 目录到 `nested/`
+- ❌ 不新增 parallelRunStart / parallelRunEnd flowNodeType
+- ❌ 不重构 NodeLoop 系列组件
+- ❌ 不新增 Start/End 的 i18n 文案和图标
+
+---
+
+## 3. 详细设计决策
 
 ### 3.1 节点命名
 
-| 项目 | 值 | 说明 |
-|------|-----|------|
-| FlowNodeType | `parallelRun` / `parallelRunStart` / `parallelRunEnd` | 避免与业务上"parallel"概念混淆 |
-| 中文名 | 并行执行 / 并行开始 / 并行结束 | - |
-| 英文名 | Parallel Run / Parallel Start / Parallel End | - |
-| avatar | `core/workflow/template/parallelRun` 等 | 需要 UI 同学提供或先复用 loop 图标 |
-| colorSchema | `blue`（与 violet 的 Loop 区分）| 让用户一眼区分两种节点 |
+| 项目 | 值 |
+|------|-----|
+| FlowNodeType | `parallelRun` / `parallelRunStart` / `parallelRunEnd` |
+| 中文名 | 并行执行 / 并行开始 / 并行结束 |
+| 英文名 | Parallel Run / Parallel Start / Parallel End |
+| colorSchema | `blue`（与 Loop 的 `violetDeep` 区分）|
+| 图标 | 复用 PR #6675 的 `loopPro*.svg`，重命名为 `parallelRun*.svg` |
 
-### 3.2 输入/输出 Key 策略
+### 3.2 输入/输出 Key
 
-**决策：新建独立的 key（不复用 loop 的 key）**
+parallelRun 节点**完全复用**现有 enum（改名后）：
 
-原因：
-1. 语义独立，便于后续演进（例如并行版的输出可能要带 index 映射、错误信息等）
-2. 避免在运行时用 `flowNodeType` 二次判断后读不同 key 的复杂性
-3. 方便 i18n、前端渲染定位
+| 位置 | Key | 说明 |
+|-----|-----|-----|
+| parallelRun 输入：数组 | `nestedInputArray` (value `'loopInputArray'`) | 和 loop 共享 |
+| parallelRun 输入：子节点列表 | `childrenNodeIdList` | 原本就通用 |
+| parallelRun 输入：容器宽高 | `nodeWidth` / `nodeHeight` | 原本就通用 |
+| parallelRun 输入：输入框高度 | `nestedNodeInputHeight` | 和 loop 共享 |
+| parallelRun 输入：**新增** | `parallelRunMaxConcurrency` | parallelRun 独有 |
+| parallelRun 输出：结果数组 | `nestedArrayResult` (value `'loopArray'`) | 和 loop 共享 |
+| nestedStart（= loopStart）输入 | `nestedStartInput` / `nestedStartIndex` | 由 parallelRun 的 dispatch 注入 |
+| nestedEnd（= loopEnd）输入 | `nestedEndInput` | 由用户连线 |
 
-新增的 key：
-
-```typescript
-// packages/global/core/workflow/constants.ts  NodeInputKeyEnum
-parallelRunInputArray = 'parallelRunInputArray',
-parallelRunStartInput = 'parallelRunStartInput',
-parallelRunStartIndex = 'parallelRunStartIndex',
-parallelRunEndInput = 'parallelRunEndInput',
-parallelRunMaxConcurrency = 'parallelRunMaxConcurrency',  // 并发上限（可选配置）
-
-// NodeOutputKeyEnum
-parallelRunArray = 'parallelRunArray',
-parallelRunStartIndex = '...',  // 可复用 enum 中同名值
-```
-
-> 注：`childrenNodeIdList` / `nodeWidth` / `nodeHeight` / `loopNodeInputHeight` 这四个结构性 key 是容器节点通用的，**可以复用**，但为了保持一致，也可以改用中立名 `containerXxx`。本次保持现状复用，避免触及 `Input_Template_*` 模板常量。
+**唯一新增的 key**：`parallelRunMaxConcurrency`（用于前端配置并发上限输入）。
 
 ### 3.3 并发执行语义
 
 | 行为 | 决策 | 理由 |
 |------|-----|------|
-| **并发策略** | `Promise.allSettled` + 可配置并发上限（默认 5） | 单个失败不应影响其他；上限防止资源爆炸 |
-| **并发上限** | 环境变量 `WORKFLOW_PARALLEL_MAX_CONCURRENCY`（默认 5），节点级可覆盖但不超过环境上限 | 兼顾运维控制和业务灵活性 |
-| **最大迭代数** | 复用环境变量 `WORKFLOW_MAX_LOOP_TIMES`（默认 50） | 避免重复定义 |
-| **变量作用域** | 各迭代**互相隔离**，不做变量累积 | 并行语义下无法定义"顺序"；本地新变量丢弃或合并（见 3.4） |
-| **错误处理** | `allSettled`：单个失败在结果数组对应位置填 `null`（或错误对象），整体继续；最后汇总失败数 | 提升并行价值；用户可通过输出数组自行判错 |
-| **交互响应** | **不支持** workflowInteractive 类型子节点（检测到直接 reject） | 交互需要顺序性，与并行矛盾 |
-| **输出顺序** | 严格按输入数组下标顺序（通过 `Promise.all` 在固定位置写入） | 用户期望 `output[i]` 对应 `input[i]` |
-| **cost 汇总** | 累加所有并行任务的 totalPoints | 与 Loop 一致 |
+| 并发调度 | **`batchRun`**（`packages/global/common/system/utils.ts:22`）| 项目已有的 worker-pool 工具：固定 N 个 worker 循环抢任务，结果按原 index 写回数组，顺序保证 |
+| 并发上限 | 节点输入 `parallelRunMaxConcurrency`（默认 5），非整数向下取整；在 dispatch 里 clamp 到 env `WORKFLOW_PARALLEL_MAX_CONCURRENCY`（默认 10）；env 本身 clamp 到 `[5, 100]` | 运维约束 + 用户灵活 |
+| 最大迭代数 | 复用 `WORKFLOW_MAX_LOOP_TIMES`（默认 100，与生产部署对齐）| 避免重复 |
+| 变量作用域 | 各迭代间**隔离**，不合并 `newVariables` 回主 variables | 并行无时序，合并不可预期 |
+| 错误处理 | 任务 fn 内部用 try/catch 包裹 `runWorkflow`，返回 `{success, index, data/error}` 结构体；不抛出，避免中断 worker pool | 见 §3.4 |
+| 交互响应 | 后端**忽略**该任务输出（视为失败项，静默过滤）；前端**阻塞**交互节点拖入 | 见 §3.5 |
+| 输出顺序 | `batchRun` 天然按 index 回填，保证 `output[i]` 对应 `input[i]` | 符合用户直觉 |
+| cost 汇总 | 累加所有任务的 totalPoints | 与 Loop 一致 |
 
-### 3.4 变量作用域与累积
-
-```
-串行 Loop 的语义：
-  轮0 -> 产生 newVar_A
-  轮1 -> 可读 newVar_A，产生 newVar_B
-  轮2 -> 可读 newVar_A + newVar_B
-  最终返回: newVar_A + newVar_B + ...
-
-并行 Parallel 的语义：
-  轮0 \
-  轮1  | 同时执行，各自读取初始 variables，不互相影响
-  轮2 /
-  最终返回: 初始 variables（不把各任务的 newVariables 合并回去）
+**`batchRun` 签名**：
+```typescript
+batchRun<T, R>(
+  arr: T[],
+  fn: (item: T, index: number) => Promise<R>,
+  batchSize = 10
+): Promise<R[]>
 ```
 
-**原因**：并行任务之间没有时序关系，如果都写入同一变量 `counter`，合并结果无法预期（last-write-wins 不符合用户心智模型）。
+**使用方式**：
+```typescript
+import { batchRun } from '@fastgpt/global/common/system/utils';
 
-**妥协方案**：如果用户需要累积结果，应使用**节点输出数组**（`parallelRunArray`）而非全局变量。这与函数式并行编程的最佳实践一致。
+const concurrency = Math.min(
+  Number(params.parallelRunMaxConcurrency) || 5,
+  Number(process.env.WORKFLOW_PARALLEL_MAX_CONCURRENCY) || 10
+);
 
-**实现**：`dispatchParallelRun` 返回的 `newVariables` 保持 `props.variables` 不动。
+const taskResults = await batchRun(
+  loopInputArray,
+  async (item, index) => {
+    // 见 §3.6 的 per-task 克隆逻辑
+  },
+  concurrency
+);
+```
 
-### 3.5 runtimeNodes / runtimeEdges 克隆问题 ⚠️
+### 3.4 错误处理与输出结构 ⚠️（user 指定）
 
-**最关键的实现难点**：
+**两种输出**：
 
-串行 Loop 的做法是修改共享的 `runtimeNodes`（设置 `isEntry`、改 `loopStartInput.value`），然后 cloneDeep edges。这在串行下是对的，因为每轮结束后状态自然会被下一轮覆盖。
+1. **`parallelRunArray`（节点输出，供下游引用）**：**只包含成功项**
+   ```typescript
+   // 示例
+   [result_0, result_2]  // 过滤掉 index 1 的失败项
+   ```
 
-**并行下不能共享 `runtimeNodes`**：
-1. 多个迭代同时进入同一个 `loopStart` 节点，`input.value` 互相覆盖
-2. `runtimeEdges` 的 `status`（waiting/active/skipped）会被并发写冲突
-3. 节点的 outputs 会被并发写
+2. **`nodeResponse.parallelRunDetail`（完整执行详情，仅在运行详情里展示）**：
+   ```typescript
+   [
+     { success: true,  index: 0, data: result_0 },
+     { success: false, index: 1, error: 'xxx error message' },
+     { success: true,  index: 2, data: result_2 }
+   ]
+   ```
 
-**解决方案**：对每一个并行任务**深拷贝一份 runtimeNodes + runtimeEdges 子图**，在独立的副本上运行 `runWorkflow`。
+**实现**：
+```typescript
+const settled = await Promise.allSettled(/* ... */);
+const fullStatus = settled.map((r, idx) => {
+  if (r.status === 'fulfilled' && r.value?.isSuccess) {
+    return { success: true, index: idx, data: r.value.output };
+  }
+  return { success: false, index: idx, error: extractError(r) };
+});
+
+const outputArray = fullStatus.filter((s) => s.success).map((s) => s.data);
+```
+
+### 3.5 交互节点处理（user 指定）
+
+**前端阻塞**（第一道防线）：  
+扩展 `useWorkflow.tsx:431-455` 的 `checkNodeOverLoopNode`（或新增 `checkNodeOverParallelNode`），使之对 `FlowNodeTypeEnum.parallelRun` 生效，并在 `unSupportedTypes` 里追加交互类节点：
 
 ```typescript
-await Promise.all(
-  loopInputArray.map(async (item, index) => {
-    // 每个任务独立克隆子图
-    const clonedNodes = cloneDeep(runtimeNodes);
-    const clonedEdges = cloneDeep(storeEdges2RuntimeEdges(runtimeEdges));
+const unSupportedInParallel = [
+  // 旧 loop 也有的限制
+  FlowNodeTypeEnum.workflowStart,
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.parallelRun,   // 禁止嵌套 parallelRun
+  FlowNodeTypeEnum.pluginInput,
+  FlowNodeTypeEnum.pluginOutput,
+  FlowNodeTypeEnum.systemConfig,
+  // parallelRun 额外禁止的交互节点
+  FlowNodeTypeEnum.formInput,
+  FlowNodeTypeEnum.userSelect,
+  // 如果有其他交互相关类型（tool 的 interactive），也加上
+];
+```
 
-    // 在克隆副本上设置 entry 和 parallelRunStartInput
-    clonedNodes.forEach((node) => {
+> 需要在实现时 grep 所有 interactive/表单类 FlowNodeType 枚举项，确保覆盖。
+
+用户拖放时若节点类型在禁止列表 → toast 提示 "该节点不支持并行执行"（新增 i18n key `workflow:can_not_parallel`）。
+
+**后端兜底**（第二道防线）：  
+在 `dispatchParallelRun` 中，若某个子任务的 `runWorkflow` 返回 `workflowInteractiveResponse`，视为该任务失败：
+```typescript
+if (response.workflowInteractiveResponse) {
+  // 忽略该任务输出，标记为失败
+  return { isSuccess: false, error: 'Interactive node is not supported in parallel run' };
+}
+```
+
+不 reject，不中断整个并行节点。
+
+### 3.5a 后端 service 抽离（为单测隔离）
+
+**原则**：`runParallelRun.ts` 的 dispatch 入口只做**编排**，核心逻辑拆成**纯函数 service**，可独立单测，不依赖 `runWorkflow`、MongoDB、I/O。
+
+**目录结构**：
+```
+packages/service/core/workflow/dispatch/parallelRun/
+├── runParallelRun.ts        # dispatch 入口，仅编排流程
+└── service.ts               # 所有纯函数 service 集中在一个文件，通过 export 暴露
+```
+
+**`service.ts` 导出的纯函数**（全部无 I/O）：
+- `clampParallelConcurrency` — 并发数 clamp
+- `buildTaskRuntimeContext` — per-task 克隆 + 注入 entry
+- `parseTaskResponse` / `parseTaskError` — 单任务响应解析（成功/失败/交互）
+- `aggregateParallelResults` — 聚合所有任务结果
+
+**service 函数契约**：
+
+```typescript
+// service/concurrency.ts
+export const clampParallelConcurrency = (
+  userInput: number | undefined,
+  envMax: number | undefined
+): number;
+
+// service/taskContext.ts
+export const buildTaskRuntimeContext = (params: {
+  runtimeNodes: RuntimeNodeItemType[];
+  runtimeEdges: StoreEdgeItemType[];  // 原始边，内部做 storeEdges2RuntimeEdges
+  childrenNodeIdList: string[];
+  item: any;
+  index: number;
+}): {
+  taskRuntimeNodes: RuntimeNodeItemType[];
+  taskRuntimeEdges: RuntimeEdgeItemType[];
+};
+
+// service/taskResult.ts
+export type ParallelTaskResult =
+  | { success: true;  index: number; data: any; response: DispatchFlowResponse }
+  | { success: false; index: number; error?: string };
+
+export const parseTaskResponse = (params: {
+  index: number;
+  response: DispatchFlowResponse;
+}): ParallelTaskResult;
+// 逻辑：workflowInteractiveResponse 存在 → 静默失败；否则从 flowResponses 找 nestedEnd.loopOutputValue
+
+export const parseTaskError = (index: number, err: unknown): ParallelTaskResult;
+
+// service/aggregate.ts
+export const aggregateParallelResults = (
+  taskResults: ParallelTaskResult[]
+): {
+  filteredArray: any[];                // parallelRunArray 输出（过滤失败项）
+  fullDetail: Array<{                  // nodeResponse.parallelRunDetail
+    success: boolean;
+    index: number;
+    data?: any;
+    error?: string;
+  }>;
+  totalPoints: number;
+  responseDetails: ChatHistoryItemResType[];
+  assistantResponses: AIChatItemValueItemType[];
+  customFeedbacks: string[];
+};
+```
+
+**dispatch 编排骨架**：
+```typescript
+export const dispatchParallelRun = async (props): Promise<Response> => {
+  const { loopInputArray = [], childrenNodeIdList = [] } = props.params;
+
+  // 前置校验（保留在入口）
+  if (!Array.isArray(loopInputArray)) return Promise.reject('Input value is not an array');
+  if (loopInputArray.length > maxLoopTimes) return Promise.reject(`... > ${maxLoopTimes}`);
+
+  const concurrency = clampParallelConcurrency(
+    props.params.parallelRunMaxConcurrency,
+    process.env.WORKFLOW_PARALLEL_MAX_CONCURRENCY
+  );
+
+  const taskResults = await batchRun(
+    loopInputArray,
+    async (item, index) => {
+      const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
+        runtimeNodes: props.runtimeNodes,
+        runtimeEdges: props.runtimeEdges,
+        childrenNodeIdList,
+        item,
+        index
+      });
+      try {
+        const response = await runWorkflow({
+          ...props,
+          variables: { ...props.variables },
+          runtimeNodes: taskRuntimeNodes,
+          runtimeEdges: taskRuntimeEdges
+        });
+        return parseTaskResponse({ index, response });
+      } catch (err) {
+        return parseTaskError(index, err);
+      }
+    },
+    concurrency
+  );
+
+  const aggregated = aggregateParallelResults(taskResults);
+  // ... 返回 DispatchNodeResultType
+};
+```
+
+**测试分层**：
+- **单测（无 runWorkflow）**：
+  - `concurrency.test.ts` — clampParallelConcurrency 纯数学
+  - `taskContext.test.ts` — 断言克隆后修改 taskRuntimeNodes 不影响原 runtimeNodes
+  - `taskResult.test.ts` — mock 各种 DispatchFlowResponse 输入
+  - `aggregate.test.ts` — mock ParallelTaskResult 数组，测过滤/聚合
+- **Integration 测试**（跑真实 runWorkflow，少而精）：
+  - 1 个 happy path：输入数组 → 并发执行 → 输出符合预期
+  - 1 个 error case：某任务抛错 → 结果数组过滤 + 详情完整
+  - 1 个 interactive case：子节点产生 interactive → 静默失败
+
+### 3.6 runtimeNodes / runtimeEdges 克隆（per-task lazy clone）⚠️
+
+**核心问题**：并行下多个迭代**同时**进入 `nestedStart`，会并发写 `input.value`、并发修改 `runtimeEdges.status`，必须为每个任务独立的子图副本。
+
+**优化策略**：克隆**放在 `batchRun` 的 fn 内部**，每次 worker 实际开始执行任务时才克隆，执行完 fn 立即释放。
+
+**效果**：
+- 同一时刻活跃的克隆数 **= 并发数（5~10）**，不是数组长度（最多 50）
+- 峰值内存从 `O(arrayLength × subgraphSize)` 降到 `O(concurrency × subgraphSize)`
+- 克隆对象在 fn 返回后立即 GC
+
+**实现骨架**：
+```typescript
+const taskResults = await batchRun(
+  loopInputArray,
+  async (item, index) => {
+    // ✅ 这里执行时才克隆。整个 fn 生命周期 = 一份克隆的生命周期
+    const taskRuntimeNodes = cloneDeep(runtimeNodes);
+    const taskRuntimeEdges = cloneDeep(storeEdges2RuntimeEdges(runtimeEdges));
+
+    // 注入 entry 与当前迭代项
+    taskRuntimeNodes.forEach((node) => {
       if (!childrenNodeIdList.includes(node.nodeId)) return;
-      if (node.flowNodeType === FlowNodeTypeEnum.parallelRunStart) {
+      if (node.flowNodeType === FlowNodeTypeEnum.nestedStart) {
         node.isEntry = true;
         node.inputs.forEach((input) => {
-          if (input.key === NodeInputKeyEnum.parallelRunStartInput) input.value = item;
-          if (input.key === NodeInputKeyEnum.parallelRunStartIndex) input.value = index + 1;
+          if (input.key === NodeInputKeyEnum.nestedStartInput) input.value = item;
+          if (input.key === NodeInputKeyEnum.nestedStartIndex) input.value = index + 1;
         });
       }
     });
 
-    return runWorkflow({
-      ...props,
-      variables: { ...props.variables },  // 浅拷贝变量快照
-      runtimeNodes: clonedNodes,
-      runtimeEdges: clonedEdges
-    });
-  })
+    try {
+      const response = await runWorkflow({
+        ...props,
+        variables: { ...props.variables },
+        runtimeNodes: taskRuntimeNodes,
+        runtimeEdges: taskRuntimeEdges
+      });
+
+      // 交互节点：静默忽略（user 指定）
+      if (response.workflowInteractiveResponse) {
+        return { success: false, index, error: undefined };
+      }
+
+      const output = response.flowResponses.find(
+        (r) => r.moduleType === FlowNodeTypeEnum.nestedEnd
+      )?.loopOutputValue;
+
+      return { success: true, index, data: output, response };
+    } catch (err: any) {
+      return { success: false, index, error: err?.message || String(err) };
+    }
+    // fn 返回 → taskRuntimeNodes / taskRuntimeEdges 出作用域 → GC
+  },
+  concurrency
 );
 ```
 
-**性能注意**：cloneDeep 在 50 次迭代、每次几十个节点的规模下是可接受的；超大规模场景下可以考虑后续优化为结构化共享。
+**与 v2 方案的差别**：v2 是预先 `cloneDeep × N` 再 `Promise.all`，峰值 N 份；v3 是 worker-pool 抢任务后才 clone，峰值 = concurrency 份。
 
-### 3.6 并发上限实现
+### 3.7 feConfigs 前端暴露 env 上限
 
-使用 `p-limit` 模式（或自己实现轻量队列），避免一次性 `Promise.all` 50 个任务：
+扩展 `packages/global/common/system/types/index.ts` 的 `limit` 对象（约 109-114 行）：
 
 ```typescript
-import { batchRun } from '@fastgpt/global/common/fn/utils';  // 如果已存在
-// 或
-const limit = Math.min(
-  params.parallelRunMaxConcurrency || 5,
-  Number(process.env.WORKFLOW_PARALLEL_MAX_CONCURRENCY) || 5
-);
-// 使用 chunked Promise.all 或现成工具
-```
-
----
-
-## 4. 详细实现清单
-
-### 4.1 新增文件（全新代码）
-
-#### 4.1.1 类型定义
-```
-packages/global/core/workflow/template/system/parallelRun/
-├── parallelRun.ts       # 主容器节点模板（仿 loop.ts）
-├── parallelRunStart.ts  # 开始节点模板（仿 loopStart.ts）
-└── parallelRunEnd.ts    # 结束节点模板（仿 loopEnd.ts）
-```
-
-#### 4.1.2 后端 Dispatch
-```
-packages/service/core/workflow/dispatch/parallelRun/
-├── runParallelRun.ts       # 主调度，使用 Promise.all + 并发限制
-├── runParallelRunStart.ts  # 透传 start 输入（与 loopStart 几乎一致）
-└── runParallelRunEnd.ts    # 透传 end 输入（与 loopEnd 一致）
-```
-
-#### 4.1.3 前端 UI
-```
-projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/ParallelRun/
-├── NodeParallelRun.tsx       # 复制 NodeLoop.tsx 并改 i18n/key
-├── NodeParallelRunStart.tsx  # 复制 NodeLoopStart.tsx
-└── NodeParallelRunEnd.tsx    # 复制 NodeLoopEnd.tsx
-```
-
-### 4.2 修改已有文件
-
-#### 4.2.1 枚举与常量
-
-**文件**：`packages/global/core/workflow/node/constant.ts`（约 127-170 行）
-```typescript
-export enum FlowNodeTypeEnum {
-  // ... 已有项
-  loop = 'loop',
-  loopStart = 'loopStart',
-  loopEnd = 'loopEnd',
-  // 新增
-  parallelRun = 'parallelRun',
-  parallelRunStart = 'parallelRunStart',
-  parallelRunEnd = 'parallelRunEnd'
-}
-```
-
-**文件**：`packages/global/core/workflow/constants.ts`
-```typescript
-// NodeInputKeyEnum
-parallelRunInputArray = 'parallelRunInputArray',
-parallelRunStartInput = 'parallelRunStartInput',
-parallelRunStartIndex = 'parallelRunStartIndex',
-parallelRunEndInput = 'parallelRunEndInput',
-parallelRunMaxConcurrency = 'parallelRunMaxConcurrency',
-
-// NodeOutputKeyEnum
-parallelRunArray = 'parallelRunArray',
-parallelRunStartIndex 复用 loopStartIndex 还是新建？→ 新建，保持独立
-```
-
-#### 4.2.2 模板注册
-
-**文件**：`packages/global/core/workflow/template/constants.ts`（约 30-32、41-61、80-94 行）
-```typescript
-import { ParallelRunNode } from './system/parallelRun/parallelRun';
-import { ParallelRunStartNode } from './system/parallelRun/parallelRunStart';
-import { ParallelRunEndNode } from './system/parallelRun/parallelRunEnd';
-
-// 加入 systemNodes 和 moduleTemplatesFlat
-```
-
-#### 4.2.3 Dispatch 映射
-
-**文件**：`packages/service/core/workflow/dispatch/constants.ts`（约 16-18、67-69 行）
-```typescript
-import { dispatchParallelRun } from './parallelRun/runParallelRun';
-import { dispatchParallelRunStart } from './parallelRun/runParallelRunStart';
-import { dispatchParallelRunEnd } from './parallelRun/runParallelRunEnd';
-
-[FlowNodeTypeEnum.parallelRun]: dispatchParallelRun,
-[FlowNodeTypeEnum.parallelRunStart]: dispatchParallelRunStart,
-[FlowNodeTypeEnum.parallelRunEnd]: dispatchParallelRunEnd,
-```
-
-#### 4.2.4 前端节点类型注册
-
-**文件**：`projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/index.tsx`（约 30-68 行）
-```typescript
-const nodeTypes: Record<FlowNodeTypeEnum, any> = {
-  // ...
-  [FlowNodeTypeEnum.parallelRun]: dynamic(() => import('./nodes/ParallelRun/NodeParallelRun')),
-  [FlowNodeTypeEnum.parallelRunStart]: dynamic(() => import('./nodes/ParallelRun/NodeParallelRunStart')),
-  [FlowNodeTypeEnum.parallelRunEnd]: dynamic(() => import('./nodes/ParallelRun/NodeParallelRunEnd'))
+limit?: {
+  exportDatasetLimitMinutes?: number;
+  websiteSyncLimitMinuted?: number;
+  agentSandboxMaxEditDebug?: number;
+  agentSandboxMaxSessionRuntime?: number;
+  workflowParallelRunMaxConcurrency?: number;  // 新增
 };
 ```
 
-#### 4.2.5 父容器节点类型判断（如有）
+**注入**：在全局配置初始化时（`projects/app/src/service/common/system/index.ts` 或类似 `initSystemConfig`）读取 `process.env.WORKFLOW_PARALLEL_MAX_CONCURRENCY`，写入 `global.feConfigs.limit`。
 
-搜索并更新所有 `=== FlowNodeTypeEnum.loop`（主要在以下位置）：
-
-| 文件 | 行号 | 改动 |
-|-----|------|-----|
-| `projects/app/src/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext.tsx` | 读 parentNodeId 处 | 检查是否需要识别 parallelRun 作为父节点（应该是通用的，不用改） |
-| `projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/ConnectionHandle.tsx` | 子节点连接限制 | 同上，应为通用逻辑 |
-| `resetParentNodeSizeAndPosition` 等 layout 方法 | - | 基于 parentNodeId，通用，不用改 |
-| `Flow` 中新节点创建时若有特殊处理 | - | 若 Loop 创建时带了默认 loopStart/loopEnd 子节点，ParallelRun 也要照葫芦画瓢 |
-
-> **关键**：查找 `FlowNodeTypeEnum.loop` 是否在"创建新节点时自动生成 loopStart + loopEnd 子节点"的逻辑里被硬编码。如果是，并行节点也需要同样的配套创建 parallelRunStart + parallelRunEnd。这是待确认项（见 5.2）。
-
-#### 4.2.6 国际化
-
-**文件**：`packages/web/i18n/{zh-CN,en,zh-Hant}/workflow.json`
-```json
-{
-  "parallel_run": "并行执行",
-  "intro_parallel_run": "输入一个数组，并行执行工作流处理每个元素，提升吞吐。注意：各并行任务之间变量互相隔离。",
-  "parallel_run_body": "并行体",
-  "parallel_run_start": "并行开始",
-  "parallel_run_end": "并行结束",
-  "parallel_run_input_array": "数组",
-  "parallel_run_result": "并行执行结果",
-  "parallel_run_max_concurrency": "最大并发数",
-  "parallel_run_max_concurrency_tip": "同时执行的任务数量上限（默认 5，最大受环境变量约束）"
-}
+**前端消费**：在 `NodeParallelRun` 的并发数输入字段中：
+```typescript
+const { feConfigs } = useSystemStore();
+const maxConcurrency = feConfigs?.limit?.workflowParallelRunMaxConcurrency ?? 10;
+// 输入框 max={maxConcurrency}，提示 "最大不超过 ${maxConcurrency}"
 ```
 
+**后端二次校验**：`dispatchParallelRun` 里通过 `clampParallelConcurrency` service 做 clamp（见 §3.5a）。
+
+### 3.8 前端逻辑层 / 渲染层分离（为单测隔离）
+
+**原则**：NodeParallelRun 组件只负责 JSX 渲染和 React 副作用的"壳"，**纯逻辑**（计算、类型推导、输入合法性校验等）抽到 utils 文件，通过 `projects/app/test/pageComponents/app/detail/WorkflowComponents/` 下的单测覆盖。
+
+**参考范式**：项目已有 `projects/app/test/pageComponents/app/detail/WorkflowComponents/utils.test.ts`，证明这种模式在 codebase 中成熟。
+
+**NodeParallelRun 的可测逻辑**（抽离到 utils）：
+
+```
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/Loop/
+├── NodeParallelRun.tsx                   # 壳：JSX + hooks 调用
+└── parallelRun.utils.ts                  # 纯函数：可测
+```
+
+**`parallelRun.utils.ts` 契约**：
+
+```typescript
+// 从 inputs 数组读取并发数，并 clamp 到 env 上限
+export const resolveParallelConcurrency = (
+  inputs: FlowNodeInputItemType[],
+  envMax: number | undefined
+): number;
+
+// 从数组输入的 reference 推导元素 valueType
+export const resolveArrayItemValueType = (params: {
+  arrayReferenceValue: ReferenceArrayValueType | undefined;
+  nodeIds: string[];
+  globalVariables: Array<{ key: string; valueType: WorkflowIOValueTypeEnum }>;
+  getNodeById: (id: string) => RuntimeNodeItemType | undefined;
+}): WorkflowIOValueTypeEnum;
+
+// 校验用户输入的并发数是否合法
+export const validateConcurrencyInput = (
+  value: unknown,
+  envMax: number
+): { valid: boolean; error?: string; clamped?: number };
+```
+
+**组件内的使用**（保持薄）：
+```tsx
+const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+  const { nodeId, inputs, outputs } = data;
+  const { feConfigs } = useSystemStore();
+  const envMax = feConfigs?.limit?.workflowParallelRunMaxConcurrency ?? 10;
+
+  // 使用纯函数获取派生状态（可测）
+  const concurrency = useMemo(
+    () => resolveParallelConcurrency(inputs, envMax),
+    [inputs, envMax]
+  );
+
+  // React 专属副作用（不测）
+  useEffect(() => {
+    // 同步 childrenNodeIdList / 尺寸（这些副作用和 NodeLoop 的模式一致）
+  }, [...]);
+
+  return (
+    <NodeCard selected={selected} {...data}>
+      {/* JSX */}
+    </NodeCard>
+  );
+};
+```
+
+**测试位置与范围**：
+```
+projects/app/test/pageComponents/app/detail/WorkflowComponents/
+└── nodes/Loop/
+    └── parallelRun.utils.test.ts        # 新增
+```
+
+**测试覆盖**（见 §8.2）：
+- `resolveParallelConcurrency` — 默认值/用户输入/env clamp/无效输入
+- `resolveArrayItemValueType` — 字符串数组/对象数组/空引用/无效节点
+- `validateConcurrencyInput` — 正常值/负数/超限/非数字
+
+**不测的部分**：
+- React 组件的渲染结果（依赖 ReactFlow context，搭建环境成本高）
+- useEffect 的副作用（集成到 end-to-end 手动验证 §8.3）
+- NodeLoop **完全不动**（保持 v3 决策：旧功能 0 改动）
+
 ---
 
-## 5. 待确认项（开始编码前需回答）
+## 4. 详细文件清单（v3 精简版）
 
-### 5.1 是否沿用 Loop 的子节点关系机制？
-当前 Loop 的 parentNodeId 机制是通用的，新节点直接用即可。此项默认 ✅。
+### 4.1 新增文件（仅 3 个）
 
-### 5.2 创建 ParallelRun 节点时是否自动生成 Start/End 子节点？
-Loop 节点被拖入画布时，编辑器会自动创建一对 loopStart + loopEnd 子节点。ParallelRun 应该同样处理。需要在**节点创建逻辑**中识别 `parallelRun` 类型并生成对应子节点。
+#### 4.1.1 parallelRun 节点模板
+```
+packages/global/core/workflow/template/system/parallelRun/
+└── parallelRun.ts        # 主容器节点模板，复用 nestedInputArray/nestedArrayResult 等 key
+```
 
-**需要查找的位置**：搜索 `FlowNodeTypeEnum.loop` 在 `projects/app/src/pageComponents/app/detail/WorkflowComponents/` 下的节点创建相关代码（useWorkflow.tsx 或类似的 hook）。
+#### 4.1.2 后端 dispatch
+```
+packages/service/core/workflow/dispatch/parallelRun/
+└── runParallelRun.ts     # 并行主调度，参考 runLoop.ts 但用 Promise.allSettled + 并发限制
+```
 
-### 5.3 并发上限的默认值与上限？
-建议：
-- 节点级默认：5
-- 环境变量：`WORKFLOW_PARALLEL_MAX_CONCURRENCY=10`
-- UI 上允许用户配置 1~env 上限
+> `dispatchLoopStart` / `dispatchLoopEnd` 完全复用（重命名为 `dispatchNestedStart` / `dispatchNestedEnd` 作为机械式 rename）。
 
-请确认该默认是否合理。
+#### 4.1.3 前端 parallelRun 节点组件
+```
+projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/Loop/
+└── NodeParallelRun.tsx   # 参考 NodeLoop.tsx 但 i18n 显示"并行执行"，并多一个并发数输入框
+```
 
-### 5.4 错误处理策略？
-`Promise.allSettled` 后：
-- **方案 A（推荐）**：失败位置填 `null`，在节点响应详情中汇总失败数和错误信息
-- **方案 B**：遇到任一失败整个节点失败（抛出）
+> **不需要新建** NodeParallelRunStart / NodeParallelRunEnd：parallelRun 的 Start/End 子节点直接用 `FlowNodeTypeEnum.nestedStart` / `nestedEnd`，渲染时走 `Flow/index.tsx` 的 `nodeTypes` 映射到原 `NodeLoopStart` / `NodeLoopEnd` 组件。
 
-建议采用 A，与"并行独立"的语义一致。
+#### 4.1.4 图标（2 个 SVG，可选）
+```
+packages/web/components/common/Icon/icons/core/workflow/template/
+├── parallelRun.svg          # 复用 PR #6675 的 loopPro.svg
+└── parallelRunLinear.svg    # 对应线条图标
+```
 
-### 5.5 交互响应（workflowInteractive）？
-建议直接 **不支持**。在 dispatch 中检测到子节点产生 interactive response 时：
-- 方案 A：直接 reject 并提示"并行执行不支持交互节点"
-- 方案 B：吞掉 interactive 并继续
+> Start/End 图标**复用现有的 loopStart/loopEnd 图标**（语义上是通用"嵌套容器起点/终点"）。
 
-建议采用 A（快速失败，用户明确收到错误）。
+### 4.2 修改文件
 
-### 5.6 avatar 图标？
-是否需要 UI 提供新图标？临时方案可以先用 Loop 的图标，后续替换。
+#### 4.2.1 Enum 机械改名（0 行为变更）
+
+所有 `loop*` 键名改为 `nested*`，value 保持原字符串不变。
+
+**源枚举改动**：
+
+| 文件 | 改动 |
+|------|-----|
+| `packages/global/core/workflow/constants.ts` | `NodeInputKeyEnum`: `loopInputArray→nestedInputArray` / `loopStartInput→nestedStartInput` / `loopStartIndex→nestedStartIndex` / `loopEndInput→nestedEndInput` / `loopNodeInputHeight→nestedNodeInputHeight`（值保持）；新增 `parallelRunMaxConcurrency`、`parallelRunArray` |
+| `packages/global/core/workflow/constants.ts` | `NodeOutputKeyEnum`: `loopArray→nestedArrayResult` / `loopStartInput→nestedStartInput` / `loopStartIndex→nestedStartIndex`（值保持）|
+| `packages/global/core/workflow/node/constant.ts` | `FlowNodeTypeEnum`: `loopStart→nestedStart` / `loopEnd→nestedEnd`（值保持）；新增 `parallelRun = 'parallelRun'`；`loop` 保持不变 |
+| `packages/global/core/workflow/template/input.ts` | `Input_Template_LOOP_NODE_OFFSET` → `Input_Template_NESTED_NODE_OFFSET`；内部 `key` 字段引用改为 `nestedNodeInputHeight` |
+
+**引用改名的源文件清单**（约 15-18 个，IDE rename symbol 可一次性完成）：
+- `packages/global/core/workflow/template/system/loop/{loop,loopStart,loopEnd}.ts`
+- `packages/service/core/workflow/dispatch/loop/{runLoop,runLoopStart,runLoopEnd}.ts`
+- `packages/service/core/workflow/dispatch/constants.ts`
+- `projects/app/src/web/core/workflow/utils.ts`
+- `projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/index.tsx`
+- `.../Flow/NodeTemplatesPopover.tsx`
+- `.../Flow/nodes/Loop/{NodeLoop,NodeLoopStart,NodeLoopEnd}.tsx`
+- `.../Flow/hooks/useWorkflow.tsx`（`PARENT_NODE_TYPES` / `checkNodeOverLoopNode` 引用点）
+- `.../Flow/hooks/useKeyboard.tsx`
+- `.../Flow/nodes/render/NodeCard.tsx`
+- `.../Flow/nodes/render/RenderInput/templates/Reference.tsx`
+- `.../context/workflowComputeContext.tsx`
+
+#### 4.2.2 parallelRun 接入点
+
+| 文件 | 改动要点 |
+|------|---------|
+| `packages/global/core/workflow/template/constants.ts` | 导入 `ParallelRunNode`，注册到 `systemNodes`（放在 `LoopNode` 之后）|
+| `packages/service/core/workflow/dispatch/constants.ts` | 注册 `[FlowNodeTypeEnum.parallelRun]: dispatchParallelRun` |
+| `packages/global/common/system/types/index.ts` | `limit` 对象新增 `workflowParallelRunMaxConcurrency?: number` |
+| `projects/app/src/service/common/system/index.ts` (行 125-128) | `defaultFeConfigs.limit` 注入 `workflowParallelRunMaxConcurrency: Number(process.env.WORKFLOW_PARALLEL_MAX_CONCURRENCY) \|\| 10` |
+| `.../Flow/index.tsx` | `nodeTypes` 新增 `[FlowNodeTypeEnum.parallelRun]: dynamic(() => import('./nodes/Loop/NodeParallelRun'))` |
+| `.../Flow/components/NodeTemplates/list.tsx` (325-340) | 把 `=== FlowNodeTypeEnum.loop` 改为 `[loop, parallelRun].includes(...)`，两类节点都自动创建 `nestedStart` + `nestedEnd` 子节点 |
+| `.../Flow/hooks/useWorkflow.tsx:395` | `PARENT_NODE_TYPES` 集合：`new Set([loop, parallelRun])` |
+| `.../Flow/hooks/useWorkflow.tsx:431-468` | `checkNodeOverLoopNode`：父节点识别改为 `[loop, parallelRun].includes(item.type)`；根据父节点类型应用不同的 `unSupportedTypes` 列表（parallelRun 额外禁止 `formInput` / `userSelect` / 嵌套 `parallelRun`）|
+| `.../Flow/hooks/useKeyboard.tsx:71` | 复制黑名单扩展：`item.type !== FlowNodeTypeEnum.loop && item.type !== FlowNodeTypeEnum.parallelRun` |
+| `.../Flow/nodes/render/NodeCard.tsx:221` | `isLoopNode` 扩展为 `[loop, parallelRun].includes(flowNodeType)`（或重命名为 `isNestedContainerNode`）|
+| `.../Flow/nodes/render/RenderInput/templates/Reference.tsx:155` | handle 位置判断同上扩展 |
+| `packages/web/i18n/{zh-CN,en,zh-Hant}/workflow.json` | 新增 `parallel_run` / `intro_parallel_run` / `parallel_run_body` / `can_not_parallel` / `parallel_run_max_concurrency` / `parallel_run_max_concurrency_tip`。**不新增** Start/End 文案（复用现有 `loop_start` / `loop_end`）|
+
+### 4.3 不改动的文件 ✅
+
+以下文件**运行时逻辑完全不变**，只有 IDE rename 带来的 enum 引用替换：
+- `NodeLoop.tsx` / `NodeLoopStart.tsx` / `NodeLoopEnd.tsx`
+- `runLoop.ts` / `runLoopStart.ts` / `runLoopEnd.ts`
+- `loop.ts` / `loopStart.ts` / `loopEnd.ts` 模板定义
+
+> 这些文件的 diff 将全部是 `loopXxx` → `nestedXxx` 的机械替换，无任何逻辑改动。
 
 ---
 
-## 6. 测试计划
+## 5. 已确认的决策（user 2026-04-08 确认）
 
-遵循项目的"测试示例先行"规范，实现前先编写以下测试用例：
+- [x] **5.1** `parallelRunMaxConcurrency` 默认 **5**；env 上限默认 **10** ✅
+- [x] **5.2** 抽 `ContainerNodeShell.tsx` 共享 JSX 外壳 ✅
+- [x] **5.3** 允许重构 NodeLoop.tsx / NodeLoopStart.tsx / NodeLoopEnd.tsx（纯重构，行为等价）✅
+- [x] **5.4** 错误处理：`parallelRunArray` 过滤失败项，`nodeResponse.parallelRunDetail` 带完整 `[{success, index, data/error}, ...]` 状态 ✅
+- [x] **5.5** 交互节点后端**静默忽略**该任务输出（无日志、无告警），节点整体成功返回 ✅
 
-### 6.1 单元测试（`test/` 目录）
+---
+
+## 6. 前置查缺补漏（已完成）
+
+### P1：并行体内禁入节点清单 ✅
+`packages/global/core/workflow/node/constant.ts` 中交互相关 FlowNodeType 只有两个：
+- `formInput`（行 162）
+- `userSelect`（行 158）
+
+> `toolParams`（行 150）是工具参数节点，不是交互节点，不加入禁入。  
+> `workflowInteractive` 不是 enum 值，是 dispatch 返回的响应类型（见 3.5 后端兜底）。
+
+**`unSupportedInParallel` 最终列表**：
+```typescript
+const unSupportedInParallel = [
+  FlowNodeTypeEnum.workflowStart,
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.parallelRun,     // 禁止嵌套
+  FlowNodeTypeEnum.pluginInput,
+  FlowNodeTypeEnum.pluginOutput,
+  FlowNodeTypeEnum.systemConfig,
+  FlowNodeTypeEnum.formInput,       // 交互
+  FlowNodeTypeEnum.userSelect       // 交互
+];
+```
+
+### P2：feConfigs env 注入点 ✅
+**文件**：`projects/app/src/service/common/system/index.ts`  
+**注入位置**：`defaultFeConfigs`（行 114-134），`initSystemConfig` 会和 DB/文件配置合并。
+
+**改动**：
+```typescript
+const defaultFeConfigs: FastGPTFeConfigsType = {
+  // ...
+  limit: {
+    exportDatasetLimitMinutes: 0,
+    websiteSyncLimitMinuted: 0,
+    workflowParallelRunMaxConcurrency:
+      Number(process.env.WORKFLOW_PARALLEL_MAX_CONCURRENCY) || 10
+  },
+  // ...
+};
+```
+
+### P3：图标资源（实现时处理）
+从 PR #6675 的分支下载 `loopPro{,Start,End}.svg` 并重命名到 `parallelRun{,Start,End}.svg`，放到 `packages/web/components/common/Icon/icons/core/workflow/template/`。
+
+### P4：`nodeTypes` 穷举约束 ✅
+`projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/index.tsx:30`：
+```typescript
+const nodeTypes: Record<FlowNodeTypeEnum, any> = { ... };
+```
+**确实使用穷举 Record**。新增 3 个 enum 值后 TS 编译会强制报错直到全部映射。同时需要检查是否还有其他 `Record<FlowNodeTypeEnum, ...>` 的地方（运行时会通过 lint 暴露）。
+
+---
+
+## 7. 不在本次范围
+
+- ❌ 重构 `unique` 检查为 per-parent 作用域
+- ❌ 动态任务间通信 / 优先级调度
+- ❌ 基于结果的 map-reduce 聚合
+- ❌ 并行节点嵌套（明确禁止）
+- ❌ 重新实现 `dispatchLoopStart` / `dispatchLoopEnd`（直接复用）
+
+---
+
+## 8. 测试计划（v3）
+
+> **分层原则**：逻辑层（service/utils）做纯单测（快、稳、覆盖率高）；Integration 层做少量 happy path 验证编排；手动验证兜底 UI。
+
+### 8.1 后端 service 单测（纯函数，无 I/O）
+
+**单文件** + 多个 `describe` 分组：
+
+**文件**：`test/cases/service/core/workflow/dispatch/parallelRun/service.test.ts`
+
+```typescript
+describe('parallelRun/service', () => {
+  describe('clampParallelConcurrency', () => {
+    // - 用户未指定 → 默认 5
+    // - 用户 3，env 10 → 3
+    // - 用户 100，env 10 → 10（clamp）
+    // - 用户 0 / 负数 → 1
+    // - env 缺省 → 10
+    // - 两者都缺省 → 5
+  });
+
+  describe('buildTaskRuntimeContext', () => {
+    // - 克隆后修改 taskRuntimeNodes 不影响原 runtimeNodes（深拷贝验证）
+    // - nestedStart 子节点被正确设为 entry
+    // - nestedStart.nestedStartInput 被设为当前 item
+    // - nestedStart.nestedStartIndex 被设为 index+1
+    // - 非 childrenNodeIdList 里的节点不受影响
+    // - runtimeEdges 经 storeEdges2RuntimeEdges 转换并独立克隆
+  });
+
+  describe('parseTaskResponse', () => {
+    // - 无 interactive、有 nestedEnd → success=true + data
+    // - 有 workflowInteractiveResponse → success=false（静默忽略）
+    // - 无 nestedEnd 响应 → success=true, data=undefined
+  });
+
+  describe('parseTaskError', () => {
+    // - 包装 Error 对象 → success=false, error=message
+    // - 包装字符串 → success=false, error=string
+  });
+
+  describe('aggregateParallelResults', () => {
+    // - 全部成功 → filteredArray 全部 + fullDetail 全 success
+    // - 混合成功/失败 → filteredArray 只含成功项（按顺序）+ fullDetail 保留全部
+    // - 全部失败 → filteredArray=[] + fullDetail 全 failed
+    // - totalPoints 累加正确
+    // - customFeedbacks 合并（按现有 Loop 行为对齐）
+    // - responseDetails / assistantResponses 按原顺序累加
+  });
+});
+```
+
+### 8.2 后端 integration 测试（少而精）
 
 **文件**：`test/cases/service/core/workflow/dispatch/parallelRun/runParallelRun.test.ts`
 
-测试用例：
-1. **基础并行**：输入 `[1, 2, 3]`，子工作流返回 `item * 2`，期望输出 `[2, 4, 6]`，且执行时间接近最慢的那一次而不是总和
-2. **空数组**：输入 `[]`，返回 `[]`
-3. **非数组输入**：reject
-4. **超出最大迭代数**：输入 100 项，`WORKFLOW_MAX_LOOP_TIMES=50` → reject
-5. **并发限制生效**：设 concurrency=2，验证同一时刻最多 2 个任务运行
-6. **顺序保证**：子任务执行时间随机，输出数组顺序仍按输入下标
-7. **单任务失败**（allSettled 策略）：某一项抛错，其他项仍完成，失败位置为 null
-8. **变量隔离**：两个并行任务各自设置同名变量，返回的 newVariables 不合并到主 variables
-9. **交互响应拒绝**：子节点产生 interactive → reject
-10. **runtimeNodes 不被污染**：执行后原始 runtimeNodes 的 isEntry 等状态未被修改
+只测 dispatch 编排，即各 service 正确串联 + runWorkflow 集成：
 
-### 6.2 前端组件测试（可选）
+1. **Happy path**：输入 `[1,2,3]`，子流程 `item*2` → `parallelRunArray = [2,4,6]`
+2. **单任务失败**：index=1 抛错 → `parallelRunArray` 只有 2 项（过滤），`parallelRunDetail` 3 项完整
+3. **交互响应静默**：子节点产生 interactive → 该任务从数组过滤，节点整体成功
+4. **空数组 / 非数组 / 超上限** → 边界行为验证
+5. **变量隔离**：子任务修改同名变量 → 主流程 `newVariables` 不变
+6. **runtimeNodes 不污染**：执行后原 runtimeNodes 未被改（回归保护）
 
-- NodeParallelRun 渲染时正确显示并发数输入
-- childrenNodeIdList 自动同步
-- 数组类型推导正确
+### 8.3 前端 utils 单测
 
-### 6.3 端到端测试（手动验证清单）
+**单文件** + 多个 `describe` 分组，依照项目已有范式（参考 `projects/app/test/pageComponents/app/detail/WorkflowComponents/utils.test.ts`）：
 
-1. 画布上拖入"并行执行"节点 → 自动生成 parallelRunStart + parallelRunEnd
-2. 在并行体内拖入一个 HTTP 节点
-3. 配置输入数组为某个全局变量
-4. 运行工作流，观察日志确认并发（时间戳）
-5. 验证旧的"批量执行"节点同时存在且功能正常
+**文件**：`projects/app/test/pageComponents/app/detail/WorkflowComponents/nodes/Loop/parallelRun.utils.test.ts`
+
+```typescript
+describe('parallelRun.utils', () => {
+  describe('resolveParallelConcurrency', () => {
+    // - inputs 里没有 parallelRunMaxConcurrency → 默认 5
+    // - 有合法值 → 返回该值
+    // - 值 > envMax → clamp 到 envMax
+    // - 值 < 1 → 返回 1
+  });
+
+  describe('resolveArrayItemValueType', () => {
+    // - 引用到 string[] 输出 → 返回 string
+    // - 引用到 object[] → 返回 object
+    // - 空引用 → 返回 any
+    // - 引用到不存在的节点 → 返回 any
+  });
+
+  describe('validateConcurrencyInput', () => {
+    // - 正数 ≤ envMax → valid
+    // - 超限 → invalid, clamped=envMax
+    // - 负数 / 非数字 → invalid
+  });
+});
+```
+
+### 8.4 不做的测试
+
+- ❌ NodeParallelRun 组件渲染测试（需要 ReactFlow context，ROI 低）
+- ❌ NodeLoop 的回归测试（v3 决策：NodeLoop 运行时逻辑完全不变，只有 IDE rename，lint + TS 编译即是回归保护）
+
+### 8.5 手动端到端清单
+
+1. 拖入"并行执行"节点 → 自动生成 parallelRunStart + parallelRunEnd 子节点
+2. 在并行体内拖入 HTTP 节点 → 允许
+3. 在并行体内尝试拖入 formInput 节点 → 被阻塞并 toast
+4. 在并行体内尝试拖入另一个 parallelRun → 被阻塞
+5. 配置输入数组为 `[url1, url2, url3]`，运行工作流 → 各 HTTP 并发执行（观察时间戳/响应时序）
+6. 让其中一个 URL 404 → 结果数组只含 2 项，详情里 3 项带 success 状态
+7. 同一工作流同时存在 Loop 和 ParallelRun，各自工作 → 旧功能零回归
+8. 配置 env `WORKFLOW_PARALLEL_MAX_CONCURRENCY=3` 重启 → 前端输入框 max 显示 3，后端强制限 3
+9. 导入一个包含交互节点的并行体 JSON（绕过前端） → 后端执行时忽略该任务输出
 
 ---
 
-## 7. 不在本次范围内的事项
+## 9. 实施 TODO
 
-以下特性**不做**，避免 scope 蔓延：
-- ❌ 动态在并行任务之间通信（channel / event）
-- ❌ 并行任务的优先级调度
-- ❌ 基于结果的 map-reduce 聚合
-- ❌ 并行节点嵌套限制（允许嵌套，但文档提醒用户小心笛卡尔积）
-- ❌ 重构 NodeLoop（保持现有代码不动）
-- ❌ 抽取父容器节点通用 hook（见 2.1 方案 C）
+### 阶段 1：Enum 改名（纯重构，可独立验证）
+- [ ] **T1**：IDE rename `NodeInputKeyEnum.loop* → nested*`（值保持）
+- [ ] **T2**：IDE rename `NodeOutputKeyEnum.loop* → nested*`（值保持）
+- [ ] **T3**：IDE rename `FlowNodeTypeEnum.loopStart → nestedStart` / `loopEnd → nestedEnd`（值保持；`loop` 保持不变）
+- [ ] **T4**：IDE rename `Input_Template_LOOP_NODE_OFFSET → Input_Template_NESTED_NODE_OFFSET`
+- [ ] **T5**：`pnpm lint && pnpm test` 验证零回归
 
----
+### 阶段 2：后端实现（TDD：先写 service 测试 → 实现 service → 编排）
+- [ ] **T6**：`constants.ts` 新增 `parallelRunMaxConcurrency` / `parallelRunArray`，`node/constant.ts` 新增 `FlowNodeTypeEnum.parallelRun`
+- [ ] **T7**：`feConfigs.limit.workflowParallelRunMaxConcurrency` 类型 + `initSystemConfig` env 注入
+- [ ] **T8**：先写 service 单测（红灯）：单文件 `test/cases/service/core/workflow/dispatch/parallelRun/service.test.ts`，用 5 个 `describe` 分组（clampParallelConcurrency / buildTaskRuntimeContext / parseTaskResponse / parseTaskError / aggregateParallelResults）
+- [ ] **T9**：实现 service 纯函数，集中在单文件 `packages/service/core/workflow/dispatch/parallelRun/service.ts`，导出 5 个函数（clampParallelConcurrency / buildTaskRuntimeContext / parseTaskResponse / parseTaskError / aggregateParallelResults）
+- [ ] **T10**：运行 T8 测试，绿灯 ✅
+- [ ] **T11**：新增 `template/system/parallelRun/parallelRun.ts`（节点模板）
+- [ ] **T12**：新增 `dispatch/parallelRun/runParallelRun.ts`（编排层：`batchRun` + 4 个 service 串联）
+- [ ] **T13**：注册到 `template/constants.ts` 和 `dispatch/constants.ts`
+- [ ] **T14**：编写 `runParallelRun.test.ts` integration 测试（§8.2 的 6 个 case），验证编排
+- [ ] **T15**：运行 T14 测试，绿灯 ✅
 
-## 8. 实施 TODO
+### 阶段 3：前端实现（逻辑层 utils 先行）
+- [ ] **T16**：先写前端 utils 单测（红灯）：单文件 `projects/app/test/pageComponents/app/detail/WorkflowComponents/nodes/Loop/parallelRun.utils.test.ts`，用 3 个 `describe` 分组（resolveParallelConcurrency / resolveArrayItemValueType / validateConcurrencyInput）
+- [ ] **T17**：实现 `Flow/nodes/Loop/parallelRun.utils.ts`（3 个纯函数：`resolveParallelConcurrency` / `resolveArrayItemValueType` / `validateConcurrencyInput`）
+- [ ] **T18**：运行 T16 测试，绿灯 ✅
+- [ ] **T19**：新增 `Flow/nodes/Loop/NodeParallelRun.tsx`（渲染壳，调用 utils）
+- [ ] **T20**：`Flow/index.tsx` `nodeTypes` 注册 `parallelRun`
+- [ ] **T21**：`list.tsx:325-340` 扩展 `[loop, parallelRun].includes(...)`
+- [ ] **T22**：`useWorkflow.tsx` `PARENT_NODE_TYPES` + `checkNodeOverLoopNode` 扩展；parallelRun 应用更严格的 `unSupportedInParallel`（加 `formInput` / `userSelect` / 嵌套 `parallelRun`）
+- [ ] **T23**：`useKeyboard.tsx:71` / `NodeCard.tsx:221` / `Reference.tsx:155` 的 loop 判断扩展
+- [ ] **T24**：i18n 新增 parallel_run 相关文案（zh-CN/en/zh-Hant）
+- [ ] **T25**：SVG 图标（从 PR #6675 复制 `loopPro.svg` → `parallelRun.svg`）
 
-待用户确认上述设计后按顺序执行：
-
-- [ ] **T0**：用户确认设计文档（特别是 5.x 的待确认项）
-- [ ] **T1**：查找 `FlowNodeTypeEnum.loop` 在节点创建逻辑中的硬编码位置（回答 5.2），更新设计
-- [ ] **T2**：编写测试用例骨架（`runParallelRun.test.ts`），先让测试失败
-- [ ] **T3**：新增 enum 与 key 常量（`node/constant.ts`、`constants.ts`）
-- [ ] **T4**：新增节点模板定义（`template/system/parallelRun/*.ts`）
-- [ ] **T5**：新增 dispatch 实现（`dispatch/parallelRun/*.ts`）
-- [ ] **T6**：注册到 `template/constants.ts` 和 `dispatch/constants.ts`
-- [ ] **T7**：新增 i18n 文案（zh-CN、en、zh-Hant）
-- [ ] **T8**：运行 T2 的单元测试，验证后端逻辑 ✅
-- [ ] **T9**：复制 NodeLoop → NodeParallelRun 三个前端组件并适配
-- [ ] **T10**：注册到 `Flow/index.tsx` 的 nodeTypes
-- [ ] **T11**：修改节点创建逻辑（如果 T1 确认需要），使拖入 parallelRun 时自动生成子节点
-- [ ] **T12**：手动端到端验证（见 6.3）
-- [ ] **T13**：运行 `pnpm lint` + `pnpm test` 确保无回归
-- [ ] **T14**：同步必要的中英文文档（`document/` 下的工作流章节）— 可选
+### 阶段 4：收尾
+- [ ] **T26**：完成 §8.5 手动端到端清单
+- [ ] **T27**：`pnpm lint && pnpm test` 全量通过
+- [ ] **T28**（可选）：更新 `document/` 下的工作流文档

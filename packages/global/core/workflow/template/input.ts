@@ -105,10 +105,10 @@ export const Input_Template_Node_Height: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   valueType: WorkflowIOValueTypeEnum.number,
   label: '',
-  value: 600
+  value: 500
 };
-export const Input_Template_LOOP_NODE_OFFSET: FlowNodeInputItemType = {
-  key: NodeInputKeyEnum.loopNodeInputHeight,
+export const Input_Template_NESTED_NODE_OFFSET: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.nestedNodeInputHeight,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   valueType: WorkflowIOValueTypeEnum.number,
   label: '',

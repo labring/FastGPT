@@ -12,6 +12,7 @@
   "privacy_policy": "隱私權政策",
   "redirect": "跳轉",
   "register": "註冊帳號",
+  "reset_password_tip": "新密碼至少 8 位，且至少包含兩種組合：數字、字母或特殊字符",
   "root_password_placeholder": "root 使用者密碼為環境變數 DEFAULT_ROOT_PSW 的值",
   "use_root_login": "使用 root 使用者登入"
 }
