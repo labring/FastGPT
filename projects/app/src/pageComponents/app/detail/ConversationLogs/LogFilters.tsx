@@ -243,10 +243,10 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
           }}
           bg={'myGray.25'}
           h={10}
+          w={'223px'}
           flex={'0 1 250px'}
           rounded={'8px'}
           borderColor={'myGray.200'}
-          formLabel={t('app:logs_date')}
           _hover={{
             borderColor: 'primary.300'
           }}
@@ -254,7 +254,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
       </Flex>
 
       {/* 反馈筛选 */}
-      <Flex>
+      <Flex w="148px">
         <FeedbackSelect
           value={feedbackFilters}
           onChange={setFeedbackFilters}
@@ -264,7 +264,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
       </Flex>
 
       {/* 来源筛选 */}
-      <Flex>
+      <Flex w="148px">
         <MultipleSelect<ChatSourceEnum>
           list={sourceList}
           value={chatSources}

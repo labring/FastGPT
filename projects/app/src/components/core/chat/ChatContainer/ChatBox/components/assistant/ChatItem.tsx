@@ -117,11 +117,10 @@ export const SimpleCitationDisplay = React.memo(
     if (citationList.length === 0) return null;
 
     return (
-      <>
+      <Box mb={'24px'} className="ddd">
         {/* 引用头部 */}
         <Flex
           mt={2}
-          mb="24px"
           height={'24px'}
           alignItems={'center'}
           cursor={'pointer'}
@@ -201,7 +200,7 @@ export const SimpleCitationDisplay = React.memo(
             ))}
           </Box>
         )}
-      </>
+      </Box>
     );
   },
   (prevProps, nextProps) =>
