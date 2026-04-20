@@ -18,6 +18,7 @@ import type {
   ListAppsBySkillIdQuery,
   AppsBySkillIdItem
 } from '@fastgpt/global/core/agentSkills/api';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -25,7 +26,7 @@ async function handler(
   const { skillId } = req.query;
 
   if (!skillId) {
-    return Promise.reject(new Error('skillId is required'));
+    return Promise.reject(SkillErrEnum.invalidSkillId);
   }
 
   const {

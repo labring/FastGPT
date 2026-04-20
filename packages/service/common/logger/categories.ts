@@ -88,7 +88,9 @@ export const LogCategories = {
     }),
     AGENT_SKILLS: Object.assign(['agent-skills'], {
       CREATION: ['agent-skills', 'create-skill'],
-      EXPORT: ['agent-skills', 'export-skill']
+      EXPORT: ['agent-skills', 'export-skill'],
+      DEPLOY: ['agent-skills', 'deploy-skill'],
+      IMPORT: ['agent-skills', 'import-skill']
     }),
     USER: Object.assign(['user'], {
       ACCOUNT: ['user', 'account'],

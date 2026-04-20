@@ -18,6 +18,7 @@ import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { CopySkillBody, CopySkillResponse } from '@fastgpt/global/core/agentSkills/api';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillResponse> {
   const { skillId } = req.body;
@@ -51,7 +52,7 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
   const copyName = `${skill.name} Copy`;
 
   if (!skill.currentStorage) {
-    return Promise.reject(new Error('Skill has no storage, cannot copy'));
+    return Promise.reject(SkillErrEnum.noStorage);
   }
 
   // 4. Transaction: copy avatar → create skill record → copy MinIO package → create version → write owner record

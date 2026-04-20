@@ -55,6 +55,7 @@ export type ErrType<T> = Record<
     statusText: T;
     message: string;
     data: null;
+    httpStatus?: number;
   }
 >;
 
@@ -65,6 +66,7 @@ export const ERROR_RESPONSE: Record<
     statusText: string;
     message: string;
     data?: any;
+    httpStatus?: number;
   }
 > = {
   [ERROR_ENUM.unAuthorization]: {

@@ -21,6 +21,7 @@ export interface ProcessedError {
   statusText: string;
   message: string;
   shouldClearCookie: boolean;
+  httpStatus: number;
   data?: any;
   zodError?: any;
 }
@@ -90,6 +91,7 @@ export function processError(params: {
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message: ERROR_RESPONSE[errResponseKey].message,
       data: ERROR_RESPONSE[errResponseKey].data,
+      httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
       shouldClearCookie
     };
   }
@@ -127,6 +129,7 @@ export function processError(params: {
     statusText: 'error',
     message: replaceSensitiveText(msg),
     shouldClearCookie: false,
+    httpStatus: defaultCode,
     zodError
   };
 }
