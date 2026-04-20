@@ -22,7 +22,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
-  const { parentId, name, intro } = CreateDatasetFolderBodySchema.parse(req.body);
+  const { parentId, name, intro, avatar } = CreateDatasetFolderBodySchema.parse(req.body);
 
   const { teamId, tmbId } = parentId
     ? await authDataset({
@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
   await mongoSessionRun(async (session) => {
     const dataset = await MongoDataset.create({
       ...parseParentIdInMongo(parentId),
-      avatar: FolderImgUrl,
+      avatar: avatar || FolderImgUrl,
       name,
       intro,
       teamId,

@@ -7,6 +7,7 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import { useContextSelector } from 'use-context-selector';
 import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/agent/context';
@@ -323,6 +324,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <EditFolderModal
           {...editFolder}
           onClose={() => setEditFolder(undefined)}
+          getPresignedUrl={getUploadAvatarPresignedUrl}
           onCreate={(data) => onCreateFolder({ ...data, parentId, type: AppTypeEnum.toolFolder })}
           onEdit={({ id, ...data }) => onUpdateApp(id, data)}
         />

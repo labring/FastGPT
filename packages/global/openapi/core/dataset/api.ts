@@ -307,6 +307,10 @@ export const CreateDatasetFolderBodySchema = z.object({
   intro: z.string().meta({
     example: '存放产品相关知识库',
     description: '文件夹简介'
+  }),
+  avatar: z.string().optional().meta({
+    example: '/imgs/dataset/avatar.png',
+    description: '文件夹头像'
   })
 });
 export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;

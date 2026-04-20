@@ -16,6 +16,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { type EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import dynamic from 'next/dynamic';
 import { postCreateDatasetFolder, resumeInheritPer, postChangeOwner } from '@/web/core/dataset/api';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
@@ -275,12 +276,14 @@ const Dataset = () => {
         <EditFolderModal
           {...editFolderData}
           onClose={() => setEditFolderData(undefined)}
-          onCreate={async ({ name, intro }) => {
+          getPresignedUrl={getUploadAvatarPresignedUrl}
+          onCreate={async ({ name, intro, avatar }) => {
             try {
               await postCreateDatasetFolder({
                 parentId: parentId || undefined,
                 name,
-                intro: intro ?? ''
+                intro: intro ?? '',
+                avatar
               });
               loadMyDatasets();
               refetchPaths();
@@ -288,12 +291,13 @@ const Dataset = () => {
               return Promise.reject(error);
             }
           }}
-          onEdit={async ({ name, intro, id }) => {
+          onEdit={async ({ name, intro, avatar, id }) => {
             try {
               await onUpdateDataset({
                 id,
                 name,
-                intro
+                intro,
+                avatar
               });
             } catch (error) {
               return Promise.reject(error);
