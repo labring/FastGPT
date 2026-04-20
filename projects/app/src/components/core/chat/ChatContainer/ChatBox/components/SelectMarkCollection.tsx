@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dynamic from 'next/dynamic';
-import { type AdminFbkType } from '@fastgpt/global/core/chat/type.d';
+import { type AdminFbkType } from '@fastgpt/global/core/chat/type';
 import FilesCascader from './FilesCascader';
 import type { FileSelection } from './FilesCascader';
 import EvaluationDatasetSelector from './EvaluationDatasetSelector';

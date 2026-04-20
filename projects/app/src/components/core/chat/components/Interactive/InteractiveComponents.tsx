@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { Box, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
+import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import {
-  type UserInputInteractive,
-  type UserSelectInteractive,
-  type UserSelectOptionItemType
+import type {
+  UserInputInteractive,
+  UserSelectInteractive,
+  UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
@@ -156,7 +156,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                 validate: (value) => {
                   if (input.type === 'password' && input.minLength) {
                     if (!value || typeof value !== 'object' || !value.value) {
-                      return false;
+                      return t('common:required');
                     }
                     if (value.value.length < input.minLength) {
                       return t('common:min_length', { minLenth: input.minLength });
@@ -187,7 +187,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                       isInvalid={!!error}
                       isRichText={false}
                     />
-                    {error && <FormErrorMessage>{error.message}</FormErrorMessage>}
+                    {error && error.message && <FormErrorMessage>{error.message}</FormErrorMessage>}
                   </FormControl>
                 );
               }}

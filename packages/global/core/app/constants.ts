@@ -1,16 +1,19 @@
 import {
   type AppTTSConfigType,
-  type AppFileSelectConfigType,
   type AppWhisperConfigType,
   type AppAutoExecuteConfigType,
   type AppQGConfigType
 } from './type';
+import type { AppFileSelectConfigType } from './type/config.schema';
+import { i18nT } from '../../common/i18n/utils';
+import { FlowNodeTemplateTypeEnum } from '../workflow/constants';
+import { type TemplateTypeSchemaType } from './type';
 
 export enum AppTypeEnum {
   folder = 'folder',
   toolFolder = 'toolFolder',
   simple = 'simple',
-  agent = 'agent',
+  chatAgent = 'chatAgent',
   workflow = 'advanced',
   workflowTool = 'plugin',
   mcpToolSet = 'toolSet', // 'mcp'
@@ -34,7 +37,12 @@ export const ToolTypeList = [
   AppTypeEnum.httpToolSet,
   AppTypeEnum.workflowTool
 ];
-export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.agent, AppTypeEnum.workflow, AppTypeEnum.assistant];
+export const AppTypeList = [
+  AppTypeEnum.simple,
+  AppTypeEnum.chatAgent,
+  AppTypeEnum.workflow,
+  AppTypeEnum.assistant
+];
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 
@@ -62,9 +70,9 @@ export const defaultChatInputGuideConfig = {
 };
 
 export const defaultAppSelectFileConfig: AppFileSelectConfigType = {
+  maxFiles: 10,
   canSelectFile: false,
   canSelectImg: false,
-  maxFiles: 10,
   canSelectVideo: false,
   canSelectAudio: false,
   canSelectCustomFileExtension: false,
@@ -87,6 +95,61 @@ export const AssistantGlobalVarKey = {
   FALLBACK_REPLY: 'byG7WNk4',
   ENABLE_FALLBACK_REPLY: 'vKEVhtS6'
 } as const;
+
+export const workflowSystemNodeTemplateList: {
+  type: string;
+  label: string;
+}[] = [
+  {
+    type: FlowNodeTemplateTypeEnum.systemInput,
+    label: i18nT('common:core.module.template.System input module')
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.ai,
+    label: i18nT('common:core.module.template.AI function')
+  },
+
+  {
+    type: FlowNodeTemplateTypeEnum.interactive,
+    label: i18nT('common:core.workflow.template.Interactive')
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.tools,
+    label: i18nT('app:tool_type_tools')
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.other,
+    label: i18nT('common:Other')
+  }
+];
+
+export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
+  {
+    typeName: i18nT('common:templateTags.Writing'),
+    typeId: AppTemplateTypeEnum.writing,
+    typeOrder: 0
+  },
+  {
+    typeName: i18nT('common:templateTags.Image_generation'),
+    typeId: AppTemplateTypeEnum.imageGeneration,
+    typeOrder: 1
+  },
+  {
+    typeName: i18nT('common:templateTags.Web_search'),
+    typeId: AppTemplateTypeEnum.webSearch,
+    typeOrder: 2
+  },
+  {
+    typeName: i18nT('common:templateTags.Roleplay'),
+    typeId: AppTemplateTypeEnum.roleplay,
+    typeOrder: 3
+  },
+  {
+    typeName: i18nT('common:templateTags.Office_services'),
+    typeId: AppTemplateTypeEnum.officeServices,
+    typeOrder: 4
+  }
+];
 
 export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
 
@@ -131,4 +194,3 @@ export const getUploadFileType = ({
   }
   return types.join(', ');
 };
-

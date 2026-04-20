@@ -7,9 +7,11 @@ import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vit
 import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { loadVectorDBEnv } from './utils/env';
 
 vi.stubEnv('NODE_ENV', 'test');
+
+loadVectorDBEnv({ envFileNames: ['.env.test.local'] });
 
 beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
@@ -40,13 +42,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (connectionMongo?.connection) connectionMongo?.connection.close();
-  if (connectionLogMongo?.connection) connectionLogMongo?.connection.close();
+  await connectionMongo?.connection.db?.dropDatabase();
+  await connectionLogMongo?.connection.db?.dropDatabase();
 });
 
 beforeEach(async () => {
-  await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
-  await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
+  // await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
+  // await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 
   onTestFinished(async () => {
     clean();
@@ -63,5 +65,3 @@ beforeEach(async () => {
     }
   });
 });
-
-delay(1000);

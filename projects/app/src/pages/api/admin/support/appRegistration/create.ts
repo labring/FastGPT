@@ -60,7 +60,7 @@ async function handler(
 
   // 获取团队套餐信息
   const teamPlanStatus = await getTeamPlanStatus({ teamId: String(app.teamId) });
-  const appRegistrationLimit = teamPlanStatus?.standardConstants?.appRegistrationCount;
+  const appRegistrationLimit = teamPlanStatus?.standard?.appRegistrationCount;
 
   // 检查是否有配额限制
   if (appRegistrationLimit && appRegistrationLimit > 0) {

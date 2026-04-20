@@ -11,7 +11,8 @@ import {
   type AppTemplateSchemaType,
   type TemplateTypeSchemaType
 } from '@fastgpt/global/core/app/type';
-import { form2AppWorkflow } from '@/web/core/app/utils';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';
@@ -69,7 +70,11 @@ const TemplateMarket = ({
       const templateDetail = await getTemplateMarketItemDetail(template.templateId);
 
       if (template.type === AppTypeEnum.simple) {
-        const completeWorkflow = form2AppWorkflow(templateDetail.workflow, t);
+        // TODO: 特殊类型
+        const completeWorkflow = form2AppWorkflow(
+          templateDetail.workflow as unknown as AppFormEditFormType,
+          t
+        );
         templateDetail.workflow = completeWorkflow;
       }
 

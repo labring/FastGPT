@@ -36,6 +36,7 @@ const MyApps = () => {
   const map = useMemo(
     () => ({
       all: t('common:core.module.template.all_team_app'),
+      [AppTypeEnum.chatAgent]: 'Agent',
       [AppTypeEnum.simple]: t('app:type.Chat_Agent'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.workflowTool]: t('app:toolType_workflow'),

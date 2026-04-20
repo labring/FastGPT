@@ -20,14 +20,12 @@ export async function mockSynthesizeEvalData(
   await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
   if (process.env.MOCK_DITING_SYNTH_FAIL === 'true') {
-    addLog.debug(
-      '[MOCK] DiTing synthesize eval data - injecting failure via MOCK_DITING_SYNTH_FAIL'
-    );
     return {
       success: false,
       requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       status: 'failed',
-      error: 'Mock failure injected via MOCK_DITING_SYNTH_FAIL'
+      error: 'Mock synthesis failed',
+      usages: []
     };
   }
 

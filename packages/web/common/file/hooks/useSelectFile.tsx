@@ -2,6 +2,7 @@ import React, { useRef, useCallback } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useToast } from '../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
+
 export const useSelectFile = (props?: {
   fileType?: string;
   multiple?: boolean;

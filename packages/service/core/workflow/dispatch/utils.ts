@@ -1,17 +1,19 @@
 import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
+import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
-  type RuntimeEdgeItemType,
   type RuntimeNodeItemType,
   type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../common/response';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { type NextApiResponse } from 'next';
 import {
   DispatchNodeResponseKeyEnum,
@@ -27,8 +29,82 @@ import { getMCPChildren } from '../../../core/app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { addLog } from '../../../common/system/log';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
+import type { WorkflowResponseType } from './type';
+import { getLogger, LogCategories } from '../../../common/logger';
+import { anyValueDecrypt } from '../../../common/secret/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { presignVariablesFileUrls } from '../../chat/utils';
+import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+
+/* get system variable */
+export const getSystemVariables = async ({
+  timezone,
+  runningAppInfo,
+  chatId,
+  responseChatItemId,
+  histories = [],
+  uid,
+  chatConfig,
+  variables
+}: {
+  runningAppInfo: ChatDispatchProps['runningAppInfo'];
+  chatId: ChatDispatchProps['chatId'];
+  responseChatItemId: ChatDispatchProps['responseChatItemId'];
+  histories: ChatDispatchProps['histories'];
+  uid: ChatDispatchProps['uid'];
+  chatConfig: ChatDispatchProps['chatConfig'];
+  variables: ChatDispatchProps['variables'];
+  timezone: string;
+}): Promise<SystemVariablesType> => {
+  // Get global variables(Label -> key; Key -> key)
+  const variablesConfig = chatConfig?.variables || [];
+
+  const variablesMap: Record<string, any> = {};
+  for await (const item of variablesConfig) {
+    // For internal variables, ignore external input and use default value
+    if (item.type === VariableInputEnum.password) {
+      const val = variables[item.label] || variables[item.key] || item.defaultValue;
+      const actualValue = anyValueDecrypt(val);
+      variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
+    }
+    //  文件类型全局变量，签发成 string[] 格式
+    else if (item.type === VariableInputEnum.file) {
+      const vars = await presignVariablesFileUrls({
+        variables,
+        variableConfig: [item]
+      });
+
+      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
+    }
+    // API
+    else if (variables[item.label] !== undefined) {
+      variablesMap[item.key] = valueTypeFormat(variables[item.label], item.valueType);
+    }
+    // Web
+    else if (variables[item.key] !== undefined) {
+      variablesMap[item.key] = valueTypeFormat(variables[item.key], item.valueType);
+    } else {
+      variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    }
+  }
+
+  return {
+    ...variablesMap,
+    // 功能入口变量：不在 variablesConfig 中，从请求原始 variables 中直接透传
+    ...(variables[ENTRY_POINT_VARIABLE_KEY] !== undefined
+      ? { [ENTRY_POINT_VARIABLE_KEY]: variables[ENTRY_POINT_VARIABLE_KEY] }
+      : {}),
+    // System var:
+    userId: uid,
+    appId: String(runningAppInfo.id),
+    chatId,
+    responseChatItemId,
+    histories,
+    cTime: getSystemTime(timezone)
+  };
+};
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -43,18 +119,8 @@ export const getWorkflowResponseWrite = ({
   id?: string;
   showNodeStatus?: boolean;
 }) => {
-  return ({
-    write,
-    event,
-    data
-  }: {
-    write?: (text: string) => void;
-    event: SseResponseEventEnum;
-    data: Record<string, any>;
-  }) => {
-    const useStreamResponse = streamResponse;
-
-    if (!res || res.closed || !useStreamResponse) return;
+  const fn: WorkflowResponseType = ({ id, stepId, event, data }) => {
+    if (!res || res.closed || !streamResponse) return;
 
     // Forbid show detail
     const notDetailEvent: Record<string, 1> = {
@@ -74,11 +140,84 @@ export const getWorkflowResponseWrite = ({
 
     responseWrite({
       res,
-      write,
       event: detail ? event : undefined,
-      data: JSON.stringify(data)
+      data: JSON.stringify({
+        ...data,
+        ...(stepId && detail && { stepId }),
+        ...(id && detail && { responseValueId: id })
+      })
     });
   };
+  return fn;
+};
+export const getWorkflowChildResponseWrite = ({
+  id,
+  stepId,
+  fn
+}: {
+  id: string;
+  stepId: string;
+  fn?: WorkflowResponseType;
+}): WorkflowResponseType | undefined => {
+  if (!fn) return;
+  return (e: Parameters<WorkflowResponseType>[0]) => {
+    return fn({ ...e, id, stepId });
+  };
+};
+
+/* 
+  Filter orphan edges from workflow.
+  Orphan edges are edges that have a source or target that is not in the nodes array.
+  This is used to prevent errors when the workflow is edited and the nodes are not updated.
+*/
+export const filterOrphanEdges = ({
+  edges,
+  nodes,
+  workflowId
+}: {
+  edges: RuntimeEdgeItemType[];
+  nodes: RuntimeNodeItemType[];
+  workflowId: string;
+}) => {
+  const filterStartTime = Date.now();
+  const validNodeIds = new Set(nodes.map((node) => node.nodeId));
+  const originalEdgeCount = edges.length;
+  const orphanEdges: RuntimeEdgeItemType[] = [];
+
+  const filteredEdges = edges.filter((edge) => {
+    const sourceExists = validNodeIds.has(edge.source);
+    const targetExists = validNodeIds.has(edge.target);
+
+    // Log orphan edges for debugging
+    if (!sourceExists || !targetExists) {
+      orphanEdges.push(edge);
+    }
+
+    return sourceExists && targetExists;
+  });
+
+  const filteredCount = originalEdgeCount - filteredEdges.length;
+  if (filteredCount > 0) {
+    getLogger(LogCategories.MODULE.WORKFLOW).info(
+      `Filtered ${filteredCount} orphan edge(s) from workflow`,
+      {
+        workflowId,
+        originalCount: originalEdgeCount,
+        finalCount: filteredEdges.length
+      }
+    );
+
+    if (orphanEdges.length > 0) {
+      getLogger(LogCategories.MODULE.WORKFLOW).warn(`Orphan edges details: ${orphanEdges.length}`);
+    }
+  }
+
+  const filterDuration = Date.now() - filterStartTime;
+  if (filterDuration > 100) {
+    getLogger(LogCategories.MODULE.WORKFLOW).warn('Orphan edge filtering took significant time');
+  }
+
+  return filteredEdges;
 };
 
 export const filterToolNodeIdByEdges = ({
@@ -95,7 +234,10 @@ export const filterToolNodeIdByEdges = ({
     .map((edge) => edge.target);
 };
 
-export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
+export const getHistories = (
+  history?: ChatItemMiniType[] | number,
+  histories: ChatItemMiniType[] = []
+) => {
   if (!history) return [];
   // Select reference history
   if (Array.isArray(history)) return history;
@@ -198,8 +340,7 @@ export const runtimeSystemVar2StoreType = ({
             return {
               id: path.basename(key, path.extname(key)), // filename without extension
               key,
-              name: filename,
-              type: isImage ? ChatFileTypeEnum.image : ChatFileTypeEnum.file
+              name: filename
             };
           } catch {
             return null;
@@ -259,6 +400,7 @@ export const rewriteRuntimeWorkFlow = async ({
 
   for (const toolSetNode of toolSetNodes) {
     nodeIdsToRemove.add(toolSetNode.nodeId);
+
     const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
     const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet ?? toolSetNode.inputs?.[0]?.value;
     const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
@@ -291,35 +433,29 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!app) continue;
       const toolList = await getMCPChildren(app);
 
-      const parentId = mcpToolsetVal.toolId ?? toolSetNode.pluginId;
+      // mcpToolsetVal.toolId: 旧版 MCP
+      const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
+
       toolList.forEach((tool, index) => {
         const newToolNode = getMCPToolRuntimeNode({
+          nodeId: `${toolSetNode.nodeId}${index}`,
+          toolSetId,
+          toolsetName: toolSetNode.name,
           avatar: toolSetNode.avatar,
-          tool,
-          // New ?? Old
-          parentId
+          tool
         });
-        newToolNode.nodeId = `${parentId}${index}`; // ID 不能随机，否则下次生成时候就和之前的记录对不上
-
-        nodes.push({
-          ...newToolNode,
-          name: `${toolSetNode.name}/${tool.name}`
-        });
+        nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
     } else if (httpToolsetVal) {
-      const parentId = toolSetNode.pluginId || '';
       httpToolsetVal.toolList.forEach((tool: HttpToolConfigType, index: number) => {
         const newToolNode = getHTTPToolRuntimeNode({
-          tool: {
-            ...tool,
-            name: `${toolSetNode.name}/${tool.name}`
-          },
-          nodeId: `${parentId}${index}`,
+          tool,
+          nodeId: `${toolSetNode.nodeId}${index}`,
           avatar: toolSetNode.avatar,
-          parentId
+          toolSetId: toolSetNode.pluginId!,
+          toolsetName: toolSetNode.name
         });
-
         nodes.push(newToolNode);
         pushEdges(newToolNode.nodeId);
       });
@@ -343,7 +479,6 @@ export const getNodeErrResponse = ({
   error,
   customErr,
   responseData,
-  nodeDispatchUsages,
   runTimes,
   newVariables,
   system_memories
@@ -351,7 +486,6 @@ export const getNodeErrResponse = ({
   error: any;
   customErr?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
-  [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
   [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
@@ -359,7 +493,6 @@ export const getNodeErrResponse = ({
   const errorText = getErrText(error);
 
   return {
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
     [DispatchNodeResponseKeyEnum.memories]: system_memories,

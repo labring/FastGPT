@@ -7,9 +7,9 @@ import type {
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { addLog } from '../../../../common/system/log';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { addLog } from '../../../../common/system/log';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
@@ -68,25 +68,17 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   const { isEntry } = node;
 
   const resolvedUserInputForms = userInputForms.map((form) => {
-    if (
-      ![
-        FlowNodeInputTypeEnum.select,
-        FlowNodeInputTypeEnum.multipleSelect
-      ].includes(form.type)
-    ) {
+    if (![FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(form.type)) {
       return form;
     }
 
-    if (
-      form.listInputType !== FlowNodeInputTypeEnum.reference ||
-      !form.listReference
-    ) {
+    if (form.listInputType !== FlowNodeInputTypeEnum.reference || !form.listReference) {
       return form;
     }
 
     const resolvedReferenceValue = getReferenceVariableValue({
       value: form.listReference,
-      nodes: runtimeNodes,
+      nodesMap: new Map(runtimeNodes.map((node) => [node.nodeId, node])),
       variables
     });
 
@@ -117,7 +109,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     try {
       return JSON.parse(text);
     } catch (error) {
-      addLog.warn('formInput error', { error });
+      addLog.warn('Failed to parse form input JSON', { error });
       return {};
     }
   })();

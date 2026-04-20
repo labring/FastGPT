@@ -1,6 +1,7 @@
 import { POST } from '@/web/common/api/request';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { useSystemStore } from '../../system/useSystemStore';
+import type { WorkflowDemoTrackData } from './workflowDemoTrack';
 
 const createTrack = ({ event, data }: { event: TrackEnum; data: any }) => {
   if (!useSystemStore.getState()?.feConfigs?.isPlus) return;
@@ -39,6 +40,12 @@ export const webPushTrack = {
   clientError: (data: { route: string; log: string }) => {
     return createTrack({
       event: TrackEnum.clientError,
+      data
+    });
+  },
+  workflowDemoMode: (data: WorkflowDemoTrackData) => {
+    return createTrack({
+      event: TrackEnum.workflowDemoMode,
       data
     });
   }

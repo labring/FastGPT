@@ -1,0 +1,86 @@
+# ==============================================================================
+# BatchSandbox with Heterogeneous Tasks（带异构任务的批量沙箱）
+# ==============================================================================
+#
+# 用途：演示如何使用 Pool 批量执行异构任务（每个 sandbox 执行不同任务）
+#
+# 使用场景：
+#   - RL 训练：批量创建训练环境，每个环境执行不同策略
+#   - 压力测试：批量执行不同的测试用例
+#   - 数据处理：并行处理多个数据分片
+#
+# 注意：
+#   - 此示例主要用于 kubectl 直接创建的批量任务场景
+#   - SDK 使用场景通常不需要预创建 BatchSandbox（动态创建即可）
+#   - 需要先创建 pool-agent-production.yaml
+#
+# 相关文档：
+#   - /data/home/cz/sandbox-test/pool-analysis/opensandbox_pool_usage_guide.md
+#
+# ==============================================================================
+
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: BatchSandbox
+metadata:
+  name: task-batch-sandbox
+  namespace: default
+  labels:
+    use-case: batch-training
+  annotations:
+    description: "批量异构任务示例"
+spec:
+  # 创建3个沙箱副本，每个执行不同的任务
+  replicas: 3
+
+  # 使用包含 execd + task-executor 的 Pool
+  # 注意：需要先创建 pool-agent-production.yaml
+  poolRef: agent-pool
+
+  # TTL：3600秒（1小时）后自动清理
+  ttlSecondsAfterFinished: 3600
+
+  # 默认任务模板（如果shardTaskPatches没有覆盖，则使用此模板）
+  taskTemplate:
+    spec:
+      process:
+        command: ["echo", "Default task message"]
+
+  # 异构任务：为每个沙箱自定义不同的任务
+  shardTaskPatches:
+  # 第1个沙箱的任务
+  - spec:
+      process:
+        command: ["bash", "-c"]
+        args:
+        - |
+          echo "Task 1: Running Python script"
+          python3 -c "
+          import time
+          print('Task 1 started')
+          time.sleep(2)
+          print('Task 1 completed')
+          "
+
+  # 第2个沙箱的任务
+  - spec:
+      process:
+        command: ["bash", "-c"]
+        args:
+        - |
+          echo "Task 2: Running shell commands"
+          date
+          uname -a
+          sleep 1
+          echo "Task 2 completed"
+
+  # 第3个沙箱的任务
+  - spec:
+      process:
+        command: ["bash", "-c"]
+        args:
+        - |
+          echo "Task 3: System info check"
+          cat /etc/os-release
+          df -h
+          free -h
+          echo "Task 3 completed"

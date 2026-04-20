@@ -5,30 +5,14 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { isS3ObjectKey, jwtSignS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
+import {
+  GetTrainingDataDetailBodySchema,
+  GetTrainingDataDetailResponseSchema,
+  type GetTrainingDataDetailResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
 
-export type getTrainingDataDetailQuery = {};
-
-export type getTrainingDataDetailBody = {
-  datasetId: string;
-  collectionId: string;
-  dataId: string;
-};
-
-export type getTrainingDataDetailResponse =
-  | {
-      _id: string;
-      datasetId: string;
-      mode: string;
-      q?: string;
-      a?: string;
-      imagePreviewUrl?: string;
-    }
-  | undefined;
-
-async function handler(
-  req: ApiRequestProps<getTrainingDataDetailBody, getTrainingDataDetailQuery>
-): Promise<getTrainingDataDetailResponse> {
-  const { datasetId, collectionId, dataId } = req.body;
+async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
+  const { datasetId, collectionId, dataId } = GetTrainingDataDetailBodySchema.parse(req.body);
 
   const { teamId } = await authDatasetCollection({
     req,
@@ -41,10 +25,10 @@ async function handler(
   const data = await MongoDatasetTraining.findOne({ teamId, datasetId, _id: dataId }).lean();
 
   if (!data) {
-    return undefined;
+    return GetTrainingDataDetailResponseSchema.parse(null);
   }
 
-  return {
+  return GetTrainingDataDetailResponseSchema.parse({
     _id: data._id,
     datasetId: data.datasetId,
     mode: data.mode,
@@ -54,7 +38,7 @@ async function handler(
         : undefined,
     q: data.q,
     a: data.a
-  };
+  });
 }
 
 export default NextAPI(handler);

@@ -1,5 +1,5 @@
 import { LangEnum } from '../../../common/i18n/type';
-import { getLang } from '../../../../web/hooks/useI18n';
+import { getLang } from '../../../common/i18n/utils';
 
 export const Prompt_AgentQA = {
   description: `<Context></Context> 标记中是一段文本，学习和分析它，并整理学习成果：

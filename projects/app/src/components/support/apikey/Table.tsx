@@ -23,7 +23,7 @@ import {
   delOpenApiById,
   putOpenApiKey
 } from '@/web/support/openapi/api';
-import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
+import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import dayjs from 'dayjs';
 import { AddIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
@@ -41,7 +41,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getAppDetailById } from '@/web/core/app/api';
-import type { AppDetailType } from '@fastgpt/global/core/app/type.d';
+import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
@@ -90,7 +90,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
 
   useEffect(() => {
     if (appId) {
-      getAppDetailById(appId).then(setAppDetail);
+      getAppDetailById(appId).then((detail) => setAppDetail(detail));
     }
   }, [appId]);
 

@@ -12,6 +12,7 @@ import {
   SubTypeEnum
 } from '@fastgpt/global/support/wallet/sub/constants';
 import type { TeamSubSchemaType } from '@fastgpt/global/support/wallet/sub/type';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const subCollectionName = 'team_subscriptions';
 
@@ -73,6 +74,8 @@ const SubSchema = new Schema({
   maxUploadFileSize: Number,
   maxUploadFileCount: Number,
 
+  enableSandbox: Boolean, // 虚拟机
+
   // stand sub and extra points sub. Plan total points
   totalPoints: Number,
   // plan surplus points
@@ -104,7 +107,8 @@ try {
     }
   );
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build subscription indexes', { error });
 }
 
 export const MongoTeamSub = getMongoModel<TeamSubSchemaType>(subCollectionName, SubSchema);

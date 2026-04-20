@@ -2,7 +2,7 @@ import {
   loadRequestMessages,
   filterGPTMessageByMaxContext
 } from '@fastgpt/service/core/ai/llm/utils';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
@@ -34,7 +34,6 @@ vi.mock('axios', () => ({
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
 
 // @ts-ignore
 import axios from 'axios';

@@ -1,11 +1,11 @@
 import { getVlmModel, getVlmModelList, getLLMModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type {
   CustomFileImportModeType,
   CustomLinkImportModeType,
   CustomEnhanceConfigType
-} from '@fastgpt/global/common/system/types/index.d';
+} from '@fastgpt/global/common/system/types';
 
 export type AdaptiveConfigParams = {
   dataset: DatasetSchemaType;

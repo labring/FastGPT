@@ -3,12 +3,11 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { XYPosition } from 'reactflow';
 import { AppModuleItemTypeEnum, ModulesInputItemTypeEnum } from '../constants/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import type { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/workflow/node/type.d';
 import {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io.d';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+} from '@fastgpt/global/core/workflow/type/io';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';

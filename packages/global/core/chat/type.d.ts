@@ -12,9 +12,9 @@ import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '../workflow/constants'
 import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
 import type { AppSchema, VariableItemType } from '../app/type';
 import { AppChatConfigType } from '../app/type';
-import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
+import type { AppSchema as AppType } from '@fastgpt/global/core/app/type';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
+import type { DispatchNodeResponseType } from '../workflow/runtime/type';
 import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
 import type { FlowNodeInputItemType } from '../workflow/type/io';

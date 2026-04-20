@@ -8,14 +8,15 @@ import {
   VectorVQ
 } from '../constants';
 import { PgClient, connectPg } from './controller';
-import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type {
   VectorControllerType,
   DatabaseEmbeddingRecallCtrlProps,
   DatabaseEmbeddingRecallResponse
 } from '../type';
 import dayjs from 'dayjs';
-import { addLog } from '../../system/log';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
 export class PgVectorCtrl implements VectorControllerType {
   constructor() {}
@@ -115,9 +116,9 @@ export class PgVectorCtrl implements VectorControllerType {
       //   autovacuum_vacuum_cost_limit = 2000
       // );`)
 
-      addLog.info('init pg successful');
+      logger.info('Postgres vector initialization completed');
     } catch (error) {
-      addLog.error('init pg error', error);
+      logger.error('Postgres vector initialization failed', { error });
     }
   };
   insert: VectorControllerType['insert'] = async (props) => {
@@ -240,7 +241,11 @@ export class PgVectorCtrl implements VectorControllerType {
           ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
         COMMIT;`
     );
-    const rows = results?.[results.length - 2]?.rows as PgSearchRawType[];
+    const rows = results?.[results.length - 2]?.rows as {
+      id: string;
+      collection_id: string;
+      score: number;
+    }[];
 
     if (!Array.isArray(rows)) {
       return {

@@ -128,5 +128,12 @@
   "train_detail_confirm_delete": "確認刪除該訓練任務？",
   "all_datasets": "全部知識庫",
   "base_model_tab": "基礎模型",
-  "custom_model_tab": "新建模型"
+  "custom_model_tab": "新建模型",
+  "cache_hit_analysis": "緩存分析",
+  "cache_hit_count": "緩存命中次數",
+  "cache_hit_rate": "緩存命中率",
+  "clear": "清空",
+  "price_tier_open_ended": "無窮",
+  "rerank_max_token": "最大 Token 限制",
+  "rerank_max_token_tip": "Rerank 階段單次請求的 token 上限（query + 單個文件），超出限制的文件會被自動切分"
 }

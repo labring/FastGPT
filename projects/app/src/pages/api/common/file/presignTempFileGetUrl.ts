@@ -24,8 +24,7 @@ async function handler(req: ApiRequestProps<PresignTempFileGetUrlParams>): Promi
 
   await authFrequencyLimit({
     eventId: `${tmbId}-getfileurl`,
-    maxAmount:
-      planStatus.standardConstants?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
+    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 

@@ -108,7 +108,8 @@ export async function evaluateEmbeddingModelHelper(
             chatId: '',
             checkIsStopping: () => false,
             workflowDispatchDeep: 0,
-            mcpClientMemory: {},
+            runtimeNodesMap: new Map(),
+            usagePush: () => {},
             runningAppInfo: {
               id: new Types.ObjectId().toString(),
               name: 'EmbeddingTrainEvalSearch',

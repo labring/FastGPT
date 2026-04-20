@@ -9,7 +9,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetsContext } from '../../../pages/dataset/list/context';
+import { DatasetsContext } from './context';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';

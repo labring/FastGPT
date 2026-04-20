@@ -1,7 +1,7 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -12,26 +12,29 @@ import {
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getNodeErrResponse, getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
+import { getLogger, LogCategories } from '../../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 import {
   type ChatCompletionMessageParam,
   type ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
   getExtractJsonToolPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { createLLMResponse } from '../../../ai/llm/request';
+import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.history]?: ChatItemType[];
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[];
   [NodeInputKeyEnum.contextExtractInput]: string;
   [NodeInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [NodeInputKeyEnum.description]: string;
@@ -124,6 +127,15 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       inputTokens: inputTokens,
       outputTokens: outputTokens
     });
+    props.usagePush([
+      {
+        moduleName: name,
+        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+        model: modelName,
+        inputTokens,
+        outputTokens
+      }
+    ]);
 
     return {
       data: {
@@ -143,16 +155,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         extractDescription: description,
         extractResult: arg,
         contextTotalLen: chatHistories.length + 2
-      },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: name,
-          totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
-          model: modelName,
-          inputTokens,
-          outputTokens
-        }
-      ]
+      }
     };
   } catch (error) {
     return getNodeErrResponse({ error });
@@ -160,13 +163,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 }
 
 const getJsonSchema = ({ params: { extractKeys } }: ActionProps) => {
-  const properties: Record<
-    string,
-    {
-      type: string;
-      description: string;
-    }
-  > = {};
+  const properties: Record<string, JsonSchemaPropertiesItemType> = {};
   extractKeys.forEach((item) => {
     const jsonSchema = item.valueType
       ? valueTypeJsonSchemaMap[item.valueType] || toolValueTypeList[0].jsonSchema
@@ -191,12 +188,11 @@ const toolChoice = async (props: ActionProps) => {
     lastMemory
   } = props;
 
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonToolPrompt({
               systemPrompt: description,
@@ -211,7 +207,6 @@ const toolChoice = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
@@ -265,9 +260,12 @@ const toolChoice = async (props: ActionProps) => {
     try {
       return json5.parse(toolCalls?.[0]?.function?.arguments || text || '');
     } catch (error) {
-      console.log('body', body);
-      console.log('AI response', text, toolCalls?.[0]?.function);
-      console.log('Your model may not support tool_call', error);
+      logger.warn('Failed to parse tool call arguments', {
+        body,
+        responseText: text,
+        toolCall: toolCalls?.[0]?.function,
+        error
+      });
       return {};
     }
   })();
@@ -295,12 +293,11 @@ const completions = async (props: ActionProps) => {
     params: { content, description }
   } = props;
 
-  const messages: ChatItemType[] = [
+  const messages: ChatItemMiniType[] = [
     {
       obj: ChatRoleEnum.System,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content: getExtractJsonPrompt({
               systemPrompt: description,
@@ -316,7 +313,6 @@ const completions = async (props: ActionProps) => {
       obj: ChatRoleEnum.Human,
       value: [
         {
-          type: ChatItemValueTypeEnum.text,
           text: {
             content
           }
@@ -358,8 +354,7 @@ const completions = async (props: ActionProps) => {
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
-    console.log('Extract error, ai answer:', answer);
-    console.log(error);
+    logger.warn('Failed to parse extract result', { answer, error });
     return {
       rawResponse: answer,
       inputTokens,

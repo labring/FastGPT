@@ -1,9 +1,9 @@
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType
@@ -20,10 +20,9 @@ import {
   getQuotePrompt,
   getDocumentQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
-import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -36,8 +35,8 @@ import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
-import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { parseUrlToFileType } from '../../utils/context';
+import { i18nT } from '../../../../../global/common/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
@@ -51,7 +50,7 @@ import {
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
     [NodeInputKeyEnum.userChatInput]?: string;
-    [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+    [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
     [NodeInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
@@ -59,7 +58,7 @@ export type ChatResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.answerText]: string;
     [NodeOutputKeyEnum.reasoningText]?: string;
-    [NodeOutputKeyEnum.history]: ChatItemType[];
+    [NodeOutputKeyEnum.history]: ChatItemMiniType[];
   },
   {
     [NodeOutputKeyEnum.errorText]: string;
@@ -199,8 +198,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })()
     ]);
 
-    const write = res ? responseWriteController({ res, readStream: stream }) : undefined;
-
     const {
       completeMessages,
       reasoningText,
@@ -208,7 +205,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       finish_reason,
       responseEmptyTip,
       usage,
-      error
+      error,
+      requestId // 获取请求追踪 ID
     } = await createLLMResponse({
       throwError: false,
       body: {
@@ -232,7 +230,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       onReasoning({ text }) {
         if (!aiChatReasoning) return;
         workflowStreamResponse?.({
-          write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             reasoning_content: text
@@ -242,7 +239,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       onStreaming({ text }) {
         if (!isResponseAnswerText) return;
         workflowStreamResponse?.({
-          write,
           event: SseResponseEventEnum.answer,
           data: textAdaptGptResponse({
             text
@@ -255,12 +251,22 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       return getNodeErrResponse({ error: responseEmptyTip });
     }
 
+    // Usage push
     const { totalPoints, modelName } = formatModelChars2Points({
       model: modelConstantsData.model,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens
     });
     const points = externalProvider.openaiAccount?.key ? 0 : totalPoints;
+    props.usagePush([
+      {
+        moduleName: name,
+        totalPoints: points,
+        model: modelName,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
+    ]);
 
     const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
 
@@ -277,19 +283,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           reasoningText,
           historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
           contextTotalLen: completeMessages.length,
-          finishReason: finish_reason
-        },
-        ...(points && {
-          [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-            {
-              moduleName: name,
-              totalPoints: points,
-              model: modelName,
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens
-            }
-          ]
-        })
+          finishReason: finish_reason,
+          llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
+        }
       });
     }
 
@@ -312,17 +308,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         reasoningText,
         historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
         contextTotalLen: completeMessages.length,
-        finishReason: finish_reason
+        finishReason: finish_reason,
+        llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
       },
-      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-        {
-          moduleName: name,
-          totalPoints: points,
-          model: modelName,
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens
-        }
-      ],
       [DispatchNodeResponseKeyEnum.toolResponses]: answerText
     };
   } catch (error) {
@@ -406,8 +394,8 @@ async function getMultiInput({
   usageId,
   runningUserInfo
 }: {
-  histories: ChatItemType[];
-  inputFiles: UserChatItemValueItemType['file'][];
+  histories: ChatItemMiniType[];
+  inputFiles: UserChatItemFileItemType[];
   fileLinks?: string[];
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
@@ -459,7 +447,9 @@ async function getMultiInput({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
+    userFiles: fileLinks
+      .map((url) => parseUrlToFileType(url))
+      .filter(Boolean) as UserChatItemFileItemType[]
   };
 }
 
@@ -488,11 +478,11 @@ async function getChatMessages({
   version?: string;
 
   useDatasetQuote: boolean;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   systemPrompt: string;
   userChatInput: string;
 
-  userFiles: UserChatItemValueItemType['file'][];
+  userFiles: UserChatItemFileItemType[];
   documentQuoteText?: string; // document quote
 }) {
   // Dataset prompt ====>
@@ -543,8 +533,8 @@ async function getChatMessages({
     synonymMappings: synonymMappingsText || ''
   });
 
-  const messages: ChatItemType[] = [
-    ...getSystemPrompt_ChatItemType(finalSystemPrompt),
+  const messages: ChatItemMiniType[] = [
+    ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...histories,
     {
       obj: ChatRoleEnum.Human,
@@ -555,7 +545,10 @@ async function getChatMessages({
     }
   ];
 
-  const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
+  const adaptMessages = chats2GPTMessages({
+    messages,
+    reserveId: false
+  });
 
   const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,

@@ -13,11 +13,14 @@ import ProTag from '@/components/ProTip/Tag';
 import ProText from '@/components/ProTip/ProText';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useLocalStorageState } from 'ahooks';
 
 const Logs = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>(feConfigs.isPlus ? 'chart' : 'table');
+  const [viewMode, setViewMode] = useLocalStorageState<'chart' | 'table'>(`app_log_view_mode`, {
+    defaultValue: feConfigs.isPlus ? 'chart' : 'table'
+  });
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
@@ -44,8 +47,9 @@ const Logs = () => {
           borderColor={'myGray.200'}
           alignItems={'center'}
         >
-          <Flex flex={'1 0 0'} gap={2}>
+          <Flex flex={'1 0 0'} gap={2} overflowX={'auto'}>
             <Flex
+              flexShrink={0}
               px={2}
               py={2}
               cursor={'pointer'}
@@ -54,6 +58,8 @@ const Logs = () => {
               borderRadius={'8px'}
               bg={viewMode === 'chart' ? 'myGray.05' : 'transparent'}
               _hover={{ bg: 'myGray.05' }}
+              alignItems={'center'}
+              whiteSpace={'nowrap'}
             >
               <MyIcon name={'core/app/logsLight'} w={4} />
               <Box ml={2} mr={0.5}>
@@ -62,6 +68,7 @@ const Logs = () => {
               <ProTag />
             </Flex>
             <Flex
+              flexShrink={0}
               px={2}
               py={2}
               cursor={'pointer'}
@@ -71,6 +78,8 @@ const Logs = () => {
               borderRadius={'8px'}
               bg={viewMode === 'table' ? 'myGray.05' : 'transparent'}
               _hover={{ bg: 'myGray.05' }}
+              alignItems={'center'}
+              whiteSpace={'nowrap'}
             >
               <MyIcon name={'core/app/logsLight'} w={4} />
               {t('app:log_detail')}

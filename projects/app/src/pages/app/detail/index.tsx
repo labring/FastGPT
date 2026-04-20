@@ -13,33 +13,15 @@ import { TabEnum } from '@/pageComponents/app/detail/context';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { DashboardNavbar, SIDEBAR_COLLAPSED_WIDTH } from '@/pageComponents/dashboard/Container';
 
-const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
-const MCPTools = dynamic(() => import('@/pageComponents/app/detail/MCPTools'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
+const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/SimpleApp'));
+const AgentEdit = dynamic(() => import('@/pageComponents/app/detail/Edit/ChatAgent'));
+const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'));
+const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'));
+const MCPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/MCPTools'));
 const SmartCustomerService = dynamic(
-  () => import('@/pageComponents/app/detail/SmartCustomerService'),
-  {
-    ssr: false,
-    loading: () => <Loading fixed={false} />
-  }
+  () => import('@/pageComponents/app/detail/SmartCustomerService')
 );
-const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/HTTPTools'), {
-  ssr: false,
-  loading: () => <Loading fixed={false} />
-});
+const HTTPTools = dynamic(() => import('@/pageComponents/app/detail/Edit/HTTPTools'));
 
 const AppDetail = () => {
   const { setAppId, setSource } = useChatStore();
@@ -66,6 +48,7 @@ const AppDetail = () => {
         ) : (
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
+            {appDetail.type === AppTypeEnum.chatAgent && <AgentEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.workflowTool && <Plugin />}
             {appDetail.type === AppTypeEnum.mcpToolSet && <MCPTools />}
@@ -103,6 +86,7 @@ const Provider = () => {
 
 export async function getServerSideProps(context: any) {
   return {
+    // TODO: 精简 i18n，避免交叉使用。
     props: {
       ...(await serviceSideProps(context, [
         'app',
@@ -115,7 +99,8 @@ export async function getServerSideProps(context: any) {
         'dashboard_evaluation',
         'evaluation',
         'train',
-        'database_client'
+        'database_client',
+        'skill'
       ]))
     }
   };

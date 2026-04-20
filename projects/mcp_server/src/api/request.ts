@@ -1,4 +1,6 @@
-import { addLog } from '../utils/log';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.MODULE.MCP.API);
 
 type ConfigType = {
   headers?: Record<string, string>;
@@ -16,7 +18,7 @@ type ResponseDataType = {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
-    console.log('error->', data, 'data is empty');
+    logger.error('Response data is empty', { data });
     return Promise.reject('服务器异常');
   } else if (data.code < 200 || data.code >= 400) {
     return Promise.reject(data);
@@ -28,7 +30,7 @@ function checkRes(data: ResponseDataType) {
  * 响应错误处理
  */
 function responseError(err: any) {
-  addLog.error(`Fetch request error`, err);
+  logger.error('Fetch request error', { error: err });
   const data = err?.response?.data || err;
 
   if (!err) {

@@ -4,11 +4,12 @@ WORKDIR /app
 
 ARG proxy
 
-RUN npm install -g pnpm@9.4.0
+RUN npm install -g pnpm@9
 
 # 复制package.json
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/global ./packages/global
+COPY packages/service ./packages/service
 COPY packages/web ./packages/web
 COPY projects/mcp_server/package.json ./projects/mcp_server/package.json
 
@@ -39,7 +40,7 @@ COPY --from=install /app/node_modules /app/node_modules
 COPY --from=install /app/projects/mcp_server/node_modules /app/projects/mcp_server/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat curl bash && npm install -g pnpm@9.4.0
+RUN apk add --no-cache libc6-compat curl bash && npm install -g pnpm@9
 
 # Install curl and bash, then install bun
 RUN curl -fsSL https://bun.sh/install | bash

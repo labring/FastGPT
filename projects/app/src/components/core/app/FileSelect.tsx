@@ -14,7 +14,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -44,7 +44,7 @@ const FileSelect = ({
 
   // 文件数量限制：团队套餐 || 系统配置 || 默认值（这里是指对话中，最多上传多少文件）
   const maxSelectFiles = Math.min(
-    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
     50
   );
 
@@ -73,9 +73,7 @@ const FileSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/file'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'} {...labelStyle}>
-        {t('app:file_upload')}
-      </FormLabel>
+      <FormLabel {...labelStyle}>{t('app:file_upload')}</FormLabel>
       <ChatFunctionTip type={'file'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_file_upload')}>

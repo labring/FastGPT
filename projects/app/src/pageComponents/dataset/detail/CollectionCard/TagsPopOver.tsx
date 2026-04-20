@@ -2,7 +2,7 @@ import { Box, Checkbox, Flex, Input } from '@chakra-ui/react';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { putDatasetCollectionById } from '@/web/core/dataset/api';
+import { putDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useTranslation } from 'next-i18next';
@@ -13,7 +13,7 @@ import {
   type DatasetTagType
 } from '@fastgpt/global/core/dataset/type';
 import { isEqual } from 'lodash';
-import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 const TagsPopOver = ({
   currentCollection,

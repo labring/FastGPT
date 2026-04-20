@@ -1,5 +1,5 @@
 import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
 import { type McpToolConfigType } from '../../tool/mcpTool/type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
@@ -13,15 +13,13 @@ export const getMCPToolSetRuntimeNode = ({
   toolList,
   headerSecret,
   name,
-  avatar,
-  toolId
+  avatar
 }: {
   url: string;
   toolList: McpToolConfigType[];
   headerSecret?: StoreSecretValueType;
   name?: string;
   avatar?: string;
-  toolId: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId: getNanoid(16),
@@ -32,8 +30,7 @@ export const getMCPToolSetRuntimeNode = ({
       mcpToolSet: {
         toolList,
         headerSecret,
-        url,
-        toolId
+        url
       }
     },
     inputs: [],
@@ -46,20 +43,24 @@ export const getMCPToolSetRuntimeNode = ({
 export const getMCPToolRuntimeNode = ({
   tool,
   avatar = 'core/app/type/mcpToolsFill',
-  parentId
+  nodeId,
+  toolsetName,
+  toolSetId
 }: {
+  nodeId: string;
   tool: McpToolConfigType;
+  toolSetId: string;
+  toolsetName: string;
   avatar?: string;
-  parentId: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: getNanoid(),
+    nodeId,
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,
     toolConfig: {
       mcpTool: {
-        toolId: `${AppToolSourceEnum.mcp}-${parentId}/${tool.name}`
+        toolId: `${AppToolSourceEnum.mcp}-${toolSetId}/${tool.name}` // When runtool is used, parentId and toolname will be employed
       }
     },
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'mcp' }),
@@ -74,7 +75,7 @@ export const getMCPToolRuntimeNode = ({
         type: FlowNodeOutputTypeEnum.static
       }
     ],
-    name: tool.name,
+    name: `${toolsetName}/${tool.name}`,
     version: ''
   };
 };

@@ -9,7 +9,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { getPreviewChunks } from '@/web/core/dataset/api';
+import { getPreviewChunks } from '@/web/core/dataset/api/file';
 import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { getPreviewSourceReadType } from '../utils';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';

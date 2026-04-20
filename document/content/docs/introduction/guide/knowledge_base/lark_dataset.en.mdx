@@ -1,0 +1,58 @@
+---
+title: Lark Knowledge Base
+description: Introduction and usage of the FastGPT Lark Knowledge Base
+---
+
+| | |
+| --- | --- |
+| ![alt text](/imgs/image-39.png) | ![alt text](/imgs/image-40.png) |
+
+Starting from FastGPT v4.8.16, commercial edition users can import from Lark knowledge bases. Configure a Lark app's appId and appSecret, then select a **top-level folder in a document space** to import. This feature is currently in beta — some interactions may still need refinement.
+
+Due to Lark API limitations, you cannot directly access all document content. Currently, only files in shared space directories are accessible — personal spaces and wiki content are not supported.
+
+Only cloud document types are supported for import.
+
+
+## 1. Create a Lark App
+
+Go to the [Lark Open Platform](https://open.feishu.cn/?lang=zh-CN), click **Create App**, select **Custom App**, and fill in the app name.
+
+## 2. Configure App Permissions
+
+After creating the app, configure the following **3 permissions**:
+
+1. View the list of cloud documents in a folder
+2. View new-format documents
+3. View, comment, edit, and manage all files in the cloud space
+
+![alt text](/imgs/image-41.png)
+
+## 3. Get the appId and appSecret
+
+![alt text](/imgs/image-42.png)
+
+## 4. Grant Folder Permissions
+
+Refer to the Lark tutorial: https://open.feishu.cn/document/server-docs/docs/drive-v1/faq#b02e5bfb
+
+In summary:
+
+1. Add the app you just created to a group chat
+2. Grant directory permissions to that group
+
+If your directory already has permissions granted to the "All Members" group, you can skip the steps above and go directly to getting the Folder Token.
+
+![alt text](/imgs/image-43.png)
+
+## 5. Get the Folder Token
+
+You can find the Folder Token in the page URL. Make sure not to include the question mark.
+
+![alt text](/imgs/image-44.png)
+
+## 6. Create the Knowledge Base
+
+Using the 3 parameters obtained from steps 3 and 5, create a knowledge base. Select the Lark file library type, fill in the parameters, and click Create.
+
+![alt text](/imgs/image-39.png)

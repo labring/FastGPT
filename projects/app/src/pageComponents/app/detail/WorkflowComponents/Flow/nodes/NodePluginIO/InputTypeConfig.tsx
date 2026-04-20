@@ -42,7 +42,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -129,7 +129,7 @@ const InputTypeConfig = ({
   const maxFiles = watch('maxFiles') ?? 5;
   // 文件数量限制：团队套餐 || 系统配置 || 默认值
   const maxSelectFiles = Math.min(
-    teamPlanStatus?.standardConstants?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
+    teamPlanStatus?.standard?.maxUploadFileCount || feConfigs.uploadFileMaxAmount,
     50
   );
   const canSelectFile = watch('canSelectFile') ?? true;
@@ -208,8 +208,6 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.customVariable,
       FlowNodeInputTypeEnum.hidden,
       FlowNodeInputTypeEnum.switch,
-      VariableInputEnum.timePointSelect,
-      VariableInputEnum.timeRangeSelect,
       VariableInputEnum.switch,
       VariableInputEnum.custom,
       VariableInputEnum.internal
@@ -555,8 +553,8 @@ const InputTypeConfig = ({
                   valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
-                  min={min}
-                  max={max}
+                  min={min ? min : undefined}
+                  max={max ? max : undefined}
                   onChange={(e) => {
                     // @ts-ignore
                     setValue('defaultValue', e ?? '');
@@ -1117,8 +1115,7 @@ const InputTypeConfig = ({
                 defaultSelectedDatasets={datasetOptions.map((item: SelectedDatasetType) => ({
                   datasetId: item.datasetId,
                   name: item.name,
-                  avatar: item.avatar,
-                  vectorModel: {} as EmbeddingModelItemType
+                  avatar: item.avatar
                 }))}
                 onChange={(selectedDatasets) => {
                   const newDatasetList = selectedDatasets.map((item: SelectedDatasetType) => ({

@@ -11,7 +11,7 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
 import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
@@ -287,7 +287,7 @@ async function handler(
         : enhanceConfig;
 
     // 7. 创建集合并插入数据
-    const { collectionId, insertResults } = await createCollectionAndInsertData({
+    const { collectionId, results: insertResults } = await createCollectionAndInsertData({
       dataset,
       rawText,
       backupParse: true,
@@ -297,9 +297,8 @@ async function handler(
         datasetId: dataset._id,
         parentId: normalizedParentId,
         name: fileName,
-        tags,
+        tags: tags as unknown as string[],
         type: DatasetCollectionTypeEnum.file,
-        fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: finalEnhanceConfig.autoIndexes || false,
         small2bigIndexes: finalEnhanceConfig.small2bigIndexes || false,

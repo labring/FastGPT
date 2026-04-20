@@ -22,6 +22,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 export enum TabEnum {
   agent = 'agent',
+  skill = 'skill',
   tool = 'tool',
   system_tool = 'systemTool',
   app_templates = 'templateMarket',
@@ -456,6 +457,7 @@ export const DashboardNavbar = ({
   const appBuildItems = useMemo(
     () => [
       { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
+      { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' },
       { key: 'tool', label: t('common:navbar.Tools'), path: '/dashboard/tool' },
       { key: 'mcp', label: t('common:mcp_server'), path: '/dashboard/mcpServer' }
     ],

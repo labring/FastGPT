@@ -1,0 +1,40 @@
+---
+title: 'V4.12.3'
+description: 'FastGPT V4.12.3 Update Notes, released on 2025-9-8'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.12.3
+- Update FastGPT commercial edition image tag: v4.12.3
+- Update fastgpt-plugin image tag: v0.1.12
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. Prompt editor now supports lists, tabs, and other rich text interactions.
+2. Apps now have additional global variables: password, multi-select, and internal variables (hidden in on-site chat).
+
+## Improvements
+
+1. Corrected the RRF weight merging algorithm to use the standard RRF weight formula.
+2. Multi-select component now supports dynamic width calculation to fit visible tags.
+3. Variable update component rendering optimized for consistency with global variable rendering.
+
+## Bug Fixes
+
+1. In single-team mode, users who left could not rejoin the team.
+2. Workflow file upload was enabled by default, but the input side did not include file output.
+3. Consecutive user selections: branches could not run correctly.
+4. Workflow: variable update array selector was not working properly.
+5. App evaluation: only the first output text was captured instead of all output texts.
+
+## Plugin Updates
+
+1. Migrated system tool types to the plugin.
+2. Moved model provider configuration to the plugin for hot-reload support.
+3. Moved app templates to the plugin.

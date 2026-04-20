@@ -1,11 +1,15 @@
-import { describe } from 'vitest';
-import { ObVectorCtrl } from '@fastgpt/service/common/vectorDB/oceanbase';
+import { describe, vi } from 'vitest';
 import { createVectorDBTestSuite } from '../testSuites';
 
-const isEnabled = Boolean(process.env.OCEANBASE_URL);
-const describePg = isEnabled ? describe : describe.skip;
+// Unmock vector controllers for integration tests
+vi.unmock('@fastgpt/service/common/vectorDB/oceanbase');
+vi.unmock('@fastgpt/service/common/vectorDB/constants');
 
-describePg('Oceanbase Vector Integration', () => {
+import { ObVectorCtrl } from '@fastgpt/service/common/vectorDB/oceanbase';
+
+const isEnabled = Boolean(process.env.OCEANBASE_URL);
+
+describe.skipIf(!isEnabled)('Oceanbase Vector Integration', () => {
   const vectorCtrl = new ObVectorCtrl({ type: 'oceanbase' });
   createVectorDBTestSuite(vectorCtrl);
 });

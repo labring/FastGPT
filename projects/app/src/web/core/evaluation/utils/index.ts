@@ -1,4 +1,4 @@
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 // 内置维度信息映射表
 export const BUILTIN_DIMENSION_MAP = {

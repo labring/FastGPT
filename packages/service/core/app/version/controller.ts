@@ -1,8 +1,8 @@
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 
-export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
+export const getAppLatestVersion = async (appId: string, app?: AppSchemaType) => {
   const version = await MongoAppVersion.findOne({
     appId,
     isPublish: true
@@ -37,7 +37,7 @@ export const getAppVersionById = async ({
 }: {
   appId: string;
   versionId?: string;
-  app?: AppSchema;
+  app?: AppSchemaType;
 }) => {
   // 检查 versionId 是否符合 ObjectId 格式
   if (versionId && Types.ObjectId.isValid(versionId)) {

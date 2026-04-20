@@ -36,7 +36,11 @@ type FormType = {
   smartCustomerService?: SmartCustomerServiceFormType;
 };
 
-export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.assistant;
+export type CreateAppType =
+  | AppTypeEnum.simple
+  | AppTypeEnum.workflow
+  | AppTypeEnum.assistant
+  | AppTypeEnum.chatAgent;
 
 const CreateModal = ({
   onClose,

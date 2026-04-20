@@ -1,0 +1,323 @@
+---
+title: 模型配置说明
+description: FastGPT 模型配置说明
+---
+
+import { Alert } from '@/components/docs/Alert';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+## 介绍
+
+FastGPT 借助`AI Proxy`服务，可以连接到不同的模型提供商。同时`AI Proxy`还提供了负载均衡、模型日志、数据看板等能力，方便检测模型调用情况。
+
+<Alert icon="🤖" context="success">
+  注意事项： 
+  
+  1. 目前语音识别模型仅会生效一个，所以配置时候，只需要配置一个即可。   
+  2. 系统至少需要一个语言模型和一个索引模型才能正常使用。  
+</Alert>
+
+### 运行流程图
+
+![alt text](../../../../../public/imgs/image-95.png)
+
+### 模型类型
+
+1. 语言模型 - 进行文本对话，多模态模型支持图片识别。
+2. 索引模型 - 对文本块进行索引，用于相关文本检索。
+3. 重排模型 - 对检索结果进行重排，用于优化检索排名。
+4. 语音合成 - 将文本转换为语音。
+5. 语音识别 - 将语音转换为文本。
+
+
+### 特殊术语介绍
+
+- 模型 ID：接口请求时候，Body 中`model`字段的值，全局唯一。
+- 模型名: 用于展示的模型名称，可以自定义。
+- 模型渠道：不同的模型提供商协议，例如 OpenAI、Anthropic、Google 等。大部分自建渠道都遵守 OpenAI 的协议。一个模型可以在配置在不同渠道中，实现负载均衡。
+- 自定义请求地址/Key：如果需要绕过`模型渠道`，可以设置自定义请求地址和 Token。一般情况下不需要。（不推荐使用，不方便管理）
+
+## 添加渠道/模型
+
+可以 FastGPT 中`账号-模型提供商`页面中进行模型配置。
+
+### 1. 创建渠道
+
+切换到`模型渠道`标签页。 注意，这里只能增加`模型配置`里有的模型，系统仅内置了主流的模型，如果需要增加其他模型，需要先在`模型配置`中增加。
+
+![aiproxy1](../../../../../public/imgs/aiproxy-1.png)
+
+点击右上角的“新增渠道”，即可进入渠道配置页面
+
+![alt text](../../../../../public/imgs/image-122.png)
+
+以阿里百炼的模型为例，进行如下配置
+
+![alt text](../../../../../public/imgs/image-123.png)
+
+1. 渠道名：展示在外部的渠道名称，仅作标识;
+2. 协议类型：模型对应的协议类型，一般哪家提供的模型就选对于服务商即可。大多数都提供了 OpenAI 的协议，也可以选择 OpenAI 协议类型。
+3. 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，[增加自定义模型](/docs/self-host/config/model/intro/#新增自定义模型);
+4. 模型映射：将 FastGPT 请求的模型，映射到具体提供的模型上。例如：
+
+```json
+{
+  "gpt-4o-test": "gpt-4o"
+}
+```
+
+FatGPT 中的模型为 `gpt-4o-test`，向 AI Proxy 发起请求时也是 `gpt-4o-test`。AI proxy 在向上游发送请求时，实际的`model`为 `gpt-4o`。
+
+
+5. 代理地址：不要填完整的模型请求地址，要填写`BaseUrl`，注意是否需要增加`/v1`
+6. API 密钥：从模型厂商处获取的 API 凭证。注意部分厂商需要提供多个密钥组合，可以根据提示进行输入。
+
+最后点击“新增”，就能在“模型渠道”下看到刚刚配置的渠道
+
+![aiproxy4](/imgs/aiproxy-4.png)
+
+### 2. 渠道测试
+
+然后可以对渠道进行测试，确保配置的模型有效
+
+![aiproxy5](/imgs/aiproxy-5.png)
+
+点击“模型测试”，可以看到配置的模型列表，点击“开始测试”
+
+![aiproxy6](/imgs/aiproxy-6.png)
+
+等待模型测试完成后，会输出每个模型的测试结果以及请求时长
+
+![aiproxy7](/imgs/aiproxy-7.png)
+
+### 3. 启用模型
+
+系统内置了目前主流厂商的模型，如果你不熟悉配置，直接点击`启用`即可。`模型 ID`是和`模型渠道`中的`模型`一致。
+
+点击启用模型，即可使用。
+
+|         启用模型                    |            模型ID映射说明                  |
+| ------------------------------- | ------------------------------- |
+|![alt text](../../../../../public/imgs/image-92.png) | ![alt text](../../../../../public/imgs/image-124.png) |
+
+### 4. 测试模型
+
+FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型是否正常工作，会实际按模板发送一个请求。
+
+![alt text](/imgs/image-105.png)
+
+## 模型配置
+
+### 修改模型配置
+
+点击模型右侧的齿轮即可进行模型配置，不同类型模型的配置有区别。
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-93.png) | ![alt text](/imgs/image-94.png) |
+
+### 新增自定义模型
+
+如果系统内置的模型无法满足你的需求，你可以添加自定义模型。如果`模型 ID`与系统内置的模型 ID 重复，则会被认为是修改系统模型，而不是新增模型。
+
+1. **通过表单添加模型**
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-96.png) | ![alt text](/imgs/image-97.png) |
+
+2. **通过配置文件配置**
+
+如果你觉得通过页面配置模型比较麻烦，你也可以通过配置文件来配置模型。或者希望快速将一个系统的配置，复制到另一个系统，也可以通过配置文件来实现。
+
+|                                 |                                 |
+| ------------------------------- | ------------------------------- |
+| ![alt text](/imgs/image-98.png) | ![alt text](/imgs/image-99.png) |
+
+<Accordions>
+<Accordion title="语言模型字段说明">
+```json
+{
+  "model": "模型 ID",
+  "metadata": {
+    "isCustom": true, // 是否为自定义模型
+    "isActive": true, // 是否启用
+    "provider": "OpenAI", // 模型提供商，主要用于分类展示，目前已经内置提供商包括：https://github.com/labring/FastGPT/blob/main/packages/global/core/ai/provider.ts, 可 pr 提供新的提供商，或直接填写 Other
+    "model": "gpt-5", // 模型ID(对应OneAPI中渠道的模型名)
+    "name": "gpt-5", // 模型别名
+    "maxContext": 125000, // 最大上下文
+    "maxResponse": 16000, // 最大回复
+    "quoteMaxToken": 120000, // 最大引用内容
+    "maxTemperature": 1.2, // 最大温度
+    "charsPointsPrice": 0, // n积分/1k token（商业版）
+    "censor": false, // 是否开启敏感校验（商业版）
+    "vision": true, // 是否支持图片输入
+    "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。）
+    "functionCall": false, // 是否支持函数调用（分类，内容提取，工具调用会用到。会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
+    "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
+    "customExtractPrompt": "", // 自定义内容提取提示词
+    "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
+    "defaultConfig": {}, // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
+    "fieldMap": {} // 字段映射（o1 模型需要把 max_tokens 映射为 max_completion_tokens）
+  }
+}
+```
+</Accordion>
+
+<Accordion title="索引模型字段说明">
+
+```json
+{
+  "model": "模型 ID",
+  "metadata": {
+    "isCustom": true, // 是否为自定义模型
+    "isActive": true, // 是否启用
+    "provider": "OpenAI", // 模型提供商
+    "model": "text-embedding-3-small", // 模型ID
+    "name": "text-embedding-3-small", // 模型别名
+    "charsPointsPrice": 0, // n积分/1k token
+    "defaultToken": 512, // 默认文本分割时候的 token
+    "maxToken": 3000 // 最大 token
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="重排模型字段说明">
+
+```json
+{
+  "model": "模型 ID",
+  "metadata": {
+    "isCustom": true, // 是否为自定义模型
+    "isActive": true, // 是否启用
+    "provider": "BAAI", // 模型提供商
+    "model": "bge-reranker-v2-m3", // 模型ID
+    "name": "ReRanker-Base", // 模型别名
+    "requestUrl": "", // 自定义请求地址
+    "requestAuth": "", // 自定义请求认证
+    "type": "rerank" // 模型类型
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="语音合成模型字段说明">
+
+```json
+{
+  "model": "模型 ID",
+  "metadata": {
+    "isActive": true, // 是否启用
+    "isCustom": true, // 是否为自定义模型
+    "type": "tts", // 模型类型
+    "provider": "FishAudio", // 模型提供商
+    "model": "fishaudio/fish-speech-1.5", // 模型ID
+    "name": "fish-speech-1.5", // 模型别名
+    "voices": [
+      // 音色
+      {
+        "label": "fish-alex", // 音色名称
+        "value": "fishaudio/fish-speech-1.5:alex" // 音色ID
+      },
+      {
+        "label": "fish-anna", // 音色名称
+        "value": "fishaudio/fish-speech-1.5:anna" // 音色ID
+      }
+    ],
+    "charsPointsPrice": 0 // n积分/1k token
+  }
+}
+```
+
+</Accordion>
+
+<Accordion title="语音识别模型字段说明">
+
+```json
+{
+  "model": "whisper-1",
+  "metadata": {
+    "isActive": true, // 是否启用
+    "isCustom": true, // 是否为自定义模型
+    "provider": "OpenAI", // 模型提供商
+    "model": "whisper-1", // 模型ID
+    "name": "whisper-1", // 模型别名
+    "charsPointsPrice": 0, // n积分/1k token
+    "type": "stt" // 模型类型
+  }
+}
+```
+
+</Accordion>
+
+</Accordions>
+
+## 其他
+
+### 渠道优先级
+
+范围1～100。数值越大，越容易被优先选中。
+
+![aiproxy9](/imgs/aiproxy-9.png)
+
+### 启用/禁用渠道
+
+在渠道右侧的控制菜单中，还可以控制渠道的启用或禁用，被禁用的渠道将无法再提供模型服务
+
+![aiproxy10](/imgs/aiproxy-10.png)
+
+### 模型调用日志
+
+通过渠道调用的模型，可以在 `调用日志` 页面，会展示发送到模型处的请求记录，包括具体的输入输出 tokens、请求时间、请求耗时、请求地址等等。错误的请求，则会详细的入参和错误信息，方便排查，但仅会保留 1 小时(环境变量里可配置)。
+
+![aiproxy11](/imgs/aiproxy-11.png)
+
+
+### 私有部署模型
+
+[点击查看部署 ReRank 模型教程](/docs/self-host/custom-models/bge-rerank/)
+
+### 自定义请求地址说明
+
+如果填写了该值，则可以允许你绕过`模型渠道`，直接向自定义请求地址发起请求。需要填写完整的请求地址，例如：
+
+- LLM: [host]/v1/chat/completions
+- Embedding: [host]/v1/embeddings
+- STT: [host]/v1/audio/transcriptions
+- TTS: [host]/v1/audio/speech
+- Rerank: [host]/v1/rerank
+
+自定义请求 Key，则是向自定义请求地址发起请求时候，携带请求头：Authorization: Bearer xxx 进行请求。
+
+所有接口均遵循 OpenAI 提供的模型格式，可参考 [OpenAI API 文档](https://platform.openai.com/docs/api-reference/introduction) 进行配置。
+
+由于 OpenAI 没有提供 ReRank 模型，遵循的是 Cohere 的格式。[点击查看接口请求示例](/docs/self-host/faq/#如何检查模型问题)
+
+### 添加模型预设
+
+你可以在`FastGPT-plugin`项目中`modules/model/provider`目录下，找对应模型提供商的配置文件，并追加模型配置。请自行全文检查，`model`字段，必须在所有模型中唯一。具体配置字段说明，参考[模型配置字段说明](/docs/self-host/config/model/intro/#通过配置文件配置)
+
+
+### 从 OneAPI 迁移到 AI Proxy
+
+对于旧版使用 OneAPI 的用户，可以通过脚本将 OneAPI 里的渠道配置迁移到 AI Proxy。
+
+可以从任意终端，发起 1 个 HTTP 请求。其中 `{{host}}` 替换成 AI Proxy 地址，`{{admin_key}}` 替换成 AI Proxy 中 `ADMIN_KEY` 的值。
+
+Body 参数 `dsn` 为 OneAPI 的 mysql 连接串。
+
+```bash
+curl --location --request POST '{{host}}/api/channels/import/oneapi' \
+--header 'Authorization: Bearer {{admin_key}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "dsn": "mysql://root:s5mfkwst@tcp(dbconn.sealoshzh.site:33123)/mydb"
+}'
+```
+
+执行成功的情况下会返回 "success": true
+
+脚本目前不是完全准，仅是简单的做数据映射，主要是迁移`代理地址`、`模型`和`API 密钥`，建议迁移后再进行手动检查。

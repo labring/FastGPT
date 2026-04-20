@@ -1,15 +1,15 @@
-import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
 import fs from 'fs';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { axios } from '../../api/axios';
-import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { readRawContentFromBuffer } from '../../../worker/function';
+import { addLog } from '../../system/log';
 import { uploadImage2S3Bucket, jwtSignS3ObjectKey } from '../../s3/utils';
+import { uploadMongoImg } from '../image/controller';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addDays } from 'date-fns';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -22,7 +22,6 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   getFormatText?: boolean;
-  metadata?: Record<string, any>;
   usageId?: string;
 };
 
@@ -170,7 +169,6 @@ export const readRawTextByLocalFile = async (
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata,
     filename,
     usageId: params.usageId
   });

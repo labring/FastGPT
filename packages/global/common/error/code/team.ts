@@ -1,10 +1,11 @@
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../i18n/utils';
 import type { ErrType } from '../errorCode';
 /* team: 500000 */
 export enum TeamErrEnum {
   notUser = 'notUser',
-  teamOverSize = 'teamOverSize',
   unAuthTeam = 'unAuthTeam',
+
+  teamOverSize = 'teamOverSize',
   teamMemberOverSize = 'teamMemberOverSize',
   aiPointsNotEnough = 'aiPointsNotEnough',
   datasetSizeNotEnough = 'datasetSizeNotEnough',
@@ -12,6 +13,7 @@ export enum TeamErrEnum {
   appAmountNotEnough = 'appAmountNotEnough',
   pluginAmountNotEnough = 'pluginAmountNotEnough',
   appFolderAmountNotEnough = 'appFolderAmountNotEnough',
+  datasetFolderAmountNotEnough = 'datasetFolderAmountNotEnough',
   websiteSyncNotEnough = 'websiteSyncNotEnough',
   reRankNotEnough = 'reRankNotEnough',
   ticketNotAvailable = 'ticketNotAvailable',
@@ -19,6 +21,8 @@ export enum TeamErrEnum {
   evaluationDatasetAmountNotEnough = 'evaluationDatasetAmountNotEnough',
   evaluationDatasetDataAmountNotEnough = 'evaluationDatasetDataAmountNotEnough',
   evaluationMetricAmountNotEnough = 'evaluationMetricAmountNotEnough',
+  sandboxNotSupport = 'sandboxNotSupport',
+
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
@@ -162,6 +166,10 @@ const teamErr = [
   {
     statusText: TeamErrEnum.tooManyInvitations,
     message: i18nT('common:code_error.team_error.too_many_invitations')
+  },
+  {
+    statusText: TeamErrEnum.datasetFolderAmountNotEnough,
+    message: i18nT('common:code_error.team_error.dataset_folder_amount_not_enough')
   }
 ];
 

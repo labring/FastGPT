@@ -43,9 +43,9 @@ const FaqImportModal = ({
   const { teamPlanStatus } = useUserStore();
 
   const maxCount =
-    feConfigs?.uploadFileMaxAmount || teamPlanStatus?.standardConstants?.maxUploadFileCount || 1000;
+    feConfigs?.uploadFileMaxAmount || teamPlanStatus?.standard?.maxUploadFileCount || 1000;
   const maxSize =
-    (feConfigs?.uploadFileMaxSize ?? teamPlanStatus?.standardConstants?.maxUploadFileSize ?? 500) *
+    (feConfigs?.uploadFileMaxSize ?? teamPlanStatus?.standard?.maxUploadFileSize ?? 500) *
     1024 *
     1024;
 

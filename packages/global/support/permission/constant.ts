@@ -1,6 +1,6 @@
 import type { PermissionListType, PermissionValueType, RolePerMapType } from './type';
 import { type RoleListType } from './type';
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 import { sumPer } from './utils';
 export enum AuthUserTypeEnum {
   token = 'token',
@@ -51,7 +51,8 @@ export enum PerResourceTypeEnum {
   app = 'app',
   dataset = 'dataset',
   evaluation = 'evaluation',
-  model = 'model'
+  model = 'model',
+  agentSkill = 'agentSkill'
 }
 
 /* new permission */

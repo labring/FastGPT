@@ -1,0 +1,159 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get all {{ .Release.Name }}
+
+===============================================================================
+
+OpenSandbox Kubernetes Controller has been deployed to namespace: {{ include "opensandbox-controller.namespace" . }}
+
+Note: Both the controller and user resources (Pool, BatchSandbox) use the same namespace.
+
+1. Check the controller status:
+
+   kubectl get deployment -n {{ include "opensandbox-controller.namespace" . }} {{ .Values.namePrefix }}controller-manager
+
+2. View controller logs:
+
+   kubectl logs -n {{ include "opensandbox-controller.namespace" . }} -l control-plane=controller-manager -f
+
+3. Verify CRDs are installed:
+
+   kubectl get crds | grep sandbox.opensandbox.io
+
+   You should see:
+   - batchsandboxes.sandbox.opensandbox.io
+   - pools.sandbox.opensandbox.io
+
+4. Pool Resources:
+{{- if .Values.pools }}
+{{- $enabledPools := list }}
+{{- range .Values.pools }}
+{{- if .enabled }}
+{{- $enabledPools = append $enabledPools .name }}
+{{- end }}
+{{- end }}
+{{- if $enabledPools }}
+
+   ✅ The following Pools have been deployed:
+{{- range $enabledPools }}
+   - {{ . }}
+{{- end }}
+
+   Check Pool status:
+   kubectl get pools -n {{ include "opensandbox-controller.namespace" . }}
+
+   Check Pool details:
+   kubectl describe pool agent-pool -n {{ include "opensandbox-controller.namespace" . }}
+
+   Monitor Pool capacity:
+   kubectl get pool agent-pool -n {{ include "opensandbox-controller.namespace" . }} -o jsonpath='{.status}'
+{{- else }}
+
+   ⚠️  All Pools are disabled in values.yaml.
+   To enable the default agent-pool:
+   helm upgrade {{ .Release.Name }} opensandbox-controller --set pools[0].enabled=true
+{{- end }}
+{{- else }}
+
+   No Pools configured.
+{{- end }}
+
+   To disable Pool auto-deployment:
+   helm upgrade {{ .Release.Name }} opensandbox-controller --set pools[0].enabled=false
+
+   Create additional Pool manually:
+
+   # Basic Pool without task executor
+   cat <<EOF | kubectl apply -f -
+   apiVersion: sandbox.opensandbox.io/v1alpha1
+   kind: Pool
+   metadata:
+     name: my-first-pool
+   spec:
+     minBufferSize: 2
+     maxBufferSize: 5
+     capacity: 10
+     sandboxTemplate:
+       spec:
+         image: ubuntu:latest
+         command: ["sleep", "infinity"]
+   EOF
+
+   # Pool with task executor (for task execution features)
+   # Note: Requires task-executor image
+   cat <<EOF | kubectl apply -f -
+   apiVersion: sandbox.opensandbox.io/v1alpha1
+   kind: Pool
+   metadata:
+     name: task-enabled-pool
+   spec:
+     template:
+       spec:
+         shareProcessNamespace: true
+         containers:
+         - name: sandbox-container
+           image: ubuntu:latest
+           command: ["sleep", "infinity"]
+         - name: task-executor
+           image: {{ .Values.taskExecutor.image.repository }}:{{ .Values.taskExecutor.image.tag }}
+           securityContext:
+             capabilities:
+               add: ["SYS_PTRACE"]
+     capacitySpec:
+       bufferMax: 5
+       bufferMin: 2
+       poolMax: 10
+       poolMin: 2
+   EOF
+
+5. Create your first BatchSandbox:
+
+   cat <<EOF | kubectl apply -f -
+   apiVersion: sandbox.opensandbox.io/v1alpha1
+   kind: BatchSandbox
+   metadata:
+     name: my-first-batchsandbox
+   spec:
+     replicas: 3
+     ttlSecondsAfterFinished: 3600
+     sandboxTemplate:
+       spec:
+         image: ubuntu:latest
+         command: ["sleep", "infinity"]
+   EOF
+
+6. Check your resources:
+
+   kubectl get pools
+   kubectl get batchsandboxes
+   kubectl get pods
+
+{{- if .Values.metrics.enabled }}
+
+7. Access metrics (requires port-forward):
+
+   kubectl port-forward -n {{ include "opensandbox-controller.namespace" . }} svc/{{ .Values.namePrefix }}controller-manager-metrics-service {{ .Values.metrics.service.port }}:{{ .Values.metrics.service.port }}
+
+   Then visit: https://localhost:{{ .Values.metrics.service.port }}/metrics
+{{- end }}
+
+===============================================================================
+
+For more information:
+- Documentation: https://github.com/alibaba/OpenSandbox
+- Issues: https://github.com/alibaba/OpenSandbox/issues
+
+{{ if .Values.extraRoles.batchsandboxEditor.enabled }}
+Note: Additional ClusterRoles for user management have been created:
+- {{ .Values.namePrefix }}batchsandbox-editor-role
+- {{ .Values.namePrefix }}batchsandbox-viewer-role
+- {{ .Values.namePrefix }}pool-editor-role
+- {{ .Values.namePrefix }}pool-viewer-role
+
+You can bind these roles to users/groups as needed.
+{{- end }}

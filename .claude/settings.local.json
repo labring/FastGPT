@@ -6,7 +6,8 @@
       "Edit",
       "WebFetch",
       "MCP",
-      "Agent(*)"
+      "Agent(*)",
+      "mcp__ide__getDiagnostics"
     ],
     "additionalDirectories": [
       "/data/home/cz/diting"

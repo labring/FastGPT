@@ -136,6 +136,7 @@ const DataListModals: React.FC<DataListModalsProps> = ({ total, refreshList }) =
   ) => {
     const { question, referenceAnswer, qualityMetadata, synthesisMetadata, qualityResult } =
       formData;
+    if (!selectedItem) return;
     await updateDataFn({
       dataId: selectedItem._id,
       userInput: question,

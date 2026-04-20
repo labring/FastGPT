@@ -1,0 +1,43 @@
+---
+title: V4.8.18 (Includes Migration Script)
+description: FastGPT V4.8.18 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update images:
+
+- Update the fastgpt image tag to v4.8.18-fix
+- Update the fastgpt-pro commercial edition image tag to v4.8.18-fix
+- Sandbox image update is not required
+
+### 2. Run migration script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4818' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This migrates the full-text search table. The migration takes a while — full-text search will be unavailable during the process. The log will print the amount of data already migrated.
+
+
+## Full Release Notes
+
+1. New - Support creating apps directly via JSON configuration.
+2. New - Support quickly creating HTTP plugins via CURL scripts.
+3. New - Commercial edition supports department-based permission structure.
+4. New - Support configuring custom CORS security policies (defaults to fully open).
+5. New - Added model troubleshooting documentation for private deployments.
+6. Improved - HTTP Body special handling to resolve parsing issues with newlines in string variables.
+7. Improved - Share links generate random user avatars.
+8. Improved - Image upload security validation. Added unique avatar image storage to prevent cumulative storage.
+9. Improved - Separated MongoDB full-text index table.
+10. Improved - Merged Knowledge Base search queries to reduce database calls.
+11. Improved - File encoding detection to reduce CSV file garbled text.
+12. Improved - Asynchronous file content reading to reduce process blocking.
+13. Improved - File viewer: HTML files are now downloaded directly instead of being viewable online.
+14. Fixed - HTML file upload: Base64 images not auto-converting to image URLs.
+15. Fixed - Plugin billing errors.

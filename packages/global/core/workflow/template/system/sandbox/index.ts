@@ -13,7 +13,7 @@ import { type FlowNodeTemplateType } from '../../../type/node';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
 import { JS_TEMPLATE } from './constants';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 
 export const CodeNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.code,
@@ -25,10 +25,10 @@ export const CodeNode: FlowNodeTemplateType = {
   avatarLinear: 'core/workflow/template/codeRunLinear',
   colorSchema: 'lime',
   name: i18nT('workflow:code_execution'),
-  intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
+  intro: i18nT('workflow:code_sandbox_intro'),
   showStatus: true,
   catchError: false,
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/sandbox/',
+  courseUrl: '/docs/introduction/guide/dashboard/workflow/sandbox-v2',
   inputs: [
     {
       ...Input_Template_DynamicInput,

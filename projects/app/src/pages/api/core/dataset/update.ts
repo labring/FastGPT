@@ -1,5 +1,4 @@
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import {
@@ -7,8 +6,11 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  UpdateDatasetBodySchema,
+  type UpdateDatasetBody
+} from '@fastgpt/global/openapi/core/dataset/api';
 import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
@@ -37,9 +39,6 @@ import { checkDatabaseConnection } from '@fastgpt/service/core/dataset/database/
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
-export type DatasetUpdateQuery = {};
-export type DatasetUpdateResponse = any;
-
 // 更新知识库接口
 // 包括如下功能：
 // 1. 更新应用的信息（包括名称，类型，头像，介绍等）
@@ -51,10 +50,7 @@ export type DatasetUpdateResponse = any;
 //  (1) 父目录的管理权限
 //  (2) 目标目录的管理权限
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
-async function handler(
-  req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
-  _res: ApiResponseType<any>
-): Promise<DatasetUpdateResponse> {
+async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   let {
     id,
     parentId,
@@ -69,11 +65,7 @@ async function handler(
     autoSync,
     chunkSettings,
     databaseConfig
-  } = req.body;
-
-  if (!id) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+  } = UpdateDatasetBodySchema.parse(req.body) as UpdateDatasetBody & { databaseConfig?: any };
 
   const isMove = parentId !== undefined;
 

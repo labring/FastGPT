@@ -282,5 +282,16 @@
   "tag_filter_op_datetime_after": "After",
   "tag_filter_op_datetime_before": "Before",
   "tag_filter_op_empty": "Is empty",
-  "tag_filter_op_not_empty": "Is not empty"
+  "tag_filter_op_not_empty": "Is not empty",
+  "code_allow_packages": "Available dependencies",
+  "code_allow_packages_func": "Available packages: {{modules}}\nGlobal functions: {{globals}}",
+  "code_sandbox_intro": "Executing a script code in the sandbox can be used to perform complex data processing, but the syntax and available dependencies will be limited.",
+  "reasoning_content": "Thinking text",
+  "template.agent_module": "Agent",
+  "template.agent_module_intro": "Associate required tools and Skills to enable AI-driven autonomous invocation and planning",
+  "agent.tools": "Tools",
+  "agent.prompt_skill_tip": "@ to select Skills and tools, \"/\" to select variables",
+  "agent.select_skill": "Select Skill",
+  "agent.select_tool": "Select Tool",
+  "params_setting": "Parameters"
 }

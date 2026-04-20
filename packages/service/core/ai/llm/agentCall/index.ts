@@ -3,7 +3,7 @@ import type {
   ChatCompletionTool,
   ChatCompletionMessageToolCall,
   CompletionFinishReason
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ToolCallChildrenInteractive,
@@ -12,11 +12,13 @@ import type {
 import type { CreateLLMResponseProps, ResponseEvents } from '../request';
 import { createLLMResponse } from '../request';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { compressRequestMessages } from '../compress';
-import { computedMaxToken } from '../../utils';
+import { compressRequestMessages, compressToolResponse } from '../compress';
 import { filterGPTMessageByMaxContext } from '../utils';
 import { getLLMModel } from '../../model';
 import { filterEmptyAssistantMessages } from './utils';
+import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
+import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import { i18nT } from '../../../../../global/common/i18n/utils';
 
 type RunAgentCallProps = {
   maxRunAgentTimes: number;
@@ -30,10 +32,30 @@ type RunAgentCallProps = {
     stream?: boolean;
   };
 
+  usagePush: (usages: ChatNodeUsageType[]) => void;
+  isAborted: CreateLLMResponseProps['isAborted'];
   userKey?: CreateLLMResponseProps['userKey'];
-  isAborted?: CreateLLMResponseProps['isAborted'];
 
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
+  // LLM 压缩后回调
+  onCompressContext?: (usage: {
+    modelName: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalPoints: number;
+    seconds: number;
+  }) => void;
+  // 工具压缩后回调
+  onToolCompress?: (e: {
+    call: ChatCompletionMessageToolCall;
+    response: string;
+    usage: {
+      inputTokens: number;
+      outputTokens: number;
+      totalPoints: number;
+    };
+  }) => void;
+  // 处理交互工具
   handleInteractiveTool: (e: ToolCallChildrenInteractive['params']) => Promise<{
     response: string;
     assistantMessages: ChatCompletionMessageParam[];
@@ -41,7 +63,7 @@ type RunAgentCallProps = {
     interactive?: WorkflowInteractiveResponseType;
     stop?: boolean;
   }>;
-
+  // 处理工具响应
   handleToolResponse: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
@@ -55,15 +77,20 @@ type RunAgentCallProps = {
 } & ResponseEvents;
 
 type RunAgentResponse = {
+  requestIds: string[];
   error?: any;
   completeMessages: ChatCompletionMessageParam[]; // Step request complete messages
   assistantMessages: ChatCompletionMessageParam[]; // Step assistant response messages
   interactiveResponse?: ToolCallChildrenInteractive;
 
   // Usage
+  model: string;
   inputTokens: number;
   outputTokens: number;
-  subAppUsages: ChatNodeUsageType[];
+  llmTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
+  compressInputTokens: number;
+  compressOutputTokens: number;
+  childrenUsages: ChatNodeUsageType[];
 
   finish_reason: CompletionFinishReason | undefined;
 };
@@ -86,12 +113,16 @@ type RunAgentResponse = {
 export const runAgentCall = async ({
   maxRunAgentTimes,
   body: { model, messages, max_tokens, tools, ...body },
+
   userKey,
+  usagePush,
   isAborted,
 
+  onCompressContext,
   childrenInteractiveParams,
   handleInteractiveTool,
   handleToolResponse,
+  onToolCompress,
 
   onReasoning,
   onStreaming,
@@ -104,19 +135,13 @@ export const runAgentCall = async ({
   let interactiveResponse: ToolCallChildrenInteractive | undefined;
 
   // Init messages
-  const maxTokens = computedMaxToken({
-    model: modelData,
-    maxToken: max_tokens || 8000,
-    min: 100
-  });
-
   // 本轮产生的 assistantMessages，包括 tool 内产生的
   const assistantMessages: ChatCompletionMessageParam[] = [];
   // 多轮运行时候的请求 messages
   let requestMessages = (
     await filterGPTMessageByMaxContext({
       messages,
-      maxContext: modelData.maxContext - (maxTokens || 0) // filter token. not response maxToken
+      maxContext: modelData.maxContext - 8000 // 始终预留 8000 个 token 响应空间。
     })
   ).map((item) => {
     if (item.role === 'assistant' && item.tool_calls) {
@@ -134,9 +159,12 @@ export const runAgentCall = async ({
 
   let inputTokens: number = 0;
   let outputTokens: number = 0;
+  let llmTotalPoints: number = 0; // 每次 LLM 调用单独计价后累加，避免梯度计费错误
+  let compressInputTokens = 0;
+  let compressOutputTokens = 0;
   let finish_reason: CompletionFinishReason | undefined;
   let requestError: any;
-  const subAppUsages: ChatNodeUsageType[] = [];
+  const childrenUsages: ChatNodeUsageType[] = [];
 
   // 处理 tool 里的交互
   if (childrenInteractiveParams) {
@@ -160,7 +188,8 @@ export const runAgentCall = async ({
 
     // 只需要推送本轮产生的 assistantMessages
     assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages));
-    subAppUsages.push(...usages);
+    childrenUsages.push(...usages);
+    usagePush?.(usages);
 
     // 相同 tool 触发了多次交互, 调用的 toolId 认为是相同的
     if (interactive) {
@@ -179,9 +208,14 @@ export const runAgentCall = async ({
 
     if (interactiveResponse || stop) {
       return {
+        requestIds: [],
+        model: modelData.model,
         inputTokens: 0,
         outputTokens: 0,
-        subAppUsages,
+        llmTotalPoints: 0,
+        compressInputTokens: 0,
+        compressOutputTokens: 0,
+        childrenUsages,
         completeMessages: requestMessages,
         assistantMessages,
         interactiveResponse,
@@ -193,23 +227,39 @@ export const runAgentCall = async ({
   }
 
   // 自循环运行
+  const requestIds: string[] = [];
+  let consecutiveRequestToolTimes = 0; // 连续多次工具调用后会强制回答，避免模型自身死循环。
   while (runTimes < maxRunAgentTimes) {
     // TODO: 费用检测
 
     runTimes++;
 
     // 1. Compress request messages
+    const compressStartTime = Date.now();
     const result = await compressRequestMessages({
+      checkIsStopping: isAborted,
       messages: requestMessages,
-      model: modelData
+      model: modelData,
+      userKey
     });
     requestMessages = result.messages;
-    inputTokens += result.usage?.inputTokens || 0;
-    outputTokens += result.usage?.outputTokens || 0;
+    if (result.usage) {
+      compressInputTokens += result.usage.inputTokens || 0;
+      compressOutputTokens += result.usage.outputTokens || 0;
+      childrenUsages.push(result.usage);
+      usagePush?.([result.usage]);
+      onCompressContext?.({
+        modelName: modelData.name,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        totalPoints: result.usage.totalPoints,
+        seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
+      });
+    }
 
     // 2. Request LLM
     let {
-      reasoningText: reasoningContent,
+      requestId,
       answerText: answer,
       toolCalls = [],
       usage,
@@ -221,10 +271,10 @@ export const runAgentCall = async ({
       throwError: false,
       body: {
         ...body,
-        max_tokens: maxTokens,
+        max_tokens,
         model,
         messages: requestMessages,
-        tool_choice: 'auto',
+        tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         tools,
         parallel_tool_calls: true
@@ -239,6 +289,7 @@ export const runAgentCall = async ({
 
     finish_reason = finishReason;
     requestError = error;
+    requestIds.push(requestId);
 
     if (requestError) {
       break;
@@ -246,12 +297,42 @@ export const runAgentCall = async ({
     if (responseEmptyTip) {
       return Promise.reject(responseEmptyTip);
     }
+    if (toolCalls.length) {
+      consecutiveRequestToolTimes++;
+    }
+    if (answer) {
+      consecutiveRequestToolTimes = 0;
+    }
+
+    // Record usage
+    inputTokens += usage.inputTokens;
+    outputTokens += usage.outputTokens;
+    const totalPoints = userKey
+      ? 0
+      : formatModelChars2Points({
+          model: modelData,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        }).totalPoints;
+    llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
+
+    usagePush?.([
+      {
+        moduleName: i18nT('account_usage:agent_call'),
+        model: modelData.name,
+        totalPoints,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens
+      }
+    ]);
 
     // 3. 更新 messages
     const cloneRequestMessages = requestMessages.slice();
     // 推送 AI 生成后的 assistantMessages
-    assistantMessages.push(...llmAssistantMessage);
-    requestMessages.push(...llmAssistantMessage);
+    if (llmAssistantMessage) {
+      assistantMessages.push(llmAssistantMessage);
+      requestMessages.push(llmAssistantMessage);
+    }
 
     // 4. Call tools
     let toolCallStep = false;
@@ -259,26 +340,51 @@ export const runAgentCall = async ({
       const {
         response,
         assistantMessages: toolAssistantMessages,
-        usages,
+        usages: toolUsages,
         interactive,
         stop
       } = await handleToolResponse({
         call: tool,
         messages: cloneRequestMessages
       });
+      childrenUsages.push(...toolUsages);
+      usagePush(toolUsages);
+
+      // 5. Add tool response to messages
+      // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
+      const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+
+      const { compressed: compressed_context, usage: compressionUsage } =
+        await compressToolResponse({
+          response,
+          model: modelData,
+          currentMessagesTokens,
+          toolLength: toolCalls.length,
+          reservedTokens: 8000, // 预留 8k tokens 给输出
+          userKey
+        });
+      if (compressionUsage) {
+        childrenUsages.push(compressionUsage);
+        usagePush?.([compressionUsage]);
+        onToolCompress?.({
+          call: tool,
+          response: compressed_context,
+          usage: {
+            inputTokens: compressionUsage.inputTokens!,
+            outputTokens: compressionUsage.outputTokens!,
+            totalPoints: compressionUsage.totalPoints!
+          }
+        });
+      }
 
       const toolMessage: ChatCompletionMessageParam = {
         tool_call_id: tool.id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: response
+        content: compressed_context
       };
-
-      // 5. Add tool response to messages
       assistantMessages.push(toolMessage);
+      requestMessages.push(toolMessage);
       assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
-      requestMessages.push(toolMessage); // 请求的 Request 只需要工具响应，不需要工具中 assistant 的内容，所以不推送 toolAssistantMessages
-
-      subAppUsages.push(...usages);
 
       if (interactive) {
         interactiveResponse = {
@@ -296,12 +402,7 @@ export const runAgentCall = async ({
         toolCallStep = true;
       }
     }
-
-    // 6 Record usage
-    inputTokens += usage.inputTokens;
-    outputTokens += usage.outputTokens;
-
-    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep) {
+    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep || isAborted?.()) {
       break;
     }
   }
@@ -311,10 +412,15 @@ export const runAgentCall = async ({
   }
 
   return {
+    requestIds,
     error: requestError,
+    model: modelData.model,
     inputTokens,
     outputTokens,
-    subAppUsages,
+    llmTotalPoints,
+    compressInputTokens,
+    compressOutputTokens,
+    childrenUsages,
     completeMessages: requestMessages,
     assistantMessages,
     interactiveResponse,

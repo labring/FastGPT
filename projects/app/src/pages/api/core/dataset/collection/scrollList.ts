@@ -10,39 +10,22 @@ import {
   DatasetTypeEnum,
   CollectionStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import { type PaginationResponse } from '@fastgpt/global/openapi/api';
+import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-
-export type GetScrollCollectionsProps = PaginationProps<{
-  datasetId: string;
-  parentId?: string | null;
-  searchText?: string;
-  selectFolder?: boolean;
-  filterTags?: string[];
-  simple?: boolean;
-}>;
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { ScrollCollectionsBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 async function handler(
-  req: ApiRequestProps<GetScrollCollectionsProps, {}>
+  req: ApiRequestProps
 ): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
-  let {
-    datasetId,
-    parentId = null,
-    searchText = '',
-    selectFolder = false,
-    filterTags = [],
-    simple = false
-  } = req.body;
-  if (!datasetId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+  const { datasetId, parentId, searchText, selectFolder, filterTags, simple } =
+    ScrollCollectionsBodySchema.parse(req.body);
   let { offset, pageSize } = parsePaginationRequest(req);
 
-  searchText = searchText?.replace(/'/g, '');
+  const regexText = searchText ? replaceRegChars(searchText) : '';
   pageSize = Math.min(pageSize, 30);
 
   // auth dataset and get my role
@@ -64,9 +47,9 @@ async function handler(
     deleteTime: null,
     parentId: parentId ? new Types.ObjectId(parentId) : null,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
-    ...(searchText
+    ...(regexText
       ? {
-          name: new RegExp(searchText, 'i')
+          name: { $regex: regexText, $options: 'i' }
         }
       : {}),
     ...(filterTags.length ? { tags: { $all: filterTags } } : {})

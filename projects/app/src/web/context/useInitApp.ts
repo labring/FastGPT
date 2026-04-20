@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -157,8 +157,11 @@ export const useInitApp = () => {
       setCouponCode(couponCode);
     }
 
-    const newPath = getPathWithoutMarketingParams();
-    router.replace(newPath);
+    const hasMarketingParams = MARKETING_PARAMS.some((param) => router.query[param] !== undefined);
+    if (hasMarketingParams) {
+      const newPath = getPathWithoutMarketingParams();
+      router.replace(newPath);
+    }
   });
 
   return {

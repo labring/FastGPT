@@ -108,6 +108,18 @@ vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({
   recallFromVectorStore: vi.fn().mockResolvedValue([])
 }));
 
+// ─── Mock: capabilities（避免 Mongoose schema 依赖链） ─────────────────────
+vi.mock('@fastgpt/service/core/dataset/search/capabilities', () => ({
+  getAllDatasetsSynonymWords: vi.fn().mockResolvedValue([]),
+  embeddingRecallPerQuery: vi.fn().mockResolvedValue({ embeddingRecallResults: [], tokens: 0 }),
+  fullTextRecallPerQuery: vi.fn().mockResolvedValue({ fullTextRecallResults: [], tokens: 0 }),
+  milvusHybridRecall: vi.fn().mockResolvedValue({ results: [], tokens: 0 }),
+  dedupeByContent: vi.fn((arr: any[]) => arr),
+  embeddingRecall: vi.fn().mockResolvedValue({ results: [], tokens: 0 }),
+  fullTextRecall: vi.fn().mockResolvedValue({ results: [], tokens: 0 }),
+  rerank: vi.fn().mockResolvedValue([])
+}));
+
 // ─── Mock: dative client ─────────────────────────────────────────────────
 vi.mock('@fastgpt/service/core/dataset/database/dative/client/dativeApiServer', () => ({
   getMetadataWithValueExamples: vi.fn(),
@@ -136,16 +148,44 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/utils', () => ({
 }));
 
 // ─── Mock: mongo Types ───────────────────────────────────────────────────
-vi.mock('@fastgpt/service/common/mongo', () => ({
-  Types: {
-    ObjectId: class ObjectId {
-      constructor(id?: string) {}
-      toString() {
-        return 'mock-object-id';
+vi.mock('@fastgpt/service/common/mongo', () => {
+  const Schema = class {
+    constructor(_def: any) {}
+    static Types = {
+      ObjectId: class ObjectId {
+        constructor(id?: string) {}
+        toString() { return 'mock-object-id'; }
       }
-    }
-  }
-}));
+    };
+    Types = Schema.Types;
+    index() { return this; }
+    pre() { return this; }
+    virtual() { return { get: () => {}, set: () => {} }; }
+  };
+  const models: Record<string, any> = {};
+  const connectionMongo = {
+    Schema,
+    model: (name: string) => ({ findById: vi.fn(), find: vi.fn(), findOne: vi.fn() }),
+    models,
+    mongo: { ReadPreference: {} }
+  };
+  return {
+    Types: {
+      ObjectId: class ObjectId {
+        constructor(id?: string) {}
+        toString() { return 'mock-object-id'; }
+      }
+    },
+    connectionMongo,
+    getMongoModel: vi.fn((name: string) => ({
+      findById: vi.fn(),
+      find: vi.fn(),
+      findOne: vi.fn(),
+      countDocuments: vi.fn().mockResolvedValue(0)
+    })),
+    readFromSecondary: {}
+  };
+});
 
 // ─── Mock: tiktoken ──────────────────────────────────────────────────────
 vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
@@ -177,6 +217,7 @@ function buildProps(datasets: SelectedDatasetType[], overrides: Record<string, a
     variables: {},
     node: { nodeId: 'node1', name: 'DatasetSearch', avatar: '' } as any,
     runtimeEdges: [],
+    usagePush: vi.fn(),
     params: {
       datasets,
       similarity: 0.5,

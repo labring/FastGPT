@@ -1,4 +1,10 @@
-import type { DatabaseSearchTestResponse } from '@/global/core/dataset/api';
+type DatabaseSearchTestResponse = {
+  answer: string;
+  sql_result: string;
+  duration: string;
+  limit: number;
+  searchMode: `${DatasetSearchModeEnum}`;
+};
 import { NextAPI } from '@/service/middleware/entry';
 import { pushGenerateSqlUsage, pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -27,7 +33,7 @@ import {
 } from '@fastgpt/service/core/dataset/database/dative/client/dativeApiServer';
 import { getDuckDBStoreConfig } from '@fastgpt/service/core/dataset/database/dative/utils';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 async function handler(
   req: ApiRequestProps<DatabaseSearchTestBody, {}>

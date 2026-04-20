@@ -4,11 +4,8 @@ import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import {
-  getChatResData,
-  getAssistantRetrievalResults,
-  getAssistantQuoteList
-} from '@/web/core/chat/api';
+import { getAssistantRetrievalResults, getAssistantQuoteList } from '@/web/core/chat/api';
+import { getChatResData } from '@/web/core/chat/record/api';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DatasetRetrievalModeEnum } from '@fastgpt/global/core/dataset/constants';

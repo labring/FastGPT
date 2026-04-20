@@ -66,21 +66,26 @@ const DatasetParamsModal = ({
   hasOtherKnowledge?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { teamPlanStatus } = useUserStore();
   const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
-  const chatModelSelectList = (() =>
-    llmModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
-  const reRankModelSelectList = (() =>
-    reRankModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
+  const queryExtensionModelList = useMemo(
+    () =>
+      llmModelList.map((item) => ({
+        value: item.model,
+        label: item.name
+      })),
+    [llmModelList]
+  );
+  const reRankModelSelectList = useMemo(
+    () =>
+      reRankModelList.map((item) => ({
+        value: item.model,
+        label: item.name
+      })),
+    [reRankModelList]
+  );
 
   const { register, setValue, getValues, handleSubmit, watch } =
     useForm<AppDatasetSearchParamsType>({
@@ -135,7 +140,7 @@ const DatasetParamsModal = ({
       setValue('datasetSearchExtensionModel', '');
     }
   }, [
-    chatModelSelectList,
+    queryExtensionModelList,
     datasetSearchUsingCfrForm,
     defaultModels.llm?.model,
     queryExtensionModel,
@@ -185,7 +190,7 @@ const DatasetParamsModal = ({
                 flex={1}
                 width={'100%'}
                 ml={2}
-                list={chatModelSelectList}
+                list={queryExtensionModelList}
                 onChange={(e) => {
                   setValue('generateSqlModel', e);
                 }}
@@ -206,7 +211,7 @@ const DatasetParamsModal = ({
         )}
       </>
     );
-  }, [chatModelSelectList, showModelTitle, t]);
+  }, [queryExtensionModelList, showModelTitle, t]);
 
   return (
     <MyModal
@@ -313,7 +318,7 @@ const DatasetParamsModal = ({
                   ]}
                   value={searchModeWatch}
                   onChange={(e) => {
-                    setValue('searchMode', e);
+                    setValue('searchMode', e as DatasetSearchModeEnum);
                   }}
                 />
                 {/* Rerank */}
@@ -481,7 +486,7 @@ const DatasetParamsModal = ({
                         <SelectAiModel
                           width={'100%'}
                           value={queryExtensionModel}
-                          list={chatModelSelectList}
+                          list={queryExtensionModelList}
                           onChange={(val: any) => {
                             setValue('datasetSearchExtensionModel', val);
                           }}

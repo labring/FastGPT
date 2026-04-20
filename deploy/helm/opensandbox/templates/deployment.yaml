@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.namePrefix }}controller-manager
+  namespace: {{ include "opensandbox-controller.namespace" . }}
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controllerManager.replicas }}
+  selector:
+    matchLabels:
+      {{- include "opensandbox-controller.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "opensandbox-controller.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "opensandbox-controller.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.controllerManager.securityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+      - name: manager
+        image: {{ include "opensandbox-controller.controllerImage" . }}
+        imagePullPolicy: {{ .Values.controllerManager.image.pullPolicy }}
+        command:
+        - /workspace/server
+        args:
+        {{- if .Values.controllerManager.leaderElect }}
+        - --leader-elect
+        {{- end }}
+        - --health-probe-bind-address={{ .Values.controllerManager.healthProbeBindAddress }}
+        - --zap-log-level={{ .Values.controllerManager.logLevel }}
+        {{- with .Values.controllerManager.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        securityContext:
+          {{- toYaml .Values.controllerManager.containerSecurityContext | nindent 10 }}
+        {{- with .Values.controllerManager.env }}
+        env:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.controllerManager.healthProbePort | default 8081 }}
+          initialDelaySeconds: {{ .Values.healthProbes.liveness.initialDelaySeconds | default 15 }}
+          periodSeconds: {{ .Values.healthProbes.liveness.periodSeconds | default 20 }}
+          timeoutSeconds: {{ .Values.healthProbes.liveness.timeoutSeconds | default 1 }}
+          failureThreshold: {{ .Values.healthProbes.liveness.failureThreshold | default 3 }}
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: {{ .Values.controllerManager.healthProbePort | default 8081 }}
+          initialDelaySeconds: {{ .Values.healthProbes.readiness.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .Values.healthProbes.readiness.periodSeconds | default 10 }}
+          timeoutSeconds: {{ .Values.healthProbes.readiness.timeoutSeconds | default 1 }}
+          failureThreshold: {{ .Values.healthProbes.readiness.failureThreshold | default 3 }}
+        resources:
+          {{- toYaml .Values.controllerManager.resources | nindent 10 }}
+      {{- with .Values.controllerManager.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controllerManager.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controllerManager.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

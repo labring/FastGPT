@@ -1,6 +1,8 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
 import type { Mongoose } from 'mongoose';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 
@@ -32,20 +34,23 @@ export async function connectMongo(props: {
     db.connection.removeAllListeners('disconnected');
   };
 
-  console.log('MongoDB start connect');
+  logger.info('Starting MongoDB connection');
   try {
     // Remove existing listeners to prevent duplicates
     RemoveListeners();
     db.set('strictQuery', 'throw');
 
     db.connection.on('error', async (error) => {
-      console.error('mongo error', error);
+      logger.error('MongoDB connection error', {
+        error,
+        readyState: db.connection.readyState
+      });
     });
     db.connection.on('connected', async () => {
-      console.log('mongo connected');
+      logger.info('MongoDB connected successfully');
     });
     db.connection.on('disconnected', async () => {
-      console.error('mongo disconnected');
+      logger.warn('MongoDB disconnected');
     });
 
     await db.connect(url, {
@@ -67,12 +72,12 @@ export async function connectMongo(props: {
 
     return db;
   } catch (error) {
-    addLog.error('Mongo connect error', error);
+    logger.error('MongoDB connection failed, will retry', { error });
 
     await db.disconnect();
 
     if (isShuttingDown) {
-      addLog.info('Process is shutting down, stop MongoDB reconnect');
+      logger.info('Process is shutting down, stop MongoDB reconnect');
       return db;
     }
 

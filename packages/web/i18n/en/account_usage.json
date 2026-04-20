@@ -1,4 +1,5 @@
 {
+  "agent_call": "Agent call",
   "ai.query_extension_embedding": "Problem optimization-embedding",
   "ai_model": "Model",
   "all": "All",
@@ -9,7 +10,13 @@
   "confirm_export": "Are you sure you want to export the {{total}} matched entries?",
   "count": "Runs",
   "current_filter_conditions": "Current filters:",
+  "answer_accuracy": "Evaluation - Answer Accuracy",
+  "check_left_points": "Check remaining credits",
+  "llm_compress_text": "File content compression",
+  "context_pick": "Context pick",
   "dashboard": "Dashboard",
+  "dataset_chunk_selection": "Knowledge base block cutting",
+  "dataset_search": "Knowledge base search",
   "details": "Details",
   "dingtalk": "DingTalk",
   "duration_seconds": "Duration (s)",
@@ -29,6 +36,7 @@
   "export_title": "Time, Member, Type, Project name, Credits consumed",
   "feishu": "Feishu",
   "generation_time": "Time generated",
+  "helper_bot": "Assistive robot",
   "image_index": "Image index",
   "image_parse": "Image mark",
   "input_token_length": "Input tokens",
@@ -67,5 +75,7 @@
   "hype_index":"build High-quality Hypothetical Prompt Index",
   "synthesis": "Synthesis question generation",
   "synonym_standardize": "Synonym standardization",
-  "synonym_restore": "Synonym restore"
+  "synonym_restore": "Synonym restore",
+  "step_summary": "Summary of steps",
+  "wechat": "WeChat Personal"
 }

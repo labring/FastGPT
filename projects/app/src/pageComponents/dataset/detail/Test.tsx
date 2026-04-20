@@ -20,7 +20,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { type SearchTestResponse } from '@/global/core/dataset/api';
+import { type SearchDatasetTestResponse } from '@fastgpt/global/openapi/core/dataset/api';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap,
@@ -49,7 +49,7 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetPa
 type FormType = {
   inputText: string;
   searchParams: {
-    searchMode: `${DatasetSearchModeEnum}`;
+    searchMode: DatasetSearchModeEnum;
     embeddingWeight?: number;
 
     usingReRank?: boolean;
@@ -110,9 +110,9 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
   const { runAsync: onTextTest, loading: textTestIsLoading } = useRequest(
     ({ inputText, searchParams }: FormType) =>
-      postSearchText({ datasetId, text: inputText.trim(), ...searchParams }),
+      postSearchText({ datasetId, text: inputText.trim(), ...searchParams } as any),
     {
-      onSuccess(res: SearchTestResponse, params) {
+      onSuccess(res: SearchDatasetTestResponse, params) {
         if (!res || res.list.length === 0) {
           return toast({
             status: 'warning',
@@ -385,7 +385,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
       {isOpenSelectMode && (
         <DatasetParamsModal
-          {...searchParams}
+          {...(searchParams as any)}
           maxTokens={20000}
           onClose={onCloseSelectMode}
           onSuccess={(e) => {

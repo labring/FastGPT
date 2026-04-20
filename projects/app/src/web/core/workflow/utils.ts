@@ -1,7 +1,4 @@
-import type {
-  StoreNodeItemType,
-  FlowNodeItemType
-} from '@fastgpt/global/core/workflow/type/node.d';
+import type { StoreNodeItemType, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -38,6 +35,8 @@ import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 /* ====== node ======= */
 export const nodeTemplate2FlowNode = ({
@@ -173,6 +172,21 @@ export const storeNode2FlowNode = ({
       )
   };
 
+  // Format output invalid
+  const llmList = useSystemStore.getState().llmModelList;
+  const llmModelMap = llmList.reduce(
+    (acc, model) => {
+      acc[model.model] = model;
+      return acc;
+    },
+    {} as Record<string, LLMModelItemType>
+  );
+  nodeItem.outputs.forEach((output) => {
+    if (output.invalidCondition) {
+      output.invalid = output.invalidCondition({ inputs: nodeItem.inputs, llmModelMap });
+    }
+  });
+
   return {
     id: storeNode.nodeId,
     type: storeNode.flowNodeType,
@@ -232,7 +246,6 @@ export const getInputComponentProps = (input: FlowNodeInputItemType) => {
     max: input.max,
     min: input.min,
     defaultValue: input.defaultValue,
-    llmModelType: input.llmModelType,
     customInputConfig: input.customInputConfig
   };
 };
@@ -496,12 +509,15 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
-    if (data.flowNodeType === FlowNodeTypeEnum.agent) {
+    if (data.flowNodeType === FlowNodeTypeEnum.toolCall) {
       const toolConnections = edges.filter(
         (edge) =>
           edge.source === data.nodeId && edge.sourceHandle === NodeOutputKeyEnum.selectedTools
       );
-      if (toolConnections.length === 0) {
+      const useAgentSandbox = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.useAgentSandbox
+      )?.value;
+      if (toolConnections.length === 0 && !useAgentSandbox) {
         return [data.nodeId];
       }
     }
@@ -509,6 +525,12 @@ export const checkWorkflowNodeAndConnection = ({
     // check node input
     if (
       inputs.some((input) => {
+        if (
+          !input.valueType ||
+          [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
+        ) {
+          return false;
+        }
         // check is tool input
         if (isToolNode && input.toolDescription) {
           return false;
@@ -562,7 +584,7 @@ export const checkWorkflowNodeAndConnection = ({
     const edgeFilted = edges.filter(
       (edge) =>
         !(
-          data.flowNodeType === FlowNodeTypeEnum.agent &&
+          data.flowNodeType === FlowNodeTypeEnum.toolCall &&
           edge.sourceHandle === NodeOutputKeyEnum.selectedTools
         )
     );

@@ -2,7 +2,7 @@ import { Box, Flex, Switch } from '@chakra-ui/react';
 
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppQGConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from '../Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';

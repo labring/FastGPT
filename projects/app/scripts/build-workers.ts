@@ -141,7 +141,7 @@ const watch = args.includes('--watch') || args.includes('-w');
 // 显示启动信息
 console.log('');
 console.log('╔═══════════════════════════════════════╗');
-console.log('║   FastGPT Worker 预编译工具 v1.0     ║');
+console.log('║   FastGPT Worker 预编译工具 v1.0      ║');
 console.log('╚═══════════════════════════════════════╝');
 console.log('');
 

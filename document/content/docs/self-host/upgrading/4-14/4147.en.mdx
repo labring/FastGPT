@@ -1,0 +1,117 @@
+---
+title: 'V4.14.7 (Includes Upgrade Script)'
+description: 'FastGPT V4.14.7 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images
+
+- Update FastGPT image tag: v4.14.7.2
+- Update FastGPT commercial edition image tag: v4.14.7.1
+- Update fastgpt-plugin image tag: v0.5.4
+- mcp_server: no update needed (4.14.7 image is not available; use the previous version)
+- sandbox: no update needed
+- Update AIProxy image tag: 0.3.15
+- mongo: no update needed
+
+### 2. Update System Environment Variables
+
+The logging system has been updated, including log output, log collection, and log analysis.
+
+```dotenv
+# Remove these environment variables
+LOG_LEVEL=
+STORE_LOG_LEVEL=
+SIGNOZ_BASE_URL=
+SIGNOZ_SERVICE_NAME=
+SIGNOZ_STORE_LEVEL=
+
+# Add the following 6 variables (same variables for fastgpt, fastgpt-pro, fastgpt-plugin, and fastgpt-mcp-server)
+LOG_ENABLE_CONSOLE=true # Enable console output
+LOG_CONSOLE_LEVEL=debug # Minimum log level for console output
+LOG_ENABLE_OTEL=false # Enable OTEL log collection
+LOG_OTEL_LEVEL=info # Minimum log level for OTEL collection
+LOG_OTEL_SERVICE_NAME=fastgpt-client # Service name passed to the OTLP collector
+LOG_OTEL_URL=http://localhost:4318/v1/logs # Your OTLP collector URL. Do not omit /v1/logs
+```
+
+### 3. Update System Plugins
+
+Go to the Plugin Marketplace and update the following system tools (skip this step if you already upgraded to 4.14.6). You can also directly download the [zip package](https://github.com/labring/fastgpt-plugin/raw/refs/heads/main/.github/assets/upgrade_pkg.zip) and install it.
+
+* base64Decode: Base64 decode conversion
+* dallle3: DALL-E 3 image generation
+* docDiff: Document diff comparison
+* drawing: BI charts
+* gptImage: GPT image generation
+* markdownTransform: Markdown file conversion
+* mineru: MinerU PDF parsing
+* minimax: MiniMax chat
+* openrouterMultiModal: OpenRouter multimodal
+* stability: Stability image generation
+
+### 4. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4147' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+1. Adds chat log records containing errors to the statistics table.
+
+### 5. API Changes
+
+In the new version's chat records, the `type` field has been removed from the value. `/api/core/chat/getPaginationRecords` has temporary backward compatibility, but users of this API should update their value parsing logic as soon as possible -- simply check whether fields like `text`, `tools`, etc. exist.
+
+## New Features
+
+1. Context-engineering-based Agent mode, suitable for long task decomposition scenarios. (Beta)
+2. Temporarily added LLM request tracing for debugging. All LLM request bodies and responses are retained (default retention: 6 hours, configurable via `LLM_REQUEST_TRACKING_RETENTION_HOURS`).
+3. Knowledge base search now supports filtering by collectionIds.
+4. Model monitoring now includes cache hit rate.
+5. Share link with custom authentication: the finish event now transmits chatId.
+6. Chat log list now includes an error-only filter option.
+7. Chat log list now supports precise user filtering.
+8. Dependency pre-check: validates infrastructure and sub-service availability at startup for easier troubleshooting.
+9. MCP service parsing now supports `$ref` syntax in schemas.
+10. Rebuilt the logging system using [LogTape](https://logtape.org/), covering log output, collection, and analysis. Mongo-based log storage has been removed -- use an OTEL collector instead.
+
+## Improvements
+
+1. Improved UX for tool selection and knowledge base selection in Chat Agent.
+2. MCP now automatically filters out extraneous fields on save to maintain mongo 4.x compatibility.
+3. Backend automatically filters out unconfigured tools to prevent model errors from calling unconfigured tools. Uses the same filter function to ensure frontend-backend consistency.
+4. Added memory selection for workflow AI models in chat log mode.
+5. Tool calls now auto-fill empty arguments with `"{}"` to prevent errors from providers that don't support empty strings.
+6. Adapted for Kimi 2.5 tool calls in thinking mode.
+7. Improved internal network domain validation.
+8. Orphaned edges are removed before workflow execution.
+9. When calling workflows via API with file links, the file type is now saved directly from the input instead of being inferred from the URL, ensuring 100% correct file types.
+
+## Bug Fixes
+
+1. Some global variable types had incorrect defaultValueType assignments in workflows.
+2. Workflow AI node thinking output was not rendered correctly.
+3. Precisely retrieves permissions for individual MCP sub-tools to prevent unauthorized access.
+4. Toolset ToolName starting with a number caused tool call failures.
+5. Converting a simple app to a workflow did not duplicate the avatar.
+6. When importing workflows, reference-type model fields were incorrectly identified as invalid models and cleared.
+7. On iPhone Safari, share links had a chance of triggering requests with an empty uid on first visit.
+8. MCP could not pass file links when exposing an Agent.
+9. Creating an HTTP tool with variables in the body caused JSON parsing errors.
+10. Workflow canvas auto-positioning stopped working after switching tabs.
+11. When a workflow node encountered an uncaught system error, it did not correctly follow the error capture branch.
+
+## Plugin Updates
+
+1. Added user info retrieval tool.
+2. Added Kimi 2.5 model preset.
+
+## Code Quality
+
+1. Added vector database integration tests.
+2. Improved packages/global unit test coverage to 90+.

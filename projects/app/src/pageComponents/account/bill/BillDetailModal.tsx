@@ -13,7 +13,7 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tool
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getBillDetail } from '@/web/support/wallet/bill/api';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 type BillDetailModalProps = {
   billId: string;

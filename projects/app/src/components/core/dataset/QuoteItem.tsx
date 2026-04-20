@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Link, Progress, Text } from '@chakra-ui/react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
-import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type.d';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import NextLink from 'next/link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -9,7 +9,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
-import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 import Markdown from '@/components/Markdown';
@@ -98,7 +98,7 @@ const QuoteItem = ({
   canDownloadSource?: boolean;
   canEditData?: boolean;
   canEditDataset?: boolean;
-} & Omit<readCollectionSourceBody, 'collectionId'>) => {
+} & Omit<ReadCollectionSourceBodyType, 'collectionId'>) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 

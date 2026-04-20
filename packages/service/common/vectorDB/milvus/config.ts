@@ -1,7 +1,6 @@
-import { DataType, FunctionType } from '@zilliz/milvus2-sdk-node';
+import { DataType } from '@zilliz/milvus2-sdk-node';
 import type {
-  FieldType,
-  FunctionObject
+  FieldType
 } from '@zilliz/milvus2-sdk-node/dist/milvus/types/Collection';
 import type { CreateIndexSimpleReq } from '@zilliz/milvus2-sdk-node/dist/milvus/types/MilvusIndex';
 import {
@@ -43,7 +42,7 @@ export type MilvusCollectionConfig = {
   description: string;
   fields: FieldType[];
   indexParams: MilvusIndexParam[];
-  functions?: FunctionObject[];
+  functions?: any[];
 };
 
 const createBaseFields = (): FieldType[] => {
@@ -144,7 +143,7 @@ const createBaseIndexParams = (): MilvusIndexParam[] => {
   return indexParams;
 };
 
-const createBaseFunctions = (): FunctionObject[] | undefined => {
+const createBaseFunctions = (): any[] | undefined => {
   if (!milvusVersionManager.supportsFullText()) {
     return undefined;
   }
@@ -152,7 +151,7 @@ const createBaseFunctions = (): FunctionObject[] | undefined => {
   return [
     {
       name: 'text_bm25_emb',
-      type: FunctionType.BM25,
+      type: 'BM25' as any,
       input_field_names: ['text'],
       output_field_names: ['sparse'],
       params: {}

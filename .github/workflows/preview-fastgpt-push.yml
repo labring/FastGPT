@@ -1,0 +1,118 @@
+name: Preview FastGPT Image — Push
+
+on:
+  workflow_run:
+    workflows: ['Preview FastGPT Image — Build']
+    types: [completed]
+
+# Only one push at a time
+concurrency:
+  group: 'preview-fastgpt-push'
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  push:
+    runs-on: ubuntu-24.04
+    # Only push when the build succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      matrix:
+        image: [fastgpt, code-sandbox, mcp_server]
+      fail-fast: false
+
+    steps:
+      - name: Set image config
+        id: config
+        run: |
+          if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
+            echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "code-sandbox" ]]; then
+            echo "IMAGE_NAME=fastgpt-code-sandbox" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
+            echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: preview-${{ matrix.image }}-image
+          path: /tmp
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read PR metadata
+        id: pr
+        run: |
+          echo "number=$(cat /tmp/pr-number.txt)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(cat /tmp/pr-sha.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Load Docker image
+        run: docker load --input /tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
+      - name: Tag and push Docker image
+        run: |
+          SHA="${{ steps.pr.outputs.sha }}"
+          docker tag ${{ steps.config.outputs.IMAGE_NAME }}-pr:${SHA} \
+            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:${{ matrix.image }}_${SHA}
+          docker push ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:${{ matrix.image }}_${SHA}
+
+      - name: Add PR comment on success
+        if: success() && steps.pr.outputs.number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ steps.pr.outputs.number }}');
+            const marker = '<!-- fastgpt-preview-${{ matrix.image }} -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const existingComment = comments.find(comment =>
+              comment.body.includes(marker)
+            );
+
+            const commentBody = `${marker}
+            ✅ **Build Successful** - Preview ${{ matrix.image }} Image for this PR:
+
+            \`\`\`
+            ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pr:${{ matrix.image }}_${{ steps.pr.outputs.sha }}
+            \`\`\`
+            `;
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: commentBody
+              });
+            }

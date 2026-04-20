@@ -13,6 +13,10 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
     requestUrl: 'https://api.test.com',
     requestAuth: 'test-key'
   }),
+  getEvaluationModel: vi.fn().mockReturnValue({
+    requestUrl: 'https://api.test.com',
+    requestAuth: 'test-key'
+  }),
   getEmbeddingModel: vi.fn().mockReturnValue({
     requestUrl: 'https://api.test.com',
     requestAuth: 'test-key'
@@ -138,9 +142,9 @@ describe('Evaluator Validation', () => {
       }
     };
 
-    // Mock getLLMModel to throw an error
-    const { getLLMModel } = await import('@fastgpt/service/core/ai/model');
-    (getLLMModel as any).mockImplementation(() => {
+    // Mock getEvaluationModel to throw an error (used by createEvaluatorInstance)
+    const { getEvaluationModel } = await import('@fastgpt/service/core/ai/model');
+    (getEvaluationModel as any).mockImplementation(() => {
       throw new Error('Model not found');
     });
 

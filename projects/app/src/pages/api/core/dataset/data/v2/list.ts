@@ -4,8 +4,6 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import type { DatasetDataListItemType } from '@/global/core/dataset/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
@@ -18,17 +16,14 @@ import {
   DatasetTrainingStatusEnum,
   type DatasetTrainingStatusType
 } from '@fastgpt/global/core/dataset/constants';
+import {
+  GetDatasetDataListBodySchema,
+  GetDatasetDataListResponseSchema,
+  type GetDatasetDataListResponse
+} from '@fastgpt/global/openapi/core/dataset/data/api';
 
-export type GetDatasetDataListProps = PaginationProps & {
-  searchText?: string;
-  collectionId: string;
-};
-export type GetDatasetDataListRes = PaginationResponse<DatasetDataListItemType>;
-
-async function handler(
-  req: ApiRequestProps<GetDatasetDataListProps>
-): Promise<GetDatasetDataListRes> {
-  let { searchText = '', collectionId } = req.body;
+async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
+  const { searchText = '', collectionId } = GetDatasetDataListBodySchema.parse(req.body);
   let { offset, pageSize } = parsePaginationRequest(req);
 
   pageSize = Math.min(pageSize, 100);
@@ -54,8 +49,8 @@ async function handler(
   };
 
   const [list, total] = await Promise.all([
-    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId teamId')
-      .sort({ chunkIndex: 1, _id: 1 })
+    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId')
+      .sort({ chunkIndex: 1, _id: -1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),
@@ -109,27 +104,29 @@ async function handler(
     }
   }
 
-  return {
-    list: await Promise.all(
-      list.map(async (item) => {
-        const trainingStatus =
-          trainingStatusMap.get(String(item._id)) ?? DatasetTrainingStatusEnum.ready;
-        const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
-        const imagePreviewUrl =
-          item.imageId && isS3ObjectKey(item.imageId, 'dataset')
-            ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
-            : undefined;
+  const formatList = await Promise.all(
+    list.map(async (item) => {
+      const trainingStatus =
+        trainingStatusMap.get(String(item._id)) ?? DatasetTrainingStatusEnum.ready;
+      const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
+      const imagePreviewUrl =
+        item.imageId && isS3ObjectKey(item.imageId, 'dataset')
+          ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
+          : undefined;
 
-        return {
-          ...item,
-          imageSize,
-          imagePreviewUrl,
-          trainingStatus
-        };
-      })
-    ),
-    total
-  };
+      return {
+        ...item,
+        imageSize,
+        imagePreviewUrl,
+        trainingStatus
+      };
+    })
+  );
+
+  return GetDatasetDataListResponseSchema.parse({
+    total,
+    list: formatList
+  });
 }
 
 export default NextAPI(handler);

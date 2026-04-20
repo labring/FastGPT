@@ -1,19 +1,17 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import type {
-  DatasetCollectionDataProcessModeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import type { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { Types } from '@fastgpt/service/common/mongo';
-
-type getTrainingDetailParams = {
-  collectionId: string;
-};
+import {
+  GetCollectionTrainingDetailQuerySchema,
+  GetCollectionTrainingDetailResponseSchema,
+  type GetCollectionTrainingDetailResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 export type getTrainingDetailResponse = {
   trainingType: DatasetCollectionDataProcessModeEnum;
@@ -45,10 +43,8 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   synthesis: 0
 };
 
-async function handler(
-  req: ApiRequestProps<{}, getTrainingDetailParams>
-): Promise<getTrainingDetailResponse> {
-  const { collectionId } = req.query;
+async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
+  const { collectionId } = GetCollectionTrainingDetailQuerySchema.parse(req.query);
 
   const { collection } = await authDatasetCollection({
     req,
@@ -147,7 +143,7 @@ async function handler(
     { ...defaultCounts }
   );
 
-  return {
+  return GetCollectionTrainingDetailResponseSchema.parse({
     trainingType: collection.trainingType,
     advancedTraining: {
       customPdfParse: !!collection.customPdfParse,
@@ -156,12 +152,11 @@ async function handler(
       hypeIndexes: !!collection.hypeIndexes,
       small2bigIndexes: !!collection.small2bigIndexes
     },
-
     queuedCounts,
     trainingCounts,
     errorCounts,
     trainedCount
-  };
+  });
 }
 
 export default NextAPI(handler);

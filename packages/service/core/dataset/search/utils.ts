@@ -1,11 +1,24 @@
 import { queryExtension, queryExtensionForAssistant } from '../../ai/functions/queryExtension';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../../ai/model';
 import { searchSynonymMappings } from '../synonym/controller';
-import { addLog } from '../../../common/system/log';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { applySynonymTransform } from '../indexTransform/utils';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
+
+export const computeFilterIntersection = (lists: (string[] | undefined)[]) => {
+  const validLists = lists.filter((list): list is string[] => list !== undefined);
+
+  if (validLists.length === 0) return undefined;
+
+  // reduce without initial value uses first element as accumulator
+  return validLists.reduce((acc, list) => {
+    const set = new Set(list);
+    return acc.filter((id) => set.has(id));
+  });
+};
 
 // 辅助函数：从多个知识库检索标准词映射并汇总
 export async function getSynonymMappings({
@@ -29,7 +42,7 @@ export async function getSynonymMappings({
         query,
         limit: 10
       }).catch((error) => {
-        addLog.debug('Get synonym mappings error for dataset', { datasetId, error });
+        logger.debug('Get synonym mappings error for dataset', { datasetId, error });
         return [];
       })
     );
@@ -65,7 +78,7 @@ export async function getSynonymMappings({
       synonymFileIds: Array.from(synonymFileIdSet)
     };
   } catch (error) {
-    addLog.debug('Get synonym mappings error', { error });
+    logger.debug('Get synonym mappings error', { error });
     return {
       synonymDict: {},
       synonymFileIds: []
@@ -132,7 +145,7 @@ export const datasetSearchQueryExtension = async ({
   llmModel?: string;
   embeddingModel?: string;
   extensionBg?: string;
-  histories?: ChatItemType[];
+  histories?: ChatItemMiniType[];
   isAssistant?: boolean;
   teamId?: string;
   datasetIds?: string[];
@@ -198,7 +211,7 @@ export const datasetSearchQueryExtension = async ({
       if (standardizedQuery !== query) {
         synonymRewriteResult = { standardizedQuery, coreferenceResolved: query };
         queries = [query, standardizedQuery]; // 原始在第1位，标准化在第2位
-        addLog.debug('Synonym rewrite applied', {
+        logger.debug('Synonym rewrite applied', {
           original: query,
           standardized: standardizedQuery
         });

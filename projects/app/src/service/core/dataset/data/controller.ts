@@ -1,17 +1,17 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import {
-  type CreateDatasetDataProps,
-  type PatchIndexesProps,
-  type UpdateDatasetDataProps
-} from '@fastgpt/global/core/dataset/controller';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { Types } from '@fastgpt/service/common/mongo';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import {
   type DatasetDataIndexItemType,
   type DatasetDataItemType
 } from '@fastgpt/global/core/dataset/type';
+import type {
+  CreateDatasetDataProps,
+  UpdateDatasetDataProps
+} from '@fastgpt/global/core/dataset/controller';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
@@ -46,7 +46,7 @@ const formatIndexes = async ({
   synonymMappingMap?: Record<string, string>;
 }): Promise<
   {
-    type: `${DatasetDataIndexTypeEnum}`;
+    type: DatasetDataIndexTypeEnum;
     text: string;
     dataId?: string;
     synId?: number;
@@ -471,6 +471,13 @@ export async function insertData2Dataset({
     await removeS3TTL({ key: imageId, bucketName: 'private', session });
   }
 
+  // Trigger collection update (async, with 5s delay and debounce)
+  pushCollectionUpdateJob({
+    collectionId: String(collectionId),
+    datasetId: String(datasetId),
+    teamId: String(teamId)
+  });
+
   return {
     insertId: _id,
     tokens,
@@ -486,6 +493,25 @@ export async function insertData2Dataset({
  *  3. update mongo data(session run)
  *  4. delete old pg data
  */
+type PatchIndexesProps =
+  | {
+      type: 'create';
+      index: Omit<DatasetDataIndexItemType, 'dataId'> & {
+        dataId?: string;
+      };
+    }
+  | {
+      type: 'update';
+      index: DatasetDataIndexItemType;
+    }
+  | {
+      type: 'delete';
+      index: DatasetDataIndexItemType;
+    }
+  | {
+      type: 'unChange';
+      index: DatasetDataIndexItemType;
+    };
 export async function updateData2Dataset({
   dataId,
   q = '',
@@ -693,6 +719,13 @@ export async function updateData2Dataset({
     }
   });
 
+  // Trigger collection update (async, with 5s delay and debounce)
+  pushCollectionUpdateJob({
+    collectionId: String(mongoData.collectionId),
+    datasetId: String(mongoData.datasetId),
+    teamId: String(mongoData.teamId)
+  });
+
   return {
     tokens
   };
@@ -717,5 +750,12 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
       teamId: data.teamId,
       idList: data.indexes.map((item) => item.dataId)
     });
+  });
+
+  // Trigger collection update (async, with 5s delay and debounce)
+  pushCollectionUpdateJob({
+    collectionId: String(data.collectionId),
+    datasetId: String(data.datasetId),
+    teamId: String(data.teamId)
   });
 };

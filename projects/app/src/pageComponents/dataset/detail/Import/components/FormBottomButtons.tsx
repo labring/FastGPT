@@ -12,7 +12,7 @@ import {
 import type { DatabaseConfig } from '@fastgpt/global/core/dataset/type';
 import { DatabaseTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatabaseFormData } from './ConnectDatabaseForm';
-import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api.d';
+import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 interface ConnectionTestResult {

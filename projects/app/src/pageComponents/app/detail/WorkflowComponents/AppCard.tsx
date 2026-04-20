@@ -218,9 +218,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                     : publishStatusStyle.unPublish.colorSchema
                 }
               >
-                {t(
-                  isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text
-                )}
+                {t(isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text)}
               </MyTag>
             </Flex>
           )}

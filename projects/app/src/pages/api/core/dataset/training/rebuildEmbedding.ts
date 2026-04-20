@@ -10,16 +10,14 @@ import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/co
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  RebuildEmbeddingBodySchema,
+  RebuildEmbeddingResponseSchema,
+  type RebuildEmbeddingResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
 
-export type rebuildEmbeddingBody = {
-  datasetId: string;
-  vectorModel: string;
-};
-
-export type Response = {};
-
-async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Response> {
-  const { datasetId, vectorModel } = req.body;
+async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
+  const { datasetId, vectorModel } = RebuildEmbeddingBodySchema.parse(req.body);
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -138,7 +136,7 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
     } catch (error) {}
   }
 
-  return {};
+  return RebuildEmbeddingResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

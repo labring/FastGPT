@@ -1,0 +1,82 @@
+---
+title: System Plugin Design
+description: FastGPT system plugin design
+---
+
+## Background
+
+Previously, all FastGPT features lived within the Next.js framework, organized as a Monorepo. System plugins existed as a sub-repo under FastGPT/packages/plugin.
+
+As the user base grew, this approach revealed several limitations:
+
+1. Although FastGPT releases weekly, system plugins had to ship alongside FastGPT, severely limiting plugin iteration speed.
+2. Community contributors who wanted to add plugins had to run the entire FastGPT application and submit PRs directly to the main repo.
+3. Users who wanted custom plugins had to maintain a FastGPT fork and manually handle updates and merges, increasing development complexity.
+4. Due to Next.js/webpack limitations, plugins couldn't be mounted at runtime -- no hot-swapping.
+
+## Design
+
+We decided to extract system plugins into a separate repository:
+
+[FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
+
+Key goals of the split:
+1. Decoupling and modularization: not just system tools, but also other plugin types like Knowledge Base plugins, RAG, etc. can be hot-loaded modules.
+2. Independent versioning: FastGPT-plugin can release more frequently than FastGPT, and hot-swapping enables plugin updates without a full release.
+3. Lower development complexity: contributors only need to run the debug suite provided in FastGPT-plugin, without setting up the full FastGPT environment.
+4. Plugin marketplace: enables a future marketplace where users can publish and discover plugins.
+
+## Technology Stack
+
+1. ts-rest as the RPC framework, with an SDK for the FastGPT main project to consume.
+2. zod for runtime type validation.
+3. bun for bundling -- each tool compiles into a single `.pkg` file for hot-swapping.
+
+## Project Structure
+
+- **modules**
+	- **tool** FastGPT system tools
+		- **api** API implementation logic
+		- **packages** System tool directory (each is a package)
+			- getTime
+			- dalle3
+			- ...
+		- **type** Type definitions
+		- **utils** Utilities
+	- **model** Model presets
+- **scripts** Scripts (build, create new tools)
+- **sdk**: SDK definition for external consumers, published to npm
+- **runtime**: Runtime express service
+- **lib**: Library files with utility functions
+- **test**: Tests
+
+For system tool structure, see [How to Develop System Plugins](/docs/introduction/guide/plugins/dev_system_tool).
+
+## Technical Details
+
+### ts-rest: Contract-Based API with Auto-Generated OpenAPI and Client
+
+[ts-rest](https://ts-rest.com/) is a TypeScript RESTful API framework. After defining a contract, you can write handler logic, auto-generate OpenAPI specs, and export a typed client via createClient.
+
+`tRPC` is a similar TypeScript RPC framework, but it uses a proprietary request format that makes integration with other tools inconvenient. ts-rest is essentially a thin wrapper around RESTful APIs and can directly generate OpenAPI specs.
+
+### Zod Type Validation
+
+We use zod for type validation. Zod provides runtime type checking along with advanced features like parameter transformation and object merging.
+
+### Worker-Based Parallel Execution and Environment Isolation
+
+To prevent plugins from interfering with each other while improving concurrency, FastGPT-plugin uses Worker threads for plugin execution. Each tool runs in an independent Worker when called, providing:
+
+1. Environment isolation: each plugin runs in its own Worker process, so plugins don't affect each other.
+2. Parallel processing: plugins can run concurrently, improving overall performance.
+
+### Bundling with Bun
+
+Bundling each plugin into a single `.pkg` file is a key design decision. This allows plugins to be distributed and loaded directly via network mounting.
+
+## Future Plans
+
+1. Visual development tools: provide visual plugin development and debugging tools to lower the barrier to entry.
+2. Plugin marketplace: a marketplace where developers can publish and share plugins.
+3. More plugin types: beyond system tools, expand to Knowledge Base plugins, model plugins, RAG plugins, and more.

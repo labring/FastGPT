@@ -4,7 +4,7 @@ import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
 import { getVectorsByText } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
-import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS, SEEKDB_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus';
 import {

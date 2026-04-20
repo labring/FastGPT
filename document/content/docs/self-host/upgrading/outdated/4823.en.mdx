@@ -1,0 +1,50 @@
+---
+title: V4.8.23
+description: FastGPT V4.8.23 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your database
+
+### 2. Update images:
+
+- Update the fastgpt image tag to v4.8.23-fix
+- Update the fastgpt-pro commercial edition image tag to v4.8.23-fix
+- Sandbox image update is not required
+
+### 3. Run migration script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**:
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4823' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+The script cleans up Knowledge Base dirty data, primarily redundant full-text indexes.
+
+## New Features
+
+1. Added default "Knowledge Base text understanding model" configuration.
+2. AI Proxy V1, which can replace OneAPI and provides complete model call logs for easier troubleshooting.
+3. Added support ticket entry point.
+
+## Improvements
+
+1. Model configuration form now includes required field validation.
+2. Collection list data statistics method improved for better performance with large datasets.
+3. Optimized math formulas: LaTeX format is now escaped to Markdown format.
+4. Document image parsing: oversized images are now automatically skipped.
+5. Time picker: start time defaults to 00:00:00 and end time to 23:59:59 for the selected day, preventing UI/logic discrepancies.
+6. Upgraded mongoose library dependency.
+
+## Bug Fixes
+
+1. Tag filtering not working correctly for subfolders.
+2. Temporarily removed Markdown reading optimization to prevent link splitting errors.
+3. Member list not refreshing when leaving a team.
+4. PPTX encoding error causing parsing failures.
+5. Full-text index not deleted when removing a single Knowledge Base data entry.
+6. Fixed Mongo Dataset text index not taking effect during data queries.

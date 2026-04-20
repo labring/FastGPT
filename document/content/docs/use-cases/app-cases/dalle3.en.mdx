@@ -1,0 +1,467 @@
+---
+title: DALL-E 3 Image Generation
+description: Generate images using the HTTP Request module with DALL-E 3
+---
+
+|                       |                       |
+| --------------------- | --------------------- |
+| ![](/imgs/demo-dalle1.webp) | ![](/imgs/demo-dalle2.webp) |
+
+## OpenAI DALL-E 3 API
+
+Here are the official API parameters and response format:
+
+Body
+
+```json
+{
+    "model": "dall-e-3",
+    "prompt": "A cute baby sea otter",
+    "n": 1,
+    "size": "1024x1024"
+}
+```
+
+Response
+
+```json
+{
+  "created": 1589478378,
+  "data": [
+    {
+      "url": "https://..."
+    },
+    {
+      "url": "https://..."
+    }
+  ]
+}
+```
+
+## Workflow Design
+
+1. Use AI to optimize the image generation prompt (skipped here — use your own prompt).
+2. Use the `HTTP Request` module to call the DALL-E 3 API and retrieve the image URL.
+3. Use the `Text Editor` module to construct a `Markdown` image tag.
+4. Use the `Specified Reply` module to output the image link directly.
+
+### 1. Build the HTTP Module
+
+Copy the DALL-E 3 API request parameters and replace `prompt` with a variable. You also need to add a `Headers.Authorization` header.
+
+Body:
+
+```json
+{
+    "model": "dall-e-3",
+    "prompt": "{{prompt}}",
+    "n": 1,
+    "size": "1024x1024"
+}
+```
+
+Headers:
+
+`Authorization: Bearer sk-xxx`
+
+Response:
+
+Extract the response value based on the DALL-E 3 API return format. Since we only generate one image, we just need the first image's URL. Add a custom output `data[0].url` to the HTTP module.
+
+### 2. Text Editor — Build Image Link
+
+In `Markdown` syntax, `![image description](image URL)` inserts an image, where the image URL comes from the `HTTP Request` module output.
+
+Add an input to receive the image URL from the `HTTP Request` module, then reference it as a variable in the `Text Editor` module to produce a complete `Markdown` image tag.
+
+### 3. Specified Reply
+
+The Specified Reply module outputs incoming content directly to the client, so it can render the processed `Markdown` image format as-is.
+
+## Workflow Configuration
+<details>
+<summary>Workflow Configuration</summary>
+
+```json
+{
+  "nodes": [
+    {
+      "nodeId": "userGuide",
+      "name": "System Config",
+      "intro": "Configure system parameters for the application",
+      "avatar": "/imgs/workflow/userGuide.png",
+      "flowNodeType": "userGuide",
+      "position": {
+        "x": 531.2422736065552,
+        "y": -486.7611729549753
+      },
+      "inputs": [
+        {
+          "key": "welcomeText",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "core.app.Welcome Text",
+          "value": ""
+        },
+        {
+          "key": "variables",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "core.app.Chat Variable",
+          "value": []
+        },
+        {
+          "key": "questionGuide",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "core.app.Question Guide",
+          "value": false
+        },
+        {
+          "key": "tts",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": {
+            "type": "web"
+          }
+        },
+        {
+          "key": "whisper",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": {
+            "open": false,
+            "autoSend": false,
+            "autoTTSResponse": false
+          }
+        },
+        {
+          "key": "scheduleTrigger",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "nodeId": "448745",
+      "name": "Workflow Start",
+      "intro": "",
+      "avatar": "/imgs/workflow/userChatInput.svg",
+      "flowNodeType": "workflowStart",
+      "position": {
+        "x": 532.1275542407774,
+        "y": 46.03775600322817
+      },
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "User Question",
+          "required": true,
+          "toolDescription": "User Question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "core.module.input.label.user question",
+          "valueType": "string",
+          "type": "static"
+        }
+      ]
+    },
+    {
+      "nodeId": "tMyUnRL5jIrC",
+      "name": "HTTP Request",
+      "intro": "Send an HTTP request for advanced operations (web search, database queries, etc.)",
+      "avatar": "/imgs/workflow/http.png",
+      "flowNodeType": "httpRequest468",
+      "showStatus": true,
+      "position": {
+        "x": 921.2377506442713,
+        "y": -483.94114977914256
+      },
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false,
+          "description": "core.module.input.description.HTTP Dynamic Input",
+          "editField": {
+            "key": true,
+            "valueType": true
+          }
+        },
+        {
+          "key": "prompt",
+          "valueType": "string",
+          "label": "prompt",
+          "renderTypeList": [
+            "reference"
+          ],
+          "description": "",
+          "canEdit": true,
+          "editField": {
+            "key": true,
+            "valueType": true
+          },
+          "value": [
+            "448745",
+            "userChatInput"
+          ]
+        },
+        {
+          "key": "system_httpMethod",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "string",
+          "label": "",
+          "value": "POST",
+          "required": true
+        },
+        {
+          "key": "system_httpReqUrl",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "",
+          "description": "core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": false,
+          "value": "https://api.openai.com/v1/images/generations"
+        },
+        {
+          "key": "system_httpHeader",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "any",
+          "value": [
+            {
+              "key": "Authorization",
+              "type": "string",
+              "value": "Bearer "
+            }
+          ],
+          "label": "",
+          "description": "core.module.input.description.Http Request Header",
+          "placeholder": "core.module.input.description.Http Request Header",
+          "required": false
+        },
+        {
+          "key": "system_httpParams",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": "{\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{prompt}}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+          "label": "",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "",
+          "editField": {
+            "key": true,
+            "valueType": true
+          }
+        },
+        {
+          "id": "httpRawResponse",
+          "key": "httpRawResponse",
+          "label": "Raw Response",
+          "description": "The raw HTTP response. Only accepts string or JSON response data.",
+          "valueType": "any",
+          "type": "static"
+        },
+        {
+          "id": "DeKGGioBwaMf",
+          "type": "dynamic",
+          "key": "data[0].url",
+          "valueType": "string",
+          "label": "data[0].url"
+        }
+      ]
+    },
+    {
+      "nodeId": "CO3POL8svbbi",
+      "name": "Text Editor",
+      "intro": "Process fixed or incoming text and output the result. Non-string data is converted to string.",
+      "avatar": "/imgs/workflow/textEditor.svg",
+      "flowNodeType": "pluginModule",
+      "showStatus": false,
+      "position": {
+        "x": 1417.5940290051137,
+        "y": -478.81889618104356
+      },
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "valueType": "dynamic",
+          "label": "Dynamic External Data",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "required": false,
+          "description": "",
+          "canEdit": false,
+          "value": "",
+          "editField": {
+            "key": true
+          },
+          "dynamicParamDefaultValue": {
+            "inputType": "reference",
+            "valueType": "string",
+            "required": true
+          }
+        },
+        {
+          "key": "url",
+          "valueType": "string",
+          "label": "url",
+          "renderTypeList": [
+            "reference"
+          ],
+          "required": true,
+          "description": "",
+          "canEdit": true,
+          "editField": {
+            "key": true
+          },
+          "value": [
+            "tMyUnRL5jIrC",
+            "DeKGGioBwaMf"
+          ]
+        },
+        {
+          "key": "文本",
+          "valueType": "string",
+          "label": "文本",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "required": true,
+          "description": "",
+          "canEdit": false,
+          "value": "![]({{url}})",
+          "editField": {
+            "key": true
+          },
+          "maxLength": "",
+          "dynamicParamDefaultValue": {
+            "inputType": "reference",
+            "valueType": "string",
+            "required": true
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "type": "static",
+          "key": "text",
+          "valueType": "string",
+          "label": "text",
+          "description": ""
+        }
+      ],
+      "pluginId": "community-textEditor"
+    },
+    {
+      "nodeId": "7mapnCgHfKW6",
+      "name": "Specified Reply",
+      "intro": "Directly replies with specified content. Commonly used for guidance and prompts. Non-string input is converted to string for output.",
+      "avatar": "/imgs/workflow/reply.png",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 1922.5628399315042,
+        "y": -471.67391598231796
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "string",
+          "label": "core.module.input.label.Response content",
+          "description": "core.module.input.description.Response content",
+          "placeholder": "core.module.input.description.Response content",
+          "selectedTypeIndex": 1,
+          "value": [
+            "CO3POL8svbbi",
+            "text"
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "edges": [
+    {
+      "source": "448745",
+      "target": "tMyUnRL5jIrC",
+      "sourceHandle": "448745-source-right",
+      "targetHandle": "tMyUnRL5jIrC-target-left"
+    },
+    {
+      "source": "tMyUnRL5jIrC",
+      "target": "CO3POL8svbbi",
+      "sourceHandle": "tMyUnRL5jIrC-source-right",
+      "targetHandle": "CO3POL8svbbi-target-left"
+    },
+    {
+      "source": "CO3POL8svbbi",
+      "target": "7mapnCgHfKW6",
+      "sourceHandle": "CO3POL8svbbi-source-right",
+      "targetHandle": "7mapnCgHfKW6-target-left"
+    }
+  ]
+}
+```
+
+</details>

@@ -1,0 +1,312 @@
+---
+title: Multi-turn Translation Bot
+description: How to use FastGPT to build a multi-turn translation bot with continuous conversation translation functionality
+---
+
+Professor Andrew Ng proposed a reflective translation workflow for large language models (LLM)—[GitHub - andrewyng/translation-agent](https://github.com/andrewyng/translation-agent). The workflow is as follows:
+
+1. Prompt an LLM to translate text from `source_language` to `target_language`;
+2. Have the LLM reflect on the translation and provide constructive improvement suggestions;
+3. Use these suggestions to improve the translation.
+
+This translation process is a relatively new approach that uses LLM self-reflection to achieve better translation results.
+
+The project demonstrates how to chunk long texts and process each chunk with reflective translation, breaking through LLM token limits to achieve efficient, high-quality translation of long texts.
+
+The project also achieves more precise translation by specifying regions (e.g., American English vs. British English) and proposes optimizations like creating glossaries for terms the LLM hasn't trained on, further improving translation accuracy.
+
+All of this can be easily implemented through Fastgpt workflows. This article will guide you step-by-step on how to replicate Professor Andrew Ng's translation-agent.
+
+# Single Text Block Reflective Translation
+
+Let's start simple—translating a single text block that doesn't exceed LLM token limits.
+
+## Initial Translation
+
+First, have the LLM perform an initial translation of the source text block (translation prompts are available in the source project).
+
+![](/imgs/translate1.png)
+
+Use the `Text Concatenation` module to reference three parameters: source language, target language, and source text. Generate a prompt and pass it to the LLM for the first translation version.
+
+## Reflection
+
+Then have the LLM provide modification suggestions for the initial translation—this is called reflection.
+
+![](/imgs/translate2.png)
+
+The prompt now receives 5 parameters: source text, initial translation, source language, target language, and regional constraints. The LLM will provide numerous modification suggestions to prepare for translation improvement.
+
+## Improved Translation
+
+![](/imgs/translate3.png)
+
+After generating the initial translation and reflection, input both into a third LLM translation to get a high-quality translation result.
+
+The complete workflow is as follows:
+
+![](/imgs/translate4.png)
+
+## Results
+
+Considering future reuse of this reflective translation, I created a plugin. Below, I directly call this plugin to use reflective translation. Results:
+
+Randomly selected a Harry Potter passage:
+
+![](/imgs/translate5.png)
+
+![](/imgs/translate61.png)
+
+The reflective translation shows significant improvement. The reflection output:
+
+![](/imgs/translate7.png)
+
+# Long Text Reflective Translation
+
+After mastering short text block reflective translation, we can easily implement long text (multiple text blocks) reflective translation through chunking and looping.
+
+The overall logic: First, check the token count of the input text. If it doesn't exceed the token limit, directly call single text block reflective translation. If it exceeds the limit, split it into reasonable sizes and process each with reflective translation.
+
+## Calculate Tokens
+
+![](/imgs/translate8.png)
+
+First, I used the Laf function module to calculate tokens for the input text.
+
+Laf functions are simple to use—just create an application in laf, install the tiktoken dependency, and import this code:
+
+```typescript
+const { Tiktoken } = require("tiktoken/lite");
+const cl100k_base = require("tiktoken/encoders/cl100k_base.json");
+
+interface IRequestBody {
+  str: string
+}
+
+interface RequestProps extends IRequestBody {
+  systemParams: {
+    appId: string,
+    variables: string,
+    histories: string,
+    cTime: string,
+    chatId: string,
+    responseChatItemId: string
+  }
+}
+
+interface IResponse {
+  message: string;
+  tokens: number;
+}
+
+export default async function (ctx: FunctionContext): Promise<IResponse> {
+  const { str = "" }: RequestProps = ctx.body
+  
+  const encoding = new Tiktoken(
+    cl100k_base.bpe_ranks,
+    cl100k_base.special_tokens,
+    cl100k_base.pat_str
+  );
+  const tokens = encoding.encode(str);
+  encoding.free();
+  
+  return {
+    message: 'ok',
+    tokens: tokens.length
+  };
+}
+```
+
+Back in Fastgpt, click "Sync Parameters", connect the source text, and you can calculate token count.
+
+## Calculate Single Text Block Size
+
+![](/imgs/translate9.png)
+
+Since no third-party packages are involved—just data processing—use the Code Execution module directly:
+
+```typescript
+function main({tokenCount, tokenLimit}){
+  const numChunks = Math.ceil(tokenCount / tokenLimit);
+  let chunkSize = Math.floor(tokenCount / numChunks);
+
+  const remainingTokens = tokenCount % tokenLimit;
+  if (remainingTokens > 0) {
+    chunkSize += Math.floor(remainingTokens / numChunks);
+  }
+
+  return {chunkSize};
+}
+```
+
+This code calculates a reasonable single text block size that doesn't exceed the token limit.
+
+## Get Split Source Text Blocks
+
+![](/imgs/translate10.png)
+
+Using the single text block size and source text, write a function calling langchain's textsplitters package to implement text chunking:
+
+```typescript
+import cloud from '@lafjs/cloud'
+import { TokenTextSplitter } from "@langchain/textsplitters";
+
+interface IRequestBody { 
+  text: string 
+  chunkSize: number
+}
+
+interface RequestProps extends IRequestBody {
+  systemParams: {
+    appId: string,
+    variables: string,
+    histories: string,
+    cTime: string,
+    chatId: string,
+    responseChatItemId: string
+  }
+}
+
+interface IResponse {
+  output: string[];
+}
+
+export default async function (ctx: FunctionContext): Promise<IResponse>{
+  const { text = '', chunkSize=1000 }: RequestProps = ctx.body;
+
+  const splitter = new TokenTextSplitter({
+    encodingName:"gpt2",
+    chunkSize: Number(chunkSize),
+    chunkOverlap: 0,
+  });
+
+  const output = await splitter.splitText(text);
+
+  return { 
+    output
+   }
+}
+```
+
+Now we have the split text. The next operations are similar to single text block reflective translation.
+
+## Multiple Text Block Translation
+
+You can't directly call the previous single text block reflective translation here because the prompts involve context handling (or you can modify the plugin to pass more parameters).
+
+The details are similar to before—just replace some prompts and do simple data processing. Overall effect:
+
+### Multiple Text Block Initial Translation
+
+![](/imgs/translate11.png)
+
+### Multiple Text Block Reflection
+
+![](/imgs/translate12.png)
+
+### Multiple Text Block Improved Translation
+
+![](/imgs/translate13.png)
+
+## Batch Execution
+
+A key part of long text reflective translation is looping through multiple text blocks for reflective translation.
+
+Fastgpt provides workflow loop functionality, so we can write a simple judgment function to determine whether to end or continue:
+
+![](/imgs/translate14.png)
+
+By checking if the current text block is the last one, we determine whether to continue execution. This achieves long text reflective translation.
+
+Complete workflow:
+
+![](/imgs/translate15.png)
+
+## Results
+
+First, input global settings:
+
+![](/imgs/translate16.png)
+
+Then input the text to translate. I chose a Harry Potter chapter in English. OpenAI's token count:
+
+![](/imgs/translate17.png)
+
+Actual results:
+
+![](/imgs/translate18.png)
+
+It meets reading requirements well.
+
+# Further Optimization
+
+## Prompt Optimization
+
+In the source project, the system prompts for AI are relatively brief. We can use more comprehensive prompts to encourage the LLM to return better translations, further improving quality.
+
+For example, in initial translation:
+
+```typescript
+# Role: Senior Translation Expert
+
+## Background:
+You are an experienced translation expert, proficient in {{source_lang}} and {{target_lang}} translation, especially skilled at translating {{source_lang}} articles into fluent, understandable {{target_lang}}. You've led teams to complete large translation projects with widely acclaimed results.
+
+## Attention:
+- Always adhere to the principles of "faithfulness, expressiveness, and elegance" during translation, with "expressiveness" being especially important
+- Translations should conform to {{target_lang}} expression habits, be easy to understand, coherent and fluent
+- Avoid overly formal expressions and obscure allusions
+
+## Constraints:
+- Must strictly follow the four-round translation process: literal translation, free translation, proofreading, finalization
+- Translations must be faithful to the original, accurate, without omissions or misinterpretations
+
+## Goals:
+- Through the four-round translation process, translate {{source_lang}} original text into high-quality {{target_lang}} translation
+- Translations should accurately convey the original meaning, with language expression that's easy to understand and flows naturally
+- Moderately use idioms, colloquialisms, popular internet terms, etc., to enhance translation appeal
+- Based on literal translation, provide at least 2 different style free translation versions for selection
+
+## Skills:
+- Proficient in both {{source_lang}} and {{target_lang}}, with solid language foundation and rich translation experience
+- Skilled at converting {{source_lang}} expression habits into natural {{target_lang}}
+- Keen insight into contemporary {{target_lang}} language development, good at grasping language trends
+
+## Workflow:
+1. First round literal translation: Faithfully translate word by word, sentence by sentence, without omitting any information
+2. Second round free translation: Based on literal translation, use fluent {{target_lang}} to freely translate the original, providing at least 2 different style versions
+3. Third round proofreading: Carefully review the translation, eliminate deviations and deficiencies, making the translation more natural and understandable
+4. Fourth round finalization: Select the best, repeatedly revise and polish, finally producing a concise, smooth translation that conforms to public reading habits
+
+## OutputFormat: 
+- Only output the fourth round finalization answer
+
+## Suggestions:
+- In literal translation, strive to be faithful to the original, but don't be too rigid word by word
+- In free translation, express the original meaning accurately using the most plain {{target_lang}}
+- In proofreading, focus on whether the translation conforms to {{target_lang}} expression habits and is easy to understand
+- In finalization, moderately use idioms, proverbs, internet slang, etc., to make the translation more down-to-earth
+- Leverage {{target_lang}}'s flexibility, use different expressions to present the same content, improving translation readability
+```
+
+This returns more accurate, higher-quality initial translations. Subsequent reflection and improved translation can also use more accurate prompts:
+
+![](/imgs/translate19.png)
+
+Let's look at the results:
+
+![](/imgs/translate20.png)
+
+Testing with the same passage as before shows significant improvement. For example, the red box section—the previous translation:
+
+![](/imgs/translate21.png)
+
+Changed from the biased "让你的猫头鹰给我写信" (have your owl write to me) to the more accurate "给我写信，你的猫头鹰会知道怎么找到我" (write to me, your owl will know how to find me).
+
+## Other Optimizations
+
+For example, constraint optimization—the source project demonstrates adding regional constraints, which testing shows provides significant improvement.
+
+Thanks to LLM's excellent capabilities, we can obtain different translation results by setting different prompts—easily achieving specific, more precise translations through special constraints.
+
+For terms beyond LLM understanding, you can also use Fastgpt's knowledge base functionality for expansion, further improving the translation bot's capabilities.

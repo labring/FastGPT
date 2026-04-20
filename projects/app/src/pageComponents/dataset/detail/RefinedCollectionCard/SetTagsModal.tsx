@@ -18,7 +18,8 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { CollectionPageContext } from '../CollectionCard/Context';
 import { setCollectionTags } from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { CollectionTagValueType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import { utcTsToDisplayDate, displayDateToUtcTs } from '@fastgpt/global/common/string/time';
@@ -93,7 +94,10 @@ const SetTagsModal = ({
   const [rows, setRows] = useState<TagRow[]>(initRows);
 
   const tagMap = useMemo(
-    () => new Map<string, DatasetTagType>(allDatasetTags.map((t) => [t._id, t])),
+    () =>
+      new Map<string, DatasetTagType>(
+        allDatasetTags.map((t) => [t._id, t] as [string, DatasetTagType])
+      ),
     [allDatasetTags]
   );
 

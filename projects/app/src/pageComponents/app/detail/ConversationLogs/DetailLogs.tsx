@@ -12,7 +12,7 @@ import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/Plugin
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import Header from './Header';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatLogsFilterEnum } from '@fastgpt/global/core/chat/correction/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
@@ -210,6 +210,7 @@ const Render = (props: Props) => {
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showSkillReferences={true}
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={params}>

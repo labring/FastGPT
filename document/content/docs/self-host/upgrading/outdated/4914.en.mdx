@@ -1,0 +1,38 @@
+---
+title: V4.9.14
+description: FastGPT V4.9.14 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.9.14
+- Update FastGPT Pro image tag: v4.9.14
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. Knowledge base import now supports automatically adding the filename to the system index.
+2. Admin-side audit logs.
+
+## Improvements
+
+1. Unified knowledge base training queue code logic.
+2. Input box UX improvements.
+3. Image knowledge base now automatically removes line breaks from descriptions to prevent model output line breaks from breaking image display.
+4. Image indexing now generates separate image content descriptions, and attaches them to search results after retrieval — enabling LLMs to understand image content.
+5. Auto-completion for MCP Schema entries missing the `properties` field to prevent errors with certain models.
+6. Error handling for potential JSON import template failures.
+7. Dangerous characters filtered during CSV export.
+8. Added security request headers.
+9. Changing password now invalidates all other active sessions.
+10. Citation display optimization: detects preceding URLs and automatically adds spacing.
+
+## Bug Fixes
+
+1. Knowledge base data input incorrectly detecting QA mode.
+2. Knowledge base tag condition conflicts.
+3. Chat log like/dislike statistics.

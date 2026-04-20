@@ -1,0 +1,81 @@
+---
+title: Team Mode
+description: FastGPT Team Mode Documentation
+---
+
+## Overview
+
+Currently supported team modes:
+
+1. Multi-team mode (default)
+2. Single-team mode (one global team)
+3. Member sync mode (all members synced from external systems)
+
+<table className="table-hover table-striped-columns" style={{ textAlign: 'center' }}>
+  <thead>
+    <tr>
+      <th rowSpan="2" className="text-center">Team Mode</th>
+      <th colSpan="2" className="text-center">SMS/Email Registration</th>
+      <th colSpan="2" className="text-center">Admin Direct Add</th>
+      <th colSpan="2" className="text-center">SSO Registration</th>
+    </tr>
+    <tr>
+      <th className="text-center">Creates Default Team</th>
+      <th className="text-center">Joins Root Team</th>
+      <th className="text-center">Creates Default Team</th>
+      <th className="text-center">Joins Root Team</th>
+      <th className="text-center">Creates Default Team</th>
+      <th className="text-center">Joins Root Team</th>
+    </tr>
+  </thead>
+  <tbody >
+    <tr>
+      <td className="text-center">Single-team Mode</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">✅</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">✅</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">✅</td>
+    </tr>
+    <tr>
+      <td className="text-center">Multi-team Mode</td>
+      <td className="text-center">✅</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">✅</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">✅</td>
+      <td className="text-center">❌</td>
+    </tr>
+    <tr>
+      <td className="text-center">Sync Mode</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">❌</td>
+      <td className="text-center">✅</td>
+    </tr>
+  </tbody>
+</table>
+
+### Multi-team Mode (Default)
+
+In multi-team mode, a default team owned by the user is automatically created when each user is created.
+
+### Single-team Mode
+
+Single-team mode is a new feature introduced in v4.9. To simplify personnel and resource management for enterprises, when single-team mode is enabled, new users no longer get their own default team — instead, they are added to the root user's team.
+
+### Sync Mode
+
+When system configuration is complete and sync mode is enabled, members from external member systems are automatically synced to FastGPT.
+
+For specific sync methods and rules, see [SSO & External Member Sync](/docs/introduction/guide/admin/sso.md).
+
+
+## Configuration
+
+In `fastgpt-pro`'s System Configuration - Member Configuration, you can configure the team mode.
+
+![](/imgs/teammode.png)

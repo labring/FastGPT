@@ -1,16 +1,22 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/core/chat/type';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type {
+  ChatHistoryItemResType,
+  ChatItemMiniType,
+  ToolCiteLinksType,
+  ErrorTextItemType
+} from '@fastgpt/global/core/chat/type';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { type ToolCiteLinksType } from '@fastgpt/global/core/chat/type';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
-  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.agent;
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 export function transformPreviewHistories(
-  histories: ChatItemType[],
+  histories: ChatItemMiniType[],
   responseDetail: boolean
-): ChatItemType[] {
+): ChatItemMiniType[] {
   return histories.map((item) => {
     return {
       ...addStatisticalDataToHistoryItem(item),
@@ -19,19 +25,6 @@ export function transformPreviewHistories(
     };
   });
 }
-
-export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
-  return res
-    .map((item) => {
-      return [
-        item,
-        ...getFlatAppResponses(item.pluginDetail || []),
-        ...getFlatAppResponses(item.toolDetail || []),
-        ...getFlatAppResponses(item.loopDetail || [])
-      ];
-    })
-    .flat();
-};
 
 const extractCitationIdsFromText = (text: string): string[] => {
   if (!text) return [];
@@ -54,7 +47,7 @@ const extractCitationIdsFromText = (text: string): string[] => {
   return Array.from(new Set(ids));
 };
 
-export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
+export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined)
     return historyItem;
@@ -63,8 +56,15 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
-  // get llm module account and history preview length and total quote list and external link list
-  const { llmModuleAccount, historyPreviewLength, quoteList, toolCiteLinks } = flatResData.reduce(
+  // get llm module account and history preview length and total quote list and external link list and error text
+  const {
+    useAgentSandbox,
+    llmModuleAccount,
+    historyPreviewLength,
+    quoteList,
+    toolCiteLinks,
+    errorText
+  } = flatResData.reduce(
     (acc, item) => {
       // LLM
       if (isLLMNode(item)) {
@@ -73,6 +73,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
           acc.historyPreviewLength = item.historyPreview?.length;
         }
       }
+
       // Dataset search result
       if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
         acc.quoteList.push(...item.quoteList.filter(Boolean));
@@ -91,17 +92,28 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
               }
             }
           });
+        } else if (item.toolId === SANDBOX_TOOL_NAME) {
+          acc.useAgentSandbox = true;
         }
+      }
+
+      if (item.errorText && !acc.errorText) {
+        acc.errorText = {
+          moduleName: item.moduleName,
+          errorText: item.errorText
+        };
       }
 
       return acc;
     },
     {
+      useAgentSandbox: false,
       llmModuleAccount: 0,
       historyPreviewLength: undefined as number | undefined,
       quoteList: [] as SearchDataResponseItemType[],
       toolCiteLinks: [] as ToolCiteLinksType[],
-      linkDedupe: new Set<string>()
+      linkDedupe: new Set<string>(),
+      errorText: undefined as ErrorTextItemType | undefined
     }
   );
 
@@ -112,11 +124,16 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
 
   return {
     ...historyItem,
-    llmModuleAccount,
+    useAgentSandbox,
     quoteList, // 原始未过滤的引用列表，用于判断是否有知识库搜索结果
     totalQuoteList: filteredQuoteList, // 过滤后的引用列表，只包含实际被引用的
-    historyPreviewLength,
-    ...(toolCiteLinks.length ? { toolCiteLinks } : {})
+    ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
+    ...(errorText ? { errorText } : {}),
+
+    /** @deprecated */
+    llmModuleAccount,
+    /** @deprecated */
+    historyPreviewLength
   };
 }
 

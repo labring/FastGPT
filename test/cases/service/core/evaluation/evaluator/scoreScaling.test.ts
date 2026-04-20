@@ -53,7 +53,7 @@ describe('Score Scaling Tests', () => {
   });
 
   test('should apply custom score scaling (100x amplification)', async () => {
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 100);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 100);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -66,7 +66,7 @@ describe('Score Scaling Tests', () => {
   });
 
   test('should apply custom score scaling (200x amplification)', async () => {
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 200);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 200);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -79,7 +79,7 @@ describe('Score Scaling Tests', () => {
   });
 
   test('should apply custom score scaling (1x amplification)', async () => {
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 1);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 1);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -92,7 +92,7 @@ describe('Score Scaling Tests', () => {
   });
 
   test('should apply fractional score scaling (0.5x amplification)', async () => {
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 0.5);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 0.5);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -105,7 +105,7 @@ describe('Score Scaling Tests', () => {
   });
 
   test('should apply very small fractional scaling (0.01x for 100x reduction)', async () => {
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 0.01);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 0.01);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -118,7 +118,7 @@ describe('Score Scaling Tests', () => {
   });
 
   test('should apply precise decimal scaling (1.5x amplification)', async () => {
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 1.5);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 1.5);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -141,7 +141,7 @@ describe('Score Scaling Tests', () => {
       usages: []
     });
 
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 200);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 200);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',
@@ -164,7 +164,7 @@ describe('Score Scaling Tests', () => {
       usages: []
     });
 
-    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, 150);
+    evaluator = new (DitingEvaluator as any)(mockMetricConfig, undefined, undefined, undefined, 150);
 
     const result = await evaluator.evaluate({
       userInput: 'test input',

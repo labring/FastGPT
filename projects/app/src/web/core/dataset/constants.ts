@@ -1,15 +1,13 @@
-import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/model';
+import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/constants';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  DatasetStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
-import type {
-  DatasetCollectionItemType,
-  DatasetItemType
-} from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetCollectionItemType, DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const defaultDatasetDetail: DatasetItemType = {
   _id: '',
@@ -22,7 +20,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   avatar: '/icon/logo.svg',
   name: '',
   intro: '',
-  status: 'active',
+  status: DatasetStatusEnum.active,
   permission: new DatasetPermission(),
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],

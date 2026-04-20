@@ -1,5 +1,4 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -12,26 +11,18 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { checkTeamDatasetFolderLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-export type DatasetFolderCreateQuery = {};
-export type DatasetFolderCreateBody = {
-  parentId?: string;
-  name: string;
-  intro: string;
-};
-export type DatasetFolderCreateResponse = {};
-async function handler(
-  req: ApiRequestProps<DatasetFolderCreateBody, DatasetFolderCreateQuery>,
-  _res: ApiResponseType<any>
-): Promise<DatasetFolderCreateResponse> {
-  const { parentId, name, intro } = req.body;
+import {
+  CreateDatasetFolderBodySchema,
+  type CreateDatasetFolderBody
+} from '@fastgpt/global/openapi/core/dataset/api';
 
-  if (!name) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
+  const { parentId, name, intro } = CreateDatasetFolderBodySchema.parse(req.body);
 
   const { teamId, tmbId } = parentId
     ? await authDataset({
@@ -47,6 +38,8 @@ async function handler(
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+
+  await checkTeamDatasetFolderLimit({ teamId });
 
   await mongoSessionRun(async (session) => {
     const dataset = await MongoDataset.create({

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import Container from '../../../components/Container';
 import RenderOutput from '.';
 import { ConnectionSourceHandle } from '../Handle/ConnectionHandle';

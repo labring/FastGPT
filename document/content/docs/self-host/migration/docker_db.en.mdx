@@ -1,0 +1,20 @@
+---
+title: Docker Database Migration (Simple Method)
+description: FastGPT Docker database backup and migration
+---
+
+## 1. Stop Services
+
+```bash
+docker-compose down
+```
+
+
+## 2. Copy Directories
+
+Docker-deployed databases mount local directories into containers via volumes. To migrate, simply copy these directories.
+
+`PG data`: pg/data
+`Mongo data`: mongo/data
+
+Just copy the entire pg and mongo directories to the new location.

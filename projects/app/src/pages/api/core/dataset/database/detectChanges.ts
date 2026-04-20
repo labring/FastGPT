@@ -12,10 +12,10 @@ import type {
   DetectChangesResponse,
   DBTableChange,
   DBTableColumn
-} from '@fastgpt/global/core/dataset/database/api.d';
-import { StatusEnum } from '@fastgpt/global/core/dataset/database/api.d';
+} from '@fastgpt/global/core/dataset/database/api';
+import { StatusEnum } from '@fastgpt/global/core/dataset/database/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
 
 async function handler(

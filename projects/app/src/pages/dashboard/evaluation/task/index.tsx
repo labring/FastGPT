@@ -24,7 +24,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import format from 'date-fns/format';
+import { format } from 'date-fns/format';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -39,7 +39,7 @@ import {
   postRetryFailedEvaluationItems
 } from '@/web/core/evaluation/task';
 import type { EvaluationDisplayType } from '@fastgpt/global/core/evaluation/type';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import {
   EvaluationStatusEnum,
   EvaluationStatusMap

@@ -1004,7 +1004,7 @@ const CollectionCard = () => {
               } else {
                 await putDatasetCollectionById({
                   id: moveCollectionData.collectionId,
-                  parentId
+                  parentId: parentId ?? undefined
                 });
                 getData(pageNum);
                 setMoveCollectionData(undefined);
@@ -1029,7 +1029,7 @@ const CollectionCard = () => {
               try {
                 await putDatasetCollectionById({
                   id: moveDuplicateData.collectionId,
-                  parentId: moveDuplicateData.parentId
+                  parentId: moveDuplicateData.parentId ?? undefined
                 });
                 getData(pageNum);
                 setMoveCollectionData(undefined);

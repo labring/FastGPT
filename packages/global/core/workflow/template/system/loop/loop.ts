@@ -10,7 +10,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 import {
   Input_Template_Children_Node_List,
   Input_Template_LOOP_NODE_OFFSET,

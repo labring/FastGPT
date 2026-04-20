@@ -16,7 +16,9 @@ import { MongoDatasetData } from '../data/schema';
 import type {
   DatabaseConfig,
   DatasetCollectionSchemaType,
-  DatasetDataSchemaType
+  DatasetDataSchemaType,
+  ColumnSchemaType,
+  ForeignKeySchemaType
 } from '@fastgpt/global/core/dataset/type';
 import {
   type DatasetDataTextSchemaType,
@@ -30,11 +32,13 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
+import { computeFilterIntersection } from './utils';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { MongoDatasetDataText } from '../data/dataTextSchema';
+import { type ChatItemMiniType, type ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension, getDatasetSqlResultLimit } from './utils';
-import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { formatDatasetDataValue } from '../data/controller';
 import {
   DBDatasetValueVectorTableName,
@@ -45,7 +49,7 @@ import {
 } from '../../../common/vectorDB/constants';
 import { MongoDataset } from '../schema';
 import { addLog } from '../../../common/system/log';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../../global/common/i18n/utils';
 import { DatabaseErrEnum } from '@fastgpt/global/common/error/code/database';
 import type {
   DativeForeignKey,
@@ -60,8 +64,12 @@ import { queryByNL } from '../database/dative/client/dativeApiServer';
 import { searchDatasetDataForAssistant } from './customController';
 import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
-import { addDays, addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 import { milvusVersionManager } from '../../../common/vectorDB/milvus/version';
+import { MilvusCtrl } from '../../../common/vectorDB/milvus/index';
+import { datasetDataSelectField, datasetCollectionSelectField } from './base';
+import { extractChunkSynonyms } from './synonym';
+import { jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
 // capabilities.ts 公共检索能力
 import {
   getAllDatasetsSynonymWords,
@@ -72,7 +80,7 @@ import {
 } from './capabilities';
 
 export type SearchDatasetDataProps = {
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   teamId: string;
   uid?: string;
   tmbId?: string;
@@ -602,6 +610,7 @@ export async function searchDatasetData(
 
     let tagCollectionIdList: string[] | undefined = undefined;
     let createTimeCollectionIdList: string[] | undefined = undefined;
+    let inputCollectionIdList: string[] | undefined = undefined;
 
     try {
       const jsonMatch =
@@ -756,16 +765,23 @@ export async function searchDatasetData(
         createTimeCollectionIdList = collections.map((item) => String(item._id));
       }
 
-      // Concat tag and time
-      const collectionIds = (() => {
-        if (tagCollectionIdList && createTimeCollectionIdList) {
-          return tagCollectionIdList.filter((id) =>
-            (createTimeCollectionIdList as string[]).includes(id)
-          );
+      // collectionIds
+      const inputCollectionIds = jsonMatch?.collectionIds as string[] | undefined;
+      if (Array.isArray(inputCollectionIds) && inputCollectionIds.length > 0) {
+        inputCollectionIdList = await getAllCollectionIds({
+          parentCollectionIds: inputCollectionIds
+        });
+        if (inputCollectionIdList && inputCollectionIdList.length === 0) {
+          return [];
         }
+      }
 
-        return tagCollectionIdList || createTimeCollectionIdList;
-      })();
+      // Concat tag, time and collectionIds
+      const collectionIds = computeFilterIntersection([
+        tagCollectionIdList,
+        createTimeCollectionIdList,
+        inputCollectionIdList
+      ]);
 
       return await getAllCollectionIds({
         parentCollectionIds: collectionIds
@@ -789,16 +805,140 @@ export async function searchDatasetData(
     if (limit === 0) {
       return { embeddingRecallResults: [], tokens: 0 };
     }
-    const { results, tokens } = await embeddingRecallPerQuery({
-      teamId,
-      datasetIds,
-      queries,
-      model,
-      limit,
-      forbidCollectionIdList,
-      filterCollectionIdList
+
+    const { vectors, tokens } = await getVectorsByText({
+      model: getEmbeddingModel(model),
+      input: queries,
+      type: 'query'
     });
-    return { embeddingRecallResults: results, tokens };
+
+    const recallResults = await Promise.all(
+      vectors.map(async (vector) => {
+        return await recallFromVectorStore({
+          teamId,
+          datasetIds,
+          vector,
+          limit,
+          forbidCollectionIdList,
+          filterCollectionIdList
+        });
+      })
+    );
+
+    // Get data and collections
+    const collectionIdList = Array.from(
+      new Set(recallResults.map((item) => item.results.map((item) => item.collectionId)).flat())
+    );
+    const indexDataIds = Array.from(
+      new Set(recallResults.map((item) => item.results.map((item) => item.id?.trim())).flat())
+    );
+
+    const [dataMaps, collectionMaps] = await Promise.all([
+      MongoDatasetData.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          collectionId: { $in: collectionIdList },
+          'indexes.dataId': { $in: indexDataIds }
+        },
+        datasetDataSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+
+          res.forEach((item) => {
+            item.indexes.forEach((index) => {
+              if (indexDataIds.includes(index.dataId)) {
+                map.set(String(index.dataId), item);
+              }
+            });
+          });
+
+          return map;
+        }),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: collectionIdList }
+        },
+        datasetCollectionSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        })
+    ]);
+
+    const embeddingRecallResults = recallResults.map((item) => {
+      const set = new Set<string>();
+      return (
+        item.results
+          .map((item, index) => {
+            const collection = collectionMaps.get(String(item.collectionId));
+            if (!collection) {
+              addLog.warn('Dataset collection not found during recall', {
+                collectionId: item.collectionId,
+                dataId: item.id
+              });
+              return;
+            }
+
+            const data = dataMaps.get(String(item.id));
+            if (!data) {
+              addLog.warn('Dataset data not found during recall', {
+                dataId: item.id,
+                collectionId: item.collectionId
+              });
+              return;
+            }
+
+            // 提取该 chunk 的同义词映射
+            const synonymMappings = extractChunkSynonyms(data, String(item.id));
+
+            const result: SearchDataResponseItemType = {
+              id: String(data._id),
+              updateTime: data.updateTime,
+              ...formatDatasetDataValue({
+                q: data.q,
+                a: data.a,
+                imageId: data.imageId,
+                imageDescMap: data.imageDescMap
+              }),
+              chunkIndex: data.chunkIndex,
+              datasetId: String(data.datasetId),
+              collectionId: String(data.collectionId),
+              ...getCollectionSourceData(collection),
+              score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }],
+              metadata: data.metadata,
+              synonymMappings: synonymMappings.length > 0 ? synonymMappings : undefined
+            };
+
+            return result;
+          })
+          // 多个向量对应一个数据，每一路召回，保障数据只有一份，并且取最高排名
+          .filter((item) => {
+            if (!item) return false;
+            if (set.has(item.id)) return false;
+            set.add(item.id);
+            return true;
+          })
+          .map((item, index) => {
+            return {
+              ...item!,
+              score: item!.score.map((item) => ({ ...item, index }))
+            };
+          }) as SearchDataResponseItemType[]
+      );
+    });
+    return { embeddingRecallResults, tokens };
   };
 
   const fullTextRecallLocal = async ({
@@ -819,17 +959,353 @@ export async function searchDatasetData(
     if (limit === 0) {
       return { fullTextRecallResults: [] };
     }
-    const { results } = await fullTextRecallPerQuery({
-      teamId,
-      datasetIds,
-      queries,
-      model,
-      limit,
-      forbidCollectionIdList,
-      filterCollectionIdList,
-      customWords
+
+    // 决策：使用 Milvus BM25 还是 MongoDB？
+    const useMilvusFullText = (() => {
+      // 条件 1: 必须是 Milvus 环境（非 PG/OceanBase）
+      if (!MILVUS_ADDRESS) return false;
+      if (PG_ADDRESS || OCEANBASE_ADDRESS) return false;
+
+      // 条件 2: Milvus 版本必须 >= 2.6
+      if (!milvusVersionManager.supportsFullText()) return false;
+
+      // 条件 3: 特性开关（可选，用于灰度），默认打开
+      if (process.env.MILVUS_FULL_TEXT_ENABLED === 'false') return false;
+
+      return true;
+    })();
+
+    if (useMilvusFullText) {
+      return await fullTextRecallFromMilvus({
+        queries,
+        limit,
+        filterCollectionIdList,
+        forbidCollectionIdList,
+        teamId,
+        datasetIds
+      });
+    } else {
+      return await fullTextRecallFromMongo({
+        queries,
+        limit,
+        filterCollectionIdList,
+        forbidCollectionIdList,
+        customWords
+      });
+    }
+  };
+
+  // Milvus 2.6 BM25 全文检索
+  const fullTextRecallFromMilvus = async ({
+    queries,
+    limit,
+    filterCollectionIdList,
+    forbidCollectionIdList,
+    teamId,
+    datasetIds
+  }: {
+    queries: string[];
+    limit: number;
+    filterCollectionIdList?: string[];
+    forbidCollectionIdList: string[];
+    teamId: string;
+    datasetIds: string[];
+  }): Promise<{
+    fullTextRecallResults: SearchDataResponseItemType[][];
+  }> => {
+    const milvusCtrl = new MilvusCtrl();
+
+    // 并行执行多个查询的 BM25 检索
+    const recallResults = await Promise.all(
+      queries.map(async (query) => {
+        return await milvusCtrl.fullTextSearch({
+          teamId,
+          datasetIds,
+          query,
+          limit,
+          forbidCollectionIdList,
+          filterCollectionIdList
+        });
+      })
+    );
+
+    // 获取所有 id 和 collectionId
+    const vectorIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.id)).flat())
+    );
+    const collectionIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.collectionId)).flat())
+    );
+
+    // 通过向量 ID 查询 MongoDB 获取完整数据
+    const [dataMap, collectionMaps] = await Promise.all([
+      // 注意：Milvus 返回的 id 是向量 ID，需要通过它查询 MongoDatasetData
+      // 这里假设向量 ID 和 dataId 的对应关系存在（需要根据实际情况调整）
+      MongoDatasetData.find(
+        {
+          'indexes.dataId': { $in: vectorIds }
+        },
+        datasetDataSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+          res.forEach((item) => {
+            // 建立索引 dataId -> 完整数据的映射
+            item.indexes?.forEach((idx: any) => {
+              if (idx.dataId) {
+                map.set(String(idx.dataId), item);
+              }
+            });
+          });
+          return map;
+        }),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }
+        },
+        datasetCollectionSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+          return map;
+        })
+    ]);
+
+    // 格式化结果
+    const fullTextRecallResults = recallResults.map((queryResults) => {
+      return queryResults
+        .map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          if (!collection) {
+            console.log('Collection is not found', item);
+            return;
+          }
+
+          const data = dataMap.get(String(item.id));
+          if (!data) {
+            console.log('Data is not found', item);
+            return;
+          }
+
+          // 提取该 chunk 的同义词映射
+          const synonymMappings = extractChunkSynonyms(data, String(item.id));
+
+          return {
+            id: String(data._id),
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            updateTime: data.updateTime,
+            ...formatDatasetDataValue({
+              q: data.q,
+              a: data.a,
+              imageId: data.imageId,
+              imageDescMap: data.imageDescMap
+            }),
+            chunkIndex: data.chunkIndex,
+            metadata: data.metadata,
+            ...getCollectionSourceData(collection),
+            score: [
+              {
+                type: SearchScoreTypeEnum.fullText,
+                value: item.score || 0,
+                index
+              }
+            ],
+            synonymMappings: synonymMappings.length > 0 ? synonymMappings : undefined
+          };
+        })
+        .filter((item) => {
+          if (!item) return false;
+          return true;
+        })
+        .map((item, index) => {
+          return {
+            ...item,
+            score: item!.score.map((scoreItem) => ({ ...scoreItem, index }))
+          };
+        }) as SearchDataResponseItemType[];
     });
-    return { fullTextRecallResults: results };
+
+    return {
+      fullTextRecallResults
+    };
+  };
+
+  // MongoDB 全文检索
+  const fullTextRecallFromMongo = async ({
+    queries,
+    limit,
+    filterCollectionIdList,
+    forbidCollectionIdList,
+    customWords = []
+  }: {
+    queries: string[];
+    limit: number;
+    filterCollectionIdList?: string[];
+    forbidCollectionIdList: string[];
+    customWords?: string[];
+  }): Promise<{
+    fullTextRecallResults: SearchDataResponseItemType[][];
+  }> => {
+    const recallResults = await Promise.all(
+      queries.map(async (query) => {
+        const jiebaSplitResult = await jiebaSplitWithCustomDict({ text: query, customWords });
+        return (await MongoDatasetDataText.aggregate(
+          [
+            {
+              $match: {
+                teamId: new Types.ObjectId(teamId),
+                $text: { $search: jiebaSplitResult },
+                datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
+                ...(filterCollectionIdList
+                  ? {
+                      collectionId: {
+                        $in: filterCollectionIdList
+                          .filter((id) => !forbidCollectionIdList.includes(id))
+                          .map((id) => new Types.ObjectId(id))
+                      }
+                    }
+                  : forbidCollectionIdList?.length
+                    ? {
+                        collectionId: {
+                          $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                        }
+                      }
+                    : {})
+              }
+            },
+            {
+              $sort: {
+                score: { $meta: 'textScore' }
+              }
+            },
+            {
+              $limit: limit
+            },
+            {
+              $project: {
+                _id: 1,
+                collectionId: 1,
+                dataId: 1,
+                score: { $meta: 'textScore' }
+              }
+            }
+          ],
+          {
+            ...readFromSecondary
+          }
+        )) as (DatasetDataTextSchemaType & { score: number })[];
+      })
+    );
+
+    const dataIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.dataId)).flat())
+    );
+    const collectionIds = Array.from(
+      new Set(recallResults.map((item) => item.map((item) => item.collectionId)).flat())
+    );
+
+    // Get data and collections
+    const [dataMaps, collectionMaps] = await Promise.all([
+      MongoDatasetData.find(
+        {
+          _id: { $in: dataIds }
+        },
+        datasetDataSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        }),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: collectionIds }
+        },
+        datasetCollectionSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        })
+    ]);
+
+    const fullTextRecallResults = recallResults.map((item) => {
+      return item
+        .map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          if (!collection) {
+            addLog.warn('Dataset collection not found during full-text recall', {
+              collectionId: item.collectionId,
+              dataId: item.dataId
+            });
+            return;
+          }
+
+          const data = dataMaps.get(String(item.dataId));
+          if (!data) {
+            addLog.warn('Dataset data not found during full-text recall', {
+              dataId: item.dataId,
+              collectionId: item.collectionId
+            });
+            return;
+          }
+
+          return {
+            id: String(data._id),
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            updateTime: data.updateTime,
+            ...formatDatasetDataValue({
+              q: data.q,
+              a: data.a,
+              imageId: data.imageId,
+              imageDescMap: data.imageDescMap
+            }),
+            chunkIndex: data.chunkIndex,
+            metadata: data.metadata,
+            ...getCollectionSourceData(collection),
+            score: [
+              {
+                type: SearchScoreTypeEnum.fullText,
+                value: item.score || 0,
+                index
+              }
+            ]
+          };
+        })
+        .filter((item) => {
+          if (!item) return false;
+          return true;
+        })
+        .map((item, index) => {
+          return {
+            ...item,
+            score: item!.score.map((item) => ({ ...item, index }))
+          };
+        }) as SearchDataResponseItemType[];
+    });
+    return { fullTextRecallResults };
   };
 
   const multiQueryRecall = async ({
@@ -1317,7 +1793,8 @@ const mergeAndGetSchema = async ({
 
     const tableName = collection.name;
     const primaryKeys = collection.tableSchema?.primaryKeys || [];
-    const foreignKyes = collection.tableSchema?.foreignKeys.map((fk) => fk.column) || [];
+    const foreignKyes =
+      collection.tableSchema?.foreignKeys.map((fk: ForeignKeySchemaType) => fk.column) || [];
 
     // Collect all unique columns from all results for this collection
     const allRetrievedColumns = new Set<string>([...primaryKeys, ...foreignKyes]);
@@ -1415,7 +1892,7 @@ export const generateAndExecuteSQL = async ({
   const retrievedMetadata = collections.map((collection) => {
     const columns: Record<string, DativeTableColumns> = {};
     if (collection.tableSchema?.columns) {
-      Object.values(collection.tableSchema.columns).forEach((col) => {
+      (Object.values(collection.tableSchema.columns) as ColumnSchemaType[]).forEach((col) => {
         if (schema[collection.name]?.retrieval_columns.includes(col.columnName)) {
           columns[col.columnName] = {
             name: col.columnName,
@@ -1433,7 +1910,7 @@ export const generateAndExecuteSQL = async ({
     }
 
     const foreign_keys: DativeForeignKey[] =
-      collection.tableSchema?.foreignKeys?.map((fk) => ({
+      collection.tableSchema?.foreignKeys?.map((fk: ForeignKeySchemaType) => ({
         name: fk.name,
         column: fk.column,
         referenced_schema: fk.referredSchema,

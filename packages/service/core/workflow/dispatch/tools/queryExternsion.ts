@@ -1,4 +1,4 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -13,7 +13,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
-  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
 }>;
 type Response = DispatchNodeResultType<{
@@ -23,6 +23,7 @@ type Response = DispatchNodeResultType<{
 export const dispatchQueryExtension = async ({
   histories,
   node,
+  usagePush,
   params: { model, systemPrompt, history, userChatInput }
 }: Props): Promise<Response> => {
   if (!userChatInput) {
@@ -62,6 +63,22 @@ export const dispatchQueryExtension = async ({
   });
 
   const totalPoints = llmPoints + embeddingPoints;
+  usagePush([
+    {
+      moduleName: node.name,
+      totalPoints: llmPoints,
+      model: llmModelName,
+      inputTokens,
+      outputTokens
+    },
+    {
+      moduleName: `${node.name} - Embedding`,
+      totalPoints: embeddingPoints,
+      model: embeddingModelName,
+      inputTokens: embeddingTokens,
+      outputTokens: 0
+    }
+  ]);
 
   const set = new Set<string>();
   const filterSameQueries = extensionQueries.filter((item) => {
@@ -84,22 +101,6 @@ export const dispatchQueryExtension = async ({
       embeddingTokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
-    },
-    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
-      {
-        moduleName: node.name,
-        totalPoints: llmPoints,
-        model: llmModelName,
-        inputTokens,
-        outputTokens
-      },
-      {
-        moduleName: `${node.name} - Embedding`,
-        totalPoints: embeddingPoints,
-        model: embeddingModelName,
-        inputTokens: embeddingTokens,
-        outputTokens: 0
-      }
-    ]
+    }
   };
 };

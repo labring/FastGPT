@@ -20,7 +20,13 @@ function MyLink(e: any) {
       {text}
     </Link>
   ) : (
-    <Box as={'li'} mb={1}>
+    <Box
+      as={'li'}
+      mb={1}
+      sx={{
+        listStylePosition: 'inside'
+      }}
+    >
       <Box
         as={'span'}
         color={'primary.700'}

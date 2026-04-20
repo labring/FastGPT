@@ -1,0 +1,77 @@
+---
+title: 'V4.13.2 (Includes Upgrade Script)'
+description: 'FastGPT V4.13.2 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.13.2
+- Update FastGPT commercial edition image tag: v4.13.2
+- Update fastgpt-plugin image tag: v0.2.4
+- mcp_server: no update needed
+- Sandbox: no update needed
+- AIProxy: no update needed
+
+### 2. Add FastGPT/FastGPT-pro Environment Variables
+
+```
+S3_PUBLIC_BUCKET=fastgpt-public # (Public read bucket name, corresponds to the previous S3_TOOL_BUCKET in the plugin project)
+S3_PRIVATE_BUCKET=fastgpt-private # (Private read/write bucket name, corresponds to the previous S3_PLUGIN_BUCKET in the plugin project)
+```
+
+### 3. Fix fastgpt-plugin Environment Variables
+
+- Rename S3_TOOL_BUCKET to S3_PUBLIC_BUCKET
+- Rename S3_PLUGIN_BUCKET to S3_PRIVATE_BUCKET
+
+### 4. Run the Upgrade Script
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4132' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+This will remove the previous S3 circleLife policy. If you are using an external S3 service that does not support circleLife operations, this script may fail -- you can safely ignore the error (since setting the policy would have also failed).
+
+
+## New Features
+
+1. HTTP Toolset now supports manual creation mode.
+2. Introduced the project OpenAPI framework.
+3. API key validity check endpoint.
+4. Exported chat logs now include the current version's global variables at the end.
+
+## Improvements
+
+1. Non-administrators can no longer view team audit logs.
+2. Introduced S3 for storing app avatars.
+3. Workflow canvas performance improvements.
+
+## Bug Fixes
+
+1. LLM models defaulting to image support caused request errors.
+2. Mongo watch was not re-triggered during multi-replica failover.
+3. Text chunking did not process the remaining `LastText` data after all strategies were exhausted.
+4. Variable input field failed validation when number value was 0.
+5. Incorrect parallel execution detection in complex workflow loops.
+
+## Plugin Updates
+
+1. Added: Perplexity Search tool.
+2. Added: Base64-to-file conversion tool.
+3. Added: MiniMax TTS file generation tool.
+4. Added: Openrouter Nano Banana image generation tool.
+5. Added: Redis cache operation tool.
+6. Added: Tavily Search tool.
+7. Added: SiliconFlow qwen-image and qwen-image-edit tools.
+8. Added: Lark Multidimensional Table operation suite.
+9. Added: YouTube subtitle extraction.
+10. Added: Alibaba Cloud Bailian qwen image edit.
+11. Added: Markdown-to-PPT tool.
+12. Added: Whisper speech-to-text tool.
+13. System tools now support configuring whether to run in a Worker.

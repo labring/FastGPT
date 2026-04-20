@@ -14,7 +14,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   FlowNodeInputTypeEnum,
-  FlowValueTypeMap
+  getFlowValueTypeMeta
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -255,7 +255,7 @@ const Reference = ({
           fontSize={'sm'}
           fontWeight={'medium'}
         >
-          {t(FlowValueTypeMap[inputChildren.valueType || WorkflowIOValueTypeEnum.any].label)}
+          {t(getFlowValueTypeMeta(inputChildren.valueType).label)}
         </Flex>
       </Flex>
       {!isEmptyItem && (

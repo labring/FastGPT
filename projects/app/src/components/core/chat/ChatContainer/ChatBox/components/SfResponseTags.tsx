@@ -9,7 +9,7 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatSiteItemType } from '../type';
 import { addStatisticalDataToHistoryItem, isCorrectionRecord } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
@@ -29,7 +29,6 @@ export type CitationRenderItem = {
   onClick: () => any;
 };
 
-const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 const AssistantDetailModal = dynamic(() => import('../../../components/AssistantDetailModal'));
 
@@ -98,16 +97,6 @@ const ResponseTags = ({
     isOpen: isOpenWholeModal,
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
-  } = useDisclosure();
-
-  // 处理查看完整响应
-  const handleViewFullResponse = useCallback(() => {
-    onOpenWholeModal();
-  }, [onOpenWholeModal]);
-  const {
-    isOpen: isOpenContextModal,
-    onOpen: onOpenContextModal,
-    onClose: onCloseContextModal
   } = useDisclosure();
 
   useSize(quoteListRef);

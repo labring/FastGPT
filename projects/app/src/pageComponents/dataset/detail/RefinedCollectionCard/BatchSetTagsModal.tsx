@@ -20,7 +20,8 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { CollectionPageContext } from '../CollectionCard/Context';
 import { batchSetCollectionTags } from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { CollectionTagValueType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import { utcTsToDisplayDate, displayDateToUtcTs } from '@fastgpt/global/common/string/time';
@@ -92,7 +93,10 @@ const BatchSetTagsModal = ({
   const { getData, pageNum } = useContextSelector(CollectionPageContext, (v) => v);
 
   const tagMap = useMemo(
-    () => new Map<string, DatasetTagType>(allDatasetTags.map((tag) => [tag._id, tag])),
+    () =>
+      new Map<string, DatasetTagType>(
+        allDatasetTags.map((tag) => [tag._id, tag] as [string, DatasetTagType])
+      ),
     [allDatasetTags]
   );
 

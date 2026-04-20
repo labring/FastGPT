@@ -3,23 +3,25 @@ import { SystemToolBasicConfigSchema, ToolSecretInputItemSchema } from '../../to
 import z from 'zod';
 import { UserTagsEnum } from '../../../../support/user/type';
 
-export const AdminSystemToolListItemSchema = SystemToolBasicConfigSchema.extend({
-  id: z.string(),
-  parentId: ParentIdSchema,
-  name: z.string(),
-  intro: z.string().optional(),
-  author: z.string().optional(),
-  avatar: z.string().optional(),
-  tags: z.array(z.string()).nullish(),
+export const AdminSystemToolListItemSchema = SystemToolBasicConfigSchema.merge(
+  z.object({
+    id: z.string(),
+    parentId: ParentIdSchema,
+    name: z.string(),
+    intro: z.string().optional(),
+    author: z.string().optional(),
+    avatar: z.string().optional(),
+    tags: z.array(z.string()).nullish(),
 
-  hasSystemSecret: z.boolean().optional(),
+    hasSystemSecret: z.boolean().optional(),
 
-  // App tool
-  associatedPluginId: z.string().optional(),
+    // App tool
+    associatedPluginId: z.string().optional(),
 
-  isFolder: z.boolean().optional(),
-  hasSecretInput: z.boolean()
-});
+    isFolder: z.boolean().optional(),
+    hasSecretInput: z.boolean()
+  })
+);
 export type AdminSystemToolListItemType = z.infer<typeof AdminSystemToolListItemSchema>;
 
 // Child config schema for update

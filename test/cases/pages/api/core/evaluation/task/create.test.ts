@@ -87,6 +87,21 @@ describe('Create Evaluation Task API Handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Register gpt-4 in the global model map so evaluator validation can find it
+    if (!global.llmModelMap) {
+      global.llmModelMap = new Map<string, any>();
+    }
+    global.llmModelMap.set('gpt-4', {
+      model: 'gpt-4',
+      name: 'gpt-4',
+      isActive: true,
+      requestUrl: undefined,
+      requestAuth: undefined,
+      provider: 'OpenAI',
+      maxContext: 8192,
+      maxResponse: 4096
+    });
+
     // Setup mocks
     vi.mocked(checkTeamAIPoints).mockResolvedValue(undefined);
     vi.mocked(checkTeamEvaluationTaskLimit).mockResolvedValue(undefined);

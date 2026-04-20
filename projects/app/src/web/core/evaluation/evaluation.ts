@@ -1,12 +1,12 @@
 import { DELETE, POST } from '@/web/common/api/request';
-// 临时类型定义，规避引用源被删除的问题
-type listEvalItemsBody = any;
-type listEvaluationsBody = any;
-type retryEvalItemBody = any;
-type updateEvalItemBody = any;
-type evaluationType = any;
-type listEvalItemsItem = any;
-import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type {
+  listEvalItemsBody,
+  listEvaluationsBody,
+  retryEvalItemBody,
+  updateEvalItemBody
+} from '@fastgpt/global/core/app/evaluation/api';
+import type { evaluationType, listEvalItemsItem } from '@fastgpt/global/core/app/evaluation/type';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 
 export const postCreateEvaluation = ({
   file,

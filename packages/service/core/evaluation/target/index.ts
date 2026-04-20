@@ -21,7 +21,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
-  ChatItemValueTypeEnum,
   ChatRoleEnum,
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
@@ -33,7 +32,7 @@ import type {
 import { WORKFLOW_MAX_RUN_TIMES } from '../../workflow/constants';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
-import { saveChat } from '../../chat/saveChat';
+import { pushChatRecords as saveChat } from '../../chat/saveChat';
 import { MongoChatItem } from '../../chat/chatItemSchema';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -98,7 +97,6 @@ export class WorkflowTarget extends EvaluationTarget {
     // Construct query
     const query: UserChatItemValueItemType[] = [
       {
-        type: ChatItemValueTypeEnum.text,
         text: {
           content: input.userInput
         }
@@ -120,7 +118,6 @@ export class WorkflowTarget extends EvaluationTarget {
           obj: ChatRoleEnum.Human,
           value: [
             {
-              type: ChatItemValueTypeEnum.text,
               text: {
                 content: `请参考以下背景知识回答问题：\n${contextText}`
               }

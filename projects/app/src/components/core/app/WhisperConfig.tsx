@@ -3,7 +3,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, ModalBody, useDisclosure, Switch } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type.d';
+import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
@@ -31,7 +31,7 @@ const WhisperConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'}>{t('common:core.app.Whisper')}</FormLabel>
+      <FormLabel>{t('common:core.app.Whisper')}</FormLabel>
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.Config whisper')}>
         <Button

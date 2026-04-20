@@ -1,0 +1,11 @@
+{
+  "title": "Use Cases",
+  "description": "More information about FastGPT practical use cases",
+  "root": true,
+  "pages": [
+    "---External Integration---",
+    "...external-integration",
+    "---Application Examples---",
+    "...app-cases"
+  ]
+}

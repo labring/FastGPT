@@ -16,7 +16,7 @@ import {
 import { getEvaluationSummaryTokenLimit, getEvaluationSummaryModel } from '../utils/tokenLimiter';
 import { createChatCompletion } from '../../ai/config';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { loadRequestMessages } from '../../ai/llm/utils';
 import {
@@ -866,7 +866,7 @@ export class EvaluationSummaryService {
 
       const messages: ChatCompletionMessageParam[] = [
         {
-          role: ChatCompletionRequestMessageRoleEnum.User,
+          role: 'user' as const,
           content: userPrompt
         }
       ];
@@ -879,7 +879,7 @@ export class EvaluationSummaryService {
       const { response, isStreamResponse } = await createChatCompletion({
         body: {
           model: modelData.model,
-          messages: requestMessages,
+          messages: requestMessages as any,
           temperature: TEMPERATURE_FOR_EVALUATION_SUMMARY,
           max_tokens: MAX_TOKEN_FOR_EVALUATION_SUMMARY,
           stream: false

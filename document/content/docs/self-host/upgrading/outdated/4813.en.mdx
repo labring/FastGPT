@@ -1,0 +1,47 @@
+---
+title: V4.8.13
+description: FastGPT V4.8.13 Release Notes
+---
+
+## Upgrade Guide
+
+### 1. Back up your data
+
+### 2. Update images
+
+- Update the FastGPT image tag to v4.8.13-fix
+- Update the FastGPT commercial edition image tag to v4.8.13-fix (fastgpt-pro image)
+- Sandbox image update is optional
+
+### 3. Add environment variables
+
+- Add the environment variable `FE_DOMAIN=http://xx.com` to both the fastgpt and fastgpt-pro images. Set the value to the FastGPT frontend access URL (do not include a trailing `/`). This automatically prepends the domain to relative file paths.
+
+### 4. Update file upload workflow configuration
+
+While the old file upload workflow configuration is still supported, backward compatibility will be removed within the next two versions. Please update your workflows to use the new file upload logic as soon as possible. In particular, file passing in nested apps will no longer be automatic — you must explicitly specify which files to pass. For details, see: [File Upload Changes](/docs/introduction/guide/course/fileinput/#4813%E7%89%88%E6%9C%AC%E8%B5%B7%E5%85%B3%E4%BA%8E%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E7%9A%84%E6%9B%B4%E6%96%B0)
+
+## Release Notes
+
+1. New - Array variable selection supports multi-select. You can select multiple arrays or their corresponding single data types, which are automatically merged in selection order.
+2. New - Revamped file upload approach. AI chat and tool call nodes directly accept file URLs and enforce prompt injection without relying on model-driven decisions. Plugin custom variables support file upload types, replacing global files.
+3. New - Chat history now displays timestamps.
+4. New - Workflow validation errors now navigate to the error node.
+5. New - Loop node adds an index value.
+6. New - Added translations for some chat error messages.
+7. New - Chat input box supports drag-and-drop file upload.
+8. New - Chat logs now show the specific share link/API name as the source.
+9. New - Share links support configuring whether to display real-time execution status.
+10. Improved - Merged multiple system prompts into one to support models that don't accept multiple system prompts.
+11. Improved - Better error messages for Knowledge Base file uploads.
+12. Improved - Full-text search query optimization, eliminating one subquery.
+13. Improved - Replaced `findLast` with `[...array].reverse().find` for older browser compatibility.
+14. Improved - Markdown component auto-spacing to avoid splitting Chinese characters in URLs.
+15. Improved - Workflow context splitting for better performance.
+16. Improved - Text-to-speech: browsers that don't support `mediaSource` can now wait for full audio generation before playback.
+17. Improved - Chat starter CSV reading with automatic encoding detection.
+18. Improved - Fixed potential garbled text when importing chat starters via CSV.
+19. Fixed - Dockerfile pnpm install now supports proxy.
+20. Fixed - Dockerfile pnpm install now supports proxy.
+21. Fixed - BI chart generation unable to write files. Also improved parsing to support numeric array types.
+22. Fixed - Share link title displaying incorrectly on first load.

@@ -49,10 +49,11 @@ const ConnectDatabaseConfig = () => {
   );
 
   const defaultValues = {
-    clientType: databaseConfig?.clientType || DatabaseTypeEnum.mysql,
+    clientType: (databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum,
     host: databaseConfig?.host || '',
     port:
-      databaseConfig?.port || getDefaultPort(databaseConfig?.clientType || DatabaseTypeEnum.mysql),
+      databaseConfig?.port ||
+      getDefaultPort((databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum),
     database: databaseConfig?.database || '',
     user: databaseConfig?.user || '',
     password: databaseConfig?.password || '',
@@ -81,11 +82,13 @@ const ConnectDatabaseConfig = () => {
       loadDatasetDetail(datasetId).then((res) => {
         const databaseConfig = res.databaseConfig;
         const defaultValues = {
-          clientType: databaseConfig?.clientType || DatabaseTypeEnum.mysql,
+          clientType: (databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum,
           host: databaseConfig?.host || '',
           port:
             databaseConfig?.port ||
-            getDefaultPort(databaseConfig?.clientType || DatabaseTypeEnum.mysql),
+            getDefaultPort(
+              (databaseConfig?.clientType || DatabaseTypeEnum.mysql) as DatabaseTypeEnum
+            ),
           database: databaseConfig?.database || '',
           user: databaseConfig?.user || '',
           password: databaseConfig?.password || '',
@@ -98,7 +101,7 @@ const ConnectDatabaseConfig = () => {
   }, []);
 
   const formData = watch();
-  const currentClientType = watch('clientType');
+  const currentClientType = watch('clientType') as DatabaseTypeEnum;
   const currentTypeConfig = getDatabaseTypeConfig(currentClientType);
 
   // Handle database type change - update port and default database
@@ -160,7 +163,7 @@ const ConnectDatabaseConfig = () => {
               control={control}
               render={({ field }) => (
                 <DatabaseTypeSelector
-                  value={field.value}
+                  value={field.value as DatabaseTypeEnum}
                   onChange={handleDatabaseTypeChange}
                   isDisabled={isEditMode}
                 />

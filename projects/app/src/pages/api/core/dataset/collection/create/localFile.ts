@@ -1,14 +1,17 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import {
+  CreateCollectionByLocalFileBodySchema,
+  type CreateCollectionWithResultResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
-async function handler(req: NextApiRequest): CreateCollectionResponse {
+async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
 
   try {
@@ -26,7 +29,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       datasetId: result.data.datasetId
     });
 
-    const { fileMetadata, collectionMetadata, ...collectionData } = result.data;
+    const collectionData = CreateCollectionByLocalFileBodySchema.parse(result.data);
     const collectionName = decodeURIComponent(result.fileMetadata.originalname);
 
     const fileId = await getS3DatasetSource().upload({
@@ -36,7 +39,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       filename: collectionName
     });
 
-    const { collectionId, insertResults } = await createCollectionAndInsertData({
+    return await createCollectionAndInsertData({
       dataset,
       createCollectionParams: {
         ...collectionData,
@@ -47,13 +50,11 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
         type: DatasetCollectionTypeEnum.file,
         fileId,
         metadata: {
-          ...collectionMetadata,
+          ...collectionData.metadata,
           relatedImgId: fileId
         }
       }
     });
-
-    return { collectionId, results: insertResults };
   } catch (error) {
     return Promise.reject(error);
   } finally {

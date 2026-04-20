@@ -1,0 +1,28 @@
+---
+title: User Selection
+description: FastGPT User Selection module usage guide
+---
+
+## Features
+
+- User interaction
+- Can be added multiple times
+- Trigger-based execution
+
+![](/imgs/user-selection1.png)
+
+## Function
+
+The "User Selection" node is an interactive node. When triggered, the conversation enters an "interactive" state -- the workflow state is saved and execution pauses until the user completes the interaction.
+
+![](/imgs/user-selection2.png)
+
+In the example above, when the User Selection node triggers, the chat input is hidden and the conversation enters interactive mode.
+
+![](/imgs/user-selection3.png)
+
+When the user makes a choice, the node evaluates the selection and executes the corresponding branch (e.g., the "Yes" branch).
+
+## Use Cases
+
+The basic pattern is to present a question that requires a user decision, then route to different workflow paths based on the user's response.

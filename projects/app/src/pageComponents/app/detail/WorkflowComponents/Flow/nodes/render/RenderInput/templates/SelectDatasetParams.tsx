@@ -36,7 +36,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     limit: 3000,
     similarity: 0.5,
     usingReRank: true,
-    rerankModel: defaultModels.llm?.model,
+    rerankModel: defaultModels.rerank?.model,
     rerankMethod: RerankMethodEnum.content,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,

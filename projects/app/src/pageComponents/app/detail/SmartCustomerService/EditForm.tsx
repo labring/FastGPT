@@ -21,7 +21,7 @@ import {
   Input,
   VStack
 } from '@chakra-ui/react';
-import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -115,8 +115,8 @@ const EditForm = ({
   appForm,
   setAppForm
 }: {
-  appForm: AppSimpleEditFormType;
-  setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+  appForm: AppFormEditFormType;
+  setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
 }) => {
   const theme = useTheme();
   const router = useRouter();
@@ -283,7 +283,7 @@ const EditForm = ({
 
   // 优化的聊天配置更新函数
   const updateChatConfig = useCallback(
-    (updates: Partial<AppSimpleEditFormType['chatConfig']>) => {
+    (updates: Partial<AppFormEditFormType['chatConfig']>) => {
       setAppForm((state) => ({
         ...state,
         chatConfig: {
@@ -297,7 +297,7 @@ const EditForm = ({
 
   // 优化的AI设置更新函数
   const updateAISettings = useCallback(
-    (updates: Partial<AppSimpleEditFormType['aiSettings']>) => {
+    (updates: Partial<AppFormEditFormType['aiSettings']>) => {
       setAppForm((state) => ({
         ...state,
         aiSettings: {
@@ -430,7 +430,7 @@ const EditForm = ({
                   ...state,
                   dataset: {
                     ...state.dataset,
-                    retrievalMode: mode as `${DatasetRetrievalModeEnum}`
+                    retrievalMode: mode as DatasetRetrievalModeEnum
                   }
                 }));
               }}

@@ -6,16 +6,23 @@
 import React, { useState } from 'react';
 import { appWorkflow2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 
-import Header from '../SimpleApp/Header';
+import Header from '../Edit/FormComponent/Header';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import dynamic from 'next/dynamic';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { type SimpleAppSnapshotType, useSimpleAppSnapshots } from '../SimpleApp/useSnapshots';
+import {
+  type SimpleAppSnapshotType,
+  useSimpleAppSnapshots
+} from '../Edit/FormComponent/useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
+import {
+  form2AppWorkflow,
+  appWorkflow2Form as simpleAppWorkflow2Form
+} from '../Edit/SimpleApp/utils';
 
 const Edit = dynamic(() => import('./Edit'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -120,6 +127,8 @@ const SmartCustomerServiceEdit = () => {
         past={past}
         setPast={setPast}
         saveSnapshot={saveSnapshot}
+        form2WorkflowFn={form2AppWorkflow}
+        form2AppWorkflowFn={simpleAppWorkflow2Form}
       />
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} setPast={setPast} />

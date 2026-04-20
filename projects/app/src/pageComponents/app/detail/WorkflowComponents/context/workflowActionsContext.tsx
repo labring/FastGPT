@@ -11,6 +11,8 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 type FlowNodeChangeProps = { nodeId: string } & (
   | {
@@ -214,6 +216,16 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   );
 
   // 使用结构共享优化的节点更改
+  const { llmModelList } = useSystemStore();
+  const llmModelMap = useMemo(() => {
+    return llmModelList.reduce(
+      (acc, model) => {
+        acc[model.model] = model;
+        return acc;
+      },
+      {} as Record<string, LLMModelItemType>
+    );
+  }, [llmModelList]);
   const onChangeNode = useCallback(
     (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
       const updateData = Array.isArray(props) ? props : [props];
@@ -320,6 +332,15 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
             };
           }
 
+          updateObj.outputs = updateObj.outputs.map((output) => {
+            return {
+              ...output,
+              invalid: output.invalidCondition
+                ? output.invalidCondition({ inputs: updateObj.inputs, llmModelMap })
+                : undefined
+            };
+          });
+
           return {
             ...node,
             data: updateObj
@@ -327,7 +348,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         });
       });
     },
-    [setNodes, toast, t, onDelEdge]
+    [setNodes, toast, t, onDelEdge, llmModelMap]
   );
 
   const contextValue = useMemo(() => {

@@ -1,14 +1,13 @@
 import { getNanoid } from '../../../../common/string/tools';
-import type { PathDataType } from './type';
+import type { PathDataType, HttpToolConfigType } from './type';
 import { type RuntimeNodeItemType } from '../../../workflow/runtime/type';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../../workflow/node/constant';
-import { type HttpToolConfigType } from '../../type';
 import { AppToolSourceEnum } from '../constants';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '../../jsonschema';
 import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
 import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
-import { i18nT } from '../../../../../web/i18n/utils';
+import { i18nT } from '../../../../common/i18n/utils';
 
 export const getHTTPToolSetRuntimeNode = ({
   name,
@@ -52,21 +51,23 @@ export const getHTTPToolRuntimeNode = ({
   tool,
   nodeId,
   avatar = 'core/app/type/httpToolsFill',
-  parentId
+  toolSetId,
+  toolsetName
 }: {
   tool: Omit<HttpToolConfigType, 'path' | 'method'>;
-  nodeId?: string;
+  nodeId: string;
   avatar?: string;
-  parentId: string;
+  toolSetId: string;
+  toolsetName: string;
 }): RuntimeNodeItemType => {
   return {
-    nodeId: nodeId || getNanoid(16),
+    nodeId,
     flowNodeType: FlowNodeTypeEnum.tool,
     avatar,
     intro: tool.description,
     toolConfig: {
       httpTool: {
-        toolId: `${AppToolSourceEnum.http}-${parentId}/${tool.name}`
+        toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
@@ -82,7 +83,7 @@ export const getHTTPToolRuntimeNode = ({
         type: FlowNodeOutputTypeEnum.static
       }
     ],
-    name: tool.name,
+    name: `${toolsetName}/${tool.name}`,
     version: ''
   };
 };

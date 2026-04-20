@@ -8,7 +8,7 @@ import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { getQuoteDataList } from '@/web/core/chat/api';
+import { getQuoteDataList } from '@/web/core/chat/record/api';
 import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
 import { isCorrectionRecord } from '@/global/core/chat/utils';
 

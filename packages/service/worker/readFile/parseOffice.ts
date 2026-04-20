@@ -4,11 +4,12 @@ import path from 'path';
 import decompress from 'decompress';
 import { DOMParser } from '@xmldom/xmldom';
 import { clearDirFiles } from '../../common/file/utils';
-import { addLog } from '../../common/system/log';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getLogger, LogCategories } from '../../common/logger';
 
 const DEFAULTDECOMPRESSSUBLOCATION = '/tmp';
+const logger = getLogger(LogCategories.INFRA.WORKER);
 
 function getNewFileName(ext: string) {
   return `${DEFAULTDECOMPRESSSUBLOCATION}/${getNanoid()}.${ext}`;
@@ -64,7 +65,7 @@ const parsePowerPoint = async ({
       const normalizedSafePath = path.normalize(safePath);
       const normalizedDecompressPath = path.normalize(decompressPath);
       if (!normalizedSafePath.startsWith(normalizedDecompressPath + path.sep)) {
-        addLog.error('Potential path traversal attack detected', {
+        logger.error('Potential path traversal attack detected', {
           decompressPath,
           filePath: file.path,
           resolvedPath: normalizedSafePath
@@ -148,7 +149,7 @@ export const parseOffice = async ({
     }
   } catch (error) {
     if (error instanceof UserError) throw error;
-    addLog.error(`Load ppt error`, { error });
+    logger.error(`Load ppt error`, { error });
     throw new UserError(CommonErrEnum.pptxParseFailed);
   } finally {
     try {
@@ -159,7 +160,7 @@ export const parseOffice = async ({
     try {
       clearDirFiles(decompressPath);
     } catch (error) {
-      addLog.warn('Failed to clean up temporary directory', { decompressPath, error });
+      logger.error('Failed to parse pptx file', { extension, error });
     }
   }
 

@@ -16,7 +16,7 @@ import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { DatasetSchemaType, TableSchemaType } from '@fastgpt/global/core/dataset/type';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type {
   CreateDatabaseCollectionsBody,
   CreateDatabaseCollectionsResponse

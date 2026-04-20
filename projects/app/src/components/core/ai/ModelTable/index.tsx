@@ -72,6 +72,7 @@ const ModelTable = ({
     getModelProvider,
     llmModelList,
     ttsModelList,
+    datasetModelList,
     embeddingModelList,
     sttModelList,
     reRankModelList

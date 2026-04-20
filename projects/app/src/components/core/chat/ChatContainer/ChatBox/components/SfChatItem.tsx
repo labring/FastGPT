@@ -139,6 +139,7 @@ const AIContentCard = React.memo(function AIContentCard({
             key={key}
             value={value}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
+            isLastChild={isLastChild}
             isChatting={isChatting}
             onOpenCiteModal={onOpenCiteModal}
             hideCiteIcon={hideCiteIcon}
@@ -297,7 +298,6 @@ const ChatItem = (props: Props) => {
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionId: item.collectionId,
-                collectionIdList,
                 sourceId: item.sourceId || '',
                 sourceName: item.sourceName || '',
                 datasetId: item.datasetId || '',

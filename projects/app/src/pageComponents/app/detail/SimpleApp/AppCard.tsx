@@ -11,7 +11,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { type AppSchema, type AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import { type AppSchema, type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -24,7 +24,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postTransition2Workflow } from '@/web/core/app/api/app';
 import { form2AppWorkflow } from '@/web/core/app/utils';
-import { type SimpleAppSnapshotType } from './useSnapshots';
+import { type SimpleAppSnapshotType } from '../Edit/FormComponent/useSnapshots';
 import ExportConfigPopover from '@/pageComponents/app/detail/ExportConfigPopover';
 import ExportSkillModal from '@/components/core/app/ExportSkillModal';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';

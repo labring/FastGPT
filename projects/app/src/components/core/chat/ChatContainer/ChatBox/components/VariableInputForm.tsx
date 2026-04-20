@@ -101,7 +101,7 @@ const VariableInputForm = ({
                   {...item}
                   isUnChange={isUnChange}
                   key={item.key}
-                  placeholder={item.description}
+                  description={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
@@ -136,7 +136,7 @@ const VariableInputForm = ({
                   {...item}
                   isUnChange={isUnChange}
                   key={item.key}
-                  placeholder={item.description}
+                  description={item.description}
                   inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
@@ -175,7 +175,7 @@ const VariableInputForm = ({
                   {...item}
                   isUnChange={isUnChange}
                   key={item.key}
-                  placeholder={item.description}
+                  description={item.description}
                   inputType={variableInputTypeToInputType(item.type)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}

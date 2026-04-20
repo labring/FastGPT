@@ -10,7 +10,7 @@ import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetsContext } from '../../../pages/dataset/list/context';
+import { DatasetsContext } from './context';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 import {
@@ -94,64 +94,65 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
           },
           ...((parentDataset ? parentDataset : dataset)?.permission.hasManagePer
             ? [
-              {
-                icon: 'common/file/move',
-                type: 'grayBg' as const,
-                label: t('common:Move'),
-                onClick: () => setMoveDatasetId(dataset._id)
-              }
-            ]
+                {
+                  icon: 'common/file/move',
+                  type: 'grayBg' as const,
+                  label: t('common:Move'),
+                  onClick: () => setMoveDatasetId(dataset._id)
+                }
+              ]
             : []),
           ...(dataset.permission.hasManagePer
             ? [
-              {
-                icon: 'key',
-                type: 'grayBg' as const,
-                label: t('common:permission.Permission'),
-                onClick: () => setEditPerDatasetId(dataset._id)
-              }
-            ]
+                {
+                  icon: 'key',
+                  type: 'grayBg' as const,
+                  label: t('common:permission.Permission'),
+                  onClick: () => setEditPerDatasetId(dataset._id)
+                }
+              ]
             : [])
         ]
       },
       ...(dataset.type !== DatasetTypeEnum.folder && !isDatabaseDataset(dataset.type)
         ? [
-          {
-            children: [
-              {
-                icon: 'export',
-                type: 'grayBg' as const,
-                label: t('common:Export'),
-                onClick: () => exportDataset(dataset)
-              }
-            ]
-          }
-        ]
+            {
+              children: [
+                {
+                  icon: 'export',
+                  type: 'grayBg' as const,
+                  label: t('common:Export'),
+                  onClick: () => exportDataset(dataset)
+                }
+              ]
+            }
+          ]
         : []),
       ...(dataset.permission.hasManagePer
         ? [
-          {
-            children: [
-              {
-                icon: 'delete',
-                type: 'danger' as const,
-                label: t('common:Delete'),
-                onClick: () =>
-                  openConfirmDel({
-                    onConfirm: () =>
-                      onDelDataset(dataset._id).then(() => {
-                        refetchPaths();
-                        loadMyDatasets();
-                      }),
-                    customContent: dataset.type === DatasetTypeEnum.folder
-                      ? t('common:dataset.deleteFolderTips')
-                      : t('common:core.dataset.Delete Confirm'),
-                    inputConfirmText: dataset.name
-                  })()
-              }
-            ]
-          }
-        ]
+            {
+              children: [
+                {
+                  icon: 'delete',
+                  type: 'danger' as const,
+                  label: t('common:Delete'),
+                  onClick: () =>
+                    openConfirmDel({
+                      onConfirm: () =>
+                        onDelDataset(dataset._id).then(() => {
+                          refetchPaths();
+                          loadMyDatasets();
+                        }),
+                      customContent:
+                        dataset.type === DatasetTypeEnum.folder
+                          ? t('common:dataset.deleteFolderTips')
+                          : t('common:core.dataset.Delete Confirm'),
+                      inputConfirmText: dataset.name
+                    })()
+                }
+              ]
+            }
+          ]
         : [])
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,9 +165,9 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
 
   const updateTimeFullStr = dataset.updateTime
     ? (() => {
-      const d = new Date(dataset.updateTime);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })()
+        const d = new Date(dataset.updateTime);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })()
     : '';
 
   return (
@@ -295,13 +296,24 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
       )}
 
       {/* 底部行 */}
-      <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full" mt={dataset.intro ? 2 : 'auto'} pt={dataset.intro ? 0 : 3}>
+      <HStack
+        h={'24px'}
+        fontSize={'mini'}
+        color={'myGray.500'}
+        w="full"
+        mt={dataset.intro ? 2 : 'auto'}
+        pt={dataset.intro ? 0 : 3}
+      >
         {/* 左侧：关联应用数 + 文件数 */}
         {!isFolder && (
           <HStack spacing={'12px'}>
             <HStack spacing={'4px'}>
-              <Box color={'#666'} fontSize={'mini'}>{t('dataset:related_app')}</Box>
-              <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>{dataset.appCount ?? 0}</Box>
+              <Box color={'#666'} fontSize={'mini'}>
+                {t('dataset:related_app')}
+              </Box>
+              <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+                0
+              </Box>
             </HStack>
             <HStack spacing={'4px'}>
               <Box color={'#666'} fontSize={'mini'}>
@@ -311,7 +323,9 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
                     ? t('dataset:database_table_label')
                     : t('dataset:file')}
               </Box>
-              <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>{dataset.fileCount ?? 0}</Box>
+              <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+                0
+              </Box>
             </HStack>
           </HStack>
         )}
@@ -405,12 +419,17 @@ function NewList() {
   const { runAsync: exportDataset } = useRequest(
     async ({ _id, name }: { _id: string; name: string }) => {
       await checkTeamExportDatasetLimit(_id);
-      await downloadFetch({ url: `/api/core/dataset/exportAll?datasetId=${_id}`, filename: `${name}.csv` });
+      await downloadFetch({
+        url: `/api/core/dataset/exportAll?datasetId=${_id}`,
+        filename: `${name}.csv`
+      });
     },
     {
       manual: true,
       onBefore: () => setLoading(true),
-      onFinally() { setLoading(false); },
+      onFinally() {
+        setLoading(false);
+      },
       successToast: t('common:core.dataset.Start export'),
       errorToast: t('common:dataset.Export Dataset Limit Error')
     }
@@ -421,7 +440,13 @@ function NewList() {
       {myDatasets.length > 0 && (
         <Grid
           py={4}
-          gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+          gridTemplateColumns={[
+            '1fr',
+            'repeat(2,1fr)',
+            'repeat(3,1fr)',
+            'repeat(3,1fr)',
+            'repeat(4,1fr)'
+          ]}
           gridGap={3}
           alignItems={'stretch'}
         >

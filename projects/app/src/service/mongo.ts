@@ -3,7 +3,10 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { addLog } from '@fastgpt/service/common/system/log';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 export async function initRootUser(retry = 3): Promise<any> {
   try {
@@ -20,7 +23,7 @@ export async function initRootUser(retry = 3): Promise<any> {
         // await rootUser.updateOne({
         //   password: hashStr(psw)
         // });
-        addLog.debug('root user already exists in database, using existing password');
+        logger.debug('root user already exists in database, using existing password');
       } else {
         const [{ _id }] = await MongoUser.create(
           [
@@ -32,22 +35,22 @@ export async function initRootUser(retry = 3): Promise<any> {
           { session, ordered: true }
         );
         rootId = _id;
-        addLog.debug('root user created', { username: 'root' });
+        logger.debug('root user created', { username: 'root' });
       }
       // init root team
       await createDefaultTeam({ userId: rootId, session });
     });
 
-    console.log(`root user init:`, {
+    logger.info('Root user initialized', {
       username: 'root',
-      password: psw
+      fromEnvPassword: !!process.env.DEFAULT_ROOT_PSW
     });
   } catch (error) {
     if (retry > 0) {
-      console.log('retry init root user');
+      logger.warn('Retrying root user initialization', { retryLeft: retry - 1 });
       return initRootUser(retry - 1);
     } else {
-      console.error('init root user error', error);
+      logger.error('Root user initialization failed', { error });
       exit(1);
     }
   }

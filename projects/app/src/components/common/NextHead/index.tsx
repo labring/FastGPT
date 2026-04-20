@@ -1,8 +1,8 @@
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import Head from 'next/head';
 import React, { useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?: string }) => {
   const { feConfigs } = useSystemStore();

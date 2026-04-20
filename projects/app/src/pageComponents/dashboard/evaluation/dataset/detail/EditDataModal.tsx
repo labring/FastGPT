@@ -79,7 +79,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     formData?.qualityMetadata?.status || EvalDatasetDataQualityStatusEnum.unevaluated
   );
   const [currentQualityReason, setCurrentQualityReason] = useState<string>(
-    formData?.qualityMetadata?.reason
+    formData?.qualityMetadata?.reason || ''
   );
   const [currentQualityResult, setCurrentQualityResult] = useState<string>(
     formData?.qualityResult || ''
@@ -155,8 +155,8 @@ const EditDataModal: React.FC<EditDataModalProps> = ({
     postEvaluationDatasetQualityAssessment,
     {
       onError() {
-        setCurrentEvaluationStatus(formData?.qualityMetadata?.status);
-        setCurrentQualityReason(formData?.qualityMetadata?.reason);
+        setCurrentEvaluationStatus(formData?.qualityMetadata?.status || '');
+        setCurrentQualityReason(formData?.qualityMetadata?.reason || '');
         setCurrentQualityResult(formData?.qualityResult || '');
       }
     }

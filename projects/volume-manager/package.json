@@ -1,0 +1,20 @@
+{
+  "name": "@fastgpt/volume-manager",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun dist/index.js",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "vitest": "^2.0.0"
+  }
+}

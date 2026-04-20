@@ -1,4 +1,4 @@
-import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -13,6 +13,7 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 
 export type GetSystemPluginTemplatesBody = {
+  getAll?: boolean;
   searchKey?: string;
   parentId?: ParentIdType;
   tags?: string[];
@@ -23,7 +24,7 @@ async function handler(
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
-  const { searchKey, parentId, tags } = req.body;
+  const { searchKey, parentId, tags, getAll } = req.body;
   const formatParentId = parentId || null;
   const lang = getLocale(req);
 
@@ -54,6 +55,7 @@ async function handler(
       tags: tool.tags
     }))
     .filter((item) => {
+      if (getAll) return true;
       if (searchKey) {
         const regex = new RegExp(`${replaceRegChars(searchKey)}`, 'i');
         return regex.test(String(item.name)) || regex.test(String(item.intro || ''));

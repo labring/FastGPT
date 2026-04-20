@@ -3,6 +3,7 @@ const { Schema } = connectionMongo;
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { DiscountCouponTypeEnum } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 import type { DiscountCouponSchemaType } from '@fastgpt/global/openapi/support/wallet/discountCoupon/api';
+import { getLogger, LogCategories } from '../../../common/logger';
 
 export const discountCouponCollectionName = 'team_discount_coupons';
 
@@ -33,7 +34,8 @@ try {
   DiscountCouponSchema.index({ status: 1, type: 1 });
   DiscountCouponSchema.index({ teamId: 1, status: 1 });
 } catch (error) {
-  console.log(error);
+  const logger = getLogger(LogCategories.INFRA.MONGO);
+  logger.error('Failed to build discount coupon indexes', { error });
 }
 
 export const MongoDiscountCoupon = getMongoModel<DiscountCouponSchemaType>(

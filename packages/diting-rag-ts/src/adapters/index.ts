@@ -1,4 +1,4 @@
 // src/adapters/index.ts
 
-export { BaseAdapter, AdapterContext } from './base';
-export { SearchAdapter, SearchAdapterOptions } from './searchAdapter';
+export type { BaseAdapter, AdapterContext } from './base';
+export type { SearchAdapter, SearchAdapterOptions } from './searchAdapter';

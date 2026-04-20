@@ -1,6 +1,9 @@
 import { SERVICE_LOCAL_HOST } from '../system/tools';
 import { type Method, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 import { createProxyAxios } from './axios';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.HTTP.ERROR);
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -31,7 +34,7 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
  */
 function checkRes(data: ResponseDataType) {
   if (data === undefined) {
-    console.log('error->', data, 'data is empty');
+    logger.error('Server request response is empty', { data });
     return Promise.reject('服务器异常');
   } else if (data?.code && (data.code < 200 || data.code >= 400)) {
     return Promise.reject(data);

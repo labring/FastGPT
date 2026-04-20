@@ -1,0 +1,20 @@
+---
+title: V4.2.1
+description: Upgrade guide from older versions to FastGPT V4.2.1
+---
+
+For self-hosted deployments with a custom configuration file, you need to update the `VectorModels` field. Add `defaultToken` and `maxToken` — these correspond to the default token count for direct chunking and the maximum token limit supported by the model (generally recommended not to exceed 3000).
+
+```json
+"VectorModels": [
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "price": 0,
+      "defaultToken": 500,
+      "maxToken": 3000
+    }
+]
+```
+
+The rationale behind this change is that there's no need to offer multiple choices — just pick the most suitable model for the task.

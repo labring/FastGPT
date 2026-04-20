@@ -47,7 +47,6 @@ export async function performDatasetSearch(
     chatId: '',
     checkIsStopping: () => false,
     workflowDispatchDeep: 0,
-    mcpClientMemory: {},
 
     runningAppInfo: {
       id: new Types.ObjectId().toString(),
@@ -78,7 +77,9 @@ export async function performDatasetSearch(
       outputs: []
     },
     runtimeNodes: [],
+    runtimeNodesMap: new Map(),
     runtimeEdges: [],
+    usagePush: () => {},
 
     params: {
       datasets,
@@ -95,7 +96,7 @@ export async function performDatasetSearch(
       datasetSearchExtensionModel: '',
       datasetSearchExtensionBg: ''
     }
-  });
+  } as any);
 
   // Prefer retrievalResults (top 20 results from retrieval stage, used for Assistant scenarios)
   // Fall back to quoteQA (final top 10 results after filtering)

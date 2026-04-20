@@ -1,0 +1,21 @@
+---
+title: Dataset Design
+description: FastGPT dataset file and data design
+---
+
+## Relationship Between Files and Data
+
+In FastGPT, files are stored using MongoDB's GridFS, while the actual data is stored in PostgreSQL. Each row in PG has a `file_id` column that references the corresponding file. For backward compatibility and to support manual input and annotated data, `file_id` has some special values:
+
+- manual: Manually entered data
+- mark: Manually annotated data
+
+Note: `file_id` is only written at data insertion time and cannot be modified afterward.
+
+## File Import Process
+
+1. Upload the file to MongoDB GridFS and obtain a `file_id`. The file is marked as `unused` at this point.
+2. The browser parses the file to extract text and chunks.
+3. Each chunk is tagged with the `file_id`.
+4. Click upload: the file status changes to `used`, and the data is pushed to the mongo `training` collection to await processing.
+5. The training thread pulls data from mongo, generates vectors, and inserts them into PG.

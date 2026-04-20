@@ -34,7 +34,10 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { defaultAppSelectFileConfig, ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
+import {
+  defaultAppSelectFileConfig,
+  ENTRY_POINT_VARIABLE_KEY
+} from '@fastgpt/global/core/app/constants';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import DebugFileUrlInput from '../components/DebugFileUrlInput';
 
@@ -320,7 +323,7 @@ export const useDebug = () => {
                 key={item.key}
                 label={item.label}
                 required={item.required}
-                placeholder={t(item.description)}
+                description={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
@@ -333,7 +336,7 @@ export const useDebug = () => {
                 key={item.key}
                 label={item.label}
                 required={item.required}
-                placeholder={t(item.description)}
+                description={t(item.description)}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
@@ -346,7 +349,7 @@ export const useDebug = () => {
                 key={item.key}
                 label={item.label}
                 required={item.required}
-                placeholder={item.description}
+                description={item.description}
                 inputType={variableInputTypeToInputType(item.type)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}

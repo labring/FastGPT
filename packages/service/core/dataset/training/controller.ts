@@ -1,14 +1,18 @@
 import { MongoDatasetTraining } from './schema';
-import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
+import type {
+  PushDataChunkType,
+  PushDataResponseType
+} from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
-import { addLog } from '../../../common/system/log';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../../global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { getLogger, LogCategories } from '../../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -23,7 +27,7 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
   } catch (error) {}
 };
 
-export async function pushDataListToTrainingQueue({
+export const pushDataListToTrainingQueue = async ({
   teamId,
   tmbId,
   datasetId,
@@ -36,7 +40,24 @@ export async function pushDataListToTrainingQueue({
   mode = TrainingModeEnum.chunk,
   indexSize,
   session
-}: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+
+  data: PushDataChunkType[];
+  mode?: TrainingModeEnum;
+
+  agentModel: string;
+  vectorModel: string;
+  vlmModel?: string;
+
+  indexSize?: number;
+
+  billId: string;
+  session?: ClientSession;
+}): Promise<PushDataResponseType> => {
   // ✅ 双向互斥检查 (1/2): 训练入口检查是否有同义词处理任务
   // 说明: 此检查确保 chunk/qa/auto 等训练任务不会与 synonymStandardize/synonymRestore 并发
   // 配合 uploadSynonymFile/deleteSynonymFile 中的反向检查，保证同一知识库同一时刻只有一种操作
@@ -51,7 +72,6 @@ export async function pushDataListToTrainingQueue({
   if (hasSynonymTask) {
     throw new Error('知识库正在进行同义词处理,请等待处理完成后再训练');
   }
-
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
     return Promise.reject(i18nT('common:error_embedding_not_config'));
@@ -172,7 +192,10 @@ export async function pushDataListToTrainingQueue({
       // ordered: true 模式下,成功必定等于批次大小
       insertedCount += result.insertedCount;
 
-      addLog.debug(`Training data insert progress: ${insertedCount}/${dataToInsert.length}`);
+      logger.debug('Training data insert progress', {
+        insertedCount,
+        total: dataToInsert.length
+      });
     }
 
     return insertedCount;
@@ -183,7 +206,10 @@ export async function pushDataListToTrainingQueue({
   let start = Date.now();
 
   if (data.length > chunkSize) {
-    addLog.info(`Large dataset detected (${data.length} items), using chunked transactions`);
+    logger.info('Large dataset detected, using chunked transactions', {
+      itemCount: data.length,
+      chunkSize
+    });
 
     let totalInserted = 0;
 
@@ -198,7 +224,7 @@ export async function pushDataListToTrainingQueue({
       });
     }
 
-    addLog.info(`Chunked transactions completed in ${Date.now() - start}ms`);
+    logger.info('Chunked transactions completed', { durationMs: Date.now() - start });
 
     return { insertLen: totalInserted };
   }
@@ -206,16 +232,16 @@ export async function pushDataListToTrainingQueue({
   // 小数据量单事务处理
   if (session) {
     const insertedCount = await insertDataIterative(data, session);
-    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    logger.info('Single transaction completed', { durationMs: Date.now() - start });
     return { insertLen: insertedCount };
   } else {
     const insertedCount = await mongoSessionRun(async (session) => {
       return insertDataIterative(data, session);
     });
-    addLog.info(`Single transaction completed in ${Date.now() - start}ms`);
+    logger.info('Single transaction completed', { durationMs: Date.now() - start });
     return { insertLen: insertedCount };
   }
-}
+};
 
 export const pushDatasetToParseQueue = async ({
   teamId,

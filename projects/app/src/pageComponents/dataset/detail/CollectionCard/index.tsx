@@ -21,7 +21,7 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -351,7 +351,7 @@ const CollectionCard = () => {
                             </MyTooltip>
                           </Flex>
                           {feConfigs?.isPlus && !!collection.tags?.length && (
-                            <TagsPopOver currentCollection={collection} hoverBg={'white'} />
+                            <TagsPopOver currentCollection={collection as any} hoverBg={'white'} />
                           )}
                         </Box>
                       </HStack>

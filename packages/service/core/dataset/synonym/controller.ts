@@ -6,7 +6,7 @@ import { MongoDataset } from '../schema';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import streamConsumer from 'node:stream/consumers';
 import fs from 'node:fs';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../../global/common/i18n/utils';
 import type {
   DatasetSynonymSchemaType,
   DatasetSynonymMappingSchemaType

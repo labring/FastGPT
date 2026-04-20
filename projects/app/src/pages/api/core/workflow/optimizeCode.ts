@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -8,7 +8,9 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+const logger = getLogger(LogCategories.MODULE.WORKFLOW.OPTIMIZE_CODE);
 
 type OptimizeCodeBody = {
   optimizerInput: string;
@@ -163,7 +165,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       ]
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Failed to optimize workflow code', { error });
   }
   res.end();
 }

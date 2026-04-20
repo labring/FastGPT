@@ -22,7 +22,7 @@ import { type MemberGroupListItemType } from '@fastgpt/global/support/permission
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { type Omit } from '@fastgpt/web/components/common/DndDrag';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import _ from 'lodash';
 

@@ -15,7 +15,7 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { useMarkdownWidth } from '../hooks';
-import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
+import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { codeLight } from './CodeLight';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 

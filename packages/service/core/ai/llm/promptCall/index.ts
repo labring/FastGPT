@@ -5,7 +5,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionSystemMessageParam,
   ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { getPromptToolCallPrompt } from './prompt';
 import { cloneDeep } from 'lodash';
 

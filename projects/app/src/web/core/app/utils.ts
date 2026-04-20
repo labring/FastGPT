@@ -1,11 +1,12 @@
 import {
   type AppChatConfigType,
   type AppDetailType,
-  type AppSchema,
-  type AppSimpleEditFormType
+  type AppSchemaType
 } from '@fastgpt/global/core/app/type';
+import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   chatHistoryValueDesc,
   FlowNodeInputTypeEnum,
@@ -18,31 +19,31 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
-import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { getWebLLMModel } from '@/web/common/system/utils';
+import { workflowStartNodeId } from '@/web/core/app/constants';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
 import {
   WorkflowStart,
   userFilesInput
 } from '@fastgpt/global/core/workflow/template/system/workflowStart';
-import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
 import {
   AiChatModule,
-  AiChatQuotePrompt,
   AiChatQuoteRole,
-  AiChatQuoteTemplate
+  AiChatQuoteTemplate,
+  AiChatQuotePrompt
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { SystemConfigNode } from '@fastgpt/global/core/workflow/template/system/systemConfig';
 import {
   Input_Template_File_Link,
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
-import { workflowStartNodeId } from './constants';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -1232,7 +1233,7 @@ export function form2AppWorkflow(
     chatConfig: data.chatConfig
   };
 }
-export function filterSensitiveFormData(appForm: AppSimpleEditFormType) {
+export function filterSensitiveFormData(appForm: AppFormEditFormType) {
   const defaultAppForm = getDefaultAppForm();
   return {
     ...appForm,
@@ -1280,7 +1281,7 @@ export const workflowSystemVariables: EditorVariablePickerType[] = [
   }
 ];
 
-export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchema): string => {
+export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchemaType): string => {
   return (
     appDetail?.modules
       .find((m) => m.flowNodeType === FlowNodeTypeEnum.systemConfig)

@@ -17,7 +17,7 @@ import {
   type FlowNodeOutputItemType,
   type ReferenceArrayValueType,
   type ReferenceItemValueType
-} from './type/io.d';
+} from './type/io';
 import { type StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
@@ -46,7 +46,7 @@ import {
   Input_Template_Stream_MODE,
   Input_Template_UserChatInput
 } from './template/input';
-import { i18nT } from '../../../web/i18n/utils';
+import { i18nT } from '../../common/i18n/utils';
 import { type RuntimeUserPromptType, type UserChatItemType } from '../../core/chat/type';
 import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
@@ -278,7 +278,7 @@ export const appData2FlowNodeIO = ({
           label: item.label,
           debugLabel: item.label,
           description: '',
-          valueType: WorkflowIOValueTypeEnum.any,
+          valueType: item.valueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
@@ -291,7 +291,11 @@ export const appData2FlowNodeIO = ({
     inputs: [
       Input_Template_Stream_MODE,
       Input_Template_History,
-      ...(chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg
+      ...(chatConfig?.fileSelectConfig?.canSelectFile ||
+      chatConfig?.fileSelectConfig?.canSelectImg ||
+      chatConfig?.fileSelectConfig?.canSelectVideo ||
+      chatConfig?.fileSelectConfig?.canSelectAudio ||
+      chatConfig?.fileSelectConfig?.canSelectCustomFileExtension
         ? [Input_Template_File_Link]
         : []),
       Input_Template_UserChatInput,
@@ -442,6 +446,10 @@ export const removeUnauthModels = async ({
     modules.forEach((module) => {
       module.inputs.forEach((input) => {
         if (input.key === 'model') {
+          // 如果是引用类型（selectedTypeIndex 不为 0 或 value 是数组），跳过检查
+          if (input.selectedTypeIndex !== 0 || Array.isArray(input.value)) {
+            return;
+          }
           if (!allowedModels.has(input.value)) {
             input.value = undefined;
           }

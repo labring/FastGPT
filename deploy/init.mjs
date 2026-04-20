@@ -53,20 +53,30 @@ const args = (() => {
 
 const vector = {
   pg: {
+    serviceName: 'fastgpt-pg',
+    dependsOn: `\
+      - fastgpt-pg
+`,
     db: '',
     config: `\
-  PG_URL: postgresql://username:password@pg:5432/postgres`,
+  PG_URL: postgresql://username:password@fastgpt-pg:5432/postgres`,
     extra: ''
   },
   milvus: {
+    serviceName: 'fastgpt-milvus-standalone',
+    dependsOn: `\
+      - fastgpt-milvus-standalone
+`,
     db: '',
     config: `\
-  MILVUS_ADDRESS: http://milvusStandalone:19530
+  MILVUS_ADDRESS: http://fastgpt-milvus-standalone:19530
   MILVUS_TOKEN: none
     `,
     extra: ''
   },
   zilliz: {
+    serviceName: '',
+    dependsOn: '',
     db: '',
     config: `\
   MILVUS_ADDRESS: zilliz_cloud_address
@@ -74,22 +84,29 @@ const vector = {
     extra: ''
   },
   ob: {
+    serviceName: 'fastgpt-ob',
+    dependsOn: `\
+      - fastgpt-ob
+`,
     db: '',
     config: `\
-  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@ob:2881/mysql
+  OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-ob:2881/mysql
 `,
     extra: `\
-configs:
-  init_sql:
+init_sql:
     name: init_sql
     content: |
       ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30;
     `
   },
   seekdb: {
+    serviceName: 'fastgpt-seekdb',
+    dependsOn: `\
+      - fastgpt-seekdb
+`,
     db: '',
     config: `\
-  SEEKDB_URL: mysql://root:seekdbpassword@seekdb:2881/mysql
+  SEEKDB_URL: mysql://root:seekdbpassword@fastgpt-seekdb:2881/mysql
 `,
     extra: ``
   },

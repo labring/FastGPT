@@ -11,20 +11,23 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import {
+  GetDatasetListBodySchema,
+  type GetDatasetListResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
 
 export type GetDatasetListBody = {
-  parentId: ParentIdType;
+  parentId: string | null;
   type?: DatasetTypeEnum;
   searchKey?: string;
   scene?: string;
@@ -32,10 +35,9 @@ export type GetDatasetListBody = {
   pageSize?: number;
 };
 
-type ListDatasetResponse = DatasetListItemType[] | { list: DatasetListItemType[]; total: number };
-
-async function handler(req: ApiRequestProps<GetDatasetListBody>): Promise<ListDatasetResponse> {
-  const { parentId, type, searchKey, scene, pageNum, pageSize } = req.body;
+async function handler(req: ApiRequestProps) {
+  const { parentId, type, searchKey } = GetDatasetListBodySchema.parse(req.body);
+  const { scene, pageNum, pageSize } = req.body as GetDatasetListBody;
   const isPaginated = pageNum !== undefined && pageSize !== undefined;
 
   // 分页参数边界验证

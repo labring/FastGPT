@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Box, Checkbox } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatSiteItemType } from '../../type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import SfChatItem from '../SfChatItem';

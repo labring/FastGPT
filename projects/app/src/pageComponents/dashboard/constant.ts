@@ -1,7 +1,11 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const appTypeTagMap = {
+  [AppTypeEnum.chatAgent]: {
+    label: i18nT('app:type.Chat_Agent_v2'),
+    icon: 'core/app/type/simple'
+  },
   [AppTypeEnum.simple]: {
     label: i18nT('app:type.Chat_Agent'),
     icon: 'core/app/type/simple'
@@ -32,6 +36,5 @@ export const appTypeTagMap = {
   },
   [AppTypeEnum.tool]: undefined,
   [AppTypeEnum.folder]: undefined,
-  [AppTypeEnum.hidden]: undefined,
-  [AppTypeEnum.agent]: undefined
+  [AppTypeEnum.hidden]: undefined
 };

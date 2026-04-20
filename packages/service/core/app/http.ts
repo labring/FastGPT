@@ -3,9 +3,10 @@ import { getSecretValue } from '../../common/secret/utils';
 import { axios } from '../../common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import type { HttpToolConfigType } from '@fastgpt/global/core/app/type';
+import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/utils';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -36,7 +37,7 @@ const buildHttpRequest = ({
   const replaceVariables = (text: string) => {
     return replaceEditorVariable({
       text,
-      nodes: [],
+      nodesMap: new Map(),
       variables: params
     });
   };
@@ -136,6 +137,23 @@ export const runHTTPTool = async ({
   staticBody
 }: RunHTTPToolParams): Promise<RunHTTPToolResult> => {
   try {
+    // Construct full base URL
+    const fullBaseUrl = !baseUrl
+      ? ''
+      : baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+        ? baseUrl
+        : `https://${baseUrl}`;
+
+    // SSRF Protection: Validate URL before making request
+    // When baseUrl is empty, toolPath must be a complete URL
+    const fullUrl = fullBaseUrl
+      ? new URL(toolPath, fullBaseUrl).toString()
+      : new URL(toolPath).toString();
+
+    if (await isInternalAddress(fullUrl)) {
+      return { errorMsg: PRIVATE_URL_TEXT };
+    }
+
     const { headers, body, queryParams } = buildHttpRequest({
       method,
       params,
@@ -148,10 +166,7 @@ export const runHTTPTool = async ({
 
     const { data } = await axios({
       method: method.toUpperCase(),
-      baseURL:
-        baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
-          ? baseUrl
-          : `https://${baseUrl}`,
+      baseURL: fullBaseUrl,
       url: toolPath,
       headers,
       data: body,
@@ -160,7 +175,8 @@ export const runHTTPTool = async ({
     });
 
     return { data };
-  } catch (error: any) {
+  } catch (error) {
+    console.log(error);
     return { errorMsg: getErrText(error) };
   }
 };

@@ -4,9 +4,9 @@ import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/r
 import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import zhCN from 'date-fns/locale/zh-CN';
-import zhTW from 'date-fns/locale/zh-TW';
-import enUS from 'date-fns/locale/en-US';
+import { zhCN } from 'date-fns/locale/zh-CN';
+import { zhTW } from 'date-fns/locale/zh-TW';
+import { enUS } from 'date-fns/locale/en-US';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 
@@ -130,10 +130,7 @@ const DateRangePicker = ({
         <Card
           position={'absolute'}
           zIndex={1}
-          css={{
-            '--rdp-background-color': '#d6e8ff',
-            '--rdp-accent-color': '#0000ff'
-          }}
+          p={3}
           {...(popPosition === 'top'
             ? {
                 bottom: '40px'
@@ -145,60 +142,86 @@ const DateRangePicker = ({
             ? { right: pickerPosition.right, left: 'auto' }
             : { left: pickerPosition.left })}
         >
-          <DayPicker
-            locale={getLocale()}
-            id="test"
-            mode="range"
-            defaultMonth={defaultDate.to}
-            selected={range}
-            disabled={[
-              { from: new Date(2022, 3, 1), to: addDays(new Date(), -180) },
-              { from: addDays(new Date(), 1), to: new Date(2099, 1, 1) }
-            ]}
-            onSelect={(date) => {
-              let typeDate = date as DateRangeType;
-              if (!typeDate || typeDate?.from === undefined) {
-                typeDate = {
-                  from: range?.from,
-                  to: range?.from
-                };
+          <Box
+            sx={{
+              '.rdp-day_button:hover:not(:disabled)': {
+                backgroundColor: '#E1EAFF'
+              },
+              '.rdp-range_start .rdp-day_button, .rdp-range_end .rdp-day_button': {
+                backgroundColor: '#3370FF',
+                color: 'white',
+                border: 'none'
+              },
+              '.rdp-range_start .rdp-day_button:hover, .rdp-range_end .rdp-day_button:hover': {
+                backgroundColor: '#2860E0'
+              },
+              '.rdp-button_previous:hover, .rdp-button_next:hover': {
+                backgroundColor: '#F0F4FF',
+                borderRadius: '6px'
               }
-              if (typeDate?.to === undefined) {
-                typeDate.to = typeDate.from;
-              }
-
-              if (typeDate?.from) {
-                typeDate.from = new Date(typeDate.from.setHours(0, 0, 0, 0));
-              }
-              if (typeDate?.to) {
-                typeDate.to = new Date(typeDate.to.setHours(23, 59, 59, 999));
-              }
-
-              setRange(typeDate);
-              onChange?.(typeDate);
             }}
-            footer={
-              <Flex justifyContent={'flex-end'}>
-                <Button
-                  variant={'outline'}
-                  size={'sm'}
-                  mr={2}
-                  onClick={() => setShowSelected(false)}
-                >
-                  {t('common:Close')}
-                </Button>
-                <Button
-                  size={'sm'}
-                  onClick={() => {
-                    onSuccess?.(range || defaultDate);
-                    setShowSelected(false);
-                  }}
-                >
-                  {t('common:Confirm')}
-                </Button>
-              </Flex>
-            }
-          />
+          >
+            <DayPicker
+              locale={getLocale()}
+              id="test"
+              mode="range"
+              style={
+                {
+                  '--rdp-accent-color': '#3370FF',
+                  '--rdp-accent-background-color': '#E1EAFF'
+                } as React.CSSProperties
+              }
+              defaultMonth={defaultDate.to}
+              selected={range}
+              disabled={[
+                { from: new Date(2022, 3, 1), to: addDays(new Date(), -180) },
+                { from: addDays(new Date(), 1), to: new Date(2099, 1, 1) }
+              ]}
+              onSelect={(date) => {
+                let typeDate = date as DateRangeType;
+                if (!typeDate || typeDate?.from === undefined) {
+                  typeDate = {
+                    from: range?.from,
+                    to: range?.from
+                  };
+                }
+                if (typeDate?.to === undefined) {
+                  typeDate.to = typeDate.from;
+                }
+
+                if (typeDate?.from) {
+                  typeDate.from = new Date(typeDate.from.setHours(0, 0, 0, 0));
+                }
+                if (typeDate?.to) {
+                  typeDate.to = new Date(typeDate.to.setHours(23, 59, 59, 999));
+                }
+
+                setRange(typeDate);
+                onChange?.(typeDate);
+              }}
+              footer={
+                <Flex justifyContent={'flex-end'}>
+                  <Button
+                    variant={'outline'}
+                    size={'sm'}
+                    mr={2}
+                    onClick={() => setShowSelected(false)}
+                  >
+                    {t('common:Close')}
+                  </Button>
+                  <Button
+                    size={'sm'}
+                    onClick={() => {
+                      onSuccess?.(range || defaultDate);
+                      setShowSelected(false);
+                    }}
+                  >
+                    {t('common:Confirm')}
+                  </Button>
+                </Flex>
+              }
+            />
+          </Box>
         </Card>
       )}
     </Box>

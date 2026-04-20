@@ -1,0 +1,46 @@
+---
+title: V4.9.10
+description: FastGPT V4.9.10 Release Notes
+---
+
+## Upgrade Guide
+
+Important: This update rebuilds the full-text index. During the rebuild, full-text search results will be empty. On a 4c16g instance, rebuilding approximately 7 million full-text indexes takes about 25 minutes. For a seamless upgrade, you'll need to handle table synchronization yourself.
+
+### 1. Back Up Your Data
+
+### 2. Update Image Tags
+
+- Update FastGPT image tag: v4.9.10-fix2
+- Update FastGPT Pro image tag: v4.9.10-fix2
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+## New Features
+
+1. Support for setting the `systemEnv.hnswMaxScanTuples` parameter in PG to increase the total data volume for iterative search.
+2. Knowledge base preprocessing now includes a "Chunk Conditions" parameter to control when chunking should be skipped.
+3. Knowledge base preprocessing now includes a "Paragraph Priority" mode with configurable maximum paragraph depth. The previous "Length Priority" mode no longer includes embedded paragraph priority logic.
+4. Workflow adjusted to single-direction input/output connections, with quick "add next node" support.
+5. Lark and Yuque knowledge bases are now available in the Community Edition.
+6. Latest Gemini and Claude model presets.
+
+## Improvements
+
+1. Increased default timeout for LLM stream calls.
+2. Various confirmation dialog UI improvements.
+3. Renamed the knowledge base "Table Dataset" to "Backup Import". Also added support for exporting and importing knowledge base indexes.
+4. Knowledge base citation limit in workflows: if no related AI nodes exist in the workflow, the interaction mode switches to manual input only, with a limit of 10 million.
+5. Mobile voice input now accurately detects whether the device is a phone rather than just a small screen.
+6. Optimized context truncation algorithm to always preserve at least one Human message.
+
+## Bug Fixes
+
+1. Incorrect score sorting during full-text search across multiple knowledge bases.
+2. Stream response potentially capturing incorrect `finish_reason` values.
+3. Tool call mode not saving reasoning output.
+4. Knowledge base `indexSize` parameter not taking effect.
+5. Incorrect preview citations and context after 2 levels of workflow nesting.
+6. Extra leading space when converting xlsx to Markdown.
+7. Base64 images in Markdown files not being extracted and saved during file reading.

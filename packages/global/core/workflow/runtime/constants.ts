@@ -11,10 +11,23 @@ export enum SseResponseEventEnum {
   toolCall = 'toolCall', // tool start
   toolParams = 'toolParams', // tool params return
   toolResponse = 'toolResponse', // tool response return
+
   flowResponses = 'flowResponses', // sse response request
   updateVariables = 'updateVariables',
 
-  interactive = 'interactive' // user select
+  interactive = 'interactive',
+
+  // Agent
+  plan = 'plan', // plan response
+  stepTitle = 'stepTitle', // step title response
+
+  // Sandbox lifecycle
+  sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
+  skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
+
+  // Helperbot
+  collectionForm = 'collectionForm', // collection form for HelperBot
+  topAgentConfig = 'topAgentConfig' // form data for TopAgent
 }
 
 export enum DispatchNodeResponseKeyEnum {
@@ -23,7 +36,7 @@ export enum DispatchNodeResponseKeyEnum {
 
   skipHandleId = 'skipHandleId', // skip handle id
   nodeResponse = 'responseData', // run node response
-  nodeDispatchUsages = 'nodeDispatchUsages', // the node bill.
+  nodeResponses = 'nodeResponses', // node responses
   childrenResponses = 'childrenResponses', // Some nodes make recursive calls that need to be returned
   toolResponses = 'toolResponses', // The result is passed back to the tool node for use
   assistantResponses = 'assistantResponses', // assistant response
@@ -32,7 +45,10 @@ export enum DispatchNodeResponseKeyEnum {
   runTimes = 'runTimes', // run times
   newVariables = 'newVariables', // new variables
   memories = 'system_memories', // memories
-  customFeedbacks = 'customFeedbacks' // custom feedbacks
+  customFeedbacks = 'customFeedbacks', // custom feedbacks
+
+  /** @deprecated */
+  nodeDispatchUsages = 'nodeDispatchUsages' // the node bill.
 }
 
 export const needReplaceReferenceInputTypeList = [
@@ -41,3 +57,6 @@ export const needReplaceReferenceInputTypeList = [
   FlowNodeInputTypeEnum.addInputParam,
   FlowNodeInputTypeEnum.custom
 ] as string[];
+
+// Interactive
+export const ConfirmPlanAgentText = 'CONFIRM';

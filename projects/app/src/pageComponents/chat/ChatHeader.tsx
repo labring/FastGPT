@@ -3,7 +3,7 @@ import { Flex, Box, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from './ToolMenu';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
 
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -29,7 +29,6 @@ import {
   DEFAULT_LOGO_BANNER_COLLAPSED_URL
 } from '@/pageComponents/chat/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { usePathname } from 'next/navigation';
 import type { ChatSettingType } from '@fastgpt/global/core/chat/setting/type';
 
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
@@ -41,15 +40,17 @@ const ChatHeader = ({
 
   pane,
   chatSettings,
-  reserveSpace
+  reserveSpace,
+  hideMenu
 }: {
   pane: ChatSidebarPaneEnum;
   chatSettings?: ChatSettingType;
 
-  history: ChatItemType[];
+  history: ChatItemMiniType[];
   showHistory?: boolean;
   totalRecordsCount: number;
   reserveSpace?: boolean;
+  hideMenu?: boolean;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -101,7 +102,7 @@ const ChatHeader = ({
         {!isVariableVisible && <VariablePopover chatType={chatType} />}
 
         {/* control */}
-        {!isPlugin && <ToolMenu history={history} reserveSpace={reserveSpace} />}
+        {!isPlugin && !hideMenu && <ToolMenu history={history} reserveSpace={reserveSpace} />}
       </Flex>
     </Flex>
   );

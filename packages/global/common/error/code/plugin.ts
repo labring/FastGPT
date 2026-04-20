@@ -1,5 +1,5 @@
 import { type ErrType } from '../errorCode';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../i18n/utils';
 /* dataset: 508000 */
 export enum PluginErrEnum {
   unExist = 'pluginUnExist',
@@ -9,7 +9,7 @@ export enum PluginErrEnum {
 const errList = [
   {
     statusText: PluginErrEnum.unExist,
-    message: i18nT('common:code_error.plugin_error.not_exist')
+    message: i18nT('common:error.tool_not_exist')
   },
   {
     statusText: PluginErrEnum.unAuth,

@@ -12,7 +12,7 @@ import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import type {
   ReferenceItemValueType,
   SelectedDatasetType
-} from '@fastgpt/global/core/workflow/type/io.d';
+} from '@fastgpt/global/core/workflow/type/io';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useReference, ReferSelector } from './Reference';
 import { datetimeLocalToUtcTs, utcTsToDatetimeLocal } from '@fastgpt/global/common/string/time';

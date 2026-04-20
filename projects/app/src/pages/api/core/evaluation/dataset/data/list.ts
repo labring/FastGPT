@@ -7,6 +7,7 @@ import type {
   listEvalDatasetDataBody,
   listEvalDatasetDataResponse
 } from '@fastgpt/global/core/evaluation/dataset/api';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { EvalDatasetDataQualityResultEnum } from '@fastgpt/global/core/evaluation/dataset/constants';
 import {
@@ -20,7 +21,7 @@ import { EvaluationErrEnum } from '@fastgpt/global/common/error/code/evaluation'
 
 async function handler(
   req: ApiRequestProps<listEvalDatasetDataBody, {}>
-): Promise<listEvalDatasetDataResponse> {
+): Promise<PaginationResponse<listEvalDatasetDataResponse>> {
   const { offset, pageSize } = parsePaginationRequest(req);
   const { collectionId, searchKey, status: qualityStatus, qualityResult } = req.body;
 

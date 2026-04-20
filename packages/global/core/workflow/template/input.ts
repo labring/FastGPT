@@ -3,7 +3,7 @@ import { FlowNodeInputTypeEnum } from '../node/constant';
 import { WorkflowIOValueTypeEnum } from '../constants';
 import { chatNodeSystemPromptTip, systemPromptTip } from './tip';
 import { type FlowNodeInputItemType } from '../type/io';
-import { i18nT } from '../../../../web/i18n/utils';
+import { i18nT } from '../../../common/i18n/utils';
 
 export const Input_Template_History: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.history,
@@ -23,7 +23,7 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
   valueType: WorkflowIOValueTypeEnum.string,
   label: i18nT('workflow:user_question'),
-  toolDescription: i18nT('workflow:user_question_tool_desc'),
+  toolDescription: 'user question',
   required: true
 };
 

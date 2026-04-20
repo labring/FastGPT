@@ -3,14 +3,14 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { type FlowNodeTemplateType } from '../../../type/node.d';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '../../../constants';
-import { i18nT } from '../../../../../../web/i18n/utils';
+import { i18nT } from '../../../../../common/i18n/utils';
 
 export const LoopStartNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopStart,

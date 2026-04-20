@@ -1,0 +1,71 @@
+---
+title: 'V4.12.0 (Includes Migration Script)'
+description: 'FastGPT V4.12.0 Update Notes, released on 2025-8-11'
+---
+
+## Upgrade Guide
+
+### 1. Update Images:
+
+- Update FastGPT image tag: v4.12.0
+- Update FastGPT commercial edition image tag: v4.12.0
+- Update fastgpt-plugin image tag: v0.1.9
+- mcp_server: no update required
+- Sandbox: no update required
+- AIProxy: no update required
+
+### 2. Update Environment Variables
+
+Update the FastGPT commercial edition (fastgpt-pro) environment variables:
+
+```sh
+# Secret key for file reading, must match the environment variable in the fastgpt image
+FILE_TOKEN_KEY=filetokenkey
+```
+
+### 3. Run the Migration Script
+
+This script only needs to be run by commercial edition users.
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your **FastGPT domain**.
+
+```bash
+curl --location --request POST 'https://{{host}}/api/admin/initv4120' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json'
+```
+
+**Script Functions**
+
+1. Initializes chat log permissions for team members.
+
+## New Features
+
+1. Commercial edition: app log data dashboard.
+2. Commercial edition: simple chat page — select a model and preset tools to chat directly without building an app.
+3. Chat page: quick team app switching.
+4. Permission table restructured to use a Role-to-Permission mapping model.
+5. Apps can now have chat log viewing permissions assigned individually.
+
+## Improvements
+
+1. Fixed 3 potential memory leak issues in the code.
+2. Optimized workflow recursion checks to prevent infinite recursion.
+3. Optimized the document reading Worker to use SharedBuffer, avoiding data copying.
+4. Batch vector generation and storage to reduce network operations.
+5. Knowledge base search: multi-query merged computation to reduce database operations.
+6. Improved knowledge base selection UX.
+7. Login page UI adjustments.
+8. Stricter validation in workflows for whether a toolset can be added.
+9. Chat log export now only exports selected columns, and fixed an issue where some columns could not be exported.
+
+## Bug Fixes
+
+1. Doc2x API update caused parsing failures.
+2. Workflow: team app directories could be incorrectly added to workflows.
+3. Workflow: array selector UI defect.
+4. Member sync had incomplete permission deletion issues.
+
+## Tool Updates
+
+1. System tools can now return `citeLinks` in their response, enabling citation link display in the chat interface.

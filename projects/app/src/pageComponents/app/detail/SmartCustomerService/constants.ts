@@ -1,4 +1,4 @@
-import { i18nT } from '@fastgpt/web/i18n/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 // FAQ回答模式枚举
 export enum FAQAnswerModeEnum {

@@ -6,8 +6,8 @@ import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import FolderPath from '@/components/common/folder/Path';
 import List from '@/pageComponents/dataset/list/NewList';
-import { DatasetsContext } from './context';
-import DatasetContextProvider from './context';
+import { DatasetsContext } from '@/pageComponents/dataset/list/context';
+import DatasetContextProvider from '@/pageComponents/dataset/list/context';
 import { useContextSelector } from 'use-context-selector';
 import MultipleMenu from '@fastgpt/web/components/common/MyMenu/Multiple';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -15,11 +15,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { type EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import dynamic from 'next/dynamic';
-import {
-  postCreateDatasetFolder,
-  resumeInheritPer,
-  postChangeOwner
-} from '@/web/core/dataset/api';
+import { postCreateDatasetFolder, resumeInheritPer, postChangeOwner } from '@/web/core/dataset/api';
 import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import {
   postUpdateDatasetCollaborators,
@@ -151,11 +147,7 @@ const Dataset = () => {
                 </Button>
               )}
               {folderDetail && folderDetail.permission.hasManagePer && (
-                <Button
-                  variant={'whiteBase'}
-                  px={5}
-                  onClick={() => setFolderPerOpen(true)}
-                >
+                <Button variant={'whiteBase'} px={5} onClick={() => setFolderPerOpen(true)}>
                   {t('common:permission.Permission')}
                 </Button>
               )}

@@ -1,7 +1,4 @@
-import type { NextApiRequest } from 'next';
 import { Types } from '@fastgpt/service/common/mongo';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
-import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import {
   DatasetCollectionTypeEnum,
@@ -13,8 +10,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   MongoDatasetData,
@@ -26,6 +21,12 @@ import {
 } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  ListCollectionV2BodySchema,
+  ListCollectionV2ResponseSchema,
+  type ListCollectionV2ResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 // 计算单个文件（非 folder）的状态
 function getFileStatus(item: {
@@ -200,9 +201,7 @@ async function computeFolderMatchingStatuses(
   return getFolderMatchingStatuses(childStatuses);
 }
 
-async function handler(
-  req: NextApiRequest
-): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
   let {
     datasetId,
     parentId = null,
@@ -210,12 +209,22 @@ async function handler(
     selectFolder = false,
     filterTags = [],
     simple = false,
+    pageSize: rawPageSize,
+    offset: rawOffset,
+    pageNum: rawPageNum
+  } = ListCollectionV2BodySchema.parse(req.body);
+  let pageSize = Math.min(Number(rawPageSize ?? 10), 100);
+  let offset =
+    rawOffset !== undefined ? Number(rawOffset) : (Number(rawPageNum ?? 1) - 1) * pageSize;
+  const {
     sortBy = 'updateTime',
     sortOrder = 'desc',
     status
-  } = req.body as GetDatasetCollectionsProps;
-  let { pageSize, offset } = parsePaginationRequest(req);
-  pageSize = Math.min(pageSize, 100);
+  } = req.body as {
+    sortBy?: 'name' | 'updateTime' | 'createTime' | 'dataAmount';
+    sortOrder?: 'asc' | 'desc';
+    status?: CollectionStatusEnum | CollectionStatusEnum[];
+  };
   searchText = searchText?.replace(/'/g, '');
 
   // 统一处理 status 为数组
@@ -295,7 +304,7 @@ async function handler(
 
     const collections = await query.lean();
 
-    return {
+    return ListCollectionV2ResponseSchema.parse({
       list: await Promise.all(
         collections.map(async (item) => ({
           ...item,
@@ -304,7 +313,6 @@ async function handler(
             tags: item.tags
           }),
           dataAmount: 0,
-          indexAmount: 0,
           trainingAmount: 0,
           hasError: false,
           status:
@@ -321,7 +329,7 @@ async function handler(
         }))
       ),
       total: await MongoDatasetCollection.countDocuments(match)
-    };
+    });
   }
 
   // 根据排序字段或状态筛选决定查询策略
@@ -384,7 +392,7 @@ async function handleFieldSort({
   permission: any;
   isDatabaseDataset: boolean;
   isStructureDocument: boolean;
-}): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+}): Promise<ListCollectionV2ResponseType> {
   const sortDirection = sortOrder === 'asc' ? 1 : -1;
   const sortOption: Record<string, 1 | -1> = { [sortBy]: sortDirection };
 
@@ -544,7 +552,7 @@ async function handleFieldSort({
     }
   });
 
-  return { list, total };
+  return ListCollectionV2ResponseSchema.parse({ list, total });
 }
 
 // 按分块数排序或状态筛选的处理函数
@@ -576,7 +584,7 @@ async function handleDataAmountSortOrStatusFilter({
   permission: any;
   isDatabaseDataset: boolean;
   isStructureDocument: boolean;
-}): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+}): Promise<ListCollectionV2ResponseType> {
   const teamIdObj = new Types.ObjectId(teamId);
   const datasetIdObj = new Types.ObjectId(datasetId);
   const sortDirection = sortOrder === 'asc' ? 1 : -1;
@@ -817,7 +825,7 @@ async function handleStatusFilterWithMemoryPagination({
   permission: any;
   isDatabaseDataset: boolean;
   isStructureDocument: boolean;
-}): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
+}): Promise<ListCollectionV2ResponseType> {
   const teamIdObj = new Types.ObjectId(teamId);
   const datasetIdObj = new Types.ObjectId(datasetId);
 
@@ -1018,7 +1026,8 @@ async function handleStatusFilterWithMemoryPagination({
     })
   );
 
-  return { list: list as DatasetCollectionsListItemType[], total };
+  // count collections
+  return ListCollectionV2ResponseSchema.parse({ list, total });
 }
 
 export default NextAPI(handler);

@@ -1,0 +1,4 @@
+{
+  "title": "Local Models",
+  "pages": ["marker","mineru","xinference","bge-rerank","chatglm2","m3e","chatglm2-m3e","ollama"]
+}

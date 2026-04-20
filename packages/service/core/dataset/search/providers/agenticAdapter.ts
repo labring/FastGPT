@@ -57,6 +57,6 @@ export function chunkItemsToSearchResults(chunks: ChunkItem[]): SearchDataRespon
       chunkIndex: meta.chunkIndex ?? 0,
       imageId: meta.imageId,
       retrievalRank: index
-    };
+    } as SearchDataResponseItemType;
   });
 }

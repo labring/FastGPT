@@ -1,5 +1,8 @@
 import { Box, type BoxProps, Flex } from '@chakra-ui/react';
-import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -10,7 +13,7 @@ const FolderPath = (props: {
   paths: ParentTreePathItemType[];
   rootName?: string;
   FirstPathDom?: React.ReactNode;
-  onClick: (parentId: string) => void;
+  onClick: (parentId: ParentIdType) => void;
   fontSize?: string;
   hoverStyle?: BoxProps;
   forbidLastClick?: boolean;

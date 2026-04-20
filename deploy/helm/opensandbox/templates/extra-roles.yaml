@@ -1,0 +1,117 @@
+{{- if .Values.rbac.create }}
+{{- if .Values.extraRoles.batchsandboxEditor.enabled }}
+---
+# This role is provided to allow the cluster admin to help manage permissions for users.
+# Grants permissions to create, update, and delete BatchSandbox resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}batchsandbox-editor-role
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - batchsandboxes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - batchsandboxes/status
+  verbs:
+  - get
+{{- end }}
+
+{{- if .Values.extraRoles.batchsandboxViewer.enabled }}
+---
+# This role is provided to allow the cluster admin to help manage permissions for users.
+# Grants read-only permissions for BatchSandbox resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}batchsandbox-viewer-role
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - batchsandboxes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - batchsandboxes/status
+  verbs:
+  - get
+{{- end }}
+
+{{- if .Values.extraRoles.poolEditor.enabled }}
+---
+# This role is provided to allow the cluster admin to help manage permissions for users.
+# Grants permissions to create, update, and delete Pool resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}pool-editor-role
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - pools
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - pools/status
+  verbs:
+  - get
+{{- end }}
+
+{{- if .Values.extraRoles.poolViewer.enabled }}
+---
+# This role is provided to allow the cluster admin to help manage permissions for users.
+# Grants read-only permissions for Pool resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Values.namePrefix }}pool-viewer-role
+  labels:
+    {{- include "opensandbox-controller.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - pools
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - sandbox.opensandbox.io
+  resources:
+  - pools/status
+  verbs:
+  - get
+{{- end }}
+{{- end }}

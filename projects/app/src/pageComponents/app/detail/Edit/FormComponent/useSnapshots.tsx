@@ -1,0 +1,135 @@
+import { useMemoizedFn } from 'ahooks';
+import { useRef, useState } from 'react';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { isEqual } from 'lodash';
+
+export type SimpleAppSnapshotType = {
+  title: string;
+  isSaved?: boolean;
+  appForm: AppFormEditFormType;
+
+  // abandon
+  state?: AppFormEditFormType;
+  diff?: Record<string, any>;
+};
+export type onSaveSnapshotFnType = (props: {
+  appForm: AppFormEditFormType; // Current edited app form data
+  title?: string;
+  isSaved?: boolean;
+}) => Promise<boolean>;
+
+export const compareSimpleAppSnapshot = (
+  appForm1?: AppFormEditFormType,
+  appForm2?: AppFormEditFormType
+) => {
+  if (
+    appForm1?.chatConfig &&
+    appForm2?.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: appForm1.chatConfig?.welcomeText || '',
+        variables: appForm1.chatConfig?.variables || [],
+        questionGuide: appForm1.chatConfig?.questionGuide || undefined,
+        ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm1.chatConfig?.whisperConfig || undefined,
+        chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm1.chatConfig?.fileSelectConfig || undefined
+      },
+      {
+        welcomeText: appForm2.chatConfig?.welcomeText || '',
+        variables: appForm2.chatConfig?.variables || [],
+        questionGuide: appForm2.chatConfig?.questionGuide || undefined,
+        ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: appForm2.chatConfig?.whisperConfig || undefined,
+        chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
+        fileSelectConfig: appForm2.chatConfig?.fileSelectConfig || undefined
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
+  }
+
+  return isEqual({ ...appForm1, chatConfig: undefined }, { ...appForm2, chatConfig: undefined });
+};
+
+export const compareAssistantAppSnapshot = (
+  appForm1?: AppSimpleEditFormType,
+  appForm2?: AppSimpleEditFormType
+) => {
+  if (
+    appForm1?.chatConfig &&
+    appForm2?.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: appForm1.chatConfig?.welcomeText || '',
+        questionGuide: appForm1.chatConfig?.questionGuide || undefined,
+        fallbackReply: appForm1.chatConfig?.fallbackReply || '',
+        faqAnswerMode: appForm1.chatConfig?.faqAnswerMode || undefined
+      },
+      {
+        welcomeText: appForm2.chatConfig?.welcomeText || '',
+        questionGuide: appForm2.chatConfig?.questionGuide || undefined,
+        fallbackReply: appForm2.chatConfig?.fallbackReply || '',
+        faqAnswerMode: appForm2.chatConfig?.faqAnswerMode || undefined
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
+  }
+
+  return isEqual({ ...appForm1, chatConfig: undefined }, { ...appForm2, chatConfig: undefined });
+};
+
+export const useSimpleAppSnapshots = (appId: string, type?: AppTypeEnum) => {
+  const forbiddenSaveSnapshot = useRef(false);
+  const [past, setPast] = useState<SimpleAppSnapshotType[]>([]);
+
+  const saveSnapshot: onSaveSnapshotFnType = useMemoizedFn(async ({ appForm, title, isSaved }) => {
+    if (forbiddenSaveSnapshot.current) {
+      forbiddenSaveSnapshot.current = false;
+      return false;
+    }
+
+    if (past.length === 0) {
+      setPast([
+        {
+          title: title || formatTime2YMDHMS(new Date()),
+          isSaved,
+          appForm
+        }
+      ]);
+      return true;
+    }
+
+    const pastState = past[0];
+    // 根据应用类型选择不同的比较函数
+    const isPastEqual =
+      type === AppTypeEnum.assistant
+        ? compareAssistantAppSnapshot(pastState?.appForm, appForm)
+        : compareSimpleAppSnapshot(pastState?.appForm, appForm);
+
+    if (isPastEqual) return false;
+
+    setPast((past) => [
+      {
+        appForm,
+        title: title || formatTime2YMDHMS(new Date()),
+        isSaved
+      },
+      ...past.slice(0, 99)
+    ]);
+
+    return true;
+  });
+
+  return { forbiddenSaveSnapshot, past, setPast, saveSnapshot };
+};
+
+export default function Snapshots() {
+  return <></>;
+}

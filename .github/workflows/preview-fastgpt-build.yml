@@ -1,0 +1,82 @@
+name: Preview FastGPT Image — Build
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ['*']
+
+# Only one build per PR branch at a time
+concurrency:
+  group: 'preview-fastgpt-build-${{ github.head_ref }}'
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [fastgpt, code-sandbox, mcp_server]
+      fail-fast: false
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Set image config
+        id: config
+        run: |
+          if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
+            echo "DOCKERFILE=projects/app/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
+            echo "IMAGE_NAME=fastgpt" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "code-sandbox" ]]; then
+            echo "DOCKERFILE=projects/code-sandbox/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-code-sandbox-pr image" >> $GITHUB_OUTPUT
+            echo "IMAGE_NAME=fastgpt-code-sandbox" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
+            echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
+            echo "IMAGE_NAME=fastgpt-mcp-server" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.config.outputs.DOCKERFILE }}
+          platforms: linux/amd64
+          push: false
+          tags: ${{ steps.config.outputs.IMAGE_NAME }}-pr:${{ github.event.pull_request.head.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=${{ steps.config.outputs.DESCRIPTION }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+          outputs: type=docker,dest=/tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Save PR metadata
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
+          echo "${{ matrix.image }}" > /tmp/image-type.txt
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-${{ matrix.image }}-image
+          path: |
+            /tmp/${{ steps.config.outputs.IMAGE_NAME }}-image.tar
+            /tmp/pr-number.txt
+            /tmp/pr-sha.txt
+            /tmp/image-type.txt
+          retention-days: 1

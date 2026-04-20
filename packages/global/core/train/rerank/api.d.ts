@@ -1,4 +1,4 @@
-import type { PaginationProps, PaginationResponse } from '../../../../web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '../../openapi/api';
 import type {
   RerankTrainsetSchemaType,
   RerankTrainsetDataSchemaType,

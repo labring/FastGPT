@@ -1003,7 +1003,7 @@ export async function searchDatasetDataForAssistant(
   // 【步骤 14】确保最终结果包含所有必需的分数
   // 为每个结果补充完整的分数信息（embedding、fullText、reRank、rrf）
   const finalResultsWithAllScores = finalResults.map((item, finalIndex) => {
-    const scores: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[] = [];
+    const scores: { type: SearchScoreTypeEnum; value: number; index: number }[] = [];
 
     // 1. 添加 embedding 分数（如果存在）
     const embScore = embeddingScoreMap.get(item.id);
@@ -1054,7 +1054,7 @@ export async function searchDatasetDataForAssistant(
   const retrievalLimit = global.systemEnv?.assistantRetrievalLimit ?? 20;
 
   const retrievalResults = dedupedRrfResults.slice(0, retrievalLimit).map((item, index) => {
-    const scores: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[] = [];
+    const scores: SearchDataResponseItemType['score'] = [];
 
     // 添加 embedding 分数（如果存在）
     const embScore = embeddingScoreMap.get(item.id);

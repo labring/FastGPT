@@ -1,23 +1,6 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import type { getResDataQuery } from '@/pages/api/core/chat/record/getResData';
-import type {
-  InitChatResponse,
-  InitOutLinkChatProps,
-  InitTeamChatProps
-} from '@/global/core/chat/api.d';
-import { chatRequestManager } from './utils/chatRequestManager';
-
-import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
-import type {
-  getChatRecordsBody,
-  getChatRecordsResponse
-} from '@/pages/api/core/chat/record/getRecords_v2';
-import type { GetQuoteProps, GetQuotesRes } from '@/pages/api/core/chat/quote/getQuote';
-import type {
-  GetCollectionQuoteProps,
-  GetCollectionQuoteRes
-} from '@/pages/api/core/chat/quote/getCollectionQuote';
+import type { InitTeamChatProps } from '@/global/core/chat/api';
+import type { InitOutLinkChatQueryType } from '@fastgpt/global/openapi/core/chat/outLink/api';
 import type {
   AssistantGetQuoteProps,
   AssistantGetQuotesRes
@@ -34,6 +17,7 @@ import type {
 import type { ChatFavouriteAppType } from '@fastgpt/global/core/chat/favouriteApp/type';
 import type {
   InitChatQueryType,
+  InitChatResponseType,
   StopV2ChatParams
 } from '@fastgpt/global/openapi/core/chat/controler/api';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
@@ -45,32 +29,11 @@ export const getRecentlyUsedApps = () =>
  * 获取初始化聊天内容
  */
 export const getInitChatInfo = (data: InitChatQueryType) =>
-  GET<InitChatResponse>(`/core/chat/init`, data);
-export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
-  GET<InitChatResponse>(`/core/chat/outLink/init`, data);
+  GET<InitChatResponseType>(`/core/chat/init`, data);
+export const getInitOutLinkChatInfo = (data: InitOutLinkChatQueryType) =>
+  GET<InitChatResponseType>(`/core/chat/outLink/init`, data);
 export const getTeamChatInfo = (data: InitTeamChatProps) =>
-  GET<InitChatResponse>(`/core/chat/team/init`, data);
-
-/**
- * get detail responseData by dataId appId chatId
- */
-export const getChatResData = (data: getResDataQuery) =>
-  GET<ChatHistoryItemResType[]>(`/core/chat/getResData`, data);
-
-export const getChatRecords = (data: getChatRecordsBody) =>
-  POST<getChatRecordsResponse>('/core/chat/record/getRecords_v2', data);
-
-/**
- * delete one chat record
- */
-export const delChatRecordById = (data: DeleteChatItemProps) =>
-  POST(`/core/chat/item/delete`, data);
-
-export const getQuoteDataList = (data: GetQuoteProps) =>
-  POST<GetQuotesRes>(`/core/chat/quote/getQuote`, data);
-
-export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
-  POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
+  GET<InitChatResponseType>(`/core/chat/team/init`, data);
 
 /*---------- chat setting ------------*/
 export const getChatSetting = () => GET<ChatSettingType>('/proApi/core/chat/setting/detail');
