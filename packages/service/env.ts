@@ -115,7 +115,10 @@ export const env = createEnv({
 
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)
-    SHOW_SKILL: BoolSchema.default(false)
+    SHOW_SKILL: BoolSchema.default(false),
+
+    // Agent engine selection: 'default' uses the built-in Plan+Step engine, 'pi' uses pi-agent-core
+    AGENT_ENGINE: z.enum(['default', 'pi']).default('default')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
