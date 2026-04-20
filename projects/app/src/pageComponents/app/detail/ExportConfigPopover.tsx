@@ -13,16 +13,13 @@ import { filterSensitiveFormData } from '@/web/core/app/utils';
 import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
-const ExportConfigPopover = ({
-  appForm,
-  getWorkflowData,
-
-  chatConfig,
-  appName
-}: {
+type ExportConfigPopoverProps = {
   appName: string;
   chatConfig?: AppChatConfigType;
+  filterSensitiveInfo?: boolean;
+  onFilterSensitiveInfoChange?: (value: boolean) => void;
 } & RequireOnlyOne<{
   getWorkflowData: () =>
     | {
@@ -31,11 +28,32 @@ const ExportConfigPopover = ({
       }
     | undefined;
   appForm: AppFormEditFormType;
-}>) => {
+}>;
+
+const ExportConfigPopover = ({
+  appForm,
+  getWorkflowData,
+  chatConfig,
+  appName,
+  filterSensitiveInfo: filterSensitiveInfoProp,
+  onFilterSensitiveInfoChange
+}: ExportConfigPopoverProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
-  const [filterSensitiveInfo, setFilterSensitiveInfo] = useState<boolean>(true);
+  const [localFilterSensitiveInfo, setLocalFilterSensitiveInfo] = useState<boolean>(true);
+  const filterSensitiveInfo = filterSensitiveInfoProp ?? localFilterSensitiveInfo;
+
+  const setFilterSensitiveInfo = useCallback(
+    (value: boolean) => {
+      onFilterSensitiveInfoChange?.(value);
+
+      if (filterSensitiveInfoProp === undefined) {
+        setLocalFilterSensitiveInfo(value);
+      }
+    },
+    [filterSensitiveInfoProp, onFilterSensitiveInfoChange]
+  );
 
   const onExportWorkflow = useCallback(
     async (mode: 'copy' | 'json') => {
@@ -91,7 +109,7 @@ const ExportConfigPopover = ({
       offset={[0, 20]}
       hasArrow
       trigger={'hover'}
-      w={'8.6rem'}
+      w={'8.8rem'}
       Trigger={
         <MyBox display={'flex'} cursor={'pointer'} onClick={(e) => e.stopPropagation()}>
           <MyIcon name={'export'} w={'16px'} mr={2} />
@@ -137,6 +155,7 @@ const ExportConfigPopover = ({
           <Flex
             py={'0.38rem'}
             px={1}
+            alignItems={'center'}
             color={'myGray.600'}
             _hover={{
               bg: 'myGray.05',
@@ -147,6 +166,7 @@ const ExportConfigPopover = ({
             onClick={() => setFilterSensitiveInfo(!filterSensitiveInfo)}
           >
             <Checkbox
+              flex={1}
               size="sm"
               colorScheme="primary"
               isChecked={filterSensitiveInfo}
@@ -154,6 +174,20 @@ const ExportConfigPopover = ({
             >
               <Box fontSize={'mini'}>{t('common:filter_sensitive_info')}</Box>
             </Checkbox>
+            <Box
+              display={'flex'}
+              alignItems={'center'}
+              ml={1}
+              flexShrink={0}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <QuestionTip
+                color={'inherit'}
+                maxW={'320px'}
+                label={t('common:filter_sensitive_info_tip')}
+              />
+            </Box>
           </Flex>
         </Box>
       )}
