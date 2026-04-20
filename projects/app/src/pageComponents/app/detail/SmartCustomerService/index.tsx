@@ -28,7 +28,6 @@ const Edit = dynamic(() => import('./Edit'));
 const PublishChannel = dynamic(() => import('../Publish'));
 const Dashboard = dynamic(() => import('../Dashboard/index'));
 const ConversationLogs = dynamic(() => import('../ConversationLogs/index'));
-const AutoLearn = dynamic(() => import('../AutoLearn/index'));
 
 const SmartCustomerServiceEdit = () => {
   const { t } = useTranslation();
@@ -136,7 +135,6 @@ const SmartCustomerServiceEdit = () => {
         <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]}>
           {currentTab === TabEnum.dashboard && <Dashboard />}
           {currentTab === TabEnum.logs && <ConversationLogs />}
-          {currentTab === TabEnum.autoLearn && <AutoLearn />}
           {currentTab === TabEnum.publish && <PublishChannel />}
         </Box>
       )}
