@@ -682,15 +682,17 @@ export class WorkflowQueue {
 
   private usagePush(usages: ChatNodeUsageType[]) {
     // 暂时只有 root runtime 需要 push usage，child 的统一给到 root 去推送
-    if (this.isRootRuntime && this.data.usageId) {
-      pushChatItemUsage({
-        teamId: this.data.runningUserInfo.teamId,
-        usageId: this.data.usageId,
-        nodeUsages: usages
-      });
-    }
-    if (this.data.concatUsage) {
-      this.data.concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+    if (this.isRootRuntime) {
+      if (this.data.usageId) {
+        pushChatItemUsage({
+          teamId: this.data.runningUserInfo.teamId,
+          usageId: this.data.usageId,
+          nodeUsages: usages
+        });
+      }
+      if (this.data.concatUsage) {
+        this.data.concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+      }
     }
 
     this.chatNodeUsages = this.chatNodeUsages.concat(usages);
@@ -1546,6 +1548,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           const startTime = Date.now();
 
           await rewriteRuntimeWorkFlow({
+            teamId: data.runningAppInfo.teamId,
             nodes: data.runtimeNodes,
             edges: data.runtimeEdges,
             lang: data.lang

@@ -389,6 +389,26 @@ export const getNodeAllSource = ({
   };
   findSourceNode(nodeId);
 
+  // 对于嵌套在容器（Loop/ParallelRun）内的节点，容器的 reference 类型输入
+  // 是通过引用选择器设置的（存在 input.value = [nodeId, outputId]），不产生 ReactFlow edge。
+  // 因此需要额外扫描父容器的 reference 输入，将被引用的外部节点补充到可选来源中。
+  if (parentId) {
+    const parentNode = getNodeById(parentId);
+    if (parentNode) {
+      parentNode.inputs.forEach((input) => {
+        if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.reference)) return;
+        const val = input.value as ReferenceItemValueType | undefined;
+        if (!Array.isArray(val) || val.length < 2) return;
+        const [refNodeId] = val;
+        if (!refNodeId || refNodeId === VARIABLE_NODE_ID) return;
+        const refNode = getNodeById(refNodeId);
+        if (!refNode || sourceNodes.has(refNode.nodeId)) return;
+        sourceNodes.set(refNode.nodeId, refNode);
+        findSourceNode(refNode.nodeId);
+      });
+    }
+  }
+
   sourceNodes.set(
     'system_global_variable',
     getGlobalVariableNode({
@@ -620,7 +640,7 @@ export const checkWorkflowNodeAndConnection = ({
     };
     dfsFromStart(startNode.data.nodeId);
     nodes.forEach((node) => {
-      if (node.data.flowNodeType === FlowNodeTypeEnum.loopStart) {
+      if (node.data.flowNodeType === FlowNodeTypeEnum.nestedStart) {
         dfsFromStart(node.data.nodeId);
       }
     });
@@ -646,7 +666,7 @@ export const checkWorkflowNodeAndConnection = ({
       const isStartNode = [
         FlowNodeTypeEnum.workflowStart,
         FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.loopStart
+        FlowNodeTypeEnum.nestedStart
       ].includes(nodeType);
 
       // Check if node is reachable from start
@@ -775,8 +795,8 @@ export const compareSnapshot = (
             key: input.key,
             selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
-            // set to arrayAny for loopInputArray to skip valueType comparison
-            // valueType: input.key === NodeInputKeyEnum.loopInputArray ? 'arrayAny' : input.valueType,
+            // set to arrayAny for nestedInputArray to skip valueType comparison
+            // valueType: input.key === NodeInputKeyEnum.nestedInputArray ? 'arrayAny' : input.valueType,
             value: input.value ?? undefined
           })),
           outputs: node.data.outputs.map((item: FlowNodeOutputItemType) => ({

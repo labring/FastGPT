@@ -58,7 +58,9 @@ const NodeTemplatesPopover = () => {
 
         // 2. Exclude loop start and end nodes
         if (
-          [FlowNodeTypeEnum.loopStart, FlowNodeTypeEnum.loopEnd].includes(node.data.flowNodeType)
+          [FlowNodeTypeEnum.nestedStart, FlowNodeTypeEnum.nestedEnd].includes(
+            node.data.flowNodeType
+          )
         ) {
           return false;
         }

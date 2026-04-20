@@ -210,7 +210,7 @@ echo "正在下载配置文件..."
 # 构建下载链接（处理 global 下 zilliz 文件名差异）
 VECTOR_FILE="$VECTOR"
 if [ "$REGION" == "global" ] && [ "$VECTOR" == "zilliz" ]; then
-    VECTOR_FILE="ziliiz"
+    VECTOR_FILE="zilliz"
 fi
 
 if [ "$REGION" == "cn" ]; then
@@ -243,28 +243,54 @@ echo "已下载 config.json"
 # ========== 替换 S3 访问地址 ==========
 if [ -n "$S3_ADDR" ]; then
     if $S3_CUSTOM; then
-        # 自定义输入：提取主机部分替换 docker-compose 中的 IP
-        S3_HOST="${S3_ADDR#http://}"
-        S3_HOST="${S3_HOST#https://}"
-        S3_HOST="${S3_HOST%%:*}"
-        S3_HOST="${S3_HOST%%/*}"
+        # 自定义输入：解析 scheme / host / port，整体替换模板中的完整地址
+        S3_RAW="$S3_ADDR"
+        if [[ "$S3_RAW" == https://* ]]; then
+            S3_SCHEME="https"
+            S3_RAW="${S3_RAW#https://}"
+        elif [[ "$S3_RAW" == http://* ]]; then
+            S3_SCHEME="http"
+            S3_RAW="${S3_RAW#http://}"
+        else
+            S3_SCHEME="http"
+        fi
+        S3_RAW="${S3_RAW%%/*}"
+        if [[ "$S3_RAW" == *:* ]]; then
+            S3_HOST="${S3_RAW%%:*}"
+            S3_PORT="${S3_RAW##*:}"
+        else
+            S3_HOST="$S3_RAW"
+            S3_PORT="9000"
+        fi
+        S3_NEW="${S3_SCHEME}://${S3_HOST}:${S3_PORT}"
     else
-        S3_HOST="$S3_ADDR"
+        S3_PORT="9000"
+        S3_NEW="http://${S3_ADDR}:9000"
     fi
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/192\.168\.0\.2/$S3_HOST/g" docker-compose.yml
+        sed -i '' "s|http://192\.168\.0\.2:9000|${S3_NEW}|g" docker-compose.yml
     else
-        sed -i "s/192\.168\.0\.2/$S3_HOST/g" docker-compose.yml
+        sed -i "s|http://192\.168\.0\.2:9000|${S3_NEW}|g" docker-compose.yml
+    fi
+    S3_ENDPOINT_RC=$?
+
+    # minio 容器内部始终监听 9000，只改宿主端口映射
+    if [ "$S3_PORT" != "9000" ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|- 9000:9000|- ${S3_PORT}:9000|g" docker-compose.yml
+        else
+            sed -i "s|- 9000:9000|- ${S3_PORT}:9000|g" docker-compose.yml
+        fi
     fi
 
-    if [ $? -eq 0 ]; then
-        echo "已更新 S3 访问地址为: $S3_DISPLAY"
+    if [ $S3_ENDPOINT_RC -eq 0 ]; then
+        echo "已更新 S3 访问地址为: $S3_NEW"
     else
-        echo "警告: 替换 S3 地址失败，请手动编辑 docker-compose.yml 中的 192.168.0.2"
+        echo "警告: 替换 S3 地址失败，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
     fi
 else
-    echo "警告: 未设置 S3 地址，请手动编辑 docker-compose.yml 中的 192.168.0.2"
+    echo "警告: 未设置 S3 地址，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
 fi
 
 # ========== 替换 MCP 访问地址 ==========
@@ -288,6 +314,61 @@ if [ -n "$MCP_ADDR" ]; then
     fi
 else
     echo "警告: 未设置 MCP 地址，请手动编辑 config.json 中的 mcpServerProxyEndpoint"
+fi
+
+# ========== 检测并替换 docker.sock 路径 ==========
+# 某些发行版 / Docker Desktop / rootless 模式下，宿主机 docker.sock 不在 /var/run/docker.sock
+# 若路径错误，Docker 会把挂载目标在容器内创建为空目录，导致 volume-manager / opensandbox 无法调用 Docker API
+detect_docker_sock() {
+    # 1. DOCKER_HOST 环境变量
+    if [ -n "$DOCKER_HOST" ] && [[ "$DOCKER_HOST" == unix://* ]]; then
+        local sock="${DOCKER_HOST#unix://}"
+        [ -S "$sock" ] && { echo "$sock"; return 0; }
+    fi
+
+    # 2. docker context 当前上下文
+    if command -v docker &>/dev/null; then
+        local ctx
+        ctx=$(docker context inspect --format '{{ .Endpoints.docker.Host }}' 2>/dev/null)
+        if [[ "$ctx" == unix://* ]]; then
+            ctx="${ctx#unix://}"
+            [ -S "$ctx" ] && { echo "$ctx"; return 0; }
+        fi
+    fi
+
+    # 3. 常见路径依次探测
+    local candidates=(
+        "/var/run/docker.sock"
+        "/run/docker.sock"
+        "$HOME/.docker/run/docker.sock"         # macOS Docker Desktop
+        "$HOME/.docker/desktop/docker.sock"
+        "/run/user/$(id -u 2>/dev/null)/docker.sock"  # rootless
+    )
+    for p in "${candidates[@]}"; do
+        [ -S "$p" ] && { echo "$p"; return 0; }
+    done
+
+    return 1
+}
+
+HOST_SOCK=$(detect_docker_sock)
+if [ -n "$HOST_SOCK" ]; then
+    if [ "$HOST_SOCK" != "/var/run/docker.sock" ]; then
+        # 只改宿主侧路径（冒号左边），容器内仍为 /var/run/docker.sock
+        ESCAPED_SOCK=$(printf '%s' "$HOST_SOCK" | sed -e 's/[\/&|]/\\&/g')
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+        else
+            sed -i "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
+        fi
+        echo "已检测到 Docker socket: $HOST_SOCK，已更新 docker-compose.yml 挂载路径"
+    else
+        echo "Docker socket 路径正常: /var/run/docker.sock"
+    fi
+else
+    echo "警告: 未检测到 Docker socket。请确认 Docker 正在运行，"
+    echo "      并手动编辑 docker-compose.yml，将两处 '- /var/run/docker.sock:/var/run/docker.sock'"
+    echo "      左侧改成宿主机实际的 socket 路径。"
 fi
 
 # ========== 完成 ==========

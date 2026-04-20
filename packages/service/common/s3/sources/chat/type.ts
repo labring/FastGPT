@@ -1,14 +1,15 @@
-import { z } from 'zod';
+import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import { UploadFileByBodySchema } from '../../type';
+import { UploadFileByBodySchema } from '../../contracts/type';
 
 export const ChatFileUploadSchema = z.object({
   appId: ObjectIdSchema,
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
-  expiredTime: z.date().optional(),
-  maxFileSize: z.number().positive().optional()
+  expiredTime: z.coerce.date().optional(),
+  maxFileSize: z.number().positive().optional(),
+  allowedExtensions: z.array(z.string().nonempty()).optional()
 });
 export type CheckChatFileKeys = z.infer<typeof ChatFileUploadSchema>;
 

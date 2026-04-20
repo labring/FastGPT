@@ -5,8 +5,8 @@ import { getNanoid } from '../../../../common/string/tools';
 import { AppChatConfigTypeSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
 
 const WebCompletionsSchema = z.object({
   chatId: z
@@ -131,7 +131,7 @@ export const ChatTestPropsSchema = z.object({
     .string()
     .optional()
     .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
-  nodes: z.array(StoreNodeItemTypeSchema).meta({ description: '节点列表' }),
+  nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({ description: '节点列表' }),
   edges: z.array(StoreEdgeItemTypeSchema).meta({ description: '边列表' }),
   chatConfig: AppChatConfigTypeSchema.meta({ description: '聊天配置' }),
   variables: z.record(z.string(), z.any()).optional().default({}).meta({

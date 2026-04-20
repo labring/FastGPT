@@ -14,6 +14,7 @@ import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponseType> {
   const { appId, chatId } = InitChatQuerySchema.parse(req.query);
@@ -36,6 +37,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
 
+    const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+    if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+      await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+      chat.hasBeenRead = true;
+    }
+
     // get app and history
     const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
     const pluginInputs =
@@ -54,6 +61,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       title: chat?.title || '',
       userAvatar: undefined,
       variables,
+      chatGenerateStatus: chat?.chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

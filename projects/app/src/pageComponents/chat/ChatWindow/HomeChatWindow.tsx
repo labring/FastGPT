@@ -164,7 +164,8 @@ const HomeChatWindow = () => {
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId],
+      // Plus 配置晚于首屏就绪时，需重新拉会话状态（含 chatGenerateStatus，供流恢复）
+      refreshDeps: [appId, chatId, feConfigs?.isPlus],
       errorToast: '',
       onFinally() {
         forbidLoadChat.current = false;
@@ -202,6 +203,10 @@ const HomeChatWindow = () => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
+      if (!appId) {
+        return Promise.reject('appId is empty');
+      }
+
       const histories = messages.slice(-1);
 
       // using original workflow of quick app
@@ -458,7 +463,8 @@ const HomeChatWindow = () => {
           <ChatBox
             appId={appId}
             chatId={chatId}
-            isReady={!loading}
+            isReady={!loading && !!appId}
+            enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
             slogan={chatSettings?.slogan}

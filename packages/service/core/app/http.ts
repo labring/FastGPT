@@ -7,13 +7,15 @@ import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
   toolPath: string;
   method: string;
   params: Record<string, any>;
-  headerSecret?: StoreSecretValueType;
+  headerSecret?: StoreSecretValueType | null;
   customHeaders?: Record<string, string>;
   staticParams?: HttpToolConfigType['staticParams'];
   staticHeaders?: HttpToolConfigType['staticHeaders'];
@@ -179,4 +181,14 @@ export const runHTTPTool = async ({
     console.log(error);
     return { errorMsg: getErrText(error) };
   }
+};
+
+export const getHTTPToolList = async (app: AppSchemaType) => {
+  return (
+    app.modules[0].toolConfig?.httpToolSet?.toolList.map((item) => ({
+      ...item,
+      id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
+      avatar: app.avatar
+    })) ?? []
+  );
 };

@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { env } from '../../../env';
 
 export const authCollectionFile = async ({
   fileId,
@@ -43,9 +44,7 @@ export const authFileToken = (token?: string) =>
     if (!token) {
       return reject(ERROR_ENUM.unAuthFile);
     }
-    const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
-
-    jwt.verify(token, key, (err, decoded: any) => {
+    jwt.verify(token, env.FILE_TOKEN_KEY, (err, decoded: any) => {
       if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.fileId) {
         reject(ERROR_ENUM.unAuthFile);
         return;

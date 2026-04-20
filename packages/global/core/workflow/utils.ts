@@ -18,7 +18,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import { type StoreNodeItemType } from './type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
   AppTTSConfigType,
@@ -273,6 +273,8 @@ export const appData2FlowNodeIO = ({
           description: '',
           valueType: item.valueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
+          defaultValue: item.defaultValue,
+          value: item.defaultValue,
           list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
@@ -331,10 +333,43 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
 export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
+  // 加工 toolConfig, 移除一些无需返回客户端以及无需单独存储到 node 的数据。
+  const toolConfig: NodeToolConfigType | undefined = (() => {
+    if (!toolSetNode?.toolConfig) return undefined;
+
+    if (toolSetNode.toolConfig.httpToolSet) {
+      const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
+        const { requestSchema, inputSchema, outputSchema, ...restTool } = tool;
+        return restTool;
+      });
+      return {
+        ...toolSetNode.toolConfig,
+        httpToolSet: {
+          toolList
+        }
+      };
+    }
+    if (toolSetNode.toolConfig.mcpToolSet) {
+      const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
+        const { inputSchema, ...restTool } = tool;
+        return restTool;
+      });
+      return {
+        ...toolSetNode.toolConfig,
+        mcpToolSet: {
+          url: '',
+          toolList: formatToolList
+        }
+      };
+    }
+
+    return toolSetNode.toolConfig;
+  })();
+
   return {
     inputs: toolSetNode?.inputs || [],
     outputs: toolSetNode?.outputs || [],
-    toolConfig: toolSetNode?.toolConfig,
+    toolConfig,
     showSourceHandle: false,
     showTargetHandle: false
   };

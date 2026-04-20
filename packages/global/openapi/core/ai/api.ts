@@ -1,5 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { z } from 'zod';
+import z from 'zod';
+import { ChatGenerateStatusEnum } from '../../../core/chat/constants';
+import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
@@ -24,7 +26,7 @@ export const LLMRequestRecordSchema = z.object({
   response: z.record(z.string(), z.any()).meta({
     description: 'LLM 响应内容'
   }),
-  createdAt: z.date().meta({
+  createdAt: z.coerce.date().meta({
     example: '2024-01-01T00:00:00.000Z',
     description: '创建时间'
   })
@@ -33,7 +35,7 @@ export const LLMRequestRecordSchema = z.object({
 export type LLMRequestRecordSchemaType = z.infer<typeof LLMRequestRecordSchema>;
 
 /* ============================================================================
- * 共享 Schema
+ * 共享：OpenAI 风格 ChatMessage（与其它 LLM 接口复用）
  * ============================================================================ */
 
 export const ChatMessageSchema = z.object({
@@ -52,3 +54,52 @@ export const ChatMessageSchema = z.object({
   tool_calls: z.array(z.object()).optional().meta({ description: '工具调用' }),
   tool_call_id: z.string().optional().meta({ description: '工具调用 ID' })
 });
+
+/* ============================================================================
+ * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内、分享、团队域名鉴权）
+ * ============================================================================ */
+
+export const ResumeStreamParamsSchema = z.object({
+  ...OutLinkChatAuthSchema.shape,
+  appId: ObjectIdSchema,
+  teamId: ObjectIdSchema.optional(),
+  shareId: z.string().optional(),
+  outLinkUid: z.string().optional(),
+  chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
+});
+
+export type ResumeStreamParams = z.infer<typeof ResumeStreamParamsSchema>;
+
+export const StreamResumeCompletedRecordsSchema = z.object({
+  list: z.array(z.any()).meta({
+    description: '最新已落库的聊天记录'
+  }),
+  total: z.number().int().nonnegative().meta({
+    example: 2,
+    description: '聊天记录总数'
+  }),
+  hasMorePrev: z.boolean().meta({
+    example: false,
+    description: '是否还有更早的记录'
+  }),
+  hasMoreNext: z.boolean().meta({
+    example: false,
+    description: '是否还有更新的记录'
+  })
+});
+
+export const StreamNoNeedToBeResumeSchema = z.object({
+  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).meta({
+    example: ChatGenerateStatusEnum.done,
+    description: '聊天生成状态'
+  }),
+  hasBeenRead: z.boolean().meta({
+    example: true,
+    description: '是否已读'
+  }),
+  records: StreamResumeCompletedRecordsSchema.meta({
+    description: '当恢复请求到达时，对话已结束并已落库的最新聊天记录'
+  })
+});
+
+export type StreamNoNeedToBeResumeType = z.infer<typeof StreamNoNeedToBeResumeSchema>;

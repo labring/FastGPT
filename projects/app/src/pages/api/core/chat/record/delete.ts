@@ -16,11 +16,6 @@ async function handler(
   const { appId, chatId, contentId, delFile, ...authProps } = DeleteChatRecordBodySchema.parse(
     req.query
   );
-
-  if (!contentId || !chatId) {
-    return Promise.reject('contentId or chatId is empty');
-  }
-
   await authChatCrud({
     req,
     authToken: true,

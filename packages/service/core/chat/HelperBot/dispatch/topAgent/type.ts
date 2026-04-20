@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { AICollectionAnswerSchema } from '../type';
 import { SelectedDatasetSchema } from '@fastgpt/global/core/workflow/type/io';
 

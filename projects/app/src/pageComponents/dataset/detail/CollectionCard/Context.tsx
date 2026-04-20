@@ -1,18 +1,10 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useState,
-  useMemo,
-  useCallback
-} from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 import { getDatasetCollections } from '@/web/core/dataset/api/collection';
 import { postDatasetSync } from '@/web/core/dataset/api';
@@ -71,7 +63,6 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
 
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
@@ -103,22 +94,21 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId, searchText, filterTags]
   });
 
-  const syncDataset = useCallback(async () => {
-    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
-      await checkTeamWebSyncLimit();
+  const { runAsync: syncDataset } = useRequest(
+    async () => {
+      if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+        await checkTeamWebSyncLimit();
+      }
+
+      await postDatasetSync({ datasetId: datasetId });
+      loadDatasetDetail(datasetId);
+
+      getData(pageNum);
+    },
+    {
+      successToast: t('dataset:collection.sync.submit')
     }
-
-    await postDatasetSync({ datasetId: datasetId });
-    loadDatasetDetail(datasetId);
-
-    getData(pageNum);
-
-    // Show success message
-    toast({
-      status: 'success',
-      title: t('dataset:collection.sync.submit')
-    });
-  }, [datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum, t, toast]);
+  );
 
   // dataset sync confirm
   const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(

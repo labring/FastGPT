@@ -11,6 +11,7 @@ import {
   CreateCollectionWithResultResponseSchema,
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { name, text, ...body } = CreateTextCollectionBodySchema.parse(req.body);
@@ -21,6 +22,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     authApiKey: true,
     datasetId: body.datasetId,
     per: WritePermissionVal
+  });
+
+  // Check dataset limit
+  await checkDatasetIndexLimit({
+    teamId,
+    insertLen: 1
   });
 
   const filename = `${name}.txt`;

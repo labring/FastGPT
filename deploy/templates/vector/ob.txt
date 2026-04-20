@@ -1,11 +1,11 @@
-  fastgpt-ob:
+  fastgpt-vector:
     image:  ${{oceanbase.image}}:${{oceanbase.tag}}
     container_name: fastgpt-ob
     restart: always
     # ports: # 生产环境建议不要暴露
     #   - 2881:2881
     networks:
-      - fastgpt
+      - data
     environment:
       # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
       - OB_SYS_PASSWORD=obsyspassword

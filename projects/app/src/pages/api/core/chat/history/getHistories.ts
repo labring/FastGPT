@@ -1,5 +1,5 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
@@ -107,7 +107,10 @@ export async function handler(
   const mergeMatch = { ...match, ...timeMatch, deleteTime: null };
 
   const [data, total] = await Promise.all([
-    await MongoChat.find(mergeMatch, 'chatId title top customTitle appId updateTime')
+    await MongoChat.find(
+      mergeMatch,
+      'chatId title top customTitle appId updateTime chatGenerateStatus hasBeenRead'
+    )
       .sort({ top: -1, updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
@@ -122,7 +125,9 @@ export async function handler(
       appId: item.appId,
       customTitle: item.customTitle,
       title: item.title,
-      top: item.top
+      top: item.top,
+      chatGenerateStatus: item.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
+      hasBeenRead: item.hasBeenRead
     })),
     total
   });

@@ -1,5 +1,5 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { z } from 'zod';
+import z from 'zod';
 import { ChatRoleEnum } from '../constants';
 import { UserChatItemSchema, SystemChatItemSchema, ToolModuleResponseItemSchema } from '../type';
 import { UserInputInteractiveSchema } from '../../workflow/template/system/interactive/type';
@@ -15,8 +15,8 @@ export const HelperBotChatSchema = z.object({
   chatId: z.string(),
   type: HelperBotTypeEnum,
   userId: z.string(),
-  createTime: z.date(),
-  updateTime: z.date(),
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
   metadata: z.record(z.string(), z.any()).optional()
 });
 export type HelperBotChatType = z.infer<typeof HelperBotChatSchema>;
@@ -61,7 +61,7 @@ export const HelperBotChatItemSchema = z.intersection(
     userId: z.string(),
     chatId: z.string(),
     dataId: z.string(),
-    createTime: z.date(),
+    createTime: z.coerce.date(),
     memories: z.record(z.string(), z.any()).nullish()
   }),
   HelperBotChatRoleSchema
@@ -73,7 +73,7 @@ export const HelperBotChatItemSiteSchema = z.intersection(
   z.object({
     _id: ObjectIdSchema,
     dataId: z.string(),
-    createTime: z.date()
+    createTime: z.coerce.date()
   }),
   HelperBotChatRoleSchema
 );

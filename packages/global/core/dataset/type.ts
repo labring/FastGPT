@@ -68,7 +68,7 @@ export const DatasetSchema = z
     userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true }),
     teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
-    updateTime: z.date().meta({ description: '更新时间' }),
+    updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
 
     avatar: z.string().meta({ description: '头像' }),
@@ -91,7 +91,7 @@ export const DatasetSchema = z
 
     apiDatasetServer: ApiDatasetServerSchema.optional().meta({ description: 'API 服务器配置' }),
 
-    deleteTime: z.date().nullish().meta({ description: '删除时间' }),
+    deleteTime: z.coerce.date().nullish().meta({ description: '删除时间' }),
 
     autoSync: z.boolean().optional().meta({ description: '自动同步', deprecated: true }),
     externalReadUrl: z.string().optional().meta({ description: '外部读取 URL', deprecated: true }),
@@ -125,8 +125,8 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
   tags: z.array(z.string()).optional().meta({ description: '标签' }),
 
-  createTime: z.date().meta({ description: '创建时间' }),
-  updateTime: z.date().meta({ description: '更新时间' }),
+  createTime: z.coerce.date().meta({ description: '创建时间' }),
+  updateTime: z.coerce.date().meta({ description: '更新时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
 
@@ -184,7 +184,7 @@ export const DatasetDataFieldSchema = z.object({
 export type DatasetDataFieldType = z.infer<typeof DatasetDataFieldSchema>;
 
 export const DatasetDataHistorySchema = DatasetDataFieldSchema.extend({
-  updateTime: z.date().meta({ description: '更新时间' })
+  updateTime: z.coerce.date().meta({ description: '更新时间' })
 });
 export type DatasetDataHistoryType = z.infer<typeof DatasetDataHistorySchema>;
 
@@ -196,7 +196,7 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
   chunkIndex: z.int().min(0).meta({ description: '块索引' }),
-  updateTime: z.date().meta({ description: '更新时间' }),
+  updateTime: z.coerce.date().meta({ description: '更新时间' }),
   history: z.array(DatasetDataHistorySchema).optional().meta({ description: '历史版本' }),
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
   fullTextToken: z.string().meta({ description: '全文 token' }),
@@ -224,8 +224,8 @@ export const DatasetTrainingSchema = z.object({
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
   billId: z.string().meta({ description: '账单 ID' }),
-  expireAt: z.date().meta({ description: '过期时间' }),
-  lockTime: z.date().meta({ description: '锁定时间' }),
+  expireAt: z.coerce.date().meta({ description: '过期时间' }),
+  lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
   dataId: z.string().optional().meta({ description: '数据 ID' }),
   q: z.string().meta({ description: '问题/主文本' }),
@@ -264,7 +264,7 @@ export const DatasetListItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   avatar: z.string().meta({ description: '头像' }),
-  updateTime: z.date().meta({ description: '更新时间' }),
+  updateTime: z.coerce.date().meta({ description: '更新时间' }),
   name: z.string().meta({ description: '名称' }),
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
@@ -327,7 +327,7 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
   imagePreivewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
-  updateTime: z.date().meta({ description: '更新时间' }),
+  updateTime: z.coerce.date().meta({ description: '更新时间' }),
   sourceName: z.string().meta({ description: '来源名称' }),
   sourceId: z.string().optional().meta({ description: '来源 ID' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
@@ -385,7 +385,7 @@ export const DatasetFileSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '文件 ID' }),
   length: z.number().meta({ description: '文件长度' }),
   chunkSize: z.number().meta({ description: '块大小' }),
-  uploadDate: z.date().meta({ description: '上传时间' }),
+  uploadDate: z.coerce.date().meta({ description: '上传时间' }),
   filename: z.string().meta({ description: '文件名' }),
   contentType: z.string().meta({ description: '文件类型' }),
   metadata: z

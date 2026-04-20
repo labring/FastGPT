@@ -173,7 +173,7 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 
 ```bash
 # 启动容器
-docker compose --profile prepull pull agent-sandbox-image opensandbox-execd-image opensandbox-egress-image && dockercompose up -d
+docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image && dockercompose up -d
 
 ```
 
@@ -205,7 +205,8 @@ docker compose --profile prepull pull agent-sandbox-image opensandbox-execd-imag
 
 | FastGPT-plugin 版本  |  FastGPT 主服务 |
 | ------------------- | ---------------- |
-|   0.5.x      |     >= 4.14.6         |
+|   0.6.x      |     >= 4.14.11         |
+|   0.5.x      |     >= 4.14.6, < 4.14.11        |
 |  < 0.5.0      |   < 4.14.6        |
 
 ### S3 无法正常连接

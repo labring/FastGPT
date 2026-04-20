@@ -1,6 +1,6 @@
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { S3PrivateBucket } from '../../buckets/private';
-import { S3Sources } from '../../type';
+import { S3Sources } from '../../contracts/type';
 import {
   type CheckHelperBotFileKeys,
   type DelChatFileByPrefixParams,
@@ -8,7 +8,7 @@ import {
   HelperBotFileUploadSchema
 } from './type';
 import { differenceInHours } from 'date-fns';
-import { S3Buckets } from '../../constants';
+import { S3Buckets } from '../../config/constants';
 import path from 'path';
 import { getFileS3Key } from '../../utils';
 
@@ -58,11 +58,16 @@ export class S3HelperBotSource extends S3PrivateBucket {
     return { type, chatId, userId, filename };
   }
 
-  async createGetFileURL(params: { key: string; expiredHours?: number; external: boolean }) {
-    const { key, expiredHours = 1, external = false } = params; // 默认一个小时
+  async createGetFileURL(params: {
+    key: string;
+    expiredHours?: number;
+    external: boolean;
+    mode?: 'proxy' | 'presigned';
+  }) {
+    const { key, expiredHours = 1, external = false, mode } = params; // 默认一个小时
 
     if (external) {
-      return await this.createExternalUrl({ key, expiredHours });
+      return await this.createExternalUrl({ key, expiredHours, mode });
     }
     return await this.createPreviewUrl({ key, expiredHours });
   }

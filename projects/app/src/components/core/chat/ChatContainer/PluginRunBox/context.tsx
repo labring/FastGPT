@@ -294,6 +294,7 @@ const PluginRunContextProvider = ({
       appId={props.appId}
       chatId={props.chatId}
       outLinkAuthData={props.outLinkAuthData || {}}
+      runtimeFileSelectConfig={props.runtimeFileSelectConfig}
     >
       <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>
     </WorkflowRuntimeContextProvider>

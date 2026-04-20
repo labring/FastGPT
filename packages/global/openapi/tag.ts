@@ -7,15 +7,16 @@ export const TagsMap = {
   // Ai -skill
   aiSkill: 'AI技能管理',
   // AI
-  aiCommon: 'AI 通用 接口',
+  aiCommon: 'AI 通用接口',
   // Sandbox
   sandbox: 'AI 沙盒',
 
   // App 管理
   // Agent - common
-  appCommon: '通用应用管理',
+  appCommon: '应用管理',
   appPer: '应用权限',
   mcpTools: 'MCP 工具管理',
+  httpTools: 'HTTP 工具管理',
 
   /* ===== Chat ===== */
   chatPage: '对话页面通用',
@@ -43,6 +44,7 @@ export const TagsMap = {
 
   // Publish Channel
   publishChannel: '发布渠道',
+  mcpServer: 'MCP 发布管理',
 
   /* Support */
   // Team

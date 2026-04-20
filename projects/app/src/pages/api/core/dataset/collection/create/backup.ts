@@ -14,6 +14,7 @@ import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { CreateBackupCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -38,6 +39,12 @@ async function handler(req: ApiRequestProps) {
       authApiKey: true,
       per: WritePermissionVal,
       datasetId
+    });
+
+    // Check dataset limit
+    await checkDatasetIndexLimit({
+      teamId,
+      insertLen: 1
     });
 
     const { rawText } = await readRawTextByLocalFile({

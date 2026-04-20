@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
-  jwtSignS3ObjectKey: vi.fn(
-    (objectKey: string) => `https://example.com/api/system/file/mock-jwt-token-${objectKey}`
+  jwtSignS3DownloadToken: vi.fn(
+    ({ objectKey }: { objectKey: string }) =>
+      `https://example.com/api/system/file/download/mock-jwt-token-${objectKey}`
   ),
   isS3ObjectKey: vi.fn((key: string, source: string) => {
     if (!key) return false;
@@ -11,7 +12,7 @@ vi.mock('@fastgpt/service/common/s3/utils', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/common/s3/type', () => ({
+vi.mock('@fastgpt/service/common/s3/contracts/type', () => ({
   S3Sources: {
     avatar: 'avatar',
     chat: 'chat',
@@ -78,7 +79,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
         '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
 
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
       expect(result).toContain('dataset/68fee42e1d416bb5ddc85b19');
       expect(result).toMatch(/!\[image\.png\]\(https:\/\/example\.com/);
     });
@@ -87,7 +88,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
       const text = '[文档](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/document.pdf)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
 
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
       expect(result).toMatch(/\[文档\]\(https:\/\/example\.com/);
     });
   });
@@ -99,7 +100,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
         '![screenshot.png](chat/691ae29d404d0468717dd747/68ad85a7463006c96379a07/jXfXy8yfGAFs9WJpcWRbAhV2/parsed/9a0f4fed-4edf-4613-a8d6-533af5ae51dc.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
 
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
       expect(result).toContain('chat/691ae29d404d0468717dd747');
     });
   });
@@ -146,7 +147,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
     it('文件名包含中文应正常处理', () => {
       const text = '![中文图片名.png](dataset/team1/collection1/中文文件名.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
     });
 
     it('alt 文本为空应正常处理', () => {
@@ -256,7 +257,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
     it('alt 文本包含圆括号应正常处理', () => {
       const text = '![image (1)](dataset/team1/file.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
     });
 
     it('文件名包含花括号应正常处理', () => {
@@ -281,14 +282,14 @@ describe('replaceS3KeyToPreviewUrl', () => {
     it('alt 文本包含双引号应正常处理', () => {
       const text = '![say "hello"](dataset/team1/file.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
     });
 
     // 反斜杠
     it('alt 文本包含反斜杠应正常处理', () => {
       const text = '![path\\to\\file](dataset/team1/file.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
     });
 
     // 特殊 markdown 字符
@@ -390,7 +391,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
     it('alt 文本不包含换行符时应正常处理', () => {
       const text = '![single line](dataset/team1/file.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
     });
 
     // 特殊组合
@@ -413,7 +414,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
       const text = '![image](  dataset/team1/collection1/image.png  )';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
 
-      expect(result).toContain('https://example.com/api/system/file/mock-jwt-token-');
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
     });
 
     it('混合文本和链接应只替换 S3 链接', () => {
@@ -430,7 +431,7 @@ describe('replaceS3KeyToPreviewUrl', () => {
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
 
       expect(result).toContain(
-        'https://example.com/api/system/file/mock-jwt-token-dataset/team1/file.png'
+        'https://example.com/api/system/file/download/mock-jwt-token-dataset/team1/file.png'
       );
       expect(result).toContain('https://google.com');
       expect(result).toContain('# 标题');

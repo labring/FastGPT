@@ -27,6 +27,7 @@ import {
   updateFeedbackReadStatus
 } from '@/web/core/chat/feedback/api';
 import { delChatRecordById } from '@/web/core/chat/record/api';
+import { postMarkChatRead } from '@/web/core/chat/history/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { postQuestionGuide } from '@/web/core/ai/api';
@@ -48,7 +49,11 @@ import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
 import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
-import type { StreamResponseType } from '@/web/common/api/fetch';
+import {
+  streamResumeFetch,
+  type ResumeStreamErrorType,
+  type StreamResponseType
+} from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useCreation, useDebounceEffect, useMemoizedFn, useThrottleFn } from 'ahooks';
@@ -56,6 +61,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -65,6 +71,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { cloneDeep } from 'lodash';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -82,6 +89,28 @@ enum FeedbackTypeEnum {
   hidden = 'hidden'
 }
 
+type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
+
+const isAbortByLeave = (reason: unknown) => {
+  return reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
+};
+
+const shouldCreateResumeAiPlaceholder = (event: SseResponseEventEnum) => {
+  return [
+    SseResponseEventEnum.flowNodeResponse,
+    SseResponseEventEnum.flowNodeStatus,
+    SseResponseEventEnum.answer,
+    SseResponseEventEnum.fastAnswer,
+    SseResponseEventEnum.toolCall,
+    SseResponseEventEnum.toolParams,
+    SseResponseEventEnum.toolResponse,
+    SseResponseEventEnum.interactive,
+    SseResponseEventEnum.plan,
+    SseResponseEventEnum.stepTitle,
+    SseResponseEventEnum.workflowDuration
+  ].includes(event);
+};
+
 type Props = OutLinkChatAuthProps &
   ChatProviderProps & {
     isReady: boolean;
@@ -90,6 +119,7 @@ type Props = OutLinkChatAuthProps &
     showVoiceIcon?: boolean;
     active?: boolean; // can use
     showWorkorder?: boolean;
+    enableAutoResume?: boolean;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -108,6 +138,7 @@ const ChatBox = ({
   showVoiceIcon = true,
   active = true,
   showWorkorder,
+  enableAutoResume = false,
   onStartChat,
   chatType,
   onTriggerRefresh,
@@ -122,6 +153,8 @@ const ChatBox = ({
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
   const pluginController = useRef(new AbortController());
+  const resumeController = useRef<AbortController>();
+  const resumedChatIdRef = useRef<string>();
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -132,6 +165,7 @@ const ChatBox = ({
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
@@ -146,6 +180,8 @@ const ChatBox = ({
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const activeChatIdRef = useRef<string | undefined>(chatId);
+  activeChatIdRef.current = chatId;
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
@@ -155,6 +191,58 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+
+  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
+  const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
+
+  const syncSidebarChatGenerateStatus = useMemoizedFn(
+    (
+      status: ChatGenerateStatusEnum,
+      options?: { hasBeenRead?: boolean; targetChatId?: string }
+    ) => {
+      const targetChatId = options?.targetChatId ?? chatId;
+      if (!targetChatId) return;
+      setHistories((prev) => {
+        const idx = prev.findIndex((h) => h.chatId === targetChatId);
+        if (idx === -1) {
+          queueMicrotask(loadHistories);
+          return [
+            {
+              chatId: targetChatId,
+              appId,
+              title: chatBoxData.title || t('common:core.chat.New Chat'),
+              customTitle: '',
+              top: false,
+              updateTime: new Date(),
+              chatGenerateStatus: status,
+              hasBeenRead: options?.hasBeenRead ?? status !== ChatGenerateStatusEnum.generating
+            },
+            ...prev
+          ];
+        }
+        return prev.map((h) =>
+          h.chatId === targetChatId
+            ? {
+                ...h,
+                chatGenerateStatus: status,
+                updateTime: new Date(),
+                ...(options?.hasBeenRead !== undefined ? { hasBeenRead: options.hasBeenRead } : {})
+              }
+            : h
+        );
+      });
+    }
+  );
+
+  const resumeTargetAiDataId = useMemo(() => {
+    for (let i = chatRecords.length - 1; i >= 0; i--) {
+      const row = chatRecords[i];
+      if (row.obj === ChatRoleEnum.AI && row.dataId) {
+        return row.dataId as string;
+      }
+    }
+    return undefined;
+  }, [chatRecords]);
 
   // Workflow running, there are user input or selection
   const { interactive: lastInteractive, canSendQuery } = useMemo(
@@ -558,7 +646,73 @@ const ChatBox = ({
     chatController.current?.abort(new Error(reason));
     questionGuideController.current?.abort(new Error(reason));
     pluginController.current?.abort(new Error(reason));
+    resumeController.current?.abort(new Error(reason));
   });
+
+  const hasMeaningfulAiOutput = useMemoizedFn((chat?: ChatSiteItemType) => {
+    if (!chat || chat.obj !== ChatRoleEnum.AI) return false;
+    if (chat.responseData?.length) return true;
+
+    return chat.value.some((item) => {
+      if (item.text?.content) return true;
+      if (item.reasoning?.content) return true;
+      if (item.tool?.params || item.tool?.response) return true;
+      if (item.plan || item.stepTitle || item.interactive) return true;
+      return false;
+    });
+  });
+
+  const getResumeUnavailablePlaceholderText = useMemoizedFn(() =>
+    t('chat:resume_placeholder_generating')
+  );
+
+  const upsertResumeAiPlaceholder = useMemoizedFn(
+    (responseChatId: string, text = '', status: `${ChatStatusEnum}` = ChatStatusEnum.loading) => {
+      setChatRecords((state) => {
+        const lastItem = state[state.length - 1];
+        if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
+          if (!text) {
+            return state;
+          }
+
+          return state.map((item, index) =>
+            index !== state.length - 1
+              ? item
+              : {
+                  ...item,
+                  value: [
+                    {
+                      text: {
+                        content: text
+                      }
+                    }
+                  ],
+                  status,
+                  ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
+                }
+          );
+        }
+
+        return [
+          ...state,
+          {
+            id: responseChatId,
+            dataId: responseChatId,
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: text
+                }
+              }
+            ],
+            status,
+            ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
+          }
+        ];
+      });
+    }
+  );
 
   /**
    * user confirm send prompt
@@ -632,36 +786,38 @@ const ChatBox = ({
             setAudioPlayingChatId(responseChatId);
           }
 
+          const currentHumanChat: HumanChatSiteItemType = {
+            id: humanChatId,
+            dataId: humanChatId,
+            obj: ChatRoleEnum.Human,
+            time: new Date(),
+            hideInUI,
+            value: [
+              ...files.map((file) => ({
+                file: {
+                  type: file.type,
+                  name: file.name,
+                  url: file.url,
+                  icon: file.icon || '',
+                  key: file.key || ''
+                }
+              })),
+              ...(text
+                ? [
+                    {
+                      text: {
+                        content: text
+                      }
+                    }
+                  ]
+                : [])
+            ] as UserChatItemValueItemType[],
+            status: ChatStatusEnum.finish
+          };
+
           const newChatList: ChatSiteItemType[] = [
             ...history,
-            {
-              id: humanChatId,
-              dataId: humanChatId,
-              obj: ChatRoleEnum.Human,
-              time: new Date(),
-              hideInUI,
-              value: [
-                ...files.map((file) => ({
-                  file: {
-                    type: file.type,
-                    name: file.name,
-                    url: file.url,
-                    icon: file.icon || '',
-                    key: file.key || ''
-                  }
-                })),
-                ...(text
-                  ? [
-                      {
-                        text: {
-                          content: text
-                        }
-                      }
-                    ]
-                  : [])
-              ] as UserChatItemValueItemType[],
-              status: ChatStatusEnum.finish
-            },
+            currentHumanChat,
             {
               id: responseChatId,
               dataId: responseChatId,
@@ -676,6 +832,19 @@ const ChatBox = ({
               status: ChatStatusEnum.loading
             }
           ];
+
+          resumedChatIdRef.current = chatId;
+
+          setChatBoxData((state) =>
+            state.chatId === chatId
+              ? {
+                  ...state,
+                  chatGenerateStatus: ChatGenerateStatusEnum.generating,
+                  hasBeenRead: false
+                }
+              : state
+          );
+          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, { hasBeenRead: false });
 
           // Update histories(Interactive input does not require new session rounds)
           setChatRecords(
@@ -694,9 +863,10 @@ const ChatBox = ({
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
 
+          const abortSignal = new AbortController();
+
           try {
             // create abort obj
-            const abortSignal = new AbortController();
             chatController.current = abortSignal;
 
             // 这里，无论是否为交互模式，都要确保最后一条消息都是 Human 的消息。
@@ -769,7 +939,35 @@ const ChatBox = ({
 
             // tts audio
             autoTTSResponse && splitText2Audio(responseText, true);
+            const finishedInActiveChat = activeChatIdRef.current === chatId;
+            setChatBoxData((state) =>
+              state.chatId === chatId
+                ? {
+                    ...state,
+                    chatGenerateStatus: ChatGenerateStatusEnum.done,
+                    hasBeenRead: finishedInActiveChat
+                  }
+                : state
+            );
+
+            if (finishedInActiveChat) {
+              void postMarkChatRead({
+                appId,
+                chatId,
+                ...outLinkAuthData
+              })
+                .catch(() => {})
+                .finally(() => {
+                  syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: true });
+                });
+            } else {
+              syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.done, { hasBeenRead: false });
+            }
           } catch (err: any) {
+            if (isAbortByLeave(err)) {
+              return;
+            }
+
             console.log('Chat error', err);
             toast({
               title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
@@ -794,6 +992,33 @@ const ChatBox = ({
               resetInputVal({ text, files });
               // 这里的 newChatList 没包含用户交互输入的内容，所以重置后刚好是正确的。
               setChatRecords(newChatList.slice(0, newChatList.length - 2));
+            }
+
+            const finishedInActiveChat = activeChatIdRef.current === chatId;
+            setChatBoxData((state) =>
+              state.chatId === chatId
+                ? {
+                    ...state,
+                    chatGenerateStatus: ChatGenerateStatusEnum.error,
+                    hasBeenRead: finishedInActiveChat
+                  }
+                : state
+            );
+
+            if (finishedInActiveChat) {
+              void postMarkChatRead({
+                appId,
+                chatId,
+                ...outLinkAuthData
+              })
+                .catch(() => {})
+                .finally(() => {
+                  syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, {
+                    hasBeenRead: true
+                  });
+                });
+            } else {
+              syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.error, { hasBeenRead: false });
             }
           }
 
@@ -1027,8 +1252,219 @@ const ChatBox = ({
   useEffect(() => {
     setQuestionGuide([]);
     setValue('chatStarted', false);
+    resumedChatIdRef.current = undefined;
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
+
+  useEffect(() => {
+    if (
+      !enableAutoResume ||
+      !isReady ||
+      !isChatRecordsLoaded ||
+      !appId ||
+      !chatId ||
+      isChatting ||
+      chatBoxData.chatGenerateStatus !== ChatGenerateStatusEnum.generating ||
+      resumedChatIdRef.current === chatId
+    ) {
+      return;
+    }
+
+    resumedChatIdRef.current = chatId;
+
+    const resumeForChatId = chatId;
+    const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
+    const controller = new AbortController();
+    resumeController.current = controller;
+    scrollToBottom('auto');
+    let resumeFinalStatus = ChatGenerateStatusEnum.done;
+
+    (async () => {
+      try {
+        const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
+          appId,
+          chatId,
+          outLinkAuthData,
+          controller,
+          onResumeUnavailable: () => {
+            if (resumeForChatId !== activeChatIdRef.current) return;
+            resumeFinalStatus = ChatGenerateStatusEnum.generating;
+            upsertResumeAiPlaceholder(
+              responseChatId,
+              getResumeUnavailablePlaceholderText(),
+              ChatStatusEnum.loading
+            );
+          },
+          onmessage: (message) => {
+            if (resumeForChatId !== activeChatIdRef.current) return;
+            if (shouldCreateResumeAiPlaceholder(message.event)) {
+              upsertResumeAiPlaceholder(responseChatId);
+            }
+            generatingMessage(message);
+          }
+        });
+
+        if (resumeForChatId !== activeChatIdRef.current) return;
+
+        if (completedChat) {
+          resumeFinalStatus = completedChat.chatGenerateStatus;
+          setChatRecords(
+            completedChat.records.list.map((item) => ({
+              ...item,
+              status: ChatStatusEnum.finish
+            }))
+          );
+          return;
+        }
+
+        if (resumeUnavailable) {
+          resumeFinalStatus = ChatGenerateStatusEnum.generating;
+          upsertResumeAiPlaceholder(
+            responseChatId,
+            getResumeUnavailablePlaceholderText(),
+            ChatStatusEnum.loading
+          );
+          return;
+        }
+
+        setChatRecords((state) => {
+          const currentLastItem = state[state.length - 1];
+          if (
+            currentLastItem?.dataId !== responseChatId ||
+            currentLastItem.obj !== ChatRoleEnum.AI
+          ) {
+            return state;
+          }
+
+          const next = state.map((item, index) => {
+            if (index !== state.length - 1) return item;
+            return {
+              ...item,
+              status: ChatStatusEnum.finish,
+              time: new Date(),
+              responseData: mergeChatResponseData(item.responseData || [])
+            };
+          });
+
+          const updatedLastItem = next[next.length - 1];
+          if (
+            updatedLastItem?.dataId === responseChatId &&
+            !hasMeaningfulAiOutput(updatedLastItem) &&
+            !responseText
+          ) {
+            return next.slice(0, -1);
+          }
+
+          return next;
+        });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (resumeForChatId !== activeChatIdRef.current) return;
+
+        const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
+        resumeFinalStatus = isStreamError
+          ? ChatGenerateStatusEnum.error
+          : ChatGenerateStatusEnum.done;
+
+        setChatRecords((state) => {
+          const currentLastItem = state[state.length - 1];
+          if (
+            currentLastItem?.dataId !== responseChatId ||
+            currentLastItem.obj !== ChatRoleEnum.AI
+          ) {
+            return state;
+          }
+
+          const next = state.map((item, index) => {
+            if (index !== state.length - 1) return item;
+            return {
+              ...item,
+              status: ChatStatusEnum.finish,
+              time: new Date()
+            };
+          });
+
+          const updatedLastItem = next[next.length - 1];
+          if (
+            updatedLastItem?.dataId === responseChatId &&
+            !hasMeaningfulAiOutput(updatedLastItem)
+          ) {
+            return next.slice(0, -1);
+          }
+
+          return next;
+        });
+
+        if (isStreamError) {
+          toast({
+            title: t(getErrText(error, t('common:core.chat.error.Chat error') as any)),
+            status: 'error',
+            duration: 5000,
+            isClosable: true
+          });
+        }
+      } finally {
+        resumeController.current = undefined;
+        const finishedInActiveChat = activeChatIdRef.current === resumeForChatId;
+        const leftWhileResuming =
+          controller.signal.aborted && isAbortByLeave(controller.signal.reason);
+
+        if (leftWhileResuming) {
+          return;
+        }
+
+        setChatBoxData((state) =>
+          state.chatId === resumeForChatId
+            ? {
+                ...state,
+                chatGenerateStatus: resumeFinalStatus,
+                hasBeenRead: finishedInActiveChat
+              }
+            : state
+        );
+
+        if (finishedInActiveChat) {
+          void postMarkChatRead({
+            appId,
+            chatId: resumeForChatId,
+            ...outLinkAuthData
+          })
+            .catch(() => {})
+            .finally(() => {
+              syncSidebarChatGenerateStatus(resumeFinalStatus, {
+                hasBeenRead: true,
+                targetChatId: resumeForChatId
+              });
+            });
+        } else {
+          syncSidebarChatGenerateStatus(resumeFinalStatus, {
+            hasBeenRead: false,
+            targetChatId: resumeForChatId
+          });
+        }
+      }
+    })();
+  }, [
+    enableAutoResume,
+    isReady,
+    isChatRecordsLoaded,
+    appId,
+    chatId,
+    isChatting,
+    chatBoxData.chatGenerateStatus,
+    generatingMessage,
+    hasMeaningfulAiOutput,
+    getResumeUnavailablePlaceholderText,
+    outLinkAuthData,
+    resumeTargetAiDataId,
+    scrollToBottom,
+    setChatBoxData,
+    setChatRecords,
+    syncSidebarChatGenerateStatus,
+    upsertResumeAiPlaceholder,
+    t,
+    toast
+  ]);
 
   const canSendPrompt = onStartChat && chatStarted && active && canSendQuery;
 

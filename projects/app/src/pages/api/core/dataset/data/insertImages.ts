@@ -19,6 +19,8 @@ import {
   InsertImagesBodySchema,
   type InsertImagesResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
+import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 
 async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   const filepaths: string[] = [];
@@ -26,7 +28,8 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize,
+      allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
     const { collectionId } = InsertImagesBodySchema.parse(result.data);

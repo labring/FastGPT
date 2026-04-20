@@ -71,9 +71,9 @@ export const AgentSkillSchema = z.object({
   avatar: z.string().optional(),
   teamId: z.string(),
   tmbId: z.string(),
-  createTime: z.date(),
-  updateTime: z.date(),
-  deleteTime: z.date().nullable().optional(),
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
+  deleteTime: z.coerce.date().nullable().optional(),
   currentVersion: z.number(),
   versionCount: z.number(),
   currentStorage: AgentSkillStorageSchema.optional()
@@ -91,8 +91,8 @@ export const AgentSkillListItemSchema = z.object({
   author: z.string(),
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
-  createTime: z.date(),
-  updateTime: z.date(),
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
   appCount: z.number().optional(),
   sourceMember: z
     .object({
@@ -112,7 +112,7 @@ export type AgentSkillDetailType = z.infer<typeof AgentSkillDetailSchema>;
 
 export const AgentSkillsVersionImportSourceSchema = z.object({
   originalFilename: z.string(),
-  importedAt: z.date()
+  importedAt: z.coerce.date()
 });
 
 export const AgentSkillsVersionSchema = z.object({
@@ -125,7 +125,7 @@ export const AgentSkillsVersionSchema = z.object({
   importSource: AgentSkillsVersionImportSourceSchema.optional(),
   isActive: z.boolean(),
   isDeleted: z.boolean(),
-  createdAt: z.date()
+  createdAt: z.coerce.date()
 });
 export type AgentSkillsVersionSchemaType = z.infer<typeof AgentSkillsVersionSchema>;
 
@@ -180,7 +180,7 @@ export const SandboxProviderStatusSchema = z.object({
 });
 
 export const SandboxStorageSchema = AgentSkillStorageSchema.extend({
-  uploadedAt: z.date()
+  uploadedAt: z.coerce.date()
 });
 
 export const SandboxInstanceDetailSchema = z.object({
@@ -192,7 +192,7 @@ export const SandboxInstanceDetailSchema = z.object({
   skillIds: z.array(z.string()).optional(),
   provider: z.string(),
   image: SandboxImageConfigSchema,
-  providerCreatedAt: z.date(),
+  providerCreatedAt: z.coerce.date(),
   endpoint: SkillSandboxEndpointSchema.optional(),
   storage: SandboxStorageSchema.optional(),
   metadata: z.union([z.map(z.string(), z.any()), LooseObjectSchema]).optional()
@@ -205,8 +205,8 @@ export const SandboxInstanceSchema = z.object({
   userId: z.string(),
   chatId: z.string(),
   status: SandboxStatusSchema,
-  lastActiveAt: z.date(),
-  createdAt: z.date(),
+  lastActiveAt: z.coerce.date(),
+  createdAt: z.coerce.date(),
   detail: SandboxInstanceDetailSchema
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceSchema>;
