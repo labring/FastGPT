@@ -14,7 +14,8 @@ import {
 } from '@chakra-ui/react';
 import {
   VariableInputEnum,
-  WorkflowIOValueTypeEnum
+  WorkflowIOValueTypeEnum,
+  textInputVariableValueTypes
 } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -198,12 +199,21 @@ const InputTypeConfig = ({
       value: item.value
     }));
 
-  const showValueTypeSelect =
-    inputType === FlowNodeInputTypeEnum.reference ||
+  const isVariableTextInput = type === 'variable' && inputType === VariableInputEnum.input;
+
+  const isDynamicValueTypeInput =
     inputType === FlowNodeInputTypeEnum.customVariable ||
     inputType === FlowNodeInputTypeEnum.hidden ||
     inputType === VariableInputEnum.custom ||
-    inputType === VariableInputEnum.internal;
+    inputType === VariableInputEnum.internal ||
+    isVariableTextInput;
+
+  const showValueTypeSelect =
+    inputType === FlowNodeInputTypeEnum.reference || isDynamicValueTypeInput;
+
+  const valueTypeOptionList = isVariableTextInput
+    ? valueTypeSelectList.filter((item) => textInputVariableValueTypes.includes(item.value))
+    : valueTypeSelectList.filter((item) => item.value !== WorkflowIOValueTypeEnum.arrayAny);
 
   const showRequired = useMemo(() => {
     const list = [
@@ -407,12 +417,13 @@ const InputTypeConfig = ({
             {showValueTypeSelect ? (
               <Box flex={1}>
                 <MySelect<WorkflowIOValueTypeEnum>
-                  list={valueTypeSelectList.filter(
-                    (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
-                  )}
+                  list={valueTypeOptionList}
                   value={valueType}
                   onChange={(e) => {
                     setValue('valueType', e);
+                    if (isVariableTextInput) {
+                      setValue('defaultValue', '');
+                    }
                   }}
                 />
               </Box>
@@ -557,11 +568,7 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
-                  valueType === WorkflowIOValueTypeEnum.number)) && (
+                (isDynamicValueTypeInput && valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
                   min={min ? min : undefined}
@@ -572,12 +579,8 @@ const InputTypeConfig = ({
                   }}
                 />
               )}
-              {(inputType === FlowNodeInputTypeEnum.input ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
-                  valueType === WorkflowIOValueTypeEnum.string)) && (
+              {((inputType === FlowNodeInputTypeEnum.input && !isVariableTextInput) ||
+                (isDynamicValueTypeInput && valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
                   value={defaultValue}
                   onChange={(e) => setValue('defaultValue', e.target.value)}
@@ -589,10 +592,7 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
+                (isDynamicValueTypeInput &&
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
@@ -609,11 +609,7 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
-                  valueType === WorkflowIOValueTypeEnum.boolean)) && (
+                (isDynamicValueTypeInput && valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Flex h={10} alignItems={'center'}>
                   <Switch {...register('defaultValue')} />
                 </Flex>

@@ -1,6 +1,10 @@
 import React, { useCallback, useMemo, useEffect } from 'react';
 import { Flex, Stack } from '@chakra-ui/react';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum,
+  textInputVariableValueTypes
+} from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -67,6 +71,13 @@ const VariableEditModal = ({
       if (typeEnum === VariableInputEnum.file) {
         setValue('canLocalUpload', true);
       }
+      if (
+        typeEnum === VariableInputEnum.input &&
+        !textInputVariableValueTypes.includes(value.valueType as WorkflowIOValueTypeEnum)
+      ) {
+        setValue('valueType', WorkflowIOValueTypeEnum.string);
+        setValue('defaultValue', '');
+      }
 
       setValue('type', typeEnum);
     },
@@ -88,16 +99,21 @@ const VariableEditModal = ({
         return;
       }
 
-      // For custom and internal types, user can select valueType manually, so don't override it
+      // For custom/internal/input types, user can select valueType manually, so don't override it
       // For other types, set valueType from defaultValueType
       if (
-        ![VariableInputEnum.custom, VariableInputEnum.internal, VariableInputEnum].includes(
+        ![VariableInputEnum.custom, VariableInputEnum.internal, VariableInputEnum.input].includes(
           data.type
         )
       ) {
         data.valueType = inputTypeList
           .flat()
           .find((item) => item.value === data.type)?.defaultValueType;
+      } else if (
+        data.type === VariableInputEnum.input &&
+        !textInputVariableValueTypes.includes(data.valueType as WorkflowIOValueTypeEnum)
+      ) {
+        data.valueType = WorkflowIOValueTypeEnum.string;
       }
 
       // Special types set required = false

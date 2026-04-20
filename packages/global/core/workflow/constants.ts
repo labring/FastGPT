@@ -373,6 +373,16 @@ type VariableConfigType = {
   description?: string;
 };
 
+export const textInputVariableValueTypes: WorkflowIOValueTypeEnum[] = [
+  WorkflowIOValueTypeEnum.string,
+  WorkflowIOValueTypeEnum.object,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean,
+  WorkflowIOValueTypeEnum.arrayObject,
+  WorkflowIOValueTypeEnum.any
+];
+
 export const variableConfigs: VariableConfigType[][] = [
   [
     {
