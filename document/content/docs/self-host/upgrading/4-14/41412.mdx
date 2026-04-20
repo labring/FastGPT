@@ -3,12 +3,17 @@ title: 'V4.14.12'
 description: 'FastGPT V4.14.12 更新说明'
 ---
 
+## 升级指南
+### 1. 更新镜像 tag
 
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.12
+- 更新 fastpgt-pro(商业版) 镜像 tag: v4.14.12
 
 ## 🐛 修复
 
 1. 知识库三级目录 path 接口报 zod 校验出错。
 2. v1/completions 接口 dataId 异常，导致 api 调用时候，对话日志里无法获取到运行详情。
+3. 对话 Agent 应用敏感信息过滤勾选框无法取消。
 
 ## 🚀 新增内容
 
@@ -18,4 +23,3 @@ description: 'FastGPT V4.14.12 更新说明'
 ## ⚙️ 优化
 
 1. skill 接口错误处理。
-
