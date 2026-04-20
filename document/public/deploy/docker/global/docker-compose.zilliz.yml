@@ -439,10 +439,15 @@ services:
       retries: 10
 networks:
   data:
+    name: fastgpt_data
   app:
+    name: fastgpt_app
   codesandbox:
+    name: fastgpt_codesandbox
   opensandbox:
+    name: fastgpt_opensandbox
   aiproxy:
+    name: fastgpt_aiproxy
 
 volumes:
   fastgpt-pg:
