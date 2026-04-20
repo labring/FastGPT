@@ -217,34 +217,50 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
   });
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Flex>
-        <HStack flexShrink={0}>
-          <Box fontSize={'sm'} color={'myGray.900'}>
+    <Flex flexDirection={'column'} h={'100%'} minW={0}>
+      <Flex flexDirection={['column', 'row']} gap={[3, 0]} alignItems={['stretch', 'center']}>
+        <Flex flexShrink={0} w={['100%', 'auto']} alignItems={'center'} gap={2}>
+          <Box
+            w={['84px', 'auto']}
+            flexShrink={0}
+            fontSize={'sm'}
+            color={'myGray.900'}
+            textAlign={'left'}
+          >
             {t('common:model.provider')}
           </Box>
-          <MySelect
-            w={'200px'}
-            bg={'myGray.50'}
-            value={provider}
-            onChange={setProvider}
-            list={filterProviderList}
-          />
-        </HStack>
-        <HStack flexShrink={0} ml={6}>
-          <Box fontSize={'sm'} color={'myGray.900'}>
+          <Box flex={1} minW={0} w={['100%', '200px']}>
+            <MySelect
+              w={'100%'}
+              bg={'myGray.50'}
+              value={provider}
+              onChange={setProvider}
+              list={filterProviderList}
+            />
+          </Box>
+        </Flex>
+        <Flex flexShrink={0} ml={[0, 6]} w={['100%', 'auto']} alignItems={'center'} gap={2}>
+          <Box
+            w={['84px', 'auto']}
+            flexShrink={0}
+            fontSize={'sm'}
+            color={'myGray.900'}
+            textAlign={'left'}
+          >
             {t('common:model.model_type')}
           </Box>
-          <MySelect
-            w={'150px'}
-            bg={'myGray.50'}
-            value={modelType}
-            onChange={setModelType}
-            list={selectModelTypeList.current}
-          />
-        </HStack>
-        <Box flex={1} />
-        <Box flex={'0 0 250px'}>
+          <Box flex={1} minW={0} w={['100%', '150px']}>
+            <MySelect
+              w={'100%'}
+              bg={'myGray.50'}
+              value={modelType}
+              onChange={setModelType}
+              list={selectModelTypeList.current}
+            />
+          </Box>
+        </Flex>
+        <Box flex={1} display={['none', 'block']} />
+        <Box w={['100%', '250px']} flex={['none', '0 0 250px']}>
           <SearchInput
             bg={'myGray.50'}
             value={search}
@@ -253,7 +269,15 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
           />
         </Box>
       </Flex>
-      <TableContainer mt={5} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <TableContainer
+        mt={5}
+        flex={'1 0 0'}
+        h={0}
+        w={'100%'}
+        maxW={'100%'}
+        overflowY={'auto'}
+        overflowX={'auto'}
+      >
         <Table>
           <Thead>
             <Tr color={'myGray.600'}>
