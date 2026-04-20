@@ -49,6 +49,7 @@ const AppCard = ({
   const appId = appDetail._id;
   const { feConfigs } = useSystemStore();
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchemaType>();
+  const [filterSensitiveInfo, setFilterSensitiveInfo] = useState(true);
 
   // transition to workflow
   const [transitionCreateNew, setTransitionCreateNew] = useState<boolean>();
@@ -148,6 +149,8 @@ const AppCard = ({
                                   appName={appDetail.name}
                                   appForm={appForm}
                                   chatConfig={appDetail.chatConfig}
+                                  filterSensitiveInfo={filterSensitiveInfo}
+                                  onFilterSensitiveInfoChange={setFilterSensitiveInfo}
                                 />
                               </Flex>
                             )
