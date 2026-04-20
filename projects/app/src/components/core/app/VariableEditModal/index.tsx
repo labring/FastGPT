@@ -99,8 +99,8 @@ const VariableEditModal = ({
         return;
       }
 
-      // For custom/internal/input types, user can select valueType manually, so don't override it
-      // For other types, set valueType from defaultValueType
+      // custom/internal/input: user-selected valueType.
+      // Input snap-back to string guards legacy data that bypassed handleTypeChange.
       if (
         ![VariableInputEnum.custom, VariableInputEnum.internal, VariableInputEnum.input].includes(
           data.type

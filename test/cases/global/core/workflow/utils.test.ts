@@ -753,6 +753,54 @@ describe('appData2FlowNodeIO', () => {
     expect(switchVar?.renderTypeList).toContain(FlowNodeInputTypeEnum.switch);
   });
 
+  it('should map text input variable with non-string valueType to JSONEditor', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'objVar',
+            label: 'Object',
+            type: VariableInputEnum.input,
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.object
+          },
+          {
+            key: 'arrVar',
+            label: 'Array',
+            type: VariableInputEnum.input,
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          },
+          {
+            key: 'strVar',
+            label: 'String',
+            type: VariableInputEnum.input,
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      }
+    });
+
+    const objVar = result.inputs.find((i) => i.key === 'objVar');
+    expect(objVar?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.JSONEditor,
+      FlowNodeInputTypeEnum.reference
+    ]);
+
+    const arrVar = result.inputs.find((i) => i.key === 'arrVar');
+    expect(arrVar?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.JSONEditor,
+      FlowNodeInputTypeEnum.reference
+    ]);
+
+    const strVar = result.inputs.find((i) => i.key === 'strVar');
+    expect(strVar?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.reference
+    ]);
+  });
+
   it('should preserve defaultValue on variable inputs', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {

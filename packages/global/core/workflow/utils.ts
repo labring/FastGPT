@@ -246,7 +246,10 @@ export const appData2FlowNodeIO = ({
     ? []
     : chatConfig.variables.map((item) => {
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          [VariableInputEnum.input]:
+            item.valueType && item.valueType !== WorkflowIOValueTypeEnum.string
+              ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+              : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           [VariableInputEnum.textarea]: [
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
