@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
   BillTypeEnum,

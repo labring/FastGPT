@@ -36,17 +36,14 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { SANGFOR_LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useTranslation();
-  const language = i18n.language as localeType;
   const { userInfo } = useUserStore();
-  const { aiproxyIdMap, getModelProvider } = useSystemStore();
+  const { aiproxyChannels } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -126,31 +123,19 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             </Thead>
             <Tbody>
               {channelList.map((item) => {
-                const providerData = aiproxyIdMap[item.type] || {
-                  name: channelProviders[item.type]?.name || 'Invalid provider',
-                  provider: 'Other'
+                const providerData = aiproxyChannels.find(
+                  (channel) => channel.channelId === item.type
+                ) || {
+                  name: 'Invalid provider',
+                  avatar: 'model/huggingface'
                 };
-                const provider = getModelProvider(providerData?.provider, i18n.language);
-                const isAicp = (providerData?.avatar || provider?.avatar)
-                  ?.toLowerCase()
-                  ?.includes('aicp');
                 return (
                   <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
                     <Td>{item.id}</Td>
                     <Td>{item.name}</Td>
                     <Td>
                       <HStack>
-                        {!isAicp ? (
-                          <Avatar src={provider?.avatar} w={'1rem'} />
-                        ) : (
-                          <MyImage
-                            fallbackStrategy={'onError'}
-                            objectFit={'contain'}
-                            alt=""
-                            w={'1rem'}
-                            src={SANGFOR_LOGO_ICON}
-                          />
-                        )}
+                        <Avatar src={providerData.avatar} w={'1rem'} />
                         <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
                       </HStack>
                     </Td>

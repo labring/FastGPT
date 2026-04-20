@@ -5,7 +5,7 @@ import z from 'zod';
 export const McpToolConfigSchema = z.object({
   name: z.string(),
   description: z.string(),
-  inputSchema: JSONSchemaInputTypeSchema
+  inputSchema: JSONSchemaInputTypeSchema.optional()
 });
 export type McpToolConfigType = z.infer<typeof McpToolConfigSchema>;
 

@@ -26,7 +26,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
-
       - name: 'Install Deps'
         run: pnpm install
       - name: 'Test'

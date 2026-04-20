@@ -50,7 +50,7 @@ export async function reRankRecall({
   // Token budget: calculate how many tokens each document can use
   // Document max token = ModelMaxToken - QueryTokens
   const queryTokens = await countPromptTokens(query);
-  const rerankMaxToken = model.maxToken ?? 8000;
+  const rerankMaxToken = model.maxToken || 8000;
   const docBudget = rerankMaxToken - queryTokens;
   if (docBudget <= 500) {
     return Promise.reject(new Error('Rerank query too long'));

@@ -257,7 +257,7 @@ export const AppsBySkillIdItemSchema = z.object({
   intro: z.string(),
   tmbId: z.string(),
   type: z.string(),
-  updateTime: z.date(),
+  updateTime: z.coerce.date(),
   sourceMember: z.object({
     name: z.string(),
     avatar: z.string().nullable().optional(),

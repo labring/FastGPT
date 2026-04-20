@@ -13,7 +13,9 @@ export enum TimerIdEnum {
   recordTeamQPM = 'recordTeamQPM',
   auditLogCleanup = 'auditLogCleanup',
   chatHistoryCleanup = 'chatHistoryCleanup',
-  collectionCleanup = 'collectionCleanup'
+collectionCleanup = 'collectionCleanup',
+  /** 纠正长时间卡在 generating 的会话状态 */
+  cleanStaleGeneratingChat = 'cleanStaleGeneratingChat'
 }
 
 export enum LockNotificationEnum {

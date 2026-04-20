@@ -22,13 +22,21 @@ This guide covers environment variable configuration for object storage provider
 - `STORAGE_PUBLIC_BUCKET` FastGPT public resource bucket name
 - `STORAGE_PRIVATE_BUCKET` FastGPT private resource bucket name
 
+### Transfer Behavior
+
+- Uploads always go through the FastGPT backend proxy.
+- Downloads support both `proxy` and `presigned` modes.
+- The default download mode is inferred from `STORAGE_EXTERNAL_ENDPOINT`:
+  - not configured: default to `proxy`
+  - configured: default to `presigned`
+
 ### Self-Hosted MinIO and AWS S3
 
 > MinIO has strong AWS S3 protocol support, so MinIO and AWS S3 configurations are nearly identical — differences come from provider-specific or self-hosted requirements.
 > In theory, any object storage with S3 protocol support comparable to MinIO will work, such as SeaweedFS, RustFS, etc.
 
 - `STORAGE_S3_ENDPOINT` Internal connection address. Can be a container ID, e.g., `http://fastgpt-minio:9000`
-- `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). This address is used when generating signed file upload URLs.
+- `STORAGE_EXTERNAL_ENDPOINT` An address accessible by both **server** and **client** to reach the bucket. Use a fixed host IP or domain name — don't use `127.0.0.1` or `localhost` (containers can't access loopback addresses). Once configured, the default download mode automatically becomes `presigned`.
 - `STORAGE_S3_FORCE_PATH_STYLE` [Optional] Virtual-hosted-style or path-style routing. If vendor is `minio`, this is fixed to `true`.
 - `STORAGE_S3_MAX_RETRIES` [Optional] Maximum request retry attempts. Default: 3
 

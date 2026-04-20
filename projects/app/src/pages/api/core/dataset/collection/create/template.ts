@@ -9,29 +9,12 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 import { isCSVFile } from '@fastgpt/global/common/file/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import type { small2bigConfigType } from '@fastgpt/global/core/dataset/type';
-import type { CreateCollectionResponse } from '@/global/core/dataset/api';
 import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
-import { z } from 'zod';
-
-export type TemplateImportQuery = {};
-export type EnhanceConfig = {
-  autoIndexes?: boolean;
-  hypeIndexes?: boolean;
-  small2bigIndexes?: boolean;
-  syntheticIndex?: boolean;
-  hypeIndexPrompt?: string;
-  smll2bigConfig?: small2bigConfigType;
-  autoIndexesPrompt?: string;
-};
-export type TemplateImportBody = { datasetId: string; enhanceConfig: EnhanceConfig };
-
-export type TemplateImportResponse = CreateCollectionResponse;
-
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps) {
@@ -44,15 +27,7 @@ async function handler(req: ApiRequestProps) {
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeURIComponent(result.fileMetadata.originalname);
-    const {
-      datasetId,
-      parentId,
-      enhanceConfig: rawEnhanceConfig
-    } = CreateTemplateCollectionFormSchema.extend({
-      enhanceConfig: z.any().optional()
-    }).parse(result.data);
-    const enhanceConfig: EnhanceConfig =
-      typeof rawEnhanceConfig === 'string' ? JSON.parse(rawEnhanceConfig) : rawEnhanceConfig || {};
+    const { datasetId, parentId } = CreateTemplateCollectionFormSchema.parse(result.data);
 
     if (!isCSVFile(filename)) {
       return Promise.reject('File must be a CSV file');
@@ -66,6 +41,12 @@ async function handler(req: ApiRequestProps) {
       datasetId
     });
 
+    // Check dataset limit
+    await checkDatasetIndexLimit({
+      teamId,
+      insertLen: 1
+    });
+
     const { rawText } = await readRawTextByLocalFile({
       teamId,
       tmbId,
@@ -73,26 +54,11 @@ async function handler(req: ApiRequestProps) {
       encoding: result.fileMetadata.encoding,
       getFormatText: false
     });
-    const headerLine = rawText.trim().split('\n')[0];
-    const headers = headerLine.split(',').map((h) => h.trim());
 
-    // 1.1 检查是否以 q,a 开头
-    if (headers.length < 3 || headers[0] !== 'q' || headers[1] !== 'a') {
+    if (!rawText.trim().startsWith('q,a,indexes')) {
       return Promise.reject(i18nT('dataset:template_file_invalid'));
     }
-    // 1.2 检查是否包含 indexes
-    if (!headers.includes('indexes')) {
-      return Promise.reject(i18nT('dataset:template_file_invalid'));
-    }
-    // 1.3 检查其他表头不能以 .$ 开头
-    const customHeaders = headers.slice(2); // 跳过 q 和 a
-    for (const header of customHeaders) {
-      if (header.startsWith('.') || header.startsWith('&')) {
-        return Promise.reject(i18nT('dataset:template_file_invalid'));
-      }
-    }
 
-    // 2. Upload file
     const fileId = await getS3DatasetSource().upload({
       datasetId: dataset._id,
       stream: result.getReadStream(),
@@ -100,7 +66,6 @@ async function handler(req: ApiRequestProps) {
       filename: filename
     });
 
-    // 3. Create collection
     await createCollectionAndInsertData({
       dataset,
       rawText,
@@ -113,10 +78,11 @@ async function handler(req: ApiRequestProps) {
         name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,
-        trainingType: DatasetCollectionDataProcessModeEnum.template,
-        ...enhanceConfig
+        trainingType: DatasetCollectionDataProcessModeEnum.template
       }
     });
+
+    return {};
   } catch (error) {
     logger.error(`Backup dataset collection create error: ${error}`);
     return Promise.reject(error);

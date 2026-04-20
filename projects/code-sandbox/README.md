@@ -309,4 +309,3 @@ bash test/benchmark/bench-sandbox-python.sh
 | 兼容性测试 | 2 | 39 | 旧版 JS/Python 代码格式兼容 |
 | 示例测试 | 1 | 31 | 常用场景和第三方包 |
 
-详细测试报告见 [`test/README.md`](test/README.md)。

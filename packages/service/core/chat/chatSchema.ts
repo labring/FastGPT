@@ -2,7 +2,7 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -106,6 +106,20 @@ const ChatSchema = new Schema({
     select: false
   },
 
+  chatGenerateStatus: {
+    type: Number,
+    enum: [
+      ChatGenerateStatusEnum.generating,
+      ChatGenerateStatusEnum.done,
+      ChatGenerateStatusEnum.error
+    ],
+    default: ChatGenerateStatusEnum.done
+  },
+  hasBeenRead: {
+    type: Boolean,
+    default: false
+  },
+
   /** @deprecated */
   userId: Schema.Types.ObjectId
 });
@@ -144,6 +158,15 @@ try {
   ChatSchema.index({ appId: 1, tmbId: 1, updateTime: -1 });
   // clearHistory(API)
   ChatSchema.index({ appId: 1, source: 1, tmbId: 1, updateTime: -1 });
+  // Periodic cleanup for chats stuck in generating state.
+  ChatSchema.index(
+    { chatGenerateStatus: 1, updateTime: 1 },
+    {
+      partialFilterExpression: {
+        chatGenerateStatus: ChatGenerateStatusEnum.generating
+      }
+    }
+  );
 
   /* 反馈过滤的索引 */
   // 2. Has good feedback filter

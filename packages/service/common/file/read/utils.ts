@@ -14,6 +14,10 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addDays } from 'date-fns';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../../s3/utils/mime';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -348,13 +352,15 @@ export const readS3FileContentByBuffer = async ({
     await batchRun(imageList, async (item) => {
       let src: string | null = null;
       try {
-        const ext = item.mime.split('/')[1] || 'png';
-        const imageKey = `${imageKeyOptions.prefix}/${getNanoid(12)}.${ext}`;
+        const mimetype = normalizeMimeType(item.mime);
+        const ext = resolveMimeExtension(mimetype);
+        const filename = `${getNanoid(12)}${ext}`;
+        const imageKey = `${imageKeyOptions.prefix}/${filename}`;
         await uploadImage2S3Bucket('private', {
-          base64Img: `data:${item.mime};base64,${item.base64}`,
+          base64Img: `data:${mimetype};base64,${item.base64}`,
           uploadKey: imageKey,
-          mimetype: item.mime,
-          filename: `${getNanoid(6)}.${ext}`,
+          mimetype: resolveMimeType([filename], mimetype),
+          filename,
           expiredTime: imageKeyOptions.expiredTime
         });
         const signExpiry = imageKeyOptions.expiredTime ?? addDays(new Date(), 90);
@@ -370,6 +376,7 @@ export const readS3FileContentByBuffer = async ({
         const imgPattern = new RegExp(`!\\[[^\\]]*\\]\\(${item.uuid}\\)`, 'g');
         rawText = rawText.replace(imgPattern, '');
         if (formatText) formatText = formatText.replace(imgPattern, '');
+      }
       }
     });
   }

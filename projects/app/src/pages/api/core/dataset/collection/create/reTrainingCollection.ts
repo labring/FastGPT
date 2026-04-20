@@ -9,8 +9,6 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import {
   ReTrainingCollectionBodySchema,
   ReTrainingCollectionResponseSchema,
@@ -37,32 +35,17 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
       delImg: false,
       delFile: false
     });
-    // check if need parse csv_template
-    const isTemplate = collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
-    let rawText: string | undefined;
-    if (isTemplate && collection.fileId) {
-      const { rawText: rawTextContent } = await getS3DatasetSource().getDatasetFileRawText({
-        teamId,
-        tmbId,
-        datasetId: collection.datasetId,
-        fileId: String(collection.fileId),
-        customPdfParse: false,
-        getFormatText: false
-      });
-      rawText = rawTextContent;
-    }
+
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
-      rawText: rawText,
-      backupParse: isTemplate,
       createCollectionParams: {
         ...collection,
         ...data,
         updateTime: new Date(),
-        tags: (await collectionTagsToTagLabel({
+        tags: await collectionTagsToTagLabel({
           datasetId: collection.datasetId,
           tags: collection.tags
-        })) as string[] | undefined
+        })
       }
     });
 

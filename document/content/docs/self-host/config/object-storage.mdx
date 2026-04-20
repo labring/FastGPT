@@ -22,13 +22,21 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 - `STORAGE_PUBLIC_BUCKET` FastGPT 公开资源存储桶桶名
 - `STORAGE_PRIVATE_BUCKET` FastGPT 私有资源存储桶桶名
 
+### 传输模式说明
+
+- 上传固定走 FastGPT 后端代理。
+- 下载支持 `proxy` 和 `presigned` 两种模式。
+- 默认下载模式会根据 `STORAGE_EXTERNAL_ENDPOINT` 自动判断：
+  - 未配置：默认 `proxy`
+  - 已配置：默认 `presigned`
+
 ### 自部署的 MinIO 和 AWS S3
 
 > MinIO 这类产品对 AWS S3 协议支持比较完整，因此使用 Minio 和AWS S3 配置几乎可以是相同的，只是因为服务商提供和自部署的区别，会有额外的配置。
 > 因此理论上任何对 AWS S3 协议的支持程度至少和 MinIO 相当的对象存储服务都可以使用，比如 SeaweedFS、RustFS 等。
 
 - `STORAGE_S3_ENDPOINT` 内网连接地址，可以是容器 id 连接，比如 `http://fastgpt-minio:9000`
-- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。该地址用于签发文件上传 URL 时使用。
+- `STORAGE_EXTERNAL_ENDPOINT` 一个**服务器**和**客户端**均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)。配置后，默认下载模式会自动切换为 `presigned`。
 - `STORAGE_S3_FORCE_PATH_STYLE` 【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
 - `STORAGE_S3_MAX_RETRIES` 【可选】请求最大尝试次数，默认为 3 次
 

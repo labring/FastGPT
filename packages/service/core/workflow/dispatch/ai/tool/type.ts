@@ -6,7 +6,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { DispatchFlowResponse } from '../../type';
-import type { AIChatItemValueItemType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
@@ -35,9 +35,16 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
 };
 
-export type ToolNodeItemType = RuntimeNodeItemType & {
-  toolParams: RuntimeNodeItemType['inputs'];
+export type ToolNodeItemType = {
+  nodeId: RuntimeNodeItemType['nodeId'];
+  name: RuntimeNodeItemType['name'];
+  avatar?: RuntimeNodeItemType['avatar'];
+  intro?: RuntimeNodeItemType['intro'];
+  toolDescription?: RuntimeNodeItemType['toolDescription'];
+  flowNodeType: RuntimeNodeItemType['flowNodeType'];
+
   jsonSchema?: JSONSchemaInputType;
+  toolParams: RuntimeNodeItemType['inputs'];
 };
 
 export type ChildResponseItemType = {

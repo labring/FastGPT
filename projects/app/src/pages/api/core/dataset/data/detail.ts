@@ -2,18 +2,13 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { Types } from 'mongoose';
-import {
-  DatasetTrainingStatusEnum,
-  type DatasetTrainingStatusType
-} from '@fastgpt/global/core/dataset/constants';
 import {
   GetDatasetDataDetailQuerySchema,
-  GetDatasetDataDetailResponseSchema
+  GetDatasetDataDetailResponseSchema,
+  type GetDatasetDataDetailResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 
-async function handler(req: ApiRequestProps) {
+async function handler(req: ApiRequestProps): Promise<GetDatasetDataDetailResponse> {
   const { id: dataId } = GetDatasetDataDetailQuerySchema.parse(req.query);
 
   const { datasetData } = await authDatasetData({
@@ -24,24 +19,7 @@ async function handler(req: ApiRequestProps) {
     per: ReadPermissionVal
   });
 
-  // 查询训练队列，推导 trainingStatus
-  const trainingRecord = await MongoDatasetTraining.findOne(
-    { dataId: new Types.ObjectId(dataId) },
-    { retryCount: 1 }
-  ).lean();
-
-  let trainingStatus: DatasetTrainingStatusType = DatasetTrainingStatusEnum.ready;
-  if (trainingRecord) {
-    trainingStatus =
-      trainingRecord.retryCount > 0
-        ? DatasetTrainingStatusEnum.training
-        : DatasetTrainingStatusEnum.error;
-  }
-
-  return {
-    ...GetDatasetDataDetailResponseSchema.parse(datasetData),
-    trainingStatus
-  };
+  return GetDatasetDataDetailResponseSchema.parse(datasetData);
 }
 
 export default NextAPI(handler);

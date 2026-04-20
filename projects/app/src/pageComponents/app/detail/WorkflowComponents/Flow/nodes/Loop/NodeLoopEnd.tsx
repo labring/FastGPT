@@ -9,6 +9,7 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '../../../../context';
@@ -33,9 +34,16 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
 
   const inputItem = useMemoEnhance(
-    () => inputs.find((input) => input.key === NodeInputKeyEnum.loopEndInput),
+    () => inputs.find((input) => input.key === NodeInputKeyEnum.nestedEndInput),
     [inputs]
   );
+
+  const parallelRunIntro = useMemoEnhance(() => {
+    const parentNode = getNodeById(parentNodeId);
+    return parentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun
+      ? 'workflow:parallel_run_end_intro'
+      : undefined;
+  }, [getNodeById, parentNodeId]);
 
   // Get loopEnd input value type
   const valueType = useMemo(() => {
@@ -61,20 +69,36 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     if (!valueType) return;
 
     const parentNode = getNodeById(parentNodeId);
-    const parentNodeOutput = parentNode?.outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.loopArray
-    );
+    if (!parentNode) return;
 
-    if (parentNode && parentNodeOutput) {
-      onChangeNode({
-        nodeId: parentNode.nodeId,
-        type: 'updateOutput',
-        key: NodeOutputKeyEnum.loopArray,
-        value: {
-          ...parentNodeOutput,
-          valueType: typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny
-        }
-      });
+    const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
+
+    if (parentNode.flowNodeType === FlowNodeTypeEnum.parallelRun) {
+      // For parallelRun parent: update parallelSuccessResults output type
+      const successOutput = parentNode.outputs.find(
+        (output) => output.key === NodeOutputKeyEnum.parallelSuccessResults
+      );
+      if (successOutput && successOutput.valueType !== newArrayType) {
+        onChangeNode({
+          nodeId: parentNode.nodeId,
+          type: 'updateOutput',
+          key: NodeOutputKeyEnum.parallelSuccessResults,
+          value: { ...successOutput, valueType: newArrayType }
+        });
+      }
+    } else {
+      // For loop parent: update nestedArrayResult output type
+      const parentNodeOutput = parentNode.outputs.find(
+        (output) => output.key === NodeOutputKeyEnum.nestedArrayResult
+      );
+      if (parentNodeOutput && parentNodeOutput.valueType !== newArrayType) {
+        onChangeNode({
+          nodeId: parentNode.nodeId,
+          type: 'updateOutput',
+          key: NodeOutputKeyEnum.nestedArrayResult,
+          value: { ...parentNodeOutput, valueType: newArrayType }
+        });
+      }
     }
   }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
@@ -82,6 +106,7 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <NodeCard
       selected={selected}
       {...data}
+      {...(parallelRunIntro && { intro: parallelRunIntro })}
       w={'420px'}
       menuForbid={{
         copy: true,

@@ -3,6 +3,7 @@ export const DatasetVectorTableName = 'modeldata';
 export const DBDatasetVectorTableName = 'coulumndescriptionindex';
 export const DBDatasetValueVectorTableName = 'coulumnvalueindex';
 export const PG_ADDRESS = process.env.PG_URL;
+export const OPENGAUSS_ADDRESS = process.env.OPENGAUSS_URL;
 export const OCEANBASE_ADDRESS = process.env.OCEANBASE_URL;
 export const SEEKDB_ADDRESS = process.env.SEEKDB_URL;
 export const MILVUS_ADDRESS = process.env.MILVUS_ADDRESS;

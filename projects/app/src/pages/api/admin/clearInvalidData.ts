@@ -10,7 +10,24 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import z from 'zod';
 const logger = getLogger(LogCategories.SYSTEM);
+
+const BodySchema = z
+  .object({
+    start: z.number().int().min(-8760).max(0).default(-2),
+    end: z
+      .number()
+      .int()
+      .min(-8760)
+      .max(-1)
+      .default(-360 * 24)
+  })
+  .refine((data) => data.end < data.start, {
+    message: 'end 必须小于 start（end 时间点更早）'
+  });
+
+const MAX_CHUNKS = 1000;
 
 let deleteImageAmount = 0;
 async function checkInvalidImg(start: Date, end: Date) {
@@ -64,7 +81,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   deleteImageAmount = 0;
   try {
     await authCert({ req, authRoot: true });
-    const { start = -2, end = -360 * 24 } = req.body as { start: number; end: number };
+    const { start, end } = BodySchema.parse(req.body);
 
     (async () => {
       try {
@@ -73,7 +90,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         // Split time range into 6-hour chunks to avoid processing too much data at once
         const totalHours = Math.abs(start - end);
         const chunkHours = 6;
-        const chunks = Math.ceil(totalHours / chunkHours);
+        const chunks = Math.min(Math.ceil(totalHours / chunkHours), MAX_CHUNKS);
 
         logger.info(
           `Total time range: ${totalHours} hours, split into ${chunks} chunks of ${chunkHours} hours each`

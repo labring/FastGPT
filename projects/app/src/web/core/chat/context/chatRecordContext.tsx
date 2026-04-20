@@ -117,6 +117,14 @@ const ChatRecordContextProvider = ({
     async (
       data: LinkedPaginationProps<GetPaginationRecordsBodyType>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
+      if (!data.appId) {
+        return {
+          list: [],
+          hasMorePrev: false,
+          hasMoreNext: false
+        };
+      }
+
       setIsChatRecordsLoaded(false);
 
       // 检查是否有缓存数据（正在流式输出的会话）

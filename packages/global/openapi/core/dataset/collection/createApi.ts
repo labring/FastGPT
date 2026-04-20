@@ -147,7 +147,7 @@ export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2
  * Content-Type: multipart/form-data
  * ============================================================================ */
 export const CreateImageCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
-  collectionName: z.string().meta({ description: '集合名称' }),
+collectionName: z.string().meta({ description: '集合名称' }),
   overwriteDuplicate: z.boolean().optional().meta({ description: '是否覆盖重名集合' })
 });
 export type ImageCreateDatasetCollectionParams = z.infer<typeof CreateImageCollectionBodySchema>;

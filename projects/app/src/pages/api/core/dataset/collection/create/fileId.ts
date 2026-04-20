@@ -11,6 +11,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { fileId, customPdfParse, ...body } = CreateCollectionByFileIdBodySchema.parse(req.body);
@@ -31,6 +32,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   if (!metadata) {
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
+
+  // Check dataset limit
+  await checkDatasetIndexLimit({
+    teamId,
+    insertLen: 1
+  });
 
   return createCollectionAndInsertData({
     dataset,

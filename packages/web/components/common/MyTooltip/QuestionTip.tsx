@@ -10,7 +10,7 @@ type Props = IconProps & {
 const QuestionTip = ({ label, maxW, ...props }: Props) => {
   return (
     <MyTooltip label={label} maxW={maxW}>
-      <MyIcon name={'help' as any} w={'16px'} color={'myGray.500'} {...props} />
+      <MyIcon name={'help' as any} w={'16px'} color={'myGray.500'} display={'block'} {...props} />
     </MyTooltip>
   );
 };

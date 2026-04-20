@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -8,16 +8,12 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
-type Props = {
-  isShareMode?: boolean;
-};
-
-const ChatSliderList = ({ isShareMode }: Props) => {
+const ChatSliderList = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
 
@@ -30,8 +26,7 @@ const ChatSliderList = ({ isShareMode }: Props) => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
-
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
 
   const concatHistory = useMemo(() => {
     const formatHistories: {
@@ -40,13 +35,21 @@ const ChatSliderList = ({ isShareMode }: Props) => {
       customTitle?: string;
       top?: boolean;
       updateTime: Date;
+      chatGenerateStatus?: ChatGenerateStatusEnum;
+      hasBeenRead?: boolean;
     }[] = histories.map((item) => {
+      const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
+
       return {
         id: item.chatId,
         title: item.title,
         customTitle: item.customTitle,
         top: item.top,
-        updateTime: item.updateTime
+        updateTime: item.updateTime,
+        chatGenerateStatus: isActiveChat
+          ? chatBoxData.chatGenerateStatus ?? item.chatGenerateStatus
+          : item.chatGenerateStatus,
+        hasBeenRead: isActiveChat ? chatBoxData.hasBeenRead ?? item.hasBeenRead : item.hasBeenRead
       };
     });
 
@@ -56,15 +59,27 @@ const ChatSliderList = ({ isShareMode }: Props) => {
       customTitle?: string;
       top?: boolean;
       updateTime: Date;
+      chatGenerateStatus?: ChatGenerateStatusEnum;
+      hasBeenRead?: boolean;
     } = {
       id: activeChatId,
       title: t('common:core.chat.New Chat'),
-      updateTime: new Date()
+      updateTime: new Date(),
+      chatGenerateStatus:
+        chatBoxData.chatId === activeChatId ? chatBoxData.chatGenerateStatus : undefined,
+      hasBeenRead: chatBoxData.chatId === activeChatId ? chatBoxData.hasBeenRead : undefined
     };
     const activeChat = histories.find((item) => item.chatId === activeChatId);
 
     return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
-  }, [activeChatId, histories, t]);
+  }, [
+    activeChatId,
+    histories,
+    t,
+    chatBoxData.chatId,
+    chatBoxData.chatGenerateStatus,
+    chatBoxData.hasBeenRead
+  ]);
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -74,30 +89,34 @@ const ChatSliderList = ({ isShareMode }: Props) => {
 
   return (
     <>
-      <ScrollData flex={'1 0 0'} h={0} px={4} overflow={'overlay'}>
+      <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
         {concatHistory.map((item, i) => (
           <Flex
             position={'relative'}
             key={item.id}
             alignItems={'center'}
-            pl={'8px'}
-            pr={'12px'}
-            h={'36px'}
+            px={4}
+            h={'44px'}
             cursor={'pointer'}
             userSelect={'none'}
-            borderRadius={'6px'}
-            fontSize={'13px'}
-            lineHeight={'36px'}
+            borderRadius={'md'}
+            fontSize={'sm'}
             _hover={{
-              bg: isShareMode ? '#EBEDF0' : 'myGray.50',
+              bg: 'myGray.50',
               '& .more': {
                 display: 'block'
+              },
+              '& .unreadDot': {
+                display: 'none'
+              },
+              '& .time': {
+                display: isPc ? 'none' : 'block'
               }
             }}
             bg={item.top ? '#E6F6F6 !important' : ''}
             {...(item.id === activeChatId
               ? {
-                  backgroundColor: 'primary.1 !important',
+                  backgroundColor: 'primary.50 !important',
                   color: 'primary.600'
                 }
               : {
@@ -107,20 +126,47 @@ const ChatSliderList = ({ isShareMode }: Props) => {
                   }
                 })}
             {...(i !== concatHistory.length - 1 && {
-              mb: '4px'
+              mb: '8px'
             })}
           >
-            <Box flex={'1 0 0'} ml={'8px'} className="textEllipsis" w={0} color={'myGray.600'}>
-              <Box className="textEllipsis">{item.customTitle || item.title}</Box>
+            <MyIcon
+              name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
+              w={'16px'}
+            />
+            <Box flex={'1 0 0'} ml={3} className="textEllipsis">
+              {item.customTitle || item.title}
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
-                <Box
-                  className="more"
-                  display={['block', openMenuId === item.id ? 'block' : 'none']}
-                >
+                {item.hasBeenRead === false &&
+                item.chatGenerateStatus !== ChatGenerateStatusEnum.generating ? (
+                  <Box
+                    className="unreadDot"
+                    w={'8px'}
+                    h={'8px'}
+                    borderRadius={'full'}
+                    bg={'primary.500'}
+                    flexShrink={0}
+                  />
+                ) : (
+                  <Box
+                    className="time"
+                    display={'block'}
+                    fontWeight={'400'}
+                    fontSize={'mini'}
+                    color={
+                      item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                        ? 'primary.600'
+                        : 'myGray.500'
+                    }
+                  >
+                    {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
+                      ? t('chat:history_generating')
+                      : t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
+                  </Box>
+                )}
+                <Box className="more" display={['block', 'none']}>
                   <MyMenu
-                    onOpenChange={(isOpen) => setOpenMenuId(isOpen ? item.id : null)}
                     Button={
                       <IconButton
                         size={'xs'}

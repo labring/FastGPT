@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { i18nT } from '../../common/i18n/utils';
 
 export const I18nStringSchema = z.object({

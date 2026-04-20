@@ -18,7 +18,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import {
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import {
@@ -157,7 +157,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const popDirection = useMemo(() => {
     const node = getNodeById(nodeId);
     if (!node) return 'bottom';
-    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+    return isNestedParentNodeType(node.flowNodeType) ? 'top' : 'bottom';
   }, [nodeId, getNodeById]);
 
   const showAddHandle = item.key === NodeInputKeyEnum.userSelectOptions;

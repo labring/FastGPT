@@ -96,25 +96,31 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         }
         return true;
       })
-      .map<ToolNodeItemType>((tool) => {
+      .map<ToolNodeItemType>((_) => {
+        const tool = _!;
         const toolParams: FlowNodeInputItemType[] = [];
-        // Raw json schema(MCP tool)
-        let jsonSchema: JSONSchemaInputType | undefined = undefined;
         tool?.inputs.forEach((input) => {
           if (input.toolDescription) {
             toolParams.push(input);
           }
-
-          if (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') {
+          if (
+            (input.key === NodeInputKeyEnum.toolData || input.key === 'toolData') &&
+            input.value?.inputSchema
+          ) {
             const value = input.value as McpToolDataType;
-            jsonSchema = value.inputSchema;
+            tool.jsonSchema = value.inputSchema;
           }
         });
 
         return {
-          ...(tool as RuntimeNodeItemType),
-          toolParams,
-          jsonSchema
+          nodeId: tool.nodeId,
+          name: tool.name,
+          flowNodeType: tool.flowNodeType,
+          avatar: tool.avatar,
+          intro: tool.intro,
+          toolDescription: tool.toolDescription,
+          jsonSchema: tool.jsonSchema,
+          toolParams
         };
       });
 

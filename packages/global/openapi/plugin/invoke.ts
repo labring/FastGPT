@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 export const InvokeUserInfoBodySchema = z.object({});
 
 export const InvokeUserInfoQuerySchema = z.object({});

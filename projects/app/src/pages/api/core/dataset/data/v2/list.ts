@@ -9,24 +9,20 @@ import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/sch
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
-import { jwtSignS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { jwtSignS3DownloadToken, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import {
-  DatasetTrainingStatusEnum,
-  type DatasetTrainingStatusType
-} from '@fastgpt/global/core/dataset/constants';
 import {
   GetDatasetDataListBodySchema,
   GetDatasetDataListResponseSchema,
   type GetDatasetDataListResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
   const { searchText = '', collectionId } = GetDatasetDataListBodySchema.parse(req.body);
   let { offset, pageSize } = parsePaginationRequest(req);
 
-  pageSize = Math.min(pageSize, 100);
+  pageSize = Math.min(pageSize, 30);
 
   const { teamId, collection } = await authDatasetCollection({
     req,
@@ -56,21 +52,6 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
       .lean(),
     MongoDatasetData.countDocuments(match)
   ]);
-
-  // 只查当前页数据 ID 对应的训练记录，避免全量 distinct
-  const dataIds = list.map((item) => item._id);
-  const trainingRecords = await MongoDatasetTraining.find(
-    { dataId: { $in: dataIds } },
-    'dataId retryCount'
-  ).lean();
-
-  const trainingStatusMap = new Map<string, DatasetTrainingStatusType>();
-  for (const record of trainingRecords) {
-    trainingStatusMap.set(
-      String(record.dataId),
-      record.retryCount > 0 ? DatasetTrainingStatusEnum.training : DatasetTrainingStatusEnum.error
-    );
-  }
 
   list.forEach((item) => {
     item.q = replaceS3KeyToPreviewUrl(item.q, addHours(new Date(), 1));
@@ -106,19 +87,20 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
 
   const formatList = await Promise.all(
     list.map(async (item) => {
-      const trainingStatus =
-        trainingStatusMap.get(String(item._id)) ?? DatasetTrainingStatusEnum.ready;
       const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
       const imagePreviewUrl =
         item.imageId && isS3ObjectKey(item.imageId, 'dataset')
-          ? jwtSignS3ObjectKey(item.imageId, addHours(new Date(), 1))
+          ? jwtSignS3DownloadToken({
+              objectKey: item.imageId,
+              bucketName: S3Buckets.private,
+              expiredTime: addHours(new Date(), 1)
+            })
           : undefined;
 
       return {
         ...item,
         imageSize,
-        imagePreviewUrl,
-        trainingStatus
+        imagePreviewUrl
       };
     })
   );

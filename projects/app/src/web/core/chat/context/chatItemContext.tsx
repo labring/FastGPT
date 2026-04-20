@@ -10,6 +10,7 @@ import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/c
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -26,11 +27,16 @@ type ChatBoxDataType = {
   appId: string;
   title?: string;
   userAvatar?: string;
+  /** 与 init 接口对齐；侧栏轮询、ChatBox `enableAutoResume` 依赖其是否为 generating */
+  chatGenerateStatus?: ChatGenerateStatusEnum;
+  hasBeenRead?: boolean;
 
   app: {
     chatConfig?: AppChatConfigType;
     name: string;
     avatar: string;
+    intro?: string;
+    canUse?: boolean;
     type: AppTypeEnum;
     pluginInputs: FlowNodeInputItemType[];
     chatModels?: string[];

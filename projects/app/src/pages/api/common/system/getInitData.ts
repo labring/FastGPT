@@ -34,7 +34,7 @@ export type InitDateResponse = {
   activeModelList?: ActiveModelListItem[];
   defaultModels?: SystemDefaultModelType;
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
-  aiproxyIdMap?: AiproxyMapProviderType;
+  aiproxyChannels?: AIProxyChannelsType;
 };
 
 async function buildActiveModelList(
@@ -109,7 +109,7 @@ async function handler(
       activeModelList: await buildActiveModelList(global.systemActiveDesensitizedModels, teamId),
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyChannels: global.aiproxyChannelsCache
     };
   } catch (error) {
     const referer = req.headers.referer;
@@ -118,7 +118,7 @@ async function handler(
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
         modelProviders: global.ModelProviderRawCache,
-        aiproxyIdMap: global.aiproxyIdMapCache,
+        aiproxyChannels: global.aiproxyChannelsCache,
         activeModelList: global.systemActiveDesensitizedModels.map((model) => ({
           ...model,
           trainTaskList: []
@@ -131,7 +131,7 @@ async function handler(
       return {
         bufferId: unAuthBufferId,
         modelProviders: global.ModelProviderRawCache,
-        aiproxyIdMap: global.aiproxyIdMapCache
+        aiproxyChannels: global.aiproxyChannelsCache
       };
     }
 
@@ -139,7 +139,7 @@ async function handler(
       bufferId: unAuthBufferId,
       feConfigs: global.feConfigs,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyChannels: global.aiproxyChannelsCache
     };
   }
 }

@@ -29,13 +29,14 @@ const Edit = () => {
   const toolList = toolSetData?.toolList ?? [];
   const apiSchemaStr = toolSetData?.apiSchemaStr;
   const headerSecret = toolSetData?.headerSecret ?? {};
-  const customHeaders = useMemo(() => {
+  const customHeaders = toolSetData?.customHeaders;
+  const parsedCustomHeaders = useMemo(() => {
     try {
-      return JSON.parse(toolSetData?.customHeaders || '{}') || {};
+      return JSON.parse(customHeaders || '{}') || {};
     } catch {
       return {};
     }
-  }, [appDetail.pluginData?.customHeaders]);
+  }, [customHeaders]);
 
   useEffect(() => {
     if (!currentTool || toolList.length === 0) {
@@ -91,7 +92,7 @@ const Edit = () => {
             currentTool={currentTool}
             baseUrl={baseUrl}
             headerSecret={headerSecret}
-            customHeaders={customHeaders}
+            customHeaders={parsedCustomHeaders}
           />
         </Box>
       )}

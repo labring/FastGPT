@@ -1,5 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
+import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -22,6 +21,11 @@ import { getSkillSizeLimits } from '@fastgpt/service/core/agentSkills/sandboxCon
 import fs from 'fs/promises';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
 
 export const config = {
   api: {
@@ -29,14 +33,10 @@ export const config = {
   }
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSkillResponse> {
   const filepaths: string[] = [];
 
   try {
-    if (req.method !== 'POST') {
-      return jsonRes(res, { code: 405, error: 'Method not allowed' });
-    }
-
     // Read env limit before multer so both use the same value
     const { maxUploadBytes: maxArchiveSize, maxUncompressedBytes } = getSkillSizeLimits();
     // Convert bytes to MB for multer (multer expects MB)
@@ -60,10 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const format = getSupportedArchiveFormat(file.originalname ?? '');
     if (!format) {
-      return jsonRes(res, {
-        code: 400,
-        error: 'Only ZIP, TAR, and TAR.GZ files are supported'
-      });
+      return Promise.reject(SkillErrEnum.invalidArchiveFormat);
     }
 
     // Authenticate user and check permission
@@ -99,10 +96,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check archive size (multer already enforces the limit, this is a secondary guard)
     const stats = await fs.stat(file.path);
     if (stats.size > maxArchiveSize) {
-      return jsonRes(res, {
-        code: 400,
-        error: `Archive file size (${(stats.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum (${(maxArchiveSize / 1024 / 1024).toFixed(2)}MB)`
+      logger.warn('Archive file size exceeds maximum', {
+        sizeMB: (stats.size / 1024 / 1024).toFixed(2),
+        maxMB: (maxArchiveSize / 1024 / 1024).toFixed(2)
       });
+      return Promise.reject(SkillErrEnum.archiveTooLarge);
     }
 
     // Extract archive to file map
@@ -110,13 +108,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       fileMap = await extractToFileMap(file.path, maxUncompressedBytes);
     } catch (err: any) {
-      return jsonRes(res, {
-        code: 400,
-        error: `Failed to extract archive: ${err.message || 'Unknown error'}`
-      });
+      logger.warn('Failed to extract archive', { error: err.message });
+      return Promise.reject(SkillErrEnum.archiveExtractionFailed);
     }
     if (Object.keys(fileMap).length === 0) {
-      return jsonRes(res, { code: 400, error: 'Archive is empty' });
+      return Promise.reject(SkillErrEnum.archiveEmpty);
     }
 
     // Derive package-level name from caller-supplied value or archive filename
@@ -166,13 +162,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     })();
 
-    jsonRes<ImportSkillResponse>(res, { data: skillId });
-  } catch (err: any) {
-    if (err.message?.includes('already exists')) {
-      return jsonRes(res, { code: 409, error: err.message });
-    }
-    jsonRes(res, { code: 500, error: err });
+    return skillId;
   } finally {
     multer.clearDiskTempFiles(filepaths);
   }
 }
+
+export default NextAPI(handler);

@@ -7,8 +7,8 @@ export const APIFileItemSchema = z.object({
   parentId: ParentIdSchema,
   name: z.string(),
   type: z.enum(['file', 'folder']),
-  updateTime: z.date(),
-  createTime: z.date(),
+  updateTime: z.coerce.date(),
+  createTime: z.coerce.date(),
   hasChild: z.boolean().optional()
 });
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;

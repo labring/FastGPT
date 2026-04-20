@@ -20,12 +20,12 @@ import { type HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { putUpdateHttpPlugin } from '@/web/core/app/api/tool';
+import { putUpdateHttpTool } from '@/web/core/app/api/httpTools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SchemaConfigModal from './SchemaConfigModal';
 import ManualToolModal from './ManualToolModal';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import type { UpdateHttpPluginBody } from '@/pages/api/core/app/httpTools/update';
+import type { UpdateHttpToolsBodyType } from '@fastgpt/global/openapi/core/app/httpTools/api';
 
 const EditForm = ({
   currentTool,
@@ -62,7 +62,7 @@ const EditForm = ({
 
   const { runAsync: runDeleteHttpTool, loading: isDeletingTool } = useRequest(
     async (updatedToolList: HttpToolConfigType[]) =>
-      await putUpdateHttpPlugin({
+      await putUpdateHttpTool({
         appId: appDetail._id,
         toolList: updatedToolList
       }),
@@ -319,7 +319,7 @@ const ToolDetailModal = ({
 
   const [enabledParams, setEnabledParams] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-    Object.entries(tool.inputSchema.properties || {}).forEach(([key, value]) => {
+    Object.entries(tool.inputSchema?.properties || {}).forEach(([key, value]) => {
       if (value['x-tool-description'] !== '') {
         initial.add(key);
       }
@@ -328,7 +328,7 @@ const ToolDetailModal = ({
   });
 
   const { runAsync: runUpdateHttpPlugin, loading: isUpdating } = useRequest(
-    async (data: UpdateHttpPluginBody) => await putUpdateHttpPlugin(data),
+    async (data: UpdateHttpToolsBodyType) => await putUpdateHttpTool(data),
     {
       manual: true,
       successToast: t('common:update_success'),
@@ -405,7 +405,7 @@ const ToolDetailModal = ({
         </Flex>
 
         <Box mt={3} px={3}>
-          {Object.entries(tool.inputSchema.properties || {}).map(
+          {Object.entries(tool.inputSchema?.properties || {}).map(
             ([paramName, paramInfo]: [string, any]) => (
               <Box
                 key={paramName}
@@ -418,7 +418,7 @@ const ToolDetailModal = ({
               >
                 <Box pr={4}>
                   <Flex alignItems="center">
-                    {tool.inputSchema.required?.includes(paramName) && (
+                    {tool.inputSchema?.required?.includes(paramName) && (
                       <Box mr={1} color="red.500">
                         *
                       </Box>
@@ -468,7 +468,7 @@ const ToolDetailModal = ({
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        {Object.keys(tool.inputSchema.properties || {}).length > 0 && (
+        {Object.keys(tool.inputSchema?.properties || {}).length > 0 && (
           <Button
             size={'md'}
             isLoading={isUpdating}
@@ -478,7 +478,7 @@ const ToolDetailModal = ({
                 inputSchema: {
                   ...tool.inputSchema,
                   properties: Object.fromEntries(
-                    Object.entries(tool.inputSchema.properties || {}).map(([key, value]) => [
+                    Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => [
                       key,
                       {
                         ...value,

@@ -1,32 +1,19 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useState,
-  useMemo,
-  useCallback
-} from 'react';
-import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import { type Dispatch, type ReactNode, type SetStateAction, useState, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
-import type { CollectionStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
-import { getDatasetCollections, postDatasetSync } from '@/web/core/dataset/api';
+import { getDatasetCollections } from '@/web/core/dataset/api/collection';
+import { postDatasetSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
-import { isEmpty } from 'lodash';
-import { TabEnum } from '../../../../pages/dataset/detail/index';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
-import { omit } from 'lodash';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
@@ -44,21 +31,6 @@ type CollectionPageContextType = {
   setSearchText: Dispatch<SetStateAction<string>>;
   filterTags: string[];
   setFilterTags: Dispatch<SetStateAction<string[]>>;
-  filterTagValues: Record<string, string[]>;
-  setFilterTagValues: Dispatch<SetStateAction<Record<string, string[]>>>;
-  displayedCollections: DatasetCollectionsListItemType[];
-  statusFilter: CollectionStatusEnum | undefined;
-  setStatusFilter: Dispatch<SetStateAction<CollectionStatusEnum | undefined>>;
-  sortBy: 'name' | 'updateTime' | 'createTime' | 'dataAmount' | null;
-  setSortBy: Dispatch<SetStateAction<'name' | 'updateTime' | 'createTime' | 'dataAmount' | null>>;
-  sortOrder: 'asc' | 'desc';
-  setSortOrder: Dispatch<SetStateAction<'asc' | 'desc'>>;
-  hasDatabaseConfig: boolean;
-  handleOpenConfigPage: (
-    mode?: 'edit' | 'create',
-    databaseName?: string,
-    activeStep?: number
-  ) => void;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -86,31 +58,11 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   filterTags: [],
   setFilterTags: function (value: SetStateAction<string[]>): void {
     throw new Error('Function not implemented.');
-  },
-  filterTagValues: {},
-  setFilterTagValues: function (value: SetStateAction<Record<string, string[]>>): void {
-    throw new Error('Function not implemented.');
-  },
-  displayedCollections: [],
-  statusFilter: undefined,
-  setStatusFilter: function (value: SetStateAction<CollectionStatusEnum | undefined>): void {
-    throw new Error('Function not implemented.');
-  },
-  sortBy: null,
-  setSortBy: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  sortOrder: 'asc',
-  setSortOrder: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  hasDatabaseConfig: false,
-  handleOpenConfigPage: () => {}
+  }
 });
 
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
@@ -122,12 +74,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // collection list
   const [searchText, setSearchText] = useState('');
   const [filterTags, setFilterTags] = useState<string[]>([]);
-  const [filterTagValues, setFilterTagValues] = useState<Record<string, string[]>>({});
-  const [statusFilter, setStatusFilter] = useState<CollectionStatusEnum | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<'name' | 'updateTime' | 'createTime' | 'dataAmount' | null>(
-    null
-  );
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const {
     data: collections,
     Pagination,
@@ -138,49 +84,31 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageSize
   } = usePagination(getDatasetCollections, {
     defaultPageSize: 20,
+    storeToQuery: true,
     params: {
       datasetId,
       parentId,
       searchText,
-      filterTags,
-      status: statusFilter,
-      ...(sortBy ? { sortBy, sortOrder } : {})
+      filterTags
     },
-    // defaultRequest: false,
-    refreshDeps: [parentId, searchText, filterTags, statusFilter, sortBy, sortOrder]
+    refreshDeps: [parentId, searchText, filterTags]
   });
 
-  const displayedCollections = useMemo(() => {
-    const hasValueFilter = Object.values(filterTagValues).some((v) => v.length > 0);
-    if (!hasValueFilter) return collections;
-    return collections.filter((col) => {
-      const colTags = (col.tags || []).filter(
-        (t): t is CollectionTagValueType => typeof t === 'object' && t !== null
-      );
-      return Object.entries(filterTagValues).some(
-        ([tagId, values]) =>
-          values.length > 0 &&
-          colTags.some((t) => t.tagId === tagId && values.includes(String(t.value)))
-      );
-    });
-  }, [collections, filterTagValues]);
+  const { runAsync: syncDataset } = useRequest(
+    async () => {
+      if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+        await checkTeamWebSyncLimit();
+      }
 
-  const syncDataset = useCallback(async () => {
-    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
-      await checkTeamWebSyncLimit();
+      await postDatasetSync({ datasetId: datasetId });
+      loadDatasetDetail(datasetId);
+
+      getData(pageNum);
+    },
+    {
+      successToast: t('dataset:collection.sync.submit')
     }
-
-    await postDatasetSync({ datasetId: datasetId });
-    loadDatasetDetail(datasetId);
-
-    getData(pageNum);
-
-    // Show success message
-    toast({
-      status: 'success',
-      title: t('dataset:collection.sync.submit')
-    });
-  }, [datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum, t, toast]);
+  );
 
   // dataset sync confirm
   const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
@@ -211,28 +139,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     }
   );
 
-  // database
-  const hasDatabaseConfig = useMemo(() => !isEmpty(datasetDetail.databaseConfig), [datasetDetail]);
-  const handleOpenConfigPage = useCallback(
-    (mode: 'edit' | 'create' = 'create', databaseName?: string, activeStep = 0) => {
-      router.replace({
-        query: {
-          ...omit(router.query, ['databaseName']),
-          currentTab: TabEnum.import,
-          source: ImportDataSourceEnum.database,
-          mode,
-          activeStep,
-          ...(databaseName
-            ? {
-                databaseName
-              }
-            : {})
-        }
-      });
-    },
-    [router]
-  );
-
   const contextValue: CollectionPageContextType = useMemo(
     () => ({
       openDatasetSyncConfirm: openDatasetSyncConfirm({ onConfirm: syncDataset }),
@@ -242,49 +148,25 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       setSearchText,
       filterTags,
       setFilterTags,
-      filterTagValues,
-      setFilterTagValues,
-      displayedCollections,
-      statusFilter,
-      setStatusFilter,
-      sortBy,
-      setSortBy,
-      sortOrder,
-      setSortOrder,
       collections,
       Pagination,
       total,
       getData,
       isGetting,
       pageNum,
-      pageSize,
-      hasDatabaseConfig,
-      handleOpenConfigPage
+      pageSize
     }),
     [
       Pagination,
       collections,
-      displayedCollections,
       filterTags,
-      filterTagValues,
       getData,
-      hasDatabaseConfig,
-      handleOpenConfigPage,
       isGetting,
       onOpenWebsiteModal,
       openDatasetSyncConfirm,
       pageNum,
       pageSize,
       searchText,
-      setFilterTags,
-      setFilterTagValues,
-      setSearchText,
-      statusFilter,
-      setStatusFilter,
-      sortBy,
-      setSortBy,
-      sortOrder,
-      setSortOrder,
       syncDataset,
       total
     ]

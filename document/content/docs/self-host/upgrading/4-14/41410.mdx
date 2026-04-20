@@ -9,12 +9,13 @@ description: 'FastGPT V4.14.10 更新说明'
 
 以下针对的是 `docker compose` 部署方案的配置调整，使用`sealos`的商业版用户，可私信支持人员，提供在线的沙盒服务方案。
 
-打开[最新 yml 部署文件](https://github.com/labring/FastGPT/blob/main/deploy/docker/cn/docker-compose.pg.yml)，调整以下内容：
+参考[最新 yml 部署文件](https://github.com/labring/FastGPT/blob/main/deploy/docker/cn/docker-compose.pg.yml)，调整本地 yml 文件，加入以下内容：
 
 1. 在文件顶部增加 `x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'` 变量配置。
-2. 增加 3 组 services: `opensandbox-server`,`volume-manager`,`agent-sandbox-image`
-3. 增加 `configs`, 文件底部可找到该内容，直接复制添加。
-4. 修改 `fastgpt-app`/`fastgpt-pro` 环境变量， 增加以下变量：
+2. 增加 5 组 services: `opensandbox-server`,`opensandbox-agent-sandbox-image`,`opensandbox-execd-image`,`opensandbox-egress-image`,`fastgpt-volume-manager`
+3. 调整 `networks`，可参考最新的 yml 完全修改。
+4. 增加 `configs`配置, 文件底部可找到该内容，直接复制添加。
+5. 修改 `fastgpt-app`/`fastgpt-pro` 环境变量， 增加以下变量：
 
 ```bash
 # ==================== Agent sandbox 配置 ====================
@@ -25,6 +26,7 @@ AGENT_SANDBOX_OPENSANDBOX_API_KEY:
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
 AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
 AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.1
+AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
 # Volume 持久化配置（opensandbox provider 下可选）
 AGENT_SANDBOX_ENABLE_VOLUME: true
 AGENT_SANDBOX_VOLUME_MANAGER_URL: http://volume-manager:3000
@@ -39,7 +41,7 @@ AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
 
 ### 3. 更新镜像 tag
 
-- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.10.2
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.10.4
 - 更新 fastpgt-pro(商业版) 镜像 tag: v4.14.10
 - 更新 code-sandbox 镜像 tag: v4.14.10
 - 更新 fastgpt-plugin 镜像 tag: v0.5.6

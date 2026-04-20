@@ -412,7 +412,7 @@ describe('AgentSkill Controller', () => {
       // Second import should fail
       await expect(
         importSkill(packageData, testTeamId, testTmbId, testUserId, mockZipBuffer)
-      ).rejects.toThrow('Skill with this name already exists');
+      ).rejects.toThrow('skillNameExists');
     });
   });
 

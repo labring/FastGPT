@@ -31,14 +31,14 @@ export type TeamCouponSub = z.infer<typeof TeamCouponSubSchema>;
 const TeamCouponSchema = z.object({
   key: z.string(),
   subscriptions: z.array(TeamCouponSubSchema).meta({ description: '套餐列表' }),
-  redeemedAt: z.date().optional().meta({ description: '使用时间' }),
-  expiredAt: z.date().optional().meta({ description: '过期时间' }),
+  redeemedAt: z.coerce.date().optional().meta({ description: '使用时间' }),
+  expiredAt: z.coerce.date().optional().meta({ description: '过期时间' }),
   redeemedTeamId: z.string().optional().meta({ description: '使用团队 ID' }),
   type: z.enum(CouponTypeEnum).meta({ description: '优惠券类型' }),
   price: z.number().optional().meta({ description: '价格' }),
   paidAmount: z.number().optional().meta({ description: '实付金额' }),
   transactionId: z.string().optional().meta({ description: '交易 ID' }),
   description: z.string().optional().meta({ description: '描述' }),
-  createdAt: z.date().meta({ description: '创建时间' })
+  createdAt: z.coerce.date().meta({ description: '创建时间' })
 });
 export type TeamCouponSchemaType = z.infer<typeof TeamCouponSchema>;

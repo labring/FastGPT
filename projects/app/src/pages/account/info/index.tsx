@@ -271,36 +271,41 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </MyTooltip>
           </Flex>
         ) : (
-          <Flex
-            flexDirection={'column'}
-            alignItems={'center'}
-            cursor={'pointer'}
-            onClick={handleFileSelectorOpen}
-          >
-            <MyTooltip label={t('account_info:choose_avatar')}>
-              <Box
-                w={['44px', '54px']}
-                h={['44px', '54px']}
-                borderRadius={'50%'}
-                border={theme.borders.base}
-                overflow={'hidden'}
-                p={'2px'}
-                boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-                mb={2}
-              >
-                <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
-              </Box>
-            </MyTooltip>
+          <Flex mt={4} alignItems={'center'}>
+            <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
+            <Flex
+              flex={'1 0 0'}
+              w={0}
+              alignItems={'center'}
+              gap={2}
+              cursor={'pointer'}
+              onClick={handleFileSelectorOpen}
+            >
+              <MyTooltip label={t('account_info:choose_avatar')}>
+                <Box
+                  w={'40px'}
+                  h={'40px'}
+                  borderRadius={'50%'}
+                  border={'1px solid'}
+                  borderColor={'borderColor.base'}
+                  overflow={'hidden'}
+                  p={'2px'}
+                  bg={'white'}
+                >
+                  <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
+                </Box>
+              </MyTooltip>
 
-            <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
-              <MyIcon mr={1} name={'edit'} w={'14px'} />
-              {t('account_info:change')}
+              <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
+                <MyIcon mr={1} name={'edit'} w={'14px'} />
+                {t('account_info:change')}
+              </Flex>
             </Flex>
           </Flex>
         )}
 
         {feConfigs?.isPlus && (
-          <Flex mt={[0, 4]} alignItems={'center'}>
+          <Flex mt={[4, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
             <Input
               flex={'1 0 0'}
@@ -308,7 +313,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               defaultValue={userInfo?.team?.memberName || 'Member'}
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
-              transform={'translateX(-11px)'}
+              transform={['none', 'translateX(-11px)']}
               maxLength={100}
               onBlur={async (e) => {
                 const val = e.target.value;

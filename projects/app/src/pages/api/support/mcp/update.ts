@@ -1,26 +1,20 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authMcp } from '../../../../../../../packages/service/support/permission/mcp/auth';
+import { authMcp } from '@fastgpt/service/support/permission/mcp/auth';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
-import { type McpAppType } from '@fastgpt/global/support/mcp/type';
-
-export type updateQuery = {};
-
-export type updateBody = {
-  id: string;
-  name: string;
-  apps: McpAppType[];
-};
-
-export type updateResponse = {};
+import {
+  McpUpdateBodySchema,
+  McpUpdateResponseSchema,
+  type McpUpdateResponseType
+} from '@fastgpt/global/openapi/support/mcpServer/api';
 
 async function handler(
-  req: ApiRequestProps<updateBody, updateQuery>,
+  req: ApiRequestProps,
   res: ApiResponseType<any>
-): Promise<updateResponse> {
-  let { id: mcpId, name, apps } = req.body;
+): Promise<McpUpdateResponseType> {
+  const { id: mcpId, name, apps } = McpUpdateBodySchema.parse(req.body);
   const { tmbId } = await authMcp({
     req,
     authToken: true,
@@ -30,10 +24,10 @@ async function handler(
   });
 
   // 对 apps 中的 id 进行去重，确保每个应用只出现一次
-  const uniqueAppIds = new Set();
-  apps = apps.filter((app) => {
+  const uniqueAppIds = new Set<string>();
+  const uniqueApps = apps.filter((app) => {
     if (uniqueAppIds.has(app.appId)) {
-      return false; // 过滤掉重复的 app id
+      return false;
     }
     uniqueAppIds.add(app.appId);
     return true;
@@ -41,7 +35,7 @@ async function handler(
 
   // Check app read permission
   await Promise.all(
-    apps.map((app) =>
+    uniqueApps.map((app) =>
       authAppByTmbId({
         tmbId,
         appId: app.appId,
@@ -55,12 +49,12 @@ async function handler(
     {
       $set: {
         ...(name && { name }),
-        apps
+        apps: uniqueApps
       }
     }
   );
 
-  return {};
+  return McpUpdateResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

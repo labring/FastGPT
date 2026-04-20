@@ -3,6 +3,11 @@ import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import type { IncomingHttpHeaders } from 'http';
 import { upsertProxySession, getProxySession } from './proxyUtils';
+import {
+  getSandboxProviderConfig,
+  connectToProviderSandbox,
+  disconnectFromProviderSandbox
+} from '@fastgpt/service/core/agentSkills/sandboxConfig';
 
 const dev = process.env.NODE_ENV !== 'production';
 
@@ -58,4 +63,27 @@ export async function getSandboxProxyTarget(
   // Cache target for subsequent cookie-less sub-requests (sandboxed iframe)
   upsertProxySession(sandboxId, authTeamId, host, protocol);
   return `${protocol}://${host}:${targetPort}`;
+}
+
+/**
+ * Read the code-server password from the container's config.yaml via exec.
+ * Returns null if the sandbox is not found, has no providerSandboxId, or exec fails.
+ */
+export async function getCodeServerPasswordFromSandbox(sandboxId: string): Promise<string | null> {
+  const sandbox = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+  if (!sandbox?.metadata?.providerSandboxId) return null;
+
+  const providerConfig = getSandboxProviderConfig();
+  const adapter = await connectToProviderSandbox(
+    providerConfig,
+    sandbox.metadata.providerSandboxId
+  );
+  try {
+    const result = await adapter.execute(
+      "grep '^password:' ~/.config/code-server/config.yaml 2>/dev/null | awk '{print $2}' | tr -d '[:space:]'"
+    );
+    return result.stdout.trim() || null;
+  } finally {
+    await disconnectFromProviderSandbox(adapter);
+  }
 }

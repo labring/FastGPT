@@ -7,14 +7,14 @@ import {
 
 // Preload model providers
 export async function preloadModelProviders(): Promise<void> {
-  const { modelProviders, aiproxyIdMap } = await loadModelProviders();
+  const { modelProviders, aiproxyChannels } = await loadModelProviders();
 
   const { ModelProviderListCache, ModelProviderMapCache } = formatModelProviders(modelProviders);
   global.ModelProviderRawCache = modelProviders;
   global.ModelProviderListCache = ModelProviderListCache;
   global.ModelProviderMapCache = ModelProviderMapCache;
 
-  global.aiproxyIdMapCache = aiproxyIdMap;
+  global.aiproxyChannelsCache = aiproxyChannels;
 }
 
 export const getModelProviders = (language = 'en') => {

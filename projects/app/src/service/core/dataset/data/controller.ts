@@ -2,16 +2,13 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
-import { Types } from '@fastgpt/service/common/mongo';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
-import {
-  type DatasetDataIndexItemType,
-  type DatasetDataItemType
-} from '@fastgpt/global/core/dataset/type';
 import type {
-  CreateDatasetDataProps,
-  UpdateDatasetDataProps
-} from '@fastgpt/global/core/dataset/controller';
+  UpdateDatasetDataPropsType,
+  DatasetDataIndexItemType,
+  DatasetDataItemType,
+  CreateDatasetDataPropsType
+} from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
@@ -20,9 +17,6 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import { getDatasetSynonymConfig } from '@fastgpt/service/core/dataset/indexTransform/controller';
-import { applySynonymTransform } from '@fastgpt/service/core/dataset/indexTransform/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 
@@ -32,9 +26,7 @@ const formatIndexes = async ({
   a = '',
   indexSize,
   maxIndexSize,
-  indexPrefix,
-  synonymDict = {},
-  synonymMappingMap = {}
+  indexPrefix
 }: {
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & { dataId?: string })[];
   q: string;
@@ -42,15 +34,11 @@ const formatIndexes = async ({
   indexSize: number;
   maxIndexSize: number;
   indexPrefix?: string;
-  synonymDict?: Record<string, string[]>;
-  synonymMappingMap?: Record<string, string>;
 }): Promise<
   {
     type: DatasetDataIndexTypeEnum;
     text: string;
     dataId?: string;
-    synId?: number;
-    synonymTransformations?: any[]; // 添加转换信息字段
   }[]
 > => {
   const formatText = (text: string) => {
@@ -59,7 +47,6 @@ const formatIndexes = async ({
     }
     return text;
   };
-
   /* get dataset data default index */
   const getDefaultIndex = async ({
     q = '',
@@ -70,10 +57,9 @@ const formatIndexes = async ({
     a?: string;
     indexSize: number;
   }) => {
-    // 先切分原始文本
     const qChunks = (
       await text2Chunks({
-        text: q, // 使用原始文本切分
+        text: q,
         chunkSize: indexSize,
         maxSize: maxIndexSize
       })
@@ -82,42 +68,28 @@ const formatIndexes = async ({
       ? (await text2Chunks({ text: a, chunkSize: indexSize, maxSize: maxIndexSize })).chunks
       : [];
 
-    // 对每个切分后的片段进行处理
-    // 注意：这里暂不进行同义词转换，同义词转换将在添加 prefix 后统一进行
-    const processChunk = (chunkText: string) => {
-      return {
-        text: chunkText, // 保持原始切分文本
+    return [
+      ...qChunks.map((text) => ({
+        text: formatText(text),
         type: DatasetDataIndexTypeEnum.default
-      };
-    };
-
-    return [...qChunks.map(processChunk), ...aChunks.map(processChunk)];
+      })),
+      ...aChunks.map((text) => ({
+        text: formatText(text),
+        type: DatasetDataIndexTypeEnum.default
+      }))
+    ];
   };
 
   // If index not type, set it to custom
-  indexes = indexes.map((item) => {
-    const originalText = typeof item.text === 'string' ? item.text : String(item.text);
-    return {
-      text: originalText,
-      type: item.type || DatasetDataIndexTypeEnum.custom,
-      dataId: item.dataId,
-      ...(item.synId !== undefined && { synId: item.synId })
-    };
-  });
+  indexes = indexes.map((item) => ({
+    text: typeof item.text === 'string' ? item.text : String(item.text),
+    type: item.type || DatasetDataIndexTypeEnum.custom,
+    dataId: item.dataId
+  }));
 
   // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
   const defaultIndexes = await getDefaultIndex({ q, a, indexSize });
 
-  // 将默认索引和自定义索引合并，复用相同文本的 dataId
-  //
-  // 示例场景：
-  // 1. 用户之前创建了自定义索引 "深信服公司介绍" (dataId: "abc123")
-  // 2. 现在更新数据，默认索引也生成了 "深信服公司介绍"
-  // 3. 为了避免重复向量化，复用旧的 dataId "abc123"
-  // 4. 但类型标记为 default（因为现在是默认索引生成的）
-  //
-  // 注意：此时 defaultIndexes 中还没有 synonymTransformations，
-  // 因为同义词转换会在后续添加 prefix 后统一进行
   const concatDefaultIndexes = defaultIndexes.map((item) => {
     const oldIndex = indexes!.find((index) => index.text === item.text);
     if (oldIndex) {
@@ -140,7 +112,6 @@ const formatIndexes = async ({
   );
   indexes.push(...concatDefaultIndexes);
 
-  // 检查并处理自定义索引的切分（暂不进行同义词转换）
   const chekcIndexes = (
     await Promise.all(
       indexes.map(async (item) => {
@@ -148,147 +119,41 @@ const formatIndexes = async ({
           return item;
         }
 
-        // If oversize tokens, split it first
+        // If oversize tokens, split it
         const tokens = await countPromptTokens(item.text);
         if (tokens > maxIndexSize) {
           const splitText = (
             await text2Chunks({
-              text: item.text, // 使用原始文本进行切分
+              text: item.text,
               chunkSize: indexSize,
               maxSize: maxIndexSize
             })
           ).chunks;
-
-          // 返回切分后的片段，暂不进行同义词转换
-          return splitText.map((chunkText) => ({
-            text: chunkText,
-            type: item.type,
-            ...(item.synId !== undefined && { synId: item.synId })
+          return splitText.map((text) => ({
+            text,
+            type: item.type
           }));
         }
 
-        // 不需要切分的文本，直接返回
-        return {
-          text: item.text,
-          type: item.type,
-          dataId: item.dataId,
-          ...(item.synId !== undefined && { synId: item.synId })
-        };
+        return item;
       })
     )
   )
     .flat()
     .filter((item) => !!item.text.trim());
 
-  // 【关键步骤1】先添加 indexPrefix（标准化文本）
-  // 【关键步骤2】然后对标准化后的文本进行同义词转换
-  //
-  // 正确的处理顺序：
-  // 1. 切分文本（已完成）
-  // 2. 添加 prefix（标准化） ← 当前步骤
-  // 3. 同义词转换（作用于标准化后的文本）
-  //
-  // 示例流程：
-  //   原始文本: "我爱深信服"
-  //   添加前缀: "问题：\n我爱深信服"
-  //   同义词转换: "问题：\n我爱Sangfor" (transformations记录的位置是基于带前缀的文本)
-  //
-  const prefixedIndexes = indexPrefix
+  // Add prefix
+  const prefixIndexes = indexPrefix
     ? chekcIndexes.map((index) => {
-        // custom 类型不添加 prefix
         if (index.type === DatasetDataIndexTypeEnum.custom) return index;
-
         return {
           ...index,
-          text: formatText(index.text) // 添加 prefix
+          text: formatText(index.text)
         };
       })
     : chekcIndexes;
 
-  // 【关键步骤2】对标准化后的文本（已添加 prefix）进行同义词转换
-  //
-  // 示例：
-  //   输入: "问题：\n我爱深信服"
-  //   输出: "问题：\n我爱Sangfor"
-  //   transformations: [{originalText: "深信服", transformedText: "Sangfor", transformedStartPos: 7, transformedEndPos: 13, ...}]
-  //
-  const transformedIndexes =
-    synonymDict && Object.keys(synonymDict).length > 0
-      ? prefixedIndexes.map((index) => {
-          const transformResult = applySynonymTransform(index.text, synonymDict, synonymMappingMap);
-
-          const result: any = {
-            ...index,
-            text: transformResult.transformedText
-          };
-
-          // 只有在有转换记录时才添加 synonymTransformations
-          if (transformResult.transformations.length > 0) {
-            result.synonymTransformations = transformResult.transformations;
-          }
-
-          return result;
-        })
-      : prefixedIndexes;
-
-  // 【关键步骤3】标准化后去重
-  //
-  // 重要：必须在同义词转换后进行去重，因为转换可能导致不同的原始文本变成相同的标准化文本
-  //
-  // 示例场景：
-  //   原始索引1: "我爱深信服" → 标准化后: "问题：\n我爱Sangfor"
-  //   原始索引2: "我爱Sangfor" → 标准化后: "问题：\n我爱Sangfor"  ← 重复！
-  //
-  // 去重策略（优先级从高到低）：
-  //   1. 优先保留 default 类型 + 有 dataId 的（从自定义索引继承的 dataId）
-  //   2. 其次保留 custom 类型 + 有 dataId 的（原有的自定义索引）
-  //   3. 再次保留 default 类型 + 无 dataId 的（新生成的默认索引）
-  //   4. 最后保留 custom 类型 + 无 dataId 的（新的自定义索引）
-  //
-  // 示例：
-  //   [
-  //     {text: "问题：\nSangfor", type: "custom", dataId: undefined},  // 优先级 4
-  //     {text: "问题：\nSangfor", type: "default", dataId: "old123"},  // 优先级 1 ← 保留这个
-  //     {text: "问题：\nSangfor", type: "custom", dataId: "old456"},   // 优先级 2
-  //   ]
-  //
-  const finalIndexes = transformedIndexes.filter((item, index, self) => {
-    // 找到所有具有相同 text 的索引
-    const sameTextIndexes = self
-      .map((x, i) => ({ index: i, item: x }))
-      .filter((x) => x.item.text === item.text);
-
-    // 如果只有一个，直接保留
-    if (sameTextIndexes.length === 1) return true;
-
-    // 如果有多个相同的 text，按优先级选择
-    // 优先级：default+dataId > custom+dataId > default+noDataId > custom+noDataId
-    const getPriority = (idx: (typeof sameTextIndexes)[0]) => {
-      const isDefault = idx.item.type === DatasetDataIndexTypeEnum.default;
-      const hasDataId = !!idx.item.dataId;
-
-      if (isDefault && hasDataId) return 1;
-      if (!isDefault && hasDataId) return 2;
-      if (isDefault && !hasDataId) return 3;
-      return 4;
-    };
-
-    // 找到优先级最高的（数字最小的）
-    let highestPriorityIndex = sameTextIndexes[0];
-    let highestPriority = getPriority(highestPriorityIndex);
-
-    for (const idx of sameTextIndexes) {
-      const priority = getPriority(idx);
-      if (priority < highestPriority) {
-        highestPriority = priority;
-        highestPriorityIndex = idx;
-      }
-    }
-
-    return index === highestPriorityIndex.index;
-  });
-
-  return finalIndexes;
+  return prefixIndexes;
 };
 /* insert data.
  * 1. create data id
@@ -296,7 +161,6 @@ const formatIndexes = async ({
  * 3. create mongo data
  */
 export async function insertData2Dataset({
-  id,
   teamId,
   tmbId,
   datasetId,
@@ -304,15 +168,14 @@ export async function insertData2Dataset({
   q,
   a,
   imageId,
-  chunkIndex,
+  chunkIndex = 0,
   indexSize = 512,
   indexes,
   indexPrefix,
   embeddingModel,
   imageDescMap,
-  session,
-  metadata
-}: CreateDatasetDataProps & {
+  session
+}: CreateDatasetDataPropsType & {
   embeddingModel: string;
   indexSize?: number;
   imageDescMap?: Record<string, string>;
@@ -325,74 +188,18 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  // 若未传 chunkIndex，自动追加到末尾（max + 1）
-  // 使用 session 保证与后续写入的事务一致性，避免并发竞态导致 chunkIndex 重复
-  if (chunkIndex === undefined) {
-    const lastData = await MongoDatasetData.findOne({ collectionId })
-      .sort({ chunkIndex: -1 })
-      .select('chunkIndex')
-      .session(session ?? null)
-      .lean();
-    chunkIndex = (lastData?.chunkIndex ?? -1) + 1;
-  }
-
   const embModel = getEmbeddingModel(embeddingModel);
   indexSize = Math.min(embModel.maxToken, indexSize);
 
-  // ========== Synonym Enhancement (Get Config Only) ==========
-  let synonymFileId: string | undefined;
-  let synonymDict: Record<string, string[]> = {};
-  let synonymMappingMap: Record<string, string> = {};
-
-  try {
-    // 获取同义词配置
-    const synonymConfig = await getDatasetSynonymConfig({
-      teamId: String(teamId),
-      datasetId: String(datasetId)
-    });
-
-    if (synonymConfig) {
-      addLog.info('[Synonym] Found synonym config for dataset', {
-        datasetId,
-        collectionId,
-        synonymFileId: synonymConfig.synonymFileId
-      });
-
-      synonymFileId = synonymConfig.synonymFileId;
-      synonymDict = synonymConfig.synonymDict;
-      synonymMappingMap = synonymConfig.synonymMappingMap;
-    }
-  } catch (error) {
-    // Log error but don't block the indexing process
-    addLog.error('[Synonym] Failed to get synonym config', error);
-  }
-
   // 1. Get vector indexes and insert
-  // formatIndexes 会负责所有的标准化工作
-  // 同时获取标准化后的 q 和 a 用于全文索引
-  let normalizedQ = q;
-  let normalizedA = a;
-
-  // 如果有同义词配置，对 q 和 a 进行标准化
-  if (synonymDict && Object.keys(synonymDict).length > 0) {
-    const qResult = applySynonymTransform(q, synonymDict, synonymMappingMap);
-    normalizedQ = qResult.transformedText;
-
-    if (a) {
-      const aResult = applySynonymTransform(a, synonymDict, synonymMappingMap);
-      normalizedA = aResult.transformedText;
-    }
-  }
-
+  // Empty indexes check, if empty, create default index
   const newIndexes = await formatIndexes({
-    indexes, // 原始索引
-    q, // 原始 q
-    a, // 原始 a
+    indexes,
+    q,
+    a,
     indexSize,
     maxIndexSize: embModel.maxToken,
-    indexPrefix,
-    synonymDict, // 传入同义词配置
-    synonymMappingMap // 传入映射关系
+    indexPrefix
   });
 
   // insert to vector store
@@ -403,67 +210,41 @@ export async function insertData2Dataset({
     datasetId,
     collectionId
   });
+  const results = newIndexes.map((item, index) => ({
+    ...item,
+    dataId: insertIds[index]
+  }));
 
-  // 为每个索引构建完整的结果，包括可能的同义词元数据
-  const results = newIndexes.map((item, indexPos) => {
-    const result: any = {
-      type: item.type,
-      text: item.text,
-      dataId: insertIds[indexPos],
-      ...(item.synId !== undefined && { synId: item.synId })
-    };
-
-    // 从原始的 normalizedIndexes 或 item 中获取转换信息
-    const synonymTransformations = (item as any).synonymTransformations;
-
-    if (synonymTransformations && synonymTransformations.length > 0) {
-      result.synonymMetadata = {
-        synonymFileIds: synonymFileId ? [synonymFileId] : [], // 添加 synonymFileIds
-        transformations: synonymTransformations
-      };
-    }
-
-    return result;
-  });
-
-  // 2. Create or update mongo data (store normalized q and a)
-  // 当 id 对应的占位记录已存在时（手动插入预写入场景），执行 upsert 而非分支 create/update
-  const dataFields = {
-    q,
-    a,
-    imageId,
-    imageDescMap,
-    chunkIndex,
-    indexes: results,
-    metadata
-  };
-
-  let _id: Types.ObjectId;
-  if (id) {
-    const objectId = new Types.ObjectId(id);
-    await MongoDatasetData.findOneAndUpdate(
-      { _id: objectId },
+  const [{ _id }] = await MongoDatasetData.create(
+    [
       {
-        $set: dataFields,
-        $setOnInsert: { teamId, tmbId, datasetId, collectionId }
-      },
-      { upsert: true, session }
-    );
-    _id = objectId;
-  } else {
-    const [created] = await MongoDatasetData.create(
-      [{ teamId, tmbId, datasetId, collectionId, ...dataFields }],
-      { session, ordered: true }
-    );
-    _id = created._id as unknown as Types.ObjectId;
-  }
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q,
+        a,
+        imageId,
+        imageDescMap,
+        chunkIndex,
+        indexes: results
+      }
+    ],
+    { session, ordered: true }
+  );
 
-  // 3. Create or update mongo data text (use standardized text for full-text search)
-  const fullTextToken = await jiebaSplit({ text: `${normalizedQ}\n${normalizedA || ''}`.trim() });
-  await MongoDatasetDataText.findOneAndUpdate(
-    { dataId: _id },
-    { teamId, datasetId, collectionId, dataId: _id, fullTextToken },
-    { upsert: true, session }
+  // 3. Create mongo data text
+  await MongoDatasetDataText.create(
+    [
+      {
+        teamId,
+        datasetId,
+        collectionId,
+        dataId: _id,
+        fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
+      }
+    ],
+    { session, ordered: true }
   );
 
   // 只移除图片数据集的图片的 TTL
@@ -480,8 +261,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens,
-    chunkIndex
+    tokens
   };
 }
 
@@ -519,9 +299,8 @@ export async function updateData2Dataset({
   indexes,
   model,
   indexSize = 512,
-  indexPrefix,
-  metadata
-}: UpdateDatasetDataProps & { model: string; indexSize?: number }) {
+  indexPrefix
+}: UpdateDatasetDataPropsType & { model: string; indexSize?: number }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
   }
@@ -530,54 +309,14 @@ export async function updateData2Dataset({
   const mongoData = await MongoDatasetData.findById(dataId);
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
-  // ========== Get Synonym Config ==========
-  let synonymFileId: string | undefined;
-  let synonymDict: Record<string, string[]> = {};
-  let synonymMappingMap: Record<string, string> = {};
-  let normalizedQ = q;
-  let normalizedA = a;
-
-  try {
-    const synonymConfig = await getDatasetSynonymConfig({
-      teamId: String(mongoData.teamId),
-      datasetId: String(mongoData.datasetId)
-    });
-
-    if (synonymConfig) {
-      addLog.info('[Synonym] Found synonym config for update', {
-        dataId,
-        collectionId: mongoData.collectionId
-      });
-
-      synonymFileId = synonymConfig.synonymFileId;
-      synonymDict = synonymConfig.synonymDict;
-      synonymMappingMap = synonymConfig.synonymMappingMap;
-
-      // 对 q 和 a 应用同义词标准化
-      if (Object.keys(synonymDict).length > 0) {
-        const qResult = applySynonymTransform(q, synonymDict, synonymMappingMap);
-        normalizedQ = qResult.transformedText;
-
-        if (a !== undefined) {
-          const aResult = applySynonymTransform(a, synonymDict, synonymMappingMap);
-          normalizedA = aResult.transformedText;
-        }
-      }
-    }
-  } catch (error) {
-    addLog.error('[Synonym] Failed to get synonym config for update', error);
-  }
-
-  // 2. Compute indexes (formatIndexes will handle all standardization)
+  // 2. Compute indexes
   const formatIndexesResult = await formatIndexes({
-    indexes, // 原始索引
-    q, // 原始 q
-    a, // 原始 a
+    indexes,
+    q,
+    a,
     indexSize,
     maxIndexSize: getEmbeddingModel(model).maxToken,
-    indexPrefix,
-    synonymDict, // 传入同义词配置
-    synonymMappingMap // 传入映射关系
+    indexPrefix
   });
 
   // 3. Patch indexes, create, update, delete
@@ -662,23 +401,7 @@ export async function updateData2Dataset({
 
   const newIndexes = patchResult
     .filter((item) => item.type !== 'delete')
-    .map((item) => {
-      const index = { ...item.index };
-
-      // 如果有 synonymTransformations 字段，转换为 synonymMetadata
-      if ((index as any).synonymTransformations) {
-        const transformations = (index as any).synonymTransformations;
-        if (transformations.length > 0) {
-          (index as any).synonymMetadata = {
-            synonymFileIds: synonymFileId ? [synonymFileId] : [], // 添加 synonymFileIds
-            transformations: transformations
-          };
-        }
-        delete (index as any).synonymTransformations;
-      }
-
-      return index;
-    }) as DatasetDataIndexItemType[];
+    .map((item) => item.index) as DatasetDataIndexItemType[];
 
   // 6. update mongo data
   await mongoSessionRun(async (session) => {
@@ -694,19 +417,15 @@ export async function updateData2Dataset({
             ...(mongoData.history?.slice(0, 9) || [])
           ]
         : mongoData.history;
-    // 更新q和a字段，保持原文不变
-    if (q) mongoData.q = q; // 使用原文
-    if (a !== undefined) mongoData.a = a; // 使用原文
+    mongoData.q = q || mongoData.q;
+    mongoData.a = a ?? mongoData.a;
     mongoData.indexes = newIndexes;
-    mongoData.metadata = metadata ?? mongoData.metadata;
-    // 注意：对于实时处理的数据，不需要设置 synonymFileIds 和 synonymProcessing
-    // 因为 synonymMetadata 已经记录在每个 index 中了
     await mongoData.save({ session });
 
-    // update mongo data text (use standardized text for full-text search)
+    // update mongo data text
     await MongoDatasetDataText.updateOne(
       { dataId: mongoData._id },
-      { fullTextToken: await jiebaSplit({ text: `${normalizedQ}\n${normalizedA || ''}`.trim() }) },
+      { fullTextToken: await jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
       { session }
     );
 
