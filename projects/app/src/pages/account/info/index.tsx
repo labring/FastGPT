@@ -273,35 +273,32 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         ) : (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
-            <Flex flex={'1 0 0'} w={0} justifyContent={'flex-start'}>
-              <Flex alignItems={'center'} gap={2}>
-                <MyTooltip label={t('account_info:choose_avatar')}>
-                  <Box
-                    w={'40px'}
-                    h={'40px'}
-                    borderRadius={'50%'}
-                    border={'1px solid'}
-                    borderColor={'borderColor.base'}
-                    overflow={'hidden'}
-                    p={'2px'}
-                    bg={'white'}
-                    cursor={'pointer'}
-                    onClick={handleFileSelectorOpen}
-                  >
-                    <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
-                  </Box>
-                </MyTooltip>
-
-                <Flex
-                  alignItems={'center'}
-                  fontSize={'sm'}
-                  color={'myGray.600'}
-                  cursor={'pointer'}
-                  onClick={handleFileSelectorOpen}
+            <Flex
+              flex={'1 0 0'}
+              w={0}
+              alignItems={'center'}
+              gap={2}
+              cursor={'pointer'}
+              onClick={handleFileSelectorOpen}
+            >
+              <MyTooltip label={t('account_info:choose_avatar')}>
+                <Box
+                  w={'40px'}
+                  h={'40px'}
+                  borderRadius={'50%'}
+                  border={'1px solid'}
+                  borderColor={'borderColor.base'}
+                  overflow={'hidden'}
+                  p={'2px'}
+                  bg={'white'}
                 >
-                  <MyIcon mr={1} name={'edit'} w={'14px'} />
-                  {t('account_info:change')}
-                </Flex>
+                  <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
+                </Box>
+              </MyTooltip>
+
+              <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'}>
+                <MyIcon mr={1} name={'edit'} w={'14px'} />
+                {t('account_info:change')}
               </Flex>
             </Flex>
           </Flex>

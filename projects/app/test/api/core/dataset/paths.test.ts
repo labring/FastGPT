@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getParents } from '@/pages/api/core/dataset/paths';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { GetDatasetPathsResponseSchema } from '@fastgpt/global/openapi/core/dataset/api';
+import { ParentIdSchema } from '@fastgpt/global/common/parentFolder/type';
 
 class FakeObjectId {
   constructor(private readonly hex: string) {}
@@ -115,5 +116,82 @@ describe('getParents', () => {
       { parentId: 'node2-id', parentName: 'Node2' },
       { parentId: 'node1-id', parentName: 'Node1' }
     ]);
+  });
+});
+
+describe('ParentIdSchema', () => {
+  const validHex = '69e5ca9ce4f63f23d53848da';
+
+  describe('accepts', () => {
+    it('24-char lowercase hex string (ObjectId shape)', () => {
+      expect(ParentIdSchema.parse(validHex)).toBe(validHex);
+    });
+
+    it('24-char uppercase / mixed-case hex string', () => {
+      const upper = 'ABCDEF0123456789ABCDEF01';
+      const mixed = 'AbCdEf0123456789abcdef01';
+      expect(ParentIdSchema.parse(upper)).toBe(upper);
+      expect(ParentIdSchema.parse(mixed)).toBe(mixed);
+    });
+
+    it('empty string (root sentinel)', () => {
+      expect(ParentIdSchema.parse('')).toBe('');
+    });
+
+    it('null', () => {
+      expect(ParentIdSchema.parse(null)).toBeNull();
+    });
+
+    it('undefined', () => {
+      expect(ParentIdSchema.parse(undefined)).toBeUndefined();
+    });
+
+    it('ObjectId-like object with toString', () => {
+      const oid = new FakeObjectId(validHex);
+      expect(ParentIdSchema.parse(oid)).toBe(validHex);
+    });
+  });
+
+  describe('rejects', () => {
+    it('arbitrary non-hex string', () => {
+      expect(() => ParentIdSchema.parse('parent1-id')).toThrow();
+      expect(() => ParentIdSchema.parse('not-an-id')).toThrow();
+    });
+
+    it('hex string with wrong length', () => {
+      // 23 chars
+      expect(() => ParentIdSchema.parse('69e5ca9ce4f63f23d53848d')).toThrow();
+      // 25 chars
+      expect(() => ParentIdSchema.parse('69e5ca9ce4f63f23d53848daa')).toThrow();
+    });
+
+    it('24-char string containing non-hex character', () => {
+      expect(() => ParentIdSchema.parse('69e5ca9ce4f63f23d53848dz')).toThrow();
+    });
+
+    it('number', () => {
+      expect(() => ParentIdSchema.parse(123)).toThrow();
+    });
+
+    it('boolean', () => {
+      expect(() => ParentIdSchema.parse(true)).toThrow();
+      expect(() => ParentIdSchema.parse(false)).toThrow();
+    });
+
+    it('plain object whose toString produces non-hex', () => {
+      // String({}) -> "[object Object]" -> regex fails
+      expect(() => ParentIdSchema.parse({})).toThrow();
+      expect(() => ParentIdSchema.parse({ foo: 'bar' })).toThrow();
+    });
+
+    it('array', () => {
+      // String([1, 2]) -> "1,2" -> regex fails
+      expect(() => ParentIdSchema.parse([1, 2])).toThrow();
+    });
+
+    it('ObjectId-like object whose toString produces invalid hex', () => {
+      const bad = new FakeObjectId('not-hex');
+      expect(() => ParentIdSchema.parse(bad)).toThrow();
+    });
   });
 });
