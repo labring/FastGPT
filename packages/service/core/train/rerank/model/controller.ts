@@ -31,8 +31,9 @@ export async function createRerankModelConfig(params: {
   };
   isActive: boolean;
   charsPointsPrice?: number;
+  instruction?: string;
 }): Promise<string> {
-  const { name, endpoint, isActive, charsPointsPrice } = params;
+  const { name, endpoint, isActive, charsPointsPrice, instruction } = params;
   const model = endpoint.model;
   const channelName = `${model}-ch`;
 
@@ -44,7 +45,8 @@ export async function createRerankModelConfig(params: {
     isCustom: true,
     isTuned: true,
     type: ModelTypeEnum.rerank,
-    charsPointsPrice: charsPointsPrice ?? 0
+    charsPointsPrice: charsPointsPrice ?? 0,
+    instruction
   };
 
   const result = await MongoSystemModel.findOneAndUpdate(

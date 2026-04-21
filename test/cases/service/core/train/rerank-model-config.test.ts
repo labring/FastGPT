@@ -83,7 +83,8 @@ describe('Rerank Model Config Controller', () => {
             isCustom: true,
             isTuned: true, // Verify isTuned field is set correctly
             type: 'rerank',
-            charsPointsPrice: 1
+            charsPointsPrice: 1,
+            instruction: undefined
           })
         },
         {
@@ -178,7 +179,8 @@ describe('Rerank Model Config Controller', () => {
             isCustom: true,
             isTuned: true, // Created by training module, should have isTuned flag
             type: 'rerank',
-            charsPointsPrice: 2
+            charsPointsPrice: 2,
+            instruction: undefined
           })
         },
         {

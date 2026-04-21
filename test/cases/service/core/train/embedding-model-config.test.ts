@@ -83,7 +83,8 @@ describe('Embedding Model Config Controller', () => {
             isCustom: true,
             isTuned: true,
             type: 'embedding', // Verify type is 'embedding' not 'rerank'
-            charsPointsPrice: 1
+            charsPointsPrice: 1,
+            instruction: undefined
           })
         },
         {

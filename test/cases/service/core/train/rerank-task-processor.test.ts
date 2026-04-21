@@ -62,7 +62,8 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
     findOne: vi.fn().mockReturnValue({
       lean: vi.fn().mockResolvedValue({
         metadata: {
-          charsPointsPrice: 0
+          charsPointsPrice: 0,
+          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
         }
       })
     })
@@ -524,7 +525,8 @@ describe('Rerank Train Task Processor', () => {
           model: 'tuned-model'
         },
         isActive: true,
-        charsPointsPrice: 0
+        charsPointsPrice: 0,
+        instruction: 'Given a web search query, retrieve relevant passages that answer the query'
       });
 
       // Verify evaluation stage

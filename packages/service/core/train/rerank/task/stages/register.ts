@@ -1,5 +1,8 @@
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
-import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
+import {
+  RerankTaskCheckpointStageEnum,
+  RerankTrainMethodEnum
+} from '@fastgpt/global/core/train/rerank/constants';
 import { createRerankModelConfig } from '../../model/controller';
 import { addLog } from '../../../../../common/system/log';
 import { createRerankEnhancedError } from '../../utils';
@@ -50,16 +53,21 @@ export async function runRegisterStage(task: RerankTrainTaskSchemaType): Promise
   // Use task.newModelName if provided, otherwise fall back to the model ID from SFT Bridge
   const tunedModelName = task.newModelName || tunedModelId;
 
-  // Inherit charsPointsPrice from base model
+  // Inherit charsPointsPrice and instruction from base model
   const baseModelDoc = await MongoSystemModel.findOne({ model: baseModelId }).lean();
-  const baseMeta = (baseModelDoc?.metadata ?? {}) as { charsPointsPrice?: number };
+  const baseMeta = (baseModelDoc?.metadata ?? {}) as {
+    charsPointsPrice?: number;
+    instruction?: string;
+  };
 
   try {
     const tunedModelObjectId = await createRerankModelConfig({
       name: tunedModelName,
       endpoint: tunedEndpoint,
       isActive: true,
-      charsPointsPrice: baseMeta.charsPointsPrice
+      charsPointsPrice: baseMeta.charsPointsPrice,
+      instruction:
+        task.trainMethod === RerankTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction
     });
 
     addLog.info('Created tuned model config and channel', {

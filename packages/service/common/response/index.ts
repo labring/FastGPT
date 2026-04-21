@@ -25,6 +25,10 @@ export interface ProcessedError {
   zodError?: any;
 }
 
+function isValidHttpStatusCode(code: number): boolean {
+  return Number.isInteger(code) && code >= 100 && code <= 599;
+}
+
 /**
  * 通用错误处理函数，提取错误信息并分类记录日志
  * @param params - 包含错误对象、URL和默认状态码的参数
@@ -44,9 +48,14 @@ export function processError(params: {
   if (ERROR_RESPONSE[errResponseKey]) {
     const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
 
+    let validStatusCode = defaultCode;
+    if (isValidHttpStatusCode(ERROR_RESPONSE[errResponseKey].code)) {
+      validStatusCode = ERROR_RESPONSE[errResponseKey].code;
+    }
     // 记录业务侧错误日志
     logger.info('API response error', {
       url,
+      statusCode: validStatusCode,
       code: ERROR_RESPONSE[errResponseKey].code,
       message: ERROR_RESPONSE[errResponseKey].message,
       statusText: ERROR_RESPONSE[errResponseKey].statusText,
@@ -54,7 +63,7 @@ export function processError(params: {
     });
 
     return {
-      code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
+      code: validStatusCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message: ERROR_RESPONSE[errResponseKey].message,
       data: ERROR_RESPONSE[errResponseKey].data,
