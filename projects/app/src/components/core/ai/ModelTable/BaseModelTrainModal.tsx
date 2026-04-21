@@ -12,24 +12,22 @@ import {
   ModalFooter,
   VStack
 } from '@chakra-ui/react';
-import { ChevronRightIcon, CloseIcon } from '@chakra-ui/icons';
+import { ChevronRightIcon, ChevronDownIcon, CloseIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useDatasetSelect } from '@/components/core/dataset/SelectModal';
-import FolderPath from '@/components/common/folder/Path';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createEmbeddingTrainTask, createRerankTrainTask } from '@/web/core/app/api/train';
+import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -44,6 +42,22 @@ type BaseModelTrainModalProps = {
   onSuccess?: () => void;
 };
 
+type DatasetTreeItem = DatasetListItemType & {
+  children?: DatasetTreeItem[];
+};
+
+type TreeNode = {
+  item: DatasetTreeItem;
+  id: string;
+  level: number;
+  isFolder: boolean;
+  childrenIds: string[];
+};
+
+type VisibleTreeNode = TreeNode & {
+  hasMatchedDescendant: boolean;
+};
+
 const labelStyles = {
   fontSize: 'sm' as const,
   color: 'myGray.900',
@@ -51,13 +65,21 @@ const labelStyles = {
   fontWeight: 'medium' as const
 };
 
+const toSelectedDataset = (item: DatasetListItemType): SelectedDatasetType => ({
+  datasetId: item._id,
+  avatar: item.avatar,
+  name: item.name,
+  vectorModel: item.vectorModel,
+  datasetType: item.type,
+  dataCount: item.dataCount
+});
+
 const BaseModelTrainModal = ({
   onClose,
   defaultBaseModel,
   onSuccess
 }: BaseModelTrainModalProps) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { embeddingModelList, reRankModelList } = useSystemStore();
 
   const baseModelTypeOptions = useMemo(
@@ -75,7 +97,10 @@ const BaseModelTrainModal = ({
   const [modelName, setModelName] = useState('');
   const isModelNameManuallyEdited = useRef(false);
   const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType[]>([]);
-  const [needsAutoSelect, setNeedsAutoSelect] = useState(!!defaultBaseModel?.model);
+  const [selectedEmptyFolderIds, setSelectedEmptyFolderIds] = useState<Set<string>>(new Set());
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
+  const [searchKey, setSearchKey] = useState('');
+  const hasInitializedSelectionRef = useRef(false);
 
   const availableBaseModelList = useMemo(
     () => ({
@@ -114,46 +139,94 @@ const BaseModelTrainModal = ({
   );
 
   const {
-    paths,
-    parentId,
-    setParentId,
-    searchKey,
-    setSearchKey,
-    datasets: rawDatasets,
-    isFetching,
-    loadDatasets
-  } = useDatasetSelect();
-
-  const datasets = useMemo(() => {
-    if (baseModelType === ModelTypeEnum.embedding && selectedBaseModel) {
-      return rawDatasets.filter(
-        (item: DatasetListItemType) =>
-          item.type === DatasetTypeEnum.folder || item.vectorModel?.model === selectedBaseModel
-      );
+    data: datasetTree = [],
+    loading: isFetching
+  } = useRequest(
+    async () => {
+      const res = await getDatasetsWithChildren({
+        parentId: null
+      });
+      return res;
+    },
+    {
+      manual: false,
+      errorToast: t('app:operation_failed')
     }
-    return rawDatasets;
-  }, [rawDatasets, baseModelType, selectedBaseModel]);
+  );
 
-  const visibleNonFolderDatasets = useMemo(
-    () => datasets.filter((item: DatasetListItemType) => item.type !== DatasetTypeEnum.folder),
-    [datasets]
+  const treeState = useMemo(() => {
+    const nodeMap = new Map<string, TreeNode>();
+    const leafDescendantMap = new Map<string, DatasetListItemType[]>();
+    const rootIds: string[] = [];
+    const allLeafItems: DatasetListItemType[] = [];
+    const emptyFolderIds = new Set<string>();
+
+    const build = (items: DatasetTreeItem[], level: number, isRoot = false) => {
+      items.forEach((item) => {
+        const id = String(item._id);
+        const childIds = (item.children || []).map((child) => String(child._id));
+        const node: TreeNode = {
+          item,
+          id,
+          level,
+          isFolder: item.type === DatasetTypeEnum.folder,
+          childrenIds: childIds
+        };
+
+        nodeMap.set(id, node);
+        if (isRoot) {
+          rootIds.push(id);
+        }
+
+        if (item.children?.length) {
+          build(item.children, level + 1);
+        }
+      });
+    };
+
+    const collectLeaves = (nodeId: string): DatasetListItemType[] => {
+      const node = nodeMap.get(nodeId);
+      if (!node) return [];
+
+      if (!node.isFolder) {
+        allLeafItems.push(node.item);
+        const leaves = [node.item];
+        leafDescendantMap.set(nodeId, leaves);
+        return leaves;
+      }
+
+      const leaves = node.childrenIds.flatMap((childId) => collectLeaves(childId));
+      leafDescendantMap.set(nodeId, leaves);
+      if (leaves.length === 0) {
+        emptyFolderIds.add(nodeId);
+      }
+      return leaves;
+    };
+
+    build(datasetTree, 0, true);
+    rootIds.forEach((id) => collectLeaves(id));
+
+    return {
+      nodeMap,
+      leafDescendantMap,
+      rootIds,
+      allLeafItems,
+      emptyFolderIds
+    };
+  }, [datasetTree]);
+
+  const selectedDatasetIdSet = useMemo(
+    () => new Set(selectedDatasets.map((item) => item.datasetId)),
+    [selectedDatasets]
   );
 
   useEffect(() => {
-    if (needsAutoSelect && !isFetching && selectedBaseModel) {
-      setSelectedDatasets(
-        visibleNonFolderDatasets.map((item: DatasetListItemType) => ({
-          datasetId: item._id,
-          avatar: item.avatar,
-          name: item.name,
-          vectorModel: item.vectorModel,
-          datasetType: item.type,
-          dataCount: item.dataCount
-        }))
-      );
-      setNeedsAutoSelect(false);
-    }
-  }, [needsAutoSelect, isFetching, selectedBaseModel, visibleNonFolderDatasets]);
+    if (hasInitializedSelectionRef.current || datasetTree.length === 0) return;
+
+    setSelectedDatasets(treeState.allLeafItems.map(toSelectedDataset));
+    setSelectedEmptyFolderIds(new Set(treeState.emptyFolderIds));
+    hasInitializedSelectionRef.current = true;
+  }, [datasetTree, treeState]);
 
   useEffect(() => {
     if (defaultBaseModel?.model) {
@@ -162,83 +235,168 @@ const BaseModelTrainModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleBaseModelTypeChange = useCallback(
-    (type: string) => {
-      setBaseModelType(type as ModelTypeEnum.rerank | ModelTypeEnum.embedding);
-      setSelectedBaseModel('');
-      setSelectedDatasets([]);
-      setNeedsAutoSelect(false);
-      setParentId('');
-      setSearchKey('');
-    },
-    [setParentId, setSearchKey]
-  );
+  const matchedState = useMemo(() => {
+    const keyword = searchKey.trim().toLowerCase();
+    const directMatchMap = new Map<string, boolean>();
+    const hasMatchedDescendantMap = new Map<string, boolean>();
+
+    treeState.nodeMap.forEach((node, id) => {
+      const matched =
+        !keyword ||
+        node.item.name.toLowerCase().includes(keyword) ||
+        node.item.intro?.toLowerCase().includes(keyword);
+      directMatchMap.set(id, matched);
+    });
+
+    const dfs = (nodeId: string): boolean => {
+      const node = treeState.nodeMap.get(nodeId);
+      if (!node) return false;
+
+      const childMatched = node.childrenIds.some((childId) => dfs(childId));
+      const matched = !!directMatchMap.get(nodeId) || childMatched;
+      hasMatchedDescendantMap.set(nodeId, matched);
+      return matched;
+    };
+
+    treeState.rootIds.forEach((id) => dfs(id));
+
+    return {
+      keyword,
+      hasMatchedDescendantMap
+    };
+  }, [searchKey, treeState]);
+
+  const visibleNodes = useMemo(() => {
+    const result: VisibleTreeNode[] = [];
+
+    const walk = (nodeId: string) => {
+      const node = treeState.nodeMap.get(nodeId);
+      if (!node) return;
+
+      const hasMatchedDescendant = matchedState.hasMatchedDescendantMap.get(nodeId) ?? false;
+      if (matchedState.keyword && !hasMatchedDescendant) return;
+
+      result.push({
+        ...node,
+        hasMatchedDescendant
+      });
+
+      const shouldExpandForSearch = !!matchedState.keyword;
+      const isExpanded = shouldExpandForSearch || expandedFolderIds.has(nodeId);
+
+      if (node.isFolder && isExpanded) {
+        node.childrenIds.forEach((childId) => walk(childId));
+      }
+    };
+
+    treeState.rootIds.forEach((id) => walk(id));
+
+    return result;
+  }, [expandedFolderIds, matchedState, treeState]);
+
+  const handleBaseModelTypeChange = useCallback((type: string) => {
+    setBaseModelType(type as ModelTypeEnum.rerank | ModelTypeEnum.embedding);
+    setSelectedBaseModel('');
+  }, []);
 
   const handleBaseModelChange = useCallback(
     (model: string) => {
       setSelectedBaseModel(model);
-      setSelectedDatasets([]);
-      setNeedsAutoSelect(true);
-      setParentId('');
-      setSearchKey('');
       autoFillModelName(model);
-      loadDatasets();
     },
-    [autoFillModelName, setParentId, setSearchKey, loadDatasets]
+    [autoFillModelName]
   );
 
-  const isDatasetSelected = useCallback(
-    (datasetId: string) => selectedDatasets.some((d) => d.datasetId === datasetId),
-    [selectedDatasets]
+  const getFolderCheckState = useCallback(
+    (folderId: string) => {
+      const leafItems = treeState.leafDescendantMap.get(folderId) || [];
+      if (leafItems.length === 0) {
+        return {
+          isChecked: selectedEmptyFolderIds.has(folderId),
+          isIndeterminate: false
+        };
+      }
+
+      const selectedCount = leafItems.reduce(
+        (count, item) => count + (selectedDatasetIdSet.has(item._id) ? 1 : 0),
+        0
+      );
+
+      return {
+        isChecked: selectedCount === leafItems.length,
+        isIndeterminate: selectedCount > 0 && selectedCount < leafItems.length
+      };
+    },
+    [selectedDatasetIdSet, selectedEmptyFolderIds, treeState.leafDescendantMap]
   );
 
-  const isAllSelected = useMemo(() => {
-    if (visibleNonFolderDatasets.length === 0) return false;
-    return visibleNonFolderDatasets.every((item: DatasetListItemType) =>
-      isDatasetSelected(item._id)
-    );
-  }, [visibleNonFolderDatasets, isDatasetSelected]);
+  const toggleFolderSelection = useCallback(
+    (folderId: string, checked: boolean) => {
+      const leafItems = treeState.leafDescendantMap.get(folderId) || [];
+
+      if (leafItems.length === 0) {
+        setSelectedEmptyFolderIds((prev) => {
+          const next = new Set(prev);
+          if (checked) {
+            next.add(folderId);
+          } else {
+            next.delete(folderId);
+          }
+          return next;
+        });
+        return;
+      }
+
+      const leafIdSet = new Set(leafItems.map((item) => item._id));
+      setSelectedDatasets((prev) => {
+        if (checked) {
+          const existedIds = new Set(prev.map((item) => item.datasetId));
+          const additions = leafItems
+            .filter((item) => !existedIds.has(item._id))
+            .map((item) => toSelectedDataset(item));
+          return [...prev, ...additions];
+        }
+        return prev.filter((item) => !leafIdSet.has(item.datasetId));
+      });
+    },
+    [treeState.leafDescendantMap]
+  );
 
   const onSelectDataset = useCallback((item: DatasetListItemType, checked: boolean) => {
     if (checked) {
-      setSelectedDatasets((prev) => [
-        ...prev,
-        {
-          datasetId: item._id,
-          avatar: item.avatar,
-          name: item.name,
-          vectorModel: item.vectorModel,
-          datasetType: item.type,
-          dataCount: item.dataCount
+      setSelectedDatasets((prev) => {
+        if (prev.some((dataset) => dataset.datasetId === item._id)) {
+          return prev;
         }
-      ]);
+        return [...prev, toSelectedDataset(item)];
+      });
     } else {
       setSelectedDatasets((prev) => prev.filter((d) => d.datasetId !== item._id));
     }
   }, []);
 
+  const isAllSelected = useMemo(() => {
+    if (treeState.allLeafItems.length === 0 && treeState.emptyFolderIds.size === 0) return false;
+
+    const allLeavesSelected = treeState.allLeafItems.every((item) => selectedDatasetIdSet.has(item._id));
+    const allEmptyFoldersSelected = [...treeState.emptyFolderIds].every((id) =>
+      selectedEmptyFolderIds.has(id)
+    );
+
+    return allLeavesSelected && allEmptyFoldersSelected;
+  }, [selectedDatasetIdSet, selectedEmptyFolderIds, treeState]);
+
   const handleSelectAll = useCallback(
     (checked: boolean) => {
       if (checked) {
-        const newSelections = visibleNonFolderDatasets
-          .filter((item: DatasetListItemType) => !isDatasetSelected(item._id))
-          .map((item: DatasetListItemType) => ({
-            datasetId: item._id,
-            avatar: item.avatar,
-            name: item.name,
-            vectorModel: item.vectorModel,
-            datasetType: item.type,
-            dataCount: item.dataCount
-          }));
-        setSelectedDatasets((prev) => [...prev, ...newSelections]);
+        setSelectedDatasets(treeState.allLeafItems.map(toSelectedDataset));
+        setSelectedEmptyFolderIds(new Set(treeState.emptyFolderIds));
       } else {
-        const idsToRemove = new Set(
-          visibleNonFolderDatasets.map((d: DatasetListItemType) => d._id)
-        );
-        setSelectedDatasets((prev) => prev.filter((d) => !idsToRemove.has(d.datasetId)));
+        setSelectedDatasets([]);
+        setSelectedEmptyFolderIds(new Set());
       }
     },
-    [visibleNonFolderDatasets, isDatasetSelected]
+    [treeState]
   );
 
   const { runAsync: submitTrainTask, loading: isSubmitting } = useRequest(
@@ -280,7 +438,7 @@ const BaseModelTrainModal = ({
       h={'90vh'}
       maxH={'750px'}
       isCentered
-      isLoading={isFetching && !!selectedBaseModel}
+      isLoading={isFetching}
     >
       <ModalBody flex={1} h={0} overflowY={'auto'} display={'flex'} flexDirection={'column'}>
         <Box mb={4}>
@@ -354,132 +512,136 @@ const BaseModelTrainModal = ({
               py={3}
               overflow={'hidden'}
             >
-              {!selectedBaseModel ? (
-                <EmptyTip text={t('account_model:train_select_base_model_first')} />
-              ) : (
-                <>
-                  <Box mb={2} px={3}>
-                    <SearchInput
-                      placeholder={t('app:Search_dataset')}
-                      value={searchKey}
-                      onChange={(e) => setSearchKey(e.target.value?.trim())}
-                      size={'md'}
-                    />
-                  </Box>
-                  <Box
-                    mb={1}
-                    py={0.5}
-                    px={3}
-                    fontSize={'sm'}
-                    minH={7}
-                    display={'flex'}
-                    alignItems={'center'}
-                  >
-                    {!searchKey && paths.length === 0 && datasets.length > 0 && (
-                      <Box
-                        fontSize={'xs'}
-                        py={0.5}
-                        px={1.5}
-                        borderRadius={'sm'}
-                        color={'myGray.700'}
-                        fontWeight={'bold'}
+              <Box mb={2} px={3}>
+                <SearchInput
+                  placeholder={t('app:Search_dataset')}
+                  value={searchKey}
+                  onChange={(e) => setSearchKey(e.target.value?.trim())}
+                  size={'md'}
+                />
+              </Box>
+              <Box
+                mb={1}
+                py={0.5}
+                px={3}
+                fontSize={'sm'}
+                minH={7}
+                display={'flex'}
+                alignItems={'center'}
+                color={'myGray.500'}
+              >
+                {searchKey ? t('chat:search_results') : t('common:root_folder')}
+              </Box>
+              <VStack
+                align={'stretch'}
+                spacing={1}
+                flex={1}
+                px={3}
+                overflowY={'auto'}
+                h={0}
+                minH={0}
+              >
+                {visibleNodes.length === 0 && !isFetching && <EmptyTip text={t('common:folder.empty')} />}
+                {visibleNodes.map((node) => {
+                  const { item, id, level, isFolder, childrenIds } = node;
+                  const folderCheckState = isFolder
+                    ? getFolderCheckState(id)
+                    : {
+                        isChecked: selectedDatasetIdSet.has(id),
+                        isIndeterminate: false
+                      };
+                  const isExpanded = searchKey ? true : expandedFolderIds.has(id);
+
+                  return (
+                    <Box key={id} userSelect={'none'}>
+                      <Flex
+                        align={'center'}
+                        pr={2}
+                        pl={3 + level * 20}
+                        py={1.5}
+                        borderRadius={'md'}
+                        _hover={{ bg: 'myGray.50' }}
                         cursor={'pointer'}
-                        _hover={{ bg: 'myGray.100' }}
-                        onClick={() => setParentId('')}
-                      >
-                        {t('common:root_folder')}
-                      </Box>
-                    )}
-                    {!searchKey && paths.length > 0 && (
-                      <FolderPath
-                        paths={paths.map((path) => ({
-                          parentId: path.parentId,
-                          parentName: path.parentName
-                        }))}
-                        FirstPathDom={t('common:root_folder')}
-                        onClick={(e) => setParentId(e)}
-                      />
-                    )}
-                  </Box>
-                  <VStack
-                    align={'stretch'}
-                    spacing={1}
-                    flex={1}
-                    px={3}
-                    overflowY={'auto'}
-                    h={0}
-                    minH={0}
-                  >
-                    {datasets.length === 0 && !isFetching && (
-                      <EmptyTip text={t('common:folder.empty')} />
-                    )}
-                    {datasets.map((item: DatasetListItemType) => (
-                      <Box key={item._id} userSelect={'none'}>
-                        <Flex
-                          align={'center'}
-                          pr={2}
-                          pl={3}
-                          py={1.5}
-                          borderRadius={'md'}
-                          _hover={{ bg: 'myGray.50' }}
-                          cursor={'pointer'}
-                          onClick={() => {
-                            if (item.type === DatasetTypeEnum.folder) {
-                              if (searchKey) setSearchKey('');
-                              setParentId(item._id);
-                            } else {
-                              onSelectDataset(item, !isDatasetSelected(item._id));
+                        onClick={() => {
+                          if (isFolder) {
+                            if (!searchKey) {
+                              setExpandedFolderIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(id)) {
+                                  next.delete(id);
+                                } else {
+                                  next.add(id);
+                                }
+                                return next;
+                              });
                             }
+                            return;
+                          }
+                          onSelectDataset(item, !selectedDatasetIdSet.has(id));
+                        }}
+                      >
+                        <Box
+                          w={5}
+                          onClick={(e) => {
+                            e.stopPropagation();
                           }}
                         >
-                          <Box w={5} onClick={(e) => e.stopPropagation()}>
-                            {item.type !== DatasetTypeEnum.folder && (
-                              <Checkbox
-                                isChecked={isDatasetSelected(item._id)}
-                                onChange={(e) => onSelectDataset(item, e.target.checked)}
-                                colorScheme={'blue'}
-                                size={'sm'}
-                              />
-                            )}
-                          </Box>
-                          <Avatar
-                            src={item.avatar}
-                            w={7}
-                            h={7}
-                            borderRadius={'sm'}
-                            ml={2}
-                            mr={2.5}
+                          <Checkbox
+                            isChecked={folderCheckState.isChecked}
+                            isIndeterminate={folderCheckState.isIndeterminate}
+                            onChange={(e) => {
+                              if (isFolder) {
+                                toggleFolderSelection(id, e.target.checked);
+                              } else {
+                                onSelectDataset(item, e.target.checked);
+                              }
+                            }}
+                            colorScheme={'blue'}
+                            size={'sm'}
                           />
-                          <Box flex={1} minW={0}>
-                            <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
-                              {item.name}
-                            </Box>
-                            <Box fontSize={'xs'} color={'myGray.500'} mt={0.5}>
-                              {item.type === DatasetTypeEnum.folder
-                                ? t('common:Folder')
-                                : item.vectorModel?.name}
-                            </Box>
+                        </Box>
+                        <Box
+                          w={5}
+                          ml={2}
+                          mr={1.5}
+                          display={'flex'}
+                          alignItems={'center'}
+                          justifyContent={'center'}
+                          color={'myGray.500'}
+                        >
+                          {isFolder && childrenIds.length > 0 ? (
+                            isExpanded ? (
+                              <ChevronDownIcon w={5} h={5} />
+                            ) : (
+                              <ChevronRightIcon w={5} h={5} />
+                            )
+                          ) : null}
+                        </Box>
+                        <Avatar src={item.avatar} w={7} h={7} borderRadius={'sm'} mr={2.5} />
+                        <Box flex={1} minW={0}>
+                          <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
+                            {item.name}
                           </Box>
-                          {item.type === DatasetTypeEnum.folder && (
-                            <ChevronRightIcon w={5} h={5} color={'myGray.500'} />
-                          )}
-                        </Flex>
-                      </Box>
-                    ))}
-                  </VStack>
-                  {datasets.length > 0 && (
-                    <Flex mt={2} px={3} align={'center'}>
-                      <Checkbox
-                        isChecked={isAllSelected}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        colorScheme={'blue'}
-                        size={'sm'}
-                      >
-                        <Box fontSize={'sm'}>{t('common:Select_all')}</Box>
-                      </Checkbox>
-                    </Flex>
-                  )}
-                </>
+                          <Box fontSize={'xs'} color={'myGray.500'} mt={0.5}>
+                            {isFolder ? t('common:Folder') : item.vectorModel?.name}
+                          </Box>
+                        </Box>
+                      </Flex>
+                    </Box>
+                  );
+                })}
+              </VStack>
+              {datasetTree.length > 0 && (
+                <Flex mt={2} px={3} align={'center'}>
+                  <Checkbox
+                    isChecked={isAllSelected}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    colorScheme={'blue'}
+                    size={'sm'}
+                  >
+                    <Box fontSize={'sm'}>{t('common:Select_all')}</Box>
+                  </Checkbox>
+                </Flex>
               )}
             </Flex>
 
