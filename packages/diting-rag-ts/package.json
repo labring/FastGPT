@@ -28,7 +28,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@langchain/langgraph": "^0.2.0",
-    "@zilliz/milvus2-sdk-node": "^2.4.0",
+    "@zilliz/milvus2-sdk-node": "2.6.9",
     "commander": "^11.1.0",
     "dotenv": "^16.3.0",
     "hono": "^4.0.0",
