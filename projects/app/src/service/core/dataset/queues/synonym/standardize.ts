@@ -20,7 +20,10 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 
 // Import synonym utilities
 import { getDatasetSynonymConfig } from '@fastgpt/service/core/dataset/indexTransform/controller';
-import { applySynonymTransform } from '@fastgpt/service/core/dataset/indexTransform/utils';
+import {
+  applySynonymTransform,
+  restoreOriginalText
+} from '@fastgpt/service/core/dataset/indexTransform/utils';
 
 type TrainingDataType = DatasetTrainingSchemaType & {
   dataset: { vectorModel: string };
@@ -32,6 +35,47 @@ type TrainingDataType = DatasetTrainingSchemaType & {
     indexes: DatasetDataSchemaType['indexes'];
   };
 };
+
+/**
+ * 对比两次同义词标准化结果是否一致
+ * 只对比转换的语义等价性（原始词→标准词的映射关系），不对比 synonymFileIds 和位置信息
+ */
+function compareSynonymResult(
+  historyMeta: { synonymFileIds: string[]; transformations: any[] } | undefined,
+  currentResult: { transformations: any[] }
+): boolean {
+  // 无历史数据，视为不一致（需要更新）
+  if (!historyMeta) {
+    return false;
+  }
+
+  // 对比转换记录数量
+  const historyTransforms = historyMeta.transformations || [];
+  const currentTransforms = currentResult.transformations || [];
+  if (historyTransforms.length !== currentTransforms.length) {
+    return false;
+  }
+
+  // 如果都没有转换，视为一致
+  if (historyTransforms.length === 0 && currentTransforms.length === 0) {
+    return true;
+  }
+
+  // 对比每个转换的语义等价性
+  for (let i = 0; i < historyTransforms.length; i++) {
+    const h = historyTransforms[i];
+    const c = currentTransforms[i];
+
+    // 核心：原始词 -> 标准词的映射关系是否相同
+    if (h.originalTerm !== c.originalTerm) return false;
+    if (h.standardizedTerm !== c.standardizedTerm) return false;
+
+    // 不对比位置信息（恢复原文后重新标准化，位置可能变化）
+    // 不对比 synonymMappingId（文件ID可能变化但映射关系相同）
+  }
+
+  return true;
+}
 
 export const processSynonymStandardize = async ({
   trainingData
@@ -82,28 +126,71 @@ export const processSynonymStandardize = async ({
     ? applySynonymTransform(trainingData.data.a, synonymDict, synonymMappingMap)
     : null;
 
-  // 3. 处理每个 index (带token长度检查)
+  // 3. 【关键逻辑】处理每个 index（带增量对比）
   const indexesToUpdate: Array<{
     index: any;
     indexResult: any;
     arrayIndex: number;
+    clearMetadata?: boolean;
+  }> = [];
+  const indexesToUpdateFileIdOnly: Array<{
+    index: any;
+    arrayIndex: number;
+    newSynonymMetadata: any;
   }> = [];
 
   for (let i = 0; i < trainingData.data.indexes.length; i++) {
     const index = trainingData.data.indexes[i];
 
-    const indexResult = applySynonymTransform(index.text, synonymDict, synonymMappingMap);
+    // 【增量对比】如果该 index 已有同义词元数据，先恢复原文
+    let originalText: string;
+    if (index.synonymMetadata?.transformations) {
+      originalText = restoreOriginalText(index.text, index.synonymMetadata.transformations);
+    } else {
+      originalText = index.text;
+    }
 
-    // ⚠️ 只有当发生了转换时才继续检查
+    // 用新的同义词配置进行标准化
+    const indexResult = applySynonymTransform(originalText, synonymDict, synonymMappingMap);
+
+    // 【增量对比】对比历史结果与当前结果（只对比转换语义，不对比 fileId）
+    const isSameTransform = compareSynonymResult(index.synonymMetadata, {
+      transformations: indexResult.transformations
+    });
+
+    if (isSameTransform) {
+      // 转换内容一致，检查 fileId 是否需要更新
+      const historyFileIds = index.synonymMetadata?.synonymFileIds?.sort() || [];
+      const currentFileIds = [...synonymFileIds].sort();
+      const isSameFileId =
+        historyFileIds.length === currentFileIds.length &&
+        historyFileIds.every((id: string, idx: number) => id === currentFileIds[idx]);
+
+      if (!isSameFileId && index.synonymMetadata) {
+        // 转换内容一致，但 fileId 不同，只更新元数据中的 fileId
+        indexesToUpdateFileIdOnly.push({
+          index,
+          arrayIndex: i,
+          newSynonymMetadata: {
+            synonymFileIds,
+            transformations: index.synonymMetadata.transformations // 保留原转换记录
+          }
+        });
+      }
+      // 如果 fileId 也相同，完全无变化，跳过
+      continue;
+    }
+
+    // 转换内容不一致，需要更新向量 + 更新元数据
     if (indexResult.transformations.length > 0) {
-      // ✅ Token 检查: 如果标准化后的文本超长，跳过该 index 的标准化
+      // 【场景1/3/7/8】有新转换，检查 token 长度
       const tokenCount = await countPromptTokens(indexResult.transformedText);
 
       if (tokenCount > maxTokenLimit) {
         addLog.warn('[SynonymStandardize] Standardized text exceeds maxToken, skipping', {
           dataId: String(trainingData.dataId),
           indexType: index.type,
-          originalLength: index.text.length,
+          originalLength: originalText.length,
           standardizedLength: indexResult.transformedText.length,
           tokenCount,
           maxTokenLimit
@@ -112,7 +199,17 @@ export const processSynonymStandardize = async ({
       }
 
       indexesToUpdate.push({ index, indexResult, arrayIndex: i });
+    } else if (index.synonymMetadata) {
+      // 【场景5】历史有转换记录，但新规则未命中
+      // 需要清空 synonymMetadata，用原文重建向量
+      indexesToUpdate.push({
+        index,
+        indexResult: { transformedText: originalText, transformations: [] },
+        arrayIndex: i,
+        clearMetadata: true // 标记需要移除 synonymMetadata
+      });
     }
+    // 【场景2】无历史元数据且新规则未命中 → 跳过，不处理
   }
 
   let totalTokens = 0;
@@ -122,7 +219,8 @@ export const processSynonymStandardize = async ({
     qStandardized.transformations.length > 0 ||
     (aStandardized && aStandardized.transformations.length > 0);
 
-  // 4. 批量更新向量 (先删后插)
+  // 4. 批量更新向量（先删后插）—— 只有转换内容变化时才需要
+  let insertResult: { insertIds: string[]; tokens: number } | null = null;
   if (indexesToUpdate.length > 0) {
     // 删除旧向量
     const oldDataIds = indexesToUpdate.map((item) => item.index.dataId);
@@ -132,7 +230,7 @@ export const processSynonymStandardize = async ({
     });
 
     // 插入新向量
-    const insertResult = await insertDatasetDataVector({
+    insertResult = await insertDatasetDataVector({
       inputs: indexesToUpdate.map((item) => item.indexResult.transformedText),
       model: getEmbeddingModel(trainingData.dataset.vectorModel),
       teamId: String(teamId),
@@ -141,17 +239,34 @@ export const processSynonymStandardize = async ({
     });
 
     totalTokens = insertResult.tokens;
+  }
 
+  // 5. 构建新的 indexes 数组（两种情况都需要更新 MongoDB）
+  const hasAnyUpdate = indexesToUpdate.length > 0 || indexesToUpdateFileIdOnly.length > 0;
+
+  if (hasAnyUpdate) {
     // 更新 indexes 数组
     const newIndexes = trainingData.data.indexes.map((index, i) => {
+      // 情况1：转换内容变化，更新向量 + 更新元数据
       const updateIndex = indexesToUpdate.findIndex((item) => item.arrayIndex === i);
+      if (updateIndex !== -1 && insertResult) {
+        const { indexResult, clearMetadata } = indexesToUpdate[updateIndex];
 
-      if (updateIndex !== -1) {
-        const { indexResult } = indexesToUpdate[updateIndex];
+        if (clearMetadata) {
+          // 【场景5】新规则未命中，清空 synonymMetadata，用原文
+          const { synonymMetadata, ...rest } = index;
+          return {
+            ...rest,
+            dataId: insertResult.insertIds[updateIndex],
+            text: indexResult.transformedText // 原文
+            // 不设置 synonymMetadata，即移除该字段
+          };
+        }
+
         return {
           ...index,
-          dataId: insertResult.insertIds[updateIndex], // 新的 dataId
-          text: indexResult.transformedText, // 标准化文本
+          dataId: insertResult.insertIds[updateIndex],
+          text: indexResult.transformedText,
           synonymMetadata: {
             synonymFileIds,
             transformations: indexResult.transformations
@@ -159,25 +274,20 @@ export const processSynonymStandardize = async ({
         };
       }
 
+      // 情况2：转换内容一致但 fileId 变化，只更新元数据中的 fileId
+      const fileIdOnlyIndex = indexesToUpdateFileIdOnly.findIndex((item) => item.arrayIndex === i);
+      if (fileIdOnlyIndex !== -1) {
+        const { newSynonymMetadata } = indexesToUpdateFileIdOnly[fileIdOnlyIndex];
+        return {
+          ...index,
+          synonymMetadata: newSynonymMetadata
+        };
+      }
+
       return index;
     });
 
-    // 5. 更新 MongoDB (使用 session 保证原子性)
-    /**
-     * 使用 retryFn 处理 WriteConflict 错误
-     *
-     * 问题场景：
-     * 多个 worker 并发处理不同的 training 任务时，在链式处理阶段会同时执行
-     * findOneAndUpdate 去抢夺下一条 synonymProcessing='standardize' 的数据。
-     * MongoDB 事务中的 findOneAndUpdate 是排他的，当多个 session 同时尝试
-     * 更新满足相同条件的文档时，只有一个能成功，其他会抛出 WriteConflict。
-     *
-     * 解决方案：
-     * 1. retryFn 重试机制：发生冲突时自动重试，下次可能获取到其他未被锁定的数据
-     * 2. 幂等性检查：创建任务前先检查是否已存在，避免重复创建
-     *
-     * 这个方案与 generateVector.ts 中的 rebuildData 函数保持一致。
-     */
+    // 6. 更新 MongoDB (使用 session 保证原子性)
     await retryFn(
       async () => {
         await mongoSessionRun(async (session) => {
@@ -192,7 +302,7 @@ export const processSynonymStandardize = async ({
             { session }
           );
 
-          // 6. 如果 q/a 发生了同义词转换，更新全文检索
+          // 7. 如果 q/a 发生了同义词转换，更新全文检索
           if (qaHasTransformation) {
             const fullText =
               trainingData.data.a && aStandardized
@@ -217,10 +327,10 @@ export const processSynonymStandardize = async ({
             );
           }
 
-          // 7. 删除训练任务
+          // 8. 删除训练任务
           await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
 
-          // 8. 链式处理:查找下一条需要处理的数据
+          // 9. 链式处理:查找下一条需要处理的数据
           const nextData = await MongoDatasetData.findOneAndUpdate(
             {
               synonymProcessing: 'standardize',
@@ -271,10 +381,8 @@ export const processSynonymStandardize = async ({
       3 // 最多重试3次
     );
   } else {
-    /**
-     * 使用 retryFn 处理 WriteConflict 错误（同上）
-     * indexes 无需更新的分支，但链式处理逻辑相同，存在同样的并发竞争问题
-     */
+    // 无任何变化（包括向量和元数据），直接删除训练任务
+    // 但仍需处理 q/a 的全文检索更新
     await retryFn(
       async () => {
         await mongoSessionRun(async (session) => {
