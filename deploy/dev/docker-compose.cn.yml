@@ -174,7 +174,7 @@ services:
       retries: 3
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.10
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.11
     ports:
       - 3002:3000
     networks:
@@ -229,7 +229,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.5.6
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v0.6.0
     container_name: fastgpt-plugin
     restart: always
     ports:
@@ -323,7 +323,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.3.5
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.5.3
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     ports:

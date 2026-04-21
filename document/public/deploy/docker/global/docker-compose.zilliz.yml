@@ -134,7 +134,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.14.10.2 
+    image: ghcr.io/labring/fastgpt:v4.14.12 
     ports:
       - 3000:3000
     networks:
@@ -236,7 +236,7 @@ services:
       - ./config.json:/app/data/config.json
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.10
+    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.11
     networks:
       - codesandbox
     restart: always
@@ -295,7 +295,7 @@ services:
       <<: [*x-log-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.5.6
+    image: ghcr.io/labring/fastgpt-plugin:v0.6.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -393,7 +393,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.3.5
+    image: ghcr.io/labring/aiproxy:v0.5.3
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
