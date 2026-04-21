@@ -235,7 +235,7 @@ const FileSelector = ({
       <MyIcon name={'common/uploadFileFill'} w={'32px'} />
       {isMaxSelected ? (
         <>
-          <Box color={'myGray.500'} fontSize={'xs'}>
+          <Box fontWeight={'500'} fontSize={'sm'} color={'#111824'}>
             {t('file:reached_max_file_count')}
           </Box>
         </>
@@ -248,7 +248,7 @@ const FileSelector = ({
         </>
       ) : (
         <>
-          <Box fontWeight={'bold'}>
+          <Box fontWeight={'500'} fontSize={'sm'} color={'#111824'}>
             {isDragging
               ? t('file:release_the_mouse_to_upload_the_file')
               : t('file:select_and_drag_file_tip')}

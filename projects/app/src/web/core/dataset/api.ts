@@ -61,6 +61,10 @@ import type {
   CustomLinkImportResponse
 } from '@/pages/api/core/dataset/collection/create/custom/link';
 import type {
+  CustomWebsiteImportBody,
+  CustomWebsiteImportResponse
+} from '@/pages/api/core/dataset/collection/create/custom/website';
+import type {
   CheckDuplicateFileNamesBody,
   CheckDuplicateFileNamesResponse
 } from '@/pages/api/core/dataset/collection/check/duplicate';
@@ -225,7 +229,8 @@ export const postImportFaqByTemplate = ({
   datasetId,
   parentId,
   overwriteDuplicate,
-  enableEnhance
+  enableEnhance,
+  tags
 }: {
   file: File;
   percentListen: (percent: number) => void;
@@ -233,12 +238,13 @@ export const postImportFaqByTemplate = ({
   parentId?: string;
   overwriteDuplicate?: boolean;
   enableEnhance?: boolean;
+  tags?: import('@fastgpt/global/core/dataset/type').CollectionTagValueType[];
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
   formData.append(
     'data',
-    JSON.stringify({ datasetId, parentId, overwriteDuplicate, enableEnhance })
+    JSON.stringify({ datasetId, parentId, overwriteDuplicate, enableEnhance, tags })
   );
 
   return POST<{ collectionId: string }>(
@@ -308,6 +314,16 @@ export const postCreateCustomLinkCollection = (
   POST<CustomLinkImportResponse>(`/core/dataset/collection/create/custom/link`, data, {
     timeout: 360000
   });
+
+/**
+ * 读取根地址下所有静态网页 - 批量爬取并创建知识库集合
+ */
+export const postCreateCustomWebsiteCollection = (data: CustomWebsiteImportBody) =>
+  POST<CustomWebsiteImportResponse>(
+    `/core/dataset/collection/create/custom/website`,
+    data,
+    { timeout: 360000 }
+  );
 
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);

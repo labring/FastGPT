@@ -56,8 +56,7 @@ const FileSourceSelector = dynamic(() => import('../Import/components/FileSource
 const FileUploadModal = dynamic(() => import('../components/FileUploadModal/index'));
 const BackupImportModal = dynamic(() => import('../CollectionCard/BackupImportModal'));
 const TemplateImportModal = dynamic(() => import('../CollectionCard/TemplateImportModal'));
-const FaqImportModal = dynamic(() => import('./FaqImportModal'));
-const GeneralImportModal = dynamic(() => import('./GeneralImportModal'));
+const AddFileModal = dynamic(() => import('./AddFileModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { t, i18n } = useTranslation();
@@ -121,17 +120,11 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     onOpen: onOpenTemplateImportModal,
     onClose: onCloseTemplateImportModal
   } = useDisclosure();
-  // FAQ import modal
+  // Add file modal (unified)
   const {
-    isOpen: isOpenFaqImportModal,
-    onOpen: onOpenFaqImportModal,
-    onClose: onCloseFaqImportModal
-  } = useDisclosure();
-  // General import modal
-  const {
-    isOpen: isOpenGeneralImportModal,
-    onOpen: onOpenGeneralImportModal,
-    onClose: onCloseGeneralImportModal
+    isOpen: isOpenAddFileModal,
+    onOpen: onOpenAddFileModal,
+    onClose: onCloseAddFileModal
   } = useDisclosure();
 
   const { runAsync: onCreateCollection } = useRequest(
@@ -478,30 +471,17 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                   children: [
                     {
                       label: (
-                        <Flex>
-                          <MyIcon name={'core/dataset/fileCollection'} w={'20px'} mr={2} />
-                          {t('dataset:general_dataset_type')}
+                        <Flex alignItems="center">
+                          <MyIcon name={'core/dataset/article'} w={'16px'} h={'16px'} mr={2} />
+                          {t('dataset:file')}
                         </Flex>
                       ),
-                      onClick: onOpenGeneralImportModal
+                      onClick: onOpenAddFileModal
                     },
                     {
                       label: (
-                        <Flex>
-                          <MyIcon name={'core/dataset/tableCollection'} w={'20px'} mr={2} />
-                          {t('dataset:faq_dataset_type')}
-                        </Flex>
-                      ),
-                      onClick: onOpenFaqImportModal
-                    }
-                  ]
-                },
-                {
-                  children: [
-                    {
-                      label: (
-                        <Flex>
-                          <MyIcon name={'common/folderFill'} w={'20px'} mr={2} />
+                        <Flex alignItems="center">
+                          <MyIcon name={'common/folderFill'} w={'16px'} h={'16px'} mr={2} />
                           {t('common:Folder')}
                         </Flex>
                       ),
@@ -805,24 +785,13 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           onClose={onCloseTemplateImportModal}
         />
       )}
-      {isOpenFaqImportModal && (
-        <FaqImportModal
-          onFinish={() => {
-            getData(1);
-          }}
-          onClose={onCloseFaqImportModal}
-          parentId={parentId}
-        />
-      )}
-      {isOpenGeneralImportModal && (
-        <GeneralImportModal
-          isOpen={isOpenGeneralImportModal}
-          onClose={onCloseGeneralImportModal}
+      {isOpenAddFileModal && (
+        <AddFileModal
+          isOpen={isOpenAddFileModal}
+          onClose={onCloseAddFileModal}
           datasetId={datasetDetail._id}
           parentId={parentId}
-          onFinish={() => {
-            getData(1);
-          }}
+          onFinish={() => getData(1)}
         />
       )}
     </MyBox>
