@@ -65,7 +65,7 @@ export const DatasetSelectModal = ({
     datasets,
     isFetching,
     loadDatasets
-  } = useDatasetSelect(scene, formatResData);
+  } = useDatasetSelect();
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(

@@ -1,4 +1,4 @@
-import type { NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSseErrorResponse, sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import {
   DispatchNodeResponseKeyEnum,
@@ -77,6 +77,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -373,9 +374,3 @@ export const config = {
     responseLimit: '20mb'
   }
 };
-
-export default NextAPI(handler);
-
-const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
-
-async function handler(req: NextApiRequest, res: NextApiResponse) {

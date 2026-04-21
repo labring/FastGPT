@@ -377,7 +377,6 @@ export const readS3FileContentByBuffer = async ({
         rawText = rawText.replace(imgPattern, '');
         if (formatText) formatText = formatText.replace(imgPattern, '');
       }
-      }
     });
   }
 

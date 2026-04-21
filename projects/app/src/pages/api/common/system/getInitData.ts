@@ -5,10 +5,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import type {
-  AiproxyMapProviderType,
-  I18nStringStrictType
-} from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';

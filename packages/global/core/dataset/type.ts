@@ -418,6 +418,7 @@ export type UpdateDatasetDataPropsType = z.infer<typeof UpdateDatasetDataPropsSc
 
 // Create dataset data
 export const CreateDatasetDataPropsSchema = z.object({
+  id: ObjectIdSchema.optional().meta({ description: '自定义数据 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
@@ -430,6 +431,7 @@ export const CreateDatasetDataPropsSchema = z.object({
     .array(DatasetDataIndexItemSchema.omit({ dataId: true }))
     .optional()
     .meta({ description: '向量索引列表' }),
+  metadata: z.record(z.string(), z.any()).optional().meta({ description: '数据元数据' }),
   indexPrefix: z.string().optional().meta({ description: '索引前缀标题' })
 });
 export type CreateDatasetDataPropsType = z.infer<typeof CreateDatasetDataPropsSchema>;

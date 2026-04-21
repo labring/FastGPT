@@ -73,6 +73,7 @@ type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAut
   chatInputGuide: ChatInputGuideConfigType;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
+  isAssistantType: boolean;
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -128,6 +129,7 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     open: false,
     customUrl: ''
   },
+  isAssistantType: false,
   // @ts-ignore
   variablesForm: undefined
 });
@@ -252,7 +254,8 @@ const Provider = ({
     isChatting,
     chatInputGuide,
     getHistoryResponseData,
-    chatType
+    chatType,
+    isAssistantType: false
   };
 
   return (

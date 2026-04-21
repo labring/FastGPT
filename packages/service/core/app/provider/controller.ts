@@ -4,10 +4,12 @@ import {
   defaultProvider,
   formatModelProviders
 } from '@fastgpt/global/core/ai/provider';
+import type { AIProxyChannelsType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 // Preload model providers
 export async function preloadModelProviders(): Promise<void> {
-  const { modelProviders, aiproxyChannels } = await loadModelProviders();
+  const { modelProviders, aiproxyChannels: _aiproxyChannels } = await loadModelProviders();
+  const aiproxyChannels: AIProxyChannelsType = _aiproxyChannels ?? [];
 
   const { ModelProviderListCache, ModelProviderMapCache } = formatModelProviders(modelProviders);
   global.ModelProviderRawCache = modelProviders;

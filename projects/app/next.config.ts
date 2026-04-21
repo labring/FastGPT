@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_URL,
   typescript: {
     // packages/service 中使用 global.* 的预存在类型错误，不影响运行时
-    ignoreBuildErrors: true
+    ignoreBuildErrors: false
   },
   i18n: {
     defaultLocale: 'en',

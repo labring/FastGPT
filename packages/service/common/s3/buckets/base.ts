@@ -10,7 +10,7 @@ import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
   type createPreviewUrlParams,
-CreateGetPresignedUrlParamsSchema,
+  CreateGetPresignedUrlParamsSchema,
   CreatePostPresignedUrlOptionsSchema,
   type CreatePostPresignedUrlResult
 } from '../contracts/type';
@@ -157,7 +157,7 @@ export class S3BaseBucket {
   async createPresignedPutUrl(
     params: CreatePostPresignedUrlParams,
     options: CreatePostPresignedUrlOptions = {}
-  ): Promise<CreatePostPresignedUrlResponseType> {
+  ): Promise<CreatePostPresignedUrlResult> {
     try {
       const {
         expiredHours,

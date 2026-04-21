@@ -1,7 +1,12 @@
 /* openGauss DataVec vector crud */
-import { DatasetVectorTableName } from '../constants';
+import {
+  DatasetVectorTableName,
+  DBDatasetVectorTableName,
+  DBDatasetValueVectorTableName
+} from '../constants';
 import { OgClient, connectOg } from './controller';
 import type { VectorControllerType } from '../type';
+import type { DatabaseEmbeddingRecallCtrlProps, DatabaseEmbeddingRecallResponse } from '../type';
 import dayjs from 'dayjs';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -156,6 +161,45 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
         id: String(item.id),
         collectionId: item.collection_id,
         score: item.score * -1
+      }))
+    };
+  };
+
+  databaseEmbRecall: VectorControllerType['databaseEmbRecall'] = async (
+    props: DatabaseEmbeddingRecallCtrlProps
+  ): Promise<DatabaseEmbeddingRecallResponse> => {
+    const { teamId, datasetIds, vector, limit, tableName, forbidCollectionIdList } = props;
+    let index: string = '';
+    if (tableName === DBDatasetVectorTableName) index = 'column_des_index';
+    if (tableName === DBDatasetValueVectorTableName) index = 'column_val_index';
+
+    const forbidCollectionFilter =
+      forbidCollectionIdList.length > 0
+        ? `AND collection_id NOT IN (${forbidCollectionIdList.map((id: string) => `'${String(id)}'`).join(',')})`
+        : '';
+
+    const results: any = await OgClient.query(`
+      BEGIN;
+        SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+        SELECT id, collection_id,
+               ${index} as index_field,
+               vector <#> '[${vector}]' AS score
+          FROM ${tableName}
+          WHERE team_id = '${teamId}'
+            AND dataset_id IN (${datasetIds.map((id: string) => `'${String(id)}'`).join(',')})
+            ${forbidCollectionFilter}
+          ORDER BY score LIMIT ${limit};
+      COMMIT;
+    `);
+    const rows = results?.[results.length - 2]?.rows || [];
+    return {
+      results: rows.map((row: any) => ({
+        id: String(row.id),
+        collectionId: row.collection_id,
+        score: row.score * -1,
+        ...(tableName === DBDatasetVectorTableName
+          ? { columnDesIndex: row.index_field }
+          : { columnValIndex: row.index_field })
       }))
     };
   };

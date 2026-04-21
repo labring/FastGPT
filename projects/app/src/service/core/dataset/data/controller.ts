@@ -171,6 +171,7 @@ export async function insertData2Dataset({
   chunkIndex = 0,
   indexSize = 512,
   indexes,
+  metadata,
   indexPrefix,
   embeddingModel,
   imageDescMap,

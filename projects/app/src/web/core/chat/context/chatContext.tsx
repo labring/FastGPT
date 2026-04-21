@@ -31,6 +31,7 @@ type ChatContextType = {
   onOpenSlider: () => void;
   setHistories: React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>;
   forbidLoadChat: React.MutableRefObject<boolean>;
+  forbidLoadChatMap: React.MutableRefObject<Map<string, boolean>>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
   loadHistories: () => void;
   ScrollData: ({
@@ -71,6 +72,7 @@ export const ChatContext = createContext<ChatContextType>({
   onCloseSlider: () => {},
   onOpenSlider: () => {},
   forbidLoadChat: { current: false },
+  forbidLoadChatMap: { current: new Map() },
   onChangeChatId: () => {},
   onChangeAppId: () => {},
   isLoading: false
@@ -83,6 +85,7 @@ const ChatContextProvider = ({
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
+  const forbidLoadChatMap = useRef<Map<string, boolean>>(new Map());
   const { chatId, appId, setChatId, outLinkAuthData } = useChatStore();
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
@@ -299,6 +302,7 @@ const ChatContextProvider = ({
       onCloseSlider,
       onOpenSlider,
       forbidLoadChat,
+      forbidLoadChatMap,
       onChangeChatId,
       onChangeAppId,
       isLoading,

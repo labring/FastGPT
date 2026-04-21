@@ -31,10 +31,7 @@ export const SfDatasetSelectModal = ({
     useState<SelectedDatasetType[]>(defaultSelectedDatasets);
 
   // Use server-side search, following the logic of the dataset list page
-  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect(
-    scene,
-    formatResData
-  );
+  const { paths, setParentId, searchKey, setSearchKey, datasets, isFetching } = useDatasetSelect();
 
   return (
     <MyModal
