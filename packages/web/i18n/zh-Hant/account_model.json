@@ -125,7 +125,7 @@
   "train_detail_embedding_result_tip": "Precision@5：在檢索召回的前 5 個知識中，正確知識所占的比例，比例越高，說明召回的準確率越高。\n\nPrecision@10：在檢索召回的前 10 個知識中，正確知識所占的比例，比例越高，說明召回的準確率越高。\n\nMRR@10：在檢索召回的前 10 個知識中，第一個正確知識的排名位置，排名越靠前得分越高（排名第一時得分為 1，未排在前 10 時，得分為 0），可用於衡量召回知識是否精確，是否能將正確知識排在前面。",
   "train_detail_result_worse_tip": "當前評估指標未優於上一版本，為避免效果波動，本次未更新模型。",
   "train_detail_download_data": "下載數據",
-  "train_detail_confirm_delete": "確認刪除該訓練任務？",
+  "train_detail_confirm_delete": "確認刪除該任務記錄？",
   "all_datasets": "全部知識庫",
   "base_model_tab": "基礎模型",
   "custom_model_tab": "新建模型",
