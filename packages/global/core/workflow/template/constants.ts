@@ -97,7 +97,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   LoopStartNode,
   LoopEndNode,
   LoopRunStartNode,
-  LoopRunBreakNode,
   RunToolNode,
   RunToolSetNode
 ];

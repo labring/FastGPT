@@ -54,13 +54,13 @@ export const readCustomOutputSnapshot = ({
     const refValue = item.value;
 
     if (finishedNodeIds) {
-      const firstIsTuple =
-        Array.isArray(refValue) && refValue.length === 2 && typeof refValue[0] === 'string';
-      const refs: [string, string | undefined][] = firstIsTuple
-        ? [refValue as [string, string | undefined]]
-        : Array.isArray(refValue)
+      // Single reference: [nodeId, outputId?]  — refValue[0] is a string
+      // Reference array:  [[nodeId, outputId?], ...] — refValue[0] is a tuple
+      const refs: [string, string | undefined][] = !Array.isArray(refValue)
+        ? []
+        : Array.isArray(refValue[0])
           ? (refValue as [string, string | undefined][])
-          : [];
+          : [refValue as [string, string | undefined]];
 
       const allFinished = refs.every(([nodeId]) => {
         if (!nodeId) return true;

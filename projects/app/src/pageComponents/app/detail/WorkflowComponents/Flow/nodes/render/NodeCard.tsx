@@ -327,7 +327,7 @@ const NodeCard = (props: Props) => {
         {foldedOverlay}
 
         {!isFolded && (
-          <Box bg={'white'} borderRadius={'lg'}>
+          <Box bg={'white'} borderRadius={'lg'} flex={1} display={'flex'} flexDirection={'column'}>
             {/* Header */}
             <Box position={'relative'}>
               {gradient && (

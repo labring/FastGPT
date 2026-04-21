@@ -331,7 +331,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
-  it('conditional mode - 有 break 节点但运行中从未命中 → 超过 max → reject 系统兜底', async () => {
+  it('conditional mode - 有 break 节点但运行中从未命中 → 超过 max → 返回 error 并保留 loopHistory', async () => {
     runWorkflowMock.mockImplementation(() =>
       Promise.resolve(
         makeDispatchFlowResponse({
@@ -345,7 +345,14 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       { withBreak: true }
     );
 
-    await expect(dispatchLoopRun(props)).rejects.toMatch(/exceeded/i);
+    const result: any = await dispatchLoopRun(props);
+    // 触发 5 次预算后兜底，loopHistory 保留已跑完的每一轮以便排查
+    expect(runWorkflowMock).toHaveBeenCalledTimes(5);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(/exceeded 5 iterations/i);
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+    expect(nodeResponse.loopRunIterations).toBe(5);
+    expect(nodeResponse.loopRunHistory).toHaveLength(5);
+    expect(nodeResponse.loopRunHistory.every((h: any) => h.success)).toBe(true);
   });
 
   it('interactive 响应 → 返回 loopInteractive 状态, 不 push 失败 history', async () => {

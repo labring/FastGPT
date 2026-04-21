@@ -81,10 +81,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
+  // Hit the iteration budget (primarily a conditional-mode guard). Signal via
+  // `error` on return so the accumulated loopHistory/loopDetail survives for
+  // user debugging, instead of reject'ing and dropping everything.
+  let maxIterationsExceeded = false;
 
   while (true) {
     if (iteration > maxLength) {
-      return Promise.reject(`Loop execution exceeded ${maxLength} iterations`);
+      maxIterationsExceeded = true;
+      break;
     }
 
     let currentIndex: number | undefined;
@@ -206,12 +211,22 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined,
-    ...(lastFailed
-      ? {
+    ...(() => {
+      if (maxIterationsExceeded) {
+        return {
+          error: {
+            [NodeOutputKeyEnum.errorText]: `Loop execution exceeded ${maxLength} iterations`
+          }
+        };
+      }
+      if (lastFailed) {
+        return {
           error: {
             [NodeOutputKeyEnum.errorText]: lastEntry?.error ?? 'loopRun failed'
           }
-        }
-      : {})
+        };
+      }
+      return {};
+    })()
   };
 };

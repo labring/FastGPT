@@ -9,6 +9,7 @@ const NodeLoopRunBreak = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       selected={selected}
       {...data}
       w={'420px'}
+      minH={'168px'}
       menuForbid={{
         copy: true,
         debug: true
