@@ -13,7 +13,6 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
@@ -22,15 +21,9 @@ import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { postStopV2Chat } from '@/web/core/chat/api';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { isFileAllowedByFileSelectConfig } from '@fastgpt/global/common/file/utils';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
-
-const fileTypeFilter = (file: File) => {
-  return (
-    file.type.includes('image') ||
-    documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
-  );
-};
 
 const ChatInput = ({
   lastInteractive,
@@ -235,7 +228,13 @@ const ChatInput = ({
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
                   .filter((file) => {
-                    return file && fileTypeFilter(file);
+                    return (
+                      file &&
+                      isFileAllowedByFileSelectConfig({
+                        file,
+                        fileSelectConfig
+                      })
+                    );
                   }) as File[];
                 onSelectFile({ files });
 
@@ -263,7 +262,8 @@ const ChatInput = ({
       setValue,
       handleSend,
       canUploadFile,
-      onSelectFile
+      onSelectFile,
+      fileSelectConfig
     ]
   );
 
@@ -414,13 +414,24 @@ const ChatInput = ({
         if (!canUploadFile) return;
         const files = Array.from(e.dataTransfer.files);
 
-        const droppedFiles = files.filter((file) => fileTypeFilter(file));
+        const droppedFiles = files.filter((file) =>
+          isFileAllowedByFileSelectConfig({
+            file,
+            fileSelectConfig
+          })
+        );
         if (droppedFiles.length > 0) {
           onSelectFile({ files: droppedFiles });
         }
 
         const invalidFileName = files
-          .filter((file) => !fileTypeFilter(file))
+          .filter(
+            (file) =>
+              !isFileAllowedByFileSelectConfig({
+                file,
+                fileSelectConfig
+              })
+          )
           .map((file) => file.name)
           .join(', ');
         if (invalidFileName) {

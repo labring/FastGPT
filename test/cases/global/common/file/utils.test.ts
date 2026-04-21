@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { isCSVFile, detectImageContentType } from '@fastgpt/global/common/file/utils';
+import {
+  isCSVFile,
+  detectImageContentType,
+  normalizeFileExtension,
+  getAllowedExtensionsFromFileSelectConfig,
+  isFileAllowedByFileSelectConfig
+} from '@fastgpt/global/common/file/utils';
 
 describe('isCSVFile', () => {
   it('should detect csv extension', () => {
@@ -14,6 +20,102 @@ describe('isCSVFile', () => {
     expect(isCSVFile('data.csv.txt')).toBe(false);
     expect(isCSVFile('data.txt')).toBe(false);
     expect(isCSVFile('data')).toBe(false);
+  });
+});
+
+describe('normalizeFileExtension', () => {
+  it('should normalize case and leading dot', () => {
+    expect(normalizeFileExtension('PNG')).toBe('.png');
+    expect(normalizeFileExtension('.JPG')).toBe('.jpg');
+  });
+
+  it('should return empty string for empty values', () => {
+    expect(normalizeFileExtension('')).toBe('');
+    expect(normalizeFileExtension(undefined)).toBe('');
+  });
+});
+
+describe('getAllowedExtensionsFromFileSelectConfig', () => {
+  it('should merge built-in and custom extensions', () => {
+    expect(
+      getAllowedExtensionsFromFileSelectConfig({
+        canSelectFile: true,
+        canSelectCustomFileExtension: true,
+        customFileExtensionList: ['log', '.TXT']
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        '.pdf',
+        '.docx',
+        '.pptx',
+        '.xlsx',
+        '.txt',
+        '.md',
+        '.html',
+        '.csv',
+        '.log'
+      ])
+    );
+  });
+
+  it('should return empty array when file upload is disabled', () => {
+    expect(getAllowedExtensionsFromFileSelectConfig()).toEqual([]);
+    expect(getAllowedExtensionsFromFileSelectConfig({})).toEqual([]);
+  });
+});
+
+describe('isFileAllowedByFileSelectConfig', () => {
+  it('should allow clipboard image files when image upload is enabled', () => {
+    const file = new File(['a'], 'clipboard', { type: 'image/png' });
+
+    expect(
+      isFileAllowedByFileSelectConfig({
+        file,
+        fileSelectConfig: {
+          canSelectImg: true
+        }
+      })
+    ).toBe(true);
+  });
+
+  it('should reject clipboard image files when image upload is disabled', () => {
+    const file = new File(['a'], 'clipboard', { type: 'image/png' });
+
+    expect(
+      isFileAllowedByFileSelectConfig({
+        file,
+        fileSelectConfig: {
+          canSelectFile: true
+        }
+      })
+    ).toBe(false);
+  });
+
+  it('should allow document files by extension', () => {
+    const file = new File(['a'], 'report.PDF', { type: 'application/pdf' });
+
+    expect(
+      isFileAllowedByFileSelectConfig({
+        file,
+        fileSelectConfig: {
+          canSelectFile: true
+        }
+      })
+    ).toBe(true);
+  });
+
+  it('should allow custom file extensions', () => {
+    const file = new File(['a'], 'trace.LOG', { type: 'text/plain' });
+
+    expect(
+      isFileAllowedByFileSelectConfig({
+        file,
+        fileSelectConfig: {
+          canSelectCustomFileExtension: true,
+          customFileExtensionList: ['.log']
+        }
+      })
+    ).toBe(true);
   });
 });
 

@@ -1,8 +1,87 @@
-import path from 'path';
+import { defaultFileExtensionTypes, type FileExtensionKeyType } from '../../core/app/constants';
+import type { AppFileSelectConfigType } from '../../core/app/type/config.schema';
+
+const uploadConfigKeys: FileExtensionKeyType[] = [
+  'canSelectFile',
+  'canSelectImg',
+  'canSelectVideo',
+  'canSelectAudio',
+  'canSelectCustomFileExtension'
+];
+
+export const normalizeFileExtension = (extension?: string) => {
+  if (!extension) return '';
+
+  const trimmedExtension = extension.trim().toLowerCase();
+  if (!trimmedExtension) return '';
+
+  return trimmedExtension.startsWith('.') ? trimmedExtension : `.${trimmedExtension}`;
+};
+
+const getFileExtension = (filename?: string) => {
+  if (!filename) return '';
+
+  const extensionIndex = filename.lastIndexOf('.');
+  if (extensionIndex < 0) return '';
+
+  return normalizeFileExtension(filename.slice(extensionIndex));
+};
 
 export const isCSVFile = (filename: string) => {
-  const extension = path.extname(filename).toLowerCase();
+  const extension = getFileExtension(filename);
   return extension === '.csv';
+};
+
+export const getAllowedExtensionsFromFileSelectConfig = (config?: AppFileSelectConfigType) => {
+  if (!config) return [];
+
+  return [
+    ...new Set(
+      uploadConfigKeys.flatMap((key) => {
+        if (!config[key]) return [];
+
+        if (key === 'canSelectCustomFileExtension') {
+          return (config.customFileExtensionList || []).map(normalizeFileExtension).filter(Boolean);
+        }
+
+        return defaultFileExtensionTypes[key];
+      })
+    )
+  ];
+};
+
+const getMimeCategory = (
+  mimeType?: string
+): 'canSelectImg' | 'canSelectVideo' | 'canSelectAudio' | undefined => {
+  const normalizedMimeType = mimeType?.toLowerCase() || '';
+
+  if (normalizedMimeType.startsWith('image/')) return 'canSelectImg';
+  if (normalizedMimeType.startsWith('video/')) return 'canSelectVideo';
+  if (normalizedMimeType.startsWith('audio/')) return 'canSelectAudio';
+
+  return undefined;
+};
+
+export const isFileAllowedByFileSelectConfig = ({
+  file,
+  fileSelectConfig
+}: {
+  file: File;
+  fileSelectConfig?: AppFileSelectConfigType;
+}) => {
+  const extension = getFileExtension(file.name);
+  const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(fileSelectConfig);
+
+  if (extension && allowedExtensions.includes(extension)) {
+    return true;
+  }
+
+  const mimeCategory = getMimeCategory(file.type);
+  if (mimeCategory) {
+    return Boolean(fileSelectConfig?.[mimeCategory]);
+  }
+
+  return false;
 };
 
 export function detectImageContentType(buffer: Buffer) {
