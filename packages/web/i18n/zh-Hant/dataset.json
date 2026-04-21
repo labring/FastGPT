@@ -515,6 +515,8 @@
   "website_label": "網站",
   "database_table_label": "資料表",
   "new_dataset_title": "新建{{name}}",
+  "edit_dataset_title": "编辑{{name}}",
+  "edit_model_warning": "更換模型將重新處理知識庫中所有內容。",
   "icon_and_name": "圖示 & 名稱",
   "agent_model_label": "知識增強模型",
   "agent_model_tip": "依據知識內容生成增強的索引，如問題、摘要等，是提升檢索召回率的必要手段。",

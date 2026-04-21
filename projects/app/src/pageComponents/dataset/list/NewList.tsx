@@ -30,10 +30,15 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import SideTag from './SideTag';
+import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
-import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
+import type { CreateDatasetType } from '@/pageComponents/dataset/list/CreateModal';
 
-const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
+const EditFolderModal = dynamic(
+  () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
+);
+const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateModal'));
 
 // ─── NewDatasetCard ────────────────────────────────────────────────────────────
 
@@ -48,7 +53,8 @@ type NewDatasetCardProps = {
   dataset: DatasetListItemType & { label?: string; icon?: string };
   parentDataset: DatasetListItemType | undefined;
   getBoxProps: (params: { dataId: string; isFolder: boolean }) => Record<string, any>;
-  setEditedDataset: (data?: EditResourceInfoFormType) => void;
+  setEditingFolder: (data: EditFolderFormType) => void;
+  setEditingDataset: (data: { id: string; type: CreateDatasetType }) => void;
   setEditPerDatasetId: (id: string) => void;
   exportDataset: (dataset: { _id: string; name: string }) => Promise<any>;
   openConfirmDel: OpenConfirmFn;
@@ -59,7 +65,8 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
   dataset,
   parentDataset,
   getBoxProps,
-  setEditedDataset,
+  setEditingFolder,
+  setEditingDataset,
   setEditPerDatasetId,
   exportDataset,
   openConfirmDel,
@@ -84,13 +91,21 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
             icon: 'edit',
             type: 'grayBg' as const,
             label: t('common:dataset.Edit Info'),
-            onClick: () =>
-              setEditedDataset({
-                id: dataset._id,
-                name: dataset.name,
-                intro: dataset.intro,
-                avatar: dataset.avatar
-              })
+            onClick: () => {
+              if (isFolder) {
+                setEditingFolder({
+                  id: dataset._id,
+                  name: dataset.name,
+                  intro: dataset.intro,
+                  avatar: dataset.avatar
+                });
+              } else {
+                setEditingDataset({
+                  id: dataset._id,
+                  type: dataset.type as CreateDatasetType
+                });
+              }
+            }
           },
           ...((parentDataset ? parentDataset : dataset)?.permission.hasManagePer
             ? [
@@ -384,6 +399,12 @@ function NewList() {
   } = useContextSelector(DatasetsContext, (v) => v);
 
   const [editPerDatasetId, setEditPerDatasetId] = React.useState<string>();
+  const [editingDataset, setEditingDataset] = React.useState<{
+    id: string;
+    type: CreateDatasetType;
+  }>();
+  const [editingFolder, setEditingFolder] = React.useState<EditFolderFormType>();
+
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
 
@@ -456,7 +477,8 @@ function NewList() {
               dataset={dataset}
               parentDataset={parentDataset}
               getBoxProps={getBoxProps}
-              setEditedDataset={setEditedDataset}
+              setEditingFolder={setEditingFolder}
+              setEditingDataset={setEditingDataset}
               setEditPerDatasetId={setEditPerDatasetId}
               exportDataset={exportDataset}
               openConfirmDel={openConfirm}
@@ -477,18 +499,47 @@ function NewList() {
         <EmptyTip pt={'35vh'} text={t('common:core.dataset.Empty Dataset Tips')} flexGrow="1" />
       )}
 
+      {/* 编辑文件夹（来自 index.tsx 顶部 Edit 按钮，始终是文件夹） */}
       {editedDataset && (
-        <EditResourceModal
-          {...editedDataset}
-          title={t('common:dataset.Edit Info')}
+        <EditFolderModal
+          id={editedDataset.id}
+          name={editedDataset.name}
+          intro={editedDataset.intro}
+          avatar={editedDataset.avatar}
           onClose={() => setEditedDataset(undefined)}
-          onEdit={async (data) => {
-            await onUpdateDataset({
-              id: editedDataset.id,
-              name: data.name,
-              intro: data.intro,
-              avatar: data.avatar
-            });
+          getPresignedUrl={getUploadAvatarPresignedUrl}
+          onCreate={async () => {}}
+          onEdit={async ({ id, name, intro, avatar }) => {
+            await onUpdateDataset({ id: id!, name, intro, avatar });
+          }}
+        />
+      )}
+
+      {/* 编辑文件夹（来自卡片菜单） */}
+      {editingFolder && (
+        <EditFolderModal
+          id={editingFolder.id}
+          name={editingFolder.name}
+          intro={editingFolder.intro}
+          avatar={editingFolder.avatar}
+          onClose={() => setEditingFolder(undefined)}
+          getPresignedUrl={getUploadAvatarPresignedUrl}
+          onCreate={async () => {}}
+          onEdit={async ({ id, name, intro, avatar }) => {
+            await onUpdateDataset({ id: id!, name, intro, avatar });
+          }}
+        />
+      )}
+
+      {/* 编辑知识库（来自卡片菜单） */}
+      {editingDataset && (
+        <CreateModal
+          type={editingDataset.type}
+          editId={editingDataset.id}
+          onClose={() => setEditingDataset(undefined)}
+          onUpdateSuccess={() => {
+            loadMyDatasets();
+            refetchPaths();
           }}
         />
       )}

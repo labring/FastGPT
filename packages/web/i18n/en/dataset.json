@@ -516,6 +516,8 @@
   "website_label": "Website",
   "database_table_label": "Data Table",
   "new_dataset_title": "New {{name}}",
+  "edit_dataset_title": "Edit {{name}}",
+  "edit_model_warning": "Changing the model will reprocess all content in the dataset.",
   "icon_and_name": "Icon & Name",
   "agent_model_label": "Knowledge Enhancement Model",
   "agent_model_tip": "Generates enhanced indexes based on knowledge content, such as questions and summaries, which is essential for improving retrieval recall.",

@@ -131,6 +131,15 @@ const Dataset = () => {
                 />
               )}
 
+              {folderDetail && folderDetail.permission.hasManagePer && (
+                <Button
+                  variant={'whiteBase'}
+                  px={5}
+                  onClick={() => setFolderPerOpen(true)}
+                >
+                  {t('common:permission.Permission')}
+                </Button>
+              )}
               {folderDetail && folderDetail.permission.hasWritePer && (
                 <Button
                   variant={'whiteBase'}
@@ -145,11 +154,6 @@ const Dataset = () => {
                   }
                 >
                   {t('common:Edit')}
-                </Button>
-              )}
-              {folderDetail && folderDetail.permission.hasManagePer && (
-                <Button variant={'whiteBase'} px={5} onClick={() => setFolderPerOpen(true)}>
-                  {t('common:permission.Permission')}
                 </Button>
               )}
               {(folderDetail

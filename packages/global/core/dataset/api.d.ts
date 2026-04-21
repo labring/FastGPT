@@ -31,6 +31,7 @@ export type DatasetUpdateBody = {
 
   agentModel?: string;
   vlmModel?: string;
+  vectorModel?: string;
 
   websiteConfig?: DatasetSchemaType['websiteConfig'];
   databaseConfig?: DatasetSchemaType['databaseConfig'];

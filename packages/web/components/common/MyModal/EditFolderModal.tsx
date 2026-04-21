@@ -122,7 +122,7 @@ const EditFolderModal = ({
         <Button variant="whiteBase" onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
+        <Button isLoading={loading} onClick={handleSubmit(onSave)}>
           {t('common:Confirm')}
         </Button>
       </ModalFooter>
