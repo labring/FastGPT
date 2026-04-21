@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import { formatRerankQuery } from '@fastgpt/service/core/ai/rerank/index';
 
 // hoisted：让 mock 实例可在 beforeEach 中重设
 const { mockCountPromptTokens, mockPOST } = vi.hoisted(() => ({
@@ -341,5 +342,32 @@ describe('reRankRecall', () => {
     expect(mockPOST).toHaveBeenCalledOnce();
     // 空 results 时提前返回，inputTokens 固定为 0
     expect(result.inputTokens).toBe(0);
+  });
+});
+
+describe('formatRerankQuery', () => {
+  it('无 instruction 时返回原始 query 和 documents', () => {
+    const result = formatRerankQuery('test query', ['doc1', 'doc2']);
+    expect(result.query).toBe('test query');
+    expect(result.documents).toEqual(['doc1', 'doc2']);
+  });
+
+  it('有 instruction 时返回 qwen 格式化的 query 和 documents', () => {
+    const result = formatRerankQuery(
+      'hello world',
+      ['doc1', 'doc2'],
+      'Given a web search query, retrieve relevant passages'
+    );
+    expect(result.query).toContain('<|im_start|>system');
+    expect(result.query).toContain('Judge whether the Document meets the requirements');
+    expect(result.query).toContain(
+      '<Instruct>: Given a web search query, retrieve relevant passages'
+    );
+    expect(result.query).toContain('<Query>: hello world');
+    expect(result.documents).toHaveLength(2);
+    expect(result.documents[0]).toContain('<Document>: doc1');
+    expect(result.documents[0]).toContain('<|im_start|>assistant');
+    expect(result.documents[1]).toContain('<Document>: doc2');
+    expect(result.documents[1]).toContain('<|im_start|>assistant');
   });
 });

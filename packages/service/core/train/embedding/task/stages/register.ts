@@ -1,5 +1,8 @@
 import type { EmbeddingTrainTaskSchemaType } from '@fastgpt/global/core/train/embedding/type';
-import { EmbeddingTaskCheckpointStageEnum } from '@fastgpt/global/core/train/embedding/constants';
+import {
+  EmbeddingTaskCheckpointStageEnum,
+  EmbeddingTrainMethodEnum
+} from '@fastgpt/global/core/train/embedding/constants';
 import { createEmbeddingModelConfig } from '../../model/controller';
 import { addLog } from '../../../../../common/system/log';
 import { createEmbeddingEnhancedError } from '../../utils';
@@ -60,6 +63,7 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
     normalization?: boolean;
     batchSize?: number;
     defaultConfig?: Record<string, any>;
+    instruction?: string;
   };
 
   try {
@@ -73,7 +77,9 @@ export async function runRegisterStage(task: EmbeddingTrainTaskSchemaType): Prom
       weight: baseMeta.weight,
       normalization: baseMeta.normalization,
       batchSize: baseMeta.batchSize,
-      defaultConfig: baseMeta.defaultConfig
+      defaultConfig: baseMeta.defaultConfig,
+      instruction:
+        task.trainMethod === EmbeddingTrainMethodEnum.task_tuning ? undefined : baseMeta.instruction
     });
 
     addLog.info('Created tuned embedding model config and channel', {

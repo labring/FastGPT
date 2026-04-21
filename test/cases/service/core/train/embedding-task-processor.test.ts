@@ -65,7 +65,8 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
           charsPointsPrice: 0,
           defaultToken: 512,
           maxToken: 512,
-          weight: 0
+          weight: 0,
+          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
         }
       })
     })
@@ -517,7 +518,8 @@ describe('Embedding Train Task Processor', () => {
             model: 'tuned-model'
           },
           isActive: true,
-          charsPointsPrice: 0
+          charsPointsPrice: 0,
+          instruction: 'Given a web search query, retrieve relevant passages that answer the query'
         })
       );
 

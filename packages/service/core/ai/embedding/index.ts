@@ -7,6 +7,13 @@ import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
+export function formatEmbeddingQuery(queries: string[], instruction?: string): string[] {
+  if (!instruction) return queries;
+  const formatted = queries.map((query) => `Instruct: ${instruction}\nQuery: ${query}`);
+  logger.debug('formatEmbeddingQuery result', { instruction, formatted });
+  return formatted;
+}
+
 type GetVectorProps = {
   model: EmbeddingModelItemType;
   input: string[] | string;
@@ -49,7 +56,10 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
               ...(type === EmbeddingTypeEnm.db && model.dbConfig),
               ...(type === EmbeddingTypeEnm.query && model.queryConfig),
               model: model.model,
-              input: chunk,
+              input:
+                type === EmbeddingTypeEnm.query
+                  ? formatEmbeddingQuery(chunk, model.instruction)
+                  : chunk,
               encoding_format: 'float'
             },
             model.requestUrl
