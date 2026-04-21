@@ -435,6 +435,7 @@ const TrainDetailModal = ({
 
       if (getTrainTaskStatusConfig(item.status, t).colorSchema === 'green') {
         const isDownloading = downloadingTaskIds.has(item._id);
+        const isDeleting = deletingTaskIds.has(item._id);
 
         return (
           <MyMenu
@@ -448,6 +449,15 @@ const TrainDetailModal = ({
                     label: t('account_model:train_detail_download_data'),
                     onClick: () => onDownloadData(item._id),
                     menuItemStyles: isDownloading
+                      ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
+                      : undefined
+                  },
+                  {
+                    type: 'danger',
+                    icon: isDeleting ? 'common/loading' : 'common/trash',
+                    label: t('common:Delete'),
+                    onClick: () => handleDeleteTask(item._id),
+                    menuItemStyles: isDeleting
                       ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
                       : undefined
                   }

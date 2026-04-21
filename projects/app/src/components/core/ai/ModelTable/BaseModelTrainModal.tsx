@@ -257,16 +257,12 @@ const BaseModelTrainModal = ({
     },
     {
       manual: true,
+      errorToast: t('app:operation_failed'),
+      successToast: t('app:operation_success'),
       onSuccess: () => {
         onSuccess?.();
         onClose();
       },
-      onError: (error) => {
-        toast({
-          status: 'error',
-          title: (error as Error).message
-        });
-      }
     }
   );
 
