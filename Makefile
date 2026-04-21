@@ -10,10 +10,16 @@ ifndef name
 $(error name is not defined)
 endif
 
-filePath=./projects/$(name)/Dockerfile
+projectDir=$(or $(wildcard ./projects/$(name)),$(wildcard ./pro/$(name)))
+
+ifeq ($(strip $(projectDir)),)
+$(error Unknown project name '$(name)'; expected ./projects/$(name) or ./pro/$(name))
+endif
+
+filePath=$(projectDir)/Dockerfile
 
 dev:
-	pnpm --prefix ./projects/$(name) dev
+	pnpm --prefix $(projectDir) dev
 
 build:
 ifeq ($(proxy), taobao)

@@ -30,8 +30,7 @@
     "prettier": "3.2.4",
     "react-i18next": "catalog:",
     "typescript": "^5.1.3",
-    "vitest": "^3.0.9",
-    "zhlint": "^0.7.4"
+    "vitest": "^3.0.9"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": [
@@ -51,6 +50,6 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   }
 }

@@ -5,6 +5,8 @@ Since FastGPT is managed in the same way as monorepo, it is recommended to insta
 monorepo Project Name:
 
 - app: main project
+- admin: pro admin project
+- sso: pro sso service
 -......
 
 ## Dev
@@ -21,6 +23,8 @@ pnpm dev
 
 # Make cmd
 make dev name=app
+make dev name=admin
+make dev name=sso
 ```
 
 Note: If the Node version is >= 20, you need to pass the `--no-node-snapshot` parameter to Node when running `pnpm i`
@@ -108,11 +112,20 @@ Please fill the AuditEventEnum and audit function is added to the ts, and on the
 ```sh
 # Docker cmd: Build image, not proxy
 docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app
+# Docker cmd: Build pro admin image, not proxy
+docker build -f ./pro/admin/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1 . --build-arg name=admin
+# Docker cmd: Build pro sso image, not proxy
+docker build -f ./pro/sso/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.8.1 . --build-arg name=sso
 # Make cmd: Build image, not proxy
 make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1
+make build name=admin image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1
+make build name=sso image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.8.1
 
 # Docker cmd: Build image with proxy
 docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app --build-arg proxy=taobao
+# Docker cmd: Build pro admin image with proxy
+docker build -f ./pro/admin/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1 . --build-arg name=admin --build-arg proxy=taobao
 # Make cmd: Build image with proxy
 make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
+make build name=admin image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1 proxy=taobao
 ```

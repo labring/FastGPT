@@ -60,6 +60,20 @@ docker compose up -d
 - **商业版**  
   如果你需要更完整的功能，或深度的服务支持，可以选择我们的[商业版](https://doc.fastgpt.io/introduction/commercial)。我们除了提供完整的软件外，还提供相应的场景落地辅导，具体可提交[商业咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)
 
+## 📁 仓库结构
+
+- `projects/app`: 开源主应用
+- `pro/admin`: 商业版后台
+- `pro/sso`: 商业版 SSO 服务
+
+统一在仓库根目录执行 `pnpm i`，开发时使用：
+
+```bash
+make dev name=app
+make dev name=admin
+make dev name=sso
+```
+
 ## 💡 核心功能
 
 |                                    |                                    |
