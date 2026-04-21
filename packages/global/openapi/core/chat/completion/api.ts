@@ -12,19 +12,19 @@ const WebCompletionsSchema = z.object({
   chatId: z
     .string()
     .max(1024)
-    .optional()
+    .nullish()
     .meta({ description: '聊天ID, 传入的话会自动获取历史记录，不传入则认为是新对话' }),
-  appId: ObjectIdSchema.optional(),
-  customUid: z.string().max(1024).optional().meta({ description: '自定义用户ID(分享链接)' }),
-  metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' })
+  appId: ObjectIdSchema.nullish(),
+  customUid: z.string().max(1024).nullish().meta({ description: '自定义用户ID(分享链接)' }),
+  metadata: z.record(z.string(), z.any()).nullish().meta({ description: '元数据' })
 });
 
 // completions 接口实际上并没有用完所有字段，所以这里就取局部即可
 const ChatCompletionCreateParamsSchema = z.object({
-  messages: z.array(ChatCompletionMessageParamSchema).optional().default([]).meta({
+  messages: z.array(ChatCompletionMessageParamSchema).nullish().default([]).meta({
     description: '消息列表'
   }),
-  stream: z.boolean().optional().default(false).meta({
+  stream: z.boolean().nullish().default(false).meta({
     description: '是否流式返回'
   })
 });
@@ -32,23 +32,23 @@ const ChatCompletionCreateParamsSchema = z.object({
 export const CompletionsPropsSchema = OutLinkChatAuthSchema.extend(WebCompletionsSchema.shape)
   .extend(ChatCompletionCreateParamsSchema.shape)
   .extend({
-    variables: z.record(z.string(), z.any()).optional().default({}).meta({
+    variables: z.record(z.string(), z.any()).nullish().default({}).meta({
       description: '全局变量或插件输入'
     }),
     responseChatItemId: z
       .string()
-      .optional()
+      .nullish()
       .default(() => getNanoid())
       .meta({
         description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
       }),
-    detail: z.boolean().optional().default(false).meta({
+    detail: z.boolean().nullish().default(false).meta({
       description: '是否返回详细信息，包括 reasoning_content, tool_calls, usage 等'
     }),
-    retainDatasetCite: z.boolean().optional().default(false).meta({
+    retainDatasetCite: z.boolean().nullish().default(false).meta({
       description: '是否保留数据集引用'
     }),
-    showSkillReferences: z.boolean().optional().default(false).meta({
+    showSkillReferences: z.boolean().nullish().default(false).meta({
       description: '是否显示技能引用'
     })
   });
@@ -129,12 +129,12 @@ export const ChatTestPropsSchema = z.object({
   messages: z.array(ChatCompletionMessageParamSchema).meta({ description: '消息列表' }),
   responseChatItemId: z
     .string()
-    .optional()
+    .nullish()
     .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
   nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({ description: '节点列表' }),
   edges: z.array(StoreEdgeItemTypeSchema).meta({ description: '边列表' }),
   chatConfig: AppChatConfigTypeSchema.meta({ description: '聊天配置' }),
-  variables: z.record(z.string(), z.any()).optional().default({}).meta({
+  variables: z.record(z.string(), z.any()).nullish().default({}).meta({
     description: '全局变量或插件输入'
   }),
   appId: ObjectIdSchema.meta({ description: '应用ID' }),
