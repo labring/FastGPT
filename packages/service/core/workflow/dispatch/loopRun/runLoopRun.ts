@@ -43,21 +43,40 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
   const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
 
-  if (mode === LoopRunModeEnum.array && !Array.isArray(inputArray)) {
-    return Promise.reject('Input value is not an array');
-  }
-
   const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
-  if (mode === LoopRunModeEnum.array && inputArray.length > maxLength) {
-    return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
-  }
 
-  // Without a break node, conditional mode can only stop at WORKFLOW_MAX_LOOP_TIMES.
-  if (
-    mode === LoopRunModeEnum.conditional &&
-    !hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)
-  ) {
-    return Promise.reject('Conditional loopRun requires at least one loopRunBreak node');
+  // Surface precheck failures through `errorText` to match the max-iterations
+  // protocol, so `catchError` and downstream error-handle routing see them.
+  const preCheckError = (() => {
+    if (mode === LoopRunModeEnum.array && !Array.isArray(inputArray)) {
+      return 'Input value is not an array';
+    }
+    if (mode === LoopRunModeEnum.array && inputArray.length > maxLength) {
+      return `Input array length cannot be greater than ${maxLength}`;
+    }
+    // Without a break node, conditional mode can only stop at WORKFLOW_MAX_LOOP_TIMES.
+    if (
+      mode === LoopRunModeEnum.conditional &&
+      !hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)
+    ) {
+      return 'Conditional loopRun requires at least one loopRunBreak node';
+    }
+    return undefined;
+  })();
+
+  if (preCheckError) {
+    return {
+      data: {},
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints: 0,
+        loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
+        loopRunIterations: 0,
+        loopRunHistory: [],
+        loopRunDetail: [],
+        mergeSignId: node.nodeId
+      },
+      error: { [NodeOutputKeyEnum.errorText]: preCheckError }
+    };
   }
 
   // Isolate from parent so concurrent siblings don't mutate our view.
@@ -146,15 +165,19 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
+    // Apply `finishedNodeIds` for both success and failure paths — nodes that
+    // didn't run this iteration (e.g. a skipped if-else branch) would otherwise
+    // leak their previous-iteration output from `isolatedNodes`.
+    const finishedNodeIds = extractFinishedNodeIds(response.flowResponses);
+    const customOutputs = readCustomOutputSnapshot({
+      customOutputInputs,
+      runtimeNodes: isolatedNodes,
+      variables: newVariables,
+      finishedNodeIds
+    });
+
     const errorItem = response.flowResponses.find((r) => r.error);
     if (errorItem) {
-      const finishedNodeIds = extractFinishedNodeIds(response.flowResponses);
-      const customOutputs = readCustomOutputSnapshot({
-        customOutputInputs,
-        runtimeNodes: isolatedNodes,
-        variables: newVariables,
-        finishedNodeIds
-      });
       loopHistory.push({
         iteration,
         customOutputs,
@@ -164,11 +187,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       break;
     }
 
-    const customOutputs = readCustomOutputSnapshot({
-      customOutputInputs,
-      runtimeNodes: isolatedNodes,
-      variables: newVariables
-    });
     loopHistory.push({ iteration, customOutputs, success: true });
 
     if (isLoopBreakHit(response.flowResponses)) break;

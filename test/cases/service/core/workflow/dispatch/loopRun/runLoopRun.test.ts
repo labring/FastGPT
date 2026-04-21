@@ -324,10 +324,15 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunIterations).toBe(3);
   });
 
-  it('conditional mode - 无 break 节点 → precheck reject', async () => {
-    // No runWorkflow call expected
+  it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
-    await expect(dispatchLoopRun(props)).rejects.toMatch(/requires at least one loopRunBreak/i);
+    const result: any = await dispatchLoopRun(props);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(
+      /requires at least one loopRunBreak/i
+    );
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+    expect(nodeResponse.loopRunIterations).toBe(0);
+    expect(nodeResponse.loopRunHistory).toEqual([]);
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
@@ -491,21 +496,77 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nextCall.runtimeEdges).toEqual([]);
   });
 
-  it('array mode 输入非数组 → reject', async () => {
+  it('array mode 输入非数组 → precheck 返回 errorText', async () => {
     const props = makeProps({
       [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
       [NodeInputKeyEnum.loopRunInputArray]: 'not-array' as any,
       [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
     });
-    await expect(dispatchLoopRun(props)).rejects.toMatch(/not an array/i);
+    const result: any = await dispatchLoopRun(props);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(/not an array/i);
+    expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
-  it('array mode 数组长度超上限 → reject 预检查', async () => {
+  it('array mode 数组长度超上限 → precheck 返回 errorText', async () => {
     const props = makeProps({
       [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
       [NodeInputKeyEnum.loopRunInputArray]: new Array(100).fill('x'),
       [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
     });
-    await expect(dispatchLoopRun(props)).rejects.toMatch(/greater than/i);
+    const result: any = await dispatchLoopRun(props);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(/greater than/i);
+    expect(runWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it('成功轮：未跑完的节点引用在快照里过滤为 undefined（避免跨迭代 stale value）', async () => {
+    // Iteration 1: both startNode & chatNode run. Iteration 2: chatNode skipped
+    // (e.g. if-else branch). Snapshot for iteration 2 must not leak iteration-1 value.
+    let iter = 0;
+    runWorkflowMock.mockImplementation((args: any) => {
+      iter++;
+      const chatNode = args.runtimeNodes.find((n: any) => n.nodeId === 'chatNode');
+      if (iter === 1) {
+        if (chatNode) chatNode.outputs[0].value = 'stale-from-iter-1';
+        return Promise.resolve(
+          makeDispatchFlowResponse({
+            flowResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+          })
+        );
+      }
+      // iter === 2: chatNode skipped, but outputs.value still holds 'stale-from-iter-1'
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode')]
+        })
+      );
+    });
+
+    const customOutputs = [{ key: 'answer', ref: ['chatNode', 'answer'] as [string, string] }];
+    const runtimeNodes = makeRuntimeNodes();
+    const node = makeLoopRunNode(customOutputs);
+    runtimeNodes[0] = node;
+    const props = {
+      params: {
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      },
+      node,
+      runtimeNodes,
+      runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
+      runtimeEdges: [],
+      variables: {},
+      usagePush: vi.fn(),
+      lastInteractive: undefined
+    } as any;
+
+    const result: any = await dispatchLoopRun(props);
+    const history = result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunHistory;
+    expect(history).toHaveLength(2);
+    expect(history[0]).toMatchObject({ iteration: 1, success: true });
+    expect(history[0].customOutputs.answer).toBe('stale-from-iter-1');
+    expect(history[1]).toMatchObject({ iteration: 2, success: true });
+    // chatNode didn't run this iteration → ref filtered to undefined, not leaked.
+    expect(history[1].customOutputs.answer).toBeUndefined();
   });
 });

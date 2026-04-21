@@ -523,12 +523,43 @@ export const checkWorkflowNodeAndConnection = ({
         const children =
           (inputs.find((input) => input.key === NodeInputKeyEnum.childrenNodeIdList)
             ?.value as string[]) ?? [];
-        const hasBreak = nodes.some(
+        const childSet = new Set(children);
+        const startNodeId = nodes.find(
           (n) =>
-            children.includes(n.data.nodeId) &&
-            n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
+            childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunStart
+        )?.data.nodeId;
+        const breakIds = new Set(
+          nodes
+            .filter(
+              (n) =>
+                childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
+            )
+            .map((n) => n.data.nodeId)
         );
-        if (!hasBreak) {
+        if (!startNodeId || breakIds.size === 0) {
+          return [data.nodeId];
+        }
+        // BFS from loopRunStart along edges restricted to this container's children.
+        // A break node that sits on an unreachable branch (e.g. behind a constant-false
+        // if-else) would otherwise only be caught at runtime via the max-iterations guard.
+        const visited = new Set<string>();
+        const queue: string[] = [startNodeId];
+        let reached = false;
+        while (queue.length > 0) {
+          const cur = queue.shift()!;
+          if (visited.has(cur)) continue;
+          visited.add(cur);
+          if (breakIds.has(cur)) {
+            reached = true;
+            break;
+          }
+          for (const edge of edges) {
+            if (edge.source === cur && childSet.has(edge.target) && !visited.has(edge.target)) {
+              queue.push(edge.target);
+            }
+          }
+        }
+        if (!reached) {
           return [data.nodeId];
         }
       }
@@ -674,7 +705,10 @@ export const checkWorkflowNodeAndConnection = ({
     };
     dfsFromStart(startNode.data.nodeId);
     nodes.forEach((node) => {
-      if (node.data.flowNodeType === FlowNodeTypeEnum.nestedStart) {
+      if (
+        node.data.flowNodeType === FlowNodeTypeEnum.nestedStart ||
+        node.data.flowNodeType === FlowNodeTypeEnum.loopRunStart
+      ) {
         dfsFromStart(node.data.nodeId);
       }
     });
@@ -700,7 +734,8 @@ export const checkWorkflowNodeAndConnection = ({
       const isStartNode = [
         FlowNodeTypeEnum.workflowStart,
         FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.nestedStart
+        FlowNodeTypeEnum.nestedStart,
+        FlowNodeTypeEnum.loopRunStart
       ].includes(nodeType);
 
       // Check if node is reachable from start
