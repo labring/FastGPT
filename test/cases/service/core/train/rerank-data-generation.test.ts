@@ -53,7 +53,7 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
-  buildFineTuneData: vi.fn()
+  buildFineTuneDataStream: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/train/rerank/utils', async () => {
@@ -105,34 +105,29 @@ describe('Rerank Train Data Generation', () => {
         {
           datasetId: datasetId1,
           dataId: 'data_001',
-          q: 'What is AI?',
-          a: 'Artificial Intelligence',
-          indexes: []
+          collectionId: 'col_001'
         },
         {
           datasetId: datasetId2,
           dataId: 'data_002',
-          q: 'What is ML?',
-          a: 'Machine Learning',
-          indexes: []
+          collectionId: 'col_002'
         }
       ]);
 
       // Mock external service
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: 'What is artificial intelligence?',
-            positive: ['Artificial Intelligence'],
-            negatives: ['Random text 1', 'Random text 2'],
-            sourceId: 'data_001',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: 'What is artificial intelligence?',
+          positive: ['Artificial Intelligence'],
+          negatives: ['Random text 1', 'Random text 2'],
+          sourceId: 'data_001',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
 
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([{ _id: 'train_data_1' }]);
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
@@ -140,7 +135,8 @@ describe('Rerank Train Data Generation', () => {
       await rerankTrainDataGenerateProcessor({
         data: {
           trainsetId,
-          datasetIds: [datasetId1, datasetId2]
+          datasetIds: [datasetId1, datasetId2],
+          generateConfig: { indexType: 'question' }
         },
         id: 'test-job-id',
         attemptsMade: 0,
@@ -151,7 +147,7 @@ describe('Rerank Train Data Generation', () => {
         expect.arrayContaining([datasetId1, datasetId2]),
         expect.any(Object)
       );
-      expect(buildFineTuneData).toHaveBeenCalled();
+      expect(buildFineTuneDataStream).toHaveBeenCalled();
     });
 
     test('训练集不存在时应抛出错误', async () => {
@@ -161,7 +157,8 @@ describe('Rerank Train Data Generation', () => {
         rerankTrainDataGenerateProcessor({
           data: {
             trainsetId: 'non_existent_trainset',
-            datasetIds: [datasetId1]
+            datasetIds: [datasetId1],
+            generateConfig: { indexType: 'question' }
           },
           id: 'test-job-id',
           attemptsMade: 0,
@@ -181,7 +178,8 @@ describe('Rerank Train Data Generation', () => {
         rerankTrainDataGenerateProcessor({
           data: {
             trainsetId,
-            datasetIds: [] // Empty array
+            datasetIds: [], // Empty array
+            generateConfig: { indexType: 'question' }
           },
           id: 'test-job-id',
           attemptsMade: 0,
@@ -206,7 +204,8 @@ describe('Rerank Train Data Generation', () => {
         rerankTrainDataGenerateProcessor({
           data: {
             trainsetId,
-            datasetIds: [datasetId1]
+            datasetIds: [datasetId1],
+            generateConfig: { indexType: 'question' }
           },
           id: 'test-job-id',
           attemptsMade: 0,
@@ -224,15 +223,14 @@ describe('Rerank Train Data Generation', () => {
 
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
       (sampleDataFromDataset as any).mockResolvedValue([
-        { datasetId: datasetId1, dataId: 'data_001', q: 'What is AI?', a: 'AI', indexes: [] }
+        { datasetId: datasetId1, dataId: 'data_001', collectionId: 'col_001' }
       ]);
 
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: []
-      });
+      async function* emptyStream() {}
+      (buildFineTuneDataStream as any).mockReturnValue(emptyStream());
 
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
@@ -240,7 +238,8 @@ describe('Rerank Train Data Generation', () => {
         rerankTrainDataGenerateProcessor({
           data: {
             trainsetId,
-            datasetIds: [datasetId1]
+            datasetIds: [datasetId1],
+            generateConfig: { indexType: 'question' }
           },
           id: 'test-job-id',
           attemptsMade: 0,
@@ -258,23 +257,22 @@ describe('Rerank Train Data Generation', () => {
 
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
       (sampleDataFromDataset as any).mockResolvedValue([
-        { datasetId: datasetId1, dataId: 'data_001', q: 'What is AI?', a: 'AI', indexes: [] }
+        { datasetId: datasetId1, dataId: 'data_001', collectionId: 'col_001' }
       ]);
 
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: 'Test query',
-            positive: ['Positive doc'],
-            negatives: ['Negative doc 1'],
-            sourceId: 'data_001',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: 'Test query',
+          positive: ['Positive doc'],
+          negatives: ['Negative doc 1'],
+          sourceId: 'data_001',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
 
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([]);
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
@@ -283,7 +281,7 @@ describe('Rerank Train Data Generation', () => {
         data: {
           trainsetId,
           datasetIds: [datasetId1],
-          generateConfig: { sampleSize: 50 }
+          generateConfig: { indexType: 'question', sampleSize: 50 }
         },
         id: 'test-job-id',
         attemptsMade: 0,

@@ -23,9 +23,9 @@ export enum RerankTrainTaskStatusEnum {
 }
 
 /** Training type */
-export enum RerankTrainTypeEnum {
+export enum RerankTrainMethodEnum {
   lora = 'lora',
-  ptuning = 'ptuning'
+  task_tuning = 'task_tuning'
 }
 
 /** Training task checkpoint stage */

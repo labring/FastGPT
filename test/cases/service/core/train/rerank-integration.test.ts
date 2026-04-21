@@ -48,7 +48,7 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 vi.mock('@fastgpt/service/core/train/rerank/external', () => ({}));
 
 vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
-  buildFineTuneData: vi.fn()
+  buildFineTuneDataStream: vi.fn()
 }));
 
 // mongoSessionRun: execute the callback with a fake session object so transaction logic is testable
@@ -107,49 +107,42 @@ describe('Rerank Train Data Integration Tests', () => {
         {
           datasetId: datasetId1,
           dataId: 'data_1_1',
-          q: 'What is AI?',
-          a: 'Artificial Intelligence is a field of computer science',
-          indexes: []
+          collectionId: 'col_1_1'
         },
         {
           datasetId: datasetId1,
           dataId: 'data_1_2',
-          q: 'What is Machine Learning?',
-          a: 'Machine Learning is a subset of AI',
-          indexes: []
+          collectionId: 'col_1_2'
         },
         {
           datasetId: datasetId2,
           dataId: 'data_2_1',
-          q: 'What is Deep Learning?',
-          a: 'Deep Learning is a subset of Machine Learning',
-          indexes: []
+          collectionId: 'col_2_1'
         }
       ];
       (sampleDataFromDataset as any).mockResolvedValue(mockSamples);
 
-      // 3. Mock buildFineTuneData
-      const { buildFineTuneData } = await import(
+      // 3. Mock buildFineTuneDataStream
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: '什么是人工智能？',
-            positive: ['Artificial Intelligence is a field of computer science'],
-            negatives: ['Random text 1', 'Random text 2'],
-            sourceId: 'data_1_1',
-            datasetId: datasetId1
-          },
-          {
-            query: '机器学习是什么？',
-            positive: ['Machine Learning is a subset of AI'],
-            negatives: ['Random text 3', 'Random text 4'],
-            sourceId: 'data_1_2',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: '什么是人工智能？',
+          positive: ['Artificial Intelligence is a field of computer science'],
+          negatives: ['Random text 1', 'Random text 2'],
+          sourceId: 'data_1_1',
+          datasetId: datasetId1
+        };
+        yield {
+          query: '机器学习是什么？',
+          positive: ['Machine Learning is a subset of AI'],
+          negatives: ['Random text 3', 'Random text 4'],
+          sourceId: 'data_1_2',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
 
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([
         { _id: 'train_data_1' },
@@ -165,7 +158,8 @@ describe('Rerank Train Data Integration Tests', () => {
       await rerankTrainDataGenerateProcessor({
         data: {
           trainsetId,
-          datasetIds: [datasetId1, datasetId2]
+          datasetIds: [datasetId1, datasetId2],
+          generateConfig: { indexType: 'question' }
         },
         id: 'test-job-id',
         attemptsMade: 0,
@@ -178,7 +172,7 @@ describe('Rerank Train Data Integration Tests', () => {
         [datasetId1, datasetId2],
         expect.any(Object)
       );
-      expect(buildFineTuneData).toHaveBeenCalledTimes(1);
+      expect(buildFineTuneDataStream).toHaveBeenCalledTimes(1);
       expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledTimes(1);
 
       expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledWith(
@@ -210,23 +204,22 @@ describe('Rerank Train Data Integration Tests', () => {
 
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
       (sampleDataFromDataset as any).mockResolvedValue([
-        { datasetId: datasetId1, dataId: 'data_001', q: 'q1', a: 'a1', indexes: [] }
+        { datasetId: datasetId1, dataId: 'data_001', collectionId: 'col_001' }
       ]);
 
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: 'Test',
-            positive: ['Doc'],
-            negatives: ['Other'],
-            sourceId: 'data_001',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: 'Test',
+          positive: ['Doc'],
+          negatives: ['Other'],
+          sourceId: 'data_001',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
       (MongoRerankTrainsetData.insertMany as any).mockResolvedValue([]);
       (MongoRerankTrainsetData.deleteMany as any).mockResolvedValue({ deletedCount: 5 });
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
@@ -239,23 +232,19 @@ describe('Rerank Train Data Integration Tests', () => {
         data: {
           trainsetId,
           datasetIds: [datasetId1],
-          generateConfig: { forceRegenerate: true }
+          generateConfig: { indexType: 'question', forceRegenerate: true }
         },
         id: 'test-job-id',
         attemptsMade: 0,
         opts: { attempts: 1 }
       } as any);
 
-      // deleteMany is called inside mongoSessionRun with filter + session option
+      // deleteMany is called before streaming insert (no transaction)
       expect(MongoRerankTrainsetData.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({ trainsetId }),
-        expect.objectContaining({ session: expect.any(Object) })
+        expect.objectContaining({ trainsetId })
       );
-      // insertMany is also called inside the same transaction
-      expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.objectContaining({ session: expect.any(Object) })
-      );
+      // insertMany is called after streaming
+      expect(MongoRerankTrainsetData.insertMany).toHaveBeenCalledWith(expect.any(Array));
     });
   });
 
@@ -269,15 +258,16 @@ describe('Rerank Train Data Integration Tests', () => {
 
       const { sampleDataFromDataset } = await import('@fastgpt/service/core/train/rerank/utils');
       (sampleDataFromDataset as any).mockResolvedValue([
-        { datasetId: datasetId1, dataId: 'data_001', q: 'q1', a: 'a1', indexes: [] }
+        { datasetId: datasetId1, dataId: 'data_001', collectionId: 'col_001' }
       ]);
 
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockImplementation(() => {
+      async function* errorStream() {
         throw new Error('DiTing service unavailable');
-      });
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(errorStream());
 
       (MongoRerankTrainset.updateOne as any).mockResolvedValue({});
 
@@ -289,7 +279,8 @@ describe('Rerank Train Data Integration Tests', () => {
         rerankTrainDataGenerateProcessor({
           data: {
             trainsetId,
-            datasetIds: [datasetId1]
+            datasetIds: [datasetId1],
+            generateConfig: { indexType: 'question' }
           },
           id: 'test-job-id',
           attemptsMade: 0,
@@ -323,7 +314,8 @@ describe('Rerank Train Data Integration Tests', () => {
         rerankTrainDataGenerateProcessor({
           data: {
             trainsetId,
-            datasetIds: [datasetId1]
+            datasetIds: [datasetId1],
+            generateConfig: { indexType: 'question' }
           },
           id: 'test-job-id',
           attemptsMade: 0,

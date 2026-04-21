@@ -17,7 +17,6 @@ export function getEmbeddingTrainDataDir(): string {
 // Re-export common constants for backward compatibility
 export {
   TRAIN_DATA_SPLIT_RATIO,
-  DEFAULT_MAX_SAMPLE_PAIRS,
   MIN_EVAL_QA_COUNT,
   DEFAULT_DITING_TIMEOUT,
   DEFAULT_DITING_CONCURRENCY,

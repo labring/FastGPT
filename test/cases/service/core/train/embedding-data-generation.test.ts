@@ -53,7 +53,7 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/train/common/synthesize/buildFineTuneData', () => ({
-  buildFineTuneData: vi.fn()
+  buildFineTuneDataStream: vi.fn()
 }));
 
 // mongoSessionRun: execute the callback with a fake session object so transaction logic is testable
@@ -110,34 +110,29 @@ describe('Embedding Train Data Generation', () => {
         {
           datasetId: datasetId1,
           dataId: 'data_001',
-          q: 'What is AI?',
-          a: 'Artificial Intelligence',
-          indexes: []
+          collectionId: 'col_001'
         },
         {
           datasetId: datasetId2,
           dataId: 'data_002',
-          q: 'What is ML?',
-          a: 'Machine Learning',
-          indexes: []
+          collectionId: 'col_002'
         }
       ]);
 
       // Mock external service
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: 'What is artificial intelligence?',
-            positive: ['Artificial Intelligence'],
-            negatives: ['Random text 1', 'Random text 2'],
-            sourceId: 'data_001',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: 'What is artificial intelligence?',
+          positive: ['Artificial Intelligence'],
+          negatives: ['Random text 1', 'Random text 2'],
+          sourceId: 'data_001',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
 
       (MongoEmbeddingTrainsetData.insertMany as any).mockResolvedValue([{ _id: 'train_data_1' }]);
       (MongoEmbeddingTrainset.updateOne as any).mockResolvedValue({});
@@ -145,7 +140,8 @@ describe('Embedding Train Data Generation', () => {
       await embeddingTrainDataGenerateProcessor({
         data: {
           trainsetId,
-          datasetIds: [datasetId1, datasetId2]
+          datasetIds: [datasetId1, datasetId2],
+          generateConfig: { indexType: 'question' }
         },
         id: 'test-job-id',
         attemptsMade: 0,
@@ -170,26 +166,23 @@ describe('Embedding Train Data Generation', () => {
         {
           datasetId: datasetId1,
           dataId: 'data_001',
-          q: 'Test query',
-          a: 'Test answer',
-          indexes: []
+          collectionId: 'col_001'
         }
       ]);
 
-      const { buildFineTuneData } = await import(
+      const { buildFineTuneDataStream } = await import(
         '@fastgpt/service/core/train/common/synthesize/buildFineTuneData'
       );
-      (buildFineTuneData as any).mockReturnValue({
-        samples: [
-          {
-            query: 'Test query',
-            positive: ['Test answer'],
-            negatives: ['Random text'],
-            sourceId: 'data_001',
-            datasetId: datasetId1
-          }
-        ]
-      });
+      async function* mockStream() {
+        yield {
+          query: 'Test query',
+          positive: ['Test answer'],
+          negatives: ['Random text'],
+          sourceId: 'data_001',
+          datasetId: datasetId1
+        };
+      }
+      (buildFineTuneDataStream as any).mockReturnValue(mockStream());
 
       (MongoEmbeddingTrainsetData.insertMany as any).mockResolvedValue([{ _id: 'train_data_1' }]);
       (MongoEmbeddingTrainset.updateOne as any).mockResolvedValue({});
@@ -198,23 +191,20 @@ describe('Embedding Train Data Generation', () => {
         data: {
           trainsetId,
           datasetIds: [datasetId1],
-          generateConfig: { forceRegenerate: true }
+          generateConfig: { indexType: 'question', forceRegenerate: true }
         },
         id: 'test-job-id',
         attemptsMade: 0,
         opts: { attempts: 1 }
       } as any);
 
-      // deleteMany is called inside mongoSessionRun with filter + session option
-      expect(MongoEmbeddingTrainsetData.deleteMany).toHaveBeenCalledWith(
-        { trainsetId, source: EmbeddingTrainDataSourceEnum.dataset },
-        expect.objectContaining({ session: expect.any(Object) })
-      );
-      // insertMany is also called inside the same transaction
-      expect(MongoEmbeddingTrainsetData.insertMany).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.objectContaining({ session: expect.any(Object) })
-      );
+      // deleteMany is called before streaming insert (no transaction)
+      expect(MongoEmbeddingTrainsetData.deleteMany).toHaveBeenCalledWith({
+        trainsetId,
+        source: EmbeddingTrainDataSourceEnum.dataset
+      });
+      // insertMany is called after streaming
+      expect(MongoEmbeddingTrainsetData.insertMany).toHaveBeenCalledWith(expect.any(Array));
     });
   });
 

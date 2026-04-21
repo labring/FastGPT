@@ -17,9 +17,9 @@ export enum EmbeddingTrainTaskStatusEnum {
   cancelled = 'cancelled'
 }
 
-export enum EmbeddingTrainTypeEnum {
+export enum EmbeddingTrainMethodEnum {
   lora = 'lora',
-  ptuning = 'ptuning'
+  task_tuning = 'task_tuning'
 }
 
 export enum EmbeddingTaskCheckpointStageEnum {

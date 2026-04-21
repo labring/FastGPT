@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/service/support/permission/train/embedding/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { embeddingTrainDataGenerateQueue } from '@fastgpt/service/core/train/embedding/data/mq';
+import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
 import { MongoEmbeddingTrainset } from '@fastgpt/service/core/train/embedding/trainset/schema';
 import { EmbeddingTrainsetStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
@@ -58,7 +59,10 @@ async function handler(
   const job = await embeddingTrainDataGenerateQueue.add(`generate-${trainset._id}-${Date.now()}`, {
     trainsetId: String(trainset._id),
     datasetIds,
-    generateConfig
+    generateConfig: {
+      ...generateConfig,
+      indexType: generateConfig?.indexType ?? DEFAULT_TRAIN_INDEX_TYPE
+    }
   });
 
   // 5. Persist jobId on the trainset for retry support
