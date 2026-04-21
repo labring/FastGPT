@@ -41,7 +41,7 @@ export type SpecificProps = {
   // switch - no extra props
 
   // select & multipleSelect
-  list?: { label: string; value: string }[];
+  list?: { label: string; value: string; icon?: string; description?: string }[];
   enums?: { value: string }[]; // old version
 
   // selectDataset

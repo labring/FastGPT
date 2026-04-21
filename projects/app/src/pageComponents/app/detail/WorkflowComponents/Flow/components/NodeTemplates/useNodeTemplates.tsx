@@ -23,10 +23,8 @@ export const useNodeTemplates = () => {
   const [parentId, setParentId] = useState<ParentIdType>('');
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
-  const { basicNodeTemplates, hasToolNode, getNodeList, nodeAmount } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { basicNodeTemplates, hasToolNode, hasLoopRunNode, getNodeList, nodeAmount } =
+    useContextSelector(WorkflowBufferDataContext, (v) => v);
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { data: toolTags = [] } = useRequest(getPluginToolTags, {
@@ -59,6 +57,10 @@ export const useNodeTemplates = () => {
             ) {
               return false;
             }
+            // loopRunBreak only shows when a loopRun node exists on the canvas
+            if (!hasLoopRunNode && item.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
+              return false;
+            }
             return true;
           })
           .map<NodeTemplateListItemType>((item) => ({
@@ -74,7 +76,7 @@ export const useNodeTemplates = () => {
     {
       manual: false,
       throttleWait: 100,
-      refreshDeps: [basicNodeTemplates, nodeAmount, hasToolNode, templateType]
+      refreshDeps: [basicNodeTemplates, nodeAmount, hasToolNode, hasLoopRunNode, templateType]
     }
   );
 

@@ -30,6 +30,9 @@ import { LafModule } from './system/laf';
 import { LoopNode } from './system/loop/loop';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { LoopStartNode } from './system/loop/loopStart';
+import { LoopRunNode } from './system/loopRun/loopRun';
+import { LoopRunStartNode } from './system/loopRun/loopRunStart';
+import { LoopRunBreakNode } from './system/loopRun/loopRunBreak';
 import { ParallelRunNode } from './system/parallelRun/parallelRun';
 import { ReadFilesNode } from './system/readFiles';
 import { RunToolNode } from './system/runTool';
@@ -59,7 +62,9 @@ const systemNodes: FlowNodeTemplateType[] = [
   VariableUpdateNode,
   CodeNode,
   LoopNode,
-  ParallelRunNode
+  ParallelRunNode,
+  LoopRunNode,
+  LoopRunBreakNode
 ];
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -91,6 +96,8 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunAppModule,
   LoopStartNode,
   LoopEndNode,
+  LoopRunStartNode,
+  LoopRunBreakNode,
   RunToolNode,
   RunToolSetNode
 ];

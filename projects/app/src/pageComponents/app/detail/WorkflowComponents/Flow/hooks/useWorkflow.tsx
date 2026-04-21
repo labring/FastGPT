@@ -450,7 +450,11 @@ export const useRAF = () => {
 export const popoverWidth = 400;
 export const popoverHeight = 600;
 // 嵌套父容器节点类型集合
-const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.parallelRun]);
+const PARENT_NODE_TYPES = new Set([
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.parallelRun,
+  FlowNodeTypeEnum.loopRun
+]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -500,11 +504,12 @@ export const useWorkflow = () => {
     }
   );
 
-  // Check if a node is placed on top of a nested parent node (loop / parallelRun)
+  // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     const unSupportedInLoop = [
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
+      FlowNodeTypeEnum.loopRun,
       FlowNodeTypeEnum.parallelRun,
       FlowNodeTypeEnum.pluginInput,
       FlowNodeTypeEnum.pluginOutput,
@@ -527,6 +532,7 @@ export const useWorkflow = () => {
 
     if (parentNode) {
       const isParallel = parentNode.type === FlowNodeTypeEnum.parallelRun;
+      // loopRun uses the same forbidden set as loop (allows interactive nodes).
       const unSupportedTypes = isParallel ? unSupportedInParallel : unSupportedInLoop;
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
         return toast({

@@ -17,6 +17,9 @@ import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchParallelRun } from './parallelRun/runParallelRun';
+import { dispatchLoopRun } from './loopRun/runLoopRun';
+import { dispatchLoopRunStart } from './loopRun/runLoopRunStart';
+import { dispatchLoopRunBreak } from './loopRun/runLoopRunBreak';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchRunAppNode } from './child/runApp';
 import { dispatchPluginInput } from './plugin/runInput';
@@ -67,6 +70,9 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
   [FlowNodeTypeEnum.loop]: dispatchLoop,
   [FlowNodeTypeEnum.parallelRun]: dispatchParallelRun,
+  [FlowNodeTypeEnum.loopRun]: dispatchLoopRun,
+  [FlowNodeTypeEnum.loopRunStart]: dispatchLoopRunStart,
+  [FlowNodeTypeEnum.loopRunBreak]: dispatchLoopRunBreak,
   [FlowNodeTypeEnum.nestedStart]: dispatchLoopStart,
   [FlowNodeTypeEnum.nestedEnd]: dispatchLoopEnd,
   [FlowNodeTypeEnum.formInput]: dispatchFormInput,

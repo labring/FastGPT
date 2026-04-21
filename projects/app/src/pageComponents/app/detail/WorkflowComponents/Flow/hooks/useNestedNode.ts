@@ -24,6 +24,13 @@ import { AppContext } from '../../../context';
 type UseNestedNodeParams = {
   nodeId: string;
   inputs: FlowNodeInputItemType[];
+  /**
+   * Key of the array-input whose valueType should be inferred from the
+   * referenced output. Defaults to `nestedInputArray` (used by loop /
+   * parallelRun). loopRun passes `loopRunInputArray` in array mode and
+   * `undefined` in conditional mode to skip inference entirely.
+   */
+  arrayInputKey?: NodeInputKeyEnum;
 };
 
 type UseNestedNodeResult = {
@@ -33,18 +40,23 @@ type UseNestedNodeResult = {
 };
 
 /**
- * Shared hook for nested-container nodes (Loop & ParallelRun).
+ * Shared hook for nested-container nodes (Loop / ParallelRun / LoopRun).
  *
- * Encapsulates five pieces of logic that are identical in both components:
+ * Encapsulates five pieces of logic that are identical across those components:
  *  1. Read nodeWidth / nodeHeight / nestedInputArray / loopNodeInputHeight from inputs
  *  2. Infer array valueType from the referenced output and sync it back
+ *     (skipped when `arrayInputKey` is undefined — e.g. loopRun conditional mode)
  *  3. Maintain childrenNodeIdList and trigger resetParentNodeSizeAndPosition
  *  4. Measure the input-box height with useSize and sync nestedNodeInputHeight
  *  5. Trigger resetParentNodeSizeAndPosition after height changes
  *
  * Returns only what the component JSX needs (nodeWidth, nodeHeight, inputBoxRef).
  */
-export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNestedNodeResult => {
+export const useNestedNode = ({
+  nodeId,
+  inputs,
+  arrayInputKey = NodeInputKeyEnum.nestedInputArray
+}: UseNestedNodeParams): UseNestedNodeResult => {
   const { getNodeById, nodeIds, childNodeIds, getNodeList, systemConfigNode } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => {
@@ -73,12 +85,14 @@ export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNeste
       nodeHeight: Math.round(
         Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value) || 500
       ),
-      nestedInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.nestedInputArray),
+      nestedInputArray: arrayInputKey
+        ? inputs.find((input) => input.key === arrayInputKey)
+        : undefined,
       loopNodeInputHeight: inputs.find(
         (input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight
       )
     };
-  }, [inputs]);
+  }, [inputs, arrayInputKey]);
 
   const nestedInputArray = useMemoEnhance(
     () => computedResult.nestedInputArray,
@@ -117,17 +131,17 @@ export const useNestedNode = ({ nodeId, inputs }: UseNestedNodeParams): UseNeste
   }, [appDetail.chatConfig, getNodeById, nestedInputArray, nodeIds, systemConfigNode]);
 
   useEffect(() => {
-    if (!nestedInputArray || nestedInputArray.valueType === newValueType) return;
+    if (!nestedInputArray || !arrayInputKey || nestedInputArray.valueType === newValueType) return;
     onChangeNode({
       nodeId,
       type: 'updateInput',
-      key: NodeInputKeyEnum.nestedInputArray,
+      key: arrayInputKey,
       value: {
         ...nestedInputArray,
         valueType: newValueType
       }
     });
-  }, [nestedInputArray, newValueType, nodeId, onChangeNode]);
+  }, [nestedInputArray, newValueType, nodeId, onChangeNode, arrayInputKey]);
 
   // ── 3. Maintain childrenNodeIdList ──────────────────────────────────────────
   useEffect(() => {

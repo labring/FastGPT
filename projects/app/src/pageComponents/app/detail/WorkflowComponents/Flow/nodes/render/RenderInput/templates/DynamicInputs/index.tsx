@@ -38,8 +38,10 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
   const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
 
+  const hideBottomDivider = item.customInputConfig?.hideBottomDivider;
+
   return (
-    <Box borderBottom={'base'} pb={3}>
+    <Box borderBottom={hideBottomDivider ? undefined : 'base'} pb={hideBottomDivider ? 0 : 3}>
       <HStack className="nodrag" cursor={'default'} position={'relative'}>
         <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
           <Box>{item.label || t('workflow:custom_input')}</Box>
@@ -134,7 +136,11 @@ const Reference = ({
 
   const { referenceList } = useReference({
     nodeId,
-    valueType: WorkflowIOValueTypeEnum.any
+    valueType: WorkflowIOValueTypeEnum.any,
+    // 容器节点（如 loopRun）通过 DynamicInputs 声明自定义输出时，
+    // 需要引用循环体内部（子节点）的变量；其他使用方（sandbox / laf / http 等）
+    // 无子节点，此标志对它们是 no-op。
+    includeChildren: true
   });
 
   const onlBlurLabel = useCallback(

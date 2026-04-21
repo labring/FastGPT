@@ -251,6 +251,8 @@ export const iconPaths = {
   'core/workflow/edgeArrow': () => import('./icons/core/workflow/edgeArrow.svg'),
   'core/workflow/edgeArrowBold': () => import('./icons/core/workflow/edgeArrowBold.svg'),
   'core/workflow/inputType/array': () => import('./icons/core/workflow/inputType/array.svg'),
+  'core/workflow/inputType/conditional': () =>
+    import('./icons/core/workflow/inputType/conditional.svg'),
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
@@ -341,6 +343,17 @@ export const iconPaths = {
     import('./icons/core/workflow/template/parallelRun.svg'),
   'core/workflow/template/parallelRunLinear': () =>
     import('./icons/core/workflow/template/parallelRunLinear.tsx'),
+  'core/workflow/template/loopRun': () => import('./icons/core/workflow/template/loopRun.svg'),
+  'core/workflow/template/loopRunLinear': () =>
+    import('./icons/core/workflow/template/loopRunLinear.tsx'),
+  'core/workflow/template/loopRunStart': () =>
+    import('./icons/core/workflow/template/loopRunStart.svg'),
+  'core/workflow/template/loopRunStartLinear': () =>
+    import('./icons/core/workflow/template/loopRunStartLinear.tsx'),
+  'core/workflow/template/loopRunBreak': () =>
+    import('./icons/core/workflow/template/loopRunBreak.svg'),
+  'core/workflow/template/loopRunBreakLinear': () =>
+    import('./icons/core/workflow/template/loopRunBreakLinear.tsx'),
   'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),

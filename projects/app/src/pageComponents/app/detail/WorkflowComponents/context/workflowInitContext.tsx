@@ -59,6 +59,7 @@ export type WorkflowDataContextType = {
   systemConfigNode: StoreNodeItemType | undefined;
   allNodeFolded: boolean;
   hasToolNode: boolean;
+  hasLoopRunNode: boolean;
   toolNodesMap: Record<string, boolean>;
   nodeIds: string[];
   nodeAmount: number;
@@ -84,6 +85,7 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
   systemConfigNode: undefined,
   allNodeFolded: false,
   hasToolNode: false,
+  hasLoopRunNode: false,
   toolNodesMap: {},
   nodeIds: [],
   nodeAmount: 0,
@@ -140,6 +142,7 @@ const WorkflowInitContextProvider = ({
     let systemConfigNode: StoreNodeItemType | undefined = undefined;
     let allNodeFolded = true;
     let hasToolNode = false;
+    let hasLoopRunNode = false;
     let llmMaxQuoteContext = 0;
 
     nodes.forEach((node) => {
@@ -213,6 +216,9 @@ const WorkflowInitContextProvider = ({
       if (flowNodeType === FlowNodeTypeEnum.toolCall) {
         hasToolNode = true;
       }
+      if (flowNodeType === FlowNodeTypeEnum.loopRun) {
+        hasLoopRunNode = true;
+      }
     });
 
     return {
@@ -225,6 +231,7 @@ const WorkflowInitContextProvider = ({
       systemConfigNode,
       allNodeFolded,
       hasToolNode,
+      hasLoopRunNode,
       llmMaxQuoteContext,
       foldedNodesMap,
       compareNodeList
@@ -261,6 +268,7 @@ const WorkflowInitContextProvider = ({
   );
   const allNodeFolded = nodeFormat.allNodeFolded;
   const hasToolNode = nodeFormat.hasToolNode;
+  const hasLoopRunNode = nodeFormat.hasLoopRunNode;
   const llmMaxQuoteContext = nodeFormat.llmMaxQuoteContext;
 
   const getNodeList = useMemoizedFn(() => nodeList);
@@ -365,6 +373,7 @@ const WorkflowInitContextProvider = ({
       systemConfigNode,
       allNodeFolded,
       hasToolNode,
+      hasLoopRunNode,
       toolNodesMap,
       foldedNodesMap,
       getNodeById,
@@ -387,6 +396,7 @@ const WorkflowInitContextProvider = ({
     systemConfigNode,
     allNodeFolded,
     hasToolNode,
+    hasLoopRunNode,
     toolNodesMap,
     foldedNodesMap,
     getNodeById,

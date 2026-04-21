@@ -28,6 +28,7 @@ import {
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
@@ -355,7 +356,9 @@ export const getNodeAllSource = ({
   getNodeById,
   edges,
   chatConfig,
-  t
+  t,
+  includeChildren,
+  childrenNodeIdListMap
 }: {
   nodeId: string;
   systemConfigNode?: StoreNodeItemType;
@@ -363,6 +366,9 @@ export const getNodeAllSource = ({
   edges: Edge[];
   chatConfig: AppChatConfigType;
   t: TFunction;
+  // 容器节点声明自定义输出时，需要把其自身子节点（循环体内部节点）也作为可引用来源。
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
 }): FlowNodeItemType[] => {
   // get current node
   const node = getNodeById(nodeId);
@@ -407,6 +413,18 @@ export const getNodeAllSource = ({
         findSourceNode(refNode.nodeId);
       });
     }
+  }
+
+  // LoopRun 等容器在声明自定义输出时，需要引用循环体内部（子节点）产出的变量。
+  // edge 回溯只能拿到外层上游，因此在 includeChildren 开启时把所有子节点并入。
+  if (includeChildren && childrenNodeIdListMap) {
+    const childIds = childrenNodeIdListMap[nodeId] ?? [];
+    childIds.forEach((childId) => {
+      if (sourceNodes.has(childId)) return;
+      const childNode = getNodeById(childId);
+      if (!childNode) return;
+      sourceNodes.set(childId, childNode);
+    });
   }
 
   sourceNodes.set(
@@ -497,6 +515,24 @@ export const checkWorkflowNodeAndConnection = ({
       )?.value;
       if (!value || value.length === 0) {
         return [data.nodeId];
+      }
+    }
+    if (data.flowNodeType === FlowNodeTypeEnum.loopRun) {
+      const mode = inputs.find((input) => input.key === NodeInputKeyEnum.loopRunMode)?.value as
+        | LoopRunModeEnum
+        | undefined;
+      if (mode === LoopRunModeEnum.conditional) {
+        const children =
+          (inputs.find((input) => input.key === NodeInputKeyEnum.childrenNodeIdList)
+            ?.value as string[]) ?? [];
+        const hasBreak = nodes.some(
+          (n) =>
+            children.includes(n.data.nodeId) &&
+            n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
+        );
+        if (!hasBreak) {
+          return [data.nodeId];
+        }
       }
     }
     if (data.flowNodeType === FlowNodeTypeEnum.toolCall) {

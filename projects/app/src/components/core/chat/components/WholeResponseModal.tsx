@@ -532,6 +532,20 @@ export const WholeResponseContent = ({
         value={activeModule?.parallelRunDetail}
       />
 
+      {/* loopRun */}
+      <Row
+        label={t('common:core.chat.response.loop_run_input')}
+        value={activeModule?.loopRunInput}
+      />
+      <Row
+        label={t('common:core.chat.response.loop_run_iterations')}
+        value={activeModule?.loopRunIterations}
+      />
+      <Row
+        label={t('common:core.chat.response.loop_run_history')}
+        value={activeModule?.loopRunHistory}
+      />
+
       {/* loopStart */}
       <Row
         label={t('common:core.chat.response.loop_input_element')}
@@ -776,6 +790,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.parallelDetail)) {
               helper(item.parallelDetail);
             }
+            if (Array.isArray(item.loopRunDetail)) {
+              helper(item.loopRunDetail);
+            }
             if (Array.isArray(item.childrenResponses)) {
               helper(item.childrenResponses);
             }
@@ -811,6 +828,7 @@ export const ResponseBox = React.memo(function ResponseBox({
         if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
         if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
         if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
+        if (item?.loopRunDetail) children.push(...pretreatmentResponse(item?.loopRunDetail));
         if (item?.childrenResponses)
           children.push(...pretreatmentResponse(item?.childrenResponses));
 

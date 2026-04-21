@@ -1,0 +1,219 @@
+import { cloneDeep } from 'lodash';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type {
+  DispatchNodeResultType,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+
+import { env } from '../../../../env';
+import { runWorkflow } from '..';
+import {
+  collectResponseFeedbacks,
+  extractFinishedNodeIds,
+  hasLoopRunBreakChild,
+  injectLoopRunStart,
+  isLoopBreakHit,
+  type LoopRunHistoryItem,
+  pickCustomOutputInputs,
+  pushSubWorkflowUsage,
+  readCustomOutputSnapshot
+} from './service';
+
+type Props = ModuleDispatchProps<{
+  [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
+  [NodeInputKeyEnum.loopRunInputArray]?: Array<any>;
+  [NodeInputKeyEnum.childrenNodeIdList]: string[];
+}>;
+
+type Response = DispatchNodeResultType<Record<string, any>>;
+
+export const dispatchLoopRun = async (props: Props): Promise<Response> => {
+  const { params, runtimeNodes, runtimeEdges, node, lastInteractive } = props;
+  const { name } = node;
+  const mode = params[NodeInputKeyEnum.loopRunMode] ?? LoopRunModeEnum.array;
+  const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
+  const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
+
+  if (mode === LoopRunModeEnum.array && !Array.isArray(inputArray)) {
+    return Promise.reject('Input value is not an array');
+  }
+
+  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
+  if (mode === LoopRunModeEnum.array && inputArray.length > maxLength) {
+    return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
+  }
+
+  // Conditional mode would otherwise only stop via the safety bound. Require
+  // an explicit break signal so users don't accidentally burn max iterations.
+  if (
+    mode === LoopRunModeEnum.conditional &&
+    !hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)
+  ) {
+    return Promise.reject('Conditional loopRun requires at least one loopRunBreak node');
+  }
+
+  // Isolate runtime state from parent so concurrent sibling nodes don't step on us.
+  const isolatedNodes = cloneDeep(runtimeNodes);
+  const isolatedEdges = cloneDeep(runtimeEdges);
+
+  const customOutputInputs = pickCustomOutputInputs(node.inputs);
+
+  // Resume state from lastInteractive. Uses the dedicated loopRunInteractive
+  // schema: { loopHistory, childrenResponse, iteration } — cleaner than
+  // piggybacking the legacy loopInteractive fields used by the old Loop node.
+  const interactiveData =
+    lastInteractive?.type === 'loopRunInteractive' ? lastInteractive.params : undefined;
+
+  const loopHistory: LoopRunHistoryItem[] = interactiveData
+    ? (interactiveData.loopHistory as LoopRunHistoryItem[]) ?? []
+    : [];
+  const loopResponseDetail: ChatHistoryItemResType[] = [];
+  const assistantResponses: AIChatItemValueItemType[] = [];
+  const customFeedbacks: string[] = [];
+  let totalPoints = 0;
+  let newVariables: Record<string, any> = props.variables;
+  let interactiveResponse: WorkflowInteractiveResponseType | undefined;
+
+  const resumeIteration = interactiveData?.iteration;
+  let iteration = resumeIteration ?? 1;
+
+  while (true) {
+    if (iteration > maxLength) {
+      return Promise.reject(`Loop execution exceeded ${maxLength} iterations`);
+    }
+
+    let currentIndex: number | undefined;
+    let currentItem: any;
+    if (mode === LoopRunModeEnum.array) {
+      currentIndex = iteration - 1;
+      if (currentIndex >= inputArray.length) break;
+      currentItem = inputArray[currentIndex];
+    }
+
+    const isResumeIteration = !!interactiveData && iteration === resumeIteration;
+
+    if (isResumeIteration) {
+      isolatedNodes.forEach((n) => {
+        if (interactiveData?.childrenResponse?.entryNodeIds.includes(n.nodeId)) {
+          n.isEntry = true;
+        }
+      });
+    } else {
+      injectLoopRunStart({
+        nodes: isolatedNodes,
+        childrenNodeIdList,
+        mode,
+        item: currentItem,
+        index: currentIndex,
+        iteration
+      });
+    }
+
+    const response = await runWorkflow({
+      ...props,
+      lastInteractive: interactiveData?.childrenResponse,
+      variables: newVariables,
+      runtimeNodes: isolatedNodes,
+      runtimeEdges: cloneDeep(
+        storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
+      )
+    });
+
+    loopResponseDetail.push(...response.flowResponses);
+    assistantResponses.push(...response.assistantResponses);
+    totalPoints += pushSubWorkflowUsage({
+      usagePush: props.usagePush,
+      response,
+      name,
+      iteration
+    });
+    collectResponseFeedbacks(response, customFeedbacks);
+    newVariables = { ...newVariables, ...response.newVariables };
+
+    // Interactive: pause without writing a history entry (per design §8),
+    // carry current iteration + history for resume.
+    if (response.workflowInteractiveResponse) {
+      interactiveResponse = response.workflowInteractiveResponse;
+      break;
+    }
+
+    const errorItem = response.flowResponses.find((r) => r.error);
+    if (errorItem) {
+      const finishedNodeIds = extractFinishedNodeIds(response.flowResponses);
+      const customOutputs = readCustomOutputSnapshot({
+        customOutputInputs,
+        runtimeNodes: isolatedNodes,
+        variables: newVariables,
+        finishedNodeIds
+      });
+      loopHistory.push({
+        iteration,
+        customOutputs,
+        success: false,
+        error: getErrText(errorItem.error)
+      });
+      break;
+    }
+
+    const customOutputs = readCustomOutputSnapshot({
+      customOutputInputs,
+      runtimeNodes: isolatedNodes,
+      variables: newVariables
+    });
+    loopHistory.push({ iteration, customOutputs, success: true });
+
+    if (isLoopBreakHit(response.flowResponses)) break;
+
+    iteration++;
+  }
+
+  const lastEntry = loopHistory[loopHistory.length - 1];
+  const lastSnapshot: Record<string, any> = lastEntry?.customOutputs ?? {};
+  const lastFailed = !!lastEntry && lastEntry.success === false;
+
+  const data: Record<string, any> = {
+    ...lastSnapshot
+  };
+
+  return {
+    data,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+    [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+      ? {
+          type: 'loopRunInteractive',
+          params: {
+            loopHistory,
+            childrenResponse: interactiveResponse,
+            iteration
+          }
+        }
+      : undefined,
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints,
+      loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
+      loopRunIterations: loopHistory.length,
+      loopRunHistory: loopHistory,
+      loopRunDetail: loopResponseDetail,
+      mergeSignId: node.nodeId
+    },
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      customFeedbacks.length > 0 ? customFeedbacks : undefined,
+    ...(lastFailed
+      ? {
+          error: {
+            [NodeOutputKeyEnum.errorText]: lastEntry?.error ?? 'loopRun failed'
+          }
+        }
+      : {})
+  };
+};
