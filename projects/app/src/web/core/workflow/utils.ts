@@ -366,7 +366,6 @@ export const getNodeAllSource = ({
   edges: Edge[];
   chatConfig: AppChatConfigType;
   t: TFunction;
-  // 容器节点声明自定义输出时，需要把其自身子节点（循环体内部节点）也作为可引用来源。
   includeChildren?: boolean;
   childrenNodeIdListMap?: Record<string, string[]>;
 }): FlowNodeItemType[] => {
@@ -415,8 +414,7 @@ export const getNodeAllSource = ({
     }
   }
 
-  // LoopRun 等容器在声明自定义输出时，需要引用循环体内部（子节点）产出的变量。
-  // edge 回溯只能拿到外层上游，因此在 includeChildren 开启时把所有子节点并入。
+  // Edge traversal only reaches upstream; children must be added explicitly.
   if (includeChildren && childrenNodeIdListMap) {
     const childIds = childrenNodeIdListMap[nodeId] ?? [];
     childIds.forEach((childId) => {

@@ -21,7 +21,6 @@ export const CustomFieldConfigTypeSchema = z.object({
   selectValueTypeList: z.array(z.enum(WorkflowIOValueTypeEnum)).optional(), // 可以选哪个数据类型, 只有1个的话,则默认选择
   showDefaultValue: z.boolean().optional(),
   showDescription: z.boolean().optional(),
-  // 当 DynamicInputs 是其所在区块的最后一项时，通过该标志移除内置底部分隔线。
   hideBottomDivider: z.boolean().optional()
 });
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;

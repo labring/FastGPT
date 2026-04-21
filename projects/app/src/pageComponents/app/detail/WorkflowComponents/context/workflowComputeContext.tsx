@@ -78,6 +78,10 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
       );
 
       if (!loopNode) return;
+      if (childNodes.length === 0) return;
+      // 任一子节点尚未被 ReactFlow 测量(width/height 未定义),直接放弃本次计算,
+      // 由上游的 dimensionsSignal 监听在尺寸到齐后再触发一次。
+      if (childNodes.some((n) => !n.width || !n.height)) return;
       const loopChilWidth =
         loopNode.data.inputs.find((node) => node.key === NodeInputKeyEnum.nodeWidth)?.value ?? 0;
       const loopChilHeight =

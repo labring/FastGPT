@@ -281,16 +281,15 @@ const NodeTemplateList = ({
 
         const currentNode = getNodeById(handleParams?.nodeId);
 
-        // Resolve effective parent:
-        // - Popover-based insertion inherits the source node's parent
-        // - Drag-from-panel for loopRunBreak falls back to drop-position intersection
+        // Popover insertion inherits the source node's parent; a dragged
+        // loopRunBreak with no inherited parent falls back to hit-testing.
         let effectiveParentNodeId: string | undefined = currentNode?.parentNodeId;
         if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRunBreak && !effectiveParentNodeId) {
           const dropLoopRun = getIntersectingNodes({
             x: position.x,
             y: position.y,
-            width: 200,
-            height: 100
+            width: 1,
+            height: 1
           }).find((n) => n.type === FlowNodeTypeEnum.loopRun && !n.data?.isFolded);
           if (dropLoopRun) {
             effectiveParentNodeId = dropLoopRun.id;
@@ -309,7 +308,6 @@ const NodeTemplateList = ({
           return;
         }
 
-        // Forbid interactive nodes inside parallelRun (loopRun allows them)
         if (effectiveParentNodeId && isInteractiveNodeType(templateNode.flowNodeType)) {
           if (effectiveParentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun) {
             toast({
@@ -320,7 +318,6 @@ const NodeTemplateList = ({
           }
         }
 
-        // loopRunBreak can only be placed inside a loopRun sub-workflow
         if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
           if (effectiveParentNode?.flowNodeType !== FlowNodeTypeEnum.loopRun) {
             toast({
@@ -378,8 +375,7 @@ const NodeTemplateList = ({
         const newNodes = [newNode];
 
         if (isNestedParentNodeType(templateNode.flowNodeType)) {
-          // loopRun uses its own Start node and has no End node (runtime does
-          // not rely on nestedEnd for termination).
+          // loopRun uses its own Start node and no End node.
           if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRun) {
             const startNode = nodeTemplate2FlowNode({
               template: LoopRunStartNode,

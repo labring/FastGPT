@@ -186,7 +186,7 @@ const InputRender = (props: InputRenderProps) => {
       description:
         typeof item.description === 'string' ? t(item.description as any) : item.description
     }));
-    return <MySelect {...commonProps} list={list} h={10} />;
+    return <MySelect {...commonProps} list={list} h={10} menuPlacement={props.menuPlacement} />;
   }
 
   if (inputType === InputTypeEnum.multipleSelect) {

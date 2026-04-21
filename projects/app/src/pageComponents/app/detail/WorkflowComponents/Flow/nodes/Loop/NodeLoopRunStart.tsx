@@ -38,7 +38,6 @@ const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       | LoopRunModeEnum
       | undefined) ?? LoopRunModeEnum.array;
 
-  // Infer currentItem valueType from parent's loopRunInputArray
   const currentItemType = useMemo(() => {
     if (parentMode !== LoopRunModeEnum.array) return undefined;
     const parentArrayInput = parentNode?.inputs.find(
@@ -47,9 +46,8 @@ const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return arrayItemTypeMap[parentArrayInput?.valueType as keyof typeof arrayItemTypeMap];
   }, [parentNode?.inputs, parentMode]);
 
-  // Keep only `currentItem.valueType` in sync with the parent array's inferred
-  // item type. Adding / removing outputs on mode switches is handled by the
-  // parent NodeLoopRun component (which is the reliable re-render trigger).
+  // Output add/remove on mode switches lives in NodeLoopRun; this effect only
+  // keeps currentItem.valueType in sync with the inferred parent array type.
   useEffect(() => {
     if (parentMode !== LoopRunModeEnum.array || !currentItemType) return;
     const currentItem = startNode?.outputs.find((o) => o.key === NodeOutputKeyEnum.currentItem);

@@ -1,19 +1,3 @@
-/*
-  LoopRun container node. Runtime isolation lives in dispatchLoopRun on the
-  server. Layout follows NodeCode's bottom-output pattern:
-
-    Input area:
-      - loopRunMode select
-      - loopRunInputArray (array mode only)
-      - loop body (nested sub-workflow canvas)
-
-    Output area:
-      - IOTitle with catchError toggle on the right
-      - loopCustomOutputs declaration block (DynamicInputs renders each field
-        as variable-name / reference / value-type)
-      - Success outputs (dynamic user fields)
-      - CatchError block below when catchError is enabled
-*/
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { type NodeProps } from 'reactflow';
@@ -66,16 +50,12 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       | LoopRunModeEnum
       | undefined) ?? LoopRunModeEnum.array;
 
-  // In conditional mode no array input exists — pass undefined to skip
-  // valueType inference inside the shared hook.
+  // Conditional mode has no array input; skip valueType inference in the hook.
   const arrayInputKey =
     mode === LoopRunModeEnum.array ? NodeInputKeyEnum.loopRunInputArray : undefined;
 
   const { nodeWidth, nodeHeight, inputBoxRef } = useNestedNode({ nodeId, inputs, arrayInputKey });
 
-  // Inputs shown in the top Input area. Excludes loopCustomOutputs (moved to
-  // Output area) and any canEdit declaration items (rendered by the
-  // declaration block). In conditional mode the array input is also hidden.
   const inputAreaInputs = useMemo(
     () =>
       inputs.filter((i) => {
@@ -89,9 +69,6 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs, mode]
   );
 
-  // Inputs fed to the declaration block: the loopCustomOutputs addInputParam
-  // button plus all canEdit items. DynamicInputs reads this list to render
-  // each declared field.
   const outputDeclarationInputs = useMemo(
     () => inputs.filter((i) => i.key === NodeInputKeyEnum.loopCustomOutputs || !!i.canEdit),
     [inputs]
@@ -102,11 +79,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [splitOutput, outputs]
   );
 
-  // ── Mode-driven sync: update loopRunStart's outputs + auto-add loopRunBreak
-  //
-  // We run this from the container (not NodeLoopRunStart) because the start
-  // node doesn't reliably re-render on parent mode changes. The container
-  // owns the mode input and is always re-rendered when it changes.
+  // Mode sync is owned by the container, not the start node, because the start
+  // node doesn't re-render reliably when the parent's mode input changes.
   const prevModeRef = useRef<LoopRunModeEnum>(mode);
   useEffect(() => {
     const prevMode = prevModeRef.current;
@@ -124,6 +98,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         (o) => o.key === NodeOutputKeyEnum.currentIteration
       );
 
+      // Store i18n keys so downstream `t(label)` stays reactive.
       if (mode === LoopRunModeEnum.array) {
         if (hasIteration) {
           onChangeNode({
@@ -139,8 +114,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               id: NodeOutputKeyEnum.currentIndex,
               key: NodeOutputKeyEnum.currentIndex,
-              label: t('workflow:current_index'),
-              description: t('workflow:current_index_desc'),
+              label: 'workflow:current_index',
+              description: 'workflow:current_index_desc',
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.number
             }
@@ -153,8 +128,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               id: NodeOutputKeyEnum.currentItem,
               key: NodeOutputKeyEnum.currentItem,
-              label: t('workflow:current_item'),
-              description: t('workflow:current_item_desc'),
+              label: 'workflow:current_item',
+              description: 'workflow:current_item_desc',
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.any
             }
@@ -182,8 +157,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               id: NodeOutputKeyEnum.currentIteration,
               key: NodeOutputKeyEnum.currentIteration,
-              label: t('workflow:current_iteration'),
-              description: t('workflow:current_iteration_desc'),
+              label: 'workflow:current_iteration',
+              description: 'workflow:current_iteration_desc',
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.number
             }
@@ -192,9 +167,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       }
     }
 
-    // Auto-add a loopRunBreak node when user switches INTO conditional mode
-    // without an existing break (only on transition — avoids re-adding every
-    // time the user deletes the break node intentionally).
+    // Transition-only, so a user-deleted break node isn't re-created.
     if (mode === LoopRunModeEnum.conditional && prevMode !== LoopRunModeEnum.conditional) {
       const hasBreak = childNodeIds.some(
         (id) => getNodeById(id)?.flowNodeType === FlowNodeTypeEnum.loopRunBreak
@@ -215,8 +188,6 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }
   }, [mode, childNodeIds, nodeId, getNodeById, getRawNodeById, onChangeNode, setNodes, t]);
 
-  // Mirror canEdit inputs → dynamic outputs (add / update / remove) so
-  // downstream nodes can reference each declared field.
   useEffect(() => {
     const declared = inputs.filter((i) => i.canEdit === true);
     const currentDynamic = outputs.filter((o) => o.type === FlowNodeOutputTypeEnum.dynamic);
@@ -277,6 +248,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             flex={1}
             position={'relative'}
             border={'base'}
+            bg={'myGray.100'}
             rounded={'8px'}
             {...(!isFolded && {
               minW: nodeWidth,
@@ -287,7 +259,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       </Container>
       <Container>
         <IOTitle text={t('common:Output')} nodeId={nodeId} catchError={catchError} />
-        <Box>
+        <Box maxW={'600px'}>
           <RenderInput nodeId={nodeId} flowInputList={outputDeclarationInputs} />
         </Box>
         <RenderOutput nodeId={nodeId} flowOutputList={successOutputs} />

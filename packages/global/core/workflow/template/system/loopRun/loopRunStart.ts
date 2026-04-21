@@ -11,6 +11,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { i18nT } from '../../../../../../web/i18n/utils';
+import { LoopRunModeEnum } from './loopRun';
 
 export const LoopRunStartNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.loopRunStart,
@@ -31,7 +32,7 @@ export const LoopRunStartNode: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.string,
       label: '',
-      value: 'array'
+      value: LoopRunModeEnum.array
     },
     {
       key: NodeInputKeyEnum.nestedStartInput,

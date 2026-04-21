@@ -67,15 +67,12 @@ export type LoopInteractive = InteractiveNodeType & {
   };
 };
 
-// LoopRun — semantically-named pause state for the new loopRun node.
-// Separate from the legacy `loopInteractive` so the sub-workflow response,
-// per-iteration history, and resume iteration each live in their own field.
 export const LoopRunInteractiveSchema = z.object({
   type: z.literal('loopRunInteractive'),
   params: z.object({
     loopHistory: z.array(z.any()),
     childrenResponse: z.any(),
-    iteration: z.number() // resume at this iteration (1-based)
+    iteration: z.number()
   })
 });
 export type LoopRunInteractive = InteractiveNodeType & {

@@ -11,6 +11,7 @@ import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponen
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -78,6 +79,13 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
   const inputType = nodeInputTypeToInputType(item.renderTypeList);
 
+  // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。
+  const menuPlacement = useMemo(() => {
+    const node = getNodeById(nodeId);
+    if (!node) return undefined;
+    return isNestedParentNodeType(node.flowNodeType) ? ('top-start' as const) : undefined;
+  }, [getNodeById, nodeId]);
+
   // 添加默认值处理的效果
   useEffect(() => {
     if (inputType === InputTypeEnum.selectLLMModel && item.value === undefined && defaultModel) {
@@ -110,6 +118,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       variableLabels={editorVariables}
       modelList={llmModelList}
       ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
+      menuPlacement={menuPlacement}
       {...item}
     />
   );

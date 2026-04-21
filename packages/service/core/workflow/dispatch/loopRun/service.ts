@@ -20,20 +20,9 @@ export type LoopRunHistoryItem = {
   error?: string;
 };
 
-/**
- * Pick declaration inputs (canEdit === true). Each such input represents a
- * user-declared custom output of the loopRun node: input.key is the output
- * field name, input.value holds a reference into the sub-workflow, and
- * input.valueType is the declared type.
- */
 export const pickCustomOutputInputs = (inputs: FlowNodeInputItemType[]): FlowNodeInputItemType[] =>
   inputs.filter((i) => i.canEdit === true);
 
-/**
- * Extract the set of nodeIds that actually produced a response in the current
- * iteration. Used to filter refs for the failure-iteration snapshot so that
- * stale values from previous iterations do not leak through.
- */
 export const extractFinishedNodeIds = (flowResponses: ChatHistoryItemResType[]): Set<string> => {
   const ids = new Set<string>();
   for (const r of flowResponses) {
@@ -43,14 +32,9 @@ export const extractFinishedNodeIds = (flowResponses: ChatHistoryItemResType[]):
 };
 
 /**
- * Resolve each custom-output reference against runtimeNodes / variables.
- *
- * `finishedNodeIds` provided (failure iteration):
- *   refs whose target node is NOT in the set → undefined. Global variable refs
- *   (nodeId === VARIABLE_NODE_ID) bypass the filter (they don't depend on
- *   iteration-local execution).
- *
- * `finishedNodeIds` undefined (success iteration): resolve all refs normally.
+ * When `finishedNodeIds` is provided (failure iteration), refs whose target
+ * did not run resolve to undefined so stale values from earlier iterations
+ * don't leak. Global variable refs bypass the filter.
  */
 export const readCustomOutputSnapshot = ({
   customOutputInputs,
@@ -101,11 +85,8 @@ export const readCustomOutputSnapshot = ({
 };
 
 /**
- * Mutates nodes in-place: mark the loopRunStart node (within this loopRun
- * container's children) as entry and inject iteration values.
- *
- * - array mode     : nestedStartInput = item, nestedStartIndex = index (0-based)
- * - conditional    : nestedStartIndex = iteration (1-based)
+ * Array mode injects 0-based index; conditional mode injects 1-based iteration.
+ * Mutates in place.
  */
 export const injectLoopRunStart = ({
   nodes,
@@ -139,11 +120,6 @@ export const injectLoopRunStart = ({
   });
 };
 
-/**
- * Per-iteration usage accounting: sum points for one sub-workflow run, push an
- * entry to the parent dispatcher's accumulator, return the value so the caller
- * can keep a running total.
- */
 export const pushSubWorkflowUsage = ({
   usagePush,
   response,
@@ -163,9 +139,6 @@ export const pushSubWorkflowUsage = ({
   return itemUsagePoint;
 };
 
-/**
- * Append any customFeedbacks from a sub-workflow response into an accumulator.
- */
 export const collectResponseFeedbacks = (
   response: DispatchFlowResponse,
   target: string[]
@@ -177,15 +150,9 @@ export const collectResponseFeedbacks = (
   return target;
 };
 
-/** Was a loopRunBreak signal node hit during this iteration? */
 export const isLoopBreakHit = (flowResponses: ChatHistoryItemResType[]): boolean =>
   flowResponses.some((r) => r.moduleType === FlowNodeTypeEnum.loopRunBreak);
 
-/**
- * Is there at least one loopRunBreak node inside this loopRun's sub-workflow?
- * Used in conditional mode to reject workflows that would loop forever until
- * the WORKFLOW_MAX_LOOP_TIMES safety bound fires.
- */
 export const hasLoopRunBreakChild = (
   runtimeNodes: RuntimeNodeItemType[],
   childrenNodeIdList: string[]

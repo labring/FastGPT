@@ -15,7 +15,7 @@ import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils'
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
@@ -24,12 +24,7 @@ import { AppContext } from '../../../context';
 type UseNestedNodeParams = {
   nodeId: string;
   inputs: FlowNodeInputItemType[];
-  /**
-   * Key of the array-input whose valueType should be inferred from the
-   * referenced output. Defaults to `nestedInputArray` (used by loop /
-   * parallelRun). loopRun passes `loopRunInputArray` in array mode and
-   * `undefined` in conditional mode to skip inference entirely.
-   */
+  // Pass `undefined` to skip array valueType inference (loopRun conditional mode).
   arrayInputKey?: NodeInputKeyEnum;
 };
 
@@ -39,19 +34,7 @@ type UseNestedNodeResult = {
   inputBoxRef: React.RefObject<HTMLDivElement>;
 };
 
-/**
- * Shared hook for nested-container nodes (Loop / ParallelRun / LoopRun).
- *
- * Encapsulates five pieces of logic that are identical across those components:
- *  1. Read nodeWidth / nodeHeight / nestedInputArray / loopNodeInputHeight from inputs
- *  2. Infer array valueType from the referenced output and sync it back
- *     (skipped when `arrayInputKey` is undefined — e.g. loopRun conditional mode)
- *  3. Maintain childrenNodeIdList and trigger resetParentNodeSizeAndPosition
- *  4. Measure the input-box height with useSize and sync nestedNodeInputHeight
- *  5. Trigger resetParentNodeSizeAndPosition after height changes
- *
- * Returns only what the component JSX needs (nodeWidth, nodeHeight, inputBoxRef).
- */
+// Shared hook for nested-container nodes (Loop / ParallelRun / LoopRun).
 export const useNestedNode = ({
   nodeId,
   inputs,
@@ -69,6 +52,17 @@ export const useNestedNode = ({
       };
     }
   );
+  // 订阅子节点尺寸变化：ReactFlow 完成测量后会更新 node.width / node.height,
+  // 把它们压成字符串当 signal,有变化就重算 bounds,避免 50ms 定时器抢跑在测量前。
+  const childDimensionsSignal = useContextSelector(WorkflowInitContext, (v) => {
+    let signal = '';
+    for (const node of v.nodes) {
+      if (node.data.parentNodeId === nodeId) {
+        signal += `${node.id}:${node.width ?? 0}x${node.height ?? 0}|`;
+      }
+    }
+    return signal;
+  });
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const resetParentNodeSizeAndPosition = useContextSelector(
@@ -143,7 +137,7 @@ export const useNestedNode = ({
     });
   }, [nestedInputArray, newValueType, nodeId, onChangeNode, arrayInputKey]);
 
-  // ── 3. Maintain childrenNodeIdList ──────────────────────────────────────────
+  // ── 3a. Maintain childrenNodeIdList ─────────────────────────────────────────
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -154,10 +148,15 @@ export const useNestedNode = ({
         value: childNodeIds
       }
     });
-    // 等待 ReactFlow 完成新子节点的宽高测量后再计算,否则 bounds 会少算整个新节点
+  }, [childNodeIds, nodeId, onChangeNode]);
+
+  // ── 3b. Trigger layout reset on child id / dimension change ─────────────────
+  // 依赖 childDimensionsSignal,子节点被 ReactFlow 测量出新的 w/h 后会再触发一次,
+  // 确保 bounds 计算基于真实尺寸,而不是赶在 50ms 定时器到期时还是 0 的状态。
+  useEffect(() => {
     const timer = setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50);
     return () => clearTimeout(timer);
-  }, [childNodeIds, nodeId, onChangeNode, resetParentNodeSizeAndPosition]);
+  }, [childNodeIds, childDimensionsSignal, nodeId, resetParentNodeSizeAndPosition]);
 
   // ── 4 & 5. Measure input-box height, sync and re-layout ────────────────────
   const inputBoxRef = useRef<HTMLDivElement>(null);

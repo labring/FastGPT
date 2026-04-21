@@ -44,7 +44,7 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
     <Box borderBottom={hideBottomDivider ? undefined : 'base'} pb={hideBottomDivider ? 0 : 3}>
       <HStack className="nodrag" cursor={'default'} position={'relative'}>
         <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-          <Box>{item.label || t('workflow:custom_input')}</Box>
+          <Box>{item.label ? t(item.label as any) : t('workflow:custom_input')}</Box>
           {item.description && <QuestionTip label={t(item.description as any)} />}
 
           {item.deprecated && (
@@ -137,9 +137,7 @@ const Reference = ({
   const { referenceList } = useReference({
     nodeId,
     valueType: WorkflowIOValueTypeEnum.any,
-    // 容器节点（如 loopRun）通过 DynamicInputs 声明自定义输出时，
-    // 需要引用循环体内部（子节点）的变量；其他使用方（sandbox / laf / http 等）
-    // 无子节点，此标志对它们是 no-op。
+    // Container nodes (loopRun) need to reference outputs from their sub-workflow.
     includeChildren: true
   });
 

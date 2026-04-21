@@ -52,8 +52,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  // Conditional mode would otherwise only stop via the safety bound. Require
-  // an explicit break signal so users don't accidentally burn max iterations.
+  // Without a break node, conditional mode can only stop at WORKFLOW_MAX_LOOP_TIMES.
   if (
     mode === LoopRunModeEnum.conditional &&
     !hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)
@@ -61,16 +60,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     return Promise.reject('Conditional loopRun requires at least one loopRunBreak node');
   }
 
-  // Isolate runtime state from parent so concurrent sibling nodes don't step on us.
+  // Isolate from parent so concurrent siblings don't mutate our view.
   const isolatedNodes = cloneDeep(runtimeNodes);
   const isolatedEdges = cloneDeep(runtimeEdges);
 
   const customOutputInputs = pickCustomOutputInputs(node.inputs);
 
-  // Resume state from lastInteractive. Uses the dedicated loopRunInteractive
-  // schema: { loopHistory, childrenResponse, iteration } — cleaner than
-  // piggybacking the legacy loopInteractive fields used by the old Loop node.
-  const interactiveData =
+  let interactiveData =
     lastInteractive?.type === 'loopRunInteractive' ? lastInteractive.params : undefined;
 
   const loopHistory: LoopRunHistoryItem[] = interactiveData
@@ -139,8 +135,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     collectResponseFeedbacks(response, customFeedbacks);
     newVariables = { ...newVariables, ...response.newVariables };
 
-    // Interactive: pause without writing a history entry (per design §8),
-    // carry current iteration + history for resume.
+    // Pause without writing a history entry — the resumed run will record it.
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       break;
@@ -172,6 +167,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     loopHistory.push({ iteration, customOutputs, success: true });
 
     if (isLoopBreakHit(response.flowResponses)) break;
+
+    // Resume state is one-shot; clear so subsequent iterations enter clean.
+    interactiveData = undefined;
 
     iteration++;
   }

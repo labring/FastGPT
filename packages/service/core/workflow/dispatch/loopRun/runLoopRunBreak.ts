@@ -7,11 +7,8 @@ import {
 type Props = ModuleDispatchProps<Record<string, never>>;
 type Response = DispatchNodeResultType<Record<string, never>>;
 
-/**
- * Pure signal node. Runs to completion (leaving a trace in flowResponses) and
- * produces no output. loopRun reads this trace via isLoopBreakHit() to decide
- * whether to enter the next iteration.
- */
+// Signal-only node. The parent loopRun detects the moduleType in flowResponses
+// to decide whether to terminate the loop.
 export const dispatchLoopRunBreak = async (_props: Props): Promise<Response> => {
   return {
     data: {},

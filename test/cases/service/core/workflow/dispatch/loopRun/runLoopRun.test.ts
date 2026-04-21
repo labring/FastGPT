@@ -8,11 +8,6 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 
-// ─── mocks ────────────────────────────────────────────────────────────────────
-// runLoopRun.ts internally does `import { runWorkflow } from '..'`, which
-// resolves to @fastgpt/service/core/workflow/dispatch. Mock it so we fully
-// control the sub-workflow response per iteration.
-
 const runWorkflowMock = vi.fn();
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
@@ -24,7 +19,7 @@ vi.mock('@fastgpt/service/env', () => ({
   env: { WORKFLOW_MAX_LOOP_TIMES: 5 }
 }));
 
-// Import AFTER mocks so runLoopRun pulls mocked modules.
+// Import after mocks so runLoopRun pulls the mocked modules.
 import { dispatchLoopRun } from '@fastgpt/service/core/workflow/dispatch/loopRun/runLoopRun';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -434,6 +429,59 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(history).toHaveLength(2);
     expect(history[0]).toMatchObject({ iteration: 1, success: true });
     expect(history[1]).toMatchObject({ iteration: 2, success: true });
+  });
+
+  it('lastInteractive 恢复后续跑多轮 → 恢复后非终止轮不应再携带 lastInteractive', async () => {
+    // Regression guard: resume state must be cleared after its own iteration.
+    const interactivePayload: any = {
+      entryNodeIds: ['userSelectNode'],
+      memoryEdges: [{ source: 'a', target: 'b', status: 'active' }],
+      nodeOutputs: []
+    };
+
+    runWorkflowMock.mockImplementation(() =>
+      Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+        })
+      )
+    );
+
+    const priorHistory = [{ iteration: 1, customOutputs: {}, success: true }];
+    const runtimeNodes = makeRuntimeNodes();
+    const node = runtimeNodes[0];
+    const props = {
+      params: {
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b', 'c'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      },
+      node,
+      runtimeNodes,
+      runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
+      runtimeEdges: [],
+      variables: {},
+      usagePush: vi.fn(),
+      lastInteractive: {
+        type: 'loopRunInteractive',
+        params: {
+          loopHistory: priorHistory,
+          iteration: 2,
+          childrenResponse: interactivePayload
+        }
+      }
+    } as any;
+
+    await dispatchLoopRun(props);
+
+    expect(runWorkflowMock).toHaveBeenCalledTimes(2);
+
+    const resumeCall = runWorkflowMock.mock.calls[0][0];
+    expect(resumeCall.lastInteractive).toBe(interactivePayload);
+
+    const nextCall = runWorkflowMock.mock.calls[1][0];
+    expect(nextCall.lastInteractive).toBeUndefined();
+    expect(nextCall.runtimeEdges).toEqual([]);
   });
 
   it('array mode 输入非数组 → reject', async () => {

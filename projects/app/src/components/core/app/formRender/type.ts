@@ -5,7 +5,7 @@ import type {
 import type { InputTypeEnum } from './constant';
 import type { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { UseFormReturn } from 'react-hook-form';
-import type { BoxProps } from '@chakra-ui/react';
+import type { BoxProps, MenuProps } from '@chakra-ui/react';
 import type { EditorProps } from '@fastgpt/web/components/common/Textarea/PromptEditor/Editor';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
@@ -43,6 +43,7 @@ export type SpecificProps = {
   // select & multipleSelect
   list?: { label: string; value: string; icon?: string; description?: string }[];
   enums?: { value: string }[]; // old version
+  menuPlacement?: MenuProps['placement'];
 
   // selectDataset
   datasetOptions?: SelectedDatasetType[];

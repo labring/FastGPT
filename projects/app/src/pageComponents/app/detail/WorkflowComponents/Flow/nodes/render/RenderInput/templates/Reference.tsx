@@ -66,7 +66,7 @@ export const useReference = ({
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
-  // 声明为容器自身的自定义输出（如 loopRun.loopCustomOutputs）时，把容器子节点也并入可选来源。
+  // Include the container's own children as reference sources.
   includeChildren?: boolean;
 }) => {
   const { t } = useTranslation();

@@ -531,8 +531,17 @@ export const useWorkflow = () => {
     );
 
     if (parentNode) {
+      if (
+        node.type === FlowNodeTypeEnum.loopRunBreak &&
+        parentNode.type !== FlowNodeTypeEnum.loopRun
+      ) {
+        return toast({
+          status: 'warning',
+          title: t('workflow:loop_run_break_must_inside_loop_run')
+        });
+      }
+
       const isParallel = parentNode.type === FlowNodeTypeEnum.parallelRun;
-      // loopRun uses the same forbidden set as loop (allows interactive nodes).
       const unSupportedTypes = isParallel ? unSupportedInParallel : unSupportedInLoop;
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
         return toast({
