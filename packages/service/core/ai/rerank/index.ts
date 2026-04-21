@@ -8,6 +8,25 @@ import { text2Chunks } from '../../../worker/function';
 
 const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 
+export function formatRerankQuery(
+  query: string,
+  documents: string[],
+  instruction?: string
+): { query: string; documents: string[] } {
+  if (!instruction) return { query, documents };
+  const prefix =
+    '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".\n<|im_end|>\n<|im_start|>user\n';
+  const suffix = '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n';
+  const formattedQuery = `${prefix}<Instruct>: ${instruction}\n<Query>: ${query}`;
+  const formattedDocuments = documents.map((doc) => `<Document>: ${doc}${suffix}`);
+  logger.debug('formatRerankQuery result', {
+    instruction,
+    query: formattedQuery,
+    documents: formattedDocuments
+  });
+  return { query: formattedQuery, documents: formattedDocuments };
+}
+
 type PostReRankResponse = {
   id: string;
   results: {
@@ -49,8 +68,9 @@ export async function reRankRecall({
 
   // Token budget: calculate how many tokens each document can use
   // Document max token = ModelMaxToken - QueryTokens
-  const queryTokens = await countPromptTokens(query);
-  const rerankMaxToken = model.maxToken || 8000;
+  const { query: formattedQuery } = formatRerankQuery(query, [], model.instruction);
+  const queryTokens = await countPromptTokens(formattedQuery);
+  const rerankMaxToken = model.maxToken ?? 8000;
   const docBudget = rerankMaxToken - queryTokens;
   if (docBudget <= 500) {
     return Promise.reject(new Error('Rerank query too long'));
@@ -93,12 +113,18 @@ export async function reRankRecall({
   const { baseUrl, authorization } = getAxiosConfig();
   const start = Date.now();
 
+  const { documents: formattedDocuments } = formatRerankQuery(
+    query,
+    documentsTextArray,
+    model.instruction
+  );
+
   const apiResult = await POST<PostReRankResponse>(
     model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`,
     {
       model: model.model,
-      query,
-      documents: documentsTextArray
+      query: formattedQuery,
+      documents: formattedDocuments
     },
     {
       headers: {

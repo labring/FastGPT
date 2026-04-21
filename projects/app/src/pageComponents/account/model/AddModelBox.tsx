@@ -1031,6 +1031,16 @@ export const ModelEditModal = ({
                   {...NumberInputStyles}
                 />
               </Field>
+              <Field
+                label={t('account:model.instruction')}
+                tip={t('account:model.instruction_embedding_tip')}
+              >
+                <MyTextarea
+                  {...register('instruction')}
+                  placeholder={t('account:model.instruction_embedding_placeholder')}
+                  rows={3}
+                />
+              </Field>
             </Grid>
           </Section>
         )}
@@ -1047,6 +1057,16 @@ export const ModelEditModal = ({
                   name="maxToken"
                   min={1000}
                   {...NumberInputStyles}
+                />
+              </Field>
+              <Field
+                label={t('account:model.instruction')}
+                tip={t('account:model.instruction_rerank_tip')}
+              >
+                <MyTextarea
+                  {...register('instruction')}
+                  placeholder={t('account:model.instruction_rerank_placeholder')}
+                  rows={3}
                 />
               </Field>
             </Grid>

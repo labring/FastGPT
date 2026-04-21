@@ -43,6 +43,7 @@ export async function createEmbeddingModelConfig(params: {
   normalization?: boolean;
   batchSize?: number;
   defaultConfig?: Record<string, any>;
+  instruction?: string;
 }): Promise<string> {
   const { name, endpoint, isActive } = params;
   const model = endpoint.model;
@@ -62,7 +63,8 @@ export async function createEmbeddingModelConfig(params: {
     weight: params.weight ?? 0,
     normalization: params.normalization,
     batchSize: params.batchSize,
-    defaultConfig: params.defaultConfig
+    defaultConfig: params.defaultConfig,
+    instruction: params.instruction
   };
 
   const result = await MongoSystemModel.findOneAndUpdate(

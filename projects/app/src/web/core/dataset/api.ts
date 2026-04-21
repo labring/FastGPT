@@ -3,6 +3,7 @@ import type {
   GetPathProps,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
+import type { GetDatasetListWithChildrenBody } from '@/pages/api/core/dataset/listWithChildren';
 import type {
   DatasetItemType,
   DatasetListItemType,
@@ -115,6 +116,9 @@ import type {
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<DatasetListItemType[]>(`/core/dataset/list`, data, { maxQuantity: 1 });
+
+export const getDatasetsWithChildren = (data: GetDatasetListWithChildrenBody) =>
+  POST<DatasetListItemType[]>(`/core/dataset/listWithChildren`, data, { maxQuantity: 1 });
 
 export const getDatasetsPaginated = (
   data: GetDatasetListBody & { pageNum: number; pageSize: number }

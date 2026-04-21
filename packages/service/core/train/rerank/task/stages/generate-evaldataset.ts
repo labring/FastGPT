@@ -6,7 +6,7 @@ import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
-import { sampleDataFromDataset, pLimit } from '../../utils';
+import { sampleDataFromDataset, pLimit, fetchSampledContent } from '../../utils';
 import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
@@ -52,7 +52,7 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
 
   // Randomly sample from all data for evaluation
   const sampledData = await sampleDataFromDataset(datasetIds, {
-    datasetType: 'random',
+    datasetType: 'eval',
     sampleSize: MIN_EVAL_QA_COUNT
   });
 
@@ -65,25 +65,28 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
     throw new TrainTaskUnrecoverableError(enhancedError);
   }
 
+  // Fetch q/a content for DiTing API calls (sampleDataFromDataset now returns ID-only items)
+  const sampledDataWithContent = await fetchSampledContent(sampledData);
+
   // If sampled data is less than MIN_EVAL_QA_COUNT, repeat samples cyclically to fill the gap
-  let limitedSampledData = sampledData;
-  if (sampledData.length < MIN_EVAL_QA_COUNT) {
+  let limitedSampledData = sampledDataWithContent;
+  if (sampledDataWithContent.length < MIN_EVAL_QA_COUNT) {
     addLog.warn('Eval sampledData below minimum required count, repeating samples', {
       taskId: String(task._id),
-      sampledCount: sampledData.length,
+      sampledCount: sampledDataWithContent.length,
       required: MIN_EVAL_QA_COUNT
     });
     limitedSampledData = [];
     for (let i = 0; i < MIN_EVAL_QA_COUNT; i++) {
-      limitedSampledData.push(sampledData[i % sampledData.length]);
+      limitedSampledData.push(sampledDataWithContent[i % sampledDataWithContent.length]);
     }
   } else {
-    limitedSampledData = sampledData.slice(0, MIN_EVAL_QA_COUNT);
+    limitedSampledData = sampledDataWithContent.slice(0, MIN_EVAL_QA_COUNT);
   }
 
   addLog.info('Sampled data from datasets', {
     taskId: String(task._id),
-    sampleCount: sampledData.length,
+    sampleCount: sampledDataWithContent.length,
     limitedCount: limitedSampledData.length
   });
 

@@ -35,8 +35,9 @@ import type {
 import type { EnhancedErrorMessage as RerankEnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import type { EnhancedErrorMessage as EmbeddingEnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
 import TrainExceptionModal from './TrainExceptionModal';
-import { getDatasets } from '@/web/core/dataset/api';
+import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingTrainTaskList, getRerankTrainTaskList } from '@/web/core/app/api/train';
 import type { ModelTabType } from './types';
 import { modelTableTabValues } from './types';
@@ -52,6 +53,10 @@ type TrainTaskErrorMessage = RerankEnhancedErrorMessage | EmbeddingEnhancedError
 type DatasetInfo = {
   datasetNameMap: Record<string, string>;
   allDatasetIds: string[];
+};
+
+type DatasetTreeItem = DatasetListItemType & {
+  children?: DatasetTreeItem[];
 };
 
 type Props = {
@@ -167,22 +172,34 @@ const TrainDetailModal = ({
 
   const { runAsync: loadDatasets } = useRequest(
     async () => {
-      const datasets = await getDatasets({
-        parentId: null,
-        type: DatasetTypeEnum.dataset
+      const datasets = await getDatasetsWithChildren({
+        parentId: null
       });
 
-      return datasets.reduce<DatasetInfo>(
-        (acc, dataset) => {
+      const reduceDatasets = (items: DatasetTreeItem[], acc: DatasetInfo): DatasetInfo => {
+        items.forEach((dataset) => {
+          if (dataset.type === DatasetTypeEnum.folder) {
+            if (dataset.children?.length) {
+              reduceDatasets(dataset.children as DatasetTreeItem[], acc);
+            }
+            return;
+          }
+
           acc.allDatasetIds.push(dataset._id);
           acc.datasetNameMap[dataset._id] = dataset.name;
-          return acc;
-        },
-        {
-          datasetNameMap: {},
-          allDatasetIds: []
-        }
-      );
+
+          if (dataset.children?.length) {
+            reduceDatasets(dataset.children as DatasetTreeItem[], acc);
+          }
+        });
+
+        return acc;
+      };
+
+      return reduceDatasets(datasets as DatasetTreeItem[], {
+        datasetNameMap: {},
+        allDatasetIds: []
+      });
     },
     {
       errorToast: '',
@@ -435,6 +452,7 @@ const TrainDetailModal = ({
 
       if (getTrainTaskStatusConfig(item.status, t).colorSchema === 'green') {
         const isDownloading = downloadingTaskIds.has(item._id);
+        const isDeleting = deletingTaskIds.has(item._id);
 
         return (
           <MyMenu
@@ -448,6 +466,15 @@ const TrainDetailModal = ({
                     label: t('account_model:train_detail_download_data'),
                     onClick: () => onDownloadData(item._id),
                     menuItemStyles: isDownloading
+                      ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
+                      : undefined
+                  },
+                  {
+                    type: 'danger',
+                    icon: isDeleting ? 'common/loading' : 'common/trash',
+                    label: t('common:Delete'),
+                    onClick: () => handleDeleteTask(item._id),
+                    menuItemStyles: isDeleting
                       ? { isDisabled: true, opacity: 0.6, cursor: 'not-allowed' }
                       : undefined
                   }

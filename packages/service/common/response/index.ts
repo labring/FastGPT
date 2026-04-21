@@ -26,6 +26,10 @@ export interface ProcessedError {
   zodError?: any;
 }
 
+function isValidHttpStatusCode(code: number): boolean {
+  return Number.isInteger(code) && code >= 100 && code <= 599;
+}
+
 /**
  * 业务 JSON `code` 与 HTTP 状态码解耦：多数业务码为 5xxxxx，不能当作 HTTP status。
  * 仅对明确语义映射到 4xx/5xx，其余默认 500。
@@ -77,9 +81,14 @@ export function processError(params: {
   if (ERROR_RESPONSE[errResponseKey]) {
     const shouldClearCookie = errResponseKey === ERROR_ENUM.unAuthorization;
 
+    let validStatusCode = defaultCode;
+    if (isValidHttpStatusCode(ERROR_RESPONSE[errResponseKey].code)) {
+      validStatusCode = ERROR_RESPONSE[errResponseKey].code;
+    }
     // 记录业务侧错误日志
     logger.info('API response error', {
       url,
+      statusCode: validStatusCode,
       code: ERROR_RESPONSE[errResponseKey].code,
       message: ERROR_RESPONSE[errResponseKey].message,
       statusText: ERROR_RESPONSE[errResponseKey].statusText,
@@ -87,7 +96,7 @@ export function processError(params: {
     });
 
     return {
-      code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
+      code: validStatusCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message: ERROR_RESPONSE[errResponseKey].message,
       data: ERROR_RESPONSE[errResponseKey].data,
@@ -155,7 +164,7 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
-const httpStatus = resolveHttpStatusForApiError(processedError, { code, error });
+    const httpStatus = resolveHttpStatusForApiError(processedError, { code, error });
 
     res.status(httpStatus).json({
       code: processedError.code,

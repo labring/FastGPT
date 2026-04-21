@@ -11,10 +11,10 @@ import {
 import {
   pLimit,
   sampleDataFromDataset,
+  fetchSampledContent,
   buildModelEndpoint,
   getTrainStageKey,
   formatTrainTaskError,
-  formatSynthesisIndexesToPairs,
   makeCreateEnhancedError
 } from '../common/utils';
 
@@ -22,10 +22,10 @@ import {
 export {
   pLimit,
   sampleDataFromDataset,
+  fetchSampledContent,
   buildModelEndpoint,
   getTrainStageKey,
-  formatTrainTaskError,
-  formatSynthesisIndexesToPairs
+  formatTrainTaskError
 };
 
 // Re-export constants used by rerank-specific callers

@@ -247,10 +247,21 @@ export async function runGenerateTrainsetStage(task: EmbeddingTrainTaskSchemaTyp
       trainsetId
     });
 
+    // generateConfig is required in auto mode; guard here to surface programming errors early
+    if (!task.generateConfig) {
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.generate_trainset,
+        EmbeddingTrainErrEnum.embeddingPrepareMissingGenerateConfig,
+        EmbeddingTrainSuggestionEnum.embeddingPrepareMissingGenerateConfig
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
+
     // Trigger data generation queue
     const job = await embeddingTrainDataGenerateQueue.add(`generate-trainset-${trainsetId}`, {
       trainsetId,
-      datasetIds: task.datasetIds
+      datasetIds: task.datasetIds,
+      generateConfig: task.generateConfig
     });
 
     // Write jobId back to trainset for retry support

@@ -3,7 +3,10 @@ import * as path from 'path';
 import { MongoRerankTrainTask } from './schema';
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
 import type { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
-import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
+import {
+  RerankTrainMethodEnum,
+  RerankTrainTaskStatusEnum
+} from '@fastgpt/global/core/train/rerank/constants';
 import { addLog } from '../../../../common/system/log';
 import { getRerankModel } from '../../../ai/model';
 import type { ClientSession } from '../../../../common/mongo';
@@ -41,7 +44,15 @@ export async function createRerankTrainTask(params: {
   teamId: string;
   tmbId: string;
   name?: string;
-  trainType?: string;
+  trainMethod?: string;
+  generateConfig?: {
+    sampleSize?: number;
+    weights?: Record<string, number>;
+    indexType: string;
+    negativeStrategy?: 1 | 2 | 3 | 4;
+    minNegativeSamples?: number;
+    maxNegativeSamples?: number;
+  };
 }): Promise<RerankTrainTaskSchemaType> {
   const {
     baseModelId,
@@ -52,7 +63,8 @@ export async function createRerankTrainTask(params: {
     teamId,
     tmbId,
     name,
-    trainType
+    trainMethod,
+    generateConfig
   } = params;
 
   // Reject disabled models: getRerankModel() silently falls back to the default model
@@ -81,12 +93,13 @@ export async function createRerankTrainTask(params: {
       evalDatasetId: evalDatasetId || undefined,
       datasetIds: datasetIds?.length ? datasetIds : undefined,
       newModelName: newModelName || undefined,
+      generateConfig: generateConfig || undefined,
       teamId,
       tmbId,
       name: name || `Rerank Training - ${new Date().toLocaleDateString()}`,
       baseModelId,
       baseModelEndpoint,
-      trainType: trainType || 'lora',
+      trainMethod: trainMethod || RerankTrainMethodEnum.lora,
       status: RerankTrainTaskStatusEnum.pending,
       checkpoint: {
         stage: null,

@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { rerankTrainDataGenerateQueue } from '@fastgpt/service/core/train/rerank/data/mq';
+import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
@@ -57,7 +58,10 @@ async function handler(
   const job = await rerankTrainDataGenerateQueue.add(`generate-${trainset._id}-${Date.now()}`, {
     trainsetId: String(trainset._id),
     datasetIds,
-    generateConfig
+    generateConfig: {
+      ...generateConfig,
+      indexType: generateConfig?.indexType ?? DEFAULT_TRAIN_INDEX_TYPE
+    }
   });
 
   // 5. Persist jobId on the trainset for retry support

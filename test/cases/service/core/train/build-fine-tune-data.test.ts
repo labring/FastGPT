@@ -1,552 +1,630 @@
-import { describe, test, expect } from 'vitest';
-import { buildFineTuneData } from '@fastgpt/service/core/train/common/synthesize/buildFineTuneData';
+/**
+ * build-fine-tune-data.test.ts
+ *
+ * 测试 buildFineTuneDataStream（AsyncGenerator）的内存优化重构版本。
+ * 使用真实 MongoDB（via setup.ts 基础设施），不 mock DB。
+ *
+ * T-B1:  基本流式输出 - N 个有 default index 的 doc → yield N 个 FineTuneSample
+ * T-B2:  query = cleanText(target indexType 的 index text)
+ * T-B3a: A 非空时 positive = [Q + "\n" + A]
+ * T-B3b: A 为空时 positive = [Q]
+ * T-B4:  无 target indexType 的 source doc 被跳过
+ * T-B5:  strategy=1 → negatives 来自同知识库同 collection
+ * T-B6:  strategy=2 → negatives 来自同知识库其他 collection
+ * T-B7:  strategy=3 → negatives 来自其他知识库
+ * T-B8:  strategy=4 → negatives 混合三个来源
+ * T-B9:  negatives 不包含自身 sourceId 的 qaText
+ * T-B10: negatives dataId 无重复（通过文本去重验证）
+ * T-B11: minNeg/maxNeg 约束生效
+ * T-B12: 空 sampledItems → generator 直接结束（无 yield）
+ */
 
-describe('buildFineTuneData', () => {
-  describe('基础正样本构建', () => {
-    test('每个 pair 恰好生成 1 个 sample', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_long_chunk',
-            a: 'answer',
-            indexes: [
-              ['q1_a', 'q2_a'],
-              ['q1_b', 'q2_b']
-            ]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
+import { describe, test, expect, vi } from 'vitest';
+import { Types } from '@fastgpt/service/common/mongo';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { buildFineTuneDataStream } from '@fastgpt/service/core/train/common/synthesize/buildFineTuneData';
+import type { SampledDataItem } from '@fastgpt/service/core/train/common/utils';
 
-      expect(result.samples.length).toBe(2);
+// ─── Mock ─────────────────────────────────────────────────────────────────────
+vi.mock('@fastgpt/service/common/system/log', () => ({
+  addLog: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn()
+  }
+}));
+
+// ─── 辅助函数 ─────────────────────────────────────────────────────────────────
+
+/** 收集 AsyncGenerator 所有结果 */
+async function collectStream<T>(gen: AsyncGenerator<T>): Promise<T[]> {
+  const results: T[] = [];
+  for await (const item of gen) {
+    results.push(item);
+  }
+  return results;
+}
+
+/** 插入单个 doc，返回 SampledDataItem */
+async function insertDocAndGetItem(doc: {
+  teamId: Types.ObjectId;
+  tmbId: Types.ObjectId;
+  datasetId: Types.ObjectId;
+  collectionId: Types.ObjectId;
+  q: string;
+  a?: string;
+  indexes: { type: string; dataId: string; text: string }[];
+}): Promise<SampledDataItem> {
+  const [inserted] = await MongoDatasetData.insertMany([doc]);
+  return {
+    dataId: inserted._id.toString(),
+    datasetId: doc.datasetId.toString(),
+    collectionId: doc.collectionId.toString()
+  };
+}
+
+/** 批量插入 docs，返回 SampledDataItem[] */
+async function insertDocsAndGetItems(
+  docs: {
+    teamId: Types.ObjectId;
+    tmbId: Types.ObjectId;
+    datasetId: Types.ObjectId;
+    collectionId: Types.ObjectId;
+    q: string;
+    a?: string;
+    indexes: { type: string; dataId: string; text: string }[];
+  }[]
+): Promise<SampledDataItem[]> {
+  const inserted = await MongoDatasetData.insertMany(docs);
+  return inserted.map((doc, i) => ({
+    dataId: doc._id.toString(),
+    datasetId: docs[i].datasetId.toString(),
+    collectionId: docs[i].collectionId.toString()
+  }));
+}
+
+/** 生成 question index（与 buildFineTuneDataStream 默认 indexType 对齐） */
+function defaultIndex(text: string) {
+  return { type: 'question', dataId: new Types.ObjectId().toString(), text };
+}
+
+/** 生成 non-default index（用于测试 target indexType 过滤） */
+function otherIndex(text: string) {
+  return { type: 'custom', dataId: new Types.ObjectId().toString(), text };
+}
+
+// ─── T-B1 ─────────────────────────────────────────────────────────────────────
+describe('T-B1: 基本流式输出', () => {
+  test('3 个有 default index 的 doc → yield 3 个 FineTuneSample', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
+
+    const docs = Array.from({ length: 3 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: `question_${i}`,
+      a: `answer_${i}`,
+      indexes: [defaultIndex(`idx_text_${i}`)]
+    }));
+
+    const sampledItems = await insertDocsAndGetItems(docs);
+
+    const gen = buildFineTuneDataStream({ sampledItems, indexType: 'question' });
+    const results = await collectStream(gen);
+
+    expect(results.length).toBe(3);
+  });
+});
+
+// ─── T-B2 ─────────────────────────────────────────────────────────────────────
+describe('T-B2: query = cleanText(target indexType 的 index text)', () => {
+  test('index text 不含特殊字符时 query 与 text 相同', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
+
+    const indexText = 'query text for testing purposes';
+
+    const item = await insertDocAndGetItem({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: 'some question',
+      a: 'some answer',
+      indexes: [defaultIndex(indexText)]
     });
 
-    test('多个 item 时 sample 数量等于所有 pair 总数', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'chunk1',
-            a: 'a1',
-            indexes: [
-              ['q1', 'q2'],
-              ['q3', 'q4']
-            ]
-          },
-          {
-            dataId: 'item2',
-            datasetId: 'ds1',
-            q: 'chunk2',
-            a: 'a2',
-            indexes: [['q5', 'q6']]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
+    const gen = buildFineTuneDataStream({ sampledItems: [item], indexType: 'question' });
+    const results = await collectStream(gen);
 
-      expect(result.samples.length).toBe(3); // 2 + 1
+    expect(results.length).toBe(1);
+    expect(results[0].query).toBe(indexText);
+  });
+});
+
+// ─── T-B3 ─────────────────────────────────────────────────────────────────────
+describe('T-B3: positive 构建规则', () => {
+  test('T-B3a: A 非空时 positive = [Q + "\\n" + A]', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
+
+    const item = await insertDocAndGetItem({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: 'q_text here',
+      a: 'a_text answer',
+      indexes: [defaultIndex('idx_text')]
     });
 
-    test('偶数 pair_index (0, 2, ...): query=q1, positive=[q2]', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'answer',
-            indexes: [
-              ['short_q1', 'short_q2'], // pair_index=0 (even)
-              ['short_q3', 'short_q4'], // pair_index=1 (odd)
-              ['short_q5', 'short_q6'] // pair_index=2 (even)
-            ]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
+    const gen = buildFineTuneDataStream({ sampledItems: [item], indexType: 'question' });
+    const results = await collectStream(gen);
 
-      const evenSample0 = result.samples[0]; // pair_index=0
-      expect(evenSample0.query).toBe('short_q1');
-      expect(evenSample0.positive).toEqual(['short_q2']);
-
-      const evenSample2 = result.samples[2]; // pair_index=2
-      expect(evenSample2.query).toBe('short_q5');
-      expect(evenSample2.positive).toEqual(['short_q6']);
-    });
-
-    test('奇数 pair_index (1, 3, ...): query=q1, positive=[original_q]', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'the_original_long_chunk',
-            a: 'answer',
-            indexes: [
-              ['short_q1', 'short_q2'], // pair_index=0
-              ['short_q3', 'short_q4'], // pair_index=1 (odd)
-              ['short_q5', 'short_q6'], // pair_index=2
-              ['short_q7', 'short_q8'] // pair_index=3 (odd)
-            ]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
-
-      const oddSample1 = result.samples[1]; // pair_index=1
-      expect(oddSample1.query).toBe('short_q3');
-      expect(oddSample1.positive).toEqual(['the_original_long_chunk']);
-
-      const oddSample3 = result.samples[3]; // pair_index=3
-      expect(oddSample3.query).toBe('short_q7');
-      expect(oddSample3.positive).toEqual(['the_original_long_chunk']);
-    });
-
-    test('奇数 pair 无 original_q 时回退到 q2 作为正样本', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: '',
-            a: 'answer',
-            indexes: [
-              ['short_q1', 'short_q2'], // pair_index=0
-              ['short_q3', 'short_q4'] // pair_index=1 (odd, no original_q)
-            ]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
-
-      const oddSample = result.samples[1];
-      expect(oddSample.query).toBe('short_q3');
-      expect(oddSample.positive).toEqual(['short_q4']); // fallback to q2
-    });
+    expect(results.length).toBe(1);
+    expect(results[0].positive).toEqual(['q_text here\na_text answer']);
   });
 
-  describe('include_original_q 行为', () => {
-    test('includeOriginalQ=true 时 sample 包含 originalQ 和 originalA', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'original_a',
-            indexes: [['q1', 'q2']]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0,
-        includeOriginalQ: true
-      });
+  test('T-B3b: A 为空字符串时 positive = [Q]', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
 
-      expect(result.samples[0].originalQ).toBe('original_q');
-      expect(result.samples[0].originalA).toBe('original_a');
+    const item = await insertDocAndGetItem({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: 'only_question_text',
+      a: '',
+      indexes: [defaultIndex('idx_text')]
     });
 
-    test('includeOriginalQ=false 时 sample 不含 originalQ/A', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'original_a',
-            indexes: [['q1', 'q2']]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0,
-        includeOriginalQ: false
-      });
+    const gen = buildFineTuneDataStream({ sampledItems: [item], indexType: 'question' });
+    const results = await collectStream(gen);
 
-      expect(result.samples[0].originalQ).toBeUndefined();
-      expect(result.samples[0].originalA).toBeUndefined();
-    });
-
-    test('includeOriginalQ 不影响 sample 数量', () => {
-      const withOrig = buildFineTuneData({
-        items: [{ dataId: 'i1', datasetId: 'ds1', q: 'q', a: 'a', indexes: [['q1', 'q2']] }],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0,
-        includeOriginalQ: true
-      });
-      const withoutOrig = buildFineTuneData({
-        items: [{ dataId: 'i1', datasetId: 'ds1', q: 'q', a: 'a', indexes: [['q1', 'q2']] }],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0,
-        includeOriginalQ: false
-      });
-
-      expect(withOrig.samples.length).toBe(withoutOrig.samples.length);
-    });
+    expect(results.length).toBe(1);
+    expect(results[0].positive).toEqual(['only_question_text']);
   });
+});
 
-  describe('负样本采样', () => {
-    test('负样本数量在 [min, max] 范围内', () => {
-      const items = Array.from({ length: 20 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'ds1',
-        q: `long_chunk_${i}`,
-        a: `answer_${i}`,
-        indexes: [[`short_q1_${i}`, `short_q2_${i}`]]
-      }));
+// ─── T-B4 ─────────────────────────────────────────────────────────────────────
+describe('T-B4: 无 target indexType 的 source doc 被跳过', () => {
+  test('只有 type=other 的 index 的 doc 被跳过，只 yield 有 default index 的', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
 
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 2,
-        maxNegativeSamples: 5
-      });
-
-      result.samples.forEach((sample) => {
-        expect(sample.negatives.length).toBeGreaterThanOrEqual(0); // may be less if pool too small
-        expect(sample.negatives.length).toBeLessThanOrEqual(5);
-      });
-    });
-
-    test('偶数 pair 的负样本来自 short_query 池（不含 long_chunk）', () => {
-      // 构建场景：多个 item，每个有 short query 和 long chunk
-      const items = Array.from({ length: 10 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'ds1',
-        q: `LONG_CHUNK_${i}`, // long chunks 以 LONG_CHUNK_ 开头
-        a: `answer_${i}`,
-        indexes: [
-          [`short_qa_${i}`, `short_qb_${i}`] // pair_index=0 (even)
-        ]
-      }));
-
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 2,
-        maxNegativeSamples: 4
-      });
-
-      result.samples.forEach((sample, idx) => {
-        // 偶数 pair: 负样本不应该是 long chunk
-        sample.negatives.forEach((neg) => {
-          expect(neg).not.toMatch(/^LONG_CHUNK_/);
-        });
-      });
-    });
-
-    test('奇数 pair 的负样本来自 long_chunk 池（不含 short_query）', () => {
-      const items = Array.from({ length: 10 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'ds1',
-        q: `LONG_CHUNK_${i}`,
-        a: `answer_${i}`,
-        indexes: [
-          [`short_qa_${i}`, `short_qb_${i}`], // pair_index=0 (even)
-          [`short_qc_${i}`, `short_qd_${i}`] // pair_index=1 (odd)
-        ]
-      }));
-
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 2,
-        maxNegativeSamples: 4
-      });
-
-      // 只检查奇数 pair 的 sample（每个 item 的第 2 个 sample）
-      for (let i = 1; i < result.samples.length; i += 2) {
-        const sample = result.samples[i];
-        sample.negatives.forEach((neg) => {
-          // 奇数 pair: 负样本应该是 long chunk
-          expect(neg).toMatch(/^LONG_CHUNK_/);
-        });
+    const [docWithOther, docWithDefault] = await insertDocsAndGetItems([
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q: 'question_other',
+        a: 'answer_other',
+        indexes: [otherIndex('other_idx')]
+      },
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q: 'question_default',
+        a: 'answer_default',
+        indexes: [defaultIndex('default_idx')]
       }
+    ]);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems: [docWithOther, docWithDefault],
+      indexType: 'question'
     });
+    const results = await collectStream(gen);
 
-    test('负样本不包含当前 item 的 query 或 positive', () => {
-      const items = Array.from({ length: 5 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'ds1',
-        q: `long_chunk_${i}`,
-        a: `answer_${i}`,
-        indexes: [
-          [`short_q1_${i}`, `short_q2_${i}`],
-          [`short_q3_${i}`, `short_q4_${i}`]
-        ]
-      }));
-
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 1,
-        maxNegativeSamples: 5
-      });
-
-      result.samples.forEach((sample) => {
-        // 负样本不能包含 query 本身
-        expect(sample.negatives).not.toContain(sample.query);
-        // 负样本不能包含 positive
-        sample.positive.forEach((pos) => {
-          expect(sample.negatives).not.toContain(pos);
-        });
-      });
-    });
-
-    test('负样本无重复', () => {
-      const items = Array.from({ length: 20 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'ds1',
-        q: `long_chunk_${i}`,
-        a: `answer_${i}`,
-        indexes: [[`short_q1_${i}`, `short_q2_${i}`]]
-      }));
-
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 3,
-        maxNegativeSamples: 5
-      });
-
-      result.samples.forEach((sample) => {
-        const uniqueNegs = new Set(sample.negatives);
-        expect(uniqueNegs.size).toBe(sample.negatives.length);
-      });
-    });
+    expect(results.length).toBe(1);
+    expect(results[0].query).toBe('default_idx');
   });
+});
 
-  describe('sample 字段完整性', () => {
-    test('sample 包含所有必要字段', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'answer',
-            indexes: [['q1', 'q2']]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0,
-        includeOriginalQ: true
-      });
+// ─── T-B5 ─────────────────────────────────────────────────────────────────────
+describe('T-B5: strategy=1 → negatives 来自同知识库同 collection', () => {
+  test('ds1/coll1 的 result 的 negatives 都在 ds1/coll1 的 qaText 集合中', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const ds1 = new Types.ObjectId();
+    const coll1 = new Types.ObjectId();
+    const coll2 = new Types.ObjectId();
+    const ds2 = new Types.ObjectId();
 
-      const sample = result.samples[0];
-      expect(sample.query).toBeDefined();
-      expect(sample.positive).toBeInstanceOf(Array);
-      expect(sample.positive.length).toBeGreaterThan(0);
-      expect(sample.negatives).toBeInstanceOf(Array);
-      expect(sample.sourceId).toBe('item1');
-      expect(sample.datasetId).toBe('ds1');
+    // ds1/coll1: 20 docs
+    const ds1c1Docs = Array.from({ length: 20 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll1,
+      q: `q_ds1c1_${i}`,
+      a: `a_ds1c1_${i}`,
+      indexes: [defaultIndex(`idx_ds1c1_${i}`)]
+    }));
+    // ds1/coll2: 5 docs
+    const ds1c2Docs = Array.from({ length: 5 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll2,
+      q: `q_ds1c2_${i}`,
+      a: `a_ds1c2_${i}`,
+      indexes: [defaultIndex(`idx_ds1c2_${i}`)]
+    }));
+    // ds2: 5 docs
+    const ds2Docs = Array.from({ length: 5 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds2,
+      collectionId: new Types.ObjectId(),
+      q: `q_ds2_${i}`,
+      a: `a_ds2_${i}`,
+      indexes: [defaultIndex(`idx_ds2_${i}`)]
+    }));
+
+    const allDocs = [...ds1c1Docs, ...ds1c2Docs, ...ds2Docs];
+    const sampledItems = await insertDocsAndGetItems(allDocs);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      negativeStrategy: 1,
+      minNegativeSamples: 1,
+      maxNegativeSamples: 5
     });
+    const results = await collectStream(gen);
 
-    test('positive 始终只有 1 个元素', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'answer',
-            indexes: [
-              ['q1', 'q2'],
-              ['q3', 'q4'],
-              ['q5', 'q6']
-            ]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
+    // ds1/coll1 的 qaText 集合
+    const ds1c1QASet = new Set(Array.from({ length: 20 }, (_, i) => `q_ds1c1_${i}\na_ds1c1_${i}`));
 
-      result.samples.forEach((sample) => {
-        expect(sample.positive.length).toBe(1);
-      });
-    });
-  });
+    // 过滤出 ds1/coll1 的 results
+    const ds1c1SampledIds = new Set(sampledItems.slice(0, 20).map((item) => item.dataId));
+    const ds1c1Results = results.filter((r) => ds1c1SampledIds.has(r.sourceId));
 
-  describe('边界情况', () => {
-    test('空 items 返回空 samples', () => {
-      const result = buildFineTuneData({
-        items: [],
-        minNegativeSamples: 1,
-        maxNegativeSamples: 5
-      });
+    expect(ds1c1Results.length).toBeGreaterThan(0);
 
-      expect(result.samples).toEqual([]);
-    });
-
-    test('pair 长度不足 2 时跳过该 pair', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'answer',
-            indexes: [
-              ['only_one'], // 不足 2 个元素，应跳过
-              ['q1', 'q2'] // 有效 pair
-            ]
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
-
-      expect(result.samples.length).toBe(1); // 只有 1 个有效 pair
-    });
-
-    test('空 indexes 时返回空 samples', () => {
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'answer',
-            indexes: []
-          }
-        ],
-        minNegativeSamples: 0,
-        maxNegativeSamples: 0
-      });
-
-      expect(result.samples.length).toBe(0);
-    });
-
-    test('池子不够时负样本数量可小于 minNegativeSamples', () => {
-      // 只有 1 个 item，负样本池极小
-      const result = buildFineTuneData({
-        items: [
-          {
-            dataId: 'item1',
-            datasetId: 'ds1',
-            q: 'original_q',
-            a: 'answer',
-            indexes: [['q1', 'q2']]
-          }
-        ],
-        minNegativeSamples: 10,
-        maxNegativeSamples: 20
-      });
-
-      // 不应抛出异常，负样本数量可以少于 min
-      expect(result.samples.length).toBe(1);
-      expect(result.samples[0].negatives.length).toBeLessThan(10);
-    });
-  });
-
-  describe('对齐 DiTing 的负样本策略', () => {
-    test('大 pool 时负样本数量 = max（比例公式确定性）', () => {
-      // 100 items × 1 pair → short query pool = 200
-      // 对任意 item_i: estimated = 200 - 2 = 198
-      // numNeg = max(1, min(10, floor(198*0.5))) = max(1, min(10, 99)) = 10
-      const items = Array.from({ length: 100 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'ds1',
-        q: `long_chunk_${i}`,
-        a: `answer_${i}`,
-        indexes: [[`short_q1_${i}`, `short_q2_${i}`]]
-      }));
-
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 1,
-        maxNegativeSamples: 10
-      });
-
-      // 每个 sample 都应有 10 个负例（pool 足够大，比例公式得到确定结果）
-      result.samples.forEach((sample) => {
-        expect(sample.negatives.length).toBe(10);
-      });
-    });
-
-    test('多知识库时包含跨库负例（分层采样对齐 DiTing）', () => {
-      // ds1/ds2 各 20 items，odd pair 触发 long_chunk 采样
-      const ds1Items = Array.from({ length: 20 }, (_, i) => ({
-        dataId: `item_ds1_${i}`,
-        datasetId: 'ds1',
-        q: `LONG_DS1_${i}`,
-        a: `a${i}`,
-        indexes: [
-          [`SHORT_DS1_q1_${i}`, `SHORT_DS1_q2_${i}`], // even pair → shortQueries
-          [`SHORT_DS1_q3_${i}`, `SHORT_DS1_q4_${i}`] // odd pair → longChunks
-        ]
-      }));
-      const ds2Items = Array.from({ length: 20 }, (_, i) => ({
-        dataId: `item_ds2_${i}`,
-        datasetId: 'ds2',
-        q: `LONG_DS2_${i}`,
-        a: `a${i}`,
-        indexes: [
-          [`SHORT_DS2_q1_${i}`, `SHORT_DS2_q2_${i}`],
-          [`SHORT_DS2_q3_${i}`, `SHORT_DS2_q4_${i}`]
-        ]
-      }));
-
-      const result = buildFineTuneData({
-        items: [...ds1Items, ...ds2Items],
-        minNegativeSamples: 4,
-        maxNegativeSamples: 8
-      });
-
-      // ds1 的 even pair samples 应包含至少 1 个来自 ds2 的短 query
-      const ds1EvenSamples = result.samples.filter(
-        (s) => s.datasetId === 'ds1' && s.metadata?.isShortQueryPair === true
-      );
-      expect(ds1EvenSamples.length).toBeGreaterThan(0);
-
-      let hasCrossDatasetNeg = false;
-      for (const sample of ds1EvenSamples) {
-        if (sample.negatives.some((n) => n.startsWith('SHORT_DS2_'))) {
-          hasCrossDatasetNeg = true;
-          break;
-        }
+    // 验证 negatives 都来自 ds1/coll1
+    for (const result of ds1c1Results) {
+      expect(result.negatives.length).toBeGreaterThan(0);
+      for (const neg of result.negatives) {
+        expect(ds1c1QASet.has(neg)).toBe(true);
       }
-      expect(hasCrossDatasetNeg).toBe(true);
+    }
+  });
+});
 
-      // ds1 的 odd pair samples 应包含至少 1 个来自 ds2 的长 chunk
-      const ds1OddSamples = result.samples.filter(
-        (s) => s.datasetId === 'ds1' && s.metadata?.isShortQueryPair === false
-      );
-      expect(ds1OddSamples.length).toBeGreaterThan(0);
+// ─── T-B6 ─────────────────────────────────────────────────────────────────────
+describe('T-B6: strategy=2 → negatives 来自同知识库其他 collection', () => {
+  test('ds1/coll1 的 negatives 都在 ds1/coll2 的 qaText 集合中', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const ds1 = new Types.ObjectId();
+    const coll1 = new Types.ObjectId();
+    const coll2 = new Types.ObjectId();
+    const ds2 = new Types.ObjectId();
 
-      let hasCrossDatasetLongNeg = false;
-      for (const sample of ds1OddSamples) {
-        if (sample.negatives.some((n) => n.startsWith('LONG_DS2_'))) {
-          hasCrossDatasetLongNeg = true;
-          break;
-        }
+    // ds1/coll1: 10 docs
+    const ds1c1Docs = Array.from({ length: 10 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll1,
+      q: `q_ds1c1_${i}`,
+      a: `a_ds1c1_${i}`,
+      indexes: [defaultIndex(`idx_ds1c1_${i}`)]
+    }));
+    // ds1/coll2: 10 docs
+    const ds1c2Docs = Array.from({ length: 10 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll2,
+      q: `q_ds1c2_${i}`,
+      a: `a_ds1c2_${i}`,
+      indexes: [defaultIndex(`idx_ds1c2_${i}`)]
+    }));
+    // ds2: 5 docs
+    const ds2Docs = Array.from({ length: 5 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds2,
+      collectionId: new Types.ObjectId(),
+      q: `q_ds2_${i}`,
+      a: `a_ds2_${i}`,
+      indexes: [defaultIndex(`idx_ds2_${i}`)]
+    }));
+
+    const allDocs = [...ds1c1Docs, ...ds1c2Docs, ...ds2Docs];
+    const sampledItems = await insertDocsAndGetItems(allDocs);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      negativeStrategy: 2,
+      minNegativeSamples: 1,
+      maxNegativeSamples: 5
+    });
+    const results = await collectStream(gen);
+
+    // ds1/coll2 的 qaText 集合
+    const ds1c2QASet = new Set(Array.from({ length: 10 }, (_, i) => `q_ds1c2_${i}\na_ds1c2_${i}`));
+
+    const ds1c1SampledIds = new Set(sampledItems.slice(0, 10).map((item) => item.dataId));
+    const ds1c1Results = results.filter((r) => ds1c1SampledIds.has(r.sourceId));
+
+    expect(ds1c1Results.length).toBeGreaterThan(0);
+
+    for (const result of ds1c1Results) {
+      expect(result.negatives.length).toBeGreaterThan(0);
+      for (const neg of result.negatives) {
+        expect(ds1c2QASet.has(neg)).toBe(true);
       }
-      expect(hasCrossDatasetLongNeg).toBe(true);
+    }
+  });
+});
+
+// ─── T-B7 ─────────────────────────────────────────────────────────────────────
+describe('T-B7: strategy=3 → negatives 来自其他知识库', () => {
+  test('ds1 的 negatives 都在 ds2 的 qaText 集合中', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const ds1 = new Types.ObjectId();
+    const ds2 = new Types.ObjectId();
+    const coll1 = new Types.ObjectId();
+    const coll2 = new Types.ObjectId();
+
+    // ds1: 10 docs
+    const ds1Docs = Array.from({ length: 10 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll1,
+      q: `q_ds1_${i}`,
+      a: `a_ds1_${i}`,
+      indexes: [defaultIndex(`idx_ds1_${i}`)]
+    }));
+    // ds2: 10 docs
+    const ds2Docs = Array.from({ length: 10 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds2,
+      collectionId: coll2,
+      q: `q_ds2_${i}`,
+      a: `a_ds2_${i}`,
+      indexes: [defaultIndex(`idx_ds2_${i}`)]
+    }));
+
+    const sampledItems = await insertDocsAndGetItems([...ds1Docs, ...ds2Docs]);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      negativeStrategy: 3,
+      minNegativeSamples: 1,
+      maxNegativeSamples: 5
     });
+    const results = await collectStream(gen);
 
-    test('单知识库时所有负例均来自同库', () => {
-      const items = Array.from({ length: 30 }, (_, i) => ({
-        dataId: `item${i}`,
-        datasetId: 'only_ds',
-        q: `LONG_ONLY_${i}`,
-        a: `a${i}`,
-        indexes: [[`SHORT_ONLY_q1_${i}`, `SHORT_ONLY_q2_${i}`]]
-      }));
+    // ds2 的 qaText 集合
+    const ds2QASet = new Set(Array.from({ length: 10 }, (_, i) => `q_ds2_${i}\na_ds2_${i}`));
 
-      const result = buildFineTuneData({
-        items,
-        minNegativeSamples: 2,
-        maxNegativeSamples: 5
-      });
+    const ds1SampledIds = new Set(sampledItems.slice(0, 10).map((item) => item.dataId));
+    const ds1Results = results.filter((r) => ds1SampledIds.has(r.sourceId));
 
-      // 所有负例都应以 SHORT_ONLY_ 开头（来自唯一的库）
-      result.samples.forEach((sample) => {
-        sample.negatives.forEach((neg) => {
-          expect(neg).toMatch(/^SHORT_ONLY_/);
-        });
-      });
+    expect(ds1Results.length).toBeGreaterThan(0);
+
+    for (const result of ds1Results) {
+      expect(result.negatives.length).toBeGreaterThan(0);
+      for (const neg of result.negatives) {
+        expect(ds2QASet.has(neg)).toBe(true);
+      }
+    }
+  });
+});
+
+// ─── T-B8 ─────────────────────────────────────────────────────────────────────
+describe('T-B8: strategy=4 → negatives 混合三个来源', () => {
+  test('ds1/coll1 的第一个 result 的 negatives 包含来自三个来源的文本', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const ds1 = new Types.ObjectId();
+    const ds2 = new Types.ObjectId();
+    const coll1 = new Types.ObjectId();
+    const coll2 = new Types.ObjectId();
+    const coll3 = new Types.ObjectId();
+
+    // ds1/coll1: 20 docs
+    const ds1c1Docs = Array.from({ length: 20 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll1,
+      q: `q_ds1c1_${i}`,
+      a: `a_ds1c1_${i}`,
+      indexes: [defaultIndex(`idx_ds1c1_${i}`)]
+    }));
+    // ds1/coll2: 20 docs
+    const ds1c2Docs = Array.from({ length: 20 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds1,
+      collectionId: coll2,
+      q: `q_ds1c2_${i}`,
+      a: `a_ds1c2_${i}`,
+      indexes: [defaultIndex(`idx_ds1c2_${i}`)]
+    }));
+    // ds2: 20 docs
+    const ds2Docs = Array.from({ length: 20 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId: ds2,
+      collectionId: coll3,
+      q: `q_ds2_${i}`,
+      a: `a_ds2_${i}`,
+      indexes: [defaultIndex(`idx_ds2_${i}`)]
+    }));
+
+    const allDocs = [...ds1c1Docs, ...ds1c2Docs, ...ds2Docs];
+    const sampledItems = await insertDocsAndGetItems(allDocs);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      negativeStrategy: 4,
+      minNegativeSamples: 3,
+      maxNegativeSamples: 9
     });
+    const results = await collectStream(gen);
+
+    const ds1c1QA = new Set(Array.from({ length: 20 }, (_, i) => `q_ds1c1_${i}\na_ds1c1_${i}`));
+    const ds1c2QA = new Set(Array.from({ length: 20 }, (_, i) => `q_ds1c2_${i}\na_ds1c2_${i}`));
+    const ds2QA = new Set(Array.from({ length: 20 }, (_, i) => `q_ds2_${i}\na_ds2_${i}`));
+
+    // 找 query 包含 "ds1c1_0" 的 result（对应 ds1/coll1 的第 0 个 doc）
+    const testResult = results.find((r) => r.query.includes('ds1c1_0'));
+    expect(testResult).toBeDefined();
+
+    let fromColl1 = 0;
+    let fromColl2 = 0;
+    let fromDs2 = 0;
+    for (const neg of testResult!.negatives) {
+      if (ds1c1QA.has(neg)) fromColl1++;
+      if (ds1c2QA.has(neg)) fromColl2++;
+      if (ds2QA.has(neg)) fromDs2++;
+    }
+
+    // strategy=4 应从三个来源均有贡献
+    expect(fromColl1).toBeGreaterThan(0);
+    expect(fromColl2).toBeGreaterThan(0);
+    expect(fromDs2).toBeGreaterThan(0);
+  });
+});
+
+// ─── T-B9 ─────────────────────────────────────────────────────────────────────
+describe('T-B9: negatives 不包含自身 sourceId 的 qaText', () => {
+  test('每个 result 的 negatives 不包含自身的 positive[0]', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
+
+    const docs = Array.from({ length: 5 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: `q_item_${i}`,
+      a: `a_item_${i}`,
+      indexes: [defaultIndex(`idx_${i}`)]
+    }));
+    const sampledItems = await insertDocsAndGetItems(docs);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      minNegativeSamples: 1,
+      maxNegativeSamples: 3
+    });
+    const results = await collectStream(gen);
+
+    for (const result of results) {
+      expect(result.negatives).not.toContain(result.positive[0]);
+    }
+  });
+});
+
+// ─── T-B10 ────────────────────────────────────────────────────────────────────
+describe('T-B10: negatives 无重复文本', () => {
+  test('每个 result 的 negatives 不含重复文本', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
+
+    const docs = Array.from({ length: 30 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: `q_item_${i}`,
+      a: `a_item_${i}`,
+      indexes: [defaultIndex(`idx_${i}`)]
+    }));
+    const sampledItems = await insertDocsAndGetItems(docs);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      minNegativeSamples: 3,
+      maxNegativeSamples: 10
+    });
+    const results = await collectStream(gen);
+
+    for (const result of results) {
+      const unique = new Set(result.negatives);
+      expect(unique.size).toBe(result.negatives.length);
+    }
+  });
+});
+
+// ─── T-B11 ────────────────────────────────────────────────────────────────────
+describe('T-B11: minNeg/maxNeg 约束生效', () => {
+  test('50 个 doc，min=2，max=5 → 所有 result.negatives.length 在 [2, 5]', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const collectionId = new Types.ObjectId();
+
+    const docs = Array.from({ length: 50 }, (_, i) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q: `q_item_${i}`,
+      a: `a_item_${i}`,
+      indexes: [defaultIndex(`idx_${i}`)]
+    }));
+    const sampledItems = await insertDocsAndGetItems(docs);
+
+    const gen = buildFineTuneDataStream({
+      sampledItems,
+      indexType: 'question',
+      minNegativeSamples: 2,
+      maxNegativeSamples: 5
+    });
+    const results = await collectStream(gen);
+
+    expect(results.length).toBeGreaterThan(0);
+    for (const result of results) {
+      expect(result.negatives.length).toBeGreaterThanOrEqual(2);
+      expect(result.negatives.length).toBeLessThanOrEqual(5);
+    }
+  });
+});
+
+// ─── T-B12 ────────────────────────────────────────────────────────────────────
+describe('T-B12: 空 sampledItems → generator 直接结束（无 yield）', () => {
+  test('空 sampledItems 收集结果为空数组', async () => {
+    const gen = buildFineTuneDataStream({ sampledItems: [], indexType: 'question' });
+    const results = await collectStream(gen);
+
+    expect(results).toEqual([]);
   });
 });

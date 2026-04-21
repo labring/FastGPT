@@ -75,7 +75,7 @@ vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
 
 vi.mock('@fastgpt/service/core/train/rerank/validation', () => ({
   validateTrainingEnvironment: vi.fn().mockResolvedValue(undefined),
-  validateDatasetSynthesisIndexes: vi.fn().mockResolvedValue(undefined)
+  validateDatasetTargetIndexes: vi.fn().mockResolvedValue(undefined)
 }));
 
 describe('Rerank Train Task Controller', () => {

@@ -3,9 +3,10 @@ import type {
   EmbeddingTrainDataSourceEnum,
   EmbeddingTrainTaskStatusEnum,
   EmbeddingTaskCheckpointStageEnum,
-  EmbeddingTrainTypeEnum
+  EmbeddingTrainMethodEnum
 } from './constants';
 import type { EnhancedErrorMessage } from './error';
+import type { DatasetDataIndexTypeEnum } from '../../dataset/data/constants';
 
 /**
  * Embedding evaluation detailed results
@@ -129,10 +130,12 @@ export type EmbeddingTrainsetDataSchemaType = {
 
     generateConfig?: {
       sampleSize?: number;
+      weights?: Record<string, number>;
       forceRegenerate?: boolean;
+      indexType: `${DatasetDataIndexTypeEnum}`;
+      negativeStrategy?: 1 | 2 | 3 | 4;
       minNegativeSamples?: number;
       maxNegativeSamples?: number;
-      includeOriginalQ?: boolean;
     };
   };
 
@@ -154,8 +157,8 @@ export type EmbeddingTrainTaskSchemaType = {
     model: string;
   };
 
-  /** Training type: lora or ptuning, defaults to lora */
-  trainType?: `${EmbeddingTrainTypeEnum}`;
+  /** Training type: lora or task_tuning, defaults to lora */
+  trainMethod?: `${EmbeddingTrainMethodEnum}`;
 
   /** Train dataset ID (exact mode: passed at create; auto mode: written by generate_trainset stage) */
   trainsetId?: string;
@@ -165,6 +168,16 @@ export type EmbeddingTrainTaskSchemaType = {
   datasetIds: string[];
   /** Optional name for the trained model */
   newModelName?: string;
+
+  /** Trainset synthesis config stored at task level — passed to data generation queue */
+  generateConfig?: {
+    sampleSize?: number;
+    weights?: Record<string, number>;
+    indexType: `${DatasetDataIndexTypeEnum}`;
+    negativeStrategy?: 1 | 2 | 3 | 4;
+    minNegativeSamples?: number;
+    maxNegativeSamples?: number;
+  };
 
   status: EmbeddingTrainTaskStatusEnum;
 

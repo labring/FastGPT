@@ -6,6 +6,55 @@ import { isInternalAddress } from '../system/utils';
 import { getLogger, LogCategories } from '../logger';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
+import FormData from 'form-data';
+
+/**
+ * 将HTML转换为Markdown，优先使用自定义服务（如果配置了的话）
+ * 自动降级到默认的htmlToMarkdown
+ */
+export const convertHtmlToMarkdown = async (html: string): Promise<string> => {
+  // 判断是否配置了自定义HTML解析服务
+  if (global.systemEnv.customPdfParse?.url) {
+    try {
+      logger.info('Using custom parse service for HTML');
+      const buffer = Buffer.from(html, 'utf-8');
+      const data = new FormData();
+      data.append('file', buffer, { filename: 'page.html' });
+
+      const { data: response } = await axios.post<{
+        pages: number;
+        markdown: string;
+        error?: Object | string;
+      }>(global.systemEnv.customPdfParse.url, data, {
+        timeout: (global.systemEnv.customPdfParse.timeout || 10) * 1000 * 60,
+        headers: {
+          ...data.getHeaders(),
+          ...(global.systemEnv.customPdfParse.key
+            ? { Authorization: `Bearer ${global.systemEnv.customPdfParse.key}` }
+            : {})
+        }
+      });
+
+      if (response.error) {
+        logger.warn('Custom parse service returned error, fallback to htmlToMarkdown', {
+          error: response.error
+        });
+        return await htmlToMarkdown(html);
+      }
+
+      logger.info('Custom parse service completed', { mdLength: response.markdown.length });
+      return response.markdown;
+    } catch (error) {
+      logger.error('Custom parse service failed, fallback to htmlToMarkdown', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return await htmlToMarkdown(html);
+    }
+  } else {
+    logger.debug('Using default htmlToMarkdown');
+    return await htmlToMarkdown(html);
+  }
+};
 
 export const cheerioToHtml = ({
   fetchUrl,
@@ -101,7 +150,8 @@ export const urlsFetch = async ({
           selector
         });
 
-        const md = await htmlToMarkdown(html);
+        // 使用convertHtmlToMarkdown处理HTML，自动选择自定义服务或默认方式
+        const md = await convertHtmlToMarkdown(html);
 
         return {
           url,

@@ -5,8 +5,9 @@ import { WritePermissionVal, ReadPermissionVal } from '@fastgpt/global/support/p
 import { createRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/controller';
 import {
   validateTrainingEnvironment,
-  validateDatasetSynthesisIndexes
+  validateDatasetTargetIndexes
 } from '@fastgpt/service/core/train/rerank/validation';
+import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
@@ -24,8 +25,16 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<CreateRerankTrainTaskResponse>
 ): Promise<CreateRerankTrainTaskResponse> {
-  const { baseModelId, trainsetId, evalDatasetId, datasetIds, newModelName, name, trainType } =
-    req.body as CreateRerankTrainTaskRequest;
+  const {
+    baseModelId,
+    trainsetId,
+    evalDatasetId,
+    datasetIds,
+    newModelName,
+    name,
+    trainMethod,
+    generateConfig
+  } = req.body as CreateRerankTrainTaskRequest;
 
   if (!baseModelId) {
     return Promise.reject(RerankTrainErrEnum.rerankValidationBaseModelNotConfigured);
@@ -73,8 +82,15 @@ async function handler(
     });
   }
 
-  // Verify dataset synthesis indexes are ready
-  await validateDatasetSynthesisIndexes(expandedDatasetIds);
+  // Step 1: Auto mode without generateConfig → build default
+  let normalizedGenerateConfig = generateConfig;
+  if (!normalizedGenerateConfig && !trainsetId) {
+    normalizedGenerateConfig = { indexType: DEFAULT_TRAIN_INDEX_TYPE };
+  }
+  // Step 2: Validate dataset indexes whenever generateConfig is present
+  if (normalizedGenerateConfig) {
+    await validateDatasetTargetIndexes(expandedDatasetIds, normalizedGenerateConfig.indexType);
+  }
 
   // 5. Create task (controller checks for existing running tasks internally)
   const task = await createRerankTrainTask({
@@ -86,7 +102,8 @@ async function handler(
     teamId,
     tmbId,
     name,
-    trainType
+    trainMethod,
+    generateConfig: normalizedGenerateConfig
   });
   const taskId = String(task._id);
 

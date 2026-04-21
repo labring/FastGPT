@@ -452,7 +452,11 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               </Box>
                             }
                             type="delete"
-                            content={t('account:model.delete_model_confirm')}
+                            content={
+                              item.isTuned
+                                ? t('account:model.delete_tuned_model_confirm')
+                                : t('account:model.delete_model_confirm')
+                            }
                             onConfirm={() => deleteModel({ model: item.model })}
                           />
                         )}

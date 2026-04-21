@@ -246,10 +246,21 @@ export async function runGenerateTrainsetStage(task: RerankTrainTaskSchemaType):
       trainsetId
     });
 
+    // generateConfig is required in auto mode; guard here to surface programming errors early
+    if (!task.generateConfig) {
+      const enhancedError = createRerankEnhancedError(
+        RerankTaskCheckpointStageEnum.generate_trainset,
+        RerankTrainErrEnum.rerankPrepareMissingGenerateConfig,
+        RerankTrainSuggestionEnum.rerankPrepareMissingGenerateConfig
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
+
     // Trigger data generation queue
     const job = await rerankTrainDataGenerateQueue.add(`generate-trainset-${trainsetId}`, {
       trainsetId,
-      datasetIds: task.datasetIds
+      datasetIds: task.datasetIds,
+      generateConfig: task.generateConfig
     });
 
     // Write jobId back to trainset for retry support

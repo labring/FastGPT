@@ -1,19 +1,22 @@
 import { getQueue, QueueNames } from '../../../../common/bullmq';
 import { DEFAULT_JOB_BACKOFF_DELAY } from '../constants';
+import type { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 /** Rerank train data generation config */
 export type RerankTrainDataGenerateConfig = {
   sampleSize?: number;
+  weights?: Record<string, number>;
   forceRegenerate?: boolean;
+  indexType: `${DatasetDataIndexTypeEnum}`;
+  negativeStrategy?: 1 | 2 | 3 | 4;
   minNegativeSamples?: number;
   maxNegativeSamples?: number;
-  includeOriginalQ?: boolean;
 };
 
 export type RerankTrainDataGenerateJobData = {
   trainsetId: string;
   datasetIds: string[];
-  generateConfig?: RerankTrainDataGenerateConfig;
+  generateConfig: RerankTrainDataGenerateConfig;
 };
 
 export const rerankTrainDataGenerateQueue = getQueue<RerankTrainDataGenerateJobData>(
