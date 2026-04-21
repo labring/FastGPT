@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/labring/FastGPT.git",
-    "directory": "FastGPT/packages/storage"
+    "directory": "sdk/storage"
   },
   "homepage": "https://github.com/labring/FastGPT",
   "bugs": {

@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - projects/*
+  - pro/*
   - scripts/icon
   - sdk/*
 allowBuilds:

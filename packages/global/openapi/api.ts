@@ -30,7 +30,6 @@ export type PaginationResponseType<T = any> = {
   total: number;
   list: T[];
 };
-export type PaginationResponse<T = any> = PaginationResponseType<T>;
 
 /* 按 cursor 分页 */
 
@@ -88,3 +87,6 @@ export type LinkedListResponse<T = {}, A = any> = {
   hasMorePrev: boolean;
   hasMoreNext: boolean;
 };
+
+// Backward-compatible alias for older callers that still import PaginationResponse.
+export type PaginationResponse<T = any> = PaginationResponseType<T>;

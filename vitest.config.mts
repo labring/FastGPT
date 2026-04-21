@@ -5,9 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('projects/app/src'),
-      '@fastgpt/global': resolve('packages/global'),
-      '@fastgpt/service': resolve('packages/service'),
-      '@fastgpt/web': resolve('packages/web'),
+      '@fastgpt': resolve('packages'),
+      '@pro-admin': resolve('pro/admin/src'),
       '@test': resolve('test')
     }
   },
@@ -23,7 +22,7 @@ export default defineConfig({
       // reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
       all: false, // 只包含被测试实际覆盖的文件，不包含空目录
-      include: ['projects/app/**/*.ts', 'packages/**/*.ts'],
+      include: ['projects/app/**/*.ts', 'packages/**/*.ts', 'pro/admin/**/*.ts', 'pro/sso/**/*.ts'],
       exclude: [
         '**/node_modules/**',
         '**/*.spec.ts',
