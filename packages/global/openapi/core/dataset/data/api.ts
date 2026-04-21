@@ -70,33 +70,29 @@ export type DeleteDatasetDataQuery = z.infer<typeof DeleteDatasetDataQuerySchema
  * API: 获取引用数据
  * Route: POST /api/core/dataset/data/getQuoteData
  * ============================================================================ */
-export const GetQuoteDataBodySchema = z.union([
-  z.object({
-    id: ObjectIdSchema.meta({
-      example: '68ad85a7463006c963799a05',
-      description: '数据 ID'
-    })
+export const GetQuoteDataBodySchema = OutLinkChatAuthSchema.extend({
+  id: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '数据 ID'
   }),
-  OutLinkChatAuthSchema.extend({
-    id: ObjectIdSchema.meta({
-      example: '68ad85a7463006c963799a05',
-      description: '数据 ID'
-    }),
-    // 对话模式下的额外字段（可选）
-    appId: ObjectIdSchema.meta({
-      example: '68ad85a7463006c963799a10',
-      description: '应用 ID（对话模式必填）'
-    }),
-    chatId: z.string().meta({
-      example: '68ad85a7463006c963799a11',
-      description: '对话 ID（对话模式必填）'
-    }),
-    chatItemDataId: z.string().meta({
-      example: '68ad85a7463006c963799a12',
-      description: '对话条目数据 ID（对话模式必填）'
-    })
+  // 对话模式下的额外字段（三者必须同时提供，否则走 API 模式）
+  appId: ObjectIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a10',
+    description: '应用 ID（对话模式必填）'
+  }),
+  chatId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a11',
+    description: '对话 ID（对话模式必填）'
+  }),
+  chatItemDataId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a12',
+    description: '对话条目数据 ID（对话模式必填）'
   })
-]);
+}).refine(
+  (d) =>
+    (!!d.chatId && !!d.appId && !!d.chatItemDataId) || (!d.chatId && !d.appId && !d.chatItemDataId),
+  { message: '对话模式下 appId / chatId / chatItemDataId 必须同时提供' }
+);
 export type GetQuoteDataBody = z.infer<typeof GetQuoteDataBodySchema>;
 
 export const GetQuoteDataResponseSchema = z.object({
