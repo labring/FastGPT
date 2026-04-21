@@ -1,5 +1,5 @@
 import type { RequireOnlyOne } from '../common/type/utils';
-import { z } from 'zod';
+import z from 'zod';
 
 /* 按 offset 分页 */
 export const PaginationSchema = z.object({

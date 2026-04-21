@@ -1,11 +1,11 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { Box, Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, type FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
+import React, { type DragEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -31,16 +31,39 @@ const FileSelector = ({
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const teamPlanStatus = useUserStore((s) => s.teamPlanStatus);
 
-  // 文件数量限制：系统配置 || 团队套餐 || 默认值
+  const [teamPlanReady, setTeamPlanReady] = useState(
+    () => !!useUserStore.getState().teamPlanStatus
+  );
+
+  useEffect(() => {
+    if (teamPlanStatus) {
+      setTeamPlanReady(true);
+      return;
+    }
+    let cancelled = false;
+    useUserStore
+      .getState()
+      .initTeamPlanStatus()
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTeamPlanReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamPlanStatus]);
+
+  // 文件数量限制：团队套餐 || 系统配置 || 默认值
   const maxCount =
     teamPlanStatus?.standard?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 1000;
-  // 文件大小限制（bytes）：优先级为 套餐限制 > 系统配置 > 默认值(500MB)
-  const maxSize =
-    (teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
-    1024 *
-    1024;
+  // 文件大小限制（bytes）：与 presignDatasetFilePostUrl / 代理上传 JWT 一致 — 须等套餐拉取后再算，避免未加载时用 feConfigs 显示 1000M、实际套餐为 5M
+  const maxSize = useMemo(() => {
+    if (!teamPlanReady) return null;
+    const mb = teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500;
+    return mb * 1024 * 1024;
+  }, [teamPlanReady, teamPlanStatus?.standard?.maxUploadFileSize, feConfigs?.uploadFileMaxSize]);
 
   const { File, onOpen } = useSelectFile({
     fileType,
@@ -63,43 +86,20 @@ const FileSelector = ({
 
   const selectFileCallback = useCallback(
     (files: SelectFileItemType[]) => {
-      // Check for duplicate file names
-      const existingFileNames = new Set(
-        selectFiles.filter((f) => f.file !== undefined).map((f) => f.file!.name)
-      );
-      const duplicateFiles = files.filter((f) => existingFileNames.has(f.file.name));
-
-      if (duplicateFiles.length > 0) {
+      if (selectFiles.length + files.length > maxCount) {
+        files = files.slice(0, maxCount - selectFiles.length);
         toast({
           status: 'warning',
-          title: t('dataset:file_already_uploaded')
+          title: t('file:some_file_count_exceeds_limit', { maxCount })
         });
       }
-
-      const uniqueFiles = files.filter((f) => !existingFileNames.has(f.file.name));
-
-      if (uniqueFiles.length === 0) {
-        return;
-      }
-
-      if (selectFiles.length + uniqueFiles.length > maxCount) {
-        const filteredFiles = uniqueFiles.slice(0, maxCount - selectFiles.length);
-        if (filteredFiles.length < uniqueFiles.length) {
-          toast({
-            status: 'warning',
-            title: t('file:some_file_count_exceeds_limit', { maxCount })
-          });
-        }
-        return onSelectFiles(filteredFiles);
-      }
-
       // size check
-      if (!maxSize) {
-        return onSelectFiles(uniqueFiles);
+      if (maxSize == null) {
+        return onSelectFiles(files);
       }
-      const filterFiles = uniqueFiles.filter((item) => item.file.size <= maxSize);
+      const filterFiles = files.filter((item) => item.file.size <= maxSize);
 
-      if (filterFiles.length < uniqueFiles.length) {
+      if (filterFiles.length < files.length) {
         toast({
           status: 'warning',
           title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
@@ -108,7 +108,7 @@ const FileSelector = ({
 
       return onSelectFiles(filterFiles);
     },
-    [t, maxCount, maxSize, onSelectFiles, selectFiles, toast]
+    [t, maxCount, maxSize, onSelectFiles, selectFiles.length, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -185,26 +185,6 @@ const FileSelector = ({
     } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
 
-      // Check for unsupported file types
-      const unsupportedFiles = files.filter((item) => !filterTypeReg.test(item.name));
-      if (unsupportedFiles.length > 0) {
-        const unsupportedExtensions = [
-          ...new Set(
-            unsupportedFiles
-              .map((f) => {
-                const match = f.name.match(/\.[^.]+$/);
-                return match ? match[0] : '';
-              })
-              .filter(Boolean)
-          )
-        ];
-
-        toast({
-          status: 'warning',
-          title: t('dataset:unsupported_file_format', { ext: unsupportedExtensions.join(', ') })
-        });
-      }
-
       fileList.push(
         ...files
           .filter((item) => filterTypeReg.test(item.name))
@@ -235,7 +215,7 @@ const FileSelector = ({
       borderWidth={'1.5px'}
       borderStyle={'dashed'}
       borderRadius={'md'}
-      {...(isMaxSelected
+      {...(isMaxSelected || maxSize == null
         ? {}
         : {
             cursor: 'pointer',
@@ -259,6 +239,13 @@ const FileSelector = ({
             {t('file:reached_max_file_count')}
           </Box>
         </>
+      ) : maxSize == null ? (
+        <>
+          <Box fontWeight={'bold'}>{t('common:Loading')}</Box>
+          <Box color={'myGray.500'} fontSize={'xs'}>
+            {t('file:support_file_type', { fileType })}
+          </Box>
+        </>
       ) : (
         <>
           <Box fontWeight={'bold'}>
@@ -267,7 +254,7 @@ const FileSelector = ({
               : t('file:select_and_drag_file_tip')}
           </Box>
           {/* file type */}
-          <Box color={'myGray.500'} fontSize={'xs'} textAlign={'center'}>
+          <Box color={'myGray.500'} fontSize={'xs'}>
             {t('file:support_file_type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>
@@ -278,39 +265,15 @@ const FileSelector = ({
           </Box>
 
           <File
-            onSelect={(files) => {
-              // Check for unsupported file types
-              const unsupportedFiles = files.filter((item) => !filterTypeReg.test(item.name));
-              if (unsupportedFiles.length > 0) {
-                const unsupportedExtensions = [
-                  ...new Set(
-                    unsupportedFiles
-                      .map((f) => {
-                        const match = f.name.match(/\.[^.]+$/);
-                        return match ? match[0] : '';
-                      })
-                      .filter(Boolean)
-                  )
-                ];
-
-                toast({
-                  status: 'warning',
-                  title: t('dataset:unsupported_file_format', {
-                    ext: unsupportedExtensions.join(', ')
-                  })
-                });
-              }
-
-              const supportedFiles = files.filter((item) => filterTypeReg.test(item.name));
-
+            onSelect={(files) =>
               selectFileCallback(
-                supportedFiles.map((file) => ({
+                files.map((file) => ({
                   fileId: getNanoid(),
                   folderPath: '',
                   file
                 }))
-              );
-            }}
+              )
+            }
           />
         </>
       )}

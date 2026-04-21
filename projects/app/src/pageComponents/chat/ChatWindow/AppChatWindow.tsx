@@ -8,7 +8,7 @@ import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -38,10 +38,7 @@ const AppChatWindow = () => {
   const { isPc } = useSystem();
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const forbidLoadChatMap = useContextSelector(ChatContext, (v) => v.forbidLoadChatMap);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
-  const histories = useContextSelector(ChatContext, (v) => v.histories);
-  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
@@ -51,18 +48,9 @@ const AppChatWindow = () => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
-  const isNoneWelcomeAndVariable = useContextSelector(
-    ChatItemContext,
-    (v) => v.isNoneWelcomeAndVariable
-  );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
-  const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
-
-  const isShowHeader = useMemo(() => {
-    return !isNoneWelcomeAndVariable || (isChatRecordsLoaded && chatRecords.length !== 0);
-  }, [isNoneWelcomeAndVariable, isChatRecordsLoaded, chatRecords]);
 
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
@@ -71,8 +59,7 @@ const AppChatWindow = () => {
 
   const { loading } = useRequest(
     async () => {
-      // 使用 chatId 级别的禁止加载标记
-      if (!appId || forbidLoadChatMap.current.get(chatId)) return;
+      if (!appId || forbidLoadChat.current) return;
 
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
@@ -101,8 +88,6 @@ const AppChatWindow = () => {
         }
       },
       onFinally() {
-        // 清除当前 chatId 的禁止加载标记
-        forbidLoadChatMap.current.delete(chatId);
         forbidLoadChat.current = false;
       }
     }
@@ -116,37 +101,14 @@ const AppChatWindow = () => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
-      const histories_messages = messages.slice(-1);
-
-      // 立即生成标题并添加新会话到列表
-      const newTitle = getChatTitleFromChatMessage(
-        GPTMessages2Chats({ messages: histories_messages })[0]
-      );
-      const isNewChat = !histories.find((h) => h.chatId === chatId);
-
-      if (isNewChat && chatId) {
-        // 标记禁止加载，防止切换回来时重新加载空数据
-        forbidLoadChatMap.current.set(chatId, true);
-        forbidLoadChat.current = true;
-
-        // 立即添加到历史列表，使用用户输入前20字作为标题
-        // customTitle 设置为 newTitle，确保刷新页面后也使用固定标题
-        setHistories((state) => [
-          {
-            chatId,
-            appId,
-            title: newTitle,
-            updateTime: new Date(),
-            customTitle: newTitle,
-            top: false
-          },
-          ...state
-        ]);
+      if (!appId) {
+        return Promise.reject('appId is empty');
       }
 
+      const histories = messages.slice(-1);
       const { responseText } = await streamFetch({
         data: {
-          messages: histories_messages,
+          messages: histories,
           variables,
           responseChatItemId,
           appId,
@@ -158,12 +120,13 @@ const AppChatWindow = () => {
         onMessage: generatingMessage
       });
 
-      // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
-      // 顶部标题也从 histories 中获取，保持同步
-      // setChatBoxData((state) => ({
-      //   ...state,
-      //   title: newTitle
-      // }));
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
+
+      onUpdateHistoryTitle({ chatId, newTitle });
+      setChatBoxData((state) => ({
+        ...state,
+        title: newTitle
+      }));
 
       refreshRecentlyUsed();
 
@@ -172,13 +135,12 @@ const AppChatWindow = () => {
     [
       appId,
       chatId,
+      onUpdateHistoryTitle,
+      setChatBoxData,
       forbidLoadChat,
       isShowCite,
       showSkillReferences,
-      refreshRecentlyUsed,
-      forbidLoadChatMap,
-      histories,
-      setHistories
+      refreshRecentlyUsed
     ]
   );
 
@@ -209,15 +171,13 @@ const AppChatWindow = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
       >
-        {isShowHeader && (
-          <ChatHeader
-            pane={pane}
-            chatSettings={chatSettings}
-            showHistory
-            history={chatRecords}
-            totalRecordsCount={totalRecordsCount}
-          />
-        )}
+        <ChatHeader
+          pane={pane}
+          chatSettings={chatSettings}
+          showHistory
+          history={chatRecords}
+          totalRecordsCount={totalRecordsCount}
+        />
 
         <Box flex={'1 0 0'} bg={'white'}>
           {isPlugin ? (
@@ -232,7 +192,8 @@ const AppChatWindow = () => {
             <ChatBox
               appId={appId}
               chatId={chatId}
-              isReady={!loading}
+              isReady={!loading && !!appId}
+              enableAutoResume
               feedbackType={'user'}
               chatType={ChatTypeEnum.chat}
               outLinkAuthData={outLinkAuthData}

@@ -51,7 +51,7 @@ import type {
   ApplyChangesBody,
   ApplyChangesResponse
 } from '@fastgpt/global/core/dataset/database/api';
-import type { EnhanceConfig } from '@/pages/api/core/dataset/collection/create/template';
+import type { CustomEnhanceConfigType } from '@fastgpt/global/common/system/types';
 import type {
   CustomFileIdImportBody,
   CustomFileIdImportResponse
@@ -199,7 +199,7 @@ export const postTemplateDatasetCollection = ({
   file: File;
   percentListen: (percent: number) => void;
   datasetId: string;
-  enhanceConfig?: EnhanceConfig;
+  enhanceConfig?: CustomEnhanceConfigType;
 }) => {
   const formData = new FormData();
   formData.append('file', file, encodeURIComponent(file.name));
@@ -441,10 +441,6 @@ export const getTrainingDataDetail = (data: GetTrainingDataDetailBody) =>
 export const getTrainingError = (data: GetTrainingErrorBody) =>
   POST<GetTrainingErrorResponse>(`/core/dataset/training/getTrainingError`, data);
 
-/* ================== read source ======================== */
-export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>
-  POST<ReadCollectionSourceResponseType>('/core/dataset/collection/read', data);
-
 /* ================== apiDataset ======================== */
 export const getApiDatasetFileList = (data: GetApiDatasetFileListBody) =>
   POST<APIFileItemType[]>('/core/dataset/apiDataset/list', data);
@@ -610,3 +606,13 @@ export const deleteSynonymFile = (datasetId: string, fileId: string) =>
   DELETE<{
     success: boolean;
   }>(`/core/dataset/synonym/delete?id=${fileId}&datasetId=${datasetId}`);
+
+/* ======================== Re-exports from sub-modules (not already defined above) ======================= */
+export { getCollectionSource } from './api/collection';
+
+export { getUploadDatasetFilePresignedUrl } from './api/file';
+export {
+  getCollaboratorList,
+  postUpdateDatasetCollaborators,
+  deleteDatasetCollaborators
+} from './api/collaborator';

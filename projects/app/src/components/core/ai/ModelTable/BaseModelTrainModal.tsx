@@ -138,10 +138,7 @@ const BaseModelTrainModal = ({
     [availableBaseModelList]
   );
 
-  const {
-    data: datasetTree = [],
-    loading: isFetching
-  } = useRequest(
+  const { data: datasetTree = [], loading: isFetching } = useRequest(
     async () => {
       const res = await getDatasetsWithChildren({
         parentId: null
@@ -378,7 +375,9 @@ const BaseModelTrainModal = ({
   const isAllSelected = useMemo(() => {
     if (treeState.allLeafItems.length === 0 && treeState.emptyFolderIds.size === 0) return false;
 
-    const allLeavesSelected = treeState.allLeafItems.every((item) => selectedDatasetIdSet.has(item._id));
+    const allLeavesSelected = treeState.allLeafItems.every((item) =>
+      selectedDatasetIdSet.has(item._id)
+    );
     const allEmptyFoldersSelected = [...treeState.emptyFolderIds].every((id) =>
       selectedEmptyFolderIds.has(id)
     );
@@ -420,7 +419,7 @@ const BaseModelTrainModal = ({
       onSuccess: () => {
         onSuccess?.();
         onClose();
-      },
+      }
     }
   );
 
@@ -541,7 +540,9 @@ const BaseModelTrainModal = ({
                 h={0}
                 minH={0}
               >
-                {visibleNodes.length === 0 && !isFetching && <EmptyTip text={t('common:folder.empty')} />}
+                {visibleNodes.length === 0 && !isFetching && (
+                  <EmptyTip text={t('common:folder.empty')} />
+                )}
                 {visibleNodes.map((node) => {
                   const { item, id, level, isFolder, childrenIds } = node;
                   const folderCheckState = isFolder

@@ -7,6 +7,7 @@ import outLinkErr from './code/outLink';
 import teamErr from './code/team';
 import userErr from './code/user';
 import commonErr from './code/common';
+import s3Err from './code/s3';
 import SystemErrEnum from './code/system';
 import databaseErr from './code/database';
 import evaluationErr from './code/evaluation';
@@ -45,7 +46,9 @@ export enum ERROR_ENUM {
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
   unAuthFile = 'unAuthFile',
-  tooManyRequest = 'tooManyRequest'
+  tooManyRequest = 'tooManyRequest',
+  /** 对话/知识库等上传：短时请求次数超过套餐或系统频率限制 */
+  uploadFileIntervalLimit = 'uploadFileIntervalLimit'
 }
 
 export type ErrType<T> = Record<
@@ -55,6 +58,7 @@ export type ErrType<T> = Record<
     statusText: T;
     message: string;
     data: null;
+    httpStatus?: number;
   }
 >;
 
@@ -65,6 +69,7 @@ export const ERROR_RESPONSE: Record<
     statusText: string;
     message: string;
     data?: any;
+    httpStatus?: number;
   }
 > = {
   [ERROR_ENUM.unAuthorization]: {
@@ -77,6 +82,12 @@ export const ERROR_RESPONSE: Record<
     code: 429,
     statusText: ERROR_ENUM.tooManyRequest,
     message: i18nT('common:error.too_many_request'),
+    data: null
+  },
+  [ERROR_ENUM.uploadFileIntervalLimit]: {
+    code: 429,
+    statusText: ERROR_ENUM.uploadFileIntervalLimit,
+    message: i18nT('common:error.upload_file_interval_limit'),
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {
@@ -113,6 +124,7 @@ export const ERROR_RESPONSE: Record<
   ...databaseErr,
   ...pluginErr,
   ...commonErr,
+  ...s3Err,
   ...SystemErrEnum,
   ...evaluationErr,
   ...trainErr,

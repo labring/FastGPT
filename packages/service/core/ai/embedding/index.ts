@@ -52,15 +52,15 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
         ai.embeddings
           .create(
             {
-              ...model.defaultConfig,
-              ...(type === EmbeddingTypeEnm.db && model.dbConfig),
-              ...(type === EmbeddingTypeEnm.query && model.queryConfig),
               model: model.model,
               input:
                 type === EmbeddingTypeEnm.query
                   ? formatEmbeddingQuery(chunk, model.instruction)
                   : chunk,
-              encoding_format: 'float'
+              encoding_format: 'float',
+              ...model.defaultConfig,
+              ...(type === EmbeddingTypeEnm.db && model.dbConfig),
+              ...(type === EmbeddingTypeEnm.query && model.queryConfig)
             },
             model.requestUrl
               ? {

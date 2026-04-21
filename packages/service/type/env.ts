@@ -8,6 +8,28 @@ declare global {
       LOG_DEPTH: string;
       DB_MAX_LINK: string;
       FILE_TOKEN_KEY: string;
+
+      STORAGE_VENDOR?: 'minio' | 'aws-s3' | 'cos' | 'oss';
+      STORAGE_PUBLIC_BUCKET?: string;
+      STORAGE_PRIVATE_BUCKET?: string;
+      STORAGE_REGION?: string;
+      STORAGE_EXTERNAL_ENDPOINT?: string;
+      STORAGE_S3_ENDPOINT?: string;
+      STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH?: string;
+      STORAGE_ACCESS_KEY_ID?: string;
+      STORAGE_SECRET_ACCESS_KEY?: string;
+      STORAGE_S3_FORCE_PATH_STYLE?: string;
+      STORAGE_S3_MAX_RETRIES?: string;
+      STORAGE_COS_PROTOCOL?: 'https:' | 'http:';
+      STORAGE_COS_USE_ACCELERATE?: string;
+      STORAGE_COS_CNAME_DOMAIN?: string;
+      STORAGE_COS_PROXY?: string;
+      STORAGE_OSS_ENDPOINT?: string;
+      STORAGE_OSS_CNAME?: string;
+      STORAGE_OSS_INTERNAL?: string;
+      STORAGE_OSS_SECURE?: string;
+      STORAGE_OSS_ENABLE_PROXY?: string;
+
       AES256_SECRET_KEY: string;
       ROOT_KEY: string;
       OPENAI_BASE_URL: string;
@@ -21,6 +43,7 @@ declare global {
       // Vector
       VECTOR_VQ_LEVEL: string;
       PG_URL: string;
+      OPENGAUSS_URL: string;
       OCEANBASE_URL: string;
       SEEKDB_URL: string;
       MILVUS_ADDRESS: string;

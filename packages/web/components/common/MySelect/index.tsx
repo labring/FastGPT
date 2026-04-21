@@ -290,6 +290,7 @@ const MySelect = <T = any,>(
         <MenuList
           ref={MenuListRef}
           className={props.className}
+          minW={0}
           w={(() => {
             const w = ButtonRef.current?.clientWidth;
             if (w) {

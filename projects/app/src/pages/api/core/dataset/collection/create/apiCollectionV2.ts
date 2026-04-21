@@ -19,6 +19,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
   const body = CreateApiCollectionV2BodySchema.parse(req.body);
@@ -29,6 +30,12 @@ async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
     authApiKey: true,
     datasetId: body.datasetId,
     per: WritePermissionVal
+  });
+
+  // Check dataset limit
+  await checkDatasetIndexLimit({
+    teamId,
+    insertLen: 1
   });
 
   return createApiDatasetCollection({

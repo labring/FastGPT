@@ -36,7 +36,7 @@ const ChatHistorySidebar = ({ title, banner, isShareMode }: Props) => {
     >
       <ChatSliderHeader title={title} banner={banner} />
       <ChatSliderMenu />
-      <ChatSliderList isShareMode={isShareMode} />
+      <ChatSliderList />
     </MyBox>
   );
 };

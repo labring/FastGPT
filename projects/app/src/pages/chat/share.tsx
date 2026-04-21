@@ -361,6 +361,7 @@ const OutLink = (props: Props) => {
                       appId={appId}
                       chatId={chatId}
                       outLinkAuthData={outLinkAuthData}
+                      enableAutoResume
                       feedbackType={'user'}
                       onStartChat={startChat}
                       chatType={ChatTypeEnum.share}

@@ -11,7 +11,7 @@ const SandboxIframe = () => {
   return (
     <Box w={'100%'} h={'100%'}>
       <iframe
-        src={sandboxEndpointUrl}
+        src={`${sandboxEndpointUrl}proxy/8080/`}
         sandbox="allow-scripts allow-forms allow-popups allow-downloads allow-presentation allow-same-origin"
         referrerPolicy="no-referrer"
         style={{

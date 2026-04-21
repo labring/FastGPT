@@ -1,11 +1,24 @@
 ---
-title: 升级说明
-description: FastGPT 版本升级说明
+title: 版本&升级说明
+description: FastGPT 版本&升级说明
 ---
 
-FastGPT 升级包括两个步骤：
+## 版本说明
 
-1. 镜像升级
+从 4.14.11 开始，为了区分稳定版和快速迭代版，对版本命名进行了调整，未来将按以下方式进行版本命名：
+
+1. 维护 2 个稳定版本。例如当前迭代功能处于 4.16.x 版本，则会维护 4.14.x 和 4.15.x 两个文档版本。
+2. 稳定版本命名不带后缀，例如：4.14.11, 4.14.12, 4.15.0, 4.15.1。如果 4.14.11 有问题，会修复后发布 4.14.12，并同步修复到 4.15.x 的稳定版，以确保修复问题同时不引入新的功能。
+3. 快速迭代版本命名带后缀，例如：4.16.0-beta.1, 4.16.0-beta.2, 4.16.0-beta.3。
+4. 迭代版本约 2 个月发布一次稳定版，并且会提供一个聚合的升级脚本，用户只需要执行一次请求，即可完成所有迭代版本的升级。
+
+总结来说，后续用户可以直接升级不带 beta 后缀的稳定版本，以确保稳定性，官方会单独发布修复版本并确保不会引入新功能。
+
+## 升级说明
+
+FastGPT 升级通常包括两个步骤：
+
+1. 修改镜像名
 2. 执行升级初始化脚本
 
 ## 镜像名
@@ -14,7 +27,7 @@ FastGPT 升级包括两个步骤：
 
 - FastGPT 主镜像: ghcr.io/labring/fastgpt:latest
 - Plugin 镜像: ghcr.io/labring/fastgpt-plugin
-- 代码沙箱镜像: ghcr.io/labring/fastgpt-sandbox
+- 代码沙箱镜像: ghcr.io/labring/fastgpt-code-sandbox
 - MCP SSE setver 镜像: ghcr.io/labring/fastgpt-mcp_server
 - 商业版镜像: ghcr.io/c121914yu/fastgpt-pro:latest
 
@@ -22,7 +35,7 @@ FastGPT 升级包括两个步骤：
 
 - FastGPT 主镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
 - Plugin 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
-- 代码沙箱镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox
+- 代码沙箱镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
 - MCP SSE setver 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server
 - 商业版镜像: ghcr:registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
 

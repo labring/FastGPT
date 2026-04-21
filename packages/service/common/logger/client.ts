@@ -1,7 +1,8 @@
 import { configureLoggerFromEnv, disposeLogger, getLogger } from '@fastgpt-sdk/otel/logger';
-import { env } from '../../env';
 
 export async function configureLogger() {
+  const { env } = await import('../../env');
+
   await configureLoggerFromEnv({
     env,
     defaultCategory: ['system'],

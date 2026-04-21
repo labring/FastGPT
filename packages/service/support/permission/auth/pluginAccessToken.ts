@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { z } from 'zod';
+import z from 'zod';
 import type { NextApiRequest } from 'next';
 
 const PLUGIN_ACCESS_TOKEN_SECRET =

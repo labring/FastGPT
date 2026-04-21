@@ -6,7 +6,6 @@ import {
   type AppTTSConfigType,
   type AppWhisperConfigType,
   type ChatInputGuideConfigType,
-  type EntryPointItemType,
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
@@ -24,7 +23,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ChatTypeEnum as ChatTypeEnumValue } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
@@ -75,7 +74,6 @@ type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAut
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
   isAssistantType: boolean;
-  entryPoints: EntryPointItemType[];
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -131,10 +129,9 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     open: false,
     customUrl: ''
   },
-  // @ts-ignore
-  variablesForm: undefined,
   isAssistantType: false,
-  entryPoints: []
+  // @ts-ignore
+  variablesForm: undefined
 });
 
 const Provider = ({
@@ -186,16 +183,6 @@ const Provider = ({
     (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
   );
 
-  const isAssistantType = useContextSelector(
-    ChatItemContext,
-    (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
-  );
-
-  const entryPoints = useContextSelector(
-    ChatItemContext,
-    (v) => v.chatBoxData?.app?.chatConfig?.entryPoints ?? []
-  );
-
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
 
@@ -237,11 +224,9 @@ const Provider = ({
           dataId,
           ...formatOutLinkAuth
         });
-        setChatRecords((state) => {
-          return state.map((item) =>
-            item.dataId === dataId ? { ...item, responseData: resData } : item
-          );
-        });
+        setChatRecords((state) =>
+          state.map((item) => (item.dataId === dataId ? { ...item, responseData: resData } : item))
+        );
         return resData;
       }
     },
@@ -270,8 +255,7 @@ const Provider = ({
     chatInputGuide,
     getHistoryResponseData,
     chatType,
-    isAssistantType,
-    entryPoints
+    isAssistantType: false
   };
 
   return (
@@ -279,6 +263,7 @@ const Provider = ({
       appId={appId}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
+      runtimeFileSelectConfig={chatType === ChatTypeEnumValue.test ? fileSelectConfig : undefined}
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>

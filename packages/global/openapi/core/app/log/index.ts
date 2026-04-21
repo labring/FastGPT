@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
-import { z } from 'zod';
+import z from 'zod';
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,

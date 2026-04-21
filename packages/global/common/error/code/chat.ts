@@ -3,7 +3,8 @@ import { i18nT } from '../../i18n/utils';
 /* dataset: 504000 */
 export enum ChatErrEnum {
   unAuthChat = 'unAuthChat',
-  modelNameRequired = 'modelNameRequired'
+  modelNameRequired = 'modelNameRequired',
+  chatIsGenerating = 'chatIsGenerating'
 }
 const errList = [
   {
@@ -13,6 +14,10 @@ const errList = [
   {
     statusText: ChatErrEnum.modelNameRequired,
     message: i18nT('common:code_error.chat_error.model_name_required')
+  },
+  {
+    statusText: ChatErrEnum.chatIsGenerating,
+    message: i18nT('common:code_error.chat_error.chat_generating')
   }
 ];
 export default errList.reduce((acc, cur, index) => {

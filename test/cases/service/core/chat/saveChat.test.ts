@@ -1,6 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   type Props,
+  failChatRound,
+  finalizeChatRound,
+  prepareChatRound,
   pushChatRecords,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
@@ -9,7 +12,11 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatGenerateStatusEnum,
+  ChatRoleEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum
@@ -467,6 +474,146 @@ describe('pushChatRecords', () => {
           throw new Error('aiItem does not have citeCollectionIds');
         }
       }
+    });
+  });
+
+  describe('prepared chat round lifecycle', () => {
+    it('should prepare chat and placeholders in generating status', async () => {
+      const responseChatItemId = 'prepared-ai-item';
+      const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
+
+      await prepareChatRound({
+        chatId: props.chatId,
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        source: props.source,
+        sourceName: props.sourceName,
+        shareId: props.shareId,
+        outLinkUid: props.outLinkUid,
+        userContent: props.userContent,
+        responseChatItemId
+      });
+
+      expect(props.userContent.dataId).toBeDefined();
+      expect(props.userContent.dataId).not.toBe(responseChatItemId);
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
+      expect(chat?.hasBeenRead).toBe(false);
+
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
+      expect(chatItems).toHaveLength(2);
+
+      const humanItem = chatItems.find((item) => item.obj === ChatRoleEnum.Human);
+      expect(humanItem?.dataId).toBe(props.userContent.dataId);
+      expect(humanItem?.value[0].text?.content).toBe('Hello, how are you?');
+
+      const aiItem = chatItems.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.dataId).toBe(responseChatItemId);
+      expect(aiItem?.value).toEqual([]);
+    });
+
+    it('should finalize prepared round without creating duplicate chat items', async () => {
+      const responseChatItemId = 'prepared-ai-finalize';
+      const props = createMockProps(
+        {
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: 'Final answer'
+                }
+              }
+            ],
+            responseData: [
+              {
+                nodeId: 'node-1',
+                id: 'resp-1',
+                moduleType: FlowNodeTypeEnum.chatNode,
+                moduleName: 'Chat',
+                runningTime: 0.5,
+                totalPoints: 3
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await prepareChatRound({
+        chatId: props.chatId,
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        source: props.source,
+        sourceName: props.sourceName,
+        shareId: props.shareId,
+        outLinkUid: props.outLinkUid,
+        userContent: props.userContent,
+        responseChatItemId
+      });
+
+      await finalizeChatRound(props);
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
+      expect(chat?.hasBeenRead).toBe(false);
+
+      const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
+      expect(chatItems).toHaveLength(2);
+
+      const aiItem = chatItems.find((item) => item.obj === ChatRoleEnum.AI);
+      expect(aiItem?.dataId).toBe(responseChatItemId);
+      expect(aiItem?.value[0].text?.content).toBe('Final answer');
+
+      const responses = await MongoChatItemResponse.find({
+        appId: testAppId,
+        chatId: props.chatId,
+        chatItemDataId: responseChatItemId
+      });
+      expect(responses).toHaveLength(1);
+      expect(responses[0].data.moduleType).toBe(FlowNodeTypeEnum.chatNode);
+    });
+
+    it('should mark prepared round as error and keep ai placeholder', async () => {
+      const responseChatItemId = 'prepared-ai-error';
+      const props = createMockProps({}, { appId: testAppId, teamId: testTeamId, tmbId: testTmbId });
+
+      await prepareChatRound({
+        chatId: props.chatId,
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        source: props.source,
+        sourceName: props.sourceName,
+        shareId: props.shareId,
+        outLinkUid: props.outLinkUid,
+        userContent: props.userContent,
+        responseChatItemId
+      });
+
+      await failChatRound({
+        appId: testAppId,
+        chatId: props.chatId,
+        responseChatItemId,
+        error: new Error('stream failed')
+      });
+
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
+      expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.error);
+      expect(chat?.hasBeenRead).toBe(false);
+
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        dataId: responseChatItemId,
+        obj: ChatRoleEnum.AI
+      });
+      expect(aiItem?.value).toEqual([]);
+      expect(aiItem?.errorMsg).toContain('stream failed');
     });
   });
 

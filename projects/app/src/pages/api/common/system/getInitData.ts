@@ -5,10 +5,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import type {
-  AiproxyMapProviderType,
-  I18nStringStrictType
-} from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { MongoEmbeddingTrainTask } from '@fastgpt/service/core/train/embedding/task/schema';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
@@ -34,7 +31,7 @@ export type InitDateResponse = {
   activeModelList?: ActiveModelListItem[];
   defaultModels?: SystemDefaultModelType;
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
-  aiproxyIdMap?: AiproxyMapProviderType;
+  aiproxyChannels?: AIProxyChannelsType;
 };
 
 async function buildActiveModelList(
@@ -109,7 +106,7 @@ async function handler(
       activeModelList: await buildActiveModelList(global.systemActiveDesensitizedModels, teamId),
       defaultModels: global.systemDefaultModel,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyChannels: global.aiproxyChannelsCache
     };
   } catch (error) {
     const referer = req.headers.referer;
@@ -118,7 +115,7 @@ async function handler(
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
         modelProviders: global.ModelProviderRawCache,
-        aiproxyIdMap: global.aiproxyIdMapCache,
+        aiproxyChannels: global.aiproxyChannelsCache,
         activeModelList: global.systemActiveDesensitizedModels.map((model) => ({
           ...model,
           trainTaskList: []
@@ -131,7 +128,7 @@ async function handler(
       return {
         bufferId: unAuthBufferId,
         modelProviders: global.ModelProviderRawCache,
-        aiproxyIdMap: global.aiproxyIdMapCache
+        aiproxyChannels: global.aiproxyChannelsCache
       };
     }
 
@@ -139,7 +136,7 @@ async function handler(
       bufferId: unAuthBufferId,
       feConfigs: global.feConfigs,
       modelProviders: global.ModelProviderRawCache,
-      aiproxyIdMap: global.aiproxyIdMapCache
+      aiproxyChannels: global.aiproxyChannelsCache
     };
   }
 }

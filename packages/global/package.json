@@ -6,7 +6,7 @@
     "pnpm": "9.x"
   },
   "dependencies": {
-    "@fastgpt-sdk/plugin": "0.3.8",
+    "@fastgpt-sdk/plugin": "0.6.0",
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
     "axios": "catalog:",
@@ -23,7 +23,7 @@
     "timezones-list": "^3.0.2",
     "lodash": "catalog:",
     "zod": "catalog:",
-    "zod-openapi": "^5.4.3"
+    "zod-openapi": "^5.4.6"
   },
   "devDependencies": {
     "@types/lodash": "catalog:",

@@ -34,9 +34,64 @@ async function main() {
 
   // Import pure utilities from sandboxProxyUtils — no service-layer deps, safe in tsx CJS mode.
   // getSandboxProxyTarget is NOT imported here; auth is delegated to the proxyAuth API route.
-  const { parseSubdomainProxy, rewriteHtml, redeemRelayToken } = (await import(
+  const {
+    parseSubdomainProxy,
+    rewriteHtml,
+    redeemRelayToken,
+    ensureCodeServerSession,
+    deleteCsSession
+  } = (await import(
     './src/service/core/sandbox/proxyUtils'
   )) as typeof import('./src/service/core/sandbox/proxyUtils');
+
+  // Fetch the code-server password from the container config.yaml via the internal API.
+  async function fetchCodeServerPassword(sandboxId: string): Promise<string | null> {
+    try {
+      const resp = await fetch(`http://127.0.0.1:${port}/api/core/sandbox/proxyCSPassword`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sandboxId })
+      });
+      if (!resp.ok) return null;
+      const { password } = await resp.json();
+      return password || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Inject code-server session cookie into an outgoing request header object.
+  function injectCsKey(reqHeaders: IncomingMessage['headers'], key: string): void {
+    const existing = (reqHeaders.cookie as string | undefined) ?? '';
+    const stripped = existing
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => !s.toLowerCase().startsWith('code-server-session='))
+      .join('; ');
+    reqHeaders.cookie = stripped
+      ? `${stripped}; code-server-session=${key}`
+      : `code-server-session=${key}`;
+  }
+
+  // Build the correct code-server login base URL.
+  // After prefix stripping, req.url starts with /proxy/8080/... when going through execd.
+  // In that case the login endpoint is at target/proxy/8080, not target/login directly.
+  function deriveCsLoginTarget(target: string, url: string): string {
+    const m = url.match(/^\/proxy\/(\d+)/);
+    return m ? `${target}/proxy/${m[1]}` : target;
+  }
+
+  // Ensure code-server is authenticated and inject the session cookie into reqHeaders.
+  async function injectCodeServerAuth(
+    reqHeaders: IncomingMessage['headers'],
+    sandboxId: string,
+    target: string
+  ): Promise<void> {
+    const key = await ensureCodeServerSession(sandboxId, target, () =>
+      fetchCodeServerPassword(sandboxId)
+    );
+    if (key) injectCsKey(reqHeaders, key);
+  }
 
   const proxy = httpProxy.createProxyServer({ xfwd: true, changeOrigin: true });
   proxy.on(
@@ -48,6 +103,22 @@ async function main() {
       }
     }
   );
+
+  // Detect code-server session expiry: if the upstream returns a 302 to /login,
+  // evict the cached CS session so the next request triggers a fresh login.
+  proxy.on('proxyRes', (proxyRes, req) => {
+    if (
+      proxyRes.statusCode === 302 &&
+      typeof proxyRes.headers.location === 'string' &&
+      proxyRes.headers.location.includes('/login')
+    ) {
+      const sid = (req as IncomingMessage).headers['x-fastgpt-sandbox-id'] as string | undefined;
+      if (sid) {
+        dev && console.log(`[proxy:cs] session expired, evicting csSession sandboxId=${sid}`);
+        deleteCsSession(sid);
+      }
+    }
+  });
 
   // absproxy: fetch upstream then rewrite HTML paths with base prefix
   async function handleAbsProxy(
@@ -103,11 +174,16 @@ async function main() {
   ) {
     try {
       const target = await authProxyTarget(req.headers, sandboxId, portNum);
+      const csTarget = deriveCsLoginTarget(target, req.url || '');
       if (proxyType === 'absproxy') {
+        await injectCodeServerAuth(req.headers, sandboxId, csTarget);
         await handleAbsProxy(req, res, target, sandboxId, String(portNum));
       } else {
         // Rewrite Origin so code-server's CSRF check passes (changeOrigin only rewrites Host).
         const targetUrl = new URL(target);
+        await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+        // Mark the request so the proxyRes handler can identify the sandbox on session expiry.
+        req.headers['x-fastgpt-sandbox-id'] = sandboxId;
         proxy.web(req, res, {
           target,
           headers: { origin: `${targetUrl.protocol}//${targetUrl.host}` }
@@ -157,6 +233,9 @@ async function main() {
     try {
       const target = await authProxyTarget(req.headers, sandboxId, portNum);
       const targetUrl = new URL(target);
+      const csTarget = deriveCsLoginTarget(target, req.url || '');
+      await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+      req.headers['x-fastgpt-sandbox-id'] = sandboxId;
       proxy.web(req, res, {
         target,
         headers: { origin: `${targetUrl.protocol}//${targetUrl.host}` }
@@ -352,6 +431,9 @@ async function main() {
       // Rewrite Origin to match the target host so code-server's CSRF check passes.
       // changeOrigin:true only rewrites Host, not Origin.
       const targetUrl = new URL(target);
+      const csTarget = deriveCsLoginTarget(target, req.url || '');
+      await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+      req.headers['x-fastgpt-sandbox-id'] = sandboxId;
       proxy.ws(req, socket, head, {
         target,
         headers: { origin: `${targetUrl.protocol}//${targetUrl.host}` }

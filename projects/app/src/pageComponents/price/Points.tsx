@@ -20,7 +20,15 @@ const Points = () => {
       <Link href="https://tiktokenizer.vercel.app/" target="_blank" mb={['30px', 10]}>
         {t('common:support.wallet.subscription.token_compute')}
       </Link>
-      <Box p={5} w={'100%'} h={'666px'} bg={'white'} borderRadius={'lg'} boxShadow={'md'}>
+      <Box
+        p={[3, 5]}
+        w={'100%'}
+        h={'666px'}
+        bg={'white'}
+        borderRadius={'lg'}
+        boxShadow={'md'}
+        overflow={'hidden'}
+      >
         <ModelTable />
       </Box>
     </Flex>

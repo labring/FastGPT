@@ -1,6 +1,7 @@
-import { S3Sources } from '../type';
-import { MongoS3TTL } from '../schema';
+import { S3Sources } from '../contracts/type';
+import { MongoS3TTL } from '../models/ttl';
 import { S3PublicBucket } from '../buckets/public';
+import { avatarAllowedExtensions } from '../utils/uploadConstraints';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import type { ClientSession } from 'mongoose';
 import { getFileS3Key } from '../utils';
@@ -29,7 +30,10 @@ class S3AvatarSource extends S3PublicBucket {
       { filename, rawKey: fileKey },
       {
         expiredHours: autoExpired ? 1 : undefined, // 1 Hours
-        maxFileSize: 5 // 5MB
+        maxFileSize: 5, // 5MB
+        uploadConstraints: {
+          allowedExtensions: avatarAllowedExtensions
+        }
       }
     );
   }

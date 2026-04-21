@@ -67,10 +67,10 @@ export async function getServerSideProps(content: any) {
 
 export default ModelProvider;
 
-const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
+const ValidModelTable = ({ Tab }: { Tab?: React.ReactNode }) => {
   return (
     <Box flex={'1 0 0'} overflow={'hidden'}>
-      <ModelTable permissionConfig={true} Tab={Tab} />
+      <ModelTable permissionConfig={true} />
     </Box>
   );
 };

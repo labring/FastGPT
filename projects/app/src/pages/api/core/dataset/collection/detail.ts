@@ -9,8 +9,6 @@ import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collecti
 import { getVectorCount } from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -31,29 +29,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
     collectionId: id,
     per: ReadPermissionVal
   });
-  let default_prompt;
-  if (global.feConfigs.isPlus && global.promptLoader) {
-    default_prompt = {
-      hypeIndexPrompt: global.promptLoader.loadTemplate(
-        'hypeIndexes',
-        getLocale(req),
-        'generate_question_from_faq_prompt'
-      ),
-      autoIndexesPrompt: global.promptLoader.loadTemplate(
-        'autoIndexes',
-        getLocale(req),
-        'auto_training_prompt'
-      ),
-      imageIndexPrompt: global.promptLoader.loadTemplate(
-        'imageIndex',
-        getLocale(req),
-        'image_index_prompt'
-      )
-    };
-    addLog.debug(
-      `[DatasetCollectionDetail] load default prompt success,${JSON.stringify(default_prompt)}`
-    );
-  }
+
   const fileId = collection?.fileId;
   if (fileId && !isS3ObjectKey(fileId, 'dataset')) {
     return Promise.reject('Invalid dataset file key');
@@ -79,7 +55,6 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
   ]);
 
   return GetCollectionDetailResponseSchema.parse({
-    ...default_prompt,
     ...collection,
     indexAmount: indexAmount ?? 0,
     ...getCollectionSourceData(collection),

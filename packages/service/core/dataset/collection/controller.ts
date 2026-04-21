@@ -67,7 +67,7 @@ export const createCollectionAndInsertData = async ({
     rawTextLength: rawText?.length,
     imageIdsCount: imageIds?.length,
     collectionType: createCollectionParams.type
-  });  
+  });
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
     createCollectionParams.trainingType = DatasetCollectionDataProcessModeEnum.chunk;
@@ -307,7 +307,7 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   hashRawText?: string;
   createTime?: Date;
   updateTime?: Date;
-  tableSchema?: TableSchemaType;
+tableSchema?: TableSchemaType;
   forbid?: boolean;
   session?: ClientSession;
 };

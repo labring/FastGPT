@@ -17,6 +17,8 @@ import { getUploadDatasetFilePresignedUrl } from '@/web/core/dataset/api/file';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { documentAndImageFileType } from '@fastgpt/global/common/file/constants';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -47,11 +49,19 @@ export default React.memo(FileLocal);
 const SelectFile = React.memo(function SelectFile() {
   const { t } = useTranslation();
 
+  const { feConfigs } = useSystemStore();
+  const teamPlanStatus = useUserStore((s) => s.teamPlanStatus);
+
   const { goToNext, sources, setSources, parentId } = useContextSelector(
     DatasetImportContext,
     (v) => v
   );
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+
+  const maxSize =
+    (teamPlanStatus?.standard?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
+    1024 *
+    1024;
 
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>(
     sources.map((source) => ({
@@ -138,6 +148,7 @@ const SelectFile = React.memo(function SelectFile() {
                 url,
                 file,
                 headers,
+                maxSize,
                 onUploadProgress: (e) => {
                   if (!e.total) return;
                   const percent = Math.round((e.loaded / e.total) * 100);

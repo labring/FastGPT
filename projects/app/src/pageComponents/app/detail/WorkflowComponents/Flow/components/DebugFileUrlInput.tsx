@@ -6,7 +6,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { getUploadTempFilePresignedUrl, getTempFilePresignedGetUrl } from '@/web/common/file/api';
+import { getUploadTempFilePresignedUrl } from '@/web/common/file/api';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
@@ -125,11 +125,10 @@ const DebugFileUrlInput = React.memo(function DebugFileUrlInput({
                 );
               },
               onSuccess: async () => {
-                const previewUrl = await getTempFilePresignedGetUrl({ key });
                 setFileList((prev) =>
                   prev.map((item) =>
                     item.id === fileId
-                      ? { ...item, url: previewUrl, isUploading: false, progress: 100 }
+                      ? { ...item, url: key, isUploading: false, progress: 100 }
                       : item
                   )
                 );

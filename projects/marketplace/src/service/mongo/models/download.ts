@@ -8,7 +8,7 @@ export const PluginZodSchema = z.object({
   type: z.literal('tool'),
   toolId: z.string(),
   downloadCount: z.number(),
-  time: z.date()
+  time: z.coerce.date()
 });
 
 export type MongoPluginSchemaType = z.infer<typeof PluginZodSchema>;

@@ -6,7 +6,6 @@ import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import type {
   ParentIdType,
   ParentTreePathItemType
@@ -67,10 +66,7 @@ const DatasetSelectContainer = ({
   );
 };
 
-export function useDatasetSelect(
-  scene?: string | undefined,
-  formatResData = (datasetList: DatasetListItemType[]) => datasetList
-) {
+export function useDatasetSelect() {
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
 
@@ -84,14 +80,14 @@ export function useDatasetSelect(
   } = useRequest(
     async () => {
       const result = await Promise.all([
-        getDatasets({ parentId, searchKey, ...(scene ? { scene } : {}) }),
+        getDatasets({ parentId, searchKey }),
         // Only get paths when not searching
         searchKey.trim()
           ? Promise.resolve([])
           : getDatasetPaths({ sourceId: parentId, type: 'current' })
       ]);
       return {
-        datasets: formatResData(result[0]),
+        datasets: result[0],
         paths: result[1]
       };
     },

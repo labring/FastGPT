@@ -1,4 +1,4 @@
-  fastgpt-seekdb:
+  fastgpt-vector:
     image:  ${{seekdb.image}}:${{seekdb.tag}}
     container_name: fastgpt-seekdb
     restart: always
@@ -6,7 +6,7 @@
     #   - 2881:2881
     #   - 2886:2886
     networks:
-      - fastgpt
+      - data
     environment:
       # SeekDB 连接配置（兼容 MySQL 协议）
       - ROOT_PASSWORD=seekdbpassword

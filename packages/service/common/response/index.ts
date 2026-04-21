@@ -21,12 +21,45 @@ export interface ProcessedError {
   statusText: string;
   message: string;
   shouldClearCookie: boolean;
+  httpStatus: number;
   data?: any;
   zodError?: any;
 }
 
 function isValidHttpStatusCode(code: number): boolean {
   return Number.isInteger(code) && code >= 100 && code <= 599;
+}
+
+/**
+ * 业务 JSON `code` 与 HTTP 状态码解耦：多数业务码为 5xxxxx，不能当作 HTTP status。
+ * 仅对明确语义映射到 4xx/5xx，其余默认 500。
+ */
+function resolveHttpStatusForApiError(
+  processedError: ProcessedError,
+  props: { code?: number; error: any }
+): number {
+  const { code: propsCode = 200, error } = props;
+  const bc = processedError.code;
+
+  if (typeof bc === 'number' && bc >= 400 && bc <= 499) {
+    return bc;
+  }
+
+  // packages/global/common/error/code/s3.ts：510000 段为上传校验类客户端错误
+  if (typeof bc === 'number' && bc >= 510000 && bc < 511000) {
+    return 400;
+  }
+
+  const raw = typeof error === 'string' ? error : error?.message;
+  if (raw === 'EntityTooLarge') {
+    return 413;
+  }
+
+  if (typeof propsCode === 'number' && propsCode >= 400 && propsCode <= 499) {
+    return propsCode;
+  }
+
+  return 500;
 }
 
 /**
@@ -67,6 +100,7 @@ export function processError(params: {
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message: ERROR_RESPONSE[errResponseKey].message,
       data: ERROR_RESPONSE[errResponseKey].data,
+      httpStatus: ERROR_RESPONSE[errResponseKey].httpStatus ?? 500,
       shouldClearCookie
     };
   }
@@ -104,6 +138,7 @@ export function processError(params: {
     statusText: 'error',
     message: replaceSensitiveText(msg),
     shouldClearCookie: false,
+    httpStatus: defaultCode,
     zodError
   };
 }
@@ -129,7 +164,9 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
-    res.status(processedError.code).json({
+    const httpStatus = resolveHttpStatusForApiError(processedError, { code, error });
+
+    res.status(httpStatus).json({
       code: processedError.code,
       statusText: processedError.statusText,
       message: message || processedError.message,
@@ -150,20 +187,42 @@ export const jsonRes = <T = any>(
 };
 
 export const sseErrRes = (res: NextApiResponse, error: any) => {
+  const { event, data, shouldClearCookie } = getSseErrorResponse(error);
+  if (shouldClearCookie) {
+    clearCookie(res);
+  }
+  responseWrite({
+    res,
+    event,
+    data
+  });
+};
+
+export const getSseErrorResponse = (
+  error: any
+): {
+  event: SseResponseEventEnum.error;
+  data: string;
+  shouldClearCookie: boolean;
+} => {
   const errResponseKey = typeof error === 'string' ? error : error?.message;
 
   // Specified error
   if (ERROR_RESPONSE[errResponseKey]) {
     // login is expired
     if (errResponseKey === ERROR_ENUM.unAuthorization) {
-      clearCookie(res);
+      return {
+        event: SseResponseEventEnum.error,
+        data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
+        shouldClearCookie: true
+      };
     }
 
-    return responseWrite({
-      res,
+    return {
       event: SseResponseEventEnum.error,
-      data: JSON.stringify(ERROR_RESPONSE[errResponseKey])
-    });
+      data: JSON.stringify(ERROR_RESPONSE[errResponseKey]),
+      shouldClearCookie: false
+    };
   }
 
   let msg = error?.response?.statusText || error?.message || 'Request error';
@@ -179,11 +238,11 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
   logger.error('SSE error', { message: msg, error });
 
-  responseWrite({
-    res,
+  return {
     event: SseResponseEventEnum.error,
-    data: JSON.stringify({ message: replaceSensitiveText(msg) })
-  });
+    data: JSON.stringify({ message: replaceSensitiveText(msg) }),
+    shouldClearCookie: false
+  };
 };
 
 export function responseWriteController({

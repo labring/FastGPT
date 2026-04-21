@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Link, Progress, Text } from '@chakra-ui/react';
+import { Box, Flex, Link, Progress } from '@chakra-ui/react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import NextLink from 'next/link';
@@ -10,8 +10,6 @@ import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { ReadCollectionSourceBodyType } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
-import { isCorrectionRecord } from '@/global/core/chat/utils';
 import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
@@ -105,49 +103,6 @@ const QuoteItem = ({
   const score = useMemo(() => {
     return formatScore(quoteItem.score);
   }, [quoteItem.score]);
-  const isDatabaseAnswer = useMemo(() => isDatabaseSource(quoteItem.id), [quoteItem.id]);
-  const isCorrectionRecordItem = useMemo(() => isCorrectionRecord(quoteItem.id), [quoteItem.id]);
-  const datasetDetailUrl = useMemo(
-    () =>
-      isDatabaseAnswer
-        ? `/dataset/detail?datasetId=${quoteItem.datasetId}`
-        : `/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`,
-    [isDatabaseAnswer, quoteItem.datasetId, quoteItem.collectionId]
-  );
-
-  const databaseContent = useMemo(
-    () => (
-      <Box pb={2} color={'myGray.600'}>
-        <Box>
-          <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
-            {t('chat:database_sql_query')}
-          </Text>
-          <Text>{quoteItem.a || '-'}</Text>
-        </Box>
-        <Box mt={4}>
-          <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
-            {t('chat:search_result')}
-          </Text>
-          <Text>{quoteItem.q || '-'}</Text>
-        </Box>
-      </Box>
-    ),
-    [t, quoteItem.q, quoteItem.a]
-  );
-
-  const correctionRecordContent = useMemo(
-    () => (
-      <Box pb={2} color={'myGray.600'}>
-        <Box>
-          <Text mb={2} fontWeight={600} fontSize={'1.5rem'}>
-            <Text>{quoteItem.q || '-'}</Text>
-          </Text>
-          <Text>{quoteItem.a || '-'}</Text>
-        </Box>
-      </Box>
-    ),
-    [quoteItem.q, quoteItem.a]
-  );
 
   return (
     <>
@@ -162,161 +117,140 @@ const QuoteItem = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        {score?.primaryScore || score.secondaryScore.length > 0 ? (
-          <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
-            {score?.primaryScore && (
-              <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)}>
-                <Flex
-                  px={'12px'}
-                  py={'5px'}
-                  borderRadius={'md'}
-                  color={'primary.700'}
-                  bg={'primary.50'}
-                  borderWidth={'1px'}
-                  borderColor={'primary.200'}
-                  alignItems={'center'}
-                  fontSize={'sm'}
-                >
-                  <Box>#{score.primaryScore.index + 1}</Box>
-                  <Box
-                    borderRightColor={'primary.700'}
-                    borderRightWidth={'1px'}
-                    h={'14px'}
-                    mx={2}
-                  />
-                  <Box>
-                    {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
-                    {SearchScoreTypeMap[score.primaryScore.type]?.showScore
-                      ? ` ${score.primaryScore.value?.toFixed(4)}`
-                      : ''}
-                  </Box>
-                </Flex>
-              </MyTooltip>
-            )}
-            {score.secondaryScore.map((item, i) => (
-              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
-                <Box fontSize={'xs'}>
-                  <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
-                    <Box
-                      px={'5px'}
-                      borderWidth={'1px'}
-                      borderRadius={'sm'}
-                      mr={'2px'}
-                      {...(scoreTheme[i] && scoreTheme[i])}
-                    >
-                      <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
-                    </Box>
-                    <Box transform={'scale(0.9)'}>
-                      {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
-                    </Box>
-                  </Flex>
-                  <Box h={'4px'}>
-                    {SearchScoreTypeMap[item.type]?.showScore && (
-                      <Progress
-                        value={item.value * 100}
-                        h={'4px'}
-                        w={'100%'}
-                        size="sm"
-                        borderRadius={'20px'}
-                        {...(scoreTheme[i] && {
-                          colorScheme: scoreTheme[i].colorScheme
-                        })}
-                        bg="#E8EBF0"
-                      />
-                    )}
-                  </Box>
+        <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
+          {score?.primaryScore && (
+            <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)}>
+              <Flex
+                px={'12px'}
+                py={'5px'}
+                borderRadius={'md'}
+                color={'primary.700'}
+                bg={'primary.50'}
+                borderWidth={'1px'}
+                borderColor={'primary.200'}
+                alignItems={'center'}
+                fontSize={'sm'}
+              >
+                <Box>#{score.primaryScore.index + 1}</Box>
+                <Box borderRightColor={'primary.700'} borderRightWidth={'1px'} h={'14px'} mx={2} />
+                <Box>
+                  {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
+                  {SearchScoreTypeMap[score.primaryScore.type]?.showScore
+                    ? ` ${score.primaryScore.value?.toFixed(4)}`
+                    : ''}
                 </Box>
-              </MyTooltip>
-            ))}
-          </Flex>
-        ) : (
-          ''
-        )}
-
-        <Box flex={'1 0 0'}>
-          {isDatabaseAnswer ? (
-            databaseContent
-          ) : isCorrectionRecordItem ? (
-            correctionRecordContent
-          ) : (
-            <>
-              <Markdown source={quoteItem.q} />
-              <Markdown source={quoteItem.a} />
-            </>
-          )}
-        </Box>
-
-        {!isCorrectionRecord(quoteItem.id) && (
-          <Flex
-            alignItems={'center'}
-            flexWrap={'wrap'}
-            mt={3}
-            gap={4}
-            color={'myGray.500'}
-            fontSize={'xs'}
-          >
-            <MyTooltip label={t('common:core.dataset.Quote Length')}>
-              <Flex alignItems={'center'}>
-                <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-                {quoteItem.q.length + (quoteItem.a?.length || 0)}
               </Flex>
             </MyTooltip>
-            {!isDatabaseAnswer && !isCorrectionRecordItem && (
-              <RawSourceBox
-                fontWeight={'bold'}
-                color={'black'}
-                collectionId={quoteItem.collectionId}
-                sourceName={quoteItem.sourceName}
-                sourceId={quoteItem.sourceId}
-                canView={canDownloadSource}
-                {...RawSourceBoxProps}
-              />
-            )}
-            <Box flex={1} />
-            {quoteItem.id && !isDatabaseAnswer && !isCorrectionRecordItem && canEditData && (
-              <MyTooltip label={t('common:core.dataset.data.Edit')}>
-                <Box
-                  className="hover-data"
-                  visibility={'hidden'}
-                  display={'flex'}
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                >
-                  <MyIcon
-                    name={'edit'}
-                    w={['16px', '18px']}
-                    h={['16px', '18px']}
-                    cursor={'pointer'}
-                    color={'myGray.600'}
-                    _hover={{
-                      color: 'primary.600'
-                    }}
-                    onClick={() =>
-                      setEditInputData({
-                        dataId: quoteItem.id,
-                        collectionId: quoteItem.collectionId
-                      })
-                    }
-                  />
+          )}
+          {score.secondaryScore.map((item, i) => (
+            <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc as any)}>
+              <Box fontSize={'xs'}>
+                <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
+                  <Box
+                    px={'5px'}
+                    borderWidth={'1px'}
+                    borderRadius={'sm'}
+                    mr={'2px'}
+                    {...(scoreTheme[i] && scoreTheme[i])}
+                  >
+                    <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
+                  </Box>
+                  <Box transform={'scale(0.9)'}>
+                    {t(SearchScoreTypeMap[item.type]?.label as any)}: {item.value.toFixed(4)}
+                  </Box>
+                </Flex>
+                <Box h={'4px'}>
+                  {SearchScoreTypeMap[item.type]?.showScore && (
+                    <Progress
+                      value={item.value * 100}
+                      h={'4px'}
+                      w={'100%'}
+                      size="sm"
+                      borderRadius={'20px'}
+                      {...(scoreTheme[i] && {
+                        colorScheme: scoreTheme[i].colorScheme
+                      })}
+                      bg="#E8EBF0"
+                    />
+                  )}
                 </Box>
-              </MyTooltip>
-            )}
-            {canEditDataset && !isCorrectionRecordItem && (
-              <Link
-                as={NextLink}
+              </Box>
+            </MyTooltip>
+          ))}
+        </Flex>
+
+        <Box flex={'1 0 0'}>
+          <Markdown source={quoteItem.q} />
+          <Markdown source={quoteItem.a} />
+        </Box>
+
+        <Flex
+          alignItems={'center'}
+          flexWrap={'wrap'}
+          mt={3}
+          gap={4}
+          color={'myGray.500'}
+          fontSize={'xs'}
+        >
+          <MyTooltip label={t('common:core.dataset.Quote Length')}>
+            <Flex alignItems={'center'}>
+              <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
+              {quoteItem.q.length + (quoteItem.a?.length || 0)}
+            </Flex>
+          </MyTooltip>
+          <RawSourceBox
+            fontWeight={'bold'}
+            color={'black'}
+            collectionId={quoteItem.collectionId}
+            sourceName={quoteItem.sourceName}
+            sourceId={quoteItem.sourceId}
+            canView={canDownloadSource}
+            {...RawSourceBoxProps}
+          />
+          <Box flex={1} />
+          {quoteItem.id && canEditData && (
+            <MyTooltip label={t('common:core.dataset.data.Edit')}>
+              <Box
                 className="hover-data"
+                visibility={'hidden'}
                 display={'flex'}
                 alignItems={'center'}
-                visibility={'hidden'}
-                color={'primary.500'}
-                href={datasetDetailUrl}
+                justifyContent={'center'}
               >
-                {t('common:to_dataset')}
-                <MyIcon name={'common/rightArrowLight'} w={'10px'} />
-              </Link>
-            )}
-          </Flex>
-        )}
+                <MyIcon
+                  name={'edit'}
+                  w={['16px', '18px']}
+                  h={['16px', '18px']}
+                  cursor={'pointer'}
+                  color={'myGray.600'}
+                  _hover={{
+                    color: 'primary.600'
+                  }}
+                  onClick={() =>
+                    setEditInputData({
+                      dataId: quoteItem.id,
+                      collectionId: quoteItem.collectionId
+                    })
+                  }
+                />
+              </Box>
+            </MyTooltip>
+          )}
+          {canEditDataset && (
+            <Link
+              as={NextLink}
+              className="hover-data"
+              display={'flex'}
+              alignItems={'center'}
+              visibility={'hidden'}
+              color={'primary.500'}
+              href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}
+            >
+              {t('common:to_dataset')}
+              <MyIcon name={'common/rightArrowLight'} w={'10px'} />
+            </Link>
+          )}
+        </Flex>
       </MyBox>
 
       {editInputData && (

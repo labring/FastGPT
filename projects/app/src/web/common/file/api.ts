@@ -23,7 +23,3 @@ export const getPresignedChatFileGetUrl = (params: PresignChatFileGetUrlParams) 
 export const getUploadTempFilePresignedUrl = (params: { filename: string }) => {
   return POST<CreatePostPresignedUrlResponseType>('/common/file/presignTempFilePostUrl', params);
 };
-
-export const getTempFilePresignedGetUrl = (params: { key: string }) => {
-  return POST<string>('/common/file/presignTempFileGetUrl', params);
-};

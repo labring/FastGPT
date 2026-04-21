@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 
 /* =============== updateFeedbackReadStatus =============== */
 export const UpdateFeedbackReadStatusBodySchema = z.object({

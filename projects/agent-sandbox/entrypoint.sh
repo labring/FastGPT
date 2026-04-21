@@ -10,11 +10,7 @@ unset FASTGPT_SESSION_ID FASTGPT_WORKDIR FASTGPT_ENABLE_CODE_SERVER
 
 # Start code-server or sleep forever
 if [ "${_ENABLE_CODE_SERVER}" = "true" ]; then
-  # --bind-addr 0.0.0.0:8080 allows access from outside the container
-  # --auth none removes password protection
   exec code-server \
-       --bind-addr 0.0.0.0:8080 \
-       --auth none \
        --disable-telemetry \
        --disable-update-check \
        --disable-workspace-trust \

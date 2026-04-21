@@ -65,7 +65,7 @@ export const DatasetSelectModal = ({
     datasets,
     isFetching,
     loadDatasets
-  } = useDatasetSelect(scene, formatResData);
+  } = useDatasetSelect();
 
   // The vector model of the first selected dataset
   const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;

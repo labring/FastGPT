@@ -2,6 +2,13 @@ import iconv from 'iconv-lite';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 
+const hasNonAsciiByte = (buffer: Buffer) => {
+  for (let i = 0; i < buffer.length; i++) {
+    if (buffer[i] > 0x7f) return true;
+  }
+  return false;
+};
+
 const rawEncodingList = [
   'ascii',
   'utf8',
@@ -24,12 +31,19 @@ export const readFileRawText = async ({
 }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const content = (() => {
     try {
-      if (rawEncodingList.includes(encoding)) {
-        return buffer.toString(encoding as BufferEncoding);
+      const normalizedEncoding = encoding?.toLowerCase?.() || '';
+
+      if (rawEncodingList.includes(normalizedEncoding)) {
+        // `ascii` 只适用于 0x00~0x7F 字节，若含非 ASCII 字节则优先按 utf-8 解码，避免中文乱码
+        if (normalizedEncoding === 'ascii' && hasNonAsciiByte(buffer)) {
+          return buffer.toString('utf-8');
+        }
+
+        return buffer.toString(normalizedEncoding as BufferEncoding);
       }
 
-      if (encoding) {
-        return iconv.decode(buffer, encoding);
+      if (normalizedEncoding) {
+        return iconv.decode(buffer, normalizedEncoding);
       }
 
       return buffer.toString('utf-8');

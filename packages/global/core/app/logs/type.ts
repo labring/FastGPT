@@ -1,7 +1,7 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatSourceEnum } from '../../chat/constants';
 import { AppLogKeysEnum } from './constants';
-import { z } from 'zod';
+import z from 'zod';
 
 export const AppLogKeysSchema = z.object({
   key: z.enum(AppLogKeysEnum),
@@ -24,8 +24,8 @@ export const AppChatLogSchema = z.object({
   userId: z.string(),
   source: z.enum(ChatSourceEnum),
   sourceName: z.string().optional(),
-  createTime: z.date(),
-  updateTime: z.date(),
+  createTime: z.coerce.date(),
+  updateTime: z.coerce.date(),
 
   chatItemCount: z.number(),
   errorCount: z.number(),

@@ -2,7 +2,8 @@ import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
-import { isS3ObjectKey, jwtSignS3ObjectKey } from '../../../common/s3/utils';
+import { isS3ObjectKey, jwtSignS3DownloadToken } from '../../../common/s3/utils';
+import { S3Buckets } from '../../../common/s3/config/constants';
 
 export const formatDatasetDataValue = ({
   q,
@@ -55,7 +56,11 @@ export const formatDatasetDataValue = ({
   }
 
   const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
-    ? jwtSignS3ObjectKey(imageId, addDays(new Date(), 90))
+    ? jwtSignS3DownloadToken({
+        objectKey: imageId,
+        bucketName: S3Buckets.private,
+        expiredTime: addDays(new Date(), 90)
+      })
     : imageId;
 
   return {

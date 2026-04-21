@@ -657,6 +657,7 @@ const Table = tableMultiStyle({
         tr: {
           bg: 'myGray.100',
           fontSize: 'sm',
+          borderBottom: 'base',
           th: {
             borderBottom: 'none',
             overflow: 'hidden',
@@ -696,7 +697,7 @@ const Table = tableMultiStyle({
         tr: {
           th: {
             p: '0',
-            px: 4,
+            px: 8,
             bg: 'myGray.50',
             borderRadius: 'none !important',
             borderBottom: 'none',
@@ -710,10 +711,10 @@ const Table = tableMultiStyle({
         tr: {
           td: {
             p: '0',
-            px: 4,
+            px: 8,
             fontSize: 'xs',
             borderBottom: 'base',
-            height: '40px'
+            height: '32px'
           },
           '&:last-child': {
             td: {

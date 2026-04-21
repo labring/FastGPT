@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import type { Node } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowActionsContext } from './workflowActionsContext';
 import { useMemoizedFn } from 'ahooks';
 
 // 创建 Context
@@ -101,8 +100,8 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
         maxY = Math.max(maxY, node.position.y + nodeHeight);
       });
 
-      const childWidth = Math.max(maxX - minX + 80, 840);
-      const childHeight = Math.max(maxY - minY + 80, 600);
+      const childWidth = Math.max(maxX - minX + 80, 0);
+      const childHeight = Math.max(maxY - minY + 80, 0);
 
       const diffWidth = childWidth - loopChilWidth;
       const diffHeight = childHeight - loopChilHeight;
@@ -110,7 +109,7 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
       const targetNodeHeight = (loopNode.height ?? 0) + diffHeight;
 
       const offsetHeight =
-        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight)
           ?.value ?? 83;
 
       return {

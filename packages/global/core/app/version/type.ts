@@ -7,7 +7,7 @@ export const AppVersionSchema = z.object({
   _id: ObjectIdSchema,
   tmbId: ObjectIdSchema,
   appId: ObjectIdSchema,
-  time: z.date(),
+  time: z.coerce.date(),
   nodes: AppSchemaTypeSchema.shape.modules,
   edges: AppSchemaTypeSchema.shape.edges,
   chatConfig: AppSchemaTypeSchema.shape.chatConfig,
@@ -21,7 +21,7 @@ export const VersionListItemSchema = z.object({
   _id: ObjectIdSchema,
   appId: ObjectIdSchema,
   versionName: z.string(),
-  time: z.date(),
+  time: z.coerce.date(),
   isPublish: z.boolean().optional(),
   tmbId: ObjectIdSchema,
   sourceMember: SourceMemberSchema

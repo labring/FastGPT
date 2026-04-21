@@ -116,6 +116,7 @@ export function getProxySession(sandboxId: string): ProxySession | null {
 
 export function deleteProxySession(sandboxId: string): void {
   _sessionStore().delete(sandboxId);
+  deleteCsSession(sandboxId);
 }
 
 // Remove all proxy sessions belonging to a given team.
@@ -123,8 +124,113 @@ export function deleteProxySession(sandboxId: string): void {
 export function deleteProxySessionsByTeam(teamId: string): void {
   const store = _sessionStore();
   for (const [k, v] of store) {
-    if (v.teamId === teamId) store.delete(k);
+    if (v.teamId === teamId) {
+      store.delete(k);
+      deleteCsSession(k);
+    }
   }
+}
+
+// ---- code-server session store ----
+// Keyed by sandboxId; stores the `key` cookie value returned by code-server /login.
+// TTL matches ProxySession so both expire around the same time.
+const CS_SESSION_TTL = 2 * 60 * 60 * 1000; // 2 h
+const MAX_CS_SESSION_STORE_SIZE = 1000;
+
+type CsSession = { keyCookie: string; exp: number };
+
+const _csStore = (): Map<string, CsSession> => {
+  const g = globalThis as any;
+  if (!g.__csSessionStore) g.__csSessionStore = new Map();
+  return g.__csSessionStore;
+};
+
+export function getCsSession(sandboxId: string): string | null {
+  const entry = _csStore().get(sandboxId);
+  if (!entry || entry.exp < Date.now()) {
+    _csStore().delete(sandboxId);
+    return null;
+  }
+  entry.exp = Date.now() + CS_SESSION_TTL;
+  return entry.keyCookie;
+}
+
+export function deleteCsSession(sandboxId: string): void {
+  _csStore().delete(sandboxId);
+}
+
+/**
+ * Ensure a valid code-server session exists for the given sandbox.
+ * Checks the in-process cache first; on miss invokes getPassword() and POSTs /login.
+ * Returns the `key` cookie value on success, or null on failure.
+ */
+export async function ensureCodeServerSession(
+  sandboxId: string,
+  target: string, // e.g. "http://10.0.0.5:8080"
+  getPassword: () => Promise<string | null>
+): Promise<string | null> {
+  const cached = getCsSession(sandboxId);
+  if (cached) return cached;
+
+  const password = await getPassword();
+  if (!password) return null;
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${target}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        origin: new URL(target).origin // scheme://host:port only, no path component
+      },
+      body: `password=${encodeURIComponent(password)}`,
+      redirect: 'manual' // success → 302; wrong password → 200
+    });
+  } catch (e) {
+    console.error(`[csLogin] fetch error sandboxId=${sandboxId}: ${(e as Error).message}`);
+    return null;
+  }
+
+  if (resp.status !== 302 && resp.status !== 301) {
+    console.warn(`[csLogin] unexpected status=${resp.status} sandboxId=${sandboxId}`);
+    return null;
+  }
+
+  // Extract key=<value> from Set-Cookie header(s)
+  const setCookies: string[] = (resp.headers as any).getSetCookie?.() ?? [
+    resp.headers.get('set-cookie') ?? ''
+  ];
+  let keyCookie: string | null = null;
+  for (const h of setCookies) {
+    const m = (h as string).match(/(?:^|;\s*)code-server-session=([^;]+)/i);
+    if (m) {
+      keyCookie = m[1].trim();
+      break;
+    }
+  }
+
+  if (!keyCookie) {
+    console.warn(`[csLogin] no key cookie in response sandboxId=${sandboxId}`);
+    return null;
+  }
+
+  const csStore = _csStore();
+  // Enforce capacity cap: evict the soonest-to-expire entry before adding a new one
+  if (!csStore.has(sandboxId) && csStore.size >= MAX_CS_SESSION_STORE_SIZE) {
+    let evictKey: string | null = null;
+    let minExp = Infinity;
+    for (const [k, v] of csStore) {
+      if (v.exp < minExp) {
+        minExp = v.exp;
+        evictKey = k;
+      }
+    }
+    if (evictKey) csStore.delete(evictKey);
+  }
+  csStore.set(sandboxId, { keyCookie, exp: Date.now() + CS_SESSION_TTL });
+  // Prune expired entries on each write
+  for (const [k, v] of csStore) if (v.exp < Date.now()) csStore.delete(k);
+  return keyCookie;
 }
 
 // Rewrite absolute paths in HTML for the absproxy mode

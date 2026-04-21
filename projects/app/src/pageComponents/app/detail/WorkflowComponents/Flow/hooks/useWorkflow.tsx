@@ -14,7 +14,11 @@ import {
   type NodeSelectionChange,
   type EdgeRemoveChange
 } from 'reactflow';
-import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  EDGE_TYPE,
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
+} from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -37,7 +41,77 @@ import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 
-/* 
+/*
+  限定容量的最大堆,根为当前最大距离。用于 Top-K 最近邻筛选,
+  避免 O(n log n) 全排序,改为 O(n log k)。
+*/
+export const createBoundedMaxHeap = <T,>(capacity: number) => {
+  const data: Array<{ value: T; key: number }> = [];
+
+  const siftUp = (i: number) => {
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (data[p].key >= data[i].key) break;
+      const tmp = data[p];
+      data[p] = data[i];
+      data[i] = tmp;
+      i = p;
+    }
+  };
+
+  const siftDown = (i: number) => {
+    const n = data.length;
+    while (true) {
+      const l = i * 2 + 1;
+      const r = l + 1;
+      let largest = i;
+      if (l < n && data[l].key > data[largest].key) largest = l;
+      if (r < n && data[r].key > data[largest].key) largest = r;
+      if (largest === i) break;
+      const tmp = data[i];
+      data[i] = data[largest];
+      data[largest] = tmp;
+      i = largest;
+    }
+  };
+
+  return {
+    tryAdd(value: T, key: number) {
+      if (data.length < capacity) {
+        data.push({ value, key });
+        siftUp(data.length - 1);
+      } else if (capacity > 0 && key < data[0].key) {
+        data[0] = { value, key };
+        siftDown(0);
+      }
+    },
+    values(): T[] {
+      return data.map((item) => item.value);
+    }
+  };
+};
+
+/*
+  从 rawNodes 中筛出距 dragPos 曼哈顿距离最近的前 k 个,
+  同时排除在任一轴上超过 limit 的节点。
+*/
+export const collectNearestNodes = (
+  rawNodes: Node[],
+  dragPos: XYPosition,
+  limit: number,
+  k: number
+): Node[] => {
+  const heap = createBoundedMaxHeap<Node>(k);
+  for (const n of rawNodes) {
+    const dx = Math.abs(n.position.x - dragPos.x);
+    const dy = Math.abs(n.position.y - dragPos.y);
+    if (dx > limit || dy > limit) continue;
+    heap.tryAdd(n, dx + dy);
+  }
+  return heap.values();
+};
+
+/*
   Compute helper lines for snapping nodes to each other
   Refer: https://reactflow.dev/examples/interaction/helper-lines
 */
@@ -46,7 +120,7 @@ type GetHelperLinesResult = {
   vertical?: THelperLine;
   snapPosition: Partial<XYPosition>;
 };
-const computeHelperLines = (
+export const computeHelperLines = (
   change: NodePositionChange,
   nodes: Node[],
   distance = 8 // distance to snap
@@ -272,7 +346,7 @@ const computeHelperLines = (
     );
 };
 
-const useRAF = () => {
+export const useRAF = () => {
   const { resetParentNodeSizeAndPosition } = useContextSelector(WorkflowLayoutContext, (v) => v);
 
   // Loop child drag RAF 节流相关
@@ -336,24 +410,8 @@ const useRAF = () => {
           const positionChange = change.type === 'position' && change.dragging ? change : undefined;
 
           if (positionChange?.position) {
-            const dragPos = positionChange.position;
-
-            // 一次遍历: 过滤 3000px 范围内的节点 + 计算距离
-            const candidateNodes: Array<{ node: Node; distance: number }> = [];
-
-            for (const node of nodes) {
-              const dx = Math.abs(node.position.x - dragPos.x);
-              const dy = Math.abs(node.position.y - dragPos.y);
-
-              if (dx <= 3000 && dy <= 3000) {
-                const distance = dx + dy;
-                candidateNodes.push({ node, distance });
-              }
-            }
-
-            // 部分排序: 按距离从近到远排序,只取前 15 个
-            candidateNodes.sort((a, b) => a.distance - b.distance);
-            const filterNodes = candidateNodes.slice(0, 15).map((item) => item.node);
+            // Top-K 堆替代全量排序,O(n log k) 替代 O(n log n)
+            const filterNodes = collectNearestNodes(nodes, positionChange.position, 3000, 15);
 
             const helperLines = computeHelperLines(positionChange, filterNodes);
 
@@ -391,8 +449,8 @@ const useRAF = () => {
 
 export const popoverWidth = 400;
 export const popoverHeight = 600;
-// Loop 类型的父节点类型集合
-const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop]);
+// 嵌套父容器节点类型集合
+const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.parallelRun]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -427,30 +485,53 @@ export const useWorkflow = () => {
     [scheduleHelperLineUpdate]
   );
 
-  // Check if a node is placed on top of a loop node
+  // 同步计算并应用辅助线吸附。父节点拖动场景下,子节点的 delta 依赖 change.position,
+  // 必须在 delta 计算前完成吸附,不能走 RAF 异步突变。
+  // 调用方需传入已按距离筛选过的 Top-K 节点,避免与其他遍历重复扫全量节点。
+  const applyHelperLineSnapSync = useMemoizedFn(
+    (change: NodePositionChange, nearestNodes: Node[]) => {
+      if (!change.dragging || !change.position) return;
+
+      const helperLines = computeHelperLines(change, nearestNodes);
+      change.position.x = helperLines.snapPosition.x ?? change.position.x;
+      change.position.y = helperLines.snapPosition.y ?? change.position.y;
+      setHelperLineHorizontal(helperLines.horizontal);
+      setHelperLineVertical(helperLines.vertical);
+    }
+  );
+
+  // Check if a node is placed on top of a nested parent node (loop / parallelRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
-    const unSupportedTypes = [
+    const unSupportedInLoop = [
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
+      FlowNodeTypeEnum.parallelRun,
       FlowNodeTypeEnum.pluginInput,
       FlowNodeTypeEnum.pluginOutput,
       FlowNodeTypeEnum.systemConfig
     ];
+    // Interactive nodes are silently ignored in parallel (not added to parent)
+    const unSupportedInParallel = [
+      ...unSupportedInLoop,
+      FlowNodeTypeEnum.userSelect,
+      FlowNodeTypeEnum.formInput
+    ];
 
     if (!node || node.data.parentNodeId) return;
 
-    // 获取所有与当前节点相交的节点
+    // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
     const intersections = getIntersectingNodes(node);
-    // 获取所有与当前节点相交的节点中，类型为 loop 的节点且它不能是折叠状态
     const parentNode = intersections.find(
-      (item) => !item.data.isFolded && item.type === FlowNodeTypeEnum.loop
+      (item) => !item.data.isFolded && isNestedParentNodeType(item.type ?? '')
     );
 
     if (parentNode) {
+      const isParallel = parentNode.type === FlowNodeTypeEnum.parallelRun;
+      const unSupportedTypes = isParallel ? unSupportedInParallel : unSupportedInLoop;
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
         return toast({
           status: 'warning',
-          title: t('workflow:can_not_loop')
+          title: t(isParallel ? 'workflow:can_not_parallel' : 'workflow:can_not_loop')
         });
       }
 
@@ -580,24 +661,32 @@ export const useWorkflow = () => {
       // 场景2: Loop 父节点拖拽 - 联动子节点
       if (PARENT_NODE_TYPES.has(node.data.flowNodeType)) {
         const parentId = node.id;
+        const dragPos = change.position;
+        const shouldSnap = !!change.dragging && !!dragPos;
 
-        // 一次 reduce 同时获取 topLevelNodes 和 childNodes
-        const { topLevelNodes, childNodes } = nodes.reduce(
-          (acc, n) => {
-            if (n.data.parentNodeId === parentId) {
-              acc.childNodes.push(n);
-            } else if (!n.data.parentNodeId) {
-              acc.topLevelNodes.push(n);
+        // 一次遍历同时完成三件事:
+        //   1) 收集子节点 (后续应用 delta)
+        //   2) 过滤 3000px 范围内的顶层节点
+        //   3) Top-K 堆维护最近 15 个候选,免掉全量排序
+        const childNodes: Node[] = [];
+        const topKHeap = createBoundedMaxHeap<Node>(15);
+        for (const n of nodes) {
+          if (n.data.parentNodeId === parentId) {
+            childNodes.push(n);
+          } else if (!n.data.parentNodeId && shouldSnap && dragPos) {
+            const dx = Math.abs(n.position.x - dragPos.x);
+            const dy = Math.abs(n.position.y - dragPos.y);
+            if (dx <= 3000 && dy <= 3000) {
+              topKHeap.tryAdd(n, dx + dy);
             }
-            return acc;
-          },
-          { topLevelNodes: [] as Node[], childNodes: [] as Node[] }
-        );
+          }
+        }
 
-        // 计算对齐辅助线 (仅针对顶层节点)
-        checkNodeHelpLine(change, topLevelNodes);
+        // 同步吸附辅助线:父拖动场景下,子节点 delta 依赖 change.position,
+        // 若走 RAF 异步会与父节点吸附结果错位,子节点每次吸附都会偏移并最终跳出父节点
+        applyHelperLineSnapSync(change, topKHeap.values());
 
-        // 计算子节点的位置变化
+        // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
         if (childNodes.length > 0) {
           const initPosition = node.position;
           const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;

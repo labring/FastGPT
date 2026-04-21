@@ -1,11 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Box, Card, IconButton, Flex, Button, useTheme, Image } from '@chakra-ui/react';
-import {
-  getDatasetDataList,
-  delOneDatasetDataById,
-  getDatasetCollectionById,
-  postReTrainingDatasetFileCollection
-} from '@/web/core/dataset/api';
+import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
+import { getDatasetDataList, delOneDatasetDataById } from '@/web/core/dataset/api/data';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
@@ -21,7 +17,7 @@ import { useContextSelector } from 'use-context-selector';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import TagsPopOver from './RefinedCollectionCard/TagsPopOver';
+import TagsPopOver from './CollectionCard/TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import Markdown from '@/components/Markdown';
@@ -30,8 +26,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
 import {
   DatasetCollectionTypeEnum,
-  ImportDataSourceEnum,
-  DatasetCollectionDataProcessModeEnum
+  ImportDataSourceEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
@@ -40,7 +35,6 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import dynamic from 'next/dynamic';
-import AdjustTrainingParamsModal from './TrainingParamsModal';
 import { downloadFetch } from '@/web/common/system/utils';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
@@ -114,12 +108,6 @@ const DataCard = () => {
   ] = useBoolean();
   const isImageCollection = collection?.type === DatasetCollectionTypeEnum.images;
 
-  // Training params modal state
-  const [
-    isTrainingParamsModalOpen,
-    { setTrue: openTrainingParamsModal, setFalse: closeTrainingParamsModal }
-  ] = useBoolean();
-
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
       await delOneDatasetDataById(dataId);
@@ -136,35 +124,6 @@ const DataCard = () => {
         status: 'error'
       });
     }
-  });
-
-  // Re-training request hook
-  const { runAsync: runReTrainingCollection, loading: isReTraining } = useRequest(
-    (params: any) =>
-      postReTrainingDatasetFileCollection({
-        datasetId,
-        collectionId: collection?._id || '',
-        // 传递训练参数
-        autoIndexes: params.autoIndexes,
-        hypeIndexes: params.hypeIndexes,
-        small2bigIndexes: params.small2bigIndexes,
-        hypeIndexPrompt: params.hypeIndexPrompt,
-        autoIndexesPrompt: params.autoIndexesPrompt
-      }),
-    {
-      manual: true,
-      successToast: t('dataset:retrain_task_submitted'),
-      onSuccess: () => {
-        // 刷新数据
-        reloadCollection();
-        refreshList();
-      }
-    }
-  );
-
-  const handleReTrainingCollection = useMemoizedFn(async (params: any) => {
-    if (!collection) return;
-    await runReTrainingCollection(params);
   });
 
   const { runAsync: onExportAllChunks, loading: isExportChunksLoading } = useRequest(
@@ -222,18 +181,14 @@ const DataCard = () => {
             {t('dataset:collection.export_all_chunks')}
           </Button>
 
-          {((datasetDetail.type !== 'websiteDataset' &&
+          {datasetDetail.type !== 'websiteDataset' &&
             !!collection?.chunkSize &&
-            collection.permission?.hasWritePer) ||
-            collection?.trainingType === DatasetCollectionDataProcessModeEnum.template) && (
-            <Button
-              ml={2}
-              variant={'whitePrimary'}
-              size={['sm', 'md']}
-              onClick={() => {
-                if (collection?.trainingType === DatasetCollectionDataProcessModeEnum.template) {
-                  openTrainingParamsModal();
-                } else {
+            collection.permission?.hasWritePer && (
+              <Button
+                ml={2}
+                variant={'whitePrimary'}
+                size={['sm', 'md']}
+                onClick={() => {
                   router.push({
                     query: {
                       datasetId,
@@ -242,12 +197,11 @@ const DataCard = () => {
                       collectionId
                     }
                   });
-                }
-              }}
-            >
-              {t('dataset:retain_collection')}
-            </Button>
-          )}
+                }}
+              >
+                {t('dataset:retain_collection')}
+              </Button>
+            )}
           {canWrite && !isImageCollection && (
             <Button
               ml={2}
@@ -396,16 +350,16 @@ const DataCard = () => {
                       />
                     </Box>
                     <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                      <Markdown source={item.q} />
+                      <Markdown source={item.q} isDisabled />
                     </Box>
                   </Box>
                 ) : (
                   <Box wordBreak={'break-all'} fontSize={'sm'}>
-                    <Markdown source={item.q} />
+                    <Markdown source={item.q} isDisabled />
                     {!!item.a && (
                       <>
                         <MyDivider />
-                        <Markdown source={item.a} />
+                        <Markdown source={item.a} isDisabled />
                       </>
                     )}
                   </Box>
@@ -521,24 +475,6 @@ const DataCard = () => {
       )}
       {isInsertImagesModalOpen && (
         <InsertImagesModal collectionId={collectionId} onClose={closeInsertImagesModal} />
-      )}
-      {isTrainingParamsModalOpen && collection && (
-        <AdjustTrainingParamsModal
-          isOpen={isTrainingParamsModalOpen}
-          onClose={closeTrainingParamsModal}
-          onConfirm={(params) => {
-            // 调用重新训练接口
-            handleReTrainingCollection(params);
-          }}
-          isLoading={isReTraining}
-          defaultValues={{
-            autoIndexes: collection.autoIndexes ?? false,
-            hypeIndexes: collection.hypeIndexes ?? false,
-            small2bigIndexes: collection.small2bigIndexes ?? false,
-            hypeIndexPrompt: collection.hypeIndexPrompt ?? '',
-            autoIndexesPrompt: collection.autoIndexesPrompt ?? ''
-          }}
-        />
       )}
     </MyBox>
   );

@@ -120,6 +120,7 @@ export type FastGPTFeConfigsType = {
     websiteSyncLimitMinuted?: number;
     agentSandboxMaxEditDebug?: number;
     agentSandboxMaxSessionRuntime?: number;
+    workflowParallelRunMaxConcurrency?: number;
   };
 
   uploadFileMaxAmount: number;

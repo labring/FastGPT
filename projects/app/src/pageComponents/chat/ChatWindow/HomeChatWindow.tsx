@@ -70,11 +70,8 @@ const HomeChatWindow = () => {
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const forbidLoadChatMap = useContextSelector(ChatContext, (v) => v.forbidLoadChatMap);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const onChangeGlobalAppId = useContextSelector(ChatContext, (v) => v.onChangeAppId);
-  const histories = useContextSelector(ChatContext, (v) => v.histories);
-  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -131,8 +128,7 @@ const HomeChatWindow = () => {
   // 初始化聊天数据
   const { loading } = useRequest(
     async () => {
-      // 使用 chatId 级别的禁止加载标记
-      if (!appId || forbidLoadChatMap.current.get(chatId) || !feConfigs?.isPlus) return;
+      if (!appId || forbidLoadChat.current || !feConfigs?.isPlus) return;
 
       const modelData = getWebLLMModel(selectedModel);
       const res = await getInitChatInfo({ appId, chatId });
@@ -168,11 +164,10 @@ const HomeChatWindow = () => {
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId],
+      // Plus 配置晚于首屏就绪时，需重新拉会话状态（含 chatGenerateStatus，供流恢复）
+      refreshDeps: [appId, chatId, feConfigs?.isPlus],
       errorToast: '',
       onFinally() {
-        // 清除当前 chatId 的禁止加载标记
-        forbidLoadChatMap.current.delete(chatId);
         forbidLoadChat.current = false;
       },
       onError() {
@@ -193,19 +188,6 @@ const HomeChatWindow = () => {
     onChangeGlobalAppId(id);
   };
 
-  // 切换到新会话时重置标题,防止显示上一个会话的标题
-  useEffect(() => {
-    const isNewChat = !histories.find((h) => h.chatId === chatId);
-
-    if (isNewChat && chatBoxData.title) {
-      // 清空新会话的标题,防止显示旧标题
-      setChatBoxData((state) => ({
-        ...state,
-        title: ''
-      }));
-    }
-  }, [chatId, histories, chatBoxData.title, setChatBoxData]);
-
   useMount(() => {
     if (!feConfigs?.isPlus) {
       handlePaneChange(ChatSidebarPaneEnum.TEAM_APPS);
@@ -221,13 +203,17 @@ const HomeChatWindow = () => {
       responseChatItemId,
       generatingMessage
     }: StartChatFnProps) => {
-      const historyMessages = messages.slice(-1);
+      if (!appId) {
+        return Promise.reject('appId is empty');
+      }
+
+      const histories = messages.slice(-1);
 
       // using original workflow of quick app
       if (isQuickApp && appId) {
         const { responseText } = await streamFetch({
           data: {
-            messages: historyMessages,
+            messages: histories,
             variables,
             responseChatItemId,
             appId,
@@ -239,9 +225,7 @@ const HomeChatWindow = () => {
           onMessage: generatingMessage
         });
 
-        const newTitle = getChatTitleFromChatMessage(
-          GPTMessages2Chats({ messages: historyMessages })[0]
-        );
+        const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
         onUpdateHistoryTitle({ chatId, newTitle });
         setChatBoxData((state) => ({
@@ -259,35 +243,6 @@ const HomeChatWindow = () => {
         return Promise.reject('No model selected');
       }
 
-      const histories_messages = messages.slice(-1);
-
-      // 立即生成标题并添加新会话到列表
-      const newTitle = getChatTitleFromChatMessage(
-        GPTMessages2Chats({ messages: histories_messages })[0]
-      );
-      const isNewChat = !histories.find((h) => h.chatId === chatId);
-
-      if (isNewChat && chatId) {
-        // 标记禁止加载，防止切换回来时重新加载空数据
-        forbidLoadChatMap.current.set(chatId, true);
-        forbidLoadChat.current = true;
-
-        // 立即添加到历史列表，使用用户输入前20字作为标题
-        // customTitle 设置为 newTitle，确保刷新页面后也使用固定标题
-        setHistories((state) => [
-          {
-            chatId,
-            appId,
-            title: newTitle,
-            updateTime: new Date(),
-            customTitle: newTitle,
-            top: false
-          },
-          ...state
-        ]);
-      }
-
-      // 根据所选工具 ID 动态拉取节点，并填充默认输入
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
           const node = await getToolPreviewNode({ appId: toolId });
@@ -308,7 +263,7 @@ const HomeChatWindow = () => {
       const { responseText } = await streamFetch({
         url: '/api/proApi/core/chat/chatHome',
         data: {
-          messages: histories_messages,
+          messages: histories,
           variables,
           responseChatItemId,
           appId,
@@ -322,12 +277,13 @@ const HomeChatWindow = () => {
         abortCtrl: controller
       });
 
-      // 只更新 chatBoxData 的标题，不再更新 histories（避免抖动）
-      // 顶部标题也从 histories 中获取，保持同步
-      // setChatBoxData((state) => ({
-      //   ...state,
-      //   title: newTitle
-      // }));
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
+
+      onUpdateHistoryTitle({ chatId, newTitle });
+      setChatBoxData((state) => ({
+        ...state,
+        title: newTitle
+      }));
 
       refreshRecentlyUsed();
 
@@ -454,13 +410,14 @@ const HomeChatWindow = () => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={chatSettings?.homeTabTitle || 'FastGPT'} />
+      <NextHead title={chatSettings?.homeTabTitle} icon={getWebReqUrl(feConfigs?.favicon)} />
 
       {/* show history slider */}
       {isPc ? (
         <SideBar externalTrigger={Boolean(datasetCiteData)}>
           <ChatHistorySidebar
             title={appId === homeAppId ? t('chat:history_slider.home.title') : undefined}
+            menuConfirmButtonText={t('common:core.chat.Confirm to clear history')}
           />
         </SideBar>
       ) : (
@@ -479,7 +436,7 @@ const HomeChatWindow = () => {
         flexDirection={'column'}
       >
         {isPc ? (
-          chatRecords.length > 0 && (
+          chatBoxData?.title && (
             <Flex
               py={3}
               bg="white"
@@ -489,14 +446,7 @@ const HomeChatWindow = () => {
               justifyContent="center"
               borderBottom="sm"
             >
-              {(() => {
-                const currentHistory = histories.find((h) => h.chatId === chatId);
-                return (
-                  currentHistory?.customTitle ||
-                  currentHistory?.title ||
-                  t('common:core.chat.New Chat')
-                );
-              })()}
+              {chatBoxData?.title}
             </Flex>
           )
         ) : (
@@ -513,7 +463,8 @@ const HomeChatWindow = () => {
           <ChatBox
             appId={appId}
             chatId={chatId}
-            isReady={!loading}
+            isReady={!loading && !!appId}
+            enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
             slogan={chatSettings?.slogan}

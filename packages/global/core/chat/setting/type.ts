@@ -1,5 +1,5 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
-import { z } from 'zod';
+import z from 'zod';
 import { ChatFavouriteTagSchema } from '../favouriteApp/type';
 
 export const ChatSelectedToolSchema = z.object({

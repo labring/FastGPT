@@ -25,7 +25,8 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateApp } from '@/web/core/app/api';
-import { getMCPTools, postCreateHttpTools, postCreateMCPTools } from '@/web/core/app/api/tool';
+import { postCreateHttpTools } from '@/web/core/app/api/httpTools';
+import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/mcpTools';
 import {
   getTemplateMarketItemDetail,
   getTemplateMarketItemList
@@ -35,6 +36,7 @@ import { emptyTemplates } from '@/web/core/app/templates';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';
+import { HttpToolTypeEnum } from '@fastgpt/global/core/app/tool/httpTool/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -53,7 +55,7 @@ export type ToolModalAppType =
 type FormType = {
   avatar: string;
   name: string;
-  createType: 'batch' | 'manual';
+  createType: HttpToolTypeEnum;
   mcpUrl: string;
   mcpHeaderSecret: any;
   mcpToolList: McpToolConfigType[];
@@ -94,7 +96,7 @@ const ToolModal = ({
     defaultValues: {
       avatar: typeData.icon,
       name: '',
-      createType: 'batch',
+      createType: HttpToolTypeEnum.batch,
       mcpUrl: '',
       mcpHeaderSecret: {},
       mcpToolList: []
@@ -369,18 +371,18 @@ const ToolModal = ({
               list={[
                 {
                   title: t('app:type.Http batch'),
-                  value: 'batch',
+                  value: HttpToolTypeEnum.batch,
                   desc: t('app:type.Http batch tip')
                 },
                 {
                   title: t('app:type.Http manual'),
-                  value: 'manual',
+                  value: HttpToolTypeEnum.manual,
                   desc: t('app:type.Http manual tip')
                 }
               ]}
               value={createType}
               fontSize={'xs'}
-              onChange={(e) => setValue('createType', e as 'batch' | 'manual')}
+              onChange={(e) => setValue('createType', e as HttpToolTypeEnum)}
               defaultBg={'white'}
               activeBg={'primary.50'}
               py={2}

@@ -1,6 +1,8 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import type { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  type TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -12,21 +14,6 @@ import {
   GetCollectionTrainingDetailResponseSchema,
   type GetCollectionTrainingDetailResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
-
-export type getTrainingDetailResponse = {
-  trainingType: DatasetCollectionDataProcessModeEnum;
-  advancedTraining: {
-    customPdfParse: boolean;
-    imageIndex: boolean;
-    autoIndexes: boolean;
-    hypeIndexes: boolean;
-    small2bigIndexes: boolean;
-  };
-  queuedCounts: Record<TrainingModeEnum, number>;
-  trainingCounts: Record<TrainingModeEnum, number>;
-  errorCounts: Record<TrainingModeEnum, number>;
-  trainedCount: number;
-};
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
@@ -148,9 +135,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     advancedTraining: {
       customPdfParse: !!collection.customPdfParse,
       imageIndex: !!collection.imageIndex,
-      autoIndexes: !!collection.autoIndexes,
-      hypeIndexes: !!collection.hypeIndexes,
-      small2bigIndexes: !!collection.small2bigIndexes
+      autoIndexes: !!collection.autoIndexes
     },
     queuedCounts,
     trainingCounts,

@@ -59,13 +59,7 @@ const StandaloneResponseModal = ({
       title={<React.Fragment>{t('common:core.chat.response.Complete Response')}</React.Fragment>}
     >
       {!!response?.length ? (
-        <ResponseBox
-          response={response}
-          dataId={dataId}
-          chatTime={chatTime}
-          appId={appId}
-          chatId={chatId}
-        />
+        <ResponseBox response={response} dataId={dataId} chatTime={chatTime} />
       ) : (
         <EmptyTip text={t('chat:no_workflow_response')} />
       )}

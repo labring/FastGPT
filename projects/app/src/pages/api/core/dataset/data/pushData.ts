@@ -7,10 +7,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { Types } from '@fastgpt/service/common/mongo';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { deleteDatasetData } from '@/service/core/dataset/data/controller';
-import { addLog } from '@fastgpt/service/common/system/log';
 import {
   PushDataBodySchema,
   type PushDataResponseType
@@ -29,17 +25,6 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
 
   const { collectionId, billId, data } = body;
 
-  // Validate custom IDs if provided
-  const invalidIds = data
-    .filter((item) => item.id && !Types.ObjectId.isValid(item.id))
-    .map((item, index) => `index ${index}: "${item.id}"`);
-
-  if (invalidIds.length > 0) {
-    throw new Error(
-      `Invalid ID format. IDs must be 24 character hex strings or valid ObjectIds. Invalid IDs found at: ${invalidIds.join(', ')}`
-    );
-  }
-
   // 凭证校验
   const { teamId, tmbId, collection } = await authDatasetCollection({
     req,
@@ -49,45 +34,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     per: WritePermissionVal
   });
 
-  // Check if any IDs already exist and delete them
-  const customIds = data.filter((item) => item.id).map((item) => item.id!);
-  if (customIds.length > 0) {
-    const existingData = await MongoDatasetData.find({
-      _id: { $in: customIds.map((id) => new Types.ObjectId(id)) },
-      teamId,
-      collectionId
-    }).lean();
-
-    // Delete existing data
-    if (existingData.length > 0) {
-      const deletingIds = existingData.map((item) => String(item._id));
-      addLog.info('[pushData] Deleting existing data with custom IDs:', {
-        collectionId,
-        ids: deletingIds,
-        count: deletingIds.length
-      });
-
-      await Promise.all(
-        existingData.map((dataItem) =>
-          deleteDatasetData({
-            id: String(dataItem._id),
-            teamId: dataItem.teamId,
-            indexes: dataItem.indexes,
-            imageId: dataItem.imageId
-          } as any)
-        )
-      );
-    }
-  }
-
-  // Get training mode from collection
-  const mode = getTrainingModeByCollection({
-    trainingType: collection.trainingType,
-    autoIndexes: collection.autoIndexes,
-    imageIndex: collection.imageIndex,
-    small2bigIndexes: collection.small2bigIndexes,
-    syntheticIndex: collection.syntheticIndex
-  });
+  const mode = getTrainingModeByCollection(collection);
 
   // auth dataset limit
   await checkDatasetIndexLimit({
@@ -115,7 +62,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       ...body,
       session,
       billId: traingUsageId,
-      mode,
+      mode, // Use collection's training mode
       teamId,
       tmbId,
       datasetId: collection.datasetId,

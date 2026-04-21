@@ -4,7 +4,7 @@ import {
   AddRawTextBufferParamsSchema,
   type GetRawTextBufferParams
 } from './type';
-import { MongoS3TTL } from '../../schema';
+import { MongoS3TTL } from '../../models/ttl';
 import { addMinutes } from 'date-fns';
 import { getFileS3Key } from '../../utils';
 import { createHash } from 'node:crypto';

@@ -155,8 +155,8 @@ export type GetCollectionPathsResponseType = z.infer<typeof GetCollectionPathsRe
 export const ReadCollectionSourceBodySchema = OutLinkChatAuthSchema.extend({
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
   appId: ObjectIdSchema.optional().meta({ description: '应用 ID（对话中使用）' }),
-  chatId: ObjectIdSchema.optional().meta({ description: '对话 ID（对话中使用）' }),
-  chatItemDataId: z.string().optional().meta({ description: '对话消息 ID（对话中使用）' })
+  chatId: z.string().min(1).optional().meta({ description: '对话 ID（对话中使用）' }),
+  chatItemDataId: z.string().min(1).optional().meta({ description: '对话消息 ID（对话中使用）' })
 });
 export type ReadCollectionSourceBodyType = z.infer<typeof ReadCollectionSourceBodySchema>;
 
@@ -187,7 +187,7 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
     .object({
       customPdfParse: z.boolean().meta({ description: '自定义 PDF 解析' }),
       imageIndex: z.boolean().meta({ description: '图片索引' }),
-      autoIndexes: z.boolean().meta({ description: '自动索引' }),
+autoIndexes: z.boolean().meta({ description: '自动索引' }),
       small2bigIndexes: z.boolean().meta({ description: '小到大索引' }),
       hypeIndexes: z.boolean().meta({ description: '虚拟索引' })
     })

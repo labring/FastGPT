@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
   DatasetCollectionSchema,
@@ -29,7 +29,7 @@ const PushDataChunkSchema = z.object({
     example: 0,
     description: '块索引'
   }),
-  metadata: z.record(z.string(), z.any()).optional().meta({
+metadata: z.record(z.string(), z.any()).optional().meta({
     description: '元数据'
   }),
   indexes: z
@@ -225,7 +225,7 @@ export const GetDataListItemSchema = z.object({
   imageSize: z.number().optional().meta({ description: '图片大小（字节）' }),
   imagePreviewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
   chunkIndex: z.number().optional().meta({ description: '块索引' }),
-  updated: z.boolean().optional().meta({ description: '是否已更新' }),
+updated: z.boolean().optional().meta({ description: '是否已更新' }),
   trainingStatus: z.enum(DatasetTrainingStatusEnum).optional().meta({ description: '训练状态' })
 });
 

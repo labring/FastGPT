@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import { responseWrite } from '@fastgpt/service/common/response';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -319,8 +318,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
     });
-    responseWrite({
-      res,
+    workflowResponseWrite({
       event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });

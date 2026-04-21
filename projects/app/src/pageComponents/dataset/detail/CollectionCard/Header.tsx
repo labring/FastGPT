@@ -1,25 +1,10 @@
-import React, { useMemo, useCallback } from 'react';
-import {
-  Box,
-  Flex,
-  MenuButton,
-  Button,
-  Link,
-  useDisclosure,
-  HStack,
-  Alert,
-  AlertIcon,
-  useToast,
-  AlertDescription,
-  AlertTitle,
-  CloseButton
-} from '@chakra-ui/react';
+import React from 'react';
+import { Box, Flex, MenuButton, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
 import {
   getDatasetCollectionPathById,
   postDatasetCollection,
-  putDatasetCollectionById,
-  postDetectDatabaseChanges
-} from '@/web/core/dataset/api';
+  putDatasetCollectionById
+} from '@/web/core/dataset/api/collection';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
@@ -50,22 +35,17 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import type { DetectChangesResponse } from '@fastgpt/global/core/dataset/database/api';
-import { postCreateStructureCollection } from '@/web/core/dataset/api';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
-const FileUploadModal = dynamic(() => import('../components/FileUploadModal/index'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
 const TemplateImportModal = dynamic(() => import('./TemplateImportModal'));
 
 const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { isPc } = useSystem();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const isDatabase = useContextSelector(DatasetPageContext, (v) => v.isDatabaseType);
-  const isStructureDocument = datasetDetail?.type === DatasetTypeEnum.structureDocument;
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
@@ -77,9 +57,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     getData,
     pageNum,
     onOpenWebsiteModal,
-    openDatasetSyncConfirm,
-    hasDatabaseConfig,
-    handleOpenConfigPage
+    openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useRequest(() => getDatasetCollectionPathById(parentId), {
@@ -100,13 +78,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     isOpen: isOpenFileSourceSelector,
     onOpen: onOpenFileSourceSelector,
     onClose: onCloseFileSourceSelector
-  } = useDisclosure();
-
-  // File upload modal for structure documents
-  const {
-    isOpen: isOpenFileUploadModal,
-    onOpen: onOpenFileUploadModal,
-    onClose: onCloseFileUploadModal
   } = useDisclosure();
   // Backup import modal
   const {
@@ -146,161 +117,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
     }
   );
 
-  // File upload handler for structure documents
-  const handleFileUpload = useCallback(
-    async (file: File, onProgress?: (progress: number) => void) => {
-      try {
-        const result = await postCreateStructureCollection({
-          file,
-          datasetId: datasetDetail._id,
-          percentListen: onProgress
-        });
-
-        return result;
-      } catch (error) {
-        console.error('File upload error:', error);
-        throw error;
-      }
-    },
-    [datasetDetail._id]
-  );
-
-  const { runAsync: onDetectDatabaseChanges, loading: isDetecting } = useRequest(
-    async () => {
-      const result = await postDetectDatabaseChanges({ datasetId: datasetDetail._id });
-      return result;
-    },
-    {
-      manual: true,
-      errorToast: ''
-    }
-  );
-
-  const getTips = (data: DetectChangesResponse) => {
-    const { summary } = data;
-    if (summary?.modifiedTables > 0 && summary?.deletedTables > 0) {
-      return (
-        <>
-          {t('dataset:tables_modified_and_deleted', {
-            modifiedTables: summary.modifiedTables,
-            deletedTables: summary.deletedTables
-          })}
-          {t('dataset:check_latest_data')}
-        </>
-      );
-    }
-    if (summary?.modifiedTables > 0) {
-      return (
-        <>
-          {t('dataset:tables_with_column_changes', { modifiedTablesCount: summary.modifiedTables })}
-          {t('dataset:check_latest_data')}
-        </>
-      );
-    }
-    if (summary?.deletedTables > 0) {
-      return (
-        <>
-          {t('dataset:tables_not_exist', { delTablesCount: summary.deletedTables })}
-          {t('dataset:check_latest_data')}
-        </>
-      );
-    }
-  };
-
-  const titleLabel = useMemo(
-    () =>
-      isDatabase
-        ? t('dataset:database_tables')
-        : t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any),
-    [isDatabase, t, datasetDetail?.type]
-  );
-
-  const handleRefreshDataSource = async () => {
-    try {
-      const result = await onDetectDatabaseChanges();
-
-      const toastId = toast({
-        position: 'bottom-right',
-        duration: null,
-        render: () => (
-          <Alert status="success" bgColor={'green.50'} alignItems={'start'} variant="subtle">
-            <AlertIcon w={6} h={6} />
-            <Box flex={1} color={'myGray.900'}>
-              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
-              {(result.summary.modifiedTables > 0 || result.summary.deletedTables > 0) && (
-                <AlertDescription fontSize={'14px'}>
-                  <Box>
-                    {getTips(result)}
-                    <Button
-                      variant="link"
-                      size="sm"
-                      color="blue.500"
-                      p={0}
-                      ml={1}
-                      onClick={() => {
-                        toast.close(toastId);
-                        handleOpenConfigPage('edit');
-                      }}
-                    >
-                      {t('dataset:config')}
-                    </Button>
-                  </Box>
-                </AlertDescription>
-              )}
-            </Box>
-            <CloseButton
-              position="relative"
-              color={'black'}
-              right={-1}
-              top={-1}
-              onClick={() => toast.close(toastId)}
-            />
-          </Alert>
-        )
-      });
-    } catch (error: any) {
-      const toastId = toast({
-        position: 'bottom-right',
-        duration: null,
-        render: () => (
-          <Alert status="error" bgColor={'red.50'} alignItems={'start'} variant="subtle">
-            <Box mr={3}>
-              <MyIcon name="core/workflow/runError" w={6} h={6}></MyIcon>
-            </Box>
-            <Box flex={1} color={'myGray.900'}>
-              <AlertTitle fontWeight={'md'}>{t('dataset:refresh_failed')}</AlertTitle>
-              <AlertDescription fontSize={'14px'}>
-                {t(error?.message) || t('dataset:unknown_error')}
-              </AlertDescription>
-            </Box>
-            <CloseButton
-              position="relative"
-              color={'black'}
-              right={-1}
-              top={-1}
-              onClick={() => toast.close(toastId)}
-            />
-          </Alert>
-        )
-      });
-    }
-  };
-
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
-
-  const showHeaderTagPopOver = React.useMemo(
-    () =>
-      ![
-        DatasetTypeEnum.websiteDataset,
-        DatasetTypeEnum.database,
-        DatasetTypeEnum.structureDocument
-      ].includes(datasetDetail.type as DatasetTypeEnum) &&
-      datasetDetail.permission.hasWritePer &&
-      feConfigs?.isPlus,
-    [datasetDetail.type, datasetDetail.permission.hasWritePer, feConfigs?.isPlus]
-  );
-
-  const toast = useToast();
 
   return (
     <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
@@ -321,8 +138,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                 color={'myGray.600'}
               >
                 <Flex align={'center'}>
-                  {titleLabel}
-                  {i18n.language === 'en' ? '  ' : ''}({total})
+                  {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
+                  {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
                 </Flex>
                 {/* Website sync */}
                 {datasetDetail?.websiteConfig?.url && (
@@ -331,7 +148,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                     <Link
                       className="textEllipsis"
                       maxW={'300px'}
-                      ml={1}
                       href={datasetDetail.websiteConfig.url}
                       target="_blank"
                       color={'blue.700'}
@@ -352,6 +168,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             }}
           />
         </Box>
+
         {/* search input */}
         {isPc && (
           <MyInput
@@ -359,9 +176,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             flex={1}
             size={'sm'}
             h={'36px'}
-            placeholder={
-              isDatabase ? t('dataset:search_name_or_description') : t('common:Search') || ''
-            }
+            placeholder={t('common:Search') || ''}
             value={searchText}
             leftIcon={
               <MyIcon
@@ -378,7 +193,9 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         )}
 
         {/* Tag */}
-        {showHeaderTagPopOver && <HeaderTagPopOver />}
+        {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+          datasetDetail.permission.hasWritePer &&
+          feConfigs?.isPlus && <HeaderTagPopOver />}
       </HStack>
 
       {/* diff collection button */}
@@ -641,49 +458,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
               ]}
             />
           )}
-          {isDatabase && (
-            <>
-              {hasDatabaseConfig ? (
-                <>
-                  <Button
-                    mr={3}
-                    ml={1}
-                    onClick={() => handleOpenConfigPage('edit')}
-                    leftIcon={<Icon name="common/lineChange" w={'18px'} />}
-                  >
-                    {t('dataset:database_config')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleRefreshDataSource}
-                    isLoading={isDetecting}
-                    leftIcon={<Icon name="common/retryLight" w={'18px'} />}
-                  >
-                    {t('dataset:refresh_datasource')}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    ml={1}
-                    onClick={() => handleOpenConfigPage('create')}
-                    leftIcon={<Icon name="common/setting" w={'18px'} />}
-                  >
-                    {t('common:core.dataset.Set Website Config')}
-                  </Button>
-                </>
-              )}
-            </>
-          )}
-          {isStructureDocument && (
-            <Button
-              ml={1}
-              onClick={onOpenFileUploadModal}
-              leftIcon={<Icon name="common/folderImport" w={'18px'} />}
-            >
-              {t('dataset:add')}
-            </Button>
-          )}
           {/* apiDataset */}
           {datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type] && (
             <>
@@ -805,24 +579,6 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
         closeBtnText={t('common:Cancel')}
       />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
-
-      {/* File Upload Modal for Structure Documents */}
-      {isOpenFileUploadModal && (
-        <FileUploadModal
-          isOpen={isOpenFileUploadModal}
-          onClose={onCloseFileUploadModal}
-          onSuccess={() => {
-            getData(pageNum); // 刷新列表
-          }}
-          uploadApi={handleFileUpload}
-          maxFiles={10}
-          maxFileSize={50 * 1024 * 1024} // 50MB
-          acceptedTypes={['.xlsx', '.xls', '.csv']}
-          concurrency={1}
-          datasetId={datasetDetail._id}
-        />
-      )}
-
       {isOpenBackupImportModal && (
         <BackupImportModal
           onFinish={() => {
