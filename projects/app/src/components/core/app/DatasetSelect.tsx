@@ -13,8 +13,6 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FolderPath from '@/components/common/folder/Path';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import AIModelSelector from '@/components/Select/AIModelSelector';
 
 interface DatasetSelectProps {
   paths: ParentTreePathItemType[];
@@ -43,9 +41,11 @@ export const DatasetSelect = ({
 }: DatasetSelectProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { embeddingModelList } = useSystemStore();
 
   const isSmartGenerateScene = scene === 'smartGenerate';
+
+  // The vector model of the first selected dataset
+  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
@@ -57,18 +57,29 @@ export const DatasetSelect = ({
 
   const isEmptyDatabase = (item: DatasetListItemType) => isSmartGenerateScene && !item.dataCount;
 
-  // Check if a dataset is disabled
+  // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
     if (item.type === DatasetTypeEnum.structureDocument && !isSmartGenerateScene) {
       return false;
     }
-    return isSmartGenerateScene ? isEmptyDatabase(item) : false;
+    return isSmartGenerateScene
+      ? isEmptyDatabase(item)
+      : !!activeVectorModel && activeVectorModel !== item.vectorModel?.model;
   };
 
   const getDisableTip = (item: DatasetListItemType) => {
     if (isSmartGenerateScene && isDatasetDisabled(item)) {
       return t('app:no_data_for_smart_generate');
     }
+
+    // 如果知识库被禁用且向量模型不匹配，显示详细的向量模型信息
+    if (isDatasetDisabled(item) && activeVectorModel && item.vectorModel?.model) {
+      return t('app:vector_model_mismatch', {
+        model1: item.vectorModel.model,
+        model2: activeVectorModel
+      });
+    }
+
     return '';
   };
 
@@ -270,23 +281,6 @@ export const DatasetSelect = ({
               <Box flex={1} minW={0}>
                 <Box fontSize="sm">{item.name}</Box>
               </Box>
-              {item.datasetType !== DatasetTypeEnum.structureDocument &&
-                embeddingModelList.length > 0 && (
-                  <Box flexShrink={0} mr={2}>
-                    <AIModelSelector
-                      value={item.vectorModel?.model}
-                      fontSize={'mini'}
-                      list={embeddingModelList.map((m) => ({ label: m.name, value: m.model }))}
-                      onChange={(modelId) => {
-                        const newModel = embeddingModelList.find((m) => m.model === modelId);
-                        const newDatasets = selectedDatasets.map((d) =>
-                          d.datasetId === item.datasetId ? { ...d, vectorModel: newModel } : d
-                        );
-                        setSelectedDatasets(newDatasets);
-                      }}
-                    />
-                  </Box>
-                )}
               <IconButton
                 aria-label="Remove"
                 icon={<CloseIcon w={2.5} h={2.5} />}
