@@ -5,6 +5,7 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
   var datasetParseQueueLen: number;
+  var datasetParseNonGpuQueueLen: number;
   var small2bigQueueLen: number;
   var synthesisQueueLen: number;
 

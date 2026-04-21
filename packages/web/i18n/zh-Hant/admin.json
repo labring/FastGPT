@@ -305,6 +305,7 @@
   "oneapi_key": "OneAPI 密鑰（會覆蓋環境變量配置的）",
   "input_oneapi_key": "請輸入 OneAPI 密鑰",
   "dataset_parse_max_process": "知識庫解析最大處理進程",
+  "dataset_parse_non_gpu_max_process": "知識庫解析非GPU最大處理進程",
   "dataset_index_max_process": "知識庫索引最大處理進程",
   "file_understanding_max_process": "文件理解模型最大處理進程",
   "image_understanding_max_process": "圖片理解模型最大處理進程",

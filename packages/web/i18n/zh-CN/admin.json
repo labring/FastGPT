@@ -305,6 +305,7 @@
   "oneapi_key": "OneAPI 密钥（会覆盖环境变量配置的）",
   "input_oneapi_key": "请输入 OneAPI 密钥",
   "dataset_parse_max_process": "知识库解析最大处理进程",
+  "dataset_parse_non_gpu_max_process": "知识库解析非GPU最大处理进程",
   "dataset_index_max_process": "知识库索引最大处理进程",
   "file_understanding_max_process": "文件理解模型最大处理进程",
   "image_understanding_max_process": "图片理解模型最大处理进程",
