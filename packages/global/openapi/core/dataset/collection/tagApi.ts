@@ -6,7 +6,8 @@ import z from 'zod';
  * ============================================================================ */
 export const CreateDatasetCollectionTagBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tag: z.string().meta({ description: '标签名称' })
+  tag: z.string().meta({ description: '标签名称' }),
+  tagType: z.string().optional().meta({ description: '标签类型' })
 });
 export type CreateDatasetCollectionTagParams = z.infer<typeof CreateDatasetCollectionTagBodySchema>;
 
@@ -31,6 +32,7 @@ export type AddTagsToCollectionsParams = z.infer<typeof AddTagsToCollectionsBody
 export const UpdateDatasetCollectionTagBodySchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   tagId: z.string().meta({ description: '标签 ID' }),
-  tag: z.string().meta({ description: '新标签名称' })
+  tag: z.string().meta({ description: '新标签名称' }),
+  tagType: z.string().optional().meta({ description: '标签类型' })
 });
 export type UpdateDatasetCollectionTagParams = z.infer<typeof UpdateDatasetCollectionTagBodySchema>;
