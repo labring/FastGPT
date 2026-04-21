@@ -136,8 +136,17 @@ const nextConfig: NextConfig = {
     }
 
     if (isServer) {
+      // 这些包只在服务端运行，且内部使用动态 import / 原生可选依赖（ws 的 bufferutil、
+      // utf-8-validate，pi-ai 的 node:os/provider dynamicImport 等），让 webpack 直接
+      // externalize，避免扫描源码产生 Critical dependency / Module not found 警告。
       config.externals.push({
-        '@node-rs/jieba': '@node-rs/jieba'
+        '@node-rs/jieba': '@node-rs/jieba',
+        '@mariozechner/pi-ai': 'commonjs @mariozechner/pi-ai',
+        '@mariozechner/pi-agent-core': 'commonjs @mariozechner/pi-agent-core',
+        '@google/genai': 'commonjs @google/genai',
+        ws: 'commonjs ws',
+        bufferutil: 'commonjs bufferutil',
+        'utf-8-validate': 'commonjs utf-8-validate'
       });
     }
 
