@@ -186,8 +186,10 @@ export const WholeResponseContent = ({
             )}
           />
         )}
-        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
-        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
+        <Row
+          label={t('workflow:response.Error')}
+          value={activeModule?.errorText ?? activeModule?.error}
+        />
         <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
       </>
       {/* ai chat */}

@@ -19,6 +19,7 @@ import {
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -494,11 +495,7 @@ export const useWorkflow = () => {
   // 调用方需传入已按距离筛选过的 Top-K 节点,避免与其他遍历重复扫全量节点。
   const applyHelperLineSnapSync = useMemoizedFn(
     (change: NodePositionChange, nearestNodes: Node[]) => {
-      if (!change.dragging || !change.position) {
-        setHelperLineHorizontal(undefined);
-        setHelperLineVertical(undefined);
-        return;
-      }
+      if (!change.dragging || !change.position) return;
 
       const helperLines = computeHelperLines(change, nearestNodes);
       change.position.x = helperLines.snapPosition.x ?? change.position.x;
@@ -746,6 +743,9 @@ export const useWorkflow = () => {
   );
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
     const childChanges: NodeChange[] = [];
+    const removedIds = new Set(
+      changes.filter((c): c is NodeRemoveChange => c.type === 'remove').map((c) => c.id)
+    );
 
     for (const change of changes) {
       if (change.type === 'remove') {
@@ -762,6 +762,35 @@ export const useWorkflow = () => {
             title: t('common:core.workflow.Can not delete node')
           });
           continue;
+        }
+        // Conditional loopRun must retain at least one loopRunBreak child.
+        if (
+          node.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak &&
+          node.data.parentNodeId &&
+          !parentNodeDeleted
+        ) {
+          const parent = getRawNodeById(node.data.parentNodeId);
+          const parentMode = parent?.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)
+            ?.value as LoopRunModeEnum | undefined;
+          if (
+            parent?.data.flowNodeType === FlowNodeTypeEnum.loopRun &&
+            parentMode === LoopRunModeEnum.conditional
+          ) {
+            const remainingBreak = nodes.some(
+              (n) =>
+                n.data.parentNodeId === parent.id &&
+                n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak &&
+                !removedIds.has(n.id)
+            );
+            if (!remainingBreak) {
+              toast({
+                status: 'warning',
+                title: t('workflow:loop_run_conditional_requires_break')
+              });
+              removedIds.delete(change.id);
+              continue;
+            }
+          }
         }
         handleRemoveNode(change, node.id);
       } else if (change.type === 'select') {

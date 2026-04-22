@@ -600,19 +600,11 @@ export const getNodeErrResponse = ({
   };
 };
 
-/**
- * Coerce a points value to a finite number, defaulting to 0 for
- * NaN / Infinity / null / undefined.
- */
 export const safePoints = (val: number | undefined | null): number =>
   Number.isFinite(val) ? (val as number) : 0;
 
-/**
- * Aggregate sub-workflow usage points for one iteration and push to the parent
- * dispatcher's usage accumulator. Returns the computed value so callers can
- * keep a running total. Shared by loop / loopRun dispatchers (parallelRun
- * inlines its own accumulator to fold retry attempts together).
- */
+// parallelRun inlines its own accumulator to fold retry attempts together,
+// so it doesn't use this helper.
 export const pushSubWorkflowUsage = ({
   usagePush,
   response,
@@ -632,10 +624,6 @@ export const pushSubWorkflowUsage = ({
   return itemUsagePoint;
 };
 
-/**
- * Append customFeedbacks from a sub-workflow response into the provided
- * accumulator. Returns the same array for convenience.
- */
 export const collectResponseFeedbacks = (
   response: DispatchFlowResponse,
   target: string[]
@@ -647,12 +635,8 @@ export const collectResponseFeedbacks = (
   return target;
 };
 
-/**
- * Mutates nodes in-place: sets the nestedStart node as entry and injects the
- * current item / 1-based index into its inputs.
- *
- * Shared by loop and parallelRun dispatchers.
- */
+// Sets nestedStart as entry and injects current item + 1-based index.
+// Shared by loop and parallelRun dispatchers.
 export const injectNestedStartInputs = ({
   nodes,
   childrenNodeIdList,

@@ -900,9 +900,12 @@ const ChatBox = ({
                 const responseData = mergeChatResponseData(item.responseData || []);
                 // Check node response error
                 if (!abortSignal?.signal?.aborted) {
-                  const err =
-                    responseData[responseData.length - 1]?.error ||
-                    responseData[responseData.length - 1]?.errorText;
+                  // `.error` is dispatcher-injected only on uncaught failures — scan all items
+                  // so uncaught errors in nested/mid-workflow nodes still surface. Last-entry
+                  // `.errorText` covers the misconfigured "catchError=true, no handler wired"
+                  // case where only errorText was set.
+                  const uncaughtErr = responseData.find((r) => r.error)?.error;
+                  const err = uncaughtErr ?? responseData[responseData.length - 1]?.errorText;
                   if (err) {
                     toast({
                       title: t(getErrText(err)),

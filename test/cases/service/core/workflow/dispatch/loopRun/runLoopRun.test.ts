@@ -368,8 +368,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
     const result: any = await dispatchLoopRun(props);
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(
-      /requires at least one loopRunBreak/i
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      'workflow:loop_run_conditional_requires_break'
     );
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunIterations).toBe(0);
@@ -394,7 +394,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const result: any = await dispatchLoopRun(props);
     // 触发 5 次预算后兜底，loopHistory 保留已跑完的每一轮以便排查
     expect(runWorkflowMock).toHaveBeenCalledTimes(5);
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(/exceeded 5 iterations/i);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      'workflow:loop_run_max_iterations_exceeded'
+    );
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunIterations).toBe(5);
     expect(nodeResponse.loopRunHistory).toHaveLength(5);
@@ -544,7 +546,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
     });
     const result: any = await dispatchLoopRun(props);
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(/not an array/i);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('workflow:loop_run_input_not_array');
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
@@ -555,7 +557,9 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
     });
     const result: any = await dispatchLoopRun(props);
-    expect(result.error?.[NodeOutputKeyEnum.errorText]).toMatch(/greater than/i);
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe(
+      'workflow:loop_run_max_iterations_exceeded'
+    );
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 

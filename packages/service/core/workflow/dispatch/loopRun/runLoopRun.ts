@@ -45,22 +45,23 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
 
   const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
+  const maxIterationsMessage = i18nT('workflow:loop_run_max_iterations_exceeded');
 
   // Surface precheck failures through `errorText` to match the max-iterations
   // protocol, so `catchError` and downstream error-handle routing see them.
   const preCheckError = (() => {
     if (mode === LoopRunModeEnum.array && !Array.isArray(inputArray)) {
-      return 'Input value is not an array';
+      return i18nT('workflow:loop_run_input_not_array');
     }
     if (mode === LoopRunModeEnum.array && inputArray.length > maxLength) {
-      return `Input array length cannot be greater than ${maxLength}`;
+      return maxIterationsMessage;
     }
     // Without a break node, conditional mode can only stop at WORKFLOW_MAX_LOOP_TIMES.
     if (
       mode === LoopRunModeEnum.conditional &&
       !hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)
     ) {
-      return 'Conditional loopRun requires at least one loopRunBreak node';
+      return i18nT('workflow:loop_run_conditional_requires_break');
     }
     return undefined;
   })();
@@ -74,7 +75,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         loopRunIterations: 0,
         loopRunHistory: [],
         loopRunDetail: [],
-        mergeSignId: node.nodeId
+        mergeSignId: node.nodeId,
+        errorText: preCheckError
       },
       error: { [NodeOutputKeyEnum.errorText]: preCheckError }
     };
@@ -236,6 +238,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     ...lastSnapshot
   };
 
+  const errorText = maxIterationsExceeded
+    ? maxIterationsMessage
+    : lastFailed
+      ? lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed')
+      : undefined;
+
   return {
     data,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
@@ -256,26 +264,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,
       loopRunDetail: loopResponseDetail,
-      mergeSignId: node.nodeId
+      mergeSignId: node.nodeId,
+      ...(errorText ? { errorText } : {})
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined,
-    ...(() => {
-      if (maxIterationsExceeded) {
-        return {
-          error: {
-            [NodeOutputKeyEnum.errorText]: `Loop execution exceeded ${maxLength} iterations`
-          }
-        };
-      }
-      if (lastFailed) {
-        return {
-          error: {
-            [NodeOutputKeyEnum.errorText]: lastEntry?.error ?? 'loopRun failed'
-          }
-        };
-      }
-      return {};
-    })()
+    ...(errorText
+      ? {
+          error: { [NodeOutputKeyEnum.errorText]: errorText }
+        }
+      : {})
   };
 };
