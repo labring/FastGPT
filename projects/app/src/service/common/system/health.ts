@@ -14,18 +14,6 @@ export const instrumentationCheck = async () => {
   // vectorDB - 已验证
   // mongo - 已验证
   // redis - 已验证
-  // s3
-  try {
-    await global.s3BucketMap[S3Buckets.public].checkBucketHealth();
-  } catch (error) {
-    return Promise.reject(`[${InitialErrorEnum.S3_ERROR}] public bucket: ${getErrText(error)}`);
-  }
-  try {
-    await global.s3BucketMap[S3Buckets.private].checkBucketHealth();
-  } catch (error) {
-    return Promise.reject(`[${InitialErrorEnum.S3_ERROR}] private bucket: ${getErrText(error)}`);
-  }
-
   /* server */
   // plugin
   try {
