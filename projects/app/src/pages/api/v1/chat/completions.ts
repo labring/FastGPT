@@ -38,6 +38,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { enrichUserContentWithParsedFiles } from '@fastgpt/service/core/chat/utils';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -255,6 +256,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
+    const enrichedUserQuestion = await enrichUserContentWithParsedFiles({
+      userContent: userQuestion,
+      requestOrigin: req.headers.origin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+      teamId,
+      tmbId: String(tmbId)
+    });
+
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
@@ -338,7 +348,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId,
       source,
       sourceName: sourceName || '',
-      userContent: userQuestion,
+      userContent: enrichedUserQuestion,
       aiContent: aiResponse,
       metadata: {
         ...metadata,
