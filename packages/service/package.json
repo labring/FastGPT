@@ -2,6 +2,12 @@
   "name": "@fastgpt/service",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "test": "vitest run -c vitest.config.ts",
+    "test:watch": "vitest -c vitest.config.ts",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
+    "test:integration:watch": "vitest -c vitest.integration.config.ts"
+  },
   "engines": {
     "node": ">=20",
     "pnpm": "9.x"

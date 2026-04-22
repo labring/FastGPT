@@ -7,7 +7,9 @@
     "dev:skill": "NODE_OPTIONS='--max-old-space-size=8192' npm run build:workers && tsx server.ts",
     "dev:webpack": "NODE_OPTIONS='--max-old-space-size=8192' npm run build:workers && WEBPACK=1 next dev --webpack",
     "build": "npm run build:workers && next build --debug --webpack",
-    "start": "NODE_ENV=production tsx server.ts",
+    "start": "next start",
+    "test": "vitest run -c vitest.config.ts",
+    "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "npx tsx scripts/build-workers.ts",
     "typecheck": "tsc --noEmit --pretty",
     "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
