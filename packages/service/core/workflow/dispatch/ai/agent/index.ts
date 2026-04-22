@@ -271,7 +271,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         };
       }
 
-      const systemToolNode = getSystemToolInfo(id) || getSystemToolInfo(formatId);
+      const systemToolNode = getSystemToolInfo(id, lang) || getSystemToolInfo(formatId, lang);
 
       return {
         name: systemToolNode?.name || '',

@@ -65,8 +65,8 @@ export const systemSubInfo: Record<
   ...skillToolsMap
 };
 export const getSystemToolInfo = (id: string, lang: localeType = 'en') => {
-  if (id in sandboxToolMap) {
-    const info = sandboxToolMap[id];
+  if (id in systemSubInfo) {
+    const info = systemSubInfo[id];
     return {
       name: parseI18nString(info.name, lang),
       avatar: info.avatar,

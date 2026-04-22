@@ -221,14 +221,14 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         });
       }
     },
-    onToolParam({ argsDelta }) {
+    onToolParam({ call, argsDelta }) {
       if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
-        id: argsDelta,
+        id: call.id,
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
-            id: argsDelta,
+            id: call.id,
             toolName: '',
             toolAvatar: '',
             params: argsDelta
