@@ -61,7 +61,7 @@ describe('groupMessagesByUser', () => {
       userId: 'u1',
       text: 'default text',
       contextToken: 'ctx1',
-      msgIds: ['m1']
+      lastMsgId: 'm1'
     });
   });
 
@@ -84,7 +84,7 @@ describe('groupMessagesByUser', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].text).toBe('first\nsecond');
-    expect(result[0].msgIds).toEqual(['m1', 'm2']);
+    expect(result[0].lastMsgId).toBe('m2');
     expect(result[0].contextToken).toBe('ctx2'); // 取最后一条的
   });
 
@@ -107,7 +107,7 @@ describe('groupMessagesByUser', () => {
     const result = groupMessagesByUser(msgs);
 
     expect(result).toHaveLength(1);
-    expect(result[0].msgIds).toEqual(['m2']);
+    expect(result[0].lastMsgId).toBe('m2');
   });
 
   it('should skip messages with no extractable text', () => {
@@ -122,7 +122,7 @@ describe('groupMessagesByUser', () => {
     const result = groupMessagesByUser(msgs);
 
     expect(result).toHaveLength(1);
-    expect(result[0].msgIds).toEqual(['m2']);
+    expect(result[0].lastMsgId).toBe('m2');
   });
 
   it('should handle empty message list', () => {

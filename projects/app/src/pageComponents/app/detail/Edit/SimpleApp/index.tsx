@@ -10,10 +10,9 @@ import { useDebounceEffect, useMount } from 'ahooks';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { form2AppWorkflow, appWorkflow2Form } from './utils';
-
-const Edit = dynamic(() => import('./Edit'));
-const Logs = dynamic(() => import('../../Logs/index'));
-const PublishChannel = dynamic(() => import('../../Publish'));
+import PublishChannel from '../../Publish';
+import Logs from '../../Logs';
+import Edit from './Edit';
 
 const SimpleEdit = () => {
   const { t } = useTranslation();

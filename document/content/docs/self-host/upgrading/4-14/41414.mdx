@@ -1,0 +1,18 @@
+---
+title: 'V4.14.14'
+description: 'FastGPT V4.14.14 更新说明'
+---
+
+## 升级指南
+
+### 1. 更新镜像 tag
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.14
+
+## 🐛 修复
+
+
+## ⚙️ 优化
+
+1. 个人微信发布渠道，优化轮询策略（拉取与回复解耦），避免数据量超大时出现阻塞。
+2. 新增环境变量 `WECHAT_CHANNEL_CONCURRENCY`（默认 1000）用于控制微信渠道 poll worker 并发数，建议 ≥ online channel 峰值。

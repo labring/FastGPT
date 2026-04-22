@@ -113,6 +113,12 @@ export const env = createEnv({
     /** Redis 内存水位检测缓存时长（毫秒），避免每个流请求都调用 INFO MEMORY */
     STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS: IntSchema.positive().default(5000),
 
+    // ===== Wechat outLink =====
+    /** 微信渠道 poll worker 并发数，需 ≥ online shareId 峰值，否则消息延迟会线性恶化 */
+    WECHAT_CHANNEL_CONCURRENCY: NumSchema.int().positive().default(1000).meta({
+      description: '微信渠道 poll worker 并发数'
+    }),
+
     // Beta features
     // Whether the Skill feature is enabled (frontend entries + backend runtime)
     SHOW_SKILL: BoolSchema.default(false),
