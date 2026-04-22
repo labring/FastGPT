@@ -6,8 +6,8 @@ import type {
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getFakeUsers } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { vi, describe, it, expect } from 'vitest';
 
 describe('create dataset', () => {

@@ -2,8 +2,8 @@ import * as getPermissionApi from '@/pages/api/core/app/getPermission';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getFakeUsers } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, expect, it } from 'vitest';
 import type {
   GetAppPermissionQueryType,

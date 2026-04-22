@@ -2,8 +2,8 @@ import type { PlaygroundVisibilityConfigResponse } from '@fastgpt/global/support
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { getRootUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getRootUser } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import * as configApi from '@/pages/api/support/outLink/playground/config';
 
@@ -49,6 +49,7 @@ describe('Playground Visibility Config API', () => {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
         showRunningStatus: true,
+        showSkillReferences: true,
         showCite: true,
         showFullText: true,
         canDownloadSource: true,
@@ -91,6 +92,7 @@ describe('Playground Visibility Config API', () => {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
         showRunningStatus: false,
+        showSkillReferences: true,
         showCite: false,
         showFullText: false,
         canDownloadSource: false,
@@ -155,6 +157,7 @@ describe('Playground Visibility Config API', () => {
       expect(res.error).toBeUndefined();
       expect(res.data).toEqual({
         showRunningStatus: true,
+        showSkillReferences: true,
         showCite: false,
         showFullText: true,
         canDownloadSource: false,

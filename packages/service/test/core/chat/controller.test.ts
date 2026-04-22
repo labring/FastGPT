@@ -3,7 +3,7 @@ import { getChatItems, updateChatFeedbackCount } from '@fastgpt/service/core/cha
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { getUser } from '@test/datas/users';
+import { getUser } from '@repo-test/datas/users';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';

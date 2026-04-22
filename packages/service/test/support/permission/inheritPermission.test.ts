@@ -10,8 +10,8 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { syncChildrenPermission } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
-import type { parseHeaderCertRet } from '@test/mocks/request';
+import { getFakeUsers } from '@repo-test/datas/users';
+import type { parseHeaderCertRet } from '@repo-test/mocks/request';
 import { describe, it, expect } from 'vitest';
 
 describe.sequential('syncChildrenPermission', () => {

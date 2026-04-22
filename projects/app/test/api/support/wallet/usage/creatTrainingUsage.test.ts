@@ -5,8 +5,8 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getFakeUsers } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 describe('createTrainingUsage', () => {

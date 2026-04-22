@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["../../projects/app/src/*"],
+      "@fastgpt/*": ["../../packages/*"],
+      "@repo-test/*": ["../../test/*"]
+    }
+  },
+  "include": ["**/*.test.ts", "../**/*.ts", "../**/*.tsx", "../../test/**/*.ts"],
+  "exclude": ["node_modules"]
+}

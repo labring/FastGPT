@@ -8,7 +8,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { Call } from '@test/utils/request';
+import { Call } from '@repo-test/utils/request';
 import type {
   getAppChatLogsBody,
   getAppChatLogsResponseType

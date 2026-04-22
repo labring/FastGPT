@@ -2,8 +2,8 @@ import type { UpdatePlaygroundVisibilityConfigBody } from '@fastgpt/global/suppo
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { getRootUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getRootUser } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import * as updateApi from '@/pages/api/support/outLink/playground/update';
 

@@ -8,8 +8,8 @@ import {
 } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getFakeUsers } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, it, expect } from 'vitest';
 
 describe('create dataset', () => {

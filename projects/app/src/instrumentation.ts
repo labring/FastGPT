@@ -1,4 +1,9 @@
 import { exit } from 'process';
+import {
+  runBackgroundInitializationStep,
+  getInitializationErrorLog,
+  runInitializationStep
+} from '@fastgpt/service/common/system/initError';
 
 /*
   Init system
@@ -6,7 +11,10 @@ import { exit } from 'process';
 export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
-      await import('@fastgpt/service/common/proxy');
+      await runInitializationStep({
+        step: 'load-proxy',
+        action: async () => import('@fastgpt/service/common/proxy')
+      });
 
       // 基础系统初始化
       const [
@@ -59,63 +67,184 @@ export async function register() {
 
       await configureMetrics();
       await configureTracing();
-      await configureLogger();
+
+      await runInitializationStep({
+        step: 'configure-logger',
+        action: () => configureLogger()
+      });
       const logger = getLogger(LogCategories.SYSTEM);
       logger.info('Starting system initialization...');
 
       // 执行初始化流程
-      systemStartCb();
-      initGlobalVariables();
+      await runInitializationStep({
+        step: 'system-start-callback',
+        action: () => systemStartCb(),
+        logger
+      });
+      await runInitializationStep({
+        step: 'init-global-variables',
+        action: () => initGlobalVariables(),
+        logger
+      });
 
       // Init infra
       await Promise.all([
-        initS3Buckets(),
-        connectMongo({
-          db: connectionMongo,
-          url: MONGO_URL,
-          connectedCb: () => startMongoWatch()
-        }).catch((err) => {
-          return Promise.reject(`[${InitialErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+        runInitializationStep({
+          step: 'init-s3-buckets',
+          stage: InitialErrorEnum.S3_ERROR,
+          action: () => initS3Buckets(),
+          logger,
+          getErrText
         }),
-        connectMongo({
-          db: connectionLogMongo,
-          url: MONGO_LOG_URL
-        }).catch((err) => {
-          return Promise.reject(`[${InitialErrorEnum.MONGO_ERROR}]: ${getErrText(err)}`);
+        runInitializationStep({
+          step: 'connect-main-mongo',
+          stage: InitialErrorEnum.MONGO_ERROR,
+          action: () =>
+            connectMongo({
+              db: connectionMongo,
+              url: MONGO_URL,
+              connectedCb: () => startMongoWatch()
+            }),
+          logger,
+          getErrText,
+          meta: {
+            mongoUrl: MONGO_URL
+          }
         }),
-        initBullMQWorkers().catch((err) => {
-          return Promise.reject(`[${InitialErrorEnum.REDIS_ERROR}]: ${getErrText(err)}`);
+        runInitializationStep({
+          step: 'connect-log-mongo',
+          stage: InitialErrorEnum.MONGO_ERROR,
+          action: () =>
+            connectMongo({
+              db: connectionLogMongo,
+              url: MONGO_LOG_URL
+            }),
+          logger,
+          getErrText,
+          meta: {
+            mongoLogUrl: MONGO_LOG_URL
+          }
         }),
-        initVectorStore().catch((err) => {
-          return Promise.reject(`[${InitialErrorEnum.VECTORDB_ERROR}]: ${getErrText(err)}`);
+        runInitializationStep({
+          step: 'init-bullmq-workers',
+          stage: InitialErrorEnum.REDIS_ERROR,
+          action: () => initBullMQWorkers(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'init-vector-store',
+          stage: InitialErrorEnum.VECTORDB_ERROR,
+          action: () => initVectorStore(),
+          logger,
+          getErrText
         })
       ]);
 
       // Init system config
-      await getInitConfig();
+      await runInitializationStep({
+        step: 'get-init-config',
+        action: () => getInitConfig(),
+        logger,
+        getErrText
+      });
 
       // Check infrastructure
-      await instrumentationCheck();
+      await runInitializationStep({
+        step: 'instrumentation-check',
+        action: () => instrumentationCheck(),
+        logger,
+        getErrText
+      });
 
       // Load init data
       await Promise.all([
-        initRootUser(),
-        loadSystemModels(),
-        getSystemTools(),
-        initSystemPluginTags(),
-        initAppTemplateTypes(),
-        preLoadWorker().catch()
+        runInitializationStep({
+          step: 'init-root-user',
+          action: () => initRootUser(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'load-system-models',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => loadSystemModels(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'load-system-tools',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => getSystemTools(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'init-system-plugin-tags',
+          stage: InitialErrorEnum.PLUGIN_ERROR,
+          action: () => initSystemPluginTags(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'init-app-template-types',
+          action: () => initAppTemplateTypes(),
+          logger,
+          getErrText
+        }),
+        runInitializationStep({
+          step: 'preload-worker',
+          action: () => preLoadWorker(),
+          logger,
+          getErrText
+        }).catch(() => undefined)
       ]);
 
-      initGeo(); // init geo
-      startCron();
-      startTrainingQueue(true);
-      trackTimerProcess();
+      await runInitializationStep({
+        step: 'init-geo',
+        action: () => initGeo(),
+        logger,
+        getErrText
+      });
+      await runInitializationStep({
+        step: 'start-cron',
+        action: () => startCron(),
+        logger,
+        getErrText
+      });
+      await runInitializationStep({
+        step: 'start-training-queue',
+        action: () => startTrainingQueue(true),
+        logger,
+        getErrText
+      });
+      runBackgroundInitializationStep({
+        step: 'track-timer-process',
+        action: () => trackTimerProcess(),
+        logger,
+        getErrText
+      });
 
       logger.info('System initialized successfully');
     }
   } catch (error) {
-    console.error('System initialization failed', error);
+    const logPayload = {
+      nextRuntime: process.env.NEXT_RUNTIME,
+      nodeEnv: process.env.NODE_ENV,
+      ...getInitializationErrorLog(error)
+    };
+
+    console.error('System initialization failed', logPayload);
+
+    try {
+      const { getLogger, LogCategories } = await import('@fastgpt/service/common/logger');
+      getLogger(LogCategories.SYSTEM).error('System initialization failed', logPayload);
+    } catch (loggerError) {
+      console.error('Failed to record system initialization failure', {
+        ...getInitializationErrorLog(loggerError)
+      });
+    }
+
     exit(1);
   }
 }

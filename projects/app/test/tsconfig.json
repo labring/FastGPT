@@ -18,7 +18,8 @@
     "paths": {
       "@/*": ["../src/*"],
       "@fastgpt/*": ["../../../packages/*"],
-      "@test/*": ["../../../test/*"]
+      "@test/*": ["./*"],
+      "@repo-test/*": ["../../../test/*"]
     }
   },
   "include": ["**/*.test.ts"],

@@ -6,8 +6,8 @@ import { getClbsInfo, getResourceOwnedClbs } from '@fastgpt/service/support/perm
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeGroups, getFakeOrgs, getFakeUsers } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getFakeGroups, getFakeOrgs, getFakeUsers } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, expect, it } from 'vitest';
 import type { CreateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 
