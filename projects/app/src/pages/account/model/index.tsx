@@ -8,7 +8,6 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
@@ -68,15 +67,10 @@ export async function getServerSideProps(content: any) {
 
 export default ModelProvider;
 
-const ValidModelTable = ({ Tab }: { Tab?: React.ReactNode }) => {
-  const { userInfo } = useUserStore();
-  const isRoot = userInfo?.username === 'root';
+const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   return (
-    <>
-      {isRoot && <Flex justifyContent={'space-between'}>{Tab}</Flex>}
-      <Box flex={'1 0 0'} overflow={'hidden'}>
-        <ModelTable permissionConfig={true} />
-      </Box>
-    </>
+    <Box flex={'1 0 0'} overflow={'hidden'}>
+      <ModelTable permissionConfig={true} Tab={Tab} />
+    </Box>
   );
 };

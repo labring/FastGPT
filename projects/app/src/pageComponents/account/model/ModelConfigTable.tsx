@@ -11,7 +11,6 @@ import {
   Tr,
   Switch,
   ModalBody,
-  Input,
   ModalFooter,
   Button,
   useDisclosure
@@ -31,8 +30,7 @@ import {
   getSystemModelDetail,
   getSystemModelList,
   getTestModel,
-  putSystemModel,
-  putUpdateDefaultModels
+  putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
@@ -41,12 +39,9 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import AIModelSelector from '@/components/Select/AIModelSelector';
-import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { AddModelButton } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
@@ -288,11 +283,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onOpen: onOpenJsonConfig,
     onClose: onCloseJsonConfig
   } = useDisclosure();
-  const {
-    onOpen: onOpenDefaultModel,
-    onClose: onCloseDefaultModel,
-    isOpen: isOpenDefaultModel
-  } = useDisclosure();
 
   const isLoading = loadingModels || loadingData || updatingModel || testingModel;
 
@@ -304,9 +294,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         <Flex alignItems={'center'}>
           {Tab}
           <Box flex={1} />
-          <Button variant={'whiteBase'} mr={2} onClick={onOpenDefaultModel}>
-            {t('account:model.default_model')}
-          </Button>
           <Button variant={'whiteBase'} mr={2} onClick={onOpenJsonConfig}>
             {t('account:model.json_config')}
           </Button>
@@ -476,9 +463,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       {isOpenJsonConfig && (
         <JsonConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
       )}
-      {isOpenDefaultModel && (
-        <DefaultModelModal onClose={onCloseDefaultModel} onSuccess={refreshModels} />
-      )}
     </>
   );
 };
@@ -536,240 +520,6 @@ const JsonConfigModal = ({
           content={t('account:model.json_config_confirm')}
           onConfirm={() => runAsync({ config: data })}
         />
-      </ModalFooter>
-    </MyModal>
-  );
-};
-
-const labelStyles = {
-  fontSize: 'sm',
-  color: 'myGray.900',
-  mb: 0.5
-};
-const DefaultModelModal = ({
-  onSuccess,
-  onClose
-}: {
-  onSuccess: () => void;
-  onClose: () => void;
-}) => {
-  const { t } = useTranslation();
-  const {
-    defaultModels,
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    getVlmModelList
-  } = useSystemStore();
-  const vlmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
-
-  // Create a copy of defaultModels for local state management
-  const [defaultData, setDefaultData] = useState(defaultModels);
-
-  const { runAsync, loading } = useRequest(putUpdateDefaultModels, {
-    onSuccess: () => {
-      onSuccess();
-      onClose();
-    },
-    successToast: t('common:update_success')
-  });
-
-  return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      title={t('account:default_model_config')}
-      iconSrc="modal/edit"
-    >
-      <ModalBody>
-        <Box>
-          <Box {...labelStyles}>{t('common:model.type.chat')}</Box>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.llm?.model}
-              list={llmModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  llm: llmModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <Box mt={4}>
-          <Box {...labelStyles}>{t('common:model.type.embedding')}</Box>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.embedding?.model}
-              list={embeddingModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  embedding: embeddingModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <Box mt={4}>
-          <Box {...labelStyles}>{t('common:model.type.tts')}</Box>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.tts?.model}
-              list={ttsModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  tts: ttsModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <Box mt={4}>
-          <Box {...labelStyles}>{t('common:model.type.stt')}</Box>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.stt?.model}
-              list={sttModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  stt: sttModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <Box mt={4}>
-          <Box {...labelStyles}>{t('common:model.type.reRank')}</Box>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.rerank?.model}
-              list={reRankModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  rerank: reRankModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <MyDivider />
-        <Box>
-          <Flex {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5}>{t('common:core.ai.model.Dataset Agent Model')}</Box>
-            <QuestionTip label={t('common:dataset_text_model_tip')} />
-          </Flex>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.datasetTextLLM?.model}
-              list={llmModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  datasetTextLLM: llmModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <Box>
-          <Flex mt={4} {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5}>{t('account_model:vlm_model')}</Box>
-            <QuestionTip label={t('account_model:vlm_model_tip')} />
-          </Flex>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.datasetImageLLM?.model}
-              list={vlmModelList.map((item) => ({
-                value: item.model,
-                label: item.name
-              }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  datasetImageLLM: vlmModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-        <Box mt={4}>
-          <Flex {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5}>{t('account_model:evaluation_model')}</Box>
-            <QuestionTip label={t('account_model:evaluation_model_tip')} />
-          </Flex>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.evaluation?.model}
-              list={llmModelList
-                .filter((item) => item.useInEvaluation)
-                .map((item) => ({
-                  value: item.model,
-                  label: item.name
-                }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  evaluation: llmModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
-          </Box>
-        </Box>
-      </ModalBody>
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-          {t('common:Cancel')}
-        </Button>
-        <Button
-          isLoading={loading}
-          onClick={() =>
-            runAsync({
-              [ModelTypeEnum.llm]: defaultData.llm?.model,
-              [ModelTypeEnum.embedding]: defaultData.embedding?.model,
-              [ModelTypeEnum.tts]: defaultData.tts?.model,
-              [ModelTypeEnum.stt]: defaultData.stt?.model,
-              [ModelTypeEnum.rerank]: defaultData.rerank?.model,
-              datasetTextLLM: defaultData.datasetTextLLM?.model,
-              datasetImageLLM: defaultData.datasetImageLLM?.model,
-              evaluation: defaultData.evaluation?.model
-            })
-          }
-        >
-          {t('common:Confirm')}
-        </Button>
       </ModalFooter>
     </MyModal>
   );
