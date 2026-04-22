@@ -97,7 +97,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     for await (const sample of buildFineTuneDataStream({
       sampledItems,
       indexType: generateConfig.indexType,
-      negativeStrategy: generateConfig.negativeStrategy ?? 2,
+      negativeStrategy: generateConfig.negativeStrategy,
       minNegativeSamples: generateConfig.minNegativeSamples,
       maxNegativeSamples: generateConfig.maxNegativeSamples
     })) {

@@ -10,13 +10,14 @@ import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/con
 import { MongoEmbeddingTrainset } from '@fastgpt/service/core/train/embedding/trainset/schema';
 import { EmbeddingTrainsetStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type {
   GenerateEmbeddingTrainDataRequest,
   GenerateEmbeddingTrainDataResponse
 } from '@fastgpt/global/core/train/embedding/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { expandFolderDatasetIds } from '@fastgpt/service/core/dataset/controller';
+import { validateDatasetTargetIndexes } from '@fastgpt/service/core/train/embedding/validation';
 
 async function handler(
   req: NextApiRequest,
@@ -25,12 +26,12 @@ async function handler(
   const { trainsetId, datasetIds, generateConfig } = req.body as GenerateEmbeddingTrainDataRequest;
 
   if (!trainsetId) {
-    return Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingTrainsetNotExist);
   }
 
   // datasetIds is required
   if (!datasetIds?.length) {
-    return Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingValidationNoDatasetConfigured);
   }
 
   // 1. Verify write permission for the trainset
@@ -42,33 +43,43 @@ async function handler(
     per: WritePermissionVal
   });
 
-  // 2. Verify read permission for each dataset
+  // 2. Expand folder-type datasets to their non-folder children
+  const expandedDatasetIds = await expandFolderDatasetIds(trainset.teamId, datasetIds);
+  if (!expandedDatasetIds.length) {
+    return Promise.reject(EmbeddingTrainErrEnum.embeddingValidationNoDatasetConfigured);
+  }
+
+  // 3. Verify read permission for each dataset
   await authGenerateFromDatasets({
     req,
     authToken: true,
     authApiKey: true,
-    datasetIds
+    datasetIds: expandedDatasetIds
   });
 
-  // 3. Reject if generation is already in progress
+  // 4. Validate dataset indexes
+  const normalizedGenerateConfig = {
+    ...generateConfig,
+    indexType: generateConfig?.indexType ?? DEFAULT_TRAIN_INDEX_TYPE
+  };
+  await validateDatasetTargetIndexes(expandedDatasetIds, normalizedGenerateConfig.indexType);
+
+  // 5. Reject if generation is already in progress
   if (trainset.status === EmbeddingTrainsetStatusEnum.generating) {
     return Promise.reject(EmbeddingTrainErrEnum.embeddingTrainsetGenerating);
   }
 
-  // 4. Enqueue async generation job
+  // 5. Enqueue async generation job
   const job = await embeddingTrainDataGenerateQueue.add(`generate-${trainset._id}-${Date.now()}`, {
     trainsetId: String(trainset._id),
-    datasetIds,
-    generateConfig: {
-      ...generateConfig,
-      indexType: generateConfig?.indexType ?? DEFAULT_TRAIN_INDEX_TYPE
-    }
+    datasetIds: expandedDatasetIds,
+    generateConfig: normalizedGenerateConfig
   });
 
-  // 5. Persist jobId on the trainset for retry support
+  // 6. Persist jobId on the trainset for retry support
   await MongoEmbeddingTrainset.updateOne({ _id: trainset._id }, { jobId: job.id as string });
 
-  // 6. Audit log
+  // 7. Audit log
   (async () => {
     addAuditLog({
       tmbId: trainset.tmbId,

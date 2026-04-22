@@ -56,7 +56,7 @@ export async function* buildFineTuneDataStream(params: {
     indexType,
     negativeStrategy = 2,
     minNegativeSamples = 1,
-    maxNegativeSamples = 10
+    maxNegativeSamples = 5
   } = params;
 
   if (sampledItems.length === 0) return;
