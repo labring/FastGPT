@@ -5,9 +5,8 @@ import type { WechatPollJobData, WechatReplyJobData } from './type';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
-import { getRedisCache, setRedisCache } from '../../../common/redis/cache';
+import { delRedisCache, getRedisCache, setRedisCache } from '../../../common/redis/cache';
 import { groupMessagesByUser } from './messageParser';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { env } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 
@@ -18,7 +17,7 @@ const REPLY_JOB_NAME = 'wechatPublishReply';
 
 const MAX_CONSECUTIVE_FAILURES = 5;
 const FAILURE_BACKOFF_MS = 10_000;
-const POLL_LOCK_MS = 60_000;
+const POLL_LOCK_MS = 120_000;
 const REPLY_LOCK_MS = 30 * 60_000;
 // Poll processor 硬超时：防止 worker 活着但 processor hang 导致确定 jobId 永远阻塞
 // 应 > LONG_POLL_TIMEOUT_MS(35s) + Mongo/Redis 操作余量
@@ -39,12 +38,18 @@ const failKey = (shareId: string) => `wechat:publish:failures:${shareId}`;
 //  - 外层 Promise.race 兜底：processor 最多 POLL_HARD_TIMEOUT_MS 就必须终止，
 //    防止 worker 活着但 processor hang 导致确定 jobId 永远阻塞
 async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<void> {
-  return Promise.race([pollImpl(job), pollTimeout(job)]);
-}
-
-async function pollTimeout(job: Job<WechatPollJobData>): Promise<never> {
-  await new Promise((resolve) => setTimeout(resolve, POLL_HARD_TIMEOUT_MS));
-  throw new Error(`Poll job hard timeout after ${POLL_HARD_TIMEOUT_MS}ms`);
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Poll job hard timeout after ${POLL_HARD_TIMEOUT_MS}ms`)),
+      POLL_HARD_TIMEOUT_MS
+    );
+  });
+  try {
+    await Promise.race([pollImpl(job), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
@@ -93,6 +98,7 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
         { $set: { 'app.status': 'error', 'app.lastError': resp.errmsg || 'Too many failures' } }
       );
       logger.error('Too many failures, stop polling', { shareId, failures });
+      await delRedisCache(failKey(shareId));
     }
 
     // 抛错走 'failed' 事件 → 续链带退避
@@ -124,7 +130,6 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
           },
           {
             jobId: replyJobId(shareId, g.lastMsgId),
-            attempts: 2,
             backoff: { type: 'fixed', delay: 2000 }
           }
         )
@@ -176,23 +181,8 @@ async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void
       shareId,
       userId,
       lastMsgId,
-      attempt: job.attemptsMade + 1,
       error: String(error)
     });
-
-    // 仅最后一次 attempt 失败才发 fallback，避免重试期间重复发
-    if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
-      try {
-        const errorText = outLink.defaultResponse || `Run agent error: ${getErrText(error)}`;
-        await client.sendMessage({
-          to_user_id: userId,
-          text: errorText,
-          context_token: contextToken
-        });
-      } catch {
-        // 忽略
-      }
-    }
     throw error;
   }
 }
@@ -325,7 +315,9 @@ export const stopWechatPolling = async (shareId: string): Promise<void> => {
 
   // Delete job from queue
   const queue = getQueue<WechatPollJobData>(QueueNames.wechatPoll);
-  await queue.remove(pollJobId(shareId));
+  await queue.remove(pollJobId(shareId)).catch((error) => {
+    logger.warn('Remove poll job failed (job may be active)', { shareId, error: String(error) });
+  });
 
   logger.info('Wechat polling stopped', { shareId });
 };

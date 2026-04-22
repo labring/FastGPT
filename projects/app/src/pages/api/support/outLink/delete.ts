@@ -26,11 +26,15 @@ async function handler(
     per: OwnerPermissionVal
   });
 
-  const outlink = await MongoOutLink.findByIdAndDelete(id);
+  const outlink = await MongoOutLink.findById(id);
 
   if (outlink && outlink.type === 'wechat') {
-    stopWechatPolling(outlink.shareId);
+    await stopWechatPolling(outlink.shareId).catch((error) => {
+      console.warn('Stop wechat polling failed', error);
+    });
   }
+
+  await outlink?.deleteOne();
 
   (async () => {
     addAuditLog({
