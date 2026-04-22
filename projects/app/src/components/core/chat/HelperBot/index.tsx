@@ -141,15 +141,23 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
       wait: 100
     }
   );
+  const getLastValueIndex = (
+    values: AIChatItemValueItemType[],
+    predicate: (value: AIChatItemValueItemType) => boolean
+  ) => {
+    for (let i = values.length - 1; i >= 0; i--) {
+      if (predicate(values[i])) {
+        return i;
+      }
+    }
+    return -1;
+  };
   const generatingMessage = useMemoizedFn(
     ({ event, text = '', reasoningText, collectionForm, formData }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
           if (item.obj !== ChatRoleEnum.AI) return item;
-
-          const updateIndex = item.value.length - 1;
-          const updateValue: AIChatItemValueItemType = item.value[updateIndex];
 
           // Special event: form data
           if (event === SseResponseEventEnum.collectionForm && collectionForm) {
@@ -181,50 +189,71 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
 
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             if (reasoningText) {
-              if ('reasoning' in updateValue && updateValue.reasoning) {
-                updateValue.reasoning.content += reasoningText;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
-                };
-              } else {
-                const val: AIChatItemValueItemType = {
-                  reasoning: {
-                    content: reasoningText
-                  }
-                };
-                return {
-                  ...item,
-                  value: [...item.value, val]
-                };
+              const reasoningIndex = getLastValueIndex(
+                item.value,
+                (val) => 'reasoning' in val && !!val.reasoning
+              );
+              if (reasoningIndex >= 0) {
+                const currentVal = item.value[reasoningIndex];
+                if ('reasoning' in currentVal && currentVal.reasoning) {
+                  return {
+                    ...item,
+                    value: [
+                      ...item.value.slice(0, reasoningIndex),
+                      {
+                        ...currentVal,
+                        reasoning: {
+                          ...currentVal.reasoning,
+                          content: `${currentVal.reasoning.content}${reasoningText}`
+                        }
+                      },
+                      ...item.value.slice(reasoningIndex + 1)
+                    ]
+                  };
+                }
               }
+
+              const val: AIChatItemValueItemType = {
+                reasoning: {
+                  content: reasoningText
+                }
+              };
+              return {
+                ...item,
+                value: [...item.value, val]
+              };
             }
             if (text) {
-              if ('text' in updateValue && updateValue.text) {
-                updateValue.text.content += text;
-                return {
-                  ...item,
-                  value: [
-                    ...item.value.slice(0, updateIndex),
-                    updateValue,
-                    ...item.value.slice(updateIndex + 1)
-                  ]
-                };
-              } else {
-                const newValue: AIChatItemValueItemType = {
-                  text: {
-                    content: text
-                  }
-                };
-                return {
-                  ...item,
-                  value: item.value.concat(newValue)
-                };
+              const textIndex = getLastValueIndex(item.value, (val) => 'text' in val && !!val.text);
+              if (textIndex >= 0) {
+                const currentVal = item.value[textIndex];
+                if ('text' in currentVal && currentVal.text) {
+                  return {
+                    ...item,
+                    value: [
+                      ...item.value.slice(0, textIndex),
+                      {
+                        ...currentVal,
+                        text: {
+                          ...currentVal.text,
+                          content: `${currentVal.text.content}${text}`
+                        }
+                      },
+                      ...item.value.slice(textIndex + 1)
+                    ]
+                  };
+                }
               }
+
+              const newValue: AIChatItemValueItemType = {
+                text: {
+                  content: text
+                }
+              };
+              return {
+                ...item,
+                value: item.value.concat(newValue)
+              };
             }
           }
 
@@ -299,7 +328,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
         const abortSignal = new AbortController();
         chatController.current = abortSignal;
 
-        const { responseText } = await streamFetch({
+        await streamFetch({
           url: '/api/core/chat/helperBot/completions',
           data: {
             chatId,
@@ -321,23 +350,28 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
         });
       } catch (error) {
         console.error(error);
-        setChatRecords((state) =>
-          state.map((item, index) => {
-            if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
+        toast({
+          title: getErrText(error, t('common:core.chat.error.Chat error') as any),
+          status: 'error'
+        });
 
-            return {
-              ...item,
-              value: [
-                ...item.value,
-                {
-                  text: {
-                    content: `Error: ${getErrText(error)}`
-                  }
-                }
-              ]
-            };
-          })
-        );
+        // Keep generated content, only remove trailing empty AI placeholder on failure.
+        setChatRecords((state) => {
+          if (state.length === 0) return state;
+
+          const lastIndex = state.length - 1;
+          const lastItem = state[lastIndex];
+          if (lastItem.obj !== ChatRoleEnum.AI) return state;
+
+          const hasVisibleContent = lastItem.value.some(
+            (val) =>
+              ('text' in val && !!val.text?.content?.trim?.()) ||
+              ('reasoning' in val && !!val.reasoning?.content?.trim?.())
+          );
+
+          if (hasVisibleContent) return state;
+          return state.slice(0, lastIndex);
+        });
       }
       setIsChatting(false);
     }
