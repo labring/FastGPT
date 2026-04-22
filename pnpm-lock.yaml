@@ -345,6 +345,9 @@ importers:
       ioredis:
         specifier: ^5.6.0
         version: 5.6.0
+      ipaddr.js:
+        specifier: ^2.3.0
+        version: 2.3.0
       joplin-turndown-plugin-gfm:
         specifier: ^1.0.12
         version: 1.0.12
@@ -8141,8 +8144,8 @@ packages:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
     engines: {node: '>= 0.10'}
 
-  ipaddr.js@2.2.0:
-    resolution: {integrity: sha512-Ag3wB2o37wslZS19hZqorUnrnzSkpOVy+IiiDEiTqNubEYpYuHWIf6K4psgN2ZWKExS4xhVCrRVfb/wfW8fWJA==}
+  ipaddr.js@2.3.0:
+    resolution: {integrity: sha512-Zv/pA+ciVFbCSBBjGfaKUya/CcGmUHzTydLMaTwrUUEM2DIEO3iZvueGxmacvmN50fGpGVKeTXpb2LcYQxeVdg==}
     engines: {node: '>= 10'}
 
   is-absolute-url@4.0.1:
@@ -21079,7 +21082,7 @@ snapshots:
 
   ipaddr.js@1.9.1: {}
 
-  ipaddr.js@2.2.0: {}
+  ipaddr.js@2.3.0: {}
 
   is-absolute-url@4.0.1: {}
 
@@ -22450,7 +22453,7 @@ snapshots:
       buffer-crc32: 1.0.0
       eventemitter3: 5.0.1
       fast-xml-parser: 5.4.2
-      ipaddr.js: 2.2.0
+      ipaddr.js: 2.3.0
       lodash: 4.17.23
       mime-types: 2.1.35
       query-string: 7.1.3

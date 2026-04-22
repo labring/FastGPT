@@ -450,4 +450,83 @@ describe('SSRF Protection - isInternalAddress', () => {
       expect(await isInternalAddress('http://dual-stack-public.example.com/')).toBe(false);
     });
   });
+
+  // GHSA-jhqw-944x-xh94: 云元数据端点 SSRF 保护绕过
+  describe('GHSA-jhqw-944x-xh94 元数据端点绕过防护', () => {
+    beforeEach(() => {
+      delete process.env.CHECK_INTERNAL_IP;
+    });
+
+    test('应该阻止显式端口绕过 http://169.254.169.254:80/', async () => {
+      expect(await isInternalAddress('http://169.254.169.254:80/latest/meta-data/')).toBe(true);
+      expect(await isInternalAddress('http://169.254.169.254:80/')).toBe(true);
+    });
+
+    test('应该阻止 IPv6-mapped IPv4 绕过 http://[::ffff:a9fe:a9fe]/', async () => {
+      expect(await isInternalAddress('http://[::ffff:a9fe:a9fe]/latest/meta-data/')).toBe(true);
+      expect(await isInternalAddress('http://[::ffff:169.254.169.254]/')).toBe(true);
+    });
+
+    test('应该阻止十六进制 IP 绕过 http://0xa9fea9fe/', async () => {
+      expect(await isInternalAddress('http://0xa9fea9fe/latest/meta-data/')).toBe(true);
+      expect(await isInternalAddress('http://0xA9FEA9FE/')).toBe(true);
+    });
+
+    test('应该阻止十进制 IP 绕过 http://2852039166/', async () => {
+      expect(await isInternalAddress('http://2852039166/latest/meta-data/')).toBe(true);
+      expect(await isInternalAddress('http://2852039166/')).toBe(true);
+    });
+
+    test('应该阻止尾部点绕过 http://169.254.169.254./', async () => {
+      expect(await isInternalAddress('http://169.254.169.254./latest/meta-data/')).toBe(true);
+      expect(await isInternalAddress('http://169.254.169.254./')).toBe(true);
+    });
+
+    test('应该阻止 nip.io 通配 DNS 绕过', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['169.254.169.254']);
+      vi.mocked(dns.resolve6).mockRejectedValue(new Error('No AAAA records'));
+
+      expect(await isInternalAddress('http://169.254.169.254.nip.io/latest/meta-data/')).toBe(true);
+    });
+
+    test('应该阻止链路本地 /16 段内其他 IP', async () => {
+      expect(await isInternalAddress('http://169.254.1.1/')).toBe(true);
+      expect(await isInternalAddress('http://169.254.254.254:8080/')).toBe(true);
+    });
+
+    test('应该阻止 Alibaba Cloud 元数据 IP', async () => {
+      expect(await isInternalAddress('http://100.100.100.200:80/')).toBe(true);
+    });
+
+    test('应该阻止 AWS IPv6 元数据端点', async () => {
+      expect(await isInternalAddress('http://[fd00:ec2::254]/')).toBe(true);
+    });
+
+    test('应该阻止十进制/十六进制绕过阿里云元数据', async () => {
+      // 100.100.100.200 -> 0x64646464 -> 1684300900... 实际: 100*256^3+100*256^2+100*256+200
+      const decimal = 100 * 256 ** 3 + 100 * 256 ** 2 + 100 * 256 + 200;
+      expect(await isInternalAddress(`http://${decimal}/`)).toBe(true);
+      expect(await isInternalAddress(`http://0x${decimal.toString(16)}/`)).toBe(true);
+    });
+
+    test('应该阻止元数据主机名的尾部点/大小写变体', async () => {
+      expect(await isInternalAddress('http://METADATA.google.internal/')).toBe(true);
+      expect(await isInternalAddress('http://metadata.google.internal./')).toBe(true);
+      expect(await isInternalAddress('http://kubernetes.default.svc./')).toBe(true);
+    });
+
+    test('域名解析到阿里云元数据 IP 时始终阻止', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['100.100.100.200']);
+      vi.mocked(dns.resolve6).mockRejectedValue(new Error('No AAAA records'));
+
+      expect(await isInternalAddress('http://rebind.example.com/')).toBe(true);
+    });
+
+    test('域名解析到 AWS 元数据 IP 时始终阻止（无需 CHECK_INTERNAL_IP）', async () => {
+      vi.mocked(dns.resolve4).mockResolvedValue(['169.254.169.254']);
+      vi.mocked(dns.resolve6).mockRejectedValue(new Error('No AAAA records'));
+
+      expect(await isInternalAddress('http://metadata-proxy.example.com/')).toBe(true);
+    });
+  });
 });
