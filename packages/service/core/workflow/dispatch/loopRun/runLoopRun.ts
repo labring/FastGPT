@@ -2,6 +2,7 @@ import { cloneDeep } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps
@@ -15,6 +16,7 @@ import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/u
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 
 import { env } from '../../../../env';
+import { i18nT } from '../../../../../web/i18n/utils';
 import { runWorkflow } from '..';
 import { collectResponseFeedbacks, pushSubWorkflowUsage } from '../utils';
 import {
@@ -147,18 +149,25 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       )
     });
 
-    loopResponseDetail.push(...response.flowResponses);
+    const iterationChildrenResponses = response.flowResponses;
+    const iterationRunningTime = iterationChildrenResponses.reduce(
+      (acc, r) => acc + (typeof r.runningTime === 'number' ? r.runningTime : 0),
+      0
+    );
     assistantResponses.push(...response.assistantResponses);
-    totalPoints += pushSubWorkflowUsage({
+    const iterationTotalPoints = pushSubWorkflowUsage({
       usagePush: props.usagePush,
       response,
       name,
       iteration
     });
+    totalPoints += iterationTotalPoints;
     collectResponseFeedbacks(response, customFeedbacks);
     newVariables = { ...newVariables, ...response.newVariables };
 
     // Pause without writing a history entry — the resumed run will record it.
+    // Children for this in-flight iteration are not wrapped yet; the resumed
+    // run finishes the iteration and pushes a single wrapper entry there.
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       break;
@@ -176,17 +185,39 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       childrenNodeIdList
     });
 
+    // Wrap this iteration as a virtual task node so the whole-response tree
+    // shows a per-iteration layer (mirrors parallelRun's aggregation).
+    const pushIterationDetail = (opts: { error?: string }) => {
+      const wrapper: ChatHistoryItemResType = {
+        id: `${node.nodeId}_iter_${iteration}`,
+        nodeId: `${node.nodeId}_iter_${iteration}`,
+        moduleType: FlowNodeTypeEnum.loopRun,
+        moduleName: i18nT('workflow:parallel_task'),
+        moduleNameArgs: { index: iteration },
+        runningTime: Math.round(iterationRunningTime * 100) / 100,
+        totalPoints: iterationTotalPoints,
+        loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
+        loopOutputValue: customOutputs,
+        error: opts.error,
+        childrenResponses: iterationChildrenResponses
+      };
+      loopResponseDetail.push(wrapper);
+    };
+
     const errorItem = response.flowResponses.find((r) => r.error);
     if (errorItem) {
+      const errText = getErrText(errorItem.error);
+      pushIterationDetail({ error: errText });
       loopHistory.push({
         iteration,
         customOutputs,
         success: false,
-        error: getErrText(errorItem.error)
+        error: errText
       });
       break;
     }
 
+    pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
 
     if (isLoopBreakHit(response.flowResponses)) break;

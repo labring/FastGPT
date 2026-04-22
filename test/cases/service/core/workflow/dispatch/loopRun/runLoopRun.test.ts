@@ -610,4 +610,103 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     // chatNode didn't run this iteration → ref filtered to undefined, not leaked.
     expect(history[1].customOutputs.answer).toBeUndefined();
   });
+
+  it('loopRunDetail 按轮包装为虚拟任务节点，childrenResponses 带本轮子节点', async () => {
+    runWorkflowMock.mockImplementation(() =>
+      Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+        })
+      )
+    );
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b'],
+      [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+    });
+
+    const result: any = await dispatchLoopRun(props);
+    const detail = result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunDetail;
+    expect(detail).toHaveLength(2);
+    expect(detail[0]).toMatchObject({
+      moduleType: FlowNodeTypeEnum.loopRun,
+      moduleName: 'workflow:parallel_task',
+      moduleNameArgs: { index: 1 },
+      loopInputValue: 'a',
+      error: undefined
+    });
+    expect(detail[0].childrenResponses).toHaveLength(2);
+    expect(detail[0].childrenResponses[0].nodeId).toBe('startNode');
+    expect(detail[1].moduleNameArgs).toEqual({ index: 2 });
+    expect(detail[1].loopInputValue).toBe('b');
+  });
+
+  it('loopRunDetail 失败轮包装带 error 字段并包含触发错误的子节点', async () => {
+    let iter = 0;
+    runWorkflowMock.mockImplementation(() => {
+      iter++;
+      if (iter === 2) {
+        return Promise.resolve(
+          makeDispatchFlowResponse({
+            flowResponses: [
+              makeResponseItem('startNode'),
+              makeResponseItem('chatNode', { error: 'kaboom' })
+            ]
+          })
+        );
+      }
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+        })
+      );
+    });
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b', 'c'],
+      [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+    });
+
+    const result: any = await dispatchLoopRun(props);
+    const detail = result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunDetail;
+    expect(detail).toHaveLength(2);
+    expect(detail[0]).toMatchObject({ moduleNameArgs: { index: 1 }, error: undefined });
+    expect(detail[1]).toMatchObject({
+      moduleNameArgs: { index: 2 },
+      loopInputValue: 'b',
+      error: 'kaboom'
+    });
+    expect(detail[1].childrenResponses.map((c: any) => c.nodeId)).toEqual([
+      'startNode',
+      'chatNode'
+    ]);
+  });
+
+  it('interactive 中断轮：不产出 loopRunDetail 包装节点', async () => {
+    const interactivePayload: any = {
+      entryNodeIds: ['userSelectNode'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      interactive: { type: 'userSelect', params: {} }
+    };
+    runWorkflowMock.mockImplementation(() =>
+      Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode')],
+          workflowInteractiveResponse: interactivePayload
+        })
+      )
+    );
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b'],
+      [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+    });
+
+    const result: any = await dispatchLoopRun(props);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunDetail).toEqual([]);
+  });
 });

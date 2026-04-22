@@ -494,7 +494,11 @@ export const useWorkflow = () => {
   // 调用方需传入已按距离筛选过的 Top-K 节点,避免与其他遍历重复扫全量节点。
   const applyHelperLineSnapSync = useMemoizedFn(
     (change: NodePositionChange, nearestNodes: Node[]) => {
-      if (!change.dragging || !change.position) return;
+      if (!change.dragging || !change.position) {
+        setHelperLineHorizontal(undefined);
+        setHelperLineVertical(undefined);
+        return;
+      }
 
       const helperLines = computeHelperLines(change, nearestNodes);
       change.position.x = helperLines.snapPosition.x ?? change.position.x;
@@ -789,6 +793,8 @@ export const useWorkflow = () => {
 
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
+      setHelperLineHorizontal(undefined);
+      setHelperLineVertical(undefined);
       checkNodeOverLoopNode(node);
     },
     [checkNodeOverLoopNode]

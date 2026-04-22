@@ -127,7 +127,7 @@ export const WholeResponseContent = ({
                 border: '1px solid',
                 borderColor: 'myGray.200',
                 color: 'myGray.900',
-                bg: '#F7F8FA'
+                bg: 'myGray.50'
               })}
         >
           <Box
@@ -246,8 +246,8 @@ export const WholeResponseContent = ({
                       role={'group'}
                       alignItems={'center'}
                       gap={2}
-                      bg={'myGray.50'}
-                      borderRadius={'8px'}
+                      bg={'myGray.100'}
+                      borderRadius={'6px'}
                       px={3}
                       py={2}
                       cursor={'pointer'}
@@ -260,7 +260,8 @@ export const WholeResponseContent = ({
                         flex={'1 0 0'}
                         w={0}
                         fontSize={'12px'}
-                        lineHeight={'18px'}
+                        lineHeight={'16px'}
+                        letterSpacing={'0.4px'}
                         textOverflow={'ellipsis'}
                         overflow={'hidden'}
                         whiteSpace={'nowrap'}
