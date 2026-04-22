@@ -35,14 +35,11 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs, isFolded, catchError } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const splitOutput = useContextSelector(WorkflowUtilsContext, (v) => v.splitOutput);
-  const { getNodeById, childNodeIds, setNodes } = useContextSelector(
+  const { getNodeById, setNodes, childrenNodeIdListMap } = useContextSelector(
     WorkflowBufferDataContext,
-    (v) => ({
-      getNodeById: v.getNodeById,
-      childNodeIds: v.childrenNodeIdListMap[nodeId] ?? [],
-      setNodes: v.setNodes
-    })
+    (v) => v
   );
+  const childNodeIds = childrenNodeIdListMap[nodeId] ?? [];
   const getRawNodeById = useContextSelector(WorkflowInitContext, (v) => v.getRawNodeById);
 
   const mode =

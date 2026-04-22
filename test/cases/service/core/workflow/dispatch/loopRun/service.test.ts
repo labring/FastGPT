@@ -169,6 +169,38 @@ describe('loopRun/service', () => {
       });
       expect(snapshot).toEqual({});
     });
+
+    it('引用循环体外的节点 - 不在 childrenNodeIdList 内 → 跳过 finishedNodeIds 过滤', () => {
+      // A: 循环体外的节点（如 代码运行#3），其 output 在迭代中被 变量更新 追加写入
+      // B: 循环体内跑过的节点
+      const customOutputInputs: FlowNodeInputItemType[] = [
+        makeInput({ key: 'a', canEdit: true, value: ['A', 'outA'] }),
+        makeInput({ key: 'b', canEdit: true, value: ['B', 'outB'] })
+      ];
+      const snapshot = readCustomOutputSnapshot({
+        customOutputInputs,
+        runtimeNodes: [nodeA, nodeB],
+        variables: {},
+        finishedNodeIds: new Set(['B']), // 只有 B（循环体内）跑过
+        childrenNodeIdList: ['B'] // A 在循环体外
+      });
+      expect(snapshot).toEqual({ a: 'valueFromA', b: 'valueFromB' });
+    });
+
+    it('引用循环体内跳过的节点 - 在 childrenNodeIdList 内但未跑 → undefined', () => {
+      const customOutputInputs: FlowNodeInputItemType[] = [
+        makeInput({ key: 'a', canEdit: true, value: ['A', 'outA'] }),
+        makeInput({ key: 'b', canEdit: true, value: ['B', 'outB'] })
+      ];
+      const snapshot = readCustomOutputSnapshot({
+        customOutputInputs,
+        runtimeNodes: [nodeA, nodeB],
+        variables: {},
+        finishedNodeIds: new Set(['B']),
+        childrenNodeIdList: ['A', 'B'] // 都在循环体内，A 本轮未跑
+      });
+      expect(snapshot).toEqual({ a: undefined, b: 'valueFromB' });
+    });
   });
 
   describe('injectLoopRunStart', () => {

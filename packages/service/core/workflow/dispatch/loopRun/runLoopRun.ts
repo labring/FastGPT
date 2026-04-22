@@ -173,7 +173,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       customOutputInputs,
       runtimeNodes: isolatedNodes,
       variables: newVariables,
-      finishedNodeIds
+      finishedNodeIds,
+      childrenNodeIdList
     });
 
     const errorItem = response.flowResponses.find((r) => r.error);

@@ -509,9 +509,22 @@ export const WholeResponseContent = ({
       />
 
       {/* update var */}
+      {/* `updateVarResult` is `updateList.map(...)` — outer dim = rows in the
+          variable-update config. Single-row is the common case, where the
+          outer 1-element wrapper is noise (esp. bad when inner is itself an
+          array → visual `[[...]]`). Unwrap it for all value types for
+          consistency, but keep the wrapper if inner is null/undefined:
+          Row hides rows whose `val` falsey-coerces to undefined, and `[null]`
+          preserves the "invalid reference" signal this node emits. */}
       <Row
         label={t('common:core.chat.response.update_var_result')}
-        value={activeModule?.updateVarResult}
+        value={(() => {
+          const r = activeModule?.updateVarResult;
+          if (Array.isArray(r) && r.length === 1 && r[0] !== null && r[0] !== undefined) {
+            return r[0];
+          }
+          return r;
+        })()}
       />
 
       {/* loop */}

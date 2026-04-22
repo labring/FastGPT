@@ -34,20 +34,25 @@ export const extractFinishedNodeIds = (flowResponses: ChatHistoryItemResType[]):
 /**
  * When `finishedNodeIds` is provided (failure iteration), refs whose target
  * did not run resolve to undefined so stale values from earlier iterations
- * don't leak. Global variable refs bypass the filter.
+ * don't leak. Global variable refs and refs targeting nodes *outside* the
+ * loop body bypass the filter — only in-body nodes are subject to the
+ * skipped-branch guard.
  */
 export const readCustomOutputSnapshot = ({
   customOutputInputs,
   runtimeNodes,
   variables,
-  finishedNodeIds
+  finishedNodeIds,
+  childrenNodeIdList
 }: {
   customOutputInputs: FlowNodeInputItemType[];
   runtimeNodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
   finishedNodeIds?: Set<string>;
+  childrenNodeIdList?: string[];
 }): Record<string, any> => {
   const nodesMap = new Map(runtimeNodes.map((n) => [n.nodeId, n]));
+  const childrenSet = childrenNodeIdList ? new Set(childrenNodeIdList) : undefined;
   const snapshot: Record<string, any> = {};
 
   for (const item of customOutputInputs) {
@@ -65,6 +70,10 @@ export const readCustomOutputSnapshot = ({
       const allFinished = refs.every(([nodeId]) => {
         if (!nodeId) return true;
         if (nodeId === VARIABLE_NODE_ID) return true;
+        // Refs to nodes outside the loop body (e.g. an outer 代码运行 whose
+        // output is being mutated via 变量更新) aren't in this iteration's
+        // flowResponses — exempt them from the skipped-branch guard.
+        if (childrenSet && !childrenSet.has(nodeId)) return true;
         return finishedNodeIds.has(nodeId);
       });
       if (!allFinished) {

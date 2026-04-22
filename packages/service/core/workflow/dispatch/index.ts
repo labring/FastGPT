@@ -920,8 +920,17 @@ export class WorkflowQueue {
             if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
+                // Mirror the dispatcher-throw path: surface error on nodeResponse so
+                // observers (e.g. runLoopRun) can detect failure uniformly via `.error`,
+                // instead of only `.errorText`.
+                const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+                const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
                 return {
                   ...result,
+                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                    ...nodeResponseBase,
+                    error: errText
+                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )

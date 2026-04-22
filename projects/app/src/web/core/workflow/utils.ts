@@ -524,42 +524,11 @@ export const checkWorkflowNodeAndConnection = ({
           (inputs.find((input) => input.key === NodeInputKeyEnum.childrenNodeIdList)
             ?.value as string[]) ?? [];
         const childSet = new Set(children);
-        const startNodeId = nodes.find(
+        const hasBreak = nodes.some(
           (n) =>
-            childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunStart
-        )?.data.nodeId;
-        const breakIds = new Set(
-          nodes
-            .filter(
-              (n) =>
-                childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
-            )
-            .map((n) => n.data.nodeId)
+            childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
         );
-        if (!startNodeId || breakIds.size === 0) {
-          return [data.nodeId];
-        }
-        // BFS from loopRunStart along edges restricted to this container's children.
-        // A break node that sits on an unreachable branch (e.g. behind a constant-false
-        // if-else) would otherwise only be caught at runtime via the max-iterations guard.
-        const visited = new Set<string>();
-        const queue: string[] = [startNodeId];
-        let reached = false;
-        while (queue.length > 0) {
-          const cur = queue.shift()!;
-          if (visited.has(cur)) continue;
-          visited.add(cur);
-          if (breakIds.has(cur)) {
-            reached = true;
-            break;
-          }
-          for (const edge of edges) {
-            if (edge.source === cur && childSet.has(edge.target) && !visited.has(edge.target)) {
-              queue.push(edge.target);
-            }
-          }
-        }
-        if (!reached) {
+        if (!hasBreak) {
           return [data.nodeId];
         }
       }
@@ -578,8 +547,22 @@ export const checkWorkflowNodeAndConnection = ({
     }
 
     // check node input
+    const loopRunMode =
+      data.flowNodeType === FlowNodeTypeEnum.loopRun
+        ? (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
+            | LoopRunModeEnum
+            | undefined)
+        : undefined;
     if (
       inputs.some((input) => {
+        // Conditional loopRun hides loopRunInputArray in the UI; its required flag is
+        // only meaningful in array mode, so skip it here to avoid spurious failures.
+        if (
+          loopRunMode === LoopRunModeEnum.conditional &&
+          input.key === NodeInputKeyEnum.loopRunInputArray
+        ) {
+          return false;
+        }
         if (
           !input.valueType ||
           [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)

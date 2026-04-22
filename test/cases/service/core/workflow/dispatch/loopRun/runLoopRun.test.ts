@@ -324,6 +324,47 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunIterations).toBe(3);
   });
 
+  it('conditional mode - 子节点 catchError=false 出错 → 当轮 break, 后续迭代不执行', async () => {
+    // 对齐 dispatch/index.ts 错误归一化后的 flowResponses 形状：
+    // dispatcher 返回 `{error}` + catchError=false 会把 error 写回 nodeResponse，
+    // 所以 flowResponse 项上 `r.error` 必定可见。用户场景：code 节点 iter=2 throw。
+    let iter = 0;
+    runWorkflowMock.mockImplementation(() => {
+      iter++;
+      if (iter === 2) {
+        return Promise.resolve(
+          makeDispatchFlowResponse({
+            flowResponses: [
+              makeResponseItem('startNode'),
+              makeResponseItem('codeNode', { error: '111' })
+            ]
+          })
+        );
+      }
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode'), makeResponseItem('codeNode')]
+        })
+      );
+    });
+
+    const props = makeProps(
+      { [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional },
+      { withBreak: true }
+    );
+
+    const result: any = await dispatchLoopRun(props);
+    expect(iter).toBe(2);
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+    expect(nodeResponse.loopRunIterations).toBe(2);
+    expect(nodeResponse.loopRunHistory[1]).toMatchObject({
+      iteration: 2,
+      success: false,
+      error: '111'
+    });
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('111');
+  });
+
   it('conditional mode - 无 break 节点 → precheck 返回 errorText 并不执行任何迭代', async () => {
     const props = makeProps({ [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.conditional });
     const result: any = await dispatchLoopRun(props);
