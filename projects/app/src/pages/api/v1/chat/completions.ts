@@ -38,6 +38,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { enrichUserContentWithParsedFiles } from '@fastgpt/service/core/chat/utils';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -255,6 +256,45 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
+    runningChatId = saveChatId;
+    runningAppId = String(app._id);
+
+    await ensureGenerateChat({
+      appId: runningAppId,
+      chatId: runningChatId,
+      teamId,
+      tmbId: tmbId,
+      source,
+      sourceName: sourceName || '',
+      shareId,
+      outLinkUid: outLinkUserId
+    });
+
+    // 流式 + 站内 online：工作流 dispatch 走 v2 管道；与 HTTP 路径是 /v1 还是 /v2 无关
+    const shouldUseWorkflowStreamV2 = stream && source === ChatSourceEnum.online;
+    const workflowApiVersion = shouldUseWorkflowStreamV2 ? 'v2' : 'v1';
+    // OpenAI 兼容 /v1/chat/completions 不镜像 SSE 到 Redis；断线续传由 /api/v2/chat/completions + /api/core/chat/resume 承担
+
+    const enrichedUserQuestion = await enrichUserContentWithParsedFiles({
+      userContent: userQuestion,
+      requestOrigin: req.headers.origin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+      teamId,
+      tmbId: String(tmbId)
+    });
+
+    if (!interactive) {
+      await ensurePendingChatRoundItems({
+        chatId: saveChatId,
+        appId: runningAppId,
+        teamId,
+        tmbId: String(tmbId),
+        userContent: enrichedUserQuestion,
+        responseChatItemId
+      });
+    }
+
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
@@ -338,7 +378,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId,
       source,
       sourceName: sourceName || '',
-      userContent: userQuestion,
+      userContent: enrichedUserQuestion,
       aiContent: aiResponse,
       metadata: {
         ...metadata,

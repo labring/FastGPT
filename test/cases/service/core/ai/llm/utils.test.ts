@@ -500,6 +500,30 @@ describe('loadRequestMessages function tests', () => {
       const content = result[0].content as any[];
       expect(content).toHaveLength(2);
     });
+
+    it('should keep text content when file_url is filtered out', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [
+            {
+              type: 'file_url',
+              name: 'a.pdf',
+              url: '/private/chat/a.pdf'
+            },
+            {
+              type: 'text',
+              text: '<FilesContent>File body</FilesContent>'
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('<FilesContent>File body</FilesContent>');
+    });
   });
 
   describe('Image processing', () => {

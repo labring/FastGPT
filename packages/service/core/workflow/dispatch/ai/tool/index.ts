@@ -26,7 +26,7 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt } from './constants';
 import { filterToolResponseToPreview } from './utils';
-import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
+import { getFileContentFromLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '../../../utils/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
@@ -133,7 +133,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const globalFiles = chatValue2RuntimePrompt(query).files;
     const { documentQuoteText, userFiles } = await getMultiInput({
       runningUserInfo,
-      histories: chatHistories,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
       customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
@@ -146,15 +145,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       uId: props.uid
     });
 
-    const concatenateSystemPrompt = [
-      toolModel.defaultSystemChatPrompt,
-      systemPrompt,
-      documentQuoteText
-        ? replaceVariable(getDocumentQuotePrompt(version), {
-            quote: documentQuoteText
-          })
-        : ''
-    ]
+    const filePrompt = documentQuoteText
+      ? replaceVariable(getDocumentQuotePrompt(version), {
+          quote: documentQuoteText
+        })
+      : '';
+    const finalUserInput = [userChatInput, filePrompt]
+      .filter(Boolean)
+      .join('\n\n===---===---===\n\n');
+
+    const concatenateSystemPrompt = [toolModel.defaultSystemChatPrompt, systemPrompt]
       .filter(Boolean)
       .join('\n\n===---===---===\n\n');
 
@@ -179,7 +179,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           value: toolCallMessagesAdapt({
             skip: !hasReadFilesTool,
             userInput: runtimePrompt2ChatsValue({
-              text: userChatInput,
+              text: finalUserInput,
               files: userFiles
             })
           })
@@ -312,7 +312,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
 const getMultiInput = async ({
   runningUserInfo,
-  histories,
   fileLinks,
   requestOrigin,
   maxFiles,
@@ -325,7 +324,6 @@ const getMultiInput = async ({
   uId
 }: {
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
-  histories: ChatItemMiniType[];
   fileLinks?: string[];
   requestOrigin?: string;
   maxFiles: number;
@@ -338,26 +336,29 @@ const getMultiInput = async ({
   uId: string;
 }) => {
   // Not file quote
-  if (!fileLinks || hasReadFilesTool) {
+  if (hasReadFilesTool) {
     return {
       documentQuoteText: '',
       userFiles: inputFiles
     };
   }
 
-  const filesFromHistories = getHistoryFileLinks(histories);
-  const urls = [...fileLinks, ...filesFromHistories];
+  const urls =
+    fileLinks && fileLinks.length > 0
+      ? fileLinks
+      : inputFiles
+          .filter((file) => file.type === 'file')
+          .map((file) => file.url)
+          .filter(Boolean);
 
   if (urls.length === 0) {
     return {
       documentQuoteText: '',
-      userFiles: []
+      userFiles: inputFiles
     };
   }
 
-  // Get files from histories
   const { text } = await getFileContentFromLinks({
-    // Concat fileUrlList and filesFromHistories; remove not supported files
     urls,
     requestOrigin,
     maxFiles,
@@ -369,9 +370,12 @@ const getMultiInput = async ({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks
-      .map((url) => parseUrlToFileType(url))
-      .filter(Boolean) as UserChatItemFileItemType[]
+    userFiles:
+      fileLinks && fileLinks.length > 0
+        ? (fileLinks
+            .map((url) => parseUrlToFileType(url))
+            .filter(Boolean) as UserChatItemFileItemType[])
+        : inputFiles
   };
 };
 
