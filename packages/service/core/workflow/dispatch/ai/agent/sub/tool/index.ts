@@ -1,7 +1,6 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getSystemToolById } from '../../../../../../app/tool/controller';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import { MongoSystemTool } from '../../../../../../plugin/tool/systemToolSchema';
@@ -21,6 +20,9 @@ import { MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
 import { getS3ChatSource } from '../../../../../../../common/s3/sources/chat';
 import { parseToolId } from '../../../../child/runTool';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -29,6 +31,7 @@ type SystemInputConfigType = {
 export type Props = {
   tool: {
     name: string;
+    avatar?: string;
     version?: string;
     toolConfig: RuntimeNodeItemType['toolConfig'];
   };
@@ -45,7 +48,7 @@ export type Props = {
 };
 
 export const dispatchTool = async ({
-  tool: { name, version, toolConfig },
+  tool: { name, avatar, version, toolConfig },
   params: { system_input_config, ...params },
   runningUserInfo,
   runningAppInfo,
@@ -53,19 +56,29 @@ export const dispatchTool = async ({
   uid,
   variables,
   workflowStreamResponse
-}: Props): Promise<
-  DispatchSubAppResponse & {
-    toolParams: Record<string, any>;
-  }
-> => {
-  const startTime = Date.now();
-
-  const getErrResponse = (error: any) => {
+}: Props): Promise<DispatchSubAppResponse> => {
+  const getNodeResponse = ({
+    result,
+    response
+  }: RequireOnlyOne<{
+    result?: any;
+    response?: string;
+  }>): DispatchSubAppResponse['nodeResponse'] => {
     return {
-      toolParams: params,
-      runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-      response: getErrText(error, 'Call tool error'),
-      usages: []
+      moduleType: FlowNodeTypeEnum.tool,
+      moduleName: name,
+      moduleLogo: avatar,
+      toolInput: params,
+      toolRes: result || response
+    };
+  };
+  const getErrResponse = (error: any): DispatchSubAppResponse => {
+    const response = getErrText(error, 'Call tool error');
+    return {
+      response,
+      nodeResponse: getNodeResponse({
+        response
+      })
     };
   };
 
@@ -165,9 +178,9 @@ export const dispatchTool = async ({
 
       return {
         response: JSON.stringify(result),
-        toolParams: params,
-        result,
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        nodeResponse: getNodeResponse({
+          result
+        }),
         usages: [
           {
             moduleName: name,
@@ -196,11 +209,10 @@ export const dispatchTool = async ({
         params
       });
       return {
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         response: JSON.stringify(result),
-        toolParams: params,
-        result,
-        usages: []
+        nodeResponse: getNodeResponse({
+          result: result
+        })
       };
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
@@ -242,19 +254,18 @@ export const dispatchTool = async ({
 
       if (errorMsg) {
         return {
-          toolParams: params,
-          runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-          response: errorMsg,
-          usages: []
+          nodeResponse: getNodeResponse({
+            response: errorMsg
+          }),
+          response: errorMsg
         };
       }
 
       return {
-        toolParams: params,
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-        response: typeof data === 'object' ? JSON.stringify(data) : data,
-        result: data,
-        usages: []
+        nodeResponse: getNodeResponse({
+          result: data
+        }),
+        response: typeof data === 'object' ? JSON.stringify(data) : data
       };
     } else {
       return getErrResponse("Can't find the tool");

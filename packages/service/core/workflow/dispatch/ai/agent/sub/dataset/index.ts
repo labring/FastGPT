@@ -7,7 +7,6 @@ import { countPromptTokens } from '../../../../../../../common/string/tiktoken/i
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../../../../../../dataset/schema';
 import {
@@ -15,29 +14,19 @@ import {
   type DefaultSearchDatasetDataProps
 } from '../../../../../../dataset/search/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
+import type { DispatchSubAppResponse } from '../../type';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { DatasetSearchToolSchema } from './utils';
+import { parseJsonArgs } from '../../../../../../ai/utils';
+const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
   teamId: string;
   tmbId: string;
-  query: string;
+  args: string;
   llmModel: string;
-  config: {
-    datasets: SelectedDatasetType[];
-    similarity: number;
-    maxTokens: number;
-    searchMode: DatasetSearchModeEnum;
-    embeddingWeight?: number;
-    usingReRank: boolean;
-    rerankModel?: string;
-    rerankWeight?: number;
-    usingExtensionQuery: boolean;
-    extensionModel?: string;
-    extensionBg?: string;
-    collectionFilterMatch?: string;
-  };
+  datasetParams?: AppFormEditFormType['dataset'];
 };
 
 /**
@@ -157,38 +146,41 @@ ${chunkSummaries}
 };
 
 export const dispatchAgentDatasetSearch = async ({
-  query,
-  config,
+  args,
+  datasetParams,
   teamId,
   tmbId,
   llmModel
-}: DatasetSearchParams): Promise<{
-  response: string;
-  usages: ChatNodeUsageType[];
-  nodeResponse?: ChatHistoryItemResType;
-}> => {
-  const startTime = Date.now();
-  getLogger(LogCategories.MODULE.AI.AGENT).debug('[Agent Dataset Search] Starting', {
+}: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
+  if (!datasetParams || datasetParams.datasets.length === 0) {
+    return {
+      response: 'No dataset selected'
+    };
+  }
+
+  const toolParams = DatasetSearchToolSchema.safeParse(parseJsonArgs(args));
+  if (!toolParams.success) {
+    return {
+      response: toolParams.error.message
+    };
+  }
+
+  const query = toolParams.data.query;
+
+  logger.debug('[Agent Dataset Search] Starting', {
     query,
-    config
+    datasetParams
   });
 
   try {
-    const datasetIds = await Promise.resolve(config.datasets.map((item) => item.datasetId));
-
-    if (datasetIds.length === 0) {
-      return {
-        response: 'No dataset selected',
-        usages: []
-      };
-    }
+    const datasetIds = await Promise.resolve(datasetParams.datasets.map((item) => item.datasetId));
 
     // Get vector model
     const vectorModel = getEmbeddingModel(
       (await MongoDataset.findById(datasetIds[0], 'vectorModel').lean())?.vectorModel
     );
     // Get Rerank Model
-    const rerankModelData = getRerankModel(config.rerankModel);
+    const rerankModelData = getRerankModel(datasetParams.rerankModel);
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
@@ -196,17 +188,17 @@ export const dispatchAgentDatasetSearch = async ({
       reRankQuery: query,
       queries: [query],
       model: vectorModel.model,
-      similarity: config.similarity,
-      limit: config.maxTokens,
+      similarity: datasetParams.similarity ?? 0.4,
+      limit: datasetParams.limit || 5000,
       datasetIds,
-      searchMode: config.searchMode,
-      embeddingWeight: config.embeddingWeight,
-      usingReRank: config.usingReRank,
+      searchMode: datasetParams.searchMode,
+      embeddingWeight: datasetParams.embeddingWeight,
+      usingReRank: datasetParams.usingReRank,
       rerankModel: rerankModelData,
-      rerankWeight: config.rerankWeight,
-      datasetSearchUsingExtensionQuery: config.usingExtensionQuery,
-      datasetSearchExtensionModel: config.extensionModel,
-      datasetSearchExtensionBg: config.extensionBg
+      rerankWeight: datasetParams.rerankWeight ?? 0.5,
+      datasetSearchUsingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
+      datasetSearchExtensionModel: datasetParams.datasetSearchExtensionModel,
+      datasetSearchExtensionBg: datasetParams.datasetSearchExtensionBg
     };
     const {
       searchRes,
@@ -295,29 +287,24 @@ export const dispatchAgentDatasetSearch = async ({
         });
       }
     }
-    const totalPoints = usages.reduce((acc, item) => acc + item.totalPoints, 0);
 
-    const id = getNanoid(6);
-    const nodeResponse: ChatHistoryItemResType = {
-      nodeId: id,
-      id: id,
+    const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
-      totalPoints,
       query,
       embeddingModel: vectorModel.name,
       embeddingTokens,
-      similarity: usingSimilarityFilter ? config.similarity : undefined,
-      limit: config.maxTokens,
-      searchMode: config.searchMode,
+      similarity: usingSimilarityFilter ? searchData.similarity : undefined,
+      limit: searchData.limit,
+      searchMode: searchData.searchMode,
       embeddingWeight:
-        config.searchMode === DatasetSearchModeEnum.mixedRecall
-          ? config.embeddingWeight
+        searchData.searchMode === DatasetSearchModeEnum.mixedRecall
+          ? searchData.embeddingWeight
           : undefined,
       // Rerank
       ...(searchUsingReRank && {
         rerankModel: rerankModelData?.name,
-        rerankWeight: config.rerankWeight,
+        rerankWeight: searchData.rerankWeight,
         reRankInputTokens
       }),
       searchUsingReRank,
@@ -330,8 +317,7 @@ export const dispatchAgentDatasetSearch = async ({
           }
         : undefined,
       // Results
-      quoteList: searchResults,
-      runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
+      quoteList: searchResults
     };
 
     return {
@@ -340,10 +326,9 @@ export const dispatchAgentDatasetSearch = async ({
       nodeResponse
     };
   } catch (error) {
-    getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] Failed', { error });
+    logger.error('[Agent Dataset Search] Failed', { error });
     return {
-      response: `Failed to search dataset: ${getErrText(error)}`,
-      usages: []
+      response: `Failed to search dataset: ${getErrText(error)}`
     };
   }
 };

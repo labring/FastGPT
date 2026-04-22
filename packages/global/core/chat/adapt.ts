@@ -217,7 +217,7 @@ export const GPTMessages2Chats = ({
   messages: ChatCompletionMessageParam[];
   reserveTool?: boolean;
   reserveReason?: boolean;
-  getToolInfo?: (name: string) => { name: string; avatar: string };
+  getToolInfo?: (name: string) => { name: string; avatar?: string } | undefined;
 }): ChatItemMiniType[] => {
   const chatMessages = messages
     .map((item) => {

@@ -31,6 +31,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { saveLLMRequestRecord } from '../record/controller';
+import type { ToolCallEventType } from './toolCall/type';
 
 const getRequestId = () => {
   return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
@@ -38,11 +39,9 @@ const getRequestId = () => {
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
-export type ResponseEvents = {
+export type ResponseEvents = ToolCallEventType & {
   onStreaming?: (e: { text: string }) => void;
   onReasoning?: (e: { text: string }) => void;
-  onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
-  onToolParam?: (e: { tool: ChatCompletionMessageToolCall; params: string }) => void;
 };
 
 export type CreateLLMResponseProps<
@@ -459,7 +458,7 @@ export const createStreamResponse = async ({
                 if (currentTool && arg) {
                   currentTool.function.arguments += arg;
 
-                  onToolParam?.({ tool: currentTool, params: arg });
+                  onToolParam?.({ call: currentTool, argsDelta: arg });
                 }
               }
             });

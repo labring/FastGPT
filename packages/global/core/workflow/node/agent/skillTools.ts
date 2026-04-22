@@ -1,5 +1,7 @@
 import z from 'zod';
 import type { ChatCompletionTool } from '../../../ai/llm/type';
+import type { I18nStringType, localeType } from '../../../../common/i18n/type';
+import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SandboxToolIds {
   readFile = 'sandbox_read_file',
@@ -10,7 +12,10 @@ export enum SandboxToolIds {
   fetchUserFile = 'sandbox_fetch_user_file'
 }
 
-export const skillToolsMap = {
+export const skillToolsMap: Record<
+  string,
+  { name: I18nStringType; avatar: string; toolDescription: string }
+> = {
   // Sandbox tools
   [SandboxToolIds.readFile]: {
     name: {
@@ -71,6 +76,19 @@ export const skillToolsMap = {
     avatar: 'core/workflow/template/readFiles',
     toolDescription:
       'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.'
+  }
+};
+export const getSkillToolInfo = (
+  id: string,
+  lang: localeType = 'en'
+): { name: string; avatar: string; toolDescription: string } | undefined => {
+  const toolInfo = skillToolsMap[id];
+  if (toolInfo) {
+    return {
+      name: parseI18nString(toolInfo.name, lang),
+      avatar: toolInfo.avatar,
+      toolDescription: toolInfo.toolDescription
+    };
   }
 };
 

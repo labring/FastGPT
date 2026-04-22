@@ -200,7 +200,7 @@ export const dispatchSandboxGetFileUrl = async ({
 
 #### 3.5.1 普通工作流：toolCall.ts
 
-`handleToolResponse` 中合并 `SANDBOX_TOOL_NAME` 和 `SANDBOX_GET_FILE_URL_TOOL_NAME` 到同一拦截块：
+`onRunTool` 中合并 `SANDBOX_TOOL_NAME` 和 `SANDBOX_GET_FILE_URL_TOOL_NAME` 到同一拦截块：
 
 ```typescript
 if (

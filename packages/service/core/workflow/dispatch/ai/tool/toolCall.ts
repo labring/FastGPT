@@ -14,20 +14,12 @@ import { parseJsonArgs } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
-import { runAgentCall } from '../../../../ai/llm/agentCall';
+import { runAgentLoop } from '../../../../ai/llm/agentLoop';
 import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
-import {
-  SANDBOX_SYSTEM_PROMPT,
-  SANDBOX_ICON,
-  SANDBOX_TOOL_NAME,
-  SANDBOX_GET_FILE_URL_TOOL_NAME,
-  SANDBOX_TOOLS
-} from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SYSTEM_PROMPT, SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxToolWorkflowResponse } from './constants';
-import { callSandboxTool } from '../../../../ai/sandbox/toolCall';
-import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { getSandboxToolInfo, runSandboxTools } from '../../../../ai/sandbox/toolCall';
 
 type ResponseType = {
   requestIds: string[];
@@ -75,6 +67,11 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     }
   } = workflowProps;
 
+  // 注入 sandbox_shell 工具和提示词
+  let finalMessages = messages;
+  // 工具响应原始值
+  const toolRunResponses: ChildResponseItemType[] = [];
+
   // 构建 tools 参数
   const toolNodesMap = new Map<string, ToolNodeItemType>();
   const tools: ChatCompletionTool[] = toolNodes.map((item) => {
@@ -117,8 +114,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     };
   });
 
-  // 注入 sandbox_shell 工具和提示词
-  let finalMessages = messages;
+  // 注入 sandbox 提示
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     // 注入 sandbox_shell 工具
     tools.push(...SANDBOX_TOOLS);
@@ -135,24 +131,25 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   }
 
   const getToolInfo = (name: string) => {
-    const systemTool = systemSubInfo[name];
-    if (systemTool) {
+    const sandboxToolInfo = getSandboxToolInfo(name, workflowProps.lang);
+    if (sandboxToolInfo) {
       return {
-        name: parseI18nString(systemTool.name, workflowProps.lang),
-        avatar: systemTool.avatar
+        type: 'sandbox' as const,
+        name: sandboxToolInfo.name,
+        avatar: sandboxToolInfo.avatar
       };
     }
 
     const toolNode = toolNodesMap.get(name);
-    return {
-      name: toolNode?.name || '',
-      avatar: toolNode?.avatar || '',
-      rawData: toolNode
-    };
+    if (toolNode) {
+      return {
+        type: 'user' as const,
+        name: toolNode.name,
+        avatar: toolNode.avatar,
+        rawData: toolNode
+      };
+    }
   };
-
-  // 工具响应原始值
-  const toolRunResponses: ChildResponseItemType[] = [];
 
   const {
     inputTokens,
@@ -164,7 +161,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     finish_reason,
     error,
     requestIds
-  } = await runAgentCall({
+  } = await runAgentLoop({
     maxRunAgentTimes: 50,
     body: {
       messages: finalMessages,
@@ -224,23 +221,32 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         });
       }
     },
-    onToolParam({ tool, params }) {
+    onToolParam({ argsDelta }) {
       if (!isResponseAnswerText) return;
       workflowStreamResponse?.({
-        id: tool.id,
+        id: argsDelta,
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
-            id: tool.id,
+            id: argsDelta,
             toolName: '',
             toolAvatar: '',
-            params
+            params: argsDelta
           }
         }
       });
     },
-    handleToolResponse: async ({ call, messages }) => {
-      const tool = getToolInfo(call.function?.name);
+    onRunTool: async ({ call }) => {
+      const toolInfo = getToolInfo(call.function?.name);
+      if (!toolInfo) {
+        return {
+          response: 'Call tool not found',
+          assistantMessages: [],
+          usages: [],
+          interactive: undefined,
+          stop: false
+        };
+      }
 
       const {
         response,
@@ -251,21 +257,18 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         stop
       } = await (async () => {
         // 拦截 sandbox 工具调用
-        if (
-          call.function?.name === SANDBOX_TOOL_NAME ||
-          call.function?.name === SANDBOX_GET_FILE_URL_TOOL_NAME
-        ) {
-          const { input, response, durationSeconds } = await callSandboxTool({
+        if (toolInfo.type === 'sandbox') {
+          const { input, response, durationSeconds } = await runSandboxTools({
             toolName: call.function.name,
-            rawArgs: call.function.arguments ?? '',
-            appId: String(workflowProps.runningAppInfo.id),
-            userId: String(workflowProps.uid),
+            args: call.function.arguments ?? '',
+            appId: workflowProps.runningAppInfo.id,
+            userId: workflowProps.uid,
             chatId: workflowProps.chatId
           });
 
           const flowResponse = getSandboxToolWorkflowResponse({
-            name: tool.name,
-            logo: SANDBOX_ICON,
+            name: toolInfo.name,
+            logo: toolInfo.avatar,
             toolId: call.function.name,
             input,
             response,
@@ -274,13 +277,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
 
           return { response, flowResponse };
         } else {
-          const toolNode = tool?.rawData;
-
-          if (!toolNode) {
-            return {
-              response: 'Call tool not found'
-            };
-          }
+          const toolNode = toolInfo.rawData;
 
           // Init tool params and run
           const startParams = parseJsonArgs(call.function.arguments);
@@ -315,24 +312,26 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         }
       })();
 
-      if (isResponseAnswerText) {
-        workflowStreamResponse?.({
-          id: call.id,
-          event: SseResponseEventEnum.toolResponse,
-          data: {
-            tool: {
-              id: call.id,
-              toolName: '',
-              toolAvatar: '',
-              params: '',
-              response: sliceStrStartEnd(response, 5000, 5000)
+      // 推送存储数据，与 tool 逻辑无关
+      {
+        if (isResponseAnswerText) {
+          workflowStreamResponse?.({
+            id: call.id,
+            event: SseResponseEventEnum.toolResponse,
+            data: {
+              tool: {
+                id: call.id,
+                toolName: '',
+                toolAvatar: '',
+                params: '',
+                response: sliceStrStartEnd(response, 5000, 5000)
+              }
             }
-          }
-        });
-      }
-
-      if (flowResponse) {
-        toolRunResponses.push(flowResponse);
+          });
+        }
+        if (flowResponse) {
+          toolRunResponses.push(flowResponse);
+        }
       }
 
       return {
@@ -343,7 +342,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         stop
       };
     },
-    handleInteractiveTool: async ({ childrenResponse, toolParams }) => {
+    onRunInteractiveTool: async ({ childrenResponse, toolParams }) => {
       initToolNodes(runtimeNodes, childrenResponse.entryNodeIds);
       initToolCallEdges(runtimeEdges, childrenResponse.entryNodeIds);
 

@@ -1,37 +1,20 @@
-import {
-  SANDBOX_GET_FILE_URL_TOOL,
-  SANDBOX_ICON,
-  SANDBOX_NAME,
-  SANDBOX_READ_FILE_TOOL_NAME,
-  SANDBOX_SHELL_TOOL
-} from '../../../ai/sandbox/constants';
-import type { I18nStringType } from '../../../../common/i18n/type';
+import type { I18nStringType, localeType } from '../../../../common/i18n/type';
+import { sandboxToolMap } from '../../../ai/sandbox/constants';
 import { skillToolsMap } from './skillTools';
+import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SubAppIds {
   plan = 'plan_agent',
   ask = 'ask_agent',
   model = 'model_agent',
   fileRead = 'file_read',
-  datasetSearch = 'dataset_search',
-  sandboxTool = 'sandbox_shell',
-  sandboxGetFileUrl = 'sandbox_get_file_url'
+  datasetSearch = 'dataset_search'
 }
 
 export const systemSubInfo: Record<
   string,
   { name: I18nStringType; avatar: string; toolDescription: string }
 > = {
-  [SubAppIds.sandboxTool]: {
-    name: SANDBOX_NAME,
-    avatar: SANDBOX_ICON,
-    toolDescription: SANDBOX_SHELL_TOOL.function.description!
-  },
-  [SubAppIds.sandboxGetFileUrl]: {
-    name: SANDBOX_READ_FILE_TOOL_NAME,
-    avatar: SANDBOX_ICON,
-    toolDescription: SANDBOX_GET_FILE_URL_TOOL.function.description!
-  },
   [SubAppIds.plan]: {
     name: {
       'zh-CN': '规划Agent',
@@ -78,5 +61,16 @@ export const systemSubInfo: Record<
     avatar: 'core/workflow/template/agent',
     toolDescription: '调用 LLM 模型完成一些通用任务。'
   },
+  ...sandboxToolMap,
   ...skillToolsMap
+};
+export const getSystemToolInfo = (id: string, lang: localeType = 'en') => {
+  if (id in sandboxToolMap) {
+    const info = sandboxToolMap[id];
+    return {
+      name: parseI18nString(info.name, lang),
+      avatar: info.avatar,
+      toolDescription: info.toolDescription
+    };
+  }
 };

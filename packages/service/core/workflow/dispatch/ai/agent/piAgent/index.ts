@@ -15,12 +15,13 @@ import { formatFileInput } from '../sub/file/utils';
 import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import type { ToolDispatchContext } from '../utils';
 import { getSubapps } from '../utils';
 import { createCapabilityToolCallHandler, type AgentCapability } from '../capability/type';
 import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { buildPiModel, getModelApiKey } from './modelBridge';
-import { buildAgentTools, type ToolDispatchContext } from './toolAdapter';
+import { buildAgentTools } from './toolAdapter';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { env } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
@@ -166,35 +167,19 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const apiKey = getModelApiKey(model);
 
     const toolCtx: ToolDispatchContext = {
-      checkIsStopping,
-      chatConfig,
-      runningUserInfo: props.runningUserInfo,
-      runningAppInfo,
-      chatId,
-      uid: props.uid,
-      variables: props.variables,
-      externalProvider: props.externalProvider,
-      workflowStreamResponse,
-      lang,
-      requestOrigin,
-      mode,
-      timezone: props.timezone,
-      retainDatasetCite: props.retainDatasetCite,
-      maxRunTimes: props.maxRunTimes,
-      workflowDispatchDeep: props.workflowDispatchDeep,
-      usagePush,
-      model,
-      datasetParams
+      ...props,
+      streamResponseFn: workflowStreamResponse,
+      getSubAppInfo,
+      getSubApp,
+      completionTools: agentCompletionTools,
+      filesMap,
+      capabilityToolCallHandler
     };
 
     const piTools = await buildAgentTools({
-      completionTools: agentCompletionTools,
       ctx: toolCtx,
-      filesMap,
-      getSubApp,
-      getSubAppInfo,
-      capabilityToolCallHandler,
-      nodeResponses
+      nodeResponses,
+      usagePush
     });
 
     /* ===== Restore session messages from last AI history ===== */
