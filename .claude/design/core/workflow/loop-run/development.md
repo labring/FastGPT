@@ -77,14 +77,18 @@
   - 结束聚合：最后一项 `loopHistory.customOutputs` → 动态 outputs
 - `runLoopRunStart.ts` - 简单透传（参考 `runLoopStart.ts`）
 - `runLoopRunBreak.ts` - 纯信号，返回空 data，仅在 flowResponses 中留下 moduleType 标记
-- `service.ts` - 工具集：
+- `service.ts` - loopRun 专属工具：
   - `injectLoopRunStart({ nodes, mode, iteration, index?, item? })` - 向 loopRunStart 注入输入
-  - `readCustomOutputSnapshot({ runtimeNodes, loopCustomOutputs, finishedNodeIds? })` - 读 ref 写快照（传 finishedNodeIds 时按集合过滤）
+  - `readCustomOutputSnapshot({ runtimeNodes, loopCustomOutputs, finishedNodeIds?, childrenNodeIdList? })` - 读 ref 写快照（传 finishedNodeIds 时按集合过滤；childrenNodeIdList 用于放行循环体外 ref）
   - `extractFinishedNodeIds(flowResponses)` - 从 runWorkflow 响应提取已完成节点集合
-  - `collectLoopRunFeedbacks` / `pushSubWorkflowUsage` - 参考 parallelRun/loop 的 service
+  - `pickCustomOutputInputs(inputs)` - 筛选 `canEdit: true` 的动态输入声明
+  - `hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)` / `isLoopBreakHit(flowResponses)` - conditional 模式 break 预检 + 运行时判定
+- `pushSubWorkflowUsage` / `collectResponseFeedbacks` - **不放在 service.ts**，统一在 `dispatch/utils.ts` 里实现并由 loop/loopRun 共用（见下条）
 
 **`packages/service/core/workflow/dispatch/utils.ts`**
-- 无需改动（沿用 `safePoints`、`injectNestedStartInputs` 不变）
+- 新增跨 dispatcher 共用工具：`pushSubWorkflowUsage({ usagePush, response, name, iteration })`、`collectResponseFeedbacks(response, target)`。原 `loop/service.ts` 中的同名实现已下沉到这里；`loop/runLoop.ts` 调用处由 `index` → `iteration` 更名（语义等价：两者都传 1-based 迭代计数）
+- parallelRun 不共用这套工具——它在 retry 循环里做了带累加器的就地聚合，抽出去反而复杂
+- 沿用 `safePoints`、`injectNestedStartInputs` 不变
 
 **`packages/service/env.ts`**
 - 无需新增 env；复用 `WORKFLOW_MAX_LOOP_TIMES`
@@ -252,3 +256,58 @@
 4. **`loopRunBreak` 是否放在 loop/parallelRun 外部但误连到 loopRun 子流程内**：静态校验层面需要严格卡住父容器归属
 
 5. **`FlowNodeTypeEnum.nestedEnd`（旧 loopEnd）与 loopRun**：loopRun 不使用 nestedEnd，runtime 也不应匹配到。
+
+---
+
+## 5. 实现期间引入的跨模块改动（区分于设计清单）
+
+这几处在 loopRun 开发过程中顺手改到了，不是 loopRun 本身的功能需求，但**对其他节点也有影响**，单独列出来避免回顾时误判是 loopRun 独占的修改。
+
+### 5.1 dispatch/index.ts 错误归一化
+
+**位置**：`packages/service/core/workflow/dispatch/index.ts` 在 "dispatcher 返回 `{error}` + `catchError=false`" 分支里补了一段：
+
+```ts
+const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
+return {
+  ...result,
+  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+    ...nodeResponseBase,
+    error: errText
+  },
+  ...
+};
+```
+
+**动机**：loopRun 用 `response.flowResponses.find((r) => r.error)` 识别失败轮。而现有 dispatcher（code / http / laf / 等）在 `catchError=false` 时通过 `getNodeErrResponse` 返回的 `responseData` 里只写 `errorText`、**不写** `error`，导致 loopRun 永远看不到真实错误文本。
+
+**顺带修复**：`parallelRun/service.ts:146` 早就在用 `flowResponses.find((r) => r.error)`，但同样因为这条链路没写 `error` 而始终落到 fallback 文案 `parallel_task_not_reach_end`。归一化后 parallelRun 也能拿到真实错误。OTel span error status 也终于会在这条路径上正确触发。
+
+**安全性**：`DispatchNodeResponseSchema` 里 `error` 本来就是可选字段；grep 过所有消费方，没有代码因为 `.error` 现在会被填充而出问题。
+
+### 5.2 WholeResponseModal 里 `updateVarResult` 单元素数组解包
+
+**位置**：`projects/app/src/components/core/chat/components/WholeResponseModal.tsx` L512-L527。
+
+**动机**：loopRun 调试时常见一类工作流是"loopRun 内用变量更新节点改写循环体外的代码节点输出 → 在 WholeResponseModal 里看累计结果"。`updateVarResult` 本来是 `updateList.map(...)` 的数组，单行配置时展示为 `[{...}]`，当内部 value 又是数组时会出现 `[[...]]` 的视觉双层嵌套，调试极差。
+
+**行为**：长度为 1 且 `r[0] !== null && r[0] !== undefined` 时解包外层。保留两种 signal：
+- 多行配置仍按数组展示（未做破坏）
+- `[null]`（无效引用）仍保留外层 → 用户能看到"这里是无效引用"
+
+**风险面**：全体 Row 渲染规则未变，`val === undefined | '' | 'undefined'` 仍会隐藏。对非 loopRun 用户是展示改善，不是功能改动。
+
+### 5.3 `useNestedNode` 子节点尺寸订阅 (`childDimensionsSignal`)
+
+**位置**：`projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useNestedNode.ts` L55-L65。
+
+**动机**：loopRun 体积计算沿用了 loop / parallelRun 的老逻辑——`setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50)`，在快速拖入子节点时定时器会抢跑在 ReactFlow 测量宽高之前，算出的 bounds 偏小。
+
+**方案**：订阅 `WorkflowInitContext.nodes` 里所有 parent 匹配的子节点 `${id}:${width}x${height}`，拼成字符串 signal。signal 变化触发重新计算 bounds。
+
+**影响面**：loop / parallelRun 也在用 `useNestedNode`——同时吃到这个修复。没有看到对 loopRun 之外的回归，但建议在人工验证清单里对 loop / parallelRun 的拖拽体验回归一次。
+
+### 5.4 `pushSubWorkflowUsage` / `collectResponseFeedbacks` 下沉到 `dispatch/utils.ts`
+
+见 `2.2 后端 Dispatcher` 一节。原本 `loop/service.ts` 里的实现被挪到 `dispatch/utils.ts`，loop / loopRun 共用。参数名 `index` → `iteration`（两者语义等价，都是 1-based 迭代计数）。这是 loopRun feature PR 的一部分去重改动，不是 bug 修复。

@@ -7,11 +7,7 @@ import {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import type { DispatchFlowResponse } from '../type';
-import { safePoints } from '../utils';
 
 export type LoopRunHistoryItem = {
   iteration: number;
@@ -127,36 +123,6 @@ export const injectLoopRunStart = ({
       }
     });
   });
-};
-
-export const pushSubWorkflowUsage = ({
-  usagePush,
-  response,
-  name,
-  iteration
-}: {
-  usagePush: (usages: ChatNodeUsageType[]) => void;
-  response: DispatchFlowResponse;
-  name: string;
-  iteration: number;
-}): number => {
-  const itemUsagePoint = response.flowUsages.reduce(
-    (acc, usage) => acc + safePoints(usage.totalPoints),
-    0
-  );
-  usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${iteration}` }]);
-  return itemUsagePoint;
-};
-
-export const collectResponseFeedbacks = (
-  response: DispatchFlowResponse,
-  target: string[]
-): string[] => {
-  const feedbacks = response[DispatchNodeResponseKeyEnum.customFeedbacks];
-  if (feedbacks && feedbacks.length > 0) {
-    target.push(...feedbacks);
-  }
-  return target;
 };
 
 export const isLoopBreakHit = (flowResponses: ChatHistoryItemResType[]): boolean =>

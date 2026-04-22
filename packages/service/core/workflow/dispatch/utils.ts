@@ -2,6 +2,8 @@ import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { DispatchFlowResponse } from './type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -604,6 +606,46 @@ export const getNodeErrResponse = ({
  */
 export const safePoints = (val: number | undefined | null): number =>
   Number.isFinite(val) ? (val as number) : 0;
+
+/**
+ * Aggregate sub-workflow usage points for one iteration and push to the parent
+ * dispatcher's usage accumulator. Returns the computed value so callers can
+ * keep a running total. Shared by loop / loopRun dispatchers (parallelRun
+ * inlines its own accumulator to fold retry attempts together).
+ */
+export const pushSubWorkflowUsage = ({
+  usagePush,
+  response,
+  name,
+  iteration
+}: {
+  usagePush: (usages: ChatNodeUsageType[]) => void;
+  response: DispatchFlowResponse;
+  name: string;
+  iteration: number;
+}): number => {
+  const itemUsagePoint = response.flowUsages.reduce(
+    (acc, usage) => acc + safePoints(usage.totalPoints),
+    0
+  );
+  usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${iteration}` }]);
+  return itemUsagePoint;
+};
+
+/**
+ * Append customFeedbacks from a sub-workflow response into the provided
+ * accumulator. Returns the same array for convenience.
+ */
+export const collectResponseFeedbacks = (
+  response: DispatchFlowResponse,
+  target: string[]
+): string[] => {
+  const feedbacks = response[DispatchNodeResponseKeyEnum.customFeedbacks];
+  if (feedbacks && feedbacks.length > 0) {
+    target.push(...feedbacks);
+  }
+  return target;
+};
 
 /**
  * Mutates nodes in-place: sets the nestedStart node as entry and injects the
