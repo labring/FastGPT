@@ -1,4 +1,5 @@
-import { isIP, isIPv6 } from 'net';
+import ipaddr from 'ipaddr.js';
+import { isIPv6 } from 'net';
 import dns from 'dns/promises';
 
 const isDevEnv = process.env.NODE_ENV === 'development';
@@ -8,188 +9,172 @@ const SERVICE_LOCAL_HOST =
     ? `[${process.env.HOSTNAME}]:${SERVICE_LOCAL_PORT}`
     : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
+// 云厂商元数据服务 IP（除 169.254.0.0/16 段外的特殊地址）
+// 预先归一化为 ipaddr.js 的 normalizedString 形式以便比对
+const METADATA_IPS = new Set<string>(
+  [
+    '100.100.100.200', // 阿里云
+    'fd00:ec2::254' // AWS IPv6
+  ].map((ip) => ipaddr.parse(ip).toNormalizedString().toLowerCase())
+);
+
+// 云厂商元数据服务主机名（归一化：小写、去尾部点）
+const METADATA_HOSTNAMES = new Set<string>([
+  'metadata.google.internal',
+  'metadata',
+  'metadata.tencentyun.com',
+  'kubernetes.default.svc',
+  'kubernetes.default',
+  'kubernetes'
+]);
+
+const LOCALHOST_HOSTNAMES = new Set<string>(['localhost']);
+
+/**
+ * 把 URL hostname 尝试解析成 ipaddr.js 的地址对象
+ *  - 处理 IPv6 方括号
+ *  - 处理 IPv4-mapped IPv6 (::ffff:a.b.c.d / ::ffff:xxxx:xxxx) → 解包为 IPv4
+ *  - 处理十进制/十六进制/八进制/短点分 IPv4 字面量
+ * 非 IP 字面量返回 null
+ */
+const parseHostAsIP = (rawHostname: string): ipaddr.IPv4 | ipaddr.IPv6 | null => {
+  const host = rawHostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (!host) return null;
+
+  // ipaddr.process 会自动把 IPv4-mapped IPv6 解包为 IPv4，处理常规字面量
+  if (ipaddr.isValid(host)) {
+    try {
+      return ipaddr.process(host);
+    } catch {
+      return null;
+    }
+  }
+
+  // ipaddr.js 不支持十进制/十六进制/八进制 IPv4 短写，手动兜底
+  const numeric = parseNumericIPv4(host);
+  if (numeric) return ipaddr.parse(numeric) as ipaddr.IPv4;
+
+  return null;
+};
+
+/**
+ * 解析 inet_aton 兼容的 IPv4 字面量：十进制 2852039166、十六进制 0xa9fea9fe、
+ * 八进制、1-4 段形式（含 dec/hex/oct 混合）。返回标准点分十进制或 null
+ */
+const parseNumericIPv4 = (host: string): string | null => {
+  const parts = host.split('.');
+  if (parts.length === 0 || parts.length > 4) return null;
+
+  const nums: number[] = [];
+  for (const part of parts) {
+    if (!part) return null;
+    let n: number;
+    if (/^0x[0-9a-f]+$/i.test(part)) n = parseInt(part, 16);
+    else if (/^0[0-7]+$/.test(part)) n = parseInt(part, 8);
+    else if (/^\d+$/.test(part)) n = parseInt(part, 10);
+    else return null;
+    if (!Number.isFinite(n) || n < 0) return null;
+    nums.push(n);
+  }
+
+  const maxLast = [0xffffffff, 0xffffff, 0xffff, 0xff][parts.length - 1];
+  if (nums[nums.length - 1] > maxLast) return null;
+  for (let i = 0; i < nums.length - 1; i++) if (nums[i] > 0xff) return null;
+
+  let ipInt = 0;
+  for (let i = 0; i < nums.length - 1; i++) ipInt = (ipInt + nums[i]) * 256;
+  ipInt += nums[nums.length - 1];
+  if (ipInt > 0xffffffff) return null;
+
+  return [(ipInt >>> 24) & 0xff, (ipInt >>> 16) & 0xff, (ipInt >>> 8) & 0xff, ipInt & 0xff].join(
+    '.'
+  );
+};
+
+const normalizeDomain = (rawHostname: string): string =>
+  rawHostname
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '')
+    .toLowerCase();
+
+/**
+ * ipaddr.js range() 返回的所有非 'unicast' 分类都视为内部地址。
+ * 主要范围：private / loopback / linkLocal / uniqueLocal / reserved /
+ * multicast / broadcast / unspecified / carrierGradeNat 等
+ */
+const isInternalIPAddress = (addr: ipaddr.IPv4 | ipaddr.IPv6): boolean => {
+  return addr.range() !== 'unicast';
+};
+
+/**
+ * 元数据端点：
+ *  - 169.254.0.0/16 link-local 段全部视为元数据
+ *  - 显式列表里的 IP（阿里云 100.100.100.200、AWS IPv6 fd00:ec2::254）
+ */
+const isMetadataIPAddress = (addr: ipaddr.IPv4 | ipaddr.IPv6): boolean => {
+  if (addr.kind() === 'ipv4' && addr.range() === 'linkLocal') return true;
+  return METADATA_IPS.has(addr.toNormalizedString().toLowerCase());
+};
+
 export const isInternalAddress = async (url: string): Promise<boolean> => {
   if (isDevEnv) return false;
 
-  const isInternalIPv6 = (ip: string): boolean => {
-    // 移除 IPv6 地址中的方括号（如果有）
-    const cleanIp = ip.replace(/^\[|\]$/g, '');
-
-    // 检查 IPv4-mapped IPv6 地址（格式：::ffff:xxxx:xxxx）
-    // Node.js URL 解析器会将 IPv4 部分转换为十六进制
-    const ipv4MappedPattern = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
-    const ipv4MappedMatch = cleanIp.match(ipv4MappedPattern);
-
-    if (ipv4MappedMatch) {
-      // 将十六进制转换回 IPv4 地址
-      const hex1 = parseInt(ipv4MappedMatch[1], 16);
-      const hex2 = parseInt(ipv4MappedMatch[2], 16);
-
-      // hex1 包含前两个字节，hex2 包含后两个字节
-      const byte1 = (hex1 >> 8) & 0xff;
-      const byte2 = hex1 & 0xff;
-      const byte3 = (hex2 >> 8) & 0xff;
-      const byte4 = hex2 & 0xff;
-
-      const ipv4 = `${byte1}.${byte2}.${byte3}.${byte4}`;
-      return isInternalIPv4(ipv4);
-    }
-
-    // IPv6 内部地址范围
-    const internalIPv6Patterns = [
-      /^::1$/, // Loopback
-      /^::$/, // Unspecified
-      /^fe80:/i, // Link-local
-      /^fc00:/i, // Unique local address (ULA)
-      /^fd00:/i, // Unique local address (ULA)
-      /^::ffff:0:0/i, // IPv4-mapped IPv6
-      /^::ffff:127\./i, // IPv4-mapped loopback
-      /^::ffff:10\./i, // IPv4-mapped private (10.0.0.0/8)
-      /^::ffff:172\.(1[6-9]|2[0-9]|3[0-1])\./i, // IPv4-mapped private (172.16.0.0/12)
-      /^::ffff:192\.168\./i, // IPv4-mapped private (192.168.0.0/16)
-      /^::ffff:169\.254\./i, // IPv4-mapped link-local
-      /^::ffff:100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./i // IPv4-mapped shared address space
-    ];
-
-    return internalIPv6Patterns.some((pattern) => pattern.test(cleanIp));
-  };
-  const isInternalIPv4 = (ip: string): boolean => {
-    // 验证是否为有效的 IPv4 格式
-    const ipv4Pattern = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-    const match = ip.match(ipv4Pattern);
-
-    if (!match) {
-      return false;
-    }
-
-    // 解析 IP 地址的各个部分
-    const parts = [
-      parseInt(match[1], 10),
-      parseInt(match[2], 10),
-      parseInt(match[3], 10),
-      parseInt(match[4], 10)
-    ];
-
-    // 验证每个部分是否在有效范围内 (0-255)
-    if (parts.some((part) => part < 0 || part > 255)) {
-      return false;
-    }
-
-    // 检查是否为内部 IP 地址范围
-    return (
-      parts[0] === 0 || // 0.0.0.0/8 - Current network
-      parts[0] === 10 || // 10.0.0.0/8 - Private network
-      parts[0] === 127 || // 127.0.0.0/8 - Loopback
-      (parts[0] === 169 && parts[1] === 254) || // 169.254.0.0/16 - Link-local
-      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || // 172.16.0.0/12 - Private network
-      (parts[0] === 192 && parts[1] === 168) || // 192.168.0.0/16 - Private network
-      (parts[0] >= 224 && parts[0] <= 239) || // 224.0.0.0/4 - Multicast
-      (parts[0] >= 240 && parts[0] <= 255) || // 240.0.0.0/4 - Reserved
-      (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) || // 100.64.0.0/10 - Shared address space
-      (parts[0] === 192 && parts[1] === 0 && parts[2] === 0) || // 192.0.0.0/24 - IETF Protocol Assignments
-      (parts[0] === 192 && parts[1] === 0 && parts[2] === 2) || // 192.0.2.0/24 - Documentation (TEST-NET-1)
-      (parts[0] === 198 && parts[1] === 18) || // 198.18.0.0/15 - Benchmarking
-      (parts[0] === 198 && parts[1] === 19) || // 198.18.0.0/15 - Benchmarking
-      (parts[0] === 198 && parts[1] === 51 && parts[2] === 100) || // 198.51.100.0/24 - Documentation (TEST-NET-2)
-      (parts[0] === 203 && parts[1] === 0 && parts[2] === 113) // 203.0.113.0/24 - Documentation (TEST-NET-3)
-    );
-  };
-
+  let parsedUrl: URL;
   try {
-    const parsedUrl = new URL(url);
-    // 移除 IPv6 地址的方括号（如果有）
-    const hostname = parsedUrl.hostname.replace(/^\[|\]$/g, '');
-    const fullUrl = parsedUrl.toString();
+    parsedUrl = new URL(url);
+  } catch {
+    return false;
+  }
 
-    // 1. 检查 localhost 和常见的本地域名变体
-    const localhostVariants = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
-    const localHostname = SERVICE_LOCAL_HOST.split(':')[0];
+  const hostDomain = normalizeDomain(parsedUrl.hostname);
+  const localHost = SERVICE_LOCAL_HOST.split(':')[0].toLowerCase();
 
-    if (localhostVariants.includes(hostname) || hostname === localHostname) {
-      return true;
-    }
+  // 1. localhost / 本机
+  if (LOCALHOST_HOSTNAMES.has(hostDomain) || hostDomain === localHost) {
+    return true;
+  }
 
-    // 2. 检查云服务商元数据端点（始终阻止，无论 CHECK_INTERNAL_IP 设置如何）
-    const metadataEndpoints = [
-      // AWS
-      'http://169.254.169.254/',
-      'http://[fd00:ec2::254]/',
+  // 2. 云元数据主机名
+  if (METADATA_HOSTNAMES.has(hostDomain)) {
+    return true;
+  }
 
-      // Azure
-      'http://169.254.169.254/',
+  // 3. IP 字面量（含各种编码变体）
+  const ip = parseHostAsIP(parsedUrl.hostname);
+  const checkFullInternal = process.env.CHECK_INTERNAL_IP === 'true';
 
-      // GCP
-      'http://metadata.google.internal/',
-      'http://metadata/',
+  if (ip) {
+    if (isMetadataIPAddress(ip)) return true;
+    // loopback/unspecified 等始终阻止（这些是显而易见的错误配置或攻击）
+    const range = ip.range();
+    if (range === 'loopback' || range === 'unspecified') return true;
+    if (checkFullInternal) return isInternalIPAddress(ip);
+    return false;
+  }
 
-      // Alibaba Cloud
-      'http://100.100.100.200/',
-
-      // Tencent Cloud
-      'http://metadata.tencentyun.com/',
-
-      // Huawei Cloud
-      'http://169.254.169.254/',
-
-      // Oracle Cloud
-      'http://169.254.169.254/',
-
-      // DigitalOcean
-      'http://169.254.169.254/',
-
-      // Kubernetes
-      'http://kubernetes.default.svc/',
-      'https://kubernetes.default.svc/'
+  // 4. 域名：解析 DNS；元数据命中始终阻止，私有段受 CHECK_INTERNAL_IP 控制
+  try {
+    const [v4Res, v6Res] = await Promise.allSettled([
+      dns.resolve4(hostDomain),
+      dns.resolve6(hostDomain)
+    ]);
+    const resolvedIPs = [
+      ...(v4Res.status === 'fulfilled' ? v4Res.value : []),
+      ...(v6Res.status === 'fulfilled' ? v6Res.value : [])
     ];
 
-    if (metadataEndpoints.some((endpoint) => fullUrl.startsWith(endpoint))) {
-      return true;
+    for (const raw of resolvedIPs) {
+      if (!ipaddr.isValid(raw)) continue;
+      const addr = ipaddr.process(raw);
+      if (isMetadataIPAddress(addr)) return true;
+      const r = addr.range();
+      if (r === 'loopback' || r === 'unspecified') return true;
+      if (checkFullInternal && isInternalIPAddress(addr)) return true;
     }
-
-    // 3. 只有显式设置 CHECK_INTERNAL_IP=true 时才启用私有 IP 检查
-    if (process.env.CHECK_INTERNAL_IP !== 'true') {
-      return false;
-    }
-
-    // 4. 使用 Node.js 的 isIP 函数检测 IP 版本
-    const ipVersion = isIP(hostname);
-
-    if (ipVersion === 4) {
-      // IPv4 地址检查
-      return isInternalIPv4(hostname);
-    } else if (ipVersion === 6) {
-      // IPv6 地址检查
-      return isInternalIPv6(hostname);
-    } else {
-      // 不是 IP 地址，是域名 - 需要解析
-      try {
-        // 解析所有 A 和 AAAA 记录
-        const [ipv4Addresses, ipv6Addresses] = await Promise.allSettled([
-          dns.resolve4(hostname),
-          dns.resolve6(hostname)
-        ]);
-
-        // 检查所有解析的 IP 是否为内部地址
-        const allIPs = [
-          ...(ipv4Addresses.status === 'fulfilled' ? ipv4Addresses.value : []),
-          ...(ipv6Addresses.status === 'fulfilled' ? ipv6Addresses.value : [])
-        ];
-
-        // 如果任何一个解析的 IP 是内部地址，则拒绝
-        for (const ip of allIPs) {
-          if (isInternalIPv4(ip) || isInternalIPv6(ip)) {
-            return true;
-          }
-        }
-
-        return false;
-      } catch (error) {
-        return false;
-      }
-    }
-  } catch (error) {
-    // URL 解析失败 - 宽松策略:允许访问
+    return false;
+  } catch {
     return false;
   }
 };
+
 export const PRIVATE_URL_TEXT = 'Request to private network not allowed';
