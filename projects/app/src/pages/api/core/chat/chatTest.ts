@@ -45,6 +45,7 @@ import {
   prepareChatRound,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
+import { enrichUserContentWithParsedFiles } from '@fastgpt/service/core/chat/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
@@ -166,6 +167,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
+    const enrichedUserQuestion = await enrichUserContentWithParsedFiles({
+      userContent: userQuestion,
+      requestOrigin: req.headers.origin,
+      maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+      teamId: String(teamId),
+      tmbId: String(tmbId)
+    });
+
     if (usePreparedRound) {
       await prepareChatRound({
         appId: String(app._id),
@@ -174,7 +184,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         tmbId: String(tmbId),
         source,
         sourceName: appName || '',
-        userContent: userQuestion,
+        userContent: enrichedUserQuestion,
         responseChatItemId
       });
     } else {
@@ -282,7 +292,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       newTitle,
       source,
       sourceName: appName || '',
-      userContent: userQuestion,
+      userContent: enrichedUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
       metadata: {

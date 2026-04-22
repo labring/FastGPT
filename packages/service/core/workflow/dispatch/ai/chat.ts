@@ -34,7 +34,7 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
+import { getFileContentFromLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '../../utils/context';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
@@ -126,7 +126,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         quoteTemplate: quoteTemplate || getQuoteTemplate(version)
       }),
       getMultiInput({
-        histories: chatHistories,
         inputFiles,
         fileLinks,
         stringQuoteText,
@@ -329,7 +328,6 @@ async function filterDatasetQuote({
 }
 
 async function getMultiInput({
-  histories,
   inputFiles,
   fileLinks,
   stringQuoteText,
@@ -339,7 +337,6 @@ async function getMultiInput({
   usageId,
   runningUserInfo
 }: {
-  histories: ChatItemMiniType[];
   inputFiles: UserChatItemFileItemType[];
   fileLinks?: string[];
   stringQuoteText?: string; // file quote
@@ -357,30 +354,23 @@ async function getMultiInput({
     };
   }
 
-  // 没有引用文件参考，但是可能用了图片识别
-  if (!fileLinks) {
+  // 旧版本适配<====
+  const urls =
+    fileLinks && fileLinks.length > 0
+      ? fileLinks
+      : inputFiles
+          .filter((file) => file.type === 'file')
+          .map((file) => file.url)
+          .filter(Boolean);
+
+  if (urls.length === 0) {
     return {
       documentQuoteText: '',
       userFiles: inputFiles
     };
   }
-  // 旧版本适配<====
-
-  // If fileLinks params is not empty, it means it is a new version, not get the global file.
-
-  // Get files from histories
-  const filesFromHistories = getHistoryFileLinks(histories);
-  const urls = [...fileLinks, ...filesFromHistories];
-
-  if (urls.length === 0) {
-    return {
-      documentQuoteText: '',
-      userFiles: []
-    };
-  }
 
   const { text } = await getFileContentFromLinks({
-    // Concat fileUrlList and filesFromHistories; remove not supported files
     urls,
     requestOrigin,
     maxFiles,
@@ -392,9 +382,12 @@ async function getMultiInput({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks
-      .map((url) => parseUrlToFileType(url))
-      .filter(Boolean) as UserChatItemFileItemType[]
+    userFiles:
+      fileLinks && fileLinks.length > 0
+        ? (fileLinks
+            .map((url) => parseUrlToFileType(url))
+            .filter(Boolean) as UserChatItemFileItemType[])
+        : inputFiles
   };
 }
 
@@ -447,7 +440,11 @@ async function getChatMessages({
       : userChatInput;
   // Dataset prompt <====
 
-  // Concat system prompt
+  const filePrompt = documentQuoteText
+    ? replaceVariable(getDocumentQuotePrompt(version), {
+        quote: documentQuoteText
+      })
+    : '';
   const concatenateSystemPrompt = [
     model.defaultSystemChatPrompt,
     systemPrompt,
@@ -455,13 +452,12 @@ async function getChatMessages({
       ? replaceVariable(datasetQuotePromptTemplate, {
           quote: datasetQuoteText
         })
-      : '',
-    documentQuoteText
-      ? replaceVariable(getDocumentQuotePrompt(version), {
-          quote: documentQuoteText
-        })
       : ''
   ]
+    .filter(Boolean)
+    .join('\n\n===---===---===\n\n');
+
+  const finalUserInput = [replaceInputValue, filePrompt]
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
 
@@ -472,7 +468,7 @@ async function getChatMessages({
       obj: ChatRoleEnum.Human,
       value: runtimePrompt2ChatsValue({
         files: userFiles,
-        text: replaceInputValue
+        text: finalUserInput
       })
     }
   ];
