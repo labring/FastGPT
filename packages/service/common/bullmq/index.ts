@@ -36,6 +36,7 @@ export enum QueueNames {
 
   // Publish
   wechatPoll = 'wechatPoll',
+  wechatReply = 'wechatReply',
 
   /** @deprecated */
   websiteSync = 'websiteSync'

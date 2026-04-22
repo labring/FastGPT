@@ -8,7 +8,7 @@ export type ParsedMessageGroup = {
   userId: string;
   text: string;
   contextToken: string;
-  msgIds: string[];
+  lastMsgId: string;
 };
 
 export function extractTextFromItem(item: NonNullable<WeixinMessage['item_list']>[number]): string {
@@ -42,11 +42,11 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
     if (!text) continue;
 
     const userId = msg.from_user_id ?? 'unknown';
-
     const existing = groups.get(userId);
+
     if (existing) {
       existing.text += '\n' + text;
-      existing.msgIds.push(msg.msgid);
+      existing.lastMsgId = msg.msgid;
       if (msg.context_token) {
         existing.contextToken = msg.context_token;
       }
@@ -55,7 +55,7 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
         userId,
         text,
         contextToken: msg.context_token ?? '',
-        msgIds: [msg.msgid]
+        lastMsgId: msg.msgid
       });
     }
   }
