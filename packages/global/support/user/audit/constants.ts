@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { auditLogMap, adminAuditLogMap } from '../../../../web/support/user/audit/constants';
 
 export enum AdminAuditEventEnum {

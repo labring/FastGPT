@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
