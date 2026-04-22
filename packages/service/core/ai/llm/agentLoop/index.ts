@@ -1,7 +1,7 @@
 import type {
   ChatCompletionMessageParam,
-  ChatCompletionTool,
   ChatCompletionMessageToolCall,
+  ChatCompletionTool,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -19,14 +19,12 @@ import { filterEmptyAssistantMessages } from './utils';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '../../../../../web/i18n/utils';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 type RunAgentCallProps = {
   maxRunAgentTimes: number;
-  compressTaskDescription?: string;
-
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
-
     temperature?: number;
     top_p?: number;
     stream?: boolean;
@@ -38,25 +36,15 @@ type RunAgentCallProps = {
 
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
   // LLM 压缩后回调
-  onCompressContext?: (usage: {
+  onAfterCompressContext?: (usage: {
     modelName: string;
     inputTokens?: number;
     outputTokens?: number;
     totalPoints: number;
     seconds: number;
   }) => void;
-  // 工具压缩后回调
-  onToolCompress?: (e: {
-    call: ChatCompletionMessageToolCall;
-    response: string;
-    usage: {
-      inputTokens: number;
-      outputTokens: number;
-      totalPoints: number;
-    };
-  }) => void;
   // 处理交互工具
-  handleInteractiveTool: (e: ToolCallChildrenInteractive['params']) => Promise<{
+  onRunInteractiveTool: (e: ToolCallChildrenInteractive['params']) => Promise<{
     response: string;
     assistantMessages: ChatCompletionMessageParam[];
     usages: ChatNodeUsageType[];
@@ -64,7 +52,7 @@ type RunAgentCallProps = {
     stop?: boolean;
   }>;
   // 处理工具响应
-  handleToolResponse: (e: {
+  onRunTool: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
   }) => Promise<{
@@ -95,39 +83,64 @@ type RunAgentResponse = {
   finish_reason: CompletionFinishReason | undefined;
 };
 
-/* 
-  一个循环进行工具调用的 LLM 请求封装。
+/**
+ * 上下文压缩，内部会判断是否需要压缩
+ */
+export const onCompressContext = async ({
+  isAborted,
+  requestMessages,
+  modelData,
+  userKey
+}: {
+  isAborted: RunAgentCallProps['isAborted'];
+  requestMessages: ChatCompletionMessageParam[];
+  modelData: LLMModelItemType;
+  userKey: RunAgentCallProps['userKey'];
+}) => {
+  const compressStartTime = Date.now();
+  const result = await compressRequestMessages({
+    checkIsStopping: isAborted,
+    messages: requestMessages,
+    model: modelData,
+    userKey
+  });
+  if (result.usage) {
+    return {
+      messages: result.messages,
+      usage: result.usage,
+      seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
+    };
+  }
+};
 
-  AssistantMessages 组成：
-  1. 调用 AI 时生成的 messages
-  2. tool 内部调用产生的 messages
-  3. tool 响应的值，role=tool，content=tool response
-
-  RequestMessages 为模型请求的消息，组成:
-  1. 历史对话记录
-  2. 调用 AI 时生成的 messages
-  3. tool 响应的值，role=tool，content=tool response
-
-  memoryRequestMessages 为上一轮中断时，requestMessages 的内容
-*/
-export const runAgentCall = async ({
+/**
+ * 一个循环调用工具的 LLM 请求封装。
+ * 每次循环会进行以下操作：
+ * 1. 压缩请求消息: 如果满足条件则压缩请求消息
+ * 2. 请求 LLM
+ * 3. 调用工具（如有）： Call、Compress response
+ * 4. 检查是否循环结束
+ */
+export const runAgentLoop = async ({
   maxRunAgentTimes,
-  body: { model, messages, max_tokens, tools, ...body },
+  body: { model, messages, max_tokens, ...body },
 
   userKey,
   usagePush,
   isAborted,
 
-  onCompressContext,
+  onAfterCompressContext,
   childrenInteractiveParams,
-  handleInteractiveTool,
-  handleToolResponse,
-  onToolCompress,
+  onRunInteractiveTool,
+
+  onToolCall,
+  onToolParam,
+  onAfterToolResponseCompress,
+  onAfterToolCall,
+  onRunTool,
 
   onReasoning,
-  onStreaming,
-  onToolCall,
-  onToolParam
+  onStreaming
 }: RunAgentCallProps): Promise<RunAgentResponse> => {
   const modelData = getLLMModel(model);
 
@@ -174,7 +187,7 @@ export const runAgentCall = async ({
       usages,
       interactive,
       stop
-    } = await handleInteractiveTool(childrenInteractiveParams);
+    } = await onRunInteractiveTool(childrenInteractiveParams);
 
     // 将 requestMessages 复原成上一轮中断时的内容，并附上 tool response
     requestMessages = childrenInteractiveParams.toolParams.memoryRequestMessages.map((item) =>
@@ -226,36 +239,41 @@ export const runAgentCall = async ({
     // 正常完成该工具的响应，继续进行工具调用
   }
 
-  // 自循环运行
+  // Agent loop
   const requestIds: string[] = [];
   let consecutiveRequestToolTimes = 0; // 连续多次工具调用后会强制回答，避免模型自身死循环。
   while (runTimes < maxRunAgentTimes) {
-    // TODO: 费用检测
+    let stopAgentLoop = false;
 
+    // TODO: 费用检测
     runTimes++;
 
     // 1. Compress request messages
-    const compressStartTime = Date.now();
-    const result = await compressRequestMessages({
-      checkIsStopping: isAborted,
-      messages: requestMessages,
-      model: modelData,
-      userKey
-    });
-    requestMessages = result.messages;
-    if (result.usage) {
-      compressInputTokens += result.usage.inputTokens || 0;
-      compressOutputTokens += result.usage.outputTokens || 0;
-      childrenUsages.push(result.usage);
-      usagePush?.([result.usage]);
-      onCompressContext?.({
-        modelName: modelData.name,
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens,
-        totalPoints: result.usage.totalPoints,
-        seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
+    {
+      const compressResult = await onCompressContext({
+        isAborted,
+        requestMessages,
+        modelData,
+        userKey
       });
+      if (compressResult) {
+        requestMessages = compressResult.messages;
+        compressInputTokens += compressResult.usage.inputTokens || 0;
+        compressOutputTokens += compressResult.usage.outputTokens || 0;
+        childrenUsages.push(compressResult.usage);
+        usagePush?.([compressResult.usage]);
+        onAfterCompressContext?.({
+          modelName: modelData.name,
+          inputTokens: compressResult.usage.inputTokens,
+          outputTokens: compressResult.usage.outputTokens,
+          totalPoints: compressResult.usage.totalPoints,
+          seconds: compressResult.seconds
+        });
+      }
     }
+
+    // 拷贝一份 requestMessages 用于后续操作
+    const cloneRequestMessages = requestMessages.slice();
 
     // 2. Request LLM
     let {
@@ -276,7 +294,6 @@ export const runAgentCall = async ({
         messages: requestMessages,
         tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
-        tools,
         parallel_tool_calls: true
       },
       userKey,
@@ -286,105 +303,65 @@ export const runAgentCall = async ({
       onToolCall,
       onToolParam
     });
+    // 请求后赋值操作
+    {
+      finish_reason = finishReason;
+      requestError = error;
+      requestIds.push(requestId);
 
-    finish_reason = finishReason;
-    requestError = error;
-    requestIds.push(requestId);
+      if (requestError) {
+        break;
+      }
+      if (responseEmptyTip) {
+        return Promise.reject(responseEmptyTip);
+      }
+      if (toolCalls.length) {
+        consecutiveRequestToolTimes++;
+      }
+      if (answer) {
+        consecutiveRequestToolTimes = 0;
+      }
 
-    if (requestError) {
-      break;
-    }
-    if (responseEmptyTip) {
-      return Promise.reject(responseEmptyTip);
-    }
-    if (toolCalls.length) {
-      consecutiveRequestToolTimes++;
-    }
-    if (answer) {
-      consecutiveRequestToolTimes = 0;
-    }
-
-    // Record usage
-    inputTokens += usage.inputTokens;
-    outputTokens += usage.outputTokens;
-    const totalPoints = userKey
-      ? 0
-      : formatModelChars2Points({
-          model: modelData,
+      // Record usage
+      inputTokens += usage.inputTokens;
+      outputTokens += usage.outputTokens;
+      const totalPoints = userKey
+        ? 0
+        : formatModelChars2Points({
+            model: modelData,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens
+          }).totalPoints;
+      llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
+      usagePush?.([
+        {
+          moduleName: i18nT('account_usage:agent_call'),
+          model: modelData.name,
+          totalPoints,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens
-        }).totalPoints;
-    llmTotalPoints += totalPoints; // 每次调用单独计价后累加，保证梯度计费正确
+        }
+      ]);
 
-    usagePush?.([
-      {
-        moduleName: i18nT('account_usage:agent_call'),
-        model: modelData.name,
-        totalPoints,
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens
+      // 推送 AI 生成后的 assistantMessages
+      if (llmAssistantMessage) {
+        assistantMessages.push(llmAssistantMessage);
+        requestMessages.push(llmAssistantMessage);
       }
-    ]);
-
-    // 3. 更新 messages
-    const cloneRequestMessages = requestMessages.slice();
-    // 推送 AI 生成后的 assistantMessages
-    if (llmAssistantMessage) {
-      assistantMessages.push(llmAssistantMessage);
-      requestMessages.push(llmAssistantMessage);
     }
 
-    // 4. Call tools
-    let toolCallStep = false;
+    // 3. Call tools
     for await (const tool of toolCalls) {
       const {
         response,
         assistantMessages: toolAssistantMessages,
         usages: toolUsages,
         interactive,
-        stop
-      } = await handleToolResponse({
+        stop: stopLoop
+      } = await onRunTool({
         call: tool,
         messages: cloneRequestMessages
       });
-      childrenUsages.push(...toolUsages);
-      usagePush(toolUsages);
-
-      // 5. Add tool response to messages
-      // 获取当前 messages 的 token 数，用于动态调整 tool response 的压缩阈值（防止下一个工具直接打爆上下文）
-      const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
-
-      const { compressed: compressed_context, usage: compressionUsage } =
-        await compressToolResponse({
-          response,
-          model: modelData,
-          currentMessagesTokens,
-          toolLength: toolCalls.length,
-          reservedTokens: 8000, // 预留 8k tokens 给输出
-          userKey
-        });
-      if (compressionUsage) {
-        childrenUsages.push(compressionUsage);
-        usagePush?.([compressionUsage]);
-        onToolCompress?.({
-          call: tool,
-          response: compressed_context,
-          usage: {
-            inputTokens: compressionUsage.inputTokens!,
-            outputTokens: compressionUsage.outputTokens!,
-            totalPoints: compressionUsage.totalPoints!
-          }
-        });
-      }
-
-      const toolMessage: ChatCompletionMessageParam = {
-        tool_call_id: tool.id,
-        role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: compressed_context
-      };
-      assistantMessages.push(toolMessage);
-      requestMessages.push(toolMessage);
-      assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
 
       if (interactive) {
         interactiveResponse = {
@@ -398,11 +375,68 @@ export const runAgentCall = async ({
           }
         };
       }
-      if (stop) {
-        toolCallStep = true;
+      if (stopLoop) {
+        stopAgentLoop = true;
+      }
+
+      // Push usages
+      {
+        childrenUsages.push(...toolUsages);
+        usagePush(toolUsages);
+      }
+
+      // Compress tool response
+      const toolFinalResponse = await (async () => {
+        const currentMessagesTokens = await countGptMessagesTokens(requestMessages);
+        const { compressed: compressed_context, usage: compressionUsage } =
+          await compressToolResponse({
+            response,
+            model: modelData,
+            currentMessagesTokens,
+            toolLength: toolCalls.length,
+            reservedTokens: 8000, // 预留 8k tokens 给输出
+            userKey
+          });
+        if (compressionUsage) {
+          childrenUsages.push(compressionUsage);
+          usagePush([compressionUsage]);
+          onAfterToolResponseCompress?.({
+            call: tool,
+            response: compressed_context,
+            usage: {
+              inputTokens: compressionUsage.inputTokens!,
+              outputTokens: compressionUsage.outputTokens!,
+              totalPoints: compressionUsage.totalPoints!
+            }
+          });
+        }
+
+        return compressed_context;
+      })();
+
+      onAfterToolCall?.({ success: true, call: tool, response: toolFinalResponse });
+
+      // Push messages
+      {
+        const toolMessage: ChatCompletionMessageParam = {
+          tool_call_id: tool.id,
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          content: toolFinalResponse
+        };
+        assistantMessages.push(toolMessage);
+        requestMessages.push(toolMessage);
+        assistantMessages.push(...filterEmptyAssistantMessages(toolAssistantMessages)); // 因为 toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
       }
     }
-    if (toolCalls.length === 0 || !!interactiveResponse || toolCallStep || isAborted?.()) {
+
+    /**
+     * 检查是否 loop 结束
+     * 1. 没有工具调用
+     * 2. 有交互工具
+     * 3. 特殊的工具，要求结束当前 loop
+     * 4. 用户主动暂停
+     */
+    if (toolCalls.length === 0 || !!interactiveResponse || stopAgentLoop || isAborted?.()) {
       break;
     }
   }

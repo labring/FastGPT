@@ -22,8 +22,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { getPlanCallResponseText } from '@fastgpt/global/core/chat/utils';
 import { filterMemoryMessages } from '../utils';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import type { DispatchPlanAgentResponse } from './sub/plan';
 import { dispatchPlanAgent } from './sub/plan';
 
@@ -272,13 +271,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         };
       }
 
-      const systemToolNode = systemSubInfo[id] || systemSubInfo[formatId];
-      const systemDisplayName = parseI18nString(systemToolNode?.name, lang);
+      const systemToolNode = getSystemToolInfo(id, lang) || getSystemToolInfo(formatId, lang);
 
       return {
-        name: systemDisplayName || '',
+        name: systemToolNode?.name || '',
         avatar: systemToolNode?.avatar || '',
-        toolDescription: systemToolNode?.toolDescription || systemDisplayName || ''
+        toolDescription: systemToolNode?.toolDescription || systemToolNode?.name || ''
       };
     };
     const getSubApp = (id: string) => {

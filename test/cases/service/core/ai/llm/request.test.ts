@@ -747,8 +747,8 @@ describe('createLLMResponse', () => {
         onToolCall: ({ call }) => {
           toolCallResults.push(call);
         },
-        onToolParam: ({ params }) => {
-          toolParamResults.push(params);
+        onToolParam: ({ argsDelta }) => {
+          toolParamResults.push(argsDelta);
         }
       });
 

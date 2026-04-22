@@ -13,12 +13,11 @@ import { getLLMModel } from '../../../../../../ai/model';
 import { compressLargeContent } from '../../../../../../ai/llm/compress';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { DispatchSubAppResponse } from '../../type';
 
 type FileReadParams = {
   files: { index: string; url: string }[];
@@ -37,12 +36,7 @@ export const dispatchFileRead = async ({
   customPdfParse,
   model,
   userKey
-}: FileReadParams): Promise<{
-  response: string;
-  usages: ChatNodeUsageType[];
-  nodeResponse?: ChatHistoryItemResType;
-}> => {
-  const startTime = Date.now();
+}: FileReadParams): Promise<DispatchSubAppResponse> => {
   try {
     const usages: ChatNodeUsageType[] = [];
     const readFilesResult = await Promise.all(
@@ -162,12 +156,8 @@ export const dispatchFileRead = async ({
       response: responseText,
       usages,
       nodeResponse: {
-        nodeId: getNanoid(6),
-        id: getNanoid(6),
         moduleType: FlowNodeTypeEnum.readFiles,
         moduleName: i18nT('chat:read_file'),
-        totalPoints: usages.reduce((acc, item) => acc + item.totalPoints, 0),
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         compressTextAgent: result.usage
           ? {
               inputTokens: result.usage.inputTokens || 0,

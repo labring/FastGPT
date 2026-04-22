@@ -8,6 +8,7 @@ import { MongoResourcePermission } from '../../../../../support/permission/schem
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { getGroupsByTmbId } from '../../../../../support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../../../../../support/permission/org/controllers';
+import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const getAccessibleDatasets = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -110,7 +111,7 @@ ${dataset}
     })
   ]);
 
-  const builtinTools = [SubAppIds.fileRead, SubAppIds.sandboxTool].map((id) => {
+  const builtinTools = [SubAppIds.fileRead, SANDBOX_TOOL_NAME].map((id) => {
     const info = systemSubInfo[id];
     return `- **${id}** [工具]: ${parseI18nString(info.name, lang)} - ${info.toolDescription}`;
   });

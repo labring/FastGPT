@@ -15,10 +15,10 @@ export const SANDBOX_SUSPEND_MINUTES = 5;
 
 // ---- sandboxId 生成 ----
 export const generateSandboxId = (appId: string, userId: string, chatId: string): string => {
-  return hashStr(`${appId}-${userId}-${chatId}`).slice(0, 16);
+  return hashStr(`${String(appId)}-${String(userId)}-${String(chatId)}`).slice(0, 16);
 };
 
-// Tool
+// Shell Tool
 export const SANDBOX_NAME: I18nStringType = {
   'zh-CN': '虚拟机',
   'zh-Hant': '虛擬機',
@@ -26,10 +26,6 @@ export const SANDBOX_NAME: I18nStringType = {
 };
 export const SANDBOX_ICON = 'core/app/sandbox/sandbox' as const;
 export const SANDBOX_TOOL_NAME = 'sandbox_shell';
-export const SandboxShellToolSchema = z.object({
-  command: z.string(),
-  timeout: z.number().optional()
-});
 export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
@@ -51,15 +47,13 @@ export const SANDBOX_SHELL_TOOL: ChatCompletionTool = {
   }
 };
 
+// Get File URL Tool
 export const SANDBOX_READ_FILE_TOOL_NAME: I18nStringType = {
   'zh-CN': '虚拟机/获取文件链接',
   'zh-Hant': '虛擬機/獲取文件鏈接',
   en: 'Sandbox/Get File URL'
 };
 export const SANDBOX_GET_FILE_URL_TOOL_NAME = 'sandbox_get_file_url';
-export const SandboxGetFileUrlToolSchema = z.object({
-  paths: z.array(z.string())
-});
 export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
@@ -82,10 +76,30 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
   }
 };
 
-export const SANDBOX_TOOLS: ChatCompletionTool[] = [SANDBOX_SHELL_TOOL, SANDBOX_GET_FILE_URL_TOOL];
-
+// Prompt
 export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
 - 预装：bash / python3 / node / bun / git / curl
 - 可自行安装软件包（apt / pip / npm）
 - 生成的文件内容都保存在当前目录下即可
 - 若需要将生成的文件分享给用户，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 工具获取文件的临时访问链接`;
+
+// 聚合
+export const sandboxToolMap: Record<
+  string,
+  { schema: ChatCompletionTool; name: I18nStringType; avatar: string; toolDescription: string }
+> = {
+  [SANDBOX_TOOL_NAME]: {
+    schema: SANDBOX_SHELL_TOOL,
+    name: SANDBOX_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription: SANDBOX_SHELL_TOOL.function.description!
+  },
+  [SANDBOX_GET_FILE_URL_TOOL_NAME]: {
+    schema: SANDBOX_GET_FILE_URL_TOOL,
+    name: SANDBOX_READ_FILE_TOOL_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription: SANDBOX_GET_FILE_URL_TOOL.function.description!
+  }
+};
+
+export const SANDBOX_TOOLS = Object.values(sandboxToolMap).map((item) => item.schema);
