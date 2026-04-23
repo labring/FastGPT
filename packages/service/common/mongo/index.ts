@@ -1,12 +1,25 @@
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { getLogger, LogCategories } from '../logger';
-import type { Model } from 'mongoose';
+import type {
+  AnyBulkWriteOperation,
+  ClientSession,
+  Model,
+  Mongoose as MongooseType,
+  PipelineStage
+} from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
 export default mongoose;
-export * from 'mongoose';
+export { Schema, Types } from 'mongoose';
+export type {
+  AnyBulkWriteOperation,
+  ClientSession,
+  Model,
+  MongooseType as Mongoose,
+  PipelineStage
+};
 
 export const MONGO_URL = process.env.MONGODB_URI as string;
 export const MONGO_LOG_URL = (process.env.MONGODB_LOG_URI ?? process.env.MONGODB_URI) as string;

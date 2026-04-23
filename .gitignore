@@ -2,6 +2,7 @@
 node_modules/
 # next.js
 .next/
+.turbo/
 out/
 # production
 build/

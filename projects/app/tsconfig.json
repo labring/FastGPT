@@ -5,8 +5,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@test/*": ["./test/*"],
-      "@repo-test/*": ["../../test/*"],
-      "@t3-oss/env-core": ["../../packages/service/node_modules/@t3-oss/env-core/dist/index.d.ts"]
+      "@repo-test/*": ["../../test/*"]
     }
   },
   "include": [
@@ -16,5 +15,12 @@
     "../../packages/**/*.ts",
     "../../packages/**/*.tsx"
   ],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", ".next", "dist", "coverage"]
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "../../packages/**/test/**",
+    ".next",
+    "dist",
+    "coverage"
+  ]
 }

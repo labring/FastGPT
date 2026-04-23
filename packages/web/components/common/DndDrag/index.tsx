@@ -2,14 +2,29 @@ import { Box, Tbody } from '@chakra-ui/react';
 import React, { type ReactElement, type ReactNode, useState } from 'react';
 import {
   DragDropContext,
+  Draggable,
   Droppable,
   type DraggableChildrenFn,
+  type DraggableProvided,
+  type DraggableStateSnapshot,
   type DragStart,
   type DropResult,
   type DroppableProvided,
-  type DroppableStateSnapshot
+  type DroppableStateSnapshot,
+  type Omit
 } from 'react-beautiful-dnd';
-export * from 'react-beautiful-dnd';
+
+export { Draggable };
+export type {
+  DraggableChildrenFn,
+  DraggableProvided,
+  DraggableStateSnapshot,
+  DragStart,
+  DropResult,
+  DroppableProvided,
+  DroppableStateSnapshot,
+  Omit
+};
 
 type Props<T = any> = {
   onDragEndCb: (result: T[]) => void;
