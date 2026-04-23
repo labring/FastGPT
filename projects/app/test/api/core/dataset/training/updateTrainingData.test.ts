@@ -9,8 +9,8 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { getRootUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getRootUser } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('update training data test', () => {

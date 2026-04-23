@@ -1,4 +1,4 @@
-import { Worker } from 'worker_threads';
+import type { Worker as NodeWorker } from 'worker_threads';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
 
@@ -20,11 +20,18 @@ export const getSafeEnv = () => {
   };
 };
 
-export const getWorker = (name: `${WorkerNameEnum}`) => {
-  const workerPath = path.join(process.cwd(), 'worker', `${name}.js`);
+const createNodeWorker = (workerPath: string) => {
+  const nodeRequire = eval('require') as (id: string) => typeof import('worker_threads');
+  const { Worker } = nodeRequire('worker_threads');
+
   return new Worker(workerPath, {
     env: getSafeEnv()
   });
+};
+
+export const getWorker = (name: `${WorkerNameEnum}`) => {
+  const workerPath = path.join(process.cwd(), 'worker', `${name}.js`);
+  return createNodeWorker(workerPath);
 };
 
 export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string, any>) => {
@@ -60,7 +67,7 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
 type WorkerRunTaskType<T> = { data: T; resolve: (e: any) => void; reject: (e: any) => void };
 type WorkerQueueItem = {
   id: string;
-  worker: Worker;
+  worker: NodeWorker;
   status: 'running' | 'idle';
   taskTime: number;
   timeoutId?: NodeJS.Timeout;

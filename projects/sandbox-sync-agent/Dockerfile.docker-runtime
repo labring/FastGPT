@@ -1,0 +1,35 @@
+# Docker 双进程模式镜像
+# 基于 base/ 目录构建的 fastgpt-agent-sandbox:latest，在其基础上注入 Sync Agent
+#
+# 构建顺序：
+#   1. cd base && docker build -t fastgpt-agent-sandbox:latest .
+#   2. docker build -f Dockerfile.docker-runtime -t fastgpt-agent-sandbox:docker .
+FROM fastgpt-agent-sandbox:latest
+
+USER root
+
+# 安装 Sync Agent 依赖
+RUN apt-get update && apt-get install -y \
+    inotify-tools \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 MinIO Client
+RUN curl -O https://dl.min.io/client/mc/release/linux-amd64/mc && \
+    chmod +x mc && \
+    mv mc /usr/local/bin/
+
+# 复制 Sync Agent 脚本
+COPY sync.sh /opt/sync-agent/sync.sh
+COPY http_server.py /opt/sync-agent/http_server.py
+COPY docker-entrypoint.sh /opt/sync-agent/docker-entrypoint.sh
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+RUN chmod +x /opt/sync-agent/sync.sh \
+             /opt/sync-agent/docker-entrypoint.sh && \
+    mkdir -p /var/log/supervisor && \
+    chown -R sandbox:sandbox /var/log/supervisor
+
+USER sandbox
+
+ENTRYPOINT ["/opt/sync-agent/docker-entrypoint.sh"]

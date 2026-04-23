@@ -1,41 +1,34 @@
 packages:
   - packages/*
   - projects/*
+  - pro/admin
+  - pro/sso
   - scripts/icon
   - sdk/*
-allowBuilds:
-  '@parcel/watcher': true
-  core-js: true
-  esbuild: true
-  mongodb-memory-server: true
-  msgpackr-extract: true
-  protobufjs: true
-  sharp: true
-  vue-demi: true
 
 catalog:
-  '@chakra-ui/anatomy': ^2
-  '@chakra-ui/icons': ^2
-  '@chakra-ui/next-js': ^2
-  '@chakra-ui/react': ^2
-  '@chakra-ui/styled-system': ^2
-  '@chakra-ui/system': ^2
-  '@emotion/react': ^11
-  '@emotion/styled': ^11
-  '@fastgpt-sdk/logger': 0.1.2
-  '@fastgpt-sdk/otel': 0.1.2
-  '@fastgpt-sdk/storage': 0.6.15
-  '@modelcontextprotocol/sdk': ^1
-  '@types/lodash': ^4
-  '@types/mime-types': 3.0.1
-  '@types/node': ^20
-  '@types/react': ^18
-  '@types/react-dom': ^18
+  "@chakra-ui/anatomy": ^2
+  "@chakra-ui/icons": ^2
+  "@chakra-ui/next-js": ^2
+  "@chakra-ui/react": ^2
+  "@chakra-ui/styled-system": ^2
+  "@chakra-ui/system": ^2
+  "@emotion/react": ^11
+  "@emotion/styled": ^11
+  "@modelcontextprotocol/sdk": ^1
+  "@fastgpt-sdk/storage": 0.6.15
+  "@fastgpt-sdk/logger": 0.1.2
+  "@fastgpt-sdk/otel": 0.1.2
+  "@types/mime-types": ^3.0.1
+  "@types/lodash": ^4
+  "@types/react": ^18
+  "@types/react-dom": ^18
+  "@types/node": ^20
   axios: 1.13.6
   date-fns: ^3.6.0
   dayjs: 1.11.19
   eslint: ^8
-  eslint-config-next: 15.5.12
+  eslint-config-next: 16.2.4
   express: ^4
   file-type: 21.3.0
   i18next: 23.16.8
@@ -45,9 +38,8 @@ catalog:
   mime: ^4.1.0
   mime-types: 3.0.2
   minio: 8.0.7
-  next: 16.2.1
+  next: 16.2.4
   next-i18next: 15.4.2
-  next-rspack: 16.2.1
   proxy-agent: ^6
   react: ^18
   react-dom: ^18
@@ -57,7 +49,7 @@ catalog:
   zod: ^4
 
 onlyBuiltDependencies:
-  - '@parcel/watcher'
+  - "@parcel/watcher"
   - bufferutil
   - canvas
   - core-js
@@ -71,7 +63,7 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
-  '@types/react': ^18
-  '@types/react-dom': ^18
+  "@types/react": ^18
+  "@types/react-dom": ^18
   react: ^18
   react-dom: ^18

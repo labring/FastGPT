@@ -195,7 +195,7 @@ export const datasetParseQueue = async (): Promise<any> => {
 
       try {
         const trainingMode = getTrainingModeByCollection({
-          trainingType: collection.trainingType,
+          trainingType: collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk,
           autoIndexes: collection.autoIndexes,
           imageIndex: collection.imageIndex
         });

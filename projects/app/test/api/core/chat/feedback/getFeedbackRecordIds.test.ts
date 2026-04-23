@@ -9,8 +9,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { getUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getUser } from '@repo-test/datas/users';
+import { Call } from '@repo-test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 
 describe('getFeedbackRecordIds api test', () => {

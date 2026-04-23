@@ -41,6 +41,7 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
       createCollectionParams: {
         ...collection,
         ...data,
+        parentId: collection.parentId ?? undefined,
         updateTime: new Date(),
         tags: await collectionTagsToTagLabel({
           datasetId: collection.datasetId,

@@ -5,9 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('projects/app/src'),
-      '@fastgpt/global': resolve('packages/global'),
-      '@fastgpt/service': resolve('packages/service'),
-      '@fastgpt/web': resolve('packages/web'),
+      '@fastgpt': resolve('packages'),
       '@test': resolve('test')
     }
   },
@@ -52,11 +50,8 @@ export default defineConfig({
     pool: 'threads',
     testTimeout: 20000,
     hookTimeout: 30000,
+    passWithNoTests: true,
     reporters: ['github-actions', 'default'],
-    include: [
-      'test/**/*.test.ts',
-      'projects/app/test/**/*.test.ts',
-      'projects/marketplace/test/**/*.test.ts'
-    ]
+    include: ['test/**/*.test.ts']
   }
 });
