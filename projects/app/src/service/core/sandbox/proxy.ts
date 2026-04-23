@@ -17,7 +17,7 @@ export async function getSandboxProxyTarget(
   headers: IncomingHttpHeaders,
   sandboxId: string,
   targetPort: number
-): Promise<string> {
+): Promise<{ target: string; teamId: string }> {
   if (targetPort < 1 || targetPort > 65535) {
     throw Object.assign(new Error('Invalid port'), { statusCode: 400 });
   }
@@ -39,7 +39,10 @@ export async function getSandboxProxyTarget(
     const session = getProxySession(sandboxId);
     if (session) {
       dev && console.log(`[sandboxProxy] session fallback sandboxId=${sandboxId}`);
-      return `${session.protocol}://${session.host}:${targetPort}`;
+      return {
+        target: `${session.protocol}://${session.host}:${targetPort}`,
+        teamId: session.teamId
+      };
     }
     throw Object.assign(new Error('Unauthorized'), { statusCode: 401 });
   }
@@ -62,16 +65,23 @@ export async function getSandboxProxyTarget(
   const { host, protocol } = sandbox.metadata!.endpoint!;
   // Cache target for subsequent cookie-less sub-requests (sandboxed iframe)
   upsertProxySession(sandboxId, authTeamId, host, protocol);
-  return `${protocol}://${host}:${targetPort}`;
+  return { target: `${protocol}://${host}:${targetPort}`, teamId: authTeamId };
 }
 
 /**
  * Read the code-server password from the container's config.yaml via exec.
  * Returns null if the sandbox is not found, has no providerSandboxId, or exec fails.
  */
-export async function getCodeServerPasswordFromSandbox(sandboxId: string): Promise<string | null> {
+export async function getCodeServerPasswordFromSandbox(
+  sandboxId: string,
+  teamId: string
+): Promise<string | null> {
   const sandbox = await MongoSandboxInstance.findOne({ sandboxId }).lean();
   if (!sandbox?.metadata?.providerSandboxId) return null;
+
+  if (String(sandbox.metadata?.teamId) !== teamId) {
+    throw Object.assign(new Error('Access denied'), { statusCode: 403 });
+  }
 
   const providerConfig = getSandboxProviderConfig();
   const adapter = await connectToProviderSandbox(

@@ -45,12 +45,15 @@ async function main() {
   )) as typeof import('./src/service/core/sandbox/proxyUtils');
 
   // Fetch the code-server password from the container config.yaml via the internal API.
-  async function fetchCodeServerPassword(sandboxId: string): Promise<string | null> {
+  async function fetchCodeServerPassword(
+    sandboxId: string,
+    teamId: string
+  ): Promise<string | null> {
     try {
       const resp = await fetch(`http://127.0.0.1:${port}/api/core/sandbox/proxyCSPassword`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sandboxId })
+        body: JSON.stringify({ sandboxId, teamId })
       });
       if (!resp.ok) return null;
       const { password } = await resp.json();
@@ -85,10 +88,11 @@ async function main() {
   async function injectCodeServerAuth(
     reqHeaders: IncomingMessage['headers'],
     sandboxId: string,
-    target: string
+    target: string,
+    teamId: string
   ): Promise<void> {
     const key = await ensureCodeServerSession(sandboxId, target, () =>
-      fetchCodeServerPassword(sandboxId)
+      fetchCodeServerPassword(sandboxId, teamId)
     );
     if (key) injectCsKey(reqHeaders, key);
   }
@@ -173,15 +177,15 @@ async function main() {
     proxyType: string
   ) {
     try {
-      const target = await authProxyTarget(req.headers, sandboxId, portNum);
+      const { target, teamId } = await authProxyTarget(req.headers, sandboxId, portNum);
       const csTarget = deriveCsLoginTarget(target, req.url || '');
       if (proxyType === 'absproxy') {
-        await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+        await injectCodeServerAuth(req.headers, sandboxId, csTarget, teamId);
         await handleAbsProxy(req, res, target, sandboxId, String(portNum));
       } else {
         // Rewrite Origin so code-server's CSRF check passes (changeOrigin only rewrites Host).
         const targetUrl = new URL(target);
-        await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+        await injectCodeServerAuth(req.headers, sandboxId, csTarget, teamId);
         // Mark the request so the proxyRes handler can identify the sandbox on session expiry.
         req.headers['x-fastgpt-sandbox-id'] = sandboxId;
         proxy.web(req, res, {
@@ -231,10 +235,10 @@ async function main() {
     }
 
     try {
-      const target = await authProxyTarget(req.headers, sandboxId, portNum);
+      const { target, teamId } = await authProxyTarget(req.headers, sandboxId, portNum);
       const targetUrl = new URL(target);
       const csTarget = deriveCsLoginTarget(target, req.url || '');
-      await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+      await injectCodeServerAuth(req.headers, sandboxId, csTarget, teamId);
       req.headers['x-fastgpt-sandbox-id'] = sandboxId;
       proxy.web(req, res, {
         target,
@@ -304,7 +308,7 @@ async function main() {
 
       let target: string;
       try {
-        target = await authProxyTarget(req.headers, tunnelSandboxId, tunnelPort);
+        ({ target } = await authProxyTarget(req.headers, tunnelSandboxId, tunnelPort));
         dev && console.log(`[proxy:tcptunnel] auth ok target=${target}`);
       } catch (err: any) {
         const status = err.statusCode || 502;
@@ -426,13 +430,13 @@ async function main() {
       );
 
     try {
-      const target = await authProxyTarget(req.headers, sandboxId, portNum);
+      const { target, teamId } = await authProxyTarget(req.headers, sandboxId, portNum);
       dev && console.log(`[proxy:ws] auth ok, forwarding to target=${target}`);
       // Rewrite Origin to match the target host so code-server's CSRF check passes.
       // changeOrigin:true only rewrites Host, not Origin.
       const targetUrl = new URL(target);
       const csTarget = deriveCsLoginTarget(target, req.url || '');
-      await injectCodeServerAuth(req.headers, sandboxId, csTarget);
+      await injectCodeServerAuth(req.headers, sandboxId, csTarget, teamId);
       req.headers['x-fastgpt-sandbox-id'] = sandboxId;
       proxy.ws(req, socket, head, {
         target,
@@ -457,7 +461,7 @@ async function authProxyTarget(
   reqHeaders: IncomingMessage['headers'],
   sandboxId: string,
   targetPort: number
-): Promise<string> {
+): Promise<{ target: string; teamId: string }> {
   dev &&
     console.log(
       `[proxy:auth] POST proxyAuth sandboxId=${sandboxId} port=${targetPort} hasCookie=${!!reqHeaders.cookie}`
@@ -483,9 +487,9 @@ async function authProxyTarget(
     throw Object.assign(new Error(msg), { statusCode: code });
   }
 
-  const { target } = await authResp.json();
+  const { target, teamId } = await authResp.json();
   dev && console.log(`[proxy:auth] proxyAuth ok target=${target}`);
-  return target as string;
+  return { target: target as string, teamId: teamId as string };
 }
 
 // Build upstream request headers, dropping hop-by-hop headers

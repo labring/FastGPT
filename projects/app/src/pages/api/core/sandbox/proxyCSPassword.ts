@@ -12,10 +12,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(403).json({ error: 'Internal only' });
   }
 
-  const { sandboxId } = req.body as { sandboxId?: string };
-  if (!sandboxId) return res.status(400).json({ error: 'Missing sandboxId' });
+  const { sandboxId, teamId } = req.body as { sandboxId?: string; teamId?: string };
+  if (!sandboxId || !teamId) return res.status(400).json({ error: 'Missing sandboxId or teamId' });
 
-  const password = await getCodeServerPasswordFromSandbox(sandboxId);
+  const password = await getCodeServerPasswordFromSandbox(sandboxId, teamId);
   return res.json({ password });
 }
 
