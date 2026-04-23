@@ -23,12 +23,18 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "compat": "tsx scripts/test-model-compat.ts",
+    "compat:api": "tsx scripts/test-model-compat.ts --layer api",
+    "compat:agent": "tsx scripts/test-model-compat.ts --layer agent"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.69",
+    "@ai-sdk/openai": "^3.0.52",
     "@hono/node-server": "^1.13.0",
     "@langchain/langgraph": "^0.2.0",
     "@zilliz/milvus2-sdk-node": "2.6.9",
+    "ai": "^6.0.158",
     "commander": "^11.1.0",
     "dotenv": "^16.3.0",
     "hono": "^4.0.0",

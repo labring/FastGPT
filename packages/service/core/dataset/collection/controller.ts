@@ -15,6 +15,10 @@ import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import type { ClientSession } from '../../../common/mongo';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
+import {
+  parseDatasetBackupFromFileViaWorker,
+  countDatasetBackupFromFileViaWorker
+} from '../../../worker/function';
 import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
 import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -51,7 +55,9 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session
+  session,
+  filePath,
+  fileExtension
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
@@ -62,6 +68,8 @@ export const createCollectionAndInsertData = async ({
 
   billId?: string;
   session?: ClientSession;
+  filePath?: string;
+  fileExtension?: string;
 }): Promise<CreateCollectionWithResultResponseType> => {
   addLog.debug('[createCollectionAndInsertData] Input params', {
     rawTextLength: rawText?.length,
@@ -140,6 +148,10 @@ export const createCollectionAndInsertData = async ({
   }
 
   // 1. split chunks or create image chunks
+  // 当 filePath 存在时，Worker 直接读文件解析，同时返回 hashRawText 和 rawTextLength
+  let hashRawText: string | undefined;
+  let rawTextLength: number | undefined;
+
   const {
     chunks,
     chunkSize,
@@ -155,6 +167,20 @@ export const createCollectionAndInsertData = async ({
     chunkSize?: number;
     indexSize?: number;
   } = await (async () => {
+    // Worker 直接读文件统计行数：主线程零阻塞，同时获取 hash 和 length
+    // 使用 countDatasetBackupFromFileViaWorker 替代 parseDatasetBackupFromFileViaWorker，
+    // IPC 仅传回 {chunkCount, hashRawText, rawTextLength}，消除 200k 对象 structured clone 开销。
+    if (backupParse && filePath && fileExtension) {
+      const result = await countDatasetBackupFromFileViaWorker(filePath, fileExtension);
+      hashRawText = result.hashRawText;
+      rawTextLength = result.rawTextLength;
+      return {
+        chunks: Array(result.chunkCount).fill({}),
+        chunkSize: formatCreateCollectionParams.chunkSize,
+        indexSize: formatCreateCollectionParams.indexSize
+      };
+    }
+
     if (rawText) {
       // Process text chunks
       const chunks = await rawText2Chunks({
@@ -208,8 +234,8 @@ export const createCollectionAndInsertData = async ({
       chunkSize,
       indexSize,
 
-      hashRawText: rawText ? hashStr(rawText) : undefined,
-      rawTextLength: rawText?.length,
+      hashRawText: hashRawText || (rawText ? hashStr(rawText) : undefined),
+      rawTextLength: rawTextLength ?? rawText?.length,
       session
     });
 

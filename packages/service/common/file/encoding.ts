@@ -127,8 +127,18 @@ export function detectAndDecodeBuffer(buffer: Buffer): DecodeResult {
     `[detectAndDecodeBuffer] Detected encoding: ${encoding}, Buffer size: ${buffer.length}, BOM offset: ${offset}`
   );
 
-  return {
-    content: iconv.decode(contentBuffer, encoding),
-    encoding
-  };
+  // TextDecoder（V8 原生 ICU）对 GBK 比 iconv-lite 快约 30 倍，对 UTF-8 性能相当。
+  // Node.js 18+ 带完整 ICU 数据，支持 GBK / UTF-8 / UTF-16。
+  // 降级到 iconv-lite 兜底极少数不支持的编码。
+  try {
+    return {
+      content: new TextDecoder(encoding).decode(contentBuffer),
+      encoding
+    };
+  } catch {
+    return {
+      content: iconv.decode(contentBuffer, encoding),
+      encoding
+    };
+  }
 }

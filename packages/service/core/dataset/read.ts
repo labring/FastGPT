@@ -8,9 +8,9 @@ import { axios } from '../../common/api/axios';
 import { readS3FileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getApiDatasetRequest } from './apiDataset';
-import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { text2Chunks, runSyncFunction } from '../../worker/function';
+import { text2Chunks } from '../../worker/function';
+import { parseDatasetBackup2Chunks } from './parseBackup';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
@@ -310,25 +310,8 @@ export const rawText2Chunks = async ({
     metadata?: Record<string, any>;
   }[]
 > => {
-  const parseDatasetBackup2Chunks = (rawText: string) => {
-    const csvArr = Papa.parse(rawText).data as string[][];
-    const chunks = csvArr
-      .slice(1)
-      .map((item) => ({
-        q: item[0] || '',
-        a: item[1] || '',
-        indexes: item.slice(2).filter((item) => item.trim()),
-        imageIdList
-      }))
-      .filter((item) => item.q || item.a);
-
-    return {
-      chunks
-    };
-  };
-
   if (backupParse) {
-    return parseDatasetBackup2Chunks(rawText).chunks;
+    return parseDatasetBackup2Chunks(rawText, imageIdList).chunks;
   }
 
   // Chunk condition

@@ -34,6 +34,9 @@ import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/cont
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
+import { excelBufferToCSV } from '@fastgpt/service/common/file/csv';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -204,85 +207,117 @@ export const datasetParseQueue = async (): Promise<any> => {
           syntheticIndex: collection.syntheticIndex
         });
 
+        const isBackupMode =
+          collection.trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+          collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
+
         // 1. Parse rawtext
-        const sourceReadType = await (async () => {
-          if (collection.type === DatasetCollectionTypeEnum.link) {
-            if (!collection.rawLink) return Promise.reject('rawLink is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.link,
-              sourceId: collection.rawLink,
-              selector: collection.metadata?.webPageSelector
-            };
+        let title: string | undefined;
+        let rawText = '';
+
+        if (
+          isBackupMode &&
+          collection.type === DatasetCollectionTypeEnum.file &&
+          collection.fileId
+        ) {
+          // backup/template CSV 文件：直接读取原始字节，跳过 Markdown 转换
+          const { buffer, extension } = await getS3DatasetSource().getDatasetFileBuffer(
+            String(collection.fileId)
+          );
+          if (extension === 'xlsx' || extension === 'xls') {
+            rawText = excelBufferToCSV(buffer) || '';
+            if (!rawText) {
+              if (buffer.length > 500 * 1024) throw new Error('template_excel_too_much_data');
+              throw new Error('template_excel_file_empty');
+            }
+          } else {
+            rawText = detectAndDecodeBuffer(buffer).content;
           }
-          if (collection.type === DatasetCollectionTypeEnum.file) {
-            if (!collection.fileId) return Promise.reject('fileId is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.fileLocal,
-              sourceId: String(collection.fileId)
-            };
-          }
-          if (collection.type === DatasetCollectionTypeEnum.apiFile) {
-            if (!collection.apiFileId) return Promise.reject('apiFileId is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.apiFile,
-              sourceId: collection.apiFileId,
-              apiDatasetServer: dataset.apiDatasetServer
-            };
-          }
-          if (collection.type === DatasetCollectionTypeEnum.externalFile) {
-            if (!collection.externalFileUrl) return Promise.reject('externalFileId is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.externalFile,
-              sourceId: collection.externalFileUrl,
-              externalFileId: collection.externalFileId
-            };
+        } else {
+          // 1. Parse rawtext
+          const sourceReadType = await (async () => {
+            if (collection.type === DatasetCollectionTypeEnum.link) {
+              if (!collection.rawLink) return Promise.reject('rawLink is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.link,
+                sourceId: collection.rawLink,
+                selector: collection.metadata?.webPageSelector
+              };
+            }
+            if (collection.type === DatasetCollectionTypeEnum.file) {
+              if (!collection.fileId) return Promise.reject('fileId is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.fileLocal,
+                sourceId: String(collection.fileId)
+              };
+            }
+            if (collection.type === DatasetCollectionTypeEnum.apiFile) {
+              if (!collection.apiFileId) return Promise.reject('apiFileId is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.apiFile,
+                sourceId: collection.apiFileId,
+                apiDatasetServer: dataset.apiDatasetServer
+              };
+            }
+            if (collection.type === DatasetCollectionTypeEnum.externalFile) {
+              if (!collection.externalFileUrl) return Promise.reject('externalFileId is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.externalFile,
+                sourceId: collection.externalFileUrl,
+                externalFileId: collection.externalFileId
+              };
+            }
+
+            return null;
+          })();
+
+          if (!sourceReadType) {
+            logger.warn('Parse queue task skipped: source read type resolved to null', {
+              trainingId: data._id,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId,
+              collectionType: collection.type
+            });
+            await MongoDatasetTraining.deleteOne({
+              _id: data._id
+            });
+            continue;
           }
 
-          return null;
-        })();
-
-        if (!sourceReadType) {
-          logger.warn('Parse queue task skipped: source read type resolved to null', {
-            trainingId: data._id,
+          ({ title, rawText } = await readDatasetSourceRawText({
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            customPdfParse: collection.customPdfParse,
+            usageId: data.billId,
             datasetId: data.datasetId,
-            collectionId: data.collectionId,
-            collectionType: collection.type
-          });
-          await MongoDatasetTraining.deleteOne({
-            _id: data._id
-          });
-          continue;
+            ...sourceReadType
+          }));
         }
 
-        let { title, rawText } = await readDatasetSourceRawText({
-          teamId: data.teamId,
-          tmbId: data.tmbId,
-          customPdfParse: collection.customPdfParse,
-          usageId: data.billId,
-          datasetId: data.datasetId,
-          ...sourceReadType
-        });
-
-        // 3. LLM Pargraph
-        const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
-          rawText,
-          model: dataset.agentModel,
-          billId: data.billId,
-          paragraphChunkAIMode: collection.paragraphChunkAIMode
-        });
+        // 3. LLM Pargraph（backup/template 模式跳过 LLM 处理，避免破坏 CSV 结构）
+        const { resultText, totalInputTokens, totalOutputTokens } = isBackupMode
+          ? { resultText: rawText, totalInputTokens: 0, totalOutputTokens: 0 }
+          : await requestLLMPargraph({
+              rawText,
+              model: dataset.agentModel,
+              billId: data.billId,
+              paragraphChunkAIMode: collection.paragraphChunkAIMode
+            });
 
         // 释放 rawText 内存，resultText 已包含处理后的内容
         rawText = null as any;
 
-        // Push usage
-        pushLLMTrainingUsage({
-          teamId: data.teamId,
-          model: dataset.agentModel,
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-          usageId: data.billId,
-          type: UsageItemTypeEnum.training_paragraph
-        });
+        // Push usage（backup/template 模式不消耗 LLM tokens）
+        if (!isBackupMode) {
+          pushLLMTrainingUsage({
+            teamId: data.teamId,
+            model: dataset.agentModel,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            usageId: data.billId,
+            type: UsageItemTypeEnum.training_paragraph
+          });
+        }
 
         // 4. Chunk split
         const chunks = await rawText2Chunks({
@@ -296,7 +331,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
-          backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
+          backupParse: isBackupMode
         });
 
         // Check dataset limit
@@ -321,7 +356,9 @@ export const datasetParseQueue = async (): Promise<any> => {
             {
               ...(title && collection.type === DatasetCollectionTypeEnum.link && { name: title }),
               rawTextLength: resultText.length,
-              hashRawText: hashStr(resultText)
+              hashRawText: hashStr(resultText),
+              // backup/template 模式：原始内容已解析完成，标记为已解析
+              ...(isBackupMode ? { updateTime: new Date() } : {})
             },
             { session }
           );
