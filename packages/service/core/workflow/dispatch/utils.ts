@@ -603,8 +603,6 @@ export const getNodeErrResponse = ({
 export const safePoints = (val: number | undefined | null): number =>
   Number.isFinite(val) ? (val as number) : 0;
 
-// parallelRun inlines its own accumulator to fold retry attempts together,
-// so it doesn't use this helper.
 export const pushSubWorkflowUsage = ({
   usagePush,
   response,

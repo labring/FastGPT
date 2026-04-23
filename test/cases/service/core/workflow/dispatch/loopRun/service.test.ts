@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   extractFinishedNodeIds,
@@ -63,24 +69,57 @@ const makeResponse = (override: Partial<ChatHistoryItemResType>): ChatHistoryIte
 
 describe('loopRun/service', () => {
   describe('pickCustomOutputInputs', () => {
-    it('只返回 canEdit=true 的 input', () => {
+    const makeDynamicOutput = (key: string): FlowNodeOutputItemType => ({
+      id: key,
+      key,
+      label: key,
+      type: FlowNodeOutputTypeEnum.dynamic,
+      valueType: 'any' as any
+    });
+
+    it('只返回同时满足 canEdit=true 且存在 dynamic output 镜像的 input', () => {
       const inputs: FlowNodeInputItemType[] = [
         makeInput({ key: 'staticInput' }),
         makeInput({ key: 'userField1', canEdit: true }),
         makeInput({ key: 'userField2', canEdit: true }),
         makeInput({ key: 'anotherStatic' })
       ];
-      const result = pickCustomOutputInputs(inputs);
+      const outputs = [makeDynamicOutput('userField1'), makeDynamicOutput('userField2')];
+      const result = pickCustomOutputInputs(inputs, outputs);
       expect(result.map((i) => i.key)).toEqual(['userField1', 'userField2']);
     });
 
     it('空输入列表返回空数组', () => {
-      expect(pickCustomOutputInputs([])).toEqual([]);
+      expect(pickCustomOutputInputs([], [])).toEqual([]);
     });
 
     it('无任何 canEdit 返回空数组', () => {
       const inputs = [makeInput({ key: 'a' }), makeInput({ key: 'b' })];
-      expect(pickCustomOutputInputs(inputs)).toEqual([]);
+      expect(pickCustomOutputInputs(inputs, [])).toEqual([]);
+    });
+
+    it('canEdit 为 true 但没有对应 dynamic output → 排除（避免未来 canEdit 配置项误混入）', () => {
+      const inputs: FlowNodeInputItemType[] = [
+        makeInput({ key: 'configField', canEdit: true }),
+        makeInput({ key: 'outputField', canEdit: true })
+      ];
+      const outputs = [makeDynamicOutput('outputField')];
+      const result = pickCustomOutputInputs(inputs, outputs);
+      expect(result.map((i) => i.key)).toEqual(['outputField']);
+    });
+
+    it('output 类型非 dynamic（如 static / error）不计入镜像', () => {
+      const inputs: FlowNodeInputItemType[] = [makeInput({ key: 'userField1', canEdit: true })];
+      const outputs: FlowNodeOutputItemType[] = [
+        {
+          id: 'userField1',
+          key: 'userField1',
+          label: 'userField1',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'any' as any
+        }
+      ];
+      expect(pickCustomOutputInputs(inputs, outputs)).toEqual([]);
     });
   });
 

@@ -371,3 +371,10 @@ export const INTERACTIVE_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
 /** 返回 true 表示该节点是交互类节点（userSelect / formInput）。 */
 export const isInteractiveNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
   INTERACTIVE_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
+
+/** 嵌套容器的系统子节点类型集合（只能由容器自动创建，不允许从模板面板添加）。 */
+export const NESTED_CHILD_SYSTEM_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.nestedStart,
+  FlowNodeTypeEnum.nestedEnd,
+  FlowNodeTypeEnum.loopRunStart
+]);

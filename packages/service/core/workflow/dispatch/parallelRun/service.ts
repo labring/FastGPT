@@ -1,7 +1,7 @@
 import { cloneDeep } from 'lodash';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
-import { injectNestedStartInputs, safePoints } from '../utils';
+import { collectResponseFeedbacks, injectNestedStartInputs, safePoints } from '../utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
@@ -269,11 +269,7 @@ export const aggregateParallelResults = (
     if (result.response) {
       const response = result.response;
       assistantResponses.push(...(response[DispatchNodeResponseKeyEnum.assistantResponses] || []));
-
-      const feedbacks = response[DispatchNodeResponseKeyEnum.customFeedbacks];
-      if (feedbacks && feedbacks.length > 0) {
-        customFeedbacks.push(...feedbacks);
-      }
+      collectResponseFeedbacks(response, customFeedbacks);
     }
   }
 

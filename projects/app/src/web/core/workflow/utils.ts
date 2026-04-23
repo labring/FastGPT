@@ -546,22 +546,20 @@ export const checkWorkflowNodeAndConnection = ({
       }
     }
 
-    // check node input
-    const loopRunMode =
-      data.flowNodeType === FlowNodeTypeEnum.loopRun
-        ? (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
-            | LoopRunModeEnum
-            | undefined)
-        : undefined;
     if (
       inputs.some((input) => {
         // Conditional loopRun hides loopRunInputArray in the UI; its required flag is
         // only meaningful in array mode, so skip it here to avoid spurious failures.
-        if (
-          loopRunMode === LoopRunModeEnum.conditional &&
-          input.key === NodeInputKeyEnum.loopRunInputArray
-        ) {
-          return false;
+        if (input.key === NodeInputKeyEnum.loopRunInputArray) {
+          const loopRunMode =
+            data.flowNodeType === FlowNodeTypeEnum.loopRun
+              ? (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
+                  | LoopRunModeEnum
+                  | undefined)
+              : undefined;
+          if (loopRunMode === LoopRunModeEnum.conditional) {
+            return false;
+          }
         }
         if (
           !input.valueType ||

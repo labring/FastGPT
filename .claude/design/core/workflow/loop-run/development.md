@@ -280,9 +280,11 @@ return {
 };
 ```
 
-**动机**：loopRun 用 `response.flowResponses.find((r) => r.error)` 识别失败轮。而现有 dispatcher（code / http / laf / 等）在 `catchError=false` 时通过 `getNodeErrResponse` 返回的 `responseData` 里只写 `errorText`、**不写** `error`，导致 loopRun 永远看不到真实错误文本。
+**动机**：loopRun / parallelRun 需要一种稳定方式识别失败轮。`dispatch/index.ts` 里 dispatcher throw 的 catch 兜底分支本来就在写 `nodeResponse.error`，OTel span status 也读 `nodeResponse.error`。唯独 dispatcher 返回 `{error}` + `catchError=false` 的非 throw 路径不写 `error`，导致失败检测链路断裂。
 
-**顺带修复**：`parallelRun/service.ts:146` 早就在用 `flowResponses.find((r) => r.error)`，但同样因为这条链路没写 `error` 而始终落到 fallback 文案 `parallel_task_not_reach_end`。归一化后 parallelRun 也能拿到真实错误。OTel span error status 也终于会在这条路径上正确触发。
+**方案**：给非 throw 路径补齐 `nodeResponse.error`，和 catch 兜底 + OTel 统一到同一个字段。`errorText` 保留给 UI 展示（schema 注释 `// Just show`）。
+
+**顺带修复**：`parallelRun/service.ts` 早就在用 `flowResponses.find((r) => r.error)`，但同样因为这条链路没写 `error` 而始终落到 fallback 文案 `parallel_task_not_reach_end`。归一化后 parallelRun 也能拿到真实错误。OTel span error status 也终于会在这条路径上正确触发。
 
 **安全性**：`DispatchNodeResponseSchema` 里 `error` 本来就是可选字段；grep 过所有消费方，没有代码因为 `.error` 现在会被填充而出问题。
 

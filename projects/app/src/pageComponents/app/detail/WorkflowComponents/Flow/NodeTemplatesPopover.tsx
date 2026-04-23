@@ -1,7 +1,11 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  EDGE_TYPE,
+  FlowNodeTypeEnum,
+  NESTED_CHILD_SYSTEM_NODE_TYPES
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node } from 'reactflow';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
@@ -57,13 +61,7 @@ const NodeTemplatesPopover = () => {
         }
 
         // 2. Exclude loop start and end nodes
-        if (
-          [
-            FlowNodeTypeEnum.nestedStart,
-            FlowNodeTypeEnum.nestedEnd,
-            FlowNodeTypeEnum.loopRunStart
-          ].includes(node.data.flowNodeType)
-        ) {
+        if (NESTED_CHILD_SYSTEM_NODE_TYPES.has(node.data.flowNodeType)) {
           return false;
         }
 

@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
@@ -57,7 +60,13 @@ const makeLoopRunNode = (
       })
     )
   ],
-  outputs: []
+  outputs: customOutputs.map((c) => ({
+    id: c.key,
+    key: c.key,
+    label: c.key,
+    type: FlowNodeOutputTypeEnum.dynamic,
+    valueType: (c.valueType ?? 'string') as any
+  }))
 });
 
 const makeRuntimeNodes = (
@@ -372,8 +381,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       'workflow:loop_run_conditional_requires_break'
     );
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
-    expect(nodeResponse.loopRunIterations).toBe(0);
-    expect(nodeResponse.loopRunHistory).toEqual([]);
+    expect(nodeResponse.errorText).toBe('workflow:loop_run_conditional_requires_break');
+    expect(nodeResponse.mergeSignId).toBe('loopRun1');
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 

@@ -12,13 +12,16 @@ import type {
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  rewriteNodeOutputByHistories,
+  storeEdges2RuntimeEdges
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 
 import { env } from '../../../../env';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { runWorkflow } from '..';
-import { collectResponseFeedbacks, pushSubWorkflowUsage } from '../utils';
+import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
 import {
   extractFinishedNodeIds,
   hasLoopRunBreakChild,
@@ -67,29 +70,32 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   })();
 
   if (preCheckError) {
-    return {
-      data: {},
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        totalPoints: 0,
-        loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
-        loopRunIterations: 0,
-        loopRunHistory: [],
-        loopRunDetail: [],
+    return getNodeErrResponse({
+      error: preCheckError,
+      responseData: {
         mergeSignId: node.nodeId,
-        errorText: preCheckError
-      },
-      error: { [NodeOutputKeyEnum.errorText]: preCheckError }
-    };
+        ...(mode === LoopRunModeEnum.array ? { loopRunInput: inputArray } : {})
+      }
+    });
   }
 
   // Isolate from parent so concurrent siblings don't mutate our view.
-  const isolatedNodes = cloneDeep(runtimeNodes);
+  let isolatedNodes = cloneDeep(runtimeNodes);
   const isolatedEdges = cloneDeep(runtimeEdges);
 
-  const customOutputInputs = pickCustomOutputInputs(node.inputs);
+  const customOutputInputs = pickCustomOutputInputs(node.inputs, node.outputs);
 
   let interactiveData =
     lastInteractive?.type === 'loopRunInteractive' ? lastInteractive.params : undefined;
+
+  // On resume, the inner loop-body outputs (e.g. loopRunStart.currentIteration) were
+  // captured into childrenResponse.nodeOutputs by the inner handleInteractiveResult.
+  // The top-level restore in chat/completions only reads the outer nodeOutputs, which
+  // doesn't cover the loop body — apply the inner snapshot here so downstream refs
+  // in the resumed iteration resolve correctly.
+  if (interactiveData?.childrenResponse) {
+    isolatedNodes = rewriteNodeOutputByHistories(isolatedNodes, interactiveData.childrenResponse);
+  }
 
   const loopHistory: LoopRunHistoryItem[] = interactiveData
     ? (interactiveData.loopHistory as LoopRunHistoryItem[]) ?? []
@@ -100,6 +106,11 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined;
+  // Pre-interrupt children of the in-flight iteration survive across resume here,
+  // so pushIterationDetail can stitch them back with the resumed iteration's
+  // flowResponses (also handles multiple interrupts in the same iteration).
+  let pendingIterationResponses: ChatHistoryItemResType[] =
+    interactiveData?.pendingIterationResponses ?? [];
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
@@ -151,7 +162,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       )
     });
 
-    const iterationChildrenResponses = response.flowResponses;
+    // Merge pre-interrupt children into the detail tree so the resumed iteration
+    // shows the full picture (wall-clock and children both span the whole iteration).
+    // pushSubWorkflowUsage still uses `response` only — pre-interrupt usage was
+    // billed in the interrupted request.
+    const iterationChildrenResponses = isResumeIteration
+      ? [...pendingIterationResponses, ...response.flowResponses]
+      : response.flowResponses;
     const iterationRunningTime = iterationChildrenResponses.reduce(
       (acc, r) => acc + (typeof r.runningTime === 'number' ? r.runningTime : 0),
       0
@@ -167,18 +184,17 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     collectResponseFeedbacks(response, customFeedbacks);
     newVariables = { ...newVariables, ...response.newVariables };
 
-    // Pause without writing a history entry — the resumed run will record it.
-    // Children for this in-flight iteration are not wrapped yet; the resumed
-    // run finishes the iteration and pushes a single wrapper entry there.
+    // Pause: stash accumulated children so the next resume still sees pre-interrupt
+    // nodes (supports multiple interrupts in the same iteration).
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
+      pendingIterationResponses = iterationChildrenResponses;
       break;
     }
 
-    // Apply `finishedNodeIds` for both success and failure paths — nodes that
-    // didn't run this iteration (e.g. a skipped if-else branch) would otherwise
-    // leak their previous-iteration output from `isolatedNodes`.
-    const finishedNodeIds = extractFinishedNodeIds(response.flowResponses);
+    // Apply `finishedNodeIds` over the merged children so pre-interrupt nodes count
+    // as finished for the customOutputs snapshot.
+    const finishedNodeIds = extractFinishedNodeIds(iterationChildrenResponses);
     const customOutputs = readCustomOutputSnapshot({
       customOutputInputs,
       runtimeNodes: isolatedNodes,
@@ -226,6 +242,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     // Resume state is one-shot; clear so subsequent iterations enter clean.
     interactiveData = undefined;
+    pendingIterationResponses = [];
 
     iteration++;
   }
@@ -253,7 +270,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
           params: {
             loopHistory,
             childrenResponse: interactiveResponse,
-            iteration
+            iteration,
+            pendingIterationResponses
           }
         }
       : undefined,

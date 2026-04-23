@@ -1,11 +1,17 @@
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   formatVariableValByType,
   getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 
@@ -16,8 +22,19 @@ export type LoopRunHistoryItem = {
   error?: string;
 };
 
-export const pickCustomOutputInputs = (inputs: FlowNodeInputItemType[]): FlowNodeInputItemType[] =>
-  inputs.filter((i) => i.canEdit === true);
+// 自定义输出声明：canEdit 本身是通用的「用户可改 key/type」标记，单独用会把未来
+// 新增的 canEdit 输入（如迭代配置项）误当成输出声明。这里通过「是否存在同 key 的
+// dynamic output 镜像」二次校验，确保只挑出真正被 NodeLoopRun.useEffect 镜像过
+// 的声明项。
+export const pickCustomOutputInputs = (
+  inputs: FlowNodeInputItemType[],
+  outputs: FlowNodeOutputItemType[]
+): FlowNodeInputItemType[] => {
+  const dynamicOutputKeys = new Set(
+    outputs.filter((o) => o.type === FlowNodeOutputTypeEnum.dynamic).map((o) => o.key)
+  );
+  return inputs.filter((i) => i.canEdit === true && dynamicOutputKeys.has(i.key));
+};
 
 export const extractFinishedNodeIds = (flowResponses: ChatHistoryItemResType[]): Set<string> => {
   const ids = new Set<string>();
