@@ -179,15 +179,7 @@ const TeamPlanStatusCard = () => {
         </Flex>
         <Flex>
           <Box color={'myGray.500'}> {t('app:current_package')}</Box>
-          <Box
-            color={'primary.400'}
-            cursor={'pointer'}
-            onClick={() => {
-              router.push('/price');
-            }}
-          >
-            {t(planName as any)}
-          </Box>
+          <Box color={'primary.400'}>{t(planName as any)}</Box>
         </Flex>
         {/* <Button
           borderRadius={'6px'}
