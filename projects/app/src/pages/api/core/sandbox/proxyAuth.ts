@@ -20,8 +20,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return Promise.reject('Missing sandboxId or targetPort');
   }
 
-  const target = await getSandboxProxyTarget(req.headers, sandboxId, Number(targetPort));
-  return res.json({ target });
+  const { target, teamId } = await getSandboxProxyTarget(
+    req.headers,
+    sandboxId,
+    Number(targetPort)
+  );
+  return res.json({ target, teamId });
 }
 
 // GET handler: redirect flow for subdomain cookie hand-off.

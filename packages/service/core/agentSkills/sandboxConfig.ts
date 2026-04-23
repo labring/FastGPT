@@ -115,7 +115,7 @@ export function getSandboxDefaults(): SandboxDefaults {
     workDirectory: '/home/sandbox/workspace',
     // workDirectory: env.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
     targetPort: 44772,
-    entrypoint: '/home/sandbox/entrypoint.sh'
+    entrypoint: '/opt/entrypoint.sh'
     // entrypoint: env.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
   };
 }

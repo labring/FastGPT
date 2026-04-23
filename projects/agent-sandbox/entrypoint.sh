@@ -16,7 +16,7 @@ if [ "${_ENABLE_CODE_SERVER}" = "true" ]; then
        --disable-workspace-trust \
        --disable-getting-started-override \
        --app-name "Skills" \
-       --user-data-dir /home/sandbox/.local/share/code-server \
+       --user-data-dir ~/.local/share/code-server \
        "${WORKDIR}"
 else
   exec sleep infinity
