@@ -312,7 +312,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
                 {t('dataset:related_app')}
               </Box>
               <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
-                0
+                {dataset.appCount ?? 0}
               </Box>
             </HStack>
             <HStack spacing={'4px'}>
@@ -324,7 +324,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
                     : t('dataset:file')}
               </Box>
               <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
-                0
+                {dataset.fileCount ?? 0}
               </Box>
             </HStack>
           </HStack>
