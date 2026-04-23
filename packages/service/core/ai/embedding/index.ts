@@ -91,7 +91,9 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
                 return tokens.reduce((sum, item) => sum + item, 0);
               })(),
               Promise.all(
-                res.data.map((item) => formatVectors(item.embedding, model.normalization))
+                res.data.map((item) =>
+                  formatVectors(decodeEmbedding(item.embedding), model.normalization)
+                )
               )
             ]);
 
@@ -119,6 +121,16 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
 
     return Promise.reject(error);
   }
+}
+
+export function decodeEmbedding(embedding: number[] | string): number[] {
+  if (typeof embedding === 'string') {
+    // base64-encoded IEEE 754 little-endian float32 array
+    const buf = Buffer.from(embedding, 'base64');
+    const floats = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+    return Array.from(floats);
+  }
+  return embedding;
 }
 
 export function formatVectors(vector: number[], normalization = false) {
