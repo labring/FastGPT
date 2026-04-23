@@ -345,6 +345,62 @@ describe('getFlatAppResponses', () => {
 
     expect(result).toHaveLength(3);
   });
+
+  it('should recurse into loopRunDetail and parallelDetail', () => {
+    const responses: ChatHistoryItemResType[] = [
+      {
+        id: 'loopRunParent',
+        nodeId: 'loopRunParent',
+        moduleName: 'LoopRun',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        loopRunDetail: [
+          {
+            id: 'iter1',
+            nodeId: 'iter1',
+            moduleName: 'Iter 1',
+            moduleType: FlowNodeTypeEnum.loopRun,
+            childrenResponses: [
+              {
+                id: 'ds1',
+                nodeId: 'ds1',
+                moduleName: 'Dataset Search',
+                moduleType: FlowNodeTypeEnum.datasetSearchNode
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'parallelParent',
+        nodeId: 'parallelParent',
+        moduleName: 'Parallel',
+        moduleType: FlowNodeTypeEnum.parallelRun,
+        parallelDetail: [
+          {
+            id: 'task1',
+            nodeId: 'task1',
+            moduleName: 'Task 1',
+            moduleType: FlowNodeTypeEnum.parallelRun,
+            childrenResponses: [
+              {
+                id: 'ds2',
+                nodeId: 'ds2',
+                moduleName: 'Dataset Search',
+                moduleType: FlowNodeTypeEnum.datasetSearchNode
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = getFlatAppResponses(responses);
+    const ids = result.map((item) => item.id);
+
+    expect(ids).toContain('ds1');
+    expect(ids).toContain('ds2');
+    expect(result).toHaveLength(6);
+  });
 });
 
 describe('checkInteractiveResponseStatus', () => {
