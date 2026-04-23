@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ChatMessageSchema } from '../api';
 

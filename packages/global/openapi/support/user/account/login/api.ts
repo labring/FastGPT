@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { OAuthEnum } from '../../../../../support/user/constant';
 import { TrackRegisterParamsSchema } from '../../../../../support/marketing/type';
 import { LanguageSchema } from '../../../../../common/i18n/type';

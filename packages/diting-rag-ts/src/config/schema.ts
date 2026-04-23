@@ -1,7 +1,7 @@
 // src/config/schema.ts
 // Configuration Schema - 使用 zod 定义配置验证
 
-import { z } from 'zod';
+import z from 'zod';
 
 /**
  * LLM 配置

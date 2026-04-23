@@ -4,7 +4,7 @@
  * 使用 dotenv 加载 .env 文件，zod 做类型转换和校验。
  */
 import dotenv from 'dotenv';
-import { z } from 'zod';
+import z from 'zod';
 
 dotenv.config();
 

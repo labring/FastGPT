@@ -2,7 +2,7 @@ import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import { PresignChatFilePostUrlSchema, PresignChatFileGetUrlSchema } from './api';
 import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
-import { z } from 'zod';
+import z from 'zod';
 
 export const ChatFilePath: OpenAPIPath = {
   '/core/chat/file/presignChatFilePostUrl': {

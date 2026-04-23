@@ -1,7 +1,7 @@
 import './env'; // dotenv 最先加载
 import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
-import { z } from 'zod';
+import z from 'zod';
 import { config } from './config';
 import { ProcessPool } from './pool/process-pool';
 import { PythonProcessPool } from './pool/python-process-pool';

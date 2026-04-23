@@ -8,7 +8,7 @@ import {
 } from './api';
 import { SandboxPath } from './sandbox';
 import { AgentPath } from './agent';
-import { z } from 'zod';
+import z from 'zod';
 import { getErrorResponse } from '../../type';
 
 export const AIPath: OpenAPIPath = {

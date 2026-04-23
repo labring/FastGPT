@@ -2,7 +2,7 @@ import type { TeamMetaType, UserModelSchema } from '../type';
 import { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import type { GroupMemberRole } from '../../permission/memberGroup/constant';
 import { TeamPermission } from '../../permission/user/controller';
-import { z } from 'zod';
+import z from 'zod';
 
 export const LafAccountSchema = z.object({
   appid: z.string(),

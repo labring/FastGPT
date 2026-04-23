@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { TrainingModeEnum } from '../../../../core/dataset/constants';
 import { DatasetTrainingSchema } from '../../../../core/dataset/type';

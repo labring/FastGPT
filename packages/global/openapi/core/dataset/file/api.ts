@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetSourceReadTypeEnum } from '../../../../core/dataset/constants';
 import { ChunkSettingsSchema } from '../../../../core/dataset/type';

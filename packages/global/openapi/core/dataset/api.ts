@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { DatasetSearchModeEnum, DatasetTypeEnum, RerankMethodEnum } from '../../../core/dataset/constants';
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';

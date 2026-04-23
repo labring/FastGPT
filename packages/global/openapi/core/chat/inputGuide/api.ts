@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { PaginationSchema } from '../../../api';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
