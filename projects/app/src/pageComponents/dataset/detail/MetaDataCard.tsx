@@ -9,6 +9,7 @@ import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
+  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeMap,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -44,6 +45,8 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     if (!collection) return [];
 
     const webSelector = collection?.metadata?.webPageSelector;
+    const trainingType = collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk;
+    const trainingTypeConfig = DatasetCollectionDataProcessModeMap[trainingType];
 
     return [
       {
@@ -96,7 +99,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         ? [
             {
               label: t('dataset:collection.training_type'),
-              value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
+              value: t(trainingTypeConfig.label as any)
             }
           ]
         : []),

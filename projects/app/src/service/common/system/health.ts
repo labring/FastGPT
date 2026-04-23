@@ -7,6 +7,9 @@ import { InitialErrorEnum } from '@fastgpt/service/common/system/constants';
 import { loadModelProviders } from '@fastgpt/service/thirdProvider/fastgptPlugin/model';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 
+const shouldFailOnProHealthCheck =
+  process.env.NODE_ENV !== 'development' || process.env.STRICT_PRO_HEALTH_CHECK === 'true';
+
 export const instrumentationCheck = async () => {
   const logger = getLogger(LogCategories.SYSTEM);
   logger.info('instrumentation check start');
@@ -45,8 +48,17 @@ export const instrumentationCheck = async () => {
       }
     } catch (error) {
       const message = `[${InitialErrorEnum.PRO_ERROR}]: ${getErrText(error)}`;
-      console.error(message, { error });
-      return Promise.reject(message);
+      if (shouldFailOnProHealthCheck) {
+        console.error(message, { error });
+        return Promise.reject(message);
+      }
+
+      logger.warn('Pro health check failed during development, skipping startup block', {
+        message,
+        proUrl: process.env.PRO_URL,
+        strictProHealthCheck: process.env.STRICT_PRO_HEALTH_CHECK,
+        error
+      });
     }
   }
 

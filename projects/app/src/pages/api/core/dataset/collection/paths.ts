@@ -47,7 +47,7 @@ export async function getDatasetCollectionPaths({
 
     if (!parent) return [];
 
-    const paths = await find(parent.parentId);
+    const paths = await find(parent.parentId ?? undefined);
     paths.push({ parentId, parentName: parent.name });
 
     return paths;

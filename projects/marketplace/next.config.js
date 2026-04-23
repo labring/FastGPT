@@ -2,6 +2,8 @@ const { i18n } = require('./next-i18next.config.js');
 const path = require('path');
 
 const isDev = process.env.NODE_ENV === 'development';
+const monorepoRoot = path.join(__dirname, '../../');
+const emptyModulePath = './packages/service/common/system/emptyModule.js';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -41,82 +43,33 @@ const nextConfig = {
       }
     ];
   },
-
-  webpack(config, { isServer, nextRuntime }) {
-    Object.assign(config.resolve.alias, {
-      '@mongodb-js/zstd': false,
-      '@aws-sdk/credential-providers': false,
-      snappy: false,
-      aws4: false,
-      'mongodb-client-encryption': false,
-      kerberos: false,
-      'supports-color': false,
-      'bson-ext': false,
-      'pg-native': false
-    });
-    config.module = {
-      ...config.module,
-      rules: config.module.rules.concat([
-        {
-          test: /\.svg$/i,
-          issuer: /\.[jt]sx?$/,
-          use: ['@svgr/webpack']
-        }
-      ]),
-      exprContextCritical: false,
-      unknownContextCritical: false
-    };
-
-    if (!config.externals) {
-      config.externals = [];
-    }
-
-    if (isServer) {
-      config.externals.push('@node-rs/jieba');
-
-      if (nextRuntime === 'nodejs') {
+  turbopack: {
+    root: monorepoRoot,
+    resolveAlias: {
+      '@mongodb-js/zstd': emptyModulePath,
+      '@aws-sdk/credential-providers': emptyModulePath,
+      snappy: emptyModulePath,
+      aws4: emptyModulePath,
+      'mongodb-client-encryption': emptyModulePath,
+      kerberos: emptyModulePath,
+      'supports-color': emptyModulePath,
+      'bson-ext': emptyModulePath,
+      'pg-native': emptyModulePath,
+      fs: {
+        browser: emptyModulePath
       }
-    } else {
-      config.resolve = {
-        ...config.resolve,
-        fallback: {
-          ...config.resolve.fallback,
-          fs: false
-        }
-      };
+    },
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js'
+      }
     }
-
-    config.experiments = {
-      asyncWebAssembly: true,
-      layers: true
-    };
-
-    if (isDev && !isServer) {
-      // 使用更快的 source map
-      config.devtool = 'eval-cheap-module-source-map';
-      // 减少文件监听范围
-      config.watchOptions = {
-        ...config.watchOptions,
-        ignored: ['**/node_modules', '**/.git', '**/dist', '**/coverage']
-      };
-      // 启用持久化缓存
-      config.cache = {
-        type: 'filesystem',
-        name: 'client',
-        buildDependencies: {
-          config: [__filename]
-        },
-        cacheDirectory: path.resolve(__dirname, '.next/cache/webpack'),
-        maxMemoryGenerations: isDev ? 5 : Infinity,
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 天
-      };
-    }
-
-    return config;
   },
   // 需要转译的包
   transpilePackages: ['@modelcontextprotocol/sdk', 'ahooks'],
   serverExternalPackages: [
+    '@node-rs/jieba',
     'mongoose',
     'pg',
     'bullmq',
@@ -125,9 +78,9 @@ const nextConfig = {
     '@opentelemetry/api-logs'
   ],
   experimental: {
-    outputFileTracingRoot: path.join(__dirname, '../../'),
     workerThreads: true
-  }
+  },
+  outputFileTracingRoot: monorepoRoot
 };
 
 module.exports = nextConfig;
