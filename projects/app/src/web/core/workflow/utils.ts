@@ -19,7 +19,9 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId
+  getHandleId,
+  isValidReferenceValue,
+  isValidReferenceValueFormat
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -30,6 +32,7 @@ import {
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
@@ -545,6 +548,45 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
+      const updateList: TUpdateListItem[] = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.updateList
+      )?.value;
+      const nodeIds = nodes.map((n) => n.data.nodeId);
+      if (
+        !updateList ||
+        updateList.length === 0 ||
+        updateList.some((item) => {
+          if (!isValidReferenceValue(item.variable, nodeIds) || !item.variable[1]) return true;
+
+          const isArrayVar =
+            typeof item.valueType === 'string' && item.valueType.startsWith('array');
+
+          if (item.renderType === FlowNodeInputTypeEnum.reference) {
+            if (isArrayVar) {
+              return (
+                !Array.isArray(item.value) ||
+                item.value.length === 0 ||
+                (item.value as ReferenceItemValueType[]).some(
+                  (v) => !Array.isArray(v) || !v[0] || !v[1]
+                )
+              );
+            }
+            return !item.value?.[0] || !item.value?.[1];
+          }
+
+          // input mode: clear 不需要 value；boolean 由 booleanMode 决定
+          if (isArrayVar && item.arrayMode === 'clear') return false;
+          if (item.valueType === WorkflowIOValueTypeEnum.boolean) return false;
+          const inputVal = item.value?.[1];
+          return inputVal === undefined || inputVal === null || inputVal === '';
+        })
+      ) {
+        return [data.nodeId];
+      } else {
+        continue;
+      }
+    }
 
     if (
       inputs.some((input) => {
@@ -756,6 +798,84 @@ export const getWorkflowGlobalVariables = ({
   );
 
   return [...globalVariables, ...workflowSystemVariables];
+};
+
+// 全局变量 valueType 变更后，清理所有节点中对这些变量的下拉引用
+// 粗粒度：只要 [VARIABLE_NODE_ID, changedKey] 命中就按位置清掉，不比较新老类型是否兼容
+export const clearGlobalVariableReferencesFromNodes = (
+  nodes: Node<FlowNodeItemType>[],
+  changedKeys: Set<string>
+): Node<FlowNodeItemType>[] => {
+  if (changedKeys.size === 0) return nodes;
+
+  const isTargetRef = (ref: unknown): ref is ReferenceItemValueType =>
+    isValidReferenceValueFormat(ref) &&
+    ref[0] === VARIABLE_NODE_ID &&
+    !!ref[1] &&
+    changedKeys.has(ref[1]);
+
+  const sanitizeInputValue = (key: string, value: any): any => {
+    if (key === NodeInputKeyEnum.ifElseList && Array.isArray(value)) {
+      return (value as IfElseListItemType[]).map((group) => ({
+        ...group,
+        list: group.list
+          // 目标变量被命中：整条条件无意义，移除
+          .filter((cond) => !isTargetRef(cond.variable))
+          // 右侧 value 是命中的引用：仅清 value，保留变量 + 操作符
+          .map((cond) =>
+            isTargetRef(cond.value) ? { ...cond, value: undefined, valueType: undefined } : cond
+          )
+      }));
+    }
+
+    if (key === NodeInputKeyEnum.updateList && Array.isArray(value)) {
+      return (value as TUpdateListItem[]).map((item) => {
+        // 目标变量命中：保留行，清掉变量 + 所有类型相关字段，避免用户整段配置消失
+        if (isTargetRef(item.variable)) {
+          return {
+            renderType: item.renderType,
+            variable: undefined,
+            value: undefined,
+            valueType: undefined,
+            numberOperator: undefined,
+            booleanMode: undefined,
+            arrayMode: undefined
+          };
+        }
+        // value 是单个引用且命中：清掉引用
+        if (isTargetRef(item.value)) {
+          return { ...item, value: undefined };
+        }
+        // value 是引用数组：过滤命中项
+        if (Array.isArray(item.value) && item.value.every((v) => Array.isArray(v))) {
+          const filtered = (item.value as ReferenceItemValueType[]).filter((v) => !isTargetRef(v));
+          return { ...item, value: filtered };
+        }
+        return item;
+      });
+    }
+
+    // 顶层 input.value 是单个引用且命中
+    if (isTargetRef(value)) return undefined;
+
+    // 顶层 input.value 是引用数组
+    if (Array.isArray(value) && value.length > 0 && value.every((v) => Array.isArray(v))) {
+      return (value as ReferenceItemValueType[]).filter((v) => !isTargetRef(v));
+    }
+
+    return value;
+  };
+
+  return nodes.map((node) => ({
+    ...node,
+    data: {
+      ...node.data,
+      inputs: node.data.inputs.map((input) => ({
+        ...input,
+        value: sanitizeInputValue(input.key, input.value)
+      }))
+    }
+  }));
 };
 
 /* ====== Snapshot ======= */

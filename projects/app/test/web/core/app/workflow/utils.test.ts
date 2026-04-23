@@ -18,9 +18,11 @@ import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   filterWorkflowNodeOutputsByType,
-  checkWorkflowNodeAndConnection
+  checkWorkflowNodeAndConnection,
+  clearGlobalVariableReferencesFromNodes
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 
 describe('nodeTemplate2FlowNode', () => {
   it('should convert template to flow node', () => {
@@ -393,5 +395,313 @@ describe('checkWorkflowNodeAndConnection', () => {
       });
       expect(result).toBeUndefined();
     });
+  });
+  describe('variableUpdate node', () => {
+    const makeVarUpdateNode = (updateList: any[]): Node<FlowNodeItemType> =>
+      ({
+        id: 'u1',
+        type: FlowNodeTypeEnum.variableUpdate,
+        position: { x: 0, y: 0 },
+        data: {
+          nodeId: 'u1',
+          flowNodeType: FlowNodeTypeEnum.variableUpdate,
+          name: 'update',
+          avatar: '',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.updateList,
+              valueType: WorkflowIOValueTypeEnum.any,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: updateList
+            }
+          ],
+          outputs: [],
+          version: '1',
+          intro: ''
+        } as any
+      }) as any;
+
+    const startNode: Node<FlowNodeItemType> = {
+      id: 's1',
+      type: FlowNodeTypeEnum.workflowStart,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: 's1',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        name: 'start',
+        avatar: '',
+        inputs: [],
+        outputs: [],
+        version: '1',
+        intro: ''
+      } as any
+    };
+
+    const connectedEdges: Edge[] = [{ id: 'e1', source: 's1', target: 'u1', type: EDGE_TYPE }];
+
+    const run = (updateList: any[]) =>
+      checkWorkflowNodeAndConnection({
+        nodes: [startNode, makeVarUpdateNode(updateList)],
+        edges: connectedEdges
+      });
+
+    it('flags empty updateList', () => {
+      expect(run([])).toEqual(['u1']);
+    });
+
+    it('flags row with empty variable', () => {
+      expect(
+        run([
+          {
+            variable: ['', ''],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('flags input row with empty value', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: ['', ''],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('passes when boolean input has no value (booleanMode decides)', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.boolean,
+            booleanMode: 'true',
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    it('passes when array clear mode has no value', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            arrayMode: 'clear',
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    it('flags reference row with incomplete value', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: ['n2', ''],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.reference
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('flags reference array row with empty array', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: [],
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            renderType: FlowNodeInputTypeEnum.reference
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('passes a fully filled input row', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    it('flags variable pointing to a non-existent node id', () => {
+      expect(
+        run([
+          {
+            variable: ['ghost-node', 'out1'],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+  });
+});
+
+describe('clearGlobalVariableReferencesFromNodes', () => {
+  const makeNode = (inputs: any[]): Node<FlowNodeItemType> => ({
+    id: 'n1',
+    type: FlowNodeTypeEnum.formInput,
+    position: { x: 0, y: 0 },
+    data: {
+      nodeId: 'n1',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      name: 'test',
+      avatar: '',
+      inputs,
+      outputs: [],
+      version: '1',
+      intro: ''
+    } as any
+  });
+
+  it('no-op when changedKeys is empty', () => {
+    const nodes = [makeNode([{ key: 'k1', value: [VARIABLE_NODE_ID, 'foo'], renderTypeList: [] }])];
+    const result = clearGlobalVariableReferencesFromNodes(nodes, new Set());
+    expect(result).toBe(nodes);
+  });
+
+  it('clears top-level single reference', () => {
+    const nodes = [
+      makeNode([
+        { key: 'k1', value: [VARIABLE_NODE_ID, 'foo'], renderTypeList: [] },
+        { key: 'k2', value: [VARIABLE_NODE_ID, 'bar'], renderTypeList: [] }
+      ])
+    ];
+    const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+    expect(result[0].data.inputs[0].value).toBeUndefined();
+    expect(result[0].data.inputs[1].value).toEqual([VARIABLE_NODE_ID, 'bar']);
+  });
+
+  it('filters top-level reference array', () => {
+    const nodes = [
+      makeNode([
+        {
+          key: 'k1',
+          value: [
+            [VARIABLE_NODE_ID, 'foo'],
+            [VARIABLE_NODE_ID, 'bar'],
+            ['some_node_id', 'x']
+          ],
+          renderTypeList: []
+        }
+      ])
+    ];
+    const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+    expect(result[0].data.inputs[0].value).toEqual([
+      [VARIABLE_NODE_ID, 'bar'],
+      ['some_node_id', 'x']
+    ]);
+  });
+
+  it('removes ifElse condition when variable matches; clears value otherwise', () => {
+    const nodes = [
+      makeNode([
+        {
+          key: NodeInputKeyEnum.ifElseList,
+          renderTypeList: [],
+          value: [
+            {
+              condition: 'AND',
+              list: [
+                { variable: [VARIABLE_NODE_ID, 'foo'], condition: 'equalTo', value: 'abc' },
+                {
+                  variable: ['n2', 'out1'],
+                  condition: 'equalTo',
+                  value: [VARIABLE_NODE_ID, 'foo']
+                },
+                { variable: ['n2', 'out1'], condition: 'equalTo', value: 'literal' }
+              ]
+            }
+          ]
+        }
+      ])
+    ];
+    const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+    const list = (result[0].data.inputs[0].value as any)[0].list;
+    expect(list).toHaveLength(2);
+    expect(list[0].variable).toEqual(['n2', 'out1']);
+    expect(list[0].value).toBeUndefined();
+    expect(list[1].value).toBe('literal');
+  });
+
+  it('keeps updateList row when variable matches (resets fields); clears only value otherwise', () => {
+    const nodes = [
+      makeNode([
+        {
+          key: NodeInputKeyEnum.updateList,
+          renderTypeList: [],
+          value: [
+            {
+              variable: [VARIABLE_NODE_ID, 'foo'],
+              value: ['', '1'],
+              valueType: WorkflowIOValueTypeEnum.number,
+              numberOperator: '+',
+              renderType: 'input'
+            },
+            {
+              variable: [VARIABLE_NODE_ID, 'bar'],
+              value: [VARIABLE_NODE_ID, 'foo'],
+              renderType: 'reference'
+            },
+            {
+              variable: [VARIABLE_NODE_ID, 'bar'],
+              value: [
+                [VARIABLE_NODE_ID, 'foo'],
+                ['n2', 'out1']
+              ],
+              renderType: 'reference'
+            }
+          ]
+        }
+      ])
+    ];
+    const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+    const updates = result[0].data.inputs[0].value as any[];
+    expect(updates).toHaveLength(3);
+    // 行 1：variable 命中 → 保留空壳行，清所有类型字段，保留 renderType
+    expect(updates[0].variable).toBeUndefined();
+    expect(updates[0].value).toBeUndefined();
+    expect(updates[0].valueType).toBeUndefined();
+    expect(updates[0].numberOperator).toBeUndefined();
+    expect(updates[0].renderType).toBe('input');
+    // 行 2：只 value 命中
+    expect(updates[1].variable).toEqual([VARIABLE_NODE_ID, 'bar']);
+    expect(updates[1].value).toBeUndefined();
+    // 行 3：引用数组中命中项被过滤
+    expect(updates[2].value).toEqual([['n2', 'out1']]);
+  });
+
+  it('leaves literal input values in updateList untouched', () => {
+    const nodes = [
+      makeNode([
+        {
+          key: NodeInputKeyEnum.updateList,
+          renderTypeList: [],
+          value: [{ variable: ['n2', 'out1'], value: ['', 'hello'], renderType: 'input' }]
+        }
+      ])
+    ];
+    const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+    expect((result[0].data.inputs[0].value as any)[0].value).toEqual(['', 'hello']);
   });
 });

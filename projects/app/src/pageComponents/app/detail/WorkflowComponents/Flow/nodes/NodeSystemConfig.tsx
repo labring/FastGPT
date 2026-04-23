@@ -26,6 +26,7 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/wo
 import Container from '../components/Container';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { clearGlobalVariableReferencesFromNodes } from '@/web/core/workflow/utils';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -119,8 +120,23 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
 }
 
 function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
+  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
+
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
+      // 找出 valueType 发生变化的变量 key（含被删除的变量，视同类型变化）
+      const changedKeys = new Set<string>();
+      for (const prev of variables) {
+        const next = value.find((v) => v.key === prev.key);
+        if (!next || next.valueType !== prev.valueType) {
+          changedKeys.add(prev.key);
+        }
+      }
+
+      if (changedKeys.size > 0) {
+        setNodes((nodes) => clearGlobalVariableReferencesFromNodes(nodes, changedKeys));
+      }
+
       setAppDetail((state) => ({
         ...state,
         chatConfig: {
@@ -129,7 +145,7 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
         }
       }));
     },
-    [setAppDetail]
+    [setAppDetail, setNodes, variables]
   );
   const { zoom } = useViewport();
 

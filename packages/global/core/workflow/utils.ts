@@ -245,11 +245,17 @@ export const appData2FlowNodeIO = ({
   const variableInput = !chatConfig?.variables
     ? []
     : chatConfig.variables.map((item) => {
+        // 与 valueTypeToInputType 对齐：any 视为自由文本，走 input
+        const isJsonValueType =
+          item.valueType === WorkflowIOValueTypeEnum.object ||
+          item.valueType === WorkflowIOValueTypeEnum.arrayString ||
+          item.valueType === WorkflowIOValueTypeEnum.arrayNumber ||
+          item.valueType === WorkflowIOValueTypeEnum.arrayBoolean ||
+          item.valueType === WorkflowIOValueTypeEnum.arrayObject;
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]:
-            item.valueType && item.valueType !== WorkflowIOValueTypeEnum.string
-              ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
-              : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          [VariableInputEnum.input]: isJsonValueType
+            ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+            : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           [VariableInputEnum.textarea]: [
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference

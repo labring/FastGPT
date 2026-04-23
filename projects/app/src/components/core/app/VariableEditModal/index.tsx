@@ -42,7 +42,15 @@ const VariableEditModal = ({
   const type = watch('type');
   useEffect(() => {
     reset(variable);
-  }, [variable, reset]);
+    // Legacy 数据非法组合：打开时立即回退，避免渲染到不匹配的控件
+    if (
+      variable?.type === VariableInputEnum.input &&
+      !textInputVariableValueTypes.includes(variable.valueType as WorkflowIOValueTypeEnum)
+    ) {
+      setValue('valueType', WorkflowIOValueTypeEnum.string);
+      setValue('defaultValue', '');
+    }
+  }, [variable, reset, setValue]);
 
   const inputTypeList = useMemo(() => getVariableInputTypeList(), []);
 
@@ -99,8 +107,7 @@ const VariableEditModal = ({
         return;
       }
 
-      // custom/internal/input: user-selected valueType.
-      // Input snap-back to string guards legacy data that bypassed handleTypeChange.
+      // custom/internal/input 允许用户自选 valueType，其余强制用模板 defaultValueType
       if (
         ![VariableInputEnum.custom, VariableInputEnum.internal, VariableInputEnum.input].includes(
           data.type
@@ -113,6 +120,7 @@ const VariableEditModal = ({
         data.type === VariableInputEnum.input &&
         !textInputVariableValueTypes.includes(data.valueType as WorkflowIOValueTypeEnum)
       ) {
+        // Legacy 非法值兜底
         data.valueType = WorkflowIOValueTypeEnum.string;
       }
 

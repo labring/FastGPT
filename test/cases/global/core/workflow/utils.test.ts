@@ -801,6 +801,40 @@ describe('appData2FlowNodeIO', () => {
     ]);
   });
 
+  it('should treat any/undefined valueType as text input (aligned with chat side)', () => {
+    const result = appData2FlowNodeIO({
+      chatConfig: {
+        variables: [
+          {
+            key: 'anyVar',
+            label: 'Any',
+            type: VariableInputEnum.input,
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.any
+          },
+          {
+            key: 'legacyVar',
+            label: 'Legacy',
+            type: VariableInputEnum.input,
+            description: ''
+          }
+        ]
+      }
+    });
+
+    const anyVar = result.inputs.find((i) => i.key === 'anyVar');
+    expect(anyVar?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.reference
+    ]);
+
+    const legacyVar = result.inputs.find((i) => i.key === 'legacyVar');
+    expect(legacyVar?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.reference
+    ]);
+  });
+
   it('should preserve defaultValue on variable inputs', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {
