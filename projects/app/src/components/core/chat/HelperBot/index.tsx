@@ -299,7 +299,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
         const abortSignal = new AbortController();
         chatController.current = abortSignal;
 
-        const { responseText } = await streamFetch({
+        const response = await streamFetch({
           url: '/api/core/chat/helperBot/completions',
           data: {
             chatId,
@@ -320,11 +320,9 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
           abortCtrl: abortSignal
         });
       } catch (error) {
-        console.error(error);
         setChatRecords((state) =>
           state.map((item, index) => {
             if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
-
             return {
               ...item,
               value: [
