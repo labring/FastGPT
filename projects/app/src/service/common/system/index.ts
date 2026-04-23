@@ -1,5 +1,5 @@
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
-import fs, { existsSync } from 'fs';
+import fs from 'fs';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
@@ -29,31 +29,9 @@ import {
 } from '@fastgpt/service/core/ai/config/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { env } from '@fastgpt/service/env';
+import { readConfigData } from '@fastgpt/service/common/system/config/controller';
 
 const logger = getLogger(LogCategories.SYSTEM);
-
-export const readConfigData = async (name: string) => {
-  const splitName = name.split('.');
-  const devName = `${splitName[0]}.local.${splitName[1]}`;
-
-  const filename = (() => {
-    if (!isProduction) {
-      // check local file exists
-      const hasLocalFile = existsSync(`data/${devName}`);
-      if (hasLocalFile) {
-        return `data/${devName}`;
-      }
-      return `data/${name}`;
-    }
-    // Fallback to default production path
-    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
-    return `${envPath}/${name}`;
-  })();
-
-  const content = await fs.promises.readFile(filename, 'utf-8');
-
-  return content;
-};
 
 /* Init global variables */
 export function initGlobalVariables() {

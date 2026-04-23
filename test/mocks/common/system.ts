@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { readFileSync } from 'fs';
+import { promises as fsPromises } from 'fs';
 
 /**
  * Mock system configuration for testing
@@ -10,9 +11,6 @@ vi.mock(import('@/service/common/system'), async (importOriginal) => {
     ...mod,
     getSystemVersion: async () => {
       return '0.0.0';
-    },
-    readConfigData: async () => {
-      return readFileSync('projects/app/data/config.json', 'utf-8');
     },
     initSystemConfig: async () => {
       // read env from projects/app/.env
@@ -28,6 +26,16 @@ vi.mock(import('@/service/common/system'), async (importOriginal) => {
       global.systemEnv = systemEnv as any;
 
       return;
+    }
+  };
+});
+
+vi.mock(import('@fastgpt/service/common/system/config/controller'), async (importOriginal) => {
+  const mod = await importOriginal();
+  return {
+    ...mod,
+    readConfigData: async () => {
+      return await fsPromises.readFile('projects/app/data/config.json', 'utf-8');
     }
   };
 });
