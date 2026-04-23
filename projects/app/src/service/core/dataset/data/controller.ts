@@ -182,6 +182,9 @@ export async function insertData2Dataset({
   imageDescMap?: Record<string, string>;
   session?: ClientSession;
 }) {
+  if (imageId && !q) {
+    return Promise.reject('Image understanding failed, please configure the VLM model');
+  }
   if (!q || !datasetId || !collectionId || !embeddingModel) {
     return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
   }
