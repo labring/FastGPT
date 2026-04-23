@@ -104,7 +104,7 @@ export class RequestContext {
 
   // ─── Answer 结果暂存 ────────────────────────────────
   lastAnswer: AnswerResult | null = null;
-  answerGenerated: boolean = false; // @answer tool 成功完成后设为 true
+  answerGenerated: boolean = false; // @summary tool 成功完成后设为 true
 
   // ─── 流事件缓冲 ─────────────────────────────────────
   pendingEvents: AgentEvent[] = [];

@@ -22,41 +22,6 @@ import {
   type GraphMode
 } from './graph';
 import { setGlobalLogger } from '../utils/logger';
-import { playbooks } from '../prompts/playbooks/index';
-import { buildClassifierPrompt } from '../utils/prompt_loader';
-import { detectLang } from '../utils/lang';
-import { stripThinkBlocks } from '../utils/text';
-import { compressChatHistory } from '../utils/compression';
-
-/**
- * 压缩 chat_history 为摘要（使用 utils/compression.ts 中的完整实现）
- */
-function compressHistoryToString(history?: Array<{ role: string; content: string }>): string {
-  if (!history || history.length === 0) {
-    return 'No additional chat_history';
-  }
-  // 转换为 LLMMessage 格式
-  const messages: LLMMessage[] = history.map((h) => ({
-    role: h.role as 'user' | 'assistant' | 'system',
-    content: h.content
-  }));
-  // 使用完整的 compressChatHistory 函数
-  const compressed = compressChatHistory(messages);
-  return compressed ? compressed.summary : 'No additional chat_history';
-}
-
-/**
- * 解析 JSON（对齐 Python parse_llm_json）
- */
-function parseLLMJson(text: string): Record<string, unknown> | null {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return null;
-  try {
-    return JSON.parse(jsonMatch[0]);
-  } catch {
-    return null;
-  }
-}
 
 // ============================================================
 // 公共结果类型
@@ -136,6 +101,7 @@ function mapNodeUpdateToEvent(
         step: AGENT_EVENTS.PLAYBOOK_SELECTED,
         detail: `Playbook selected: ${nodeOutput.playbook ?? 'general'}`,
         playbook: nodeOutput.playbook ?? 'general',
+        extra: { analysis: nodeOutput.analysis ?? '' },
         timestamp: Date.now()
       };
 
@@ -172,7 +138,7 @@ function mapNodeUpdateToEvent(
           timestamp: Date.now()
         };
       }
-      if (toolNames.includes('answer')) {
+      if (toolNames.includes('summary')) {
         return {
           step: AGENT_EVENTS.GENERATING,
           detail: 'Generating answer',
@@ -210,7 +176,7 @@ function mapNodeUpdateToEvent(
           extra: { queries: nodeOutput.rewriteQueries ?? [] }
         };
       }
-      if (lastPath.includes('answer') || nodeOutput.answer) {
+      if (lastPath.includes('summary') || nodeOutput.answer) {
         return {
           step: AGENT_EVENTS.ANSWER_DONE,
           detail: `Answer generated (confidence: ${nodeOutput.confidence ?? 0})`,
@@ -289,9 +255,6 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
   const resolvedConfig = buildRequiredConfig(config);
   const recursionLimit = calculateRecursionLimit(resolvedConfig);
 
-  // 直接访问 providers 中的 LLM（用于 LLM 分类）
-  const analysisLLM = providers.llm;
-
   return {
     /**
      * 同步调用
@@ -362,83 +325,7 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         timestamp: startTime
       };
 
-      // ========== Step 1: LLM 分类（对齐 Python 问题分析逻辑）==========
-      let playbookName: string | undefined;
-      let analysis = '';
-      let reason = '';
-      let questionLang = detectLang(query);
-
-      try {
-        // 构建 playbook 描述
-        const playbookDescriptions = Object.entries(playbooks)
-          .map(([name, playbook]) => `- **${name}**: ${playbook.description}`)
-          .join('\n');
-
-        // 添加 classifier guidance
-        const classifierGuidance = `
-
-## Classifier Guidance (for your reference):
-- **simple_query**: Single fact, clear intent (e.g., "What is X?", "How to configure Y?")
-- **deep_research**: Needs comprehensive coverage, multiple aspects, or listing all items (e.g., "What versions exist?", "List all features", "Analyze pros and cons")
-- **troubleshooting**: Error fixing, debugging, problem solving
-- **comparative_analysis**: Comparing A vs B, advantages/disadvantages
-- **followup_query**: Continuation of previous conversation`;
-
-        const fullPlaybookDescriptions = playbookDescriptions + classifierGuidance;
-
-        // 压缩 chat_history
-        const summary = compressHistoryToString(history);
-
-        // 构建 classifier prompt
-        const classifierPrompt = buildClassifierPrompt({
-          playbookDescriptions: fullPlaybookDescriptions,
-          priorContext: priorContext || '',
-          summary,
-          question: query,
-          lang: questionLang
-        });
-
-        // 调用 LLM 进行分类
-        try {
-          const llm = analysisLLM;
-          const response = await llm.chat(
-            [
-              {
-                role: 'system',
-                content: `You are a question classifier. Respond in JSON format. Write the analysis field in ${questionLang}.`
-              },
-              { role: 'user', content: classifierPrompt }
-            ],
-            { temperature: 0, maxTokens: 200 }
-          );
-
-          // 使用 stripThinkBlocks 对齐 Python strip_think_blocks
-          const responseText = stripThinkBlocks(response.content).trim();
-          const parsed = parseLLMJson(responseText);
-
-          if (parsed && parsed.playbook) {
-            playbookName = parsed.playbook as string;
-            analysis = (parsed.analysis as string) || '';
-            reason = (parsed.reason as string) || '';
-
-            // Emit thinking 事件（包含语言信息，供下游格式化）
-            yield {
-              step: AGENT_EVENTS.THINKING,
-              detail: analysis,
-              reason: reason,
-              playbook: playbookName,
-              timestamp: Date.now(),
-              extra: { lang: questionLang }
-            };
-          }
-        } catch (llmErr) {
-          resolvedLogger?.warn(`LLM classification failed, will fallback to rules: ${llmErr}`);
-        }
-      } catch (e) {
-        resolvedLogger?.debug?.(`Question analysis skipped: ${e}`);
-      }
-
-      // ========== Step 2: 构建 initial_state（包含分类结果）==========
+      // 构建 initial_state
       const initialInput: Partial<AgenticRAGStateType> = {
         question: query,
         datasetIds,
@@ -446,9 +333,6 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         priorContext: priorContext || '',
         startTime: startTime,
         originalQuestion: query,
-        playbook: playbookName || '',
-        analysis: analysis,
-        reason: reason,
         // 软提示（soft hint）：若调用方提供了预计算的查询变体，预填 rewriteQueries。
         // Blackboard Brief 的 Plan 区将展示这些查询，引导 Agent 优先直接检索而非重新改写。
         // 注意：这是软约束，Agent 仍可在后续轮次（如 deep_research）中调用 query_rewrite 工具进行二次改写。

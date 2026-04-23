@@ -36,6 +36,26 @@ const getRequestId = () => {
   return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
 };
 
+/**
+ * 根据是否启用 thinking 计算 maxTokens fallback。
+ * 调用方显式设置 max_tokens 时优先使用，否则 enableThinking=true 给 16384 兜底。
+ * 不硬编码模型名，由调用方通过 enableThinking 参数显式声明。
+ */
+function resolveMaxTokenFallback(
+  requestedMaxTokens: number | null | undefined,
+  enableThinking: boolean | undefined
+): number | undefined {
+  if (requestedMaxTokens) return requestedMaxTokens;
+  return enableThinking ? 16384 : undefined;
+}
+
+// export type ResponseEvents = {
+//   onStreaming?: ({ text }: { text: string }) => void;
+//   onReasoning?: ({ text }: { text: string }) => void;
+//   onToolCall?: ({ call }: { call: ChatCompletionMessageToolCall }) => void;
+//   onToolParam?: ({ tool, params }: { tool: ChatCompletionMessageToolCall; params: string }) => void;
+// };
+
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
 export type ResponseEvents = {
@@ -692,11 +712,13 @@ type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'mes
   };
   messages: ChatCompletionMessageParam[];
 
-  // Custom field
+  // Custom fields (not sent to LLM API directly)
   retainDatasetCite?: boolean;
   toolCallMode?: 'toolChoice' | 'prompt';
   useVision?: boolean;
   requestOrigin?: string;
+  /** 显式指示是否为 thinking 模型，会影响默认 maxTokens（thinking 模型默认 16384） */
+  enableThinking?: boolean;
 };
 const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
   retainDatasetCite,
@@ -743,7 +765,7 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
 
   const maxTokens = computedMaxToken({
     model: modelData,
-    maxToken: body.max_tokens || undefined
+    maxToken: resolveMaxTokenFallback(body.max_tokens, body.enableThinking)
   });
 
   const formatStop = stop?.split('|').filter((item) => !!item.trim());

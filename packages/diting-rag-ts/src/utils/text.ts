@@ -8,16 +8,14 @@
  * if no think blocks are found.
  */
 export function stripThinkBlocks(content: string): string {
-  // Fast path: no think tags
-  if (!content.includes('\u60f3\u8003')) {
-    // <think> in Unicode
+  // Fast path: no think tags (support both English <think> and Unicode variants)
+  if (!content.includes('<think')) {
     return content;
   }
 
   // Remove all <think>...</think> blocks (including nested/partial)
-  const thinkStart = '\u60f3\u8003'; // <think>
-  const thinkEnd = '\u8003\u505a'; // </think>
-  const regex = new RegExp(`${thinkStart}[\\s\\S]*?${thinkEnd}`, 'gu');
+  // Support both English <think> and Unicode variants for compatibility
+  const regex = /<think[\s\S]*?<\/think>/gu;
   const stripped = content.replace(regex, '').trim();
   if (stripped) {
     return stripped;
@@ -257,7 +255,11 @@ export function buildProgressGuidance(
   config: { maxSearchCalls: number },
   toolNames: string[]
 ): string {
-  const lines: string[] = ['[Blackboard Brief]'];
+  const lines: string[] = [
+    '[Blackboard Brief]',
+    '',
+    'IRON LAW: You MUST call a tool. NEVER output free text or a direct answer. ONLY use the following tool formats:'
+  ];
 
   // --- 1. Goal: initial analysis ---
   if (ctx.analysis) {
@@ -374,15 +376,15 @@ export function buildProgressGuidance(
         `Gap: ${unsatisfiedDims.length} dimension(s) not yet searched: ${unsatisfiedDims.join(', ')}`
       );
     } else {
-      lines.push('All dimensions searched. If low info gain on recent searches → @answer.');
+      lines.push('All dimensions searched. If low info gain on recent searches → call @summary.');
     }
   } else {
     lines.push(
       'Compare the Goal/Plan above against collected chunks. Identify which aspects are well-covered and which have gaps.'
     );
   }
-  lines.push('- All aspects covered → call @answer.');
-  lines.push('- Gaps remain → choose the best next action:');
+  lines.push('- All aspects covered → you MUST call @summary.');
+  lines.push('- Gaps remain → you MUST choose the best next action:');
 
   // --- 5. Next actions: adapt to registered tools ---
   const toolHints: Record<string, string> = {
@@ -394,6 +396,9 @@ export function buildProgressGuidance(
     const hint = toolHints[name] || `use @${name}`;
     lines.push(`  • @${name} — ${hint}`);
   }
+
+  lines.push('');
+  lines.push('REMINDER: Output ONLY a tool call. NEVER output free text.');
 
   return lines.join('\n');
 }

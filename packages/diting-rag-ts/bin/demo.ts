@@ -285,7 +285,7 @@ async function main() {
   console.log('\n' + '='.repeat(70));
   console.log(`  Datasets:    ${DATASET_IDS.join(', ')}`);
   console.log(`  Mode:        ${searchOnly ? 'searchOnly=true' : 'full (search + answer)'}`);
-  console.log(`  Tools:       @search, @answer, @query_rewrite`);
+  console.log(`  Tools:       @search, @summary, @query_rewrite`);
   console.log('='.repeat(70));
 
   let passed = 0;

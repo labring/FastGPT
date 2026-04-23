@@ -78,8 +78,8 @@ const _PROCESS_LABELS: Record<'zh' | 'en', Record<string, (e: AgentEvent) => str
     // 反思结论——有评估说明则透传，否则静默，避免暴露内部字段
     reflect_done: (e) => (e.detail ? `${e.detail}\n` : ''),
 
-    // 内部路由细节，不对用户暴露
-    playbook_selected: () => '',
+    // 路由选择playbook同时给出问题分析结果，只暴露问题分析结果
+    playbook_selected: (e) => e.extra?.analysis as string | '',
 
     // 最终结果——不相关早停(refuse)时向用户说明
     final: (e) => (e.extra?.refuse ? '知识库中未找到与此问题相关的内容。\n' : '')
@@ -114,7 +114,7 @@ const _PROCESS_LABELS: Record<'zh' | 'en', Record<string, (e: AgentEvent) => str
 
     reflect_done: (e) => (e.detail ? `${e.detail}\n` : ''),
 
-    playbook_selected: () => '',
+    playbook_selected: (e) => e.extra?.analysis as string | '',
 
     final: (e) => (e.extra?.refuse ? 'No relevant information found in the knowledge base.\n' : '')
   }

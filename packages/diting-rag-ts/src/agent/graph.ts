@@ -250,7 +250,7 @@ export function buildAutoGraph(
   const ctx = new RequestContext(config, [], providers, providers.logger);
 
   // 获取 tool 名称列表
-  const toolNames = ['search', 'query_rewrite', 'answer'];
+  const toolNames = ['search', 'query_rewrite', 'summary'];
 
   return new StateGraph(AgenticRAGState)
     .addNode('route_playbook', createRoutePlaybookNode(providers, config))

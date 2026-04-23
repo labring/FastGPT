@@ -174,7 +174,7 @@ export const AgenticRAGState = Annotation.Root({
   error: Annotation<string>({ reducer: (_l, r) => r, default: () => '' }),
 
   // ── searchOnly 模式：LLM chunk selector 选出的最终 chunks（replace reducer）────
-  // 普通模式下为空；searchOnly=true 时由 @answer / auto_answer 节点填充
+  // 普通模式下为空；searchOnly=true 时由 @summary / auto_answer 节点填充
   selectedChunks: Annotation<ChunkItem[]>({ reducer: (_l, r) => r, default: () => [] }),
 
   // ── 原始问题（用于 answer final rerank）────────────────────

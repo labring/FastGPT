@@ -5,7 +5,11 @@ import type { LLMProvider } from '../../ports/llm';
 import type { LLMMessage } from '../../types/message';
 import { PLAYBOOKS, getPlaybookContent, getAllPlaybookNames } from './templates';
 import { detectLang } from '../../utils/lang';
+import { getLogger } from '../../utils/logger';
 import { isFollowupQuery as checkFollowup } from '../../utils/constants';
+import { compressChatHistory } from '../../utils/compression';
+import { buildClassifierPrompt } from '../../utils/prompt_loader';
+import { parseJSON } from '../../utils/json_parser';
 
 /**
  * 规则路由结果
@@ -244,92 +248,6 @@ function extractOverlapWords(question: string, history: string): number {
 // ============================================================
 
 /**
- * 构建分类器 prompt（完整版）
- */
-function buildClassifierPrompt(options: {
-  playbookDescriptions: string;
-  priorContext: string;
-  summary: string;
-  question: string;
-  lang: string;
-}): string {
-  const { playbookDescriptions, priorContext, summary, question, lang } = options;
-
-  const systemPrompt =
-    lang === 'zh'
-      ? `你是一个查询分类专家。根据用户问题的特点，选择最合适的 playbook（处理策略）。`
-      : `You are a query classification expert. Select the most appropriate playbook (handling strategy) based on the question characteristics.`;
-
-  const fewShotExamples =
-    lang === 'zh'
-      ? `
-## Few-shot Examples
-
-**Example 1**
-Question: "云端部署和本地部署有什么区别？"
-Classification: {"playbook": "comparative_analysis", "analysis": "这是一个对比类查询，涉及两个方案的比较", "reason": "包含关键词'区别'"}
-
-**Example 2**
-Question: "用户登录失败怎么排查？"
-Classification: {"playbook": "troubleshooting", "analysis": "这是一个故障排查查询", "reason": "包含关键词'失败'和'怎么'"}
-
-**Example 3**
-Question: "该产品支持哪些操作系统？"
-Classification: {"playbook": "deep_research", "analysis": "这是一个需要列举所有支持项的查询", "reason": "包含关键词'哪些'"}
-
-**Example 4**
-Question: "那配置步骤呢？"
-Classification: {"playbook": "followup_query", "analysis": "这是对前文的追问", "reason": "包含追问关键词'那'"}`
-      : `
-## Few-shot Examples
-
-**Example 1**
-Question: "What are the differences between cloud deployment and on-premise deployment?"
-Classification: {"playbook": "comparative_analysis", "analysis": "This is a comparison query", "reason": "Contains keyword 'differences'"}
-
-**Example 2**
-Question: "User login failed, how to troubleshoot?"
-Classification: {"playbook": "troubleshooting", "analysis": "This is a troubleshooting query", "reason": "Contains keyword 'failed'"}
-
-**Example 3**
-Question: "What operating systems does this product support?"
-Classification: {"playbook": "deep_research", "analysis": "This requires listing all supported items", "reason": "Contains keyword 'what'}"`;
-
-  return `${systemPrompt}
-
-## Available Playbooks
-${playbookDescriptions}
-
-## Context (optional hints for Search):
-${priorContext || 'No additional context'}
-
-## Chat History Summary
-${summary}
-
-## User Question
-${question}
-
-${fewShotExamples}
-
-## Output
-Please classify the question and respond with JSON:
-{"playbook": "<playbook_name>", "analysis": "<analysis>", "reason": "<reason>"}`;
-}
-
-/**
- * 提取历史摘要
- */
-function extractHistorySummary(history: LLMMessage[]): string {
-  if (!history || history.length === 0) {
-    return 'No additional chat_history';
-  }
-
-  // 取最近 3 轮
-  const recent = history.slice(-3);
-  return recent.map((m) => `${m.role}: ${m.content.substring(0, 100)}`).join('\n');
-}
-
-/**
  * LLM 分类路由
  */
 export async function llmClassify(
@@ -347,8 +265,8 @@ export async function llmClassify(
     })
     .join('\n');
 
-  // 生成 chat history 摘要
-  const summary = chatHistory ? extractHistorySummary(chatHistory) : 'No additional chat_history';
+  // 生成结构化 chat history 摘要（对齐 Python compress_chat_history）
+  const summary = chatHistory && chatHistory.length > 0 ? compressChatHistory(chatHistory) : null;
 
   // 检测语言
   const lang = detectLang(question);
@@ -368,37 +286,38 @@ export async function llmClassify(
       { role: 'system', content: 'You are a query classifier.' },
       { role: 'user', content: prompt }
     ],
-    { temperature: 0.3, maxTokens: 512 }
+    {
+      temperature: 0.3,
+      maxTokens: 1024,
+      enableThinking: false,
+      extra: {
+        enable_thinking: false,
+        chat_template_kwargs: { enable_thinking: false }
+      }
+    }
   );
 
   // 解析响应
-  try {
-    // 尝试提取 JSON
-    const content = response.content.trim();
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : content;
-    const parsed = JSON.parse(jsonStr);
+  const parsed = parseJSON<{
+    playbook?: string;
+    analysis?: string;
+    reason?: string;
+  }>(response.content);
 
-    if (parsed && parsed.playbook) {
-      // 验证 playbook 有效性
-      const validPlaybooks = getAllPlaybookNames();
-      if (validPlaybooks.includes(parsed.playbook)) {
-        return {
-          playbook: parsed.playbook,
-          analysis: parsed.analysis || '',
-          reason: parsed.reason || ''
-        };
-      }
-    }
-  } catch (e) {
-    // 日志在调用处处理
+  if (!parsed || !parsed.playbook) {
+    throw new Error(`LLM response missing playbook field. LLM response: ${response.content}`);
   }
 
-  // 解析失败，返回默认
+  // 验证 playbook 有效性
+  const validPlaybooks = getAllPlaybookNames();
+  if (!validPlaybooks.includes(parsed.playbook)) {
+    throw new Error(`Invalid playbook returned by LLM: ${parsed.playbook}`);
+  }
+
   return {
-    playbook: 'simple_query',
-    analysis: 'Failed to parse LLM response, using default',
-    reason: 'Default fallback'
+    playbook: parsed.playbook,
+    analysis: parsed.analysis || '',
+    reason: parsed.reason || ''
   };
 }
 
@@ -423,6 +342,7 @@ export async function routePlaybook(
       return { ...result, method: 'llm' };
     } catch (error) {
       // LLM classification failed, will fallback to rules
+      getLogger()?.error(`LLM classification failed, will fallback to rules. ${error}`);
     }
   }
 

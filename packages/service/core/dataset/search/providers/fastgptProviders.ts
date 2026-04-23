@@ -8,7 +8,7 @@
 
 import { getVectorsByText } from '../../../ai/embedding';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { getAIApi } from '../../../ai/config';
+import { createChatCompletion } from '../../../ai/config';
 import {
   getEmbeddingModel,
   getDefaultRerankModel,
@@ -16,8 +16,15 @@ import {
   getLLMModel
 } from '../../../ai/model';
 import type { LLMModelItemType, RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type {
+  ChatCompletionCreateParamsNonStreaming,
+  ChatCompletionCreateParamsStreaming,
+  UnStreamResponseType
+} from '@fastgpt/global/core/ai/llm/type';
 import { reRankRecall } from '../../../../core/ai/rerank';
 import { addLog } from '../../../../common/system/log';
+import { parseReasoningContent } from '../../../ai/utils';
+import { stripThinkBlocks } from 'diting-rag-ts';
 
 // 导入公共能力（从 capabilities.ts）
 import {
@@ -53,24 +60,165 @@ export interface FastGPTProvidersConfig {
 }
 
 /**
+ * 检测响应是否被截断（括号、引号不平衡）
+ */
+function detectTruncation(content: string): boolean {
+  let braceDepth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const c = content[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (c === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (c === '"' && !escaped) {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (c === '{') braceDepth++;
+    else if (c === '}') {
+      braceDepth--;
+      if (braceDepth < 0) return true;
+    }
+  }
+  if (inString) return true;
+  if (braceDepth !== 0) return true;
+  return false;
+}
+
+/**
  * 创建 FastGPT LLM Provider
+ *
+ * 使用 createChatCompletion 替代直接调用 ai.chat.completions.create，
+ * 复用模型名解析、requestUrl、requestAuth、超时等已有逻辑。
+ *
+ * 对齐 builtin adapter：
+ * - 不主动传 max_tokens，避免某些模型因 max_tokens 过小而截断 JSON 输出
+ * - 增加截断检测与自动重试（max_tokens 翻倍）
  */
 export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMProvider {
   return {
     async chat(messages: LLMMessage[], options?: LLMCallOptions): Promise<LLMResponse> {
-      const ai = getAIApi();
+      const modelData = getLLMModel(config.llmModel);
 
-      const response = await ai.chat.completions.create({
+      const body: Record<string, unknown> = {
         model: config.llmModel,
-        messages,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature,
-        max_tokens: options?.maxTokens
+        // 对齐 builtin adapter：不主动传 max_tokens，避免截断问题
+        // 若调用方显式要求，可通过 options?.extra 透传
+        stream: false,
+        ...options?.extra
+      };
+
+      // 过滤 undefined/null
+      const filteredBody = Object.fromEntries(
+        Object.entries(body).filter(([_, v]) => v !== null && v !== undefined)
+      );
+
+      const result = await createChatCompletion({
+        modelData: modelData ?? undefined,
+        body: filteredBody as unknown as ChatCompletionCreateParamsNonStreaming,
+        options: options?.requestOptions as any
       });
 
+      // createChatCompletion 返回 union 类型，根据 stream:false 收窄
+      if (result.isStreamResponse) {
+        throw new Error('Unexpected stream response for non-streaming request');
+      }
+
+      const response = result.response;
       const choice = response.choices[0];
+      const msg = choice?.message;
+      const rawContent = msg?.content || '';
+      const finishReason = choice?.finish_reason;
+      const reasoningContent = (msg as any)?.reasoning_content;
+
+      // 处理 thinking 内容：API 已返回 reasoning_content 则直接用；
+      // 否则若模型是 reasoning 类型，从 content 中解析 <think> 标签
+      let content = rawContent;
+      let reasoning: string | undefined = reasoningContent || undefined;
+      if (modelData?.reasoning && !reasoningContent && rawContent) {
+        const [think, answer] = parseReasoningContent(rawContent);
+        content = answer;
+        reasoning = think || undefined;
+      }
+
+      // 截断检测与自动重试（对齐 builtin adapter）
+      const truncated =
+        finishReason === 'length' || (finishReason !== 'stop' && detectTruncation(content));
+
+      if (truncated && options?.maxTokens) {
+        addLog.warn('[FastGPTLLMProvider] response truncated, retrying with 2x maxTokens', {
+          model: config.llmModel,
+          maxTokens: options.maxTokens,
+          finishReason,
+          contentPreview: content.slice(0, 200)
+        });
+
+        const retryBody = {
+          ...filteredBody,
+          max_tokens: options.maxTokens * 2
+        };
+        const retryResult = await createChatCompletion({
+          modelData: modelData ?? undefined,
+          body: retryBody as unknown as ChatCompletionCreateParamsNonStreaming,
+          options: options?.requestOptions as any
+        });
+
+        if (!retryResult.isStreamResponse) {
+          const retryResponse = retryResult.response;
+          const retryChoice = retryResponse.choices[0];
+          const retryMsg = retryChoice?.message;
+          const retryRawContent = retryMsg?.content || '';
+          const retryReasoningContent = (retryMsg as any)?.reasoning_content;
+
+          let retryContent = retryRawContent;
+          let retryReasoning: string | undefined = retryReasoningContent || undefined;
+          if (modelData?.reasoning && !retryReasoningContent && retryRawContent) {
+            const [think, answer] = parseReasoningContent(retryRawContent);
+            retryContent = answer;
+            retryReasoning = think || undefined;
+          }
+
+          return {
+            content: retryContent,
+            reasoning: retryReasoning,
+            toolCalls: (retryMsg?.tool_calls ?? msg?.tool_calls ?? []).map((tc: any) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.function.name, arguments: tc.function.arguments }
+            })),
+            usage: {
+              inputTokens:
+                retryResponse.usage?.prompt_tokens ?? response.usage?.prompt_tokens,
+              outputTokens:
+                retryResponse.usage?.completion_tokens ?? response.usage?.completion_tokens
+            }
+          };
+        }
+      }
+
       return {
-        content: choice?.message?.content || '',
-        reasoning: (choice?.message as any)?.reasoning_content
+        content,
+        reasoning,
+        toolCalls: (msg?.tool_calls ?? []).map((tc: any) => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: { name: tc.function.name, arguments: tc.function.arguments }
+        })),
+        usage: {
+          inputTokens: response.usage?.prompt_tokens,
+          outputTokens: response.usage?.completion_tokens
+        }
       };
     },
 
@@ -78,20 +226,59 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
       messages: LLMMessage[],
       options?: LLMCallOptions
     ): AsyncIterable<LLMResponse> {
-      const ai = getAIApi();
-      const stream = await ai.chat.completions.create({
+      const modelData = getLLMModel(config.llmModel);
+
+      const body: Record<string, unknown> = {
         model: config.llmModel,
-        messages,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature,
-        max_tokens: options?.maxTokens,
-        stream: true
+        // 对齐 builtin adapter：不主动传 max_tokens，避免截断问题
+        stream: true,
+        ...options?.extra
+      };
+
+      const filteredBody = Object.fromEntries(
+        Object.entries(body).filter(([_, v]) => v !== null && v !== undefined)
+      );
+
+      const result = await createChatCompletion({
+        modelData: modelData ?? undefined,
+        body: filteredBody as unknown as ChatCompletionCreateParamsStreaming,
+        options: options?.requestOptions as any
       });
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || '';
-        const reasoning = (chunk.choices[0]?.delta as any)?.reasoning_content || '';
-        if (delta || reasoning) {
-          yield { content: delta, reasoning: reasoning || undefined } as LLMResponse;
+      // createChatCompletion 返回 union 类型，根据 stream:true 收窄
+      if (!result.isStreamResponse) {
+        throw new Error('Unexpected non-stream response for streaming request');
+      }
+
+      const response = result.response;
+
+      for await (const chunk of response) {
+        const delta = chunk.choices[0]?.delta;
+        if (!delta) continue;
+
+        const rawContent = delta.content || '';
+        const reasoningContent = (delta as any)?.reasoning_content;
+
+        let content = rawContent;
+        let reasoning: string | undefined = reasoningContent || undefined;
+        if (modelData?.reasoning && !reasoningContent && rawContent) {
+          const [think, answer] = parseReasoningContent(rawContent);
+          content = answer;
+          reasoning = think || undefined;
+        }
+
+        if (content || reasoning) {
+          yield {
+            content,
+            reasoning,
+            toolCalls: (delta.tool_calls ?? []).map((tc: any) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.function?.name, arguments: tc.function?.arguments }
+            }))
+          };
         }
       }
     },

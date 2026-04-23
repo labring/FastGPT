@@ -67,14 +67,19 @@ export function isSearchIrrelevant(chunks: ChunkItem[]): boolean {
 }
 
 /**
- * 构建进度引导消息，注入给 Agent 指示"继续搜索"还是"调用 @answer"
+ * 构建进度引导消息，注入给 Agent 指示"继续搜索"还是"调用 @summary"
  */
 function buildProgressGuidance(
   state: AgenticRAGStateType,
   maxSearchCalls: number,
   toolNames: string[]
 ): string {
-  const lines: string[] = ['[Blackboard Brief]'];
+  // const lines: string[] = ['[Blackboard Brief]'];
+  const lines: string[] = [
+    '[Blackboard Brief]',
+    '',
+    'IRON LAW: You MUST call a tool. NEVER output free text or a direct answer. ONLY use the following tool formats:'
+  ];
 
   // 1. Goal: 初始分析
   if (state.analysis) {
@@ -138,19 +143,21 @@ function buildProgressGuidance(
       lines.push(
         `⚡ STOP SEARCHING. High-relevance results found (best score: ${bestScore.toFixed(3)} ≥ ${SIMPLE_QUERY_HIGH_SCORE}).`
       );
-      lines.push('→ You MUST call @answer NOW. Do NOT search again.');
+      lines.push('→ You MUST call @summary NOW. Do NOT search again.');
       return lines.join('\n');
     }
     if (state.lastSearchOverlap >= SIMPLE_QUERY_OVERLAP_THRESHOLD) {
       lines.push(
         `⚡ STOP SEARCHING. Search space saturated (${(state.lastSearchOverlap * 100).toFixed(0)}% overlap on last search).`
       );
-      lines.push('→ You MUST call @answer NOW with what you have.');
+      lines.push('→ You MUST call @summary NOW with what you have.');
       return lines.join('\n');
     }
   }
 
-  // comparative_analysis：显示维度覆盖进度（对齐 Python _build_progress_guidance 第 268-295 行）
+  // comparative_analysis：显示维度覆盖进度
+  // 根据当前状态决定 tool 提示
+  const toolHints: Record<string, string> = {};
   if (
     state.playbook === 'comparative_analysis' &&
     state.discoveredDimensions &&
@@ -169,35 +176,64 @@ function buildProgressGuidance(
     const unsatisfied = state.discoveredDimensions.filter(
       (d) => !state.dimensionCoverage?.[d]?.searched
     );
+    const shallow = state.discoveredDimensions.filter(
+      (d) => state.dimensionCoverage?.[d]?.searched && !state.dimensionCoverage?.[d]?.saturated
+    );
+
     if (unsatisfied.length > 0) {
+      // 还有维度没碰过：直接搜，不要绕弯子
       lines.push(
-        `Gap: ${unsatisfied.length} dimension(s) not yet searched: ${unsatisfied.join(', ')}`
+        `→ Next: Search the ${unsatisfied.length} untouched dimension(s): ${unsatisfied.join(', ')}. ` +
+          `Use @search with targeted queries. Do NOT rewrite unless dimension is ambiguous.`
       );
+      if (unsatisfied.length === state.discoveredDimensions.length) {
+        // 全新开始，没有历史负担
+        toolHints.search = 'search each dimension directly with specific keywords. START HERE.';
+        toolHints.query_rewrite = 'ONLY if a dimension is unclear or too broad to search.';
+      } else {
+        toolHints.search = `search the untouched dimension(s): [${unsatisfied.join(', ')}]`;
+        toolHints.query_rewrite = 'ONLY if an untouched dimension is too vague to search directly';
+      }
+    } else if (shallow.length > 0) {
+      // 全搜过了，但有些维度信息不够深：必须改写角度，禁止原地再搜
+      lines.push(
+        `→ All dimensions touched, but ${shallow.length} lack depth: ${shallow.join(', ')}. ` +
+          `Low info gain detected. You MUST use @query_rewrite first to find new angles. ` +
+          `Do NOT @search with similar keywords again.`
+      );
+      toolHints.query_rewrite = `rewrite query to explore NEW angles for: [${shallow.join(', ')}]`;
+      toolHints.search =
+        'ONLY after @query_rewrite produces new variants; NEVER search same angle again';
     } else {
-      lines.push('All dimensions searched. If low info gain on recent searches → @answer.');
+      // 所有维度都饱和了
+      lines.push('All dimensions saturated. Synthesize findings → @summary.');
       return lines.join('\n');
     }
   } else {
+    // 非 comparative_analysis：保留通用逻辑，但加强约束
     lines.push(
       'Compare the Goal/Plan above against collected chunks. ' +
         'Identify which aspects are well-covered and which have gaps.'
     );
-    lines.push('- All aspects covered → call @answer.');
+    lines.push('- All aspects covered → call @summary.');
     lines.push('- Gaps remain → choose the best next action:');
   }
 
-  // 5. 可用动作提示
-  const toolHints: Record<string, string> = {
-    search: 'search with different keywords or relaxed conditions',
-    query_rewrite: 'rewrite or decompose the query from a new angle, then search the variants'
-  };
+  // fallback：非 comparative_analysis 或异常状态
+  if (!toolHints.search && !toolHints.query_rewrite) {
+    toolHints.search =
+      'search with adjusted keywords or relaxed conditions. DEFAULT for straightforward queries.';
+    toolHints.query_rewrite =
+      'rewrite ONLY when: query is ambiguous, multi-faceted, or previous searches failed. Do NOT use for simple factual questions.';
+  }
+
   for (const name of toolNames) {
-    if (name === 'answer') continue;
+    if (name === 'summary') continue;
     const hint = toolHints[name] || `use @${name}`;
     lines.push(`  • @${name} — ${hint}`);
   }
 
-  // ── 低相关性警告（注入 ⚠️ 信号，引导 agent 主动调 @answer）──────────
+  // ── 低相关性警告（注入 ⚠️ 信号，引导 agent 主动调 @summary）──────────
   if (state.allChunks.length > 0 && (state.searchCount ?? 0) > 0) {
     const bestBGE = Math.max(...state.allChunks.map((c) => c.rerankScore ?? c.score ?? 0));
     const llmScores = state.allChunks
@@ -217,7 +253,7 @@ function buildProgressGuidance(
       lines.push(
         `⚠️ RELEVANCE WARNING: All retrieved chunks have very low relevance (${scoreInfo}).` +
           ` If this query appears UNRELATED to this knowledge base domain,` +
-          ` call @answer immediately — do NOT search or rewrite again.`
+          ` call @summary immediately — do NOT search or rewrite again.`
       );
     }
   }
@@ -269,7 +305,7 @@ function formatSearchSummary(chunks: ChunkItem[], prevTotal: number): string {
 }
 
 // ============================================================
-// 共享函数：runAnswerStream（供 @answer tool 分支和 generate_answer 节点共用）
+// 共享函数：runAnswerStream（供 @summary tool 分支和 generate_answer 节点共用）
 // ============================================================
 
 async function runAnswerStream(
@@ -386,6 +422,7 @@ export function createRoutePlaybookNode(
 
       return {
         playbook: routeResult.playbook,
+        analysis: routeResult.analysis,
         messages: [systemMsg, userMsg],
         executionPath: [`route_playbook(${routeResult.playbook}:${routeResult.method})`],
         nodeHist: [{ node: 'route_playbook', toolCalls: [] }],
@@ -444,8 +481,7 @@ export function createNativeAgentNode(
     try {
       const response = await providers.llm.chat(state.messages, {
         tools: TOOL_DEFINITIONS,
-        temperature: 0.1,
-        maxTokens: 4096
+        temperature: 0.1
       });
 
       const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
@@ -499,8 +535,7 @@ export function createTextAgentNode(
 
     try {
       const response = await providers.llm.chat(state.messages, {
-        temperature: 0.1,
-        maxTokens: 4096
+        temperature: 0.1
       });
 
       const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
@@ -577,8 +612,7 @@ export function createAutoAgentNode(
     try {
       const response = await providers.llm.chat(state.messages, {
         tools: TOOL_DEFINITIONS,
-        temperature: 0.1,
-        maxTokens: 4096
+        temperature: 0.1
       });
 
       const assistantMsg: LLMMessage = { role: 'assistant', content: response.content };
@@ -600,6 +634,12 @@ export function createAutoAgentNode(
       logger?.info(
         `[auto_agent] ${mode},${toolNames.join(',') || 'no_tools'} (${Date.now() - startTime}ms)`
       );
+      // DEBUG: log why no_tools happened
+      if (toolCalls.length === 0) {
+        logger?.debug(
+          `[auto_agent] no_tools debug: contentLen=${response.content?.length ?? 0}, contentPreview="${response.content?.slice(0, 200)?.replace(/\n/g, ' ')}"`
+        );
+      }
 
       if (toolCalls.length === 0) {
         return {
@@ -640,7 +680,7 @@ export function createAutoAgentNode(
 // ============================================================
 
 /**
- * tools 节点：执行 pendingToolCalls（search / query_rewrite / answer）
+ * tools 节点：执行 pendingToolCalls（search / query_rewrite / summary
  */
 export function createToolsNode(
   providers: AgenticSearchProviders,
@@ -760,7 +800,7 @@ export function createToolsNode(
             const remaining = config.maxSearchCalls - (state.searchCount || 0);
             if (remaining <= 0) {
               toolResult =
-                'Search limit reached. Please generate the answer based on existing search results.';
+                'Search limit reached. Now call @summary to generate the answer based on existing search results.';
               break;
             }
             const searchQueries = dedupedQueries.slice(0, remaining);
@@ -921,10 +961,10 @@ export function createToolsNode(
             break;
           }
 
-          case TOOLS.ANSWER: {
+          case TOOLS.SUMMARY: {
             const allChunksForAnswer = [...state.allChunks, ...newChunks];
             logger?.info(
-              `[ToolsNode] @answer: state.allChunks=${state.allChunks.length}, newChunks=${newChunks.length}, allChunksForAnswer=${allChunksForAnswer.length}`
+              `[ToolsNode] @summary: state.allChunks=${state.allChunks.length}, newChunks=${newChunks.length}, allChunksForAnswer=${allChunksForAnswer.length}`
             );
 
             // 提取 pinnedChunkIds（@assess 标注的 key chunks 优先保留）
@@ -953,7 +993,7 @@ export function createToolsNode(
               finalChunks = data.selectedChunks;
             }
             logger?.info(
-              `[ToolsNode] @answer: chunk selection done: selected ${finalChunks.length}/${allChunksForAnswer.length} chunks (skipStage2=${answerSkipStage2}, pinned=${pinnedChunkIds.length})`
+              `[ToolsNode] @summary: chunk selection done: selected ${finalChunks.length}/${allChunksForAnswer.length} chunks (skipStage2=${answerSkipStage2}, pinned=${pinnedChunkIds.length})`
             );
 
             // ── searchOnly 模式：跳过 LLM 生成，直接返回 selector 结果 ──
@@ -965,7 +1005,7 @@ export function createToolsNode(
                 selected_chunks: finalChunks.length
               });
               logger?.info(
-                `[ToolsNode] @answer(search_only): selected ${finalChunks.length} chunks, skipping LLM generation`
+                `[ToolsNode] @summary(search_only): selected ${finalChunks.length} chunks, skipping LLM generation`
               );
               break;
             }
@@ -999,7 +1039,7 @@ export function createToolsNode(
               done = true;
 
               if (ttftMs !== undefined) {
-                logger?.info(`[ToolsNode] @answer TTFT: ${ttftMs}ms`);
+                logger?.info(`[ToolsNode] @summary TTFT: ${ttftMs}ms`);
               }
 
               toolResult = formatAnswerSummary({
@@ -1024,7 +1064,7 @@ export function createToolsNode(
               'comparative_analysis'
             ]);
             if (!_ASSESS_PLAYBOOKS.has(state.playbook)) {
-              toolResult = `@assess is not applicable for '${state.playbook}' queries. Call @answer directly now.`;
+              toolResult = `@assess is not applicable for '${state.playbook}' queries. Call @summary directly now.`;
               break;
             }
 
@@ -1044,19 +1084,19 @@ export function createToolsNode(
               keyChunkUpdate[ann.chunk_id] = ann.key_info ?? null;
             }
 
-            // lacks 稳定性检测（连续两轮相同 lacks → 强制 @answer）
+            // lacks 稳定性检测（连续两轮相同 lacks → 强制 @summary）
             const currLacksStr = [...assessLacks].sort().join('||');
             const prevLacksStr = state.prevLacksSet || '';
             let forcedAnswer = false;
             if (prevLacksStr && currLacksStr === prevLacksStr) {
-              logger?.warn('[ToolsNode] @assess: lacks unchanged for 2 rounds — forcing @answer');
+              logger?.warn('[ToolsNode] @assess: lacks unchanged for 2 rounds — forcing @summary');
               forcedAnswer = true;
               toolResult =
                 'Assessment: lacks unchanged from last round — the knowledge base does not have more relevant information. ' +
-                'Call @answer now with the information you have collected.';
+                'Call @summary now with the information you have collected.';
             } else if (assessSufficient) {
               toolResult =
-                'Assessment: sufficient. You have enough information. Call @answer now to generate the final response.';
+                'Assessment: sufficient. You have enough information. Call @summary now to generate the final response.';
             } else {
               const lacksStr =
                 assessLacks.length > 0
@@ -1064,7 +1104,7 @@ export function createToolsNode(
                   : '(none specified)';
               toolResult =
                 `Assessment recorded. Lacks noted in blackboard:\n${lacksStr}\n` +
-                'Continue with your plan. When you have covered the main aspects, call @answer — ' +
+                'Continue with your plan. When you have covered the main aspects, call @summary — ' +
                 'you do NOT need to fill every lack before answering.';
             }
 
@@ -1202,7 +1242,7 @@ export function createToolsNode(
       searchCount: state.searchCount + searchCountInc,
       ...(embeddingTokensInc > 0 ? { embeddingTokens: embeddingTokensInc } : {}),
       ...(rerankInputTokensInc > 0 ? { rerankInputTokens: rerankInputTokensInc } : {}),
-      // 当 @answer tool 在 searchOnly 模式下显式运行了 chunk selection（selectedChunks 被设置，
+      // 当 @summary tool 在 searchOnly 模式下显式运行了 chunk selection（selectedChunks 被设置，
       // 即使为空数组），注入 select_chunks(from_answer) 到 executionPath，供 mapStateToResult
       // 正确区分"selection 运行过返回空"与"selection 从未运行"。
       executionPath: [
@@ -1224,20 +1264,32 @@ export function createToolsNode(
  */
 export function createShouldContinue(config: Required<AgenticSearchConfig>, ctx: RequestContext) {
   return function shouldContinue(state: AgenticRAGStateType): string {
+    // DEBUG: log routing decision inputs
+    const logger = ctx.logger;
+    const pendingNames = state.pendingToolCalls?.map((tc) => tc.function.name) ?? [];
+    logger?.debug(
+      `[shouldContinue] pendingToolCalls=${JSON.stringify(pendingNames)}, searchCount=${state.searchCount}, toolCallCount=${state.toolCallCount}, iterationCount=${state.iterationCount}, done=${state.done}`
+    );
+
     // 检查是否有工具调用
     // 无工具调用时路由到 select_chunks 而非 END，确保已收集的 chunks 能生成回答
     if (!state.pendingToolCalls || state.pendingToolCalls.length === 0) {
+      logger?.debug(`[shouldContinue] -> select_chunks (no pending tool calls)`);
       return 'select_chunks';
     }
 
-    // 检查 ctx.last_answer 是否已有答案（@answer 上一轮已完成）
+    // 检查 ctx.last_answer 是否已有答案（@summary 上一轮已完成）
     if (ctx.lastAnswer && ctx.lastAnswer.answer) {
+      logger?.debug(`[shouldContinue] -> END (lastAnswer exists)`);
       return END;
     }
 
     // 检查 tool_call_count 是否达到上限 → select_chunks 确保已收集 chunks 生成回答
     const toolCallCount = state.toolCallCount ?? 0;
     if (toolCallCount >= config.maxToolCalls) {
+      logger?.debug(
+        `[shouldContinue] -> select_chunks (toolCallCount ${toolCallCount} >= max ${config.maxToolCalls})`
+      );
       return 'select_chunks';
     }
 
@@ -1245,6 +1297,9 @@ export function createShouldContinue(config: Required<AgenticSearchConfig>, ctx:
     const toolNames = state.pendingToolCalls.map((tc) => tc.function.name);
     if (ctx.searchCount >= config.maxSearchCalls) {
       if (toolNames.every((name) => name === TOOLS.SEARCH)) {
+        logger?.debug(
+          `[shouldContinue] -> select_chunks (searchCount ${ctx.searchCount} >= max ${config.maxSearchCalls})`
+        );
         return 'select_chunks';
       }
     }
@@ -1254,10 +1309,17 @@ export function createShouldContinue(config: Required<AgenticSearchConfig>, ctx:
     if (toolNames.every((name) => name === TOOLS.SEARCH)) {
       const reason = simpleQuerySearchCappedWithCtx(ctx);
       if (reason) {
+        logger?.debug(`[shouldContinue] -> select_chunks (simpleQuerySearchCapped: ${reason})`);
         return 'select_chunks';
       }
     }
 
+    if (toolNames.every((name) => name === TOOLS.SUMMARY)) {
+      logger?.debug(`[shouldContinue] before calling summary -> select_chunks`);
+      return 'select_chunks';
+    }
+
+    logger?.debug(`[shouldContinue] -> tools (pending=${JSON.stringify(toolNames)})`);
     return 'tools';
   };
 }
@@ -1324,7 +1386,7 @@ export function createSelectChunksNode(
   ): Promise<AgenticRAGUpdateType> {
     const logger = getNodeLogger(providers);
 
-    // 守卫：已有答案（@answer tool 已生成）
+    // 守卫：已有答案（@summary tool 已生成）
     if (state.answer) {
       return {};
     }
@@ -1365,6 +1427,11 @@ export function createSelectChunksNode(
 
     // 有检索结果但 chunk_selector 判定全部不相关 → 标记 refuse
     const noRelevantChunks = selectedChunks.length === 0 && (state.allChunks?.length ?? 0) > 0;
+
+    // DEBUG: log select_chunks decision
+    logger?.debug(
+      `[select_chunks] result: selected=${selectedChunks.length}, all=${state.allChunks.length}, noRelevantChunks=${noRelevantChunks}, searchOnly=${config.searchOnly}, skipStage2=${skipStage2}`
+    );
 
     return {
       selectedChunks,
@@ -1674,16 +1741,25 @@ export function createPlanExecutorNode(
  */
 export function createAfterSyncRoute(ctx: RequestContext) {
   return function afterSyncRoute(state: AgenticRAGStateType): string {
+    const logger = ctx.logger;
+    // DEBUG: log routing decision inputs
+    logger?.debug(
+      `[afterSyncRoute] done=${state.done}, pendingPlan=${ctx.pendingPlan?.length ?? 0}, searchCount=${state.searchCount}, allChunks=${state.allChunks?.length ?? 0}`
+    );
+
     // 检查 state.done（可能在 agent 节点设置）
     if (state.done) {
+      logger?.debug(`[afterSyncRoute] -> END (state.done=true)`);
       return END;
     }
     // 检查 ctx.pending_plan（由 query_rewrite 设置）
     if (ctx.pendingPlan && ctx.pendingPlan.length > 0) {
+      logger?.debug(`[afterSyncRoute] -> plan_executor (pendingPlan=${ctx.pendingPlan.length})`);
       return 'plan_executor';
     }
     // 对齐 Python _after_sync_route：始终回到 agent，让 LLM 决策下一步
     // Python 不在路由层做早停，由 createShouldContinue（工具调用前）和 LLM 自身决定
+    logger?.debug(`[afterSyncRoute] -> agent (default)`);
     return 'agent';
   };
 }
@@ -1696,7 +1772,7 @@ export function createAfterSyncRoute(ctx: RequestContext) {
  * 创建 sync_blackboard 节点（对齐 Python create_sync_blackboard）
  *
  * 当提供 cfg 和 tool_names 时，节点会向 messages 注入 progress-summary
- * + decision-guidance 消息，帮助 agent 评估是否继续搜索或调用 @answer
+ * + decision-guidance 消息，帮助 agent 评估是否继续搜索或调用 @summary
  */
 export function createSyncBlackboardNode(
   ctx: RequestContext,
