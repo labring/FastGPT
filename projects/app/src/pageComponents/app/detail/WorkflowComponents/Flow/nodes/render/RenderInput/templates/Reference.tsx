@@ -325,6 +325,7 @@ const MultipleReferenceSelector = ({
               {...containerProps}
               gap={2}
               fontSize={'sm'}
+              pointerEvents={'auto'}
               _hover={{
                 '.delete': {
                   visibility: 'visible'

@@ -164,7 +164,7 @@ const nextConfig: NextConfig = {
           '../../packages/**/dist',
           '**/.next',
           '**/out',
-          '**/.claude/worktrees'
+          '../../.claude/worktrees'
         ],
         // 减少轮询频率，降低 CPU 和内存占用
         poll: 1000,
