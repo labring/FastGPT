@@ -23,6 +23,7 @@ type BaseModelItem = {
 
 type TrainableModelItem = BaseModelItem & {
   trainTaskList?: ModelRow['trainTaskList'];
+  supportTrain?: boolean;
 };
 
 type ModelLists = {
@@ -148,7 +149,7 @@ export const getFilteredModelList = ({
       </Flex>
     ),
     tagColor: 'yellow',
-    trainableModelType: ModelTypeEnum.embedding
+    trainableModelType: item.supportTrain ? ModelTypeEnum.embedding : undefined
   }));
 
   const formatTTSModelList: FormattedModelItem[] = ttsModelList.map((item) => ({
@@ -194,7 +195,7 @@ export const getFilteredModelList = ({
       '-'
     ),
     tagColor: 'red',
-    trainableModelType: ModelTypeEnum.rerank
+    trainableModelType: item.supportTrain ? ModelTypeEnum.rerank : undefined
   }));
 
   const list: FormattedModelItem[] = (() => {

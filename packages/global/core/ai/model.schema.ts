@@ -106,14 +106,16 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
   defaultConfig: z.record(z.string(), z.any()).optional(), // post request config
   dbConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for storage
   queryConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for query
-  instruction: z.string().optional() // Instruction for instruction-aware models (e.g. qwen3-embedding)
+  instruction: z.string().optional(), // Instruction for instruction-aware models (e.g. qwen3-embedding)
+  supportTrain: z.boolean().optional() // Whether the model supports training
 });
 export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
 
 export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.rerank),
   maxToken: z.number().optional(), // max input token for rerank query + one document
-  instruction: z.string().optional() // Instruction for instruction-aware models
+  instruction: z.string().optional(), // Instruction for instruction-aware models
+  supportTrain: z.boolean().optional() // Whether the model supports training
 });
 export type RerankModelItemType = z.infer<typeof RerankModelItemSchema>;
 

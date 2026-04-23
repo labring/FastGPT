@@ -1041,6 +1041,12 @@ export const ModelEditModal = ({
                   rows={3}
                 />
               </Field>
+              <SwitchField
+                label={t('account:model.support_train')}
+                tip={t('account:model.support_train_tip')}
+                field={'supportTrain'}
+                register={register}
+              />
             </Grid>
           </Section>
         )}
@@ -1069,6 +1075,12 @@ export const ModelEditModal = ({
                   rows={3}
                 />
               </Field>
+              <SwitchField
+                label={t('account:model.support_train')}
+                tip={t('account:model.support_train_tip')}
+                field={'supportTrain'}
+                register={register}
+              />
             </Grid>
           </Section>
         )}

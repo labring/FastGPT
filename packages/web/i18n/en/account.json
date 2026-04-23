@@ -122,6 +122,8 @@
   "model.price_tiers": "Price tiers",
   "model.price_tiers_tip": "Match a tier by input token range, then bill input and output tokens with that tier's prices. Each next range starts after the previous upper bound. Leave the last upper bound empty to mean and above.",
   "model.response_format_placeholder": "Custom parameters",
+  "model.support_train": "Support model training",
+  "model.support_train_tip": "When enabled, the training button will be exposed for this model, allowing fine-tuning based on this model.",
   "model.test_mode": "Mark as test model",
   "model.test_mode_tip": "When enabled, the model will have a Beta logo added when selected.",
   "model.vision_tag": "Vision",
