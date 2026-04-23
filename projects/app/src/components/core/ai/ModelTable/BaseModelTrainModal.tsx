@@ -104,8 +104,8 @@ const BaseModelTrainModal = ({
 
   const availableBaseModelList = useMemo(
     () => ({
-      rerank: reRankModelList.filter((item) => item.isTuned !== true),
-      embedding: embeddingModelList.filter((item) => item.isTuned !== true)
+      rerank: reRankModelList.filter((item) => item.isTuned !== true && item.supportTrain),
+      embedding: embeddingModelList.filter((item) => item.isTuned !== true && item.supportTrain)
     }),
     [reRankModelList, embeddingModelList]
   );

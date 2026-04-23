@@ -99,6 +99,8 @@
   "model.response_format_placeholder": "自定义参数",
   "model.show_stop_sign": "展示停止序列参数",
   "model.show_top_p": "展示 Top-p 参数",
+  "model.support_train": "支持模型训练",
+  "model.support_train_tip": "开启后，该模型将暴露训练按钮，可用于基于该模型进行微调训练。",
   "model.test_mode": "标记为测试模型",
   "model.test_mode_tip": "开启后，该模型在选择时候，将会增加 Beta 标志。",
   "model.test_model": "模型测试",

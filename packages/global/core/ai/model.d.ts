@@ -71,12 +71,14 @@ export type EmbeddingModelItemType = PriceType &
     dbConfig?: Record<string, any>; // Custom parameters for storage
     queryConfig?: Record<string, any>; // Custom parameters for query
     instruction?: string; // Instruction for instruction-aware models (e.g. qwen3-embedding)
+    supportTrain?: boolean; // Whether the model supports training
   };
 
 export type RerankModelItemType = PriceType &
   BaseModelItemType & {
     type: ModelTypeEnum.rerank;
     instruction?: string; // Instruction for instruction-aware models
+    supportTrain?: boolean; // Whether the model supports training
   };
 
 export type TTSModelType = PriceType &
