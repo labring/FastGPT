@@ -3,7 +3,7 @@ import { MongoUserAuth } from './schema';
 import { i18nT } from '../../../../global/common/i18n/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { z } from 'zod';
+import z from 'zod';
 
 export const addAuthCode = async ({
   key,

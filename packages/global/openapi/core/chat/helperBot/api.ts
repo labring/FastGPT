@@ -7,7 +7,7 @@ import {
   HelperBotTypeEnumSchema
 } from '../../../../core/chat/helperBot/type';
 import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
-import { z } from 'zod';
+import z from 'zod';
 import type { PaginationResponse } from '../../../api';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 

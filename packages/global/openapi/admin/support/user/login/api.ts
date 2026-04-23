@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 
 // Admin login request body
 export const AdminLoginBodySchema = z.object({

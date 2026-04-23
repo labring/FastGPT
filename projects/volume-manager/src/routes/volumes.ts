@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
+import z from 'zod';
 import type { VolumeService } from '../services/VolumeService';
 import { logInfo } from '../utils/logger';
 

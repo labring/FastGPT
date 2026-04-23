@@ -12,7 +12,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { z } from 'zod';
+import z from 'zod';
 
 const BodySchema = z.object({
   pageNum: z.number().int().min(1).default(1),
