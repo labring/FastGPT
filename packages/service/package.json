@@ -35,6 +35,7 @@
     "chinese-conv": "^3.2.2",
     "combined-stream": "^1.0.8",
     "cookie": "^0.7.1",
+    "csv-rex": "^0.7.0",
     "date-fns": "catalog:",
     "dayjs": "catalog:",
     "decompress": "^4.2.1",
