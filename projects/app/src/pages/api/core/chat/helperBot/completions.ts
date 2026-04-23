@@ -32,25 +32,19 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     });
   };
 
-  let chatId = '';
-  let chatItemId = '';
-  let metadataType = '';
-
   // keep consistent with SSE APIs, otherwise stream consumer may treat response as non-SSE
   setSSEHeaders();
 
-  try {
-    const {
-      chatId: _chatId,
-      chatItemId: _chatItemId,
-      query,
-      files,
-      metadata
-    } = HelperBotCompletionsParamsSchema.parse(req.body);
-    chatId = _chatId;
-    chatItemId = _chatItemId;
-    metadataType = metadata.type;
+  const parseResult = HelperBotCompletionsParamsSchema.safeParse(req.body);
 
+  if (!parseResult.success) {
+    sseErrRes(res, parseResult.error);
+    return res.end();
+  }
+
+  const { chatId, chatItemId, query, files, metadata } = parseResult.data;
+
+  try {
     const { teamId, tmbId, userId, isRoot } = await authCert({ req, authToken: true });
 
     // Limit
@@ -122,7 +116,7 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
       error,
       chatId,
       chatItemId,
-      metadataType
+      metadata
     });
     sseErrRes(res, error);
   }
