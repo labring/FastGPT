@@ -5,7 +5,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@test/*": ["../../test/*"],
-      "@t3-oss/env-core": ["../../packages/service/node_modules/@t3-oss/env-core/dist/index.d.ts"]
+      "@t3-oss/env-core": ["../../packages/service/node_modules/@t3-oss/env-core/dist/index.d.ts"],
+      "@fastgpt/service/*": ["../../packages/service/*"]
     }
   },
   "include": [

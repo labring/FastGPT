@@ -3,6 +3,8 @@ import { MongoSystemConfigs } from './schema';
 import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { FastGPTProUrl } from '../constants';
 import { type LicenseDataType } from '@fastgpt/global/common/system/types';
+import fs, { existsSync } from 'fs';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 export const getFastGPTConfigFromDB = async (): Promise<{
   fastgptConfig: FastGPTConfigFileType;
@@ -66,4 +68,30 @@ export const reloadFastGPTConfigBuffer = async () => {
   });
   if (!res) return;
   global.systemInitBufferId = res.createTime.getTime().toString();
+};
+
+export const readConfigData = async (name: string) => {
+  const splitName = name.split('.');
+  const devName = `${splitName[0]}.local.${splitName[1]}`;
+
+  const filename = (() => {
+    if (!isProduction) {
+      const hasLocalFile = existsSync(`data/${devName}`);
+      if (hasLocalFile) {
+        return `data/${devName}`;
+      }
+      return `data/${name}`;
+    }
+    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
+    return `${envPath}/${name}`;
+  })();
+
+  let content: string;
+  try {
+    content = await fs.promises.readFile(filename, 'utf-8');
+  } catch (err) {
+    console.error(`Failed to read file ${filename}:`, err);
+    throw err;
+  }
+  return content;
 };

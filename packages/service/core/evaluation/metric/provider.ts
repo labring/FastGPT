@@ -1,4 +1,4 @@
-import { readConfigData } from '../../../../../projects/app/src/service/common/system';
+import { readConfigData } from '@fastgpt/service/common/system/config/controller';
 import { EvalMetricTypeEnum } from '@fastgpt/global/core/evaluation/metric/constants';
 import type { EvalMetricSchemaType } from '@fastgpt/global/core/evaluation/metric/type';
 
