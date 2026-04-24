@@ -77,5 +77,9 @@
   "usage_detail": "使用详情",
   "user_type": "类型",
   "wechat": "微信个人号",
-  "wecom": "企业微信"
+  "wecom": "企业微信",
+  "evaluation_summary_generation": "评估-总结生成",
+  "hype_index":"构建高质量假设问题索引",
+  "synonym_standardize": "同义词标准化",
+  "synonym_restore": "同义词恢复"
 }

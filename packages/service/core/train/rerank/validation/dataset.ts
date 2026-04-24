@@ -25,6 +25,8 @@ async function hasReadyTargetIndexes(
 /**
  * Validate that all given datasets have ready indexes for the target index type.
  *
+ * NOTE: synthesis 索引功能已移除，此验证函数保留但不再进行 synthesis 检查
+ *
  * @param datasetIds - Dataset IDs to validate (must be non-empty)
  * @param indexType - Target index type to validate
  * @throws {RerankTrainErrEnum.rerankValidationNoDatasetConfigured} If datasetIds is empty

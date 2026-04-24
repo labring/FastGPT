@@ -6,7 +6,6 @@ import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/typ
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { datasetParseQueue } from '../queues/datasetParse';
 import { generateSmall2Big } from '../queues/generateSmall2Big';
-import { generateSynthesis } from '../queues/generateSynthesis';
 
 export const createDatasetTrainingMongoWatch = () => {
   const changeStream = MongoDatasetTraining.watch();
@@ -26,8 +25,6 @@ export const createDatasetTrainingMongoWatch = () => {
           generateDatabaseSchemaEmbedding();
         } else if (mode === TrainingModeEnum.small2Big) {
           generateSmall2Big();
-        } else if (mode === TrainingModeEnum.synthesis) {
-          generateSynthesis();
         }
       }
     } catch (error) {}
@@ -43,6 +40,5 @@ export const startTrainingQueue = (fast?: boolean) => {
     datasetParseQueue();
     generateDatabaseSchemaEmbedding();
     generateSmall2Big();
-    generateSynthesis();
   }
 };

@@ -10,7 +10,6 @@ export enum DatasetDataIndexTypeEnum {
   column_val_index = 'column_val_index',
   hype = 'hype',
   small2Big = 'small2Big',
-  synthesis = 'synthesis',
   correction = 'correction'
 }
 
@@ -56,10 +55,6 @@ export const DatasetDataIndexMap: Record<
   [DatasetDataIndexTypeEnum.small2Big]: {
     label: i18nT('dataset:data_index_small2big'),
     color: 'pink'
-  },
-  [DatasetDataIndexTypeEnum.synthesis]: {
-    label: i18nT('dataset:data_index_synthesis'),
-    color: 'violet'
   },
   [DatasetDataIndexTypeEnum.correction]: {
     label: i18nT('dataset:data_index_correction'),

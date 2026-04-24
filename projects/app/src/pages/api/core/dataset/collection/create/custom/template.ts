@@ -260,7 +260,7 @@ async function handler(
     const enhanceConfig = selectedMode.enhanceConfig || {};
     addLog.debug(`[TemplateImport] enhanceConfig details: ${JSON.stringify(enhanceConfig)}`);
     addLog.debug(
-      `[TemplateImport] EnhanceConfig - autoIndexes: ${enhanceConfig.autoIndexes || false}, small2bigIndexes: ${enhanceConfig.small2bigIndexes || false}, syntheticIndex: ${enhanceConfig.syntheticIndex !== false}`
+      `[TemplateImport] EnhanceConfig - autoIndexes: ${enhanceConfig.autoIndexes || false}, small2bigIndexes: ${enhanceConfig.small2bigIndexes || false}`
     );
 
     // 6.1 If enableEnhance is false, disable all enhance config
@@ -269,7 +269,6 @@ async function handler(
         ? {
             autoIndexes: false,
             small2bigIndexes: false,
-            syntheticIndex: false,
             hypeIndexes: false,
             hypeIndexPrompt: '',
             small2bigConfig: undefined,
@@ -295,7 +294,6 @@ async function handler(
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: finalEnhanceConfig.autoIndexes || false,
         small2bigIndexes: finalEnhanceConfig.small2bigIndexes || false,
-        syntheticIndex: finalEnhanceConfig.syntheticIndex !== false, // 默认true
         hypeIndexes: finalEnhanceConfig.hypeIndexes || false,
         hypeIndexPrompt: finalEnhanceConfig.hypeIndexPrompt || '',
         small2bigConfig: finalEnhanceConfig.small2bigConfig,
