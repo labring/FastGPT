@@ -151,6 +151,23 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchExtensionBg
       );
+      // Agentic Search
+      defaultAppForm.dataset.retrievalMode = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetRetrievalMode
+      );
+      defaultAppForm.dataset.agenticSearchReasoning = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetAgenticSearchReasoning
+      );
+      defaultAppForm.dataset.agenticSearchRerankModel = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetAgenticSearchRerankModel
+      );
+      defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.collectionFilterMatch
+      );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||
@@ -478,6 +495,41 @@ export function form2AppWorkflow(
           ...Input_Template_UserChatInput,
           toolDescription: i18nT('workflow:content_to_search'),
           value: question
+        },
+        {
+          key: NodeInputKeyEnum.datasetRetrievalMode,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.retrievalMode
+        },
+        {
+          key: NodeInputKeyEnum.datasetAgenticSearchReasoning,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          value: formData.dataset.agenticSearchReasoning
+        },
+        {
+          key: NodeInputKeyEnum.datasetAgenticSearchRerankModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.rerankModel
+        },
+        {
+          key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.aiSettings.model
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.collectionFilterMatch
         }
       ],
       outputs: DatasetSearchModule.outputs
