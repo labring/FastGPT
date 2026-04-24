@@ -8,6 +8,7 @@ import type {
   DeleteSFTTaskResponse
 } from './types';
 import { addLog } from '../../../../../common/system/log';
+import { trainEnv } from '../../env';
 
 type MockTaskInfo = {
   taskId: string;
@@ -84,9 +85,15 @@ export async function mockQuerySFTTaskStatus(
   let progress: number | undefined;
   let message: string;
 
-  const failEnvKey = task.taskType === 'rerank' ? 'MOCK_SFT_RERANK_FAIL' : 'MOCK_SFT_EMBED_FAIL';
-  const shouldFail = process.env[failEnvKey] === 'true';
-
+  let shouldFail = false;
+  let failEnvKey = '';
+  if (task.taskType === 'rerank') {
+    shouldFail = trainEnv.SFT_BRIDGE_MOCK_RERANK_FAIL;
+    failEnvKey = 'SFT_BRIDGE_MOCK_RERANK_FAIL';
+  } else {
+    shouldFail = trainEnv.SFT_BRIDGE_MOCK_EMBED_FAIL;
+    failEnvKey = 'SFT_BRIDGE_MOCK_EMBED_FAIL';
+  }
   if (elapsedSeconds < 3) {
     currentStatus = SFTTaskStatus.created;
     progress = 0;
@@ -121,11 +128,18 @@ export async function mockQuerySFTTaskStatus(
   if (currentStatus === SFTTaskStatus.failed && shouldFail) {
     response.error = `Mock failure injected via ${failEnvKey}`;
   } else if (currentStatus === SFTTaskStatus.completed) {
-    const envPrefix =
-      task.taskType === 'rerank' ? 'MOCK_SFT_RERANK_ENDPOINT' : 'MOCK_SFT_EMBED_ENDPOINT';
-    const baseUrl = process.env[`${envPrefix}_BASE_URL`];
-    const model = process.env[`${envPrefix}_MODEL`];
-    const apiKey = process.env[`${envPrefix}_API_KEY`];
+    let baseUrl = null;
+    let model = null;
+    let apiKey = null;
+    if (task.taskType === 'rerank') {
+      baseUrl = trainEnv.SFT_BRIDGE_MOCK_RERANK_ENDPOINT_BASE_URL;
+      model = trainEnv.SFT_BRIDGE_MOCK_RERANK_ENDPOINT_MODEL;
+      apiKey = trainEnv.SFT_BRIDGE_MOCK_RERANK_ENDPOINT_API_KEY;
+    } else {
+      baseUrl = trainEnv.SFT_BRIDGE_MOCK_EMBED_ENDPOINT_BASE_URL;
+      model = trainEnv.SFT_BRIDGE_MOCK_EMBED_ENDPOINT_MODEL;
+      apiKey = trainEnv.SFT_BRIDGE_MOCK_EMBED_ENDPOINT_API_KEY;
+    }
     if (baseUrl && model && apiKey) {
       response.endpoint = { base_url: baseUrl, model, api_key: apiKey };
     }

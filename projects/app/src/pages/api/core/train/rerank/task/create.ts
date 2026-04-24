@@ -7,7 +7,7 @@ import {
   validateTrainingEnvironment,
   validateDatasetTargetIndexes
 } from '@fastgpt/service/core/train/rerank/validation';
-import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
+import { trainEnv } from '@fastgpt/service/core/train/common/env';
 import { MongoRerankTrainTask } from '@fastgpt/service/core/train/rerank/task/schema';
 import { authRerankTrainset } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { authEvalDataset } from '@fastgpt/service/support/permission/evaluation/auth';
@@ -85,9 +85,9 @@ async function handler(
   // Step 1: Auto mode without generateConfig → build default
   let normalizedGenerateConfig = generateConfig;
   if (!normalizedGenerateConfig && !trainsetId) {
-    normalizedGenerateConfig = { indexType: DEFAULT_TRAIN_INDEX_TYPE };
+    normalizedGenerateConfig = { indexType: trainEnv.TRAIN_INDEX_TYPE };
   }
-  // Step 2: Validate dataset indexes whenever generateConfig is present
+  // Step 2: Validate dataset readiness (indexes + chunk threshold) whenever generateConfig is present
   if (normalizedGenerateConfig) {
     await validateDatasetTargetIndexes(expandedDatasetIds, normalizedGenerateConfig.indexType);
   }

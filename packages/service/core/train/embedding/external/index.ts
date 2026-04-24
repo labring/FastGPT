@@ -1,14 +1,24 @@
 import { synthesizeEvalData } from '../../common/external/diting';
-
-const USE_MOCK = process.env.USE_DITING_MOCK === 'true';
-
-// Re-export with embedding-specific name for backward compatibility
-export const synthesizeEmbeddingEvalData = synthesizeEvalData;
-
-export type {
-  DiTingSyntheticEvalDataRequest as DiTingSyntheticEmbeddingEvalDataRequest,
-  DiTingSyntheticEvalDataResponse as DiTingSyntheticEmbeddingEvalDataResponse
+import type {
+  DiTingSyntheticEvalDataRequest,
+  DiTingSyntheticEvalDataResponse
 } from '../../common/external/diting';
+
+const EMBEDDING_SYNTHESIZER_NAME = 'eval_qa_pairs_synthesizer';
+
+export type EmbeddingSyntheticEvalDataRequest = Omit<
+  DiTingSyntheticEvalDataRequest,
+  'synthesizerConfig'
+>;
+
+export async function synthesizeEmbeddingEvalData(
+  request: EmbeddingSyntheticEvalDataRequest
+): Promise<DiTingSyntheticEvalDataResponse> {
+  return synthesizeEvalData({
+    ...request,
+    synthesizerConfig: { synthesizerName: EMBEDDING_SYNTHESIZER_NAME }
+  });
+}
 
 // SFT Bridge - re-export from common package
 export {

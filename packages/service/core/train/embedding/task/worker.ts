@@ -4,11 +4,7 @@ import { type EmbeddingTrainTaskJobData } from './mq';
 import { embeddingTrainTaskProcessor } from './processor';
 import { MongoEmbeddingTrainTask } from './schema';
 import { EmbeddingTrainTaskStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
-import {
-  DEFAULT_WORKER_STALLED_INTERVAL,
-  DEFAULT_TRAIN_TASK_CONCURRENCY,
-  DEFAULT_WORKER_MAX_STALLED_COUNT
-} from '../constants';
+import { trainEnv } from '../../common/env';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../common/errors';
 import {
   EmbeddingTrainErrEnum,
@@ -22,10 +18,10 @@ export function initEmbeddingTrainTaskWorker() {
     QueueNames.embeddingTrainTask,
     embeddingTrainTaskProcessor,
     {
-      stalledInterval: DEFAULT_WORKER_STALLED_INTERVAL,
+      stalledInterval: trainEnv.TRAIN_WORKER_STALLED_INTERVAL,
       maxStalledCount:
-        global.systemEnv?.trainConfig?.maxStalledCount || DEFAULT_WORKER_MAX_STALLED_COUNT,
-      concurrency: global.systemEnv?.trainConfig?.taskConcurrency || DEFAULT_TRAIN_TASK_CONCURRENCY
+        global.systemEnv?.trainConfig?.maxStalledCount || trainEnv.TRAIN_WORKER_MAX_STALLED_COUNT,
+      concurrency: global.systemEnv?.trainConfig?.taskConcurrency || trainEnv.TRAIN_TASK_CONCURRENCY
     }
   );
 

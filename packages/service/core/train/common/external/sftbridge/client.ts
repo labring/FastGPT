@@ -10,7 +10,7 @@ import type {
 } from './types';
 import { SFTTaskStatus } from './types';
 import { addLog } from '../../../../../common/system/log';
-import { DEFAULT_SFT_BRIDGE_TIMEOUT } from '../../constants';
+import { trainEnv } from '../../env';
 
 /**
  * SFT Bridge platform real client for optimization task creation and status query
@@ -18,8 +18,8 @@ import { DEFAULT_SFT_BRIDGE_TIMEOUT } from '../../constants';
 
 function getSFTBridgeConfig() {
   return {
-    url: process.env.SFT_BRIDGE_BASE_URL || 'http://sft-bridge:3000',
-    timeout: Number(process.env.SFT_BRIDGE_TIMEOUT) || DEFAULT_SFT_BRIDGE_TIMEOUT
+    url: trainEnv.SFT_BRIDGE_BASE_URL,
+    timeout: trainEnv.SFT_BRIDGE_TIMEOUT
   };
 }
 

@@ -144,6 +144,7 @@ export type RerankTrainsetDataSchemaType = {
       weights?: Record<string, number>;
       forceRegenerate?: boolean;
       indexType: `${DatasetDataIndexTypeEnum}`;
+      indexMultiStrategy?: 1 | 2;
       negativeStrategy?: 1 | 2 | 3 | 4;
       minNegativeSamples?: number;
       maxNegativeSamples?: number;
@@ -184,6 +185,7 @@ export type RerankTrainTaskSchemaType = {
     sampleSize?: number;
     weights?: Record<string, number>;
     indexType: `${DatasetDataIndexTypeEnum}`;
+    indexMultiStrategy?: 1 | 2;
     negativeStrategy?: 1 | 2 | 3 | 4;
     minNegativeSamples?: number;
     maxNegativeSamples?: number;

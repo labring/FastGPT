@@ -4,11 +4,7 @@ import { type RerankTrainTaskJobData } from './mq';
 import { rerankTrainTaskProcessor } from './processor';
 import { MongoRerankTrainTask } from './schema';
 import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
-import {
-  DEFAULT_WORKER_STALLED_INTERVAL,
-  DEFAULT_TRAIN_TASK_CONCURRENCY,
-  DEFAULT_WORKER_MAX_STALLED_COUNT
-} from '../constants';
+import { trainEnv } from '../../common/env';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../common/errors';
 import {
   RerankTrainErrEnum,
@@ -22,10 +18,10 @@ export function initRerankTrainTaskWorker() {
     QueueNames.rerankTrainTask,
     rerankTrainTaskProcessor,
     {
-      stalledInterval: DEFAULT_WORKER_STALLED_INTERVAL,
+      stalledInterval: trainEnv.TRAIN_WORKER_STALLED_INTERVAL,
       maxStalledCount:
-        global.systemEnv?.trainConfig?.maxStalledCount || DEFAULT_WORKER_MAX_STALLED_COUNT,
-      concurrency: global.systemEnv?.trainConfig?.taskConcurrency || DEFAULT_TRAIN_TASK_CONCURRENCY
+        global.systemEnv?.trainConfig?.maxStalledCount || trainEnv.TRAIN_WORKER_MAX_STALLED_COUNT,
+      concurrency: global.systemEnv?.trainConfig?.taskConcurrency || trainEnv.TRAIN_TASK_CONCURRENCY
     }
   );
 

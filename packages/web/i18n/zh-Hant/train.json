@@ -134,6 +134,8 @@
   "rerank_trainset_gen_database_error_suggestion": "Please check database connection",
   "rerank_trainset_gen_already_generating_suggestion": "Please wait for rerank trainset generation",
   "rerank_trainset_gen_not_found_suggestion": "Please check if rerank trainset exists",
+  "rerank_trainset_gen_insufficient_chunks": "Rerank training data is insufficient after sampling",
+  "rerank_trainset_gen_insufficient_chunks_suggestion": "Please add more valid data to datasets or lower the minimum training chunk requirement",
   "rerank_unknown_error_suggestion": "Please check system logs",
   "embedding_trainset_not_exist": "Embedding training set does not exist",
   "embedding_trainset_generating": "Embedding training data is being generated, please wait",
@@ -266,5 +268,7 @@
   "embedding_trainset_gen_database_error_suggestion": "Please check database connection",
   "embedding_trainset_gen_already_generating_suggestion": "Please wait for embedding trainset generation",
   "embedding_trainset_gen_not_found_suggestion": "Please check if embedding trainset exists",
+  "embedding_trainset_gen_insufficient_chunks": "Embedding training data is insufficient after sampling",
+  "embedding_trainset_gen_insufficient_chunks_suggestion": "Please add more valid data to datasets or lower the minimum training chunk requirement",
   "embedding_unknown_error_suggestion": "Please check system logs"
 }

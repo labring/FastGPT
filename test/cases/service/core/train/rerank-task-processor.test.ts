@@ -1,12 +1,19 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+
+// Use vi.hoisted to set environment variables before all module imports
+vi.hoisted(() => {
+  process.env.DITING_MOCK_ENABLE = 'true';
+  process.env.SFT_BRIDGE_MOCK_ENABLE = 'true';
+  process.env.TRAIN_MIN_EVAL_QA_COUNT = '1';
+  // Set up test environment variables
+  process.env.AIPROXY_API_ENDPOINT = 'http://test-aiproxy.com';
+  process.env.AIPROXY_API_TOKEN = 'test-token';
+  // Set short polling intervals for faster tests
+  process.env.SFT_BRIDGE_POLL_INTERVAL = '20'; // 100ms instead of 60s
+  process.env.SFT_BRIDGE_MAX_POLLS = '5'; // Reduce max polls
+});
+
 import { rerankTrainTaskProcessor } from '@fastgpt/service/core/train/rerank/task/processor';
-import {
-  updateRerankTaskStatus,
-  updateRerankCheckpointStage,
-  updateRerankCheckpointData,
-  getRerankTrainTask,
-  deleteRerankTrainTask
-} from '@fastgpt/service/core/train/rerank/task/controller';
 import {
   RerankTrainTaskStatusEnum,
   RerankTaskCheckpointStageEnum
@@ -202,12 +209,6 @@ describe('Rerank Train Task Processor', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    // Set up test environment variables
-    process.env.AIPROXY_API_ENDPOINT = 'http://test-aiproxy.com';
-    process.env.AIPROXY_API_TOKEN = 'test-token';
-    // Set short polling intervals for faster tests
-    process.env.SFT_BRIDGE_POLL_INTERVAL = '100'; // 100ms instead of 60s
-    process.env.SFT_BRIDGE_MAX_POLLS = '10'; // Reduce max polls
 
     // Mock trainset is ready by default
     const { MongoRerankTrainset } = await import(
@@ -387,10 +388,12 @@ describe('Rerank Train Task Processor', () => {
       (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
+          qaPairs: [
+            {
+              question: 'Test eval question',
+              answer: 'Test eval answer'
+            }
+          ]
         }
       });
       (evaluateRerankModelHelper as any).mockResolvedValue({
@@ -726,10 +729,12 @@ describe('Rerank Train Task Processor', () => {
       (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
+          qaPairs: [
+            {
+              question: 'Test eval question',
+              answer: 'Test eval answer'
+            }
+          ]
         }
       });
       (evaluateRerankModelHelper as any).mockResolvedValue({
@@ -869,7 +874,14 @@ describe('Rerank Train Task Processor', () => {
       );
       (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
-        data: { qaPair: { question: 'Test question', answer: 'Test answer' } }
+        data: {
+          qaPairs: [
+            {
+              question: 'Test question',
+              answer: 'Test answer'
+            }
+          ]
+        }
       });
 
       const { MongoEvalDatasetCollection } = await import(
@@ -1157,10 +1169,12 @@ describe('Rerank Train Task Processor', () => {
       (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
-          qaPair: {
-            question: 'Test eval question',
-            answer: 'Test eval answer'
-          }
+          qaPairs: [
+            {
+              question: 'Test eval question',
+              answer: 'Test eval answer'
+            }
+          ]
         }
       });
       (evaluateRerankModelHelper as any).mockResolvedValue({
@@ -1654,10 +1668,12 @@ describe('Rerank Train Task Processor', () => {
       (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
-          qaPair: {
-            question: 'Generated question 1',
-            answer: 'Generated answer 1'
-          }
+          qaPairs: [
+            {
+              question: 'Generated question 1',
+              answer: 'Generated answer 1'
+            }
+          ]
         }
       });
 
@@ -1772,10 +1788,12 @@ describe('Rerank Train Task Processor', () => {
       (synthesizeRerankEvalData as any).mockResolvedValue({
         success: true,
         data: {
-          qaPair: {
-            question: 'Generated question 1',
-            answer: 'Generated answer 1'
-          }
+          qaPairs: [
+            {
+              question: 'Generated question 1',
+              answer: 'Generated answer 1'
+            }
+          ]
         }
       });
 

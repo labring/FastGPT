@@ -15,12 +15,7 @@ import {
 import { synthesizeEmbeddingEvalData } from '../../external';
 import { getDefaultLLMModel } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
-import {
-  DEFAULT_DITING_CONCURRENCY,
-  MAX_DITING_CONCURRENCY,
-  DEFAULT_DITING_TIMEOUT,
-  MIN_EVAL_QA_COUNT
-} from '../../constants';
+import { trainEnv } from '../../../common/env';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 import { MongoEmbeddingTrainTask } from '../schema';
 
@@ -55,8 +50,7 @@ async function generateEvalDatasetFromDatasets(
   });
 
   const sampledData = await sampleDataFromDataset(datasetIds, {
-    datasetType: 'eval',
-    sampleSize: MIN_EVAL_QA_COUNT
+    datasetType: 'eval'
   });
 
   if (sampledData.length === 0) {
@@ -71,26 +65,26 @@ async function generateEvalDatasetFromDatasets(
   // Fetch q/a content for DiTing API calls (sampleDataFromDataset now returns ID-only items)
   const sampledDataWithContent = await fetchSampledContent(sampledData);
 
-  // If sampled data is less than MIN_EVAL_QA_COUNT, repeat samples cyclically to fill the gap
-  let limitedSampledData = sampledDataWithContent;
-  if (sampledDataWithContent.length < MIN_EVAL_QA_COUNT) {
-    addLog.warn('Eval sampledData below minimum required count, repeating samples', {
-      taskId: String(task._id),
-      sampledCount: sampledDataWithContent.length,
-      required: MIN_EVAL_QA_COUNT
-    });
-    limitedSampledData = [];
-    for (let i = 0; i < MIN_EVAL_QA_COUNT; i++) {
-      limitedSampledData.push(sampledDataWithContent[i % sampledDataWithContent.length]);
-    }
-  } else {
-    limitedSampledData = sampledDataWithContent.slice(0, MIN_EVAL_QA_COUNT);
+  if (sampledDataWithContent.length === 0) {
+    const enhancedError = createEmbeddingEnhancedError(
+      EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
+      EmbeddingTrainErrEnum.embeddingEvalNoDataAvailable,
+      EmbeddingTrainSuggestionEnum.embeddingEvalNoDataAvailable
+    );
+    throw new TrainTaskUnrecoverableError(enhancedError);
   }
+
+  // Calculate numCases for 1-to-many strategy when sampled data is below minimum
+  const numCasesPerSample =
+    sampledDataWithContent.length < trainEnv.TRAIN_MIN_EVAL_QA_COUNT
+      ? Math.ceil(trainEnv.TRAIN_MIN_EVAL_QA_COUNT / sampledDataWithContent.length)
+      : 1;
 
   addLog.info('Sampled data from datasets', {
     taskId: String(task._id),
     sampleCount: sampledDataWithContent.length,
-    limitedCount: limitedSampledData.length
+    numCasesPerSample,
+    required: trainEnv.TRAIN_MIN_EVAL_QA_COUNT
   });
 
   // In auto mode, use the default LLM model name directly.
@@ -98,39 +92,34 @@ async function generateEvalDatasetFromDatasets(
 
   // Controlled concurrency for DiTing API calls
   const ditingConcurrency = Math.min(
-    Math.max(
-      parseInt(process.env.DITING_API_CONCURRENCY || String(DEFAULT_DITING_CONCURRENCY), 10),
-      1
-    ),
-    MAX_DITING_CONCURRENCY
+    Math.max(trainEnv.DITING_API_CONCURRENCY, 1),
+    trainEnv.DITING_MAX_CONCURRENCY
   );
   addLog.info('DiTing API concurrency configuration', {
     taskId: String(task._id),
     concurrency: ditingConcurrency,
-    totalSamples: limitedSampledData.length
+    totalSamples: sampledDataWithContent.length
   });
 
   const ditingLimit = pLimit(ditingConcurrency);
   const ditingResults = await Promise.allSettled(
-    limitedSampledData.map((sample) =>
+    sampledDataWithContent.map((sample) =>
       ditingLimit(async () => {
         const context = [sample.q, sample.a].filter(Boolean);
 
         const response = await synthesizeEmbeddingEvalData({
-          synthesizerConfig: {
-            synthesizerName: 'eval_q_a_synthesizer'
-          },
           inputData: {
-            context
+            context,
+            numCases: numCasesPerSample
           },
           llm_config: {
             name: aiModelName,
-            timeout: DEFAULT_DITING_TIMEOUT / 1000
+            timeout: trainEnv.DITING_TIMEOUT / 1000
           }
         });
 
-        if (!response.success || !response.data?.qaPair) {
-          addLog.warn('Failed to generate eval QA pair for sample', {
+        if (!response.success || !response.data) {
+          addLog.warn('Failed to generate eval QA pairs for sample', {
             taskId: String(task._id),
             sampleDataId: sample.dataId,
             error: response.error
@@ -141,8 +130,7 @@ async function generateEvalDatasetFromDatasets(
         return {
           teamId: task.teamId,
           tmbId: task.tmbId,
-          question: response.data.qaPair.question,
-          answer: response.data.qaPair.answer,
+          qaPairs: response.data.qaPairs,
           sourceDataId: sample.dataId,
           sourceDatasetId: sample.datasetId,
           synthesizedAt: new Date(),
@@ -153,25 +141,30 @@ async function generateEvalDatasetFromDatasets(
     )
   );
 
+  // Flatten 1-to-many results: each DiTing call returns multiple qaPairs
   const evalDataItems = ditingResults
     .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-    .map((result) => result.value)
+    .flatMap((result) => {
+      const value = result.value;
+      if (!value || !Array.isArray(value.qaPairs)) return [];
+      return value.qaPairs.map((qaPair: any) => ({
+        teamId: value.teamId,
+        tmbId: value.tmbId,
+        question: qaPair.question,
+        answer: qaPair.answer,
+        sourceDataId: value.sourceDataId,
+        sourceDatasetId: value.sourceDatasetId,
+        synthesizedAt: value.synthesizedAt,
+        expectedContextIds: value.expectedContextIds
+      }));
+    })
     .filter((value) => value !== null);
 
-  if (evalDataItems.length === 0) {
-    const enhancedError = createEmbeddingEnhancedError(
-      EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
-      EmbeddingTrainErrEnum.embeddingEvalDitingGenerationFailed,
-      EmbeddingTrainSuggestionEnum.embeddingEvalDitingGenerationFailed
-    );
-    throw new TrainTaskRetriableError(enhancedError);
-  }
-
-  if (evalDataItems.length < MIN_EVAL_QA_COUNT) {
+  if (evalDataItems.length < trainEnv.TRAIN_MIN_EVAL_QA_COUNT) {
     addLog.warn('Generated eval QA pairs below minimum required count', {
       taskId: String(task._id),
       generatedCount: evalDataItems.length,
-      required: MIN_EVAL_QA_COUNT
+      required: trainEnv.TRAIN_MIN_EVAL_QA_COUNT
     });
     const enhancedError = createEmbeddingEnhancedError(
       EmbeddingTaskCheckpointStageEnum.generate_evaldataset,

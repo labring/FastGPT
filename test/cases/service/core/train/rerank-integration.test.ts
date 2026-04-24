@@ -1,4 +1,10 @@
 import { describe, test, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
+
+// Use vi.hoisted to set environment variables before all module imports
+vi.hoisted(() => {
+  process.env.TRAIN_MIN_CHUNK_COUNT = '1';
+});
+
 import {
   RerankTrainsetStatusEnum,
   RerankTrainDataSourceEnum

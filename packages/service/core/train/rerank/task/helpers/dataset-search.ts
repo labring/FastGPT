@@ -1,10 +1,9 @@
 import type { RerankTrainTaskSchemaType } from '@fastgpt/global/core/train/rerank/type';
 import type { RetrievalContextItem } from '@fastgpt/global/core/evaluation/dataset/type';
-import { DEFAULT_SEARCH_SIMILARITY, DEFAULT_SEARCH_LIMIT } from '../../constants';
+import { trainEnv } from '../../../common/env';
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RerankMethodEnum, DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MAX_SEARCH_RUN_TIMES } from '../../constants';
 import { addLog } from '../../../../../common/system/log';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { Types } from 'mongoose';
@@ -43,7 +42,7 @@ export async function performDatasetSearch(
     variables: {},
     query: [],
     stream: false,
-    maxRunTimes: MAX_SEARCH_RUN_TIMES,
+    maxRunTimes: trainEnv.TRAIN_MAX_SEARCH_RUN_TIMES,
     chatId: '',
     checkIsStopping: () => false,
     workflowDispatchDeep: 0,
@@ -83,8 +82,8 @@ export async function performDatasetSearch(
 
     params: {
       datasets,
-      similarity: DEFAULT_SEARCH_SIMILARITY,
-      limit: DEFAULT_SEARCH_LIMIT,
+      similarity: trainEnv.TRAIN_SEARCH_SIMILARITY,
+      limit: trainEnv.TRAIN_SEARCH_LIMIT,
       userChatInput: query,
       searchMode: DatasetSearchModeEnum.embedding,
       embeddingWeight: undefined,

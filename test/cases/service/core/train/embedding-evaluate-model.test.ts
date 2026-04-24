@@ -28,7 +28,7 @@ import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { EmbeddingTaskCheckpointStageEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { evaluateEmbeddingModelHelper } from '@fastgpt/service/core/train/embedding/task/helpers/evaluate-model';
-import { DEFAULT_EVAL_CONCURRENCY } from '@fastgpt/service/core/train/embedding/constants';
+import { trainEnv } from '@fastgpt/service/core/train/common/env';
 
 function makeEvalItem(userInput: string, expectedContextIds: string[], datasetId = 'ds1') {
   return {
@@ -242,7 +242,7 @@ describe('evaluateEmbeddingModelHelper', () => {
     ).rejects.toThrow();
   });
 
-  test('pLimit 限制了 dispatchDatasetSearch 的并发调用数不超过 DEFAULT_EVAL_CONCURRENCY', async () => {
+  test('pLimit 限制了 dispatchDatasetSearch 的并发调用数不超过 TRAIN_EVAL_CONCURRENCY', async () => {
     const items = Array.from({ length: 50 }, (_, i) => makeEvalItem(`q${i}`, [`doc${i}`]));
     (MongoEvalDatasetData.find as any).mockReturnValue({ lean: () => Promise.resolve(items) });
 
@@ -267,7 +267,7 @@ describe('evaluateEmbeddingModelHelper', () => {
       ['ds1']
     );
 
-    expect(peak).toBeLessThanOrEqual(DEFAULT_EVAL_CONCURRENCY);
+    expect(peak).toBeLessThanOrEqual(trainEnv.TRAIN_EVAL_CONCURRENCY);
     expect(peak).toBeGreaterThan(1);
   });
 });

@@ -1,5 +1,5 @@
 import { addLog } from '../../../../common/system/log';
-import { DEFAULT_SFT_BRIDGE_TIMEOUT, DEFAULT_DITING_TIMEOUT } from '../constants';
+import { trainEnv } from '../../common/env';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
 import axios from 'axios';
 
@@ -17,11 +17,11 @@ import axios from 'axios';
  * @throws {EmbeddingTrainErrEnum.validationSftBridgeUnaccessible} If SFT Bridge is not accessible
  */
 export async function validateSFTBridgeAccess(): Promise<void> {
-  const sftBridgeUrl = process.env.SFT_BRIDGE_BASE_URL || 'http://sft-bridge:3000';
-  const timeout = Number(process.env.SFT_BRIDGE_TIMEOUT) || DEFAULT_SFT_BRIDGE_TIMEOUT;
+  const sftBridgeUrl = trainEnv.SFT_BRIDGE_BASE_URL;
+  const timeout = trainEnv.SFT_BRIDGE_TIMEOUT;
 
   // Skip validation in mock mode
-  if (process.env.USE_SFT_BRIDGE_MOCK === 'true') {
+  if (trainEnv.SFT_BRIDGE_MOCK_ENABLE) {
     addLog.info('SFT Bridge validation skipped (mock mode enabled)');
     return;
   }
@@ -58,11 +58,11 @@ export async function validateSFTBridgeAccess(): Promise<void> {
  * @throws {EmbeddingTrainErrEnum.validationDitingUnaccessible} If DiTing is not accessible
  */
 export async function validateDiTingAccess(): Promise<void> {
-  const ditingUrl = process.env.DITING_BASE_URL || 'http://diting:3000';
-  const timeout = Number(process.env.DITING_TIMEOUT) || DEFAULT_DITING_TIMEOUT;
+  const ditingUrl = trainEnv.DITING_BASE_URL;
+  const timeout = trainEnv.DITING_TIMEOUT;
 
   // Skip validation in mock mode
-  if (process.env.USE_DITING_MOCK === 'true') {
+  if (trainEnv.DITING_MOCK_ENABLE) {
     addLog.info('DiTing validation skipped (mock mode enabled)');
     return;
   }
