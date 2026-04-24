@@ -47,12 +47,21 @@ vi.mock('@fastgpt/service/worker/function', () => ({
   readRawContentFromBuffer: (...args: any[]) => mockReadRawContentFromBuffer(...args)
 }));
 
-vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: {
+vi.mock('@fastgpt/service/common/api/axios', () => {
+  const mockAxiosInstance = {
     get: vi.fn(),
-    post: mockAxiosPost
-  }
-}));
+    post: mockAxiosPost,
+    request: vi.fn(),
+    interceptors: {
+      request: { use: vi.fn(), eject: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() }
+    }
+  };
+  return {
+    createProxyAxios: vi.fn(() => mockAxiosInstance),
+    axios: mockAxiosInstance
+  };
+});
 
 vi.mock('@fastgpt/service/thirdProvider/doc2x', () => ({
   useDoc2xServer: vi.fn(() => ({
@@ -81,7 +90,7 @@ vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
 
 import {
   readRawTextByLocalFile,
-  readFileContentByBuffer
+  readS3FileContentByBuffer
 } from '@fastgpt/service/common/file/read/utils';
 
 const teamId = 'test-team-id';
@@ -123,7 +132,7 @@ describe('readRawTextByLocalFile', () => {
   });
 });
 
-describe('readFileContentByBuffer', () => {
+describe('readS3FileContentByBuffer', () => {
   beforeEach(() => {
     global.systemEnv = {} as any;
   });
@@ -131,7 +140,7 @@ describe('readFileContentByBuffer', () => {
   it('should parse a txt buffer', async () => {
     const buffer = Buffer.from('Hello from buffer');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'txt',
@@ -145,7 +154,7 @@ describe('readFileContentByBuffer', () => {
   it('should use system parse for non-pdf files', async () => {
     const buffer = Buffer.from('markdown content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'md',
@@ -159,7 +168,7 @@ describe('readFileContentByBuffer', () => {
   it('should use system parse for pdf when customPdfParse is false', async () => {
     const buffer = Buffer.from('pdf content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'pdf',
@@ -176,7 +185,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('pdf content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'pdf',
@@ -191,7 +200,7 @@ describe('readFileContentByBuffer', () => {
   it('should return formatText when getFormatText is true', async () => {
     const buffer = Buffer.from('content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'txt',
@@ -206,7 +215,7 @@ describe('readFileContentByBuffer', () => {
   it('should return rawText when getFormatText is false', async () => {
     const buffer = Buffer.from('content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'txt',
@@ -232,7 +241,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('pdf content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'pdf',
@@ -251,7 +260,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('pdf content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'pdf',
@@ -271,7 +280,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('pdf content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'pdf',
@@ -291,7 +300,7 @@ describe('readFileContentByBuffer', () => {
     const buffer = Buffer.from('pdf content');
 
     await expect(
-      readFileContentByBuffer({
+      readS3FileContentByBuffer({
         teamId,
         tmbId,
         extension: 'pdf',
@@ -309,7 +318,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('pdf content');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'pdf',
@@ -336,7 +345,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('content with images');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'md',
@@ -366,7 +375,7 @@ describe('readFileContentByBuffer', () => {
 
     const buffer = Buffer.from('content with images');
 
-    const result = await readFileContentByBuffer({
+    const result = await readS3FileContentByBuffer({
       teamId,
       tmbId,
       extension: 'md',

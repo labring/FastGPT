@@ -1,0 +1,54 @@
+---
+title: 'V4.14.11 (In Progress)'
+description: 'FastGPT V4.14.11 Release Notes'
+---
+
+## Upgrade Guide
+### 1. Update image tags
+
+- Update fastgpt-app (FastGPT main service) image tag to: v4.14.11
+- Update fastgpt-pro (commercial edition) image tag to: v4.14.11
+- Update code-sandbox image tag to: v4.14.11
+- Update fastgpt-plugin image tag to: v0.6.0
+- Update Aiproxy image tag to: v0.5.3
+
+### 2. Update environment variables
+
+> All variables below have default values — you can leave them unset.
+
+```dotenv
+STREAM_RESUME_TTL_SECONDS=300 # TTL for Redis stream resume snapshots while generating (seconds)
+STREAM_RESUME_POST_COMPLETE_TTL_SECONDS=30 # Shortened TTL after stream completes, for faster reclamation (seconds)
+STREAM_RESUME_REDIS_MAXMEMORY_RATIO=0.5 # Stop creating resume snapshots for new requests when Redis used memory / maxmemory reaches this threshold
+STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS=5000 # Cache duration for Redis memory checks (ms), avoids calling INFO MEMORY on every stream request
+
+WORKFLOW_PARALLEL_MAX_CONCURRENCY=10 # Upper bound for max concurrency; cannot exceed WORKFLOW_MAX_LOOP_TIMES
+```
+
+## 🚀 Features
+
+1. Chat stream response resume support.
+2. Parallel execution node.
+3. Reworked the variable update node UX, with more numeric and array operations.
+4. Unified S3 file uploads, with support for proxying S3 uploads and access through FastGPT to reduce pre-signed URL configuration issues.
+5. Added direct preview for some sandbox file types, and optimized large file downloads.
+
+## ⚙️ Optimizations
+
+1. Added zod parameter validation to many APIs to reduce attack surface and parameter type errors.
+2. Refactored model channel management code.
+3. Added a default VLM model to the knowledge base creation API.
+
+## 🐛 Bug Fixes
+
+1. Fixed an issue where the model in chat Agent mode was reset after refresh.
+2. Fixed missing permission checks on several APIs.
+3. Fixed a billing error in the API for pushing data to the knowledge base.
+4. Fixed garbled Chinese characters when uploading Markdown documents to the knowledge base, caused by the leading English content being misdetected as `ascii`.
+5. Fixed Python code execution ignoring parameters when the input was empty.
+6. Fixed the workflow global variable multi-select field not clearing default values when an enum entry was removed.
+7. Fixed sub-workflow global variable default values not being displayed when adding a sub-workflow.
+8. Fixed the workflow code-run node replacing the IDs of all output values after AI code generation; now IDs with the same key are preserved.
+9. Fixed child node positions shifting when a parent node was auto-aligned by guides in the workflow.
+10. Fixed the evaluation list permission filter not covering inherited permissions.
+11. Fixed raw schema not being saved for MCP tools and HTTP tools, causing inaccurate schemas during tool calls.

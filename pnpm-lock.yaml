@@ -529,7 +529,7 @@ importers:
         version: 3.0.3
       node-xlsx:
         specifier: file:/app/node-xlsx-0.24.0.tgz
-        version: file:../../../../app/node-xlsx-0.24.0.tgz
+        version: file:../../../../../../app/node-xlsx-0.24.0.tgz
       oracledb:
         specifier: ^6.3.0
         version: 6.10.0
@@ -10248,8 +10248,8 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==, tarball: http://npm.uedc.sangfor.com.cn/node-releases/-/node-releases-2.0.37.tgz}
 
-  node-xlsx@file:../../../../app/node-xlsx-0.24.0.tgz:
-    resolution: {integrity: sha512-imn/7mpTGkdeNCqfvvNQprvKel1saKHC6GmQH+Pa3F6d+vtKLIs6l8WnF/TXlbRuzFgZ9P/CEfPDJQAZqOW58g==, tarball: file:../../../../app/node-xlsx-0.24.0.tgz}
+  node-xlsx@file:../../../../../../app/node-xlsx-0.24.0.tgz:
+    resolution: {integrity: sha512-imn/7mpTGkdeNCqfvvNQprvKel1saKHC6GmQH+Pa3F6d+vtKLIs6l8WnF/TXlbRuzFgZ9P/CEfPDJQAZqOW58g==, tarball: file:../../../../../../app/node-xlsx-0.24.0.tgz}
     version: 0.24.0
     engines: {node: '>=10.0.0'}
     hasBin: true
@@ -12076,7 +12076,7 @@ packages:
     resolution: {integrity: sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==}
 
   tslib@2.8.1:
-    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==, tarball: http://npm.uedc.sangfor.com.cn/tslib/-/tslib-2.8.1.tgz}
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   tsx@4.21.0:
     resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==, tarball: http://npm.uedc.sangfor.com.cn/tsx/-/tsx-4.21.0.tgz}
@@ -12881,8 +12881,8 @@ packages:
     resolution: {integrity: sha512-GCPAHLvrIH13+c0SuacwvRYj2SxJXQ4kaVTT5xgL3kPrz56XxkF21IGhjSE1+W0aw7gpBWRGXLCPnPby6lSpmQ==, tarball: http://npm.uedc.sangfor.com.cn/xdg-basedir/-/xdg-basedir-5.1.0.tgz}
     engines: {node: '>=12'}
 
-  xlsx@file:../../../../app/xlsx-0.20.2.tgz:
-    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: file:../../../../app/xlsx-0.20.2.tgz}
+  xlsx@file:../../../../../../app/xlsx-0.20.2.tgz:
+    resolution: {integrity: sha512-+nKZ39+nvK7Qq6i0PvWWRA4j/EkfWOtkP/YhMtupm+lJIiHxUrgTr1CcKv1nBk1rHtkRRQ3O2+Ih/q/sA+FXZA==, tarball: file:../../../../../../app/xlsx-0.20.2.tgz}
     version: 0.20.2
     engines: {node: '>=0.8'}
     hasBin: true
@@ -24238,9 +24238,9 @@ snapshots:
 
   node-releases@2.0.37: {}
 
-  node-xlsx@file:../../../../app/node-xlsx-0.24.0.tgz:
+  node-xlsx@file:../../../../../../app/node-xlsx-0.24.0.tgz:
     dependencies:
-      xlsx: file:../../../../app/xlsx-0.20.2.tgz
+      xlsx: file:../../../../../../app/xlsx-0.20.2.tgz
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
@@ -27507,7 +27507,7 @@ snapshots:
 
   xdg-basedir@5.1.0: {}
 
-  xlsx@file:../../../../app/xlsx-0.20.2.tgz: {}
+  xlsx@file:../../../../../../app/xlsx-0.20.2.tgz: {}
 
   xml2js@0.6.2:
     dependencies:
