@@ -43,8 +43,8 @@ const colorMap: Record<
   },
   green: {
     borderColor: 'green.200',
-    bg: 'green.50',
-    color: 'green.600'
+    bg: 'green.25',
+    color: 'green.700'
   },
   red: {
     borderColor: 'red.200',
@@ -108,7 +108,7 @@ const MyTag = ({
   return (
     <Flex
       display={'inline-flex'}
-      px={2.5}
+      px={2}
       lineHeight={1}
       py={1}
       borderRadius={'sm'}

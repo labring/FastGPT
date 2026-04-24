@@ -212,6 +212,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 px={1}
                 showDot
                 bg={'transparent'}
+                borderWidth={0}
                 colorSchema={
                   isSaved
                     ? publishStatusStyle.published.colorSchema
