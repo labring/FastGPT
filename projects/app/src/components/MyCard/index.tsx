@@ -3,7 +3,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import React from 'react';
 
 type MyCardProps = {
@@ -26,7 +26,6 @@ const MyCard = ({
   intro,
   author,
   tags = [],
-  isPromoted,
   experienceUrl,
   isMarketFeatured,
   hoverAction,
@@ -126,25 +125,32 @@ const MyCard = ({
         </Flex>
 
         {/* 简介 */}
-        <MyTooltip
-          label={
-            isMarketFeatured ? (
-              <Flex color="myGray.500" alignItems={'center'}>
-                <MyIcon name="common/info" w="16px" h="16px" mr={'4px'} flexShrink={0} />
-                <Text fontWeight="600" fontSize="12px">
-                  {t('app:template.market_featured_tip')}
-                </Text>
-              </Flex>
-            ) : undefined
+        <EllipsisTooltip
+          label={intro || ''}
+          lineClamp={2}
+          tooltipLabel={
+            <Box lineHeight={'24px'}>
+              {isMarketFeatured && (
+                <Flex color="myGray.500" alignItems={'center'} mt="4px">
+                  <MyIcon name="common/info" w="16px" h="16px" mr={'4px'} flexShrink={0} />
+                  <Text fontWeight="600" fontSize="12px">
+                    {t('app:template.market_featured_tip')}
+                  </Text>
+                </Flex>
+              )}
+              <Text fontSize={'12px'} color={'myWhite.1000'}>
+                {intro}
+              </Text>
+            </Box>
           }
-          shouldWrapChildren={false}
-          isDisabled={!isMarketFeatured}
-          maxW="500px"
-        >
-          <Text flex="1" mt="12px" mb="24px" fontSize="12px" color="myWhite.900" noOfLines={2}>
-            {intro}
-          </Text>
-        </MyTooltip>
+          flex="1"
+          mt="12px"
+          mb="24px"
+          fontSize="12px"
+          lineHeight="20px"
+          color="myWhite.900"
+          tooltipProps={{ maxW: '350px' }}
+        />
 
         {/* 底部：贡献者 */}
         <Flex align="center" gap="4px">
