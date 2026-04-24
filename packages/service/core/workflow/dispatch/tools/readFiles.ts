@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/common/file/tools';
 import { parseUrlToFileType } from '../../utils/context';
 import { readFileContentByBuffer } from '../../../../common/file/read/utils';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
@@ -25,6 +25,8 @@ import { S3Buckets } from '../../../../common/s3/config/constants';
 import { S3Sources } from '../../../../common/s3/contracts/type';
 import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -124,6 +126,176 @@ export const getHistoryFileLinks = (histories: ChatItemMiniType[]) => {
     });
 };
 
+const normalizeReadableFileUrl = ({
+  url,
+  requestOrigin
+}: {
+  url?: string;
+  requestOrigin?: string;
+}) => {
+  if (typeof url !== 'string') return '';
+
+  let normalizedUrl = url.trim();
+  if (!normalizedUrl) return '';
+
+  const validPrefixList = ['/', 'http', 'ws'];
+  if (!validPrefixList.some((prefix) => normalizedUrl.startsWith(prefix))) {
+    return '';
+  }
+
+  if (parseUrlToFileType(normalizedUrl)?.type !== 'file') {
+    return '';
+  }
+
+  try {
+    const parsedURL = new URL(normalizedUrl, 'http://localhost:3000');
+    if (requestOrigin && parsedURL.origin === requestOrigin) {
+      normalizedUrl = normalizedUrl.replace(requestOrigin, '');
+    }
+
+    return normalizedUrl;
+  } catch (error) {
+    logger.warn('Failed to parse file URL', { url: normalizedUrl, error });
+    return '';
+  }
+};
+
+const getReadableFileUrls = ({
+  urls,
+  requestOrigin,
+  maxFiles
+}: {
+  urls: string[];
+  requestOrigin?: string;
+  maxFiles: number;
+}) => {
+  return urls
+    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
+    .filter(Boolean)
+    .slice(0, maxFiles);
+};
+
+export const injectFileContentToUserMessages = async ({
+  messages,
+  requestOrigin,
+  maxFiles,
+  customPdfParse,
+  teamId,
+  tmbId,
+  usageId,
+  version
+}: {
+  messages: ChatItemMiniType[];
+  requestOrigin?: string;
+  maxFiles: number;
+  customPdfParse?: boolean;
+  teamId: string;
+  tmbId: string;
+  usageId?: string;
+  version?: string;
+}) => {
+  const urlToMessageIndexes = new Map<string, Set<number>>();
+
+  messages.forEach((message, messageIndex) => {
+    if (message.obj !== ChatRoleEnum.Human) return;
+
+    message.value.forEach((item) => {
+      if (item.file?.type !== ChatFileTypeEnum.file) return;
+
+      const url = normalizeReadableFileUrl({
+        url: item.file.url,
+        requestOrigin
+      });
+      if (!url) return;
+
+      const messageIndexes = urlToMessageIndexes.get(url) || new Set<number>();
+      messageIndexes.add(messageIndex);
+      urlToMessageIndexes.set(url, messageIndexes);
+    });
+  });
+
+  const urls = Array.from(urlToMessageIndexes.keys()).slice(0, maxFiles);
+  if (urls.length === 0) {
+    return messages;
+  }
+
+  const { readFilesResult } = await getFileContentFromLinks({
+    urls,
+    requestOrigin,
+    maxFiles,
+    teamId,
+    tmbId,
+    customPdfParse,
+    usageId
+  });
+
+  const fileTextsByMessageIndex = new Map<number, string[]>();
+  readFilesResult.forEach((item) => {
+    if (!item?.text) return;
+
+    const messageIndexes = urlToMessageIndexes.get(item.url);
+    if (!messageIndexes) return;
+
+    messageIndexes.forEach((messageIndex) => {
+      const fileTexts = fileTextsByMessageIndex.get(messageIndex) || [];
+      fileTexts.push(item.text);
+      fileTextsByMessageIndex.set(messageIndex, fileTexts);
+    });
+  });
+
+  if (fileTextsByMessageIndex.size === 0) {
+    return messages;
+  }
+
+  return messages.map((message, messageIndex) => {
+    const fileTexts = fileTextsByMessageIndex.get(messageIndex);
+    if (!fileTexts || message.obj !== ChatRoleEnum.Human) return message;
+
+    const filePrompt = replaceVariable(getDocumentQuotePrompt(version), {
+      quote: fileTexts.join('\n******\n')
+    });
+    if (!filePrompt) return message;
+
+    const value = message.value.map((item) => {
+      if (item.text) {
+        return {
+          ...item,
+          text: {
+            ...item.text
+          }
+        };
+      }
+      if (item.file) {
+        return {
+          ...item,
+          file: {
+            ...item.file
+          }
+        };
+      }
+      return { ...item };
+    });
+
+    const firstTextItem = value.find((item) => item.text);
+    if (firstTextItem?.text) {
+      firstTextItem.text.content = [firstTextItem.text.content, filePrompt]
+        .filter(Boolean)
+        .join('\n\n===---===---===\n\n');
+    } else {
+      value.push({
+        text: {
+          content: filePrompt
+        }
+      });
+    }
+
+    return {
+      ...message,
+      value
+    };
+  });
+};
+
 export const getFileContentFromLinks = async ({
   urls,
   requestOrigin,
@@ -141,37 +313,11 @@ export const getFileContentFromLinks = async ({
   customPdfParse?: boolean;
   usageId?: string;
 }) => {
-  const parseUrlList = urls
-    // Remove invalid urls
-    .filter((url) => {
-      if (typeof url !== 'string') return false;
-
-      // 检查相对路径
-      const validPrefixList = ['/', 'http', 'ws'];
-      if (validPrefixList.some((prefix) => url.startsWith(prefix))) {
-        return true;
-      }
-
-      return false;
-    })
-    // Just get the document type file
-    .filter((url) => parseUrlToFileType(url)?.type === 'file')
-    .map((url) => {
-      try {
-        // Check is system upload file
-        const parsedURL = new URL(url, 'http://localhost:3000');
-        if (requestOrigin && parsedURL.origin === requestOrigin) {
-          url = url.replace(requestOrigin, '');
-        }
-
-        return url;
-      } catch (error) {
-        logger.warn('Failed to parse file URL', { url, error });
-        return '';
-      }
-    })
-    .filter(Boolean)
-    .slice(0, maxFiles);
+  const parseUrlList = getReadableFileUrls({
+    urls,
+    requestOrigin,
+    maxFiles
+  });
 
   const readFilesResult = await Promise.all(
     parseUrlList
