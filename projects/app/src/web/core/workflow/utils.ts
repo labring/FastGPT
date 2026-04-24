@@ -482,8 +482,6 @@ export const checkWorkflowNodeAndConnection = ({
       )?.value;
       if (
         ifElseList.some((item) => {
-          // 空条件组：dispatchIfElse 中 [].every(Boolean) === true 会造成永真分支
-          if (!item.list || item.list.length === 0) return true;
           return item.list.some((listItem) => {
             return (
               listItem.variable === undefined ||
@@ -555,7 +553,6 @@ export const checkWorkflowNodeAndConnection = ({
         (input) => input.key === NodeInputKeyEnum.updateList
       )?.value;
       const nodeIds = nodes.map((n) => n.data.nodeId);
-      // 全局变量引用由 clearGlobalVariableReferencesFromNodes 兜底清理，这里与通用 reference 校验口径一致
       const isLiveReference = (value: ReferenceItemValueType | undefined) => {
         if (!isValidReferenceValueFormat(value)) return false;
         const [refNodeId, refOutputId] = value;
@@ -809,84 +806,6 @@ export const getWorkflowGlobalVariables = ({
   );
 
   return [...globalVariables, ...workflowSystemVariables];
-};
-
-// 全局变量 valueType 变更后，清理所有节点中对这些变量的下拉引用
-// 粗粒度：只要 [VARIABLE_NODE_ID, changedKey] 命中就按位置清掉，不比较新老类型是否兼容
-export const clearGlobalVariableReferencesFromNodes = (
-  nodes: Node<FlowNodeItemType>[],
-  changedKeys: Set<string>
-): Node<FlowNodeItemType>[] => {
-  if (changedKeys.size === 0) return nodes;
-
-  const isTargetRef = (ref: unknown): ref is ReferenceItemValueType =>
-    isValidReferenceValueFormat(ref) &&
-    ref[0] === VARIABLE_NODE_ID &&
-    !!ref[1] &&
-    changedKeys.has(ref[1]);
-
-  const sanitizeInputValue = (key: string, value: any): any => {
-    if (key === NodeInputKeyEnum.ifElseList && Array.isArray(value)) {
-      return (value as IfElseListItemType[]).map((group) => ({
-        ...group,
-        list: group.list
-          // 目标变量被命中：整条条件无意义，移除
-          .filter((cond) => !isTargetRef(cond.variable))
-          // 右侧 value 是命中的引用：仅清 value，保留变量 + 操作符
-          .map((cond) =>
-            isTargetRef(cond.value) ? { ...cond, value: undefined, valueType: undefined } : cond
-          )
-      }));
-    }
-
-    if (key === NodeInputKeyEnum.updateList && Array.isArray(value)) {
-      return (value as TUpdateListItem[]).map((item) => {
-        // 目标变量命中：保留行，清掉变量 + 所有类型相关字段，避免用户整段配置消失
-        if (isTargetRef(item.variable)) {
-          return {
-            renderType: item.renderType,
-            variable: undefined,
-            value: undefined,
-            valueType: undefined,
-            numberOperator: undefined,
-            booleanMode: undefined,
-            arrayMode: undefined
-          };
-        }
-        // value 是单个引用且命中：清掉引用
-        if (isTargetRef(item.value)) {
-          return { ...item, value: undefined };
-        }
-        // value 是引用数组：过滤命中项
-        if (Array.isArray(item.value) && item.value.every((v) => Array.isArray(v))) {
-          const filtered = (item.value as ReferenceItemValueType[]).filter((v) => !isTargetRef(v));
-          return { ...item, value: filtered };
-        }
-        return item;
-      });
-    }
-
-    // 顶层 input.value 是单个引用且命中
-    if (isTargetRef(value)) return undefined;
-
-    // 顶层 input.value 是引用数组
-    if (Array.isArray(value) && value.length > 0 && value.every((v) => Array.isArray(v))) {
-      return (value as ReferenceItemValueType[]).filter((v) => !isTargetRef(v));
-    }
-
-    return value;
-  };
-
-  return nodes.map((node) => ({
-    ...node,
-    data: {
-      ...node.data,
-      inputs: node.data.inputs.map((input) => ({
-        ...input,
-        value: sanitizeInputValue(input.key, input.value)
-      }))
-    }
-  }));
 };
 
 /* ====== Snapshot ======= */
