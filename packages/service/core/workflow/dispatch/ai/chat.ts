@@ -34,7 +34,7 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { getFileContentFromLinks } from '../tools/readFiles';
+import { injectFileContentToUserMessages } from '../tools/readFiles';
 import { parseUrlToFileType } from '../../utils/context';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
@@ -128,12 +128,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       getMultiInput({
         inputFiles,
         fileLinks,
-        stringQuoteText,
-        requestOrigin,
-        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId,
-        runningUserInfo
+        stringQuoteText
       })
     ]);
 
@@ -159,7 +154,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         userChatInput,
         systemPrompt,
         userFiles,
-        documentQuoteText
+        documentQuoteText,
+        requestOrigin,
+        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+        usageId,
+        runningUserInfo
       }),
       // Censor = true and system key, will check content
       (() => {
@@ -330,21 +330,11 @@ async function filterDatasetQuote({
 async function getMultiInput({
   inputFiles,
   fileLinks,
-  stringQuoteText,
-  requestOrigin,
-  maxFiles,
-  customPdfParse,
-  usageId,
-  runningUserInfo
+  stringQuoteText
 }: {
   inputFiles: UserChatItemFileItemType[];
   fileLinks?: string[];
   stringQuoteText?: string; // file quote
-  requestOrigin?: string;
-  maxFiles: number;
-  customPdfParse?: boolean;
-  usageId?: string;
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -355,33 +345,8 @@ async function getMultiInput({
   }
 
   // 旧版本适配<====
-  const urls =
-    fileLinks && fileLinks.length > 0
-      ? fileLinks
-      : inputFiles
-          .filter((file) => file.type === 'file')
-          .map((file) => file.url)
-          .filter(Boolean);
-
-  if (urls.length === 0) {
-    return {
-      documentQuoteText: '',
-      userFiles: inputFiles
-    };
-  }
-
-  const { text } = await getFileContentFromLinks({
-    urls,
-    requestOrigin,
-    maxFiles,
-    teamId: runningUserInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
-    customPdfParse,
-    usageId
-  });
-
   return {
-    documentQuoteText: text,
+    documentQuoteText: '',
     userFiles:
       fileLinks && fileLinks.length > 0
         ? (fileLinks
@@ -403,7 +368,12 @@ async function getChatMessages({
   systemPrompt,
   userChatInput,
   userFiles,
-  documentQuoteText
+  documentQuoteText,
+  requestOrigin,
+  maxFiles,
+  customPdfParse,
+  usageId,
+  runningUserInfo
 }: {
   model: LLMModelItemType;
   maxTokens?: number;
@@ -420,6 +390,11 @@ async function getChatMessages({
 
   userFiles: UserChatItemFileItemType[];
   documentQuoteText?: string; // document quote
+  requestOrigin?: string;
+  maxFiles: number;
+  customPdfParse?: boolean;
+  usageId?: string;
+  runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // Dataset prompt ====>
   // User role or prompt include question
@@ -461,16 +436,29 @@ async function getChatMessages({
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
 
+  const userMessages = await injectFileContentToUserMessages({
+    messages: [
+      ...histories,
+      {
+        obj: ChatRoleEnum.Human,
+        value: runtimePrompt2ChatsValue({
+          files: userFiles,
+          text: finalUserInput
+        })
+      }
+    ],
+    requestOrigin,
+    maxFiles,
+    customPdfParse,
+    usageId,
+    version,
+    teamId: runningUserInfo.teamId,
+    tmbId: runningUserInfo.tmbId
+  });
+
   const messages: ChatItemMiniType[] = [
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
-    ...histories,
-    {
-      obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        files: userFiles,
-        text: finalUserInput
-      })
-    }
+    ...userMessages
   ];
 
   const adaptMessages = chats2GPTMessages({

@@ -1,13 +1,10 @@
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemMiniType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getFileContentFromLinks } from '../workflow/dispatch/tools/readFiles';
 import { cloneDeep } from 'lodash';
 
 export const addPreviewUrlToChatItems = async (
@@ -107,77 +104,4 @@ export const presignVariablesFileUrls = async ({
   );
 
   return cloneVars;
-};
-
-export const enrichUserContentWithParsedFiles = async ({
-  userContent,
-  requestOrigin,
-  maxFiles,
-  customPdfParse,
-  teamId,
-  tmbId
-}: {
-  userContent: UserChatItemType;
-  requestOrigin?: string;
-  maxFiles: number;
-  customPdfParse?: boolean;
-  teamId: string;
-  tmbId: string;
-}) => {
-  const urls = Array.from(
-    new Set(
-      userContent.value
-        .filter(
-          (item) => item.file?.type === ChatFileTypeEnum.file && typeof item.file.url === 'string'
-        )
-        .map((item) => item.file?.url?.trim() || '')
-        .filter(Boolean)
-    )
-  );
-
-  if (urls.length === 0) {
-    return userContent;
-  }
-
-  const { text } = await getFileContentFromLinks({
-    urls,
-    requestOrigin,
-    maxFiles,
-    customPdfParse,
-    teamId,
-    tmbId
-  }).catch(() => {
-    return {
-      text: '',
-      readFilesResult: []
-    };
-  });
-
-  if (!text.trim()) {
-    return userContent;
-  }
-
-  const filePrompt = replaceVariable(getDocumentQuotePrompt(), {
-    quote: text
-  });
-
-  if (!filePrompt) {
-    return userContent;
-  }
-
-  const enrichedUserContent = cloneDeep(userContent);
-  const firstTextItem = enrichedUserContent.value.find((item) => item.text);
-  if (firstTextItem?.text) {
-    firstTextItem.text.content = [firstTextItem.text.content, filePrompt]
-      .filter(Boolean)
-      .join('\n\n===---===---===\n\n');
-  } else {
-    enrichedUserContent.value.push({
-      text: {
-        content: filePrompt
-      }
-    });
-  }
-
-  return enrichedUserContent;
 };
