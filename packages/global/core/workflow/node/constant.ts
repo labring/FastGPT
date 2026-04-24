@@ -356,11 +356,15 @@ export const NodeColorSchemaEnum = [
   'loopRun'
 ] as const;
 
-/** 返回 true 表示该节点是嵌套父容器（loop / parallelRun / loopRun）。 */
+/** 嵌套父容器节点类型集合（loop / parallelRun / loopRun）。 */
+export const NESTED_PARENT_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.parallelRun,
+  FlowNodeTypeEnum.loopRun
+]);
+
 export const isNestedParentNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
-  flowNodeType === FlowNodeTypeEnum.loop ||
-  flowNodeType === FlowNodeTypeEnum.parallelRun ||
-  flowNodeType === FlowNodeTypeEnum.loopRun;
+  NESTED_PARENT_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
 
 /** 交互类节点类型集合（在 parallelRun 体内禁止使用；loopRun 允许）。 */
 export const INTERACTIVE_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
@@ -368,7 +372,6 @@ export const INTERACTIVE_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
   FlowNodeTypeEnum.formInput
 ]);
 
-/** 返回 true 表示该节点是交互类节点（userSelect / formInput）。 */
 export const isInteractiveNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
   INTERACTIVE_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
 
@@ -378,3 +381,6 @@ export const NESTED_CHILD_SYSTEM_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new
   FlowNodeTypeEnum.nestedEnd,
   FlowNodeTypeEnum.loopRunStart
 ]);
+
+export const isNestedChildSystemNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
+  NESTED_CHILD_SYSTEM_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);

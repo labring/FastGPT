@@ -120,17 +120,22 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   let maxIterationsExceeded = false;
 
   while (true) {
+    // Check exhaustion before maxLength so `inputArray.length === maxLength` runs cleanly.
+    const arrayItem = (() => {
+      if (mode !== LoopRunModeEnum.array) {
+        return { exhausted: false as const, index: undefined, item: undefined };
+      }
+      const index = iteration - 1;
+      if (index >= inputArray.length) return { exhausted: true as const };
+      return { exhausted: false as const, index, item: inputArray[index] };
+    })();
+    if (arrayItem.exhausted) break;
+    const currentIndex = arrayItem.index;
+    const currentItem = arrayItem.item;
+
     if (iteration > maxLength) {
       maxIterationsExceeded = true;
       break;
-    }
-
-    let currentIndex: number | undefined;
-    let currentItem: any;
-    if (mode === LoopRunModeEnum.array) {
-      currentIndex = iteration - 1;
-      if (currentIndex >= inputArray.length) break;
-      currentItem = inputArray[currentIndex];
     }
 
     const isResumeIteration = !!interactiveData && iteration === resumeIteration;
@@ -241,6 +246,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     if (isLoopBreakHit(response.flowResponses)) break;
 
     // Resume state is one-shot; clear so subsequent iterations enter clean.
+    // injectLoopRunStart only re-sets loopRunStart, so explicitly drop stale
+    // isEntry flags the resume branch set on other children (e.g. formInput).
+    if (isResumeIteration) {
+      isolatedNodes.forEach((n) => {
+        if (n.flowNodeType !== FlowNodeTypeEnum.loopRunStart) {
+          n.isEntry = false;
+        }
+      });
+    }
     interactiveData = undefined;
     pendingIterationResponses = [];
 

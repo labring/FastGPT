@@ -4,7 +4,7 @@ import { useContextSelector } from 'use-context-selector';
 import {
   EDGE_TYPE,
   FlowNodeTypeEnum,
-  NESTED_CHILD_SYSTEM_NODE_TYPES
+  isNestedChildSystemNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node } from 'reactflow';
@@ -61,7 +61,7 @@ const NodeTemplatesPopover = () => {
         }
 
         // 2. Exclude loop start and end nodes
-        if (NESTED_CHILD_SYSTEM_NODE_TYPES.has(node.data.flowNodeType)) {
+        if (isNestedChildSystemNodeType(node.data.flowNodeType)) {
           return false;
         }
 

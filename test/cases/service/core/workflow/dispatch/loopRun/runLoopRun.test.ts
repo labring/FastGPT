@@ -722,4 +722,78 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const result: any = await dispatchLoopRun(props);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse].loopRunDetail).toEqual([]);
   });
+
+  it('array mode 数组长度 === max → 跑满且不报超限（回归：== max 不算超限）', async () => {
+    runWorkflowMock.mockImplementation(() =>
+      Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+        })
+      )
+    );
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b', 'c', 'd', 'e'],
+      [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+    });
+
+    const result: any = await dispatchLoopRun(props);
+    expect(runWorkflowMock).toHaveBeenCalledTimes(5);
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+    expect(nodeResponse.loopRunIterations).toBe(5);
+    expect(nodeResponse.loopRunHistory.every((h: any) => h.success)).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(nodeResponse.errorText).toBeUndefined();
+  });
+
+  it('resume 后续迭代：childrenResponse.entryNodeIds 标的节点 isEntry 不应泄漏到下一轮', async () => {
+    const interactivePayload: any = {
+      entryNodeIds: ['chatNode'],
+      memoryEdges: [],
+      nodeOutputs: []
+    };
+    // Snapshot chatNode.isEntry when runWorkflow is invoked — isolatedNodes is a
+    // single array reused across iterations, so reading it after the run would
+    // always see the post-reset state.
+    const chatEntryPerCall: boolean[] = [];
+    runWorkflowMock.mockImplementation((args: any) => {
+      const chatNode = args.runtimeNodes.find((n: any) => n.nodeId === 'chatNode');
+      chatEntryPerCall.push(!!chatNode?.isEntry);
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          flowResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+        })
+      );
+    });
+
+    const runtimeNodes = makeRuntimeNodes();
+    const node = runtimeNodes[0];
+    const props = {
+      params: {
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b', 'c'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      },
+      node,
+      runtimeNodes,
+      runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
+      runtimeEdges: [],
+      variables: {},
+      usagePush: vi.fn(),
+      lastInteractive: {
+        type: 'loopRunInteractive',
+        params: {
+          loopHistory: [{ iteration: 1, customOutputs: {}, success: true }],
+          iteration: 2,
+          childrenResponse: interactivePayload
+        }
+      }
+    } as any;
+
+    await dispatchLoopRun(props);
+    expect(runWorkflowMock).toHaveBeenCalledTimes(2);
+    expect(chatEntryPerCall[0]).toBe(true);
+    expect(chatEntryPerCall[1]).toBe(false);
+  });
 });

@@ -920,10 +920,10 @@ export class WorkflowQueue {
             if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
-                // Mirror the catch-branch convention: surface `error` onto
-                // nodeResponse so downstream observers (runLoopRun / parallelRun
-                // failure detection, OTel span status) see a uniform `.error`
-                // field across throw and non-throw failure paths.
+                // Callback returned with `result.error` set instead of throwing;
+                // mirror the catch-branch convention and copy it onto nodeResponse
+                // so runLoopRun / parallelRun failure detection and OTel span
+                // status see `.error` uniformly across both failure paths.
                 const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
                 const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
                 return {
