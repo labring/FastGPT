@@ -1,7 +1,5 @@
-import { DataType } from '@zilliz/milvus2-sdk-node';
-import type {
-  FieldType
-} from '@zilliz/milvus2-sdk-node/dist/milvus/types/Collection';
+import { DataType, FunctionType } from '@zilliz/milvus2-sdk-node';
+import type { FieldType } from '@zilliz/milvus2-sdk-node/dist/milvus/types/Collection';
 import type { CreateIndexSimpleReq } from '@zilliz/milvus2-sdk-node/dist/milvus/types/MilvusIndex';
 import {
   DatasetVectorTableName,
@@ -151,7 +149,7 @@ const createBaseFunctions = (): any[] | undefined => {
   return [
     {
       name: 'text_bm25_emb',
-      type: 'BM25' as any,
+      type: FunctionType.BM25,
       input_field_names: ['text'],
       output_field_names: ['sparse'],
       params: {}
