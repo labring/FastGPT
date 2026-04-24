@@ -115,6 +115,14 @@ export const chats2GPTMessages = ({
 
         const hasTools = Array.isArray(value.tools) && value.tools.length > 0;
 
+        if (typeof value.reasoning?.content === 'string') {
+          aiResults.push({
+            dataId,
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            reasoning_content: value.reasoning.content
+          });
+        }
+
         if (reserveTool && (hasTools || value.tool)) {
           const tools = hasTools ? value.tools! : [value.tool!];
           const tool_calls: ChatCompletionMessageToolCall[] = [];
@@ -134,13 +142,25 @@ export const chats2GPTMessages = ({
               content: tool.response || ''
             });
           });
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.Assistant,
-            tool_calls
-          });
+
+          const lastResult = aiResults[aiResults.length - 1];
+          if (
+            lastResult &&
+            lastResult.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
+            lastResult.reasoning_content
+          ) {
+            lastResult.tool_calls = tool_calls;
+          } else {
+            aiResults.push({
+              dataId,
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              tool_calls
+            });
+          }
+
           aiResults.push(...toolResponse);
-        } else if (typeof value.text?.content === 'string') {
+        }
+        if (typeof value.text?.content === 'string') {
           if (!value.text.content && item.value.length > 1) {
             return;
           }
@@ -151,6 +171,8 @@ export const chats2GPTMessages = ({
             typeof lastResult?.content === 'string'
           ) {
             lastResult.content += value.text.content;
+          } else if (lastResult.reasoning_content) {
+            lastResult.content = value.text.content;
           } else {
             aiResults.push({
               dataId,
@@ -158,7 +180,8 @@ export const chats2GPTMessages = ({
               content: value.text.content
             });
           }
-        } else if (value.plan) {
+        }
+        if (value.plan) {
           // 查找该 Plan 产生的上下文，组成一个 toolcall
           // 需要跨所有历史消息收集同 planId 的 values（ask 信息可能在之前的 AI 消息中）
           const planId = value.plan.planId;
@@ -195,7 +218,8 @@ export const chats2GPTMessages = ({
             tool_call_id: planId,
             content: planResponseText
           });
-        } else if (value.interactive) {
+        }
+        if (value.interactive) {
           // 目前只有 plan 里会有交互，所以这里暂时不需要处理
         }
       });
