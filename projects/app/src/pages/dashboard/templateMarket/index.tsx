@@ -117,6 +117,7 @@ const TemplateMarket = ({
           minWidth={0}
           py={3}
           px={6}
+          bg="white"
           border={'1px solid'}
           borderColor={'myGray.250'}
           borderRadius={'lg'}

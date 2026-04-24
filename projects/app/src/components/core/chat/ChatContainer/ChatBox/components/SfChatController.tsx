@@ -77,7 +77,7 @@ const ChatController = ({
 
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
-  const isLogMode = chatType === 'log';
+  const isLogMode = chatType === 'log' && !isAssistantType;
   const notSharePage = chatType !== 'share';
   const isAIMsg = chat.obj === ChatRoleEnum.AI;
 
@@ -116,17 +116,17 @@ const ChatController = ({
                 <Flex
                   alignItems={'center'}
                   gap={'4px'}
-                  px={2}
+                  px={'6px'}
                   h={'24px'}
                   borderRadius={'4px'}
                   borderColor={'myGray.200'}
                   cursor={'pointer'}
-                  color={'myGray.600'}
+                  color={'myGray.450'}
                   fontSize={'xs'}
                   _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                   onClick={handleViewDetail}
                 >
-                  <MyIcon name={'common/userInfo'} w={'12px'} />
+                  <MyIcon name={'common/userInfo'} w={'12px'} color="myGray.450" />
                   <Box>{t('common:Detail')}</Box>
                 </Flex>
               </MyTooltip>
@@ -140,12 +140,12 @@ const ChatController = ({
                     borderRadius={'4px'}
                     borderColor={'myGray.200'}
                     cursor={'pointer'}
-                    color={'myGray.600'}
+                    color={'myGray.450'}
                     fontSize={'xs'}
                     _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                     onClick={onCorrectError}
                   >
-                    <MyIcon name={'kbTest'} w={'12px'} />
+                    <MyIcon name={'kbTest'} w={'12px'} color="myGray.450" />
                     <Box>{t('app:chat_item_correct_error')}</Box>
                   </Flex>
                 </MyTooltip>
@@ -157,7 +157,7 @@ const ChatController = ({
         )}
 
         {/* 用户操作区域 - 单图标格式 */}
-        <Flex {...controlContainerStyle} alignItems={'center'}>
+        <Flex {...controlContainerStyle} alignItems={'center'} gap={'4px'}>
           <MyTooltip label={t('common:Copy')}>
             <MyIcon
               {...controlIconStyle}

@@ -67,7 +67,7 @@ export const SimpleCitationDisplay = React.memo(
     datasetReadPerMap: Record<string, boolean>;
   }) {
     const { t } = useTranslation();
-    const [isExpanded, setIsExpanded] = React.useState(true);
+    const [isExpanded, setIsExpanded] = React.useState(false);
     const { totalQuoteList: quoteList = [], toolCiteLinks = [] } = useMemo(
       () => addStatisticalDataToHistoryItem(historyItem),
       [historyItem]
@@ -121,6 +121,7 @@ export const SimpleCitationDisplay = React.memo(
         {/* 引用头部 */}
         <Flex
           mt={2}
+          mb="32px"
           height={'24px'}
           alignItems={'center'}
           cursor={'pointer'}
@@ -210,7 +211,6 @@ export const SimpleCitationDisplay = React.memo(
 
 export const HumanContentCard = React.memo(
   function HumanContentCard({ chatValue }: { chatValue: ChatItemValueItemType[] }) {
-    window.console.log(chatValue, formatChatValue2InputType(chatValue));
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     return (
       <Flex

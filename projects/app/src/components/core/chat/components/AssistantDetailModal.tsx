@@ -1038,7 +1038,7 @@ const ChatDetailModal = ({
         {!loading && (
           <>
             {/* 用户问题区域 */}
-            <Box bg={'blue.50'} px={4} py={3} mb={4} borderRadius={6}>
+            <Box bg={'blue.50'} px={4} py={3} mb={4} borderRadius={6} border={'1px solid blue.100'}>
               <Box
                 fontSize={'sm'}
                 lineHeight={'22px'}

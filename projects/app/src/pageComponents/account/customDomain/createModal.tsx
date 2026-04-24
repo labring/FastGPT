@@ -164,7 +164,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
       isOpen
       onClose={onClose}
       iconSrc="common/globalLine"
-      title={t('account:custom_domain')}
+      title={t('common:custom_domain')}
       minW="800px"
     >
       <ModalBody>

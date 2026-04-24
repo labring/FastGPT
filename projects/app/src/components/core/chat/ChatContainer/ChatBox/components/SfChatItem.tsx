@@ -35,10 +35,12 @@ import {
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import type { CiteSourceInfo } from '@/components/Markdown/A';
 import dynamic from 'next/dynamic';
 import { useMemoizedFn } from 'ahooks';
 import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import BuildingAnimation from '@/pageComponents/dataset/detail/components/BuildingAnimation';
 
 const ResponseTags = dynamic(() => import('./SfResponseTags'));
 
@@ -117,7 +119,8 @@ const AIContentCard = React.memo(function AIContentCard({
   questionGuides,
   onOpenCiteModal,
   hideCiteIcon,
-  durationSeconds
+  durationSeconds,
+  citeSourceMap
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
@@ -127,11 +130,17 @@ const AIContentCard = React.memo(function AIContentCard({
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
   durationSeconds?: number;
+  citeSourceMap?: Map<string, CiteSourceInfo>;
 }) {
   return (
     <Flex flexDirection={'column'} gap={2}>
       {chatValue.map((value, i) => {
         const key = `${dataId}-ai-${i}`;
+        const isLastValue = isLastChild && i === chatValue.length - 1;
+
+        if (isLastValue && isChatting && !value.text?.content?.trim()) {
+          return <BuildingAnimation key={key} />;
+        }
 
         return (
           <AIResponseBox
@@ -141,9 +150,11 @@ const AIContentCard = React.memo(function AIContentCard({
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isLastChild={isLastChild}
             isChatting={isChatting}
+            hideCursor={true}
             onOpenCiteModal={onOpenCiteModal}
             hideCiteIcon={hideCiteIcon}
             durationSeconds={durationSeconds}
+            citeSourceMap={citeSourceMap}
           />
         );
       })}
@@ -208,6 +219,20 @@ const ChatItem = (props: Props) => {
     () => addStatisticalDataToHistoryItem(chat),
     [chat]
   );
+
+  const citeSourceMap = useMemo(() => {
+    const map = new Map<string, CiteSourceInfo>();
+    quoteList.forEach((item) => {
+      if (item.id && !map.has(item.id)) {
+        map.set(item.id, {
+          sourceName: item.sourceName,
+          datasetId: item.datasetId,
+          collectionId: item.collectionId
+        });
+      }
+    });
+    return map;
+  }, [quoteList]);
 
   const isChatLog = chatType === 'log';
 
@@ -326,8 +351,7 @@ const ChatItem = (props: Props) => {
         }
       }}
     >
-      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {/* Workflow status */}
+      {/* <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
         {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
           <Flex
             alignItems={'center'}
@@ -350,7 +374,7 @@ const ChatItem = (props: Props) => {
             </Box>
           </Flex>
         )}
-      </Flex>
+      </Flex> */}
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
         showFeedbackContent &&
@@ -415,6 +439,7 @@ const ChatItem = (props: Props) => {
                   onOpenCiteModal={onOpenCiteModal}
                   hideCiteIcon={hideCiteIcon}
                   durationSeconds={chat.durationSeconds}
+                  citeSourceMap={citeSourceMap}
                 />
                 {i === splitAiResponseResults.length - 1 && (
                   <ResponseTags

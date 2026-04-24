@@ -99,7 +99,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const toolTabList = useMemo(
     () => [
-      { label: t('common:navbar.Tools'), value: 'my', path: '/dashboard/tool' },
+      { label: t('common:navbar.MyTools'), value: 'my', path: '/dashboard/tool' },
       { label: t('common:navbar.system_tool'), value: 'system', path: '/dashboard/systemTool' }
     ],
     [t]
@@ -120,7 +120,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Box display={'grid'} gridTemplateColumns={'1fr auto 1fr'} alignItems={'center'} gap={3}>
+          <Flex alignItems={'center'}>
             <Box>
               {!isPc ? (
                 MenuIcon
@@ -144,8 +144,8 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </Box>
               )}
             </Box>
-            <Box>
-              {isPc && paths.length === 0 && (
+            {isPc && paths.length === 0 && (
+              <Box mx={'auto'}>
                 <MyTabs
                   tabs={toolTabList}
                   value={isSystemTool ? 'system' : 'my'}
@@ -154,9 +154,13 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     if (tab) router.push(tab.path);
                   }}
                 />
-              )}
-            </Box>
-            <Flex justifyContent={'flex-end'} alignItems={'center'} gap={3}>
+              </Box>
+            )}
+            <Flex
+              ml={!(isPc && paths.length === 0) ? 'auto' : undefined}
+              alignItems={'center'}
+              gap={3}
+            >
               {isPc && (
                 <>
                   <MySelect
@@ -256,8 +260,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-          </Box>
-
+          </Flex>
           {!isPc && (
             <Box mt={2}>
               {

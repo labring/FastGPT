@@ -171,10 +171,12 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
     <>
       {myApps.length === 0 && !folderDetail ? (
         searchKey ? (
-          <EmptyTip />
+          <Flex h={'100%'} minH={'300px'} alignItems={'center'} justifyContent={'center'}>
+            <EmptyTip py={0} />
+          </Flex>
         ) : isPc && hasCreatePer && showCreateCard ? (
           <CreateButton appType={appType} />
-        ) : (
+        ) : showCreateCard ? (
           <Grid
             py={4}
             gridTemplateColumns={
@@ -185,9 +187,12 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
             gridGap={3}
             alignItems={'stretch'}
           >
-            {showCreateCard &&
-              (hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />)}
+            {hasCreatePer ? <ListCreateButton appType={appType} /> : <ForbiddenCreateButton />}
           </Grid>
+        ) : (
+          <Flex h={'100%'} minH={'300px'} alignItems={'center'} justifyContent={'center'}>
+            <EmptyTip py={0} />
+          </Flex>
         )
       ) : (
         <Grid

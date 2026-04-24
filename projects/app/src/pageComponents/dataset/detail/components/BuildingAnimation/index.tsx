@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { keyframes } from '@emotion/react';
 
-const B = 6; // block size px
+const B = 4; // block size px
 const G = 2; // gap px
-const U = B + G; // 8px unit
+const U = B + G; // 6px unit
 
 const BLUE = '#197DFF';
 const GREEN = '#66CC88';
@@ -90,7 +90,7 @@ const BuildingAnimation = () => {
   );
 
   return (
-    <Box w="22px" h="22px" position="relative" flexShrink={0}>
+    <Box w="16px" h="16px" position="relative" flexShrink={0}>
       {blocks.map((block, i) => (
         <Box
           key={

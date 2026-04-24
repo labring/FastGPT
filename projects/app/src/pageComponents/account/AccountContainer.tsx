@@ -54,19 +54,19 @@ const AccountContainer = ({
     () => [
       {
         icon: 'support/user/userLight',
-        label: t('account:personal_information'),
+        label: t('common:personal_information'),
         value: TabEnum.info
       },
       ...(feConfigs?.isPlus
         ? [
             {
               icon: 'support/user/usersLight',
-              label: t('account:team'),
+              label: t('common:team'),
               value: TabEnum.team
             },
             {
               icon: 'support/usage/usageRecordLight',
-              label: t('account:usage_records'),
+              label: t('common:usage_records'),
               value: TabEnum.usage
             }
           ]
@@ -75,35 +75,35 @@ const AccountContainer = ({
         ? [
             {
               icon: 'support/bill/payRecordLight',
-              label: t('account:bills_and_invoices'),
+              label: t('common:bills_and_invoices'),
               value: TabEnum.bill
             }
           ]
         : []),
       {
         icon: 'common/thirdParty',
-        label: t('account:third_party'),
+        label: t('common:third_party'),
         value: TabEnum.thirdParty
       },
       ...(feConfigs.isPlus && feConfigs.customDomain?.enable
         ? [
             {
               icon: 'common/globalLine',
-              label: t('account:custom_domain'),
+              label: t('common:custom_domain'),
               value: TabEnum.customDomain
             }
           ]
         : []),
       {
         icon: 'common/model',
-        label: t('account:model_provider'),
+        label: t('common:model_provider'),
         value: TabEnum.model
       },
       ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
         ? [
             {
               icon: 'support/account/promotionLight',
-              label: t('account:promotion_records'),
+              label: t('common:promotion_records'),
               value: TabEnum.promotion
             }
           ]
@@ -112,7 +112,7 @@ const AccountContainer = ({
         ? [
             {
               icon: 'key',
-              label: t('account:api_key'),
+              label: t('common:api_key'),
               value: TabEnum.apikey
             }
           ]
@@ -122,19 +122,19 @@ const AccountContainer = ({
         ? [
             {
               icon: 'support/user/informLight',
-              label: t('account:notifications'),
+              label: t('common:notifications'),
               value: TabEnum.inform
             }
           ]
         : []),
       {
         icon: 'support/usage/usageRecordLight',
-        label: t('account:language'),
+        label: t('common:language'),
         value: TabEnum.setting
       },
       {
         icon: 'support/account/loginoutLight',
-        label: t('account:logout'),
+        label: t('common:logout'),
         value: TabEnum.loginout
       }
     ],
@@ -168,7 +168,6 @@ const AccountContainer = ({
         h={'100%'}
         pl={isPc ? sidebarWidth : 0}
         position={'relative'}
-        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
         transition="padding-left 0.2s ease"
       >
         <BgDecoration />

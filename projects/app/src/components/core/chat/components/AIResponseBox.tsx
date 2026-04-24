@@ -43,6 +43,7 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { CiteSourceInfo } from '@/components/Markdown/A';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -133,18 +134,22 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 });
 const RenderText = React.memo(function RenderText({
   showAnimation,
+  hideCursor,
   text,
   chatItemDataId,
   onOpenCiteModal,
   hideCiteIcon,
-  isDisabled
+  isDisabled,
+  citeSourceMap
 }: {
   showAnimation: boolean;
+  hideCursor?: boolean;
   text: string;
   chatItemDataId: string;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
   isDisabled?: boolean;
+  citeSourceMap?: Map<string, CiteSourceInfo>;
 }) {
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -169,10 +174,12 @@ const RenderText = React.memo(function RenderText({
       source={source}
       citeStyle="index"
       showAnimation={showAnimation}
+      hideCursor={hideCursor}
       chatAuthData={chatAuthData}
       onOpenCiteModal={onOpenCiteModal}
       hideCiteIcon={hideCiteIcon}
       isDisabled={isDisabled}
+      citeSourceMap={citeSourceMap}
     />
   );
 });
@@ -499,7 +506,9 @@ const AIResponseBox = ({
   isChatting,
   onOpenCiteModal,
   hideCiteIcon,
-  durationSeconds
+  hideCursor,
+  durationSeconds,
+  citeSourceMap
 }: {
   chatItemDataId: string;
   value: AIChatItemValueItemType;
@@ -508,7 +517,9 @@ const AIResponseBox = ({
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
   hideCiteIcon?: boolean;
+  hideCursor?: boolean;
   durationSeconds?: number;
+  citeSourceMap?: Map<string, CiteSourceInfo>;
 }) => {
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
@@ -521,10 +532,12 @@ const AIResponseBox = ({
       <RenderText
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
+        hideCursor={hideCursor}
         text={value.text.content}
         onOpenCiteModal={onOpenCiteModal}
         hideCiteIcon={hideCiteIcon}
         isDisabled={disableStreamingInteraction}
+        citeSourceMap={citeSourceMap}
       />
     );
   }
