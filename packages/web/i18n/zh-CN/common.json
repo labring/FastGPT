@@ -1621,5 +1621,7 @@
   "promotion_records": "促销记录",
   "api_key": "API 密钥",
   "notifications": "通知",
-  "language": "语言与时区"
+  "language": "语言与时区",
+  "model.output_price": "输出价格",
+  "model.input_price": "输入价格"
 }

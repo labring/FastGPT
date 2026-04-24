@@ -460,6 +460,7 @@ export const DashboardNavbar = ({
   const appBuildItems = useMemo(
     () => [
       { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
+      { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' },
       {
         key: 'tool',
         label: t('common:navbar.Tools'),

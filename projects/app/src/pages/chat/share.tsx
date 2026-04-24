@@ -602,7 +602,10 @@ export async function getServerSideProps(context: any) {
         'workflow',
         'login',
         'database_client',
-        'sangfor'
+        'sangfor',
+        'user',
+        'dashboard_evaluation',
+        'dataset'
       ]))
     }
   };

@@ -110,7 +110,13 @@ const Info = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
+      ...(await serviceSideProps(content, [
+        'account',
+        'account_info',
+        'user',
+        'account_model',
+        'login'
+      ]))
     }
   };
 }

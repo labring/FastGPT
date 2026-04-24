@@ -1612,5 +1612,7 @@
   "promotion_records": "促銷記錄",
   "api_key": "API 金鑰",
   "notifications": "通知",
-  "language": "語言與時區"
+  "language": "語言與時區",
+  "model.output_price": "輸出價格",
+  "model.input_price": "輸入價格"
 }

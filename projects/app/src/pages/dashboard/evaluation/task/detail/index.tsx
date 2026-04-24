@@ -1457,7 +1457,15 @@ export async function getServerSideProps(context: any) {
     props: {
       currentTab,
       taskId,
-      ...(await serviceSideProps(context, ['dashboard_evaluation', 'evaluation', 'chat', 'common']))
+      ...(await serviceSideProps(context, [
+        'dashboard_evaluation',
+        'evaluation',
+        'chat',
+        'common',
+        'workflow',
+        'file',
+        'dataset'
+      ]))
     }
   };
 }

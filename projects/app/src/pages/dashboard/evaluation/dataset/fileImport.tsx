@@ -394,7 +394,8 @@ export async function getServerSideProps(content: any) {
         'dashboard_evaluation',
         'evaluation',
         'file',
-        'account'
+        'account',
+        'dataset'
       ]))
     }
   };
