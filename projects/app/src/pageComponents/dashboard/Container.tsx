@@ -508,7 +508,7 @@ export const DashboardNavbar = ({
             borderRadius="8px"
           />
           {!isCollapsed && (
-            <Text ml="8px" fontSize="20px" fontWeight={600} color="#12161A" whiteSpace="nowrap">
+            <Text ml="8px" fontSize="18px" fontWeight={600} color="#12161A" whiteSpace="nowrap">
               {feConfigs?.systemTitle}
             </Text>
           )}

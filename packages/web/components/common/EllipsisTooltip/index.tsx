@@ -2,7 +2,7 @@
  * @file 悬浮提示组件
  * TODO - 待优化成全局单例
  */
-import React, { useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Box, type BoxProps, type TooltipProps } from '@chakra-ui/react';
 import MyTooltip from '../MyTooltip/index';
 
@@ -47,6 +47,10 @@ const EllipsisTooltip = ({
 }: EllipsisTooltipProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isOverflowed, setIsOverflowed] = useState(false);
+
+  useLayoutEffect(() => {
+    if (ref.current) setIsOverflowed(isOverflow(ref.current));
+  }, [label, lineClamp]);
 
   const handleMouseEnter = () => {
     if (ref.current) setIsOverflowed(isOverflow(ref.current));

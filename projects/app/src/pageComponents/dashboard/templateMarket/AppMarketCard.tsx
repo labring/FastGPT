@@ -40,7 +40,7 @@ const AppMarketCard = ({ item, templateTags, onClick }: AppMarketCardProps) => {
           borderRadius="4px"
           fontSize="12px"
           size="xs"
-          onClick={(e) => e.stopPropagation()}
+          onClick={() => onClick(item)}
         >
           <Flex align="center" color="blue.650">
             <MyIcon name="common/addLight" w="12px" h="12px" mr="4px" display="block" />

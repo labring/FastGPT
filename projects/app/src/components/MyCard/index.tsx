@@ -145,7 +145,7 @@ const MyCard = ({
           }
           flex="1"
           mt="12px"
-          mb="24px"
+          mb="36px"
           fontSize="12px"
           lineHeight="20px"
           color="myWhite.900"
@@ -153,7 +153,8 @@ const MyCard = ({
         />
 
         {/* 底部：贡献者 */}
-        <Flex align="center" gap="4px">
+        {/* 用绝对定位，避免介绍不存在时位置不对 */}
+        <Flex align="center" gap="4px" position="absolute" bottom="16px" left="20px">
           <MyIcon name="common/user" w="16px" color="myGray.400" />
           <Box fontSize="12px" color="myGray.500" whiteSpace="nowrap">
             {author || 'SF-FastGPT'}
