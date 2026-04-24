@@ -38,11 +38,13 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
   const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
 
+  const hideBottomDivider = item.customInputConfig?.hideBottomDivider;
+
   return (
-    <Box borderBottom={'base'} pb={3}>
+    <Box borderBottom={hideBottomDivider ? undefined : 'base'} pb={hideBottomDivider ? 0 : 3}>
       <HStack className="nodrag" cursor={'default'} position={'relative'}>
         <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-          <Box>{item.label || t('workflow:custom_input')}</Box>
+          <Box>{item.label ? t(item.label as any) : t('workflow:custom_input')}</Box>
           {item.description && <QuestionTip label={t(item.description as any)} />}
 
           {item.deprecated && (
@@ -134,7 +136,9 @@ const Reference = ({
 
   const { referenceList } = useReference({
     nodeId,
-    valueType: WorkflowIOValueTypeEnum.any
+    valueType: WorkflowIOValueTypeEnum.any,
+    // Container nodes (loopRun) need to reference outputs from their sub-workflow.
+    includeChildren: true
   });
 
   const onlBlurLabel = useCallback(

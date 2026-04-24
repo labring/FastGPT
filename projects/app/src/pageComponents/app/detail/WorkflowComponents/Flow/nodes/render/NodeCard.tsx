@@ -327,7 +327,7 @@ const NodeCard = (props: Props) => {
         {foldedOverlay}
 
         {!isFolded && (
-          <Box bg={'white'} borderRadius={'lg'}>
+          <Box bg={'white'} borderRadius={'lg'} flex={1} display={'flex'} flexDirection={'column'}>
             {/* Header */}
             <Box position={'relative'}>
               {gradient && (
@@ -686,11 +686,9 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { setNodes, setEdges, getNodeList, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { deleteElements } = useReactFlow();
 
   const { computedNewNodeName } = useWorkflowUtils();
 
@@ -772,30 +770,6 @@ const MenuRender = React.memo(function MenuRender({
     },
     [computedNewNodeName, setNodes, t]
   );
-  const onDelNode = useCallback(
-    (nodeId: string) => {
-      // Remove node and its child nodes
-      setNodes((state) =>
-        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
-      );
-
-      // Remove edges connected to the node and its child nodes
-      const childNodeIds = getNodeList()
-        .filter((node) => node.parentNodeId === nodeId)
-        .map((node) => node.nodeId);
-      setEdges((state) =>
-        state.filter(
-          (edge) =>
-            edge.source !== nodeId &&
-            edge.target !== nodeId &&
-            !childNodeIds.includes(edge.target) &&
-            !childNodeIds.includes(edge.source)
-        )
-      );
-    },
-    [getNodeList, setEdges, setNodes]
-  );
-
   const Render = useMemo(() => {
     const menuList = [
       ...(menuForbid?.fold
@@ -842,7 +816,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'delete',
               label: t('common:Delete'),
               variant: 'whiteDanger',
-              onClick: () => onDelNode(nodeId)
+              onClick: () => deleteElements({ nodes: [{ id: nodeId }] })
             }
           ])
     ];
@@ -891,7 +865,7 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode,
+    deleteElements,
     isFolded,
     onChangeNode
   ]);

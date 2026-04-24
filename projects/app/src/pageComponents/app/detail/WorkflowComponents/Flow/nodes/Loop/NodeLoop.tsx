@@ -39,7 +39,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             flex={1}
             position={'relative'}
             border={'base'}
-            bg={'myGray.50'}
+            bg={'myGray.100'}
             rounded={'8px'}
             {...(!isFolded && {
               minW: nodeWidth,

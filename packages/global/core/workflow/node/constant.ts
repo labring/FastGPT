@@ -160,6 +160,9 @@ export enum FlowNodeTypeEnum {
   nestedStart = 'loopStart',
   nestedEnd = 'loopEnd',
   parallelRun = 'parallelRun',
+  loopRun = 'loopRun',
+  loopRunStart = 'loopRunStart',
+  loopRunBreak = 'loopRunBreak',
   formInput = 'formInput',
   tool = 'tool',
   toolSet = 'toolSet',
@@ -303,7 +306,8 @@ export const NodeGradients = {
   skyBlue: 'linear-gradient(180deg, rgba(137, 229, 255, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   salmon: 'linear-gradient(180deg, rgba(255, 160, 160, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
   gray: 'linear-gradient(180deg, rgba(136, 136, 136, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
-  emerald: 'linear-gradient(180deg, rgba(20, 168, 70, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
+  emerald: 'linear-gradient(180deg, rgba(20, 168, 70, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)',
+  loopRun: 'linear-gradient(180deg, rgba(110, 231, 183, 0.20) 0%, rgba(255, 255, 255, 0.00) 100%)'
 };
 export const NodeBorderColors = {
   pink: 'rgba(255, 161, 206, 0.6)',
@@ -325,7 +329,8 @@ export const NodeBorderColors = {
   skyBlue: 'rgba(137, 229, 255, 0.6)',
   salmon: 'rgba(255, 160, 160, 0.6)',
   gray: 'rgba(136, 136, 136, 0.6)',
-  emerald: 'rgba(20, 168, 70, 0.6)'
+  emerald: 'rgba(20, 168, 70, 0.6)',
+  loopRun: 'rgba(110, 231, 183, 0.6)'
 };
 export const NodeColorSchemaEnum = [
   'pink',
@@ -347,19 +352,35 @@ export const NodeColorSchemaEnum = [
   'skyBlue',
   'salmon',
   'gray',
-  'emerald'
+  'emerald',
+  'loopRun'
 ] as const;
 
-/** 返回 true 表示该节点是嵌套父容器（loop / parallelRun）。 */
-export const isNestedParentNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
-  flowNodeType === FlowNodeTypeEnum.loop || flowNodeType === FlowNodeTypeEnum.parallelRun;
+/** 嵌套父容器节点类型集合（loop / parallelRun / loopRun）。 */
+export const NESTED_PARENT_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.parallelRun,
+  FlowNodeTypeEnum.loopRun
+]);
 
-/** 交互类节点类型集合（在 parallelRun 体内禁止使用）。 */
+export const isNestedParentNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
+  NESTED_PARENT_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
+
+/** 交互类节点类型集合（在 parallelRun 体内禁止使用；loopRun 允许）。 */
 export const INTERACTIVE_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
   FlowNodeTypeEnum.userSelect,
   FlowNodeTypeEnum.formInput
 ]);
 
-/** 返回 true 表示该节点是交互类节点（userSelect / formInput）。 */
 export const isInteractiveNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
   INTERACTIVE_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);
+
+/** 嵌套容器的系统子节点类型集合（只能由容器自动创建，不允许从模板面板添加）。 */
+export const NESTED_CHILD_SYSTEM_NODE_TYPES: ReadonlySet<FlowNodeTypeEnum> = new Set([
+  FlowNodeTypeEnum.nestedStart,
+  FlowNodeTypeEnum.nestedEnd,
+  FlowNodeTypeEnum.loopRunStart
+]);
+
+export const isNestedChildSystemNodeType = (flowNodeType: FlowNodeTypeEnum | string): boolean =>
+  NESTED_CHILD_SYSTEM_NODE_TYPES.has(flowNodeType as FlowNodeTypeEnum);

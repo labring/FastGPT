@@ -1,0 +1,310 @@
+import { cloneDeep } from 'lodash';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type {
+  DispatchNodeResultType,
+  ModuleDispatchProps
+} from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import {
+  rewriteNodeOutputByHistories,
+  storeEdges2RuntimeEdges
+} from '@fastgpt/global/core/workflow/runtime/utils';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
+
+import { env } from '../../../../env';
+import { i18nT } from '../../../../../web/i18n/utils';
+import { runWorkflow } from '..';
+import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
+import {
+  extractFinishedNodeIds,
+  hasLoopRunBreakChild,
+  injectLoopRunStart,
+  isLoopBreakHit,
+  type LoopRunHistoryItem,
+  pickCustomOutputInputs,
+  readCustomOutputSnapshot
+} from './service';
+
+type Props = ModuleDispatchProps<{
+  [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
+  [NodeInputKeyEnum.loopRunInputArray]?: Array<any>;
+  [NodeInputKeyEnum.childrenNodeIdList]: string[];
+}>;
+
+type Response = DispatchNodeResultType<Record<string, any>>;
+
+export const dispatchLoopRun = async (props: Props): Promise<Response> => {
+  const { params, runtimeNodes, runtimeEdges, node, lastInteractive } = props;
+  const { name } = node;
+  const mode = params[NodeInputKeyEnum.loopRunMode] ?? LoopRunModeEnum.array;
+  const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
+  const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
+
+  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
+  const maxIterationsMessage = i18nT('workflow:loop_run_max_iterations_exceeded');
+
+  // Surface precheck failures through `errorText` to match the max-iterations
+  // protocol, so `catchError` and downstream error-handle routing see them.
+  const preCheckError = (() => {
+    if (mode === LoopRunModeEnum.array && !Array.isArray(inputArray)) {
+      return i18nT('workflow:loop_run_input_not_array');
+    }
+    if (mode === LoopRunModeEnum.array && inputArray.length > maxLength) {
+      return maxIterationsMessage;
+    }
+    // Without a break node, conditional mode can only stop at WORKFLOW_MAX_LOOP_TIMES.
+    if (
+      mode === LoopRunModeEnum.conditional &&
+      !hasLoopRunBreakChild(runtimeNodes, childrenNodeIdList)
+    ) {
+      return i18nT('workflow:loop_run_conditional_requires_break');
+    }
+    return undefined;
+  })();
+
+  if (preCheckError) {
+    return getNodeErrResponse({
+      error: preCheckError,
+      responseData: {
+        mergeSignId: node.nodeId,
+        ...(mode === LoopRunModeEnum.array ? { loopRunInput: inputArray } : {})
+      }
+    });
+  }
+
+  // Isolate from parent so concurrent siblings don't mutate our view.
+  let isolatedNodes = cloneDeep(runtimeNodes);
+  const isolatedEdges = cloneDeep(runtimeEdges);
+
+  const customOutputInputs = pickCustomOutputInputs(node.inputs, node.outputs);
+
+  let interactiveData =
+    lastInteractive?.type === 'loopRunInteractive' ? lastInteractive.params : undefined;
+
+  // On resume, the inner loop-body outputs (e.g. loopRunStart.currentIteration) were
+  // captured into childrenResponse.nodeOutputs by the inner handleInteractiveResult.
+  // The top-level restore in chat/completions only reads the outer nodeOutputs, which
+  // doesn't cover the loop body — apply the inner snapshot here so downstream refs
+  // in the resumed iteration resolve correctly.
+  if (interactiveData?.childrenResponse) {
+    isolatedNodes = rewriteNodeOutputByHistories(isolatedNodes, interactiveData.childrenResponse);
+  }
+
+  const loopHistory: LoopRunHistoryItem[] = interactiveData
+    ? (interactiveData.loopHistory as LoopRunHistoryItem[]) ?? []
+    : [];
+  const loopResponseDetail: ChatHistoryItemResType[] = [];
+  const assistantResponses: AIChatItemValueItemType[] = [];
+  const customFeedbacks: string[] = [];
+  let totalPoints = 0;
+  let newVariables: Record<string, any> = props.variables;
+  let interactiveResponse: WorkflowInteractiveResponseType | undefined;
+  // Pre-interrupt children of the in-flight iteration survive across resume here,
+  // so pushIterationDetail can stitch them back with the resumed iteration's
+  // flowResponses (also handles multiple interrupts in the same iteration).
+  let pendingIterationResponses: ChatHistoryItemResType[] =
+    interactiveData?.pendingIterationResponses ?? [];
+
+  const resumeIteration = interactiveData?.iteration;
+  let iteration = resumeIteration ?? 1;
+  // Hit the iteration budget (primarily a conditional-mode guard). Signal via
+  // `error` on return so the accumulated loopHistory/loopDetail survives for
+  // user debugging, instead of reject'ing and dropping everything.
+  let maxIterationsExceeded = false;
+
+  while (true) {
+    // Check exhaustion before maxLength so `inputArray.length === maxLength` runs cleanly.
+    const arrayItem = (() => {
+      if (mode !== LoopRunModeEnum.array) {
+        return { exhausted: false as const, index: undefined, item: undefined };
+      }
+      const index = iteration - 1;
+      if (index >= inputArray.length) return { exhausted: true as const };
+      return { exhausted: false as const, index, item: inputArray[index] };
+    })();
+    if (arrayItem.exhausted) break;
+    const currentIndex = arrayItem.index;
+    const currentItem = arrayItem.item;
+
+    if (iteration > maxLength) {
+      maxIterationsExceeded = true;
+      break;
+    }
+
+    const isResumeIteration = !!interactiveData && iteration === resumeIteration;
+
+    if (isResumeIteration) {
+      isolatedNodes.forEach((n) => {
+        if (interactiveData?.childrenResponse?.entryNodeIds.includes(n.nodeId)) {
+          n.isEntry = true;
+        }
+      });
+    } else {
+      injectLoopRunStart({
+        nodes: isolatedNodes,
+        childrenNodeIdList,
+        mode,
+        item: currentItem,
+        index: currentIndex,
+        iteration
+      });
+    }
+
+    const response = await runWorkflow({
+      ...props,
+      lastInteractive: interactiveData?.childrenResponse,
+      variables: newVariables,
+      runtimeNodes: isolatedNodes,
+      runtimeEdges: cloneDeep(
+        storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
+      )
+    });
+
+    // Merge pre-interrupt children into the detail tree so the resumed iteration
+    // shows the full picture (wall-clock and children both span the whole iteration).
+    // pushSubWorkflowUsage still uses `response` only — pre-interrupt usage was
+    // billed in the interrupted request.
+    const iterationChildrenResponses = isResumeIteration
+      ? [...pendingIterationResponses, ...response.flowResponses]
+      : response.flowResponses;
+    const iterationRunningTime = iterationChildrenResponses.reduce(
+      (acc, r) => acc + (typeof r.runningTime === 'number' ? r.runningTime : 0),
+      0
+    );
+    assistantResponses.push(...response.assistantResponses);
+    const iterationTotalPoints = pushSubWorkflowUsage({
+      usagePush: props.usagePush,
+      response,
+      name,
+      iteration
+    });
+    totalPoints += iterationTotalPoints;
+    collectResponseFeedbacks(response, customFeedbacks);
+    newVariables = { ...newVariables, ...response.newVariables };
+
+    // Pause: stash accumulated children so the next resume still sees pre-interrupt
+    // nodes (supports multiple interrupts in the same iteration).
+    if (response.workflowInteractiveResponse) {
+      interactiveResponse = response.workflowInteractiveResponse;
+      pendingIterationResponses = iterationChildrenResponses;
+      break;
+    }
+
+    // Apply `finishedNodeIds` over the merged children so pre-interrupt nodes count
+    // as finished for the customOutputs snapshot.
+    const finishedNodeIds = extractFinishedNodeIds(iterationChildrenResponses);
+    const customOutputs = readCustomOutputSnapshot({
+      customOutputInputs,
+      runtimeNodes: isolatedNodes,
+      variables: newVariables,
+      finishedNodeIds,
+      childrenNodeIdList
+    });
+
+    // Wrap this iteration as a virtual task node so the whole-response tree
+    // shows a per-iteration layer (mirrors parallelRun's aggregation).
+    const pushIterationDetail = (opts: { error?: string }) => {
+      const wrapper: ChatHistoryItemResType = {
+        id: `${node.nodeId}_iter_${iteration}`,
+        nodeId: `${node.nodeId}_iter_${iteration}`,
+        moduleType: FlowNodeTypeEnum.loopRun,
+        moduleName: i18nT('workflow:parallel_task'),
+        moduleNameArgs: { index: iteration },
+        runningTime: Math.round(iterationRunningTime * 100) / 100,
+        totalPoints: iterationTotalPoints,
+        loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
+        loopOutputValue: customOutputs,
+        error: opts.error,
+        childrenResponses: iterationChildrenResponses
+      };
+      loopResponseDetail.push(wrapper);
+    };
+
+    const errorItem = response.flowResponses.find((r) => r.error);
+    if (errorItem) {
+      const errText = getErrText(errorItem.error);
+      pushIterationDetail({ error: errText });
+      loopHistory.push({
+        iteration,
+        customOutputs,
+        success: false,
+        error: errText
+      });
+      break;
+    }
+
+    pushIterationDetail({});
+    loopHistory.push({ iteration, customOutputs, success: true });
+
+    if (isLoopBreakHit(response.flowResponses)) break;
+
+    // Resume state is one-shot; clear so subsequent iterations enter clean.
+    // injectLoopRunStart only re-sets loopRunStart, so explicitly drop stale
+    // isEntry flags the resume branch set on other children (e.g. formInput).
+    if (isResumeIteration) {
+      isolatedNodes.forEach((n) => {
+        if (n.flowNodeType !== FlowNodeTypeEnum.loopRunStart) {
+          n.isEntry = false;
+        }
+      });
+    }
+    interactiveData = undefined;
+    pendingIterationResponses = [];
+
+    iteration++;
+  }
+
+  const lastEntry = loopHistory[loopHistory.length - 1];
+  const lastSnapshot: Record<string, any> = lastEntry?.customOutputs ?? {};
+  const lastFailed = !!lastEntry && lastEntry.success === false;
+
+  const data: Record<string, any> = {
+    ...lastSnapshot
+  };
+
+  const errorText = maxIterationsExceeded
+    ? maxIterationsMessage
+    : lastFailed
+      ? lastEntry?.error ?? i18nT('workflow:loop_run_iteration_failed')
+      : undefined;
+
+  return {
+    data,
+    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+    [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+      ? {
+          type: 'loopRunInteractive',
+          params: {
+            loopHistory,
+            childrenResponse: interactiveResponse,
+            iteration,
+            pendingIterationResponses
+          }
+        }
+      : undefined,
+    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints,
+      loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
+      loopRunIterations: loopHistory.length,
+      loopRunHistory: loopHistory,
+      loopRunDetail: loopResponseDetail,
+      mergeSignId: node.nodeId,
+      ...(errorText ? { errorText } : {})
+    },
+    [DispatchNodeResponseKeyEnum.customFeedbacks]:
+      customFeedbacks.length > 0 ? customFeedbacks : undefined,
+    ...(errorText
+      ? {
+          error: { [NodeOutputKeyEnum.errorText]: errorText }
+        }
+      : {})
+  };
+};

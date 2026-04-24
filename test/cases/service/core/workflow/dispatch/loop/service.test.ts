@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
+import { getNestedEndOutputValue } from '@fastgpt/service/core/workflow/dispatch/loop/service';
 import {
-  getNestedEndOutputValue,
-  pushSubWorkflowUsage,
-  collectResponseFeedbacks
-} from '@fastgpt/service/core/workflow/dispatch/loop/service';
-import { injectNestedStartInputs } from '@fastgpt/service/core/workflow/dispatch/utils';
+  collectResponseFeedbacks,
+  injectNestedStartInputs,
+  pushSubWorkflowUsage
+} from '@fastgpt/service/core/workflow/dispatch/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -177,7 +177,7 @@ describe('loop/service', () => {
           { totalPoints: 5, moduleName: 'b' } as any
         ]
       });
-      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'myNode', index: 0 });
+      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'myNode', iteration: 0 });
       expect(pts).toBe(15);
     });
 
@@ -186,7 +186,7 @@ describe('loop/service', () => {
       const response = makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 7, moduleName: 'x' } as any]
       });
-      pushSubWorkflowUsage({ usagePush, response, name: 'loopNode', index: 3 });
+      pushSubWorkflowUsage({ usagePush, response, name: 'loopNode', iteration: 3 });
       expect(usagePush).toHaveBeenCalledOnce();
       expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 7, moduleName: 'loopNode-3' }]);
     });
@@ -194,17 +194,17 @@ describe('loop/service', () => {
     it('flowUsages 为空时返回 0', () => {
       const usagePush = vi.fn();
       const response = makeDispatchFlowResponse({ flowUsages: [] });
-      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'node', index: 0 });
+      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'node', iteration: 0 });
       expect(pts).toBe(0);
       expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 0, moduleName: 'node-0' }]);
     });
 
-    it('index 正确拼接到 moduleName', () => {
+    it('iteration 正确拼接到 moduleName', () => {
       const usagePush = vi.fn();
       const response = makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 1, moduleName: 'z' } as any]
       });
-      pushSubWorkflowUsage({ usagePush, response, name: 'parallel', index: 99 });
+      pushSubWorkflowUsage({ usagePush, response, name: 'parallel', iteration: 99 });
       expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 1, moduleName: 'parallel-99' }]);
     });
   });

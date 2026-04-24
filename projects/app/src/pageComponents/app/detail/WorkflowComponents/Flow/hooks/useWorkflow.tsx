@@ -19,6 +19,7 @@ import {
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -450,7 +451,11 @@ export const useRAF = () => {
 export const popoverWidth = 400;
 export const popoverHeight = 600;
 // 嵌套父容器节点类型集合
-const PARENT_NODE_TYPES = new Set([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.parallelRun]);
+const PARENT_NODE_TYPES = new Set([
+  FlowNodeTypeEnum.loop,
+  FlowNodeTypeEnum.parallelRun,
+  FlowNodeTypeEnum.loopRun
+]);
 
 export const useWorkflow = () => {
   const { toast } = useToast();
@@ -500,11 +505,12 @@ export const useWorkflow = () => {
     }
   );
 
-  // Check if a node is placed on top of a nested parent node (loop / parallelRun)
+  // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     const unSupportedInLoop = [
       FlowNodeTypeEnum.workflowStart,
       FlowNodeTypeEnum.loop,
+      FlowNodeTypeEnum.loopRun,
       FlowNodeTypeEnum.parallelRun,
       FlowNodeTypeEnum.pluginInput,
       FlowNodeTypeEnum.pluginOutput,
@@ -526,6 +532,16 @@ export const useWorkflow = () => {
     );
 
     if (parentNode) {
+      if (
+        node.type === FlowNodeTypeEnum.loopRunBreak &&
+        parentNode.type !== FlowNodeTypeEnum.loopRun
+      ) {
+        return toast({
+          status: 'warning',
+          title: t('workflow:loop_run_break_must_inside_loop_run')
+        });
+      }
+
       const isParallel = parentNode.type === FlowNodeTypeEnum.parallelRun;
       const unSupportedTypes = isParallel ? unSupportedInParallel : unSupportedInLoop;
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
@@ -727,6 +743,9 @@ export const useWorkflow = () => {
   );
   const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
     const childChanges: NodeChange[] = [];
+    const removedIds = new Set(
+      changes.filter((c): c is NodeRemoveChange => c.type === 'remove').map((c) => c.id)
+    );
 
     for (const change of changes) {
       if (change.type === 'remove') {
@@ -743,6 +762,35 @@ export const useWorkflow = () => {
             title: t('common:core.workflow.Can not delete node')
           });
           continue;
+        }
+        // Conditional loopRun must retain at least one loopRunBreak child.
+        if (
+          node.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak &&
+          node.data.parentNodeId &&
+          !parentNodeDeleted
+        ) {
+          const parent = getRawNodeById(node.data.parentNodeId);
+          const parentMode = parent?.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)
+            ?.value as LoopRunModeEnum | undefined;
+          if (
+            parent?.data.flowNodeType === FlowNodeTypeEnum.loopRun &&
+            parentMode === LoopRunModeEnum.conditional
+          ) {
+            const remainingBreak = nodes.some(
+              (n) =>
+                n.data.parentNodeId === parent.id &&
+                n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak &&
+                !removedIds.has(n.id)
+            );
+            if (!remainingBreak) {
+              toast({
+                status: 'warning',
+                title: t('workflow:loop_run_conditional_requires_break')
+              });
+              removedIds.delete(change.id);
+              continue;
+            }
+          }
         }
         handleRemoveNode(change, node.id);
       } else if (change.type === 'select') {
@@ -774,6 +822,8 @@ export const useWorkflow = () => {
 
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
+      setHelperLineHorizontal(undefined);
+      setHelperLineVertical(undefined);
       checkNodeOverLoopNode(node);
     },
     [checkNodeOverLoopNode]

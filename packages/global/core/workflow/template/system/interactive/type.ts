@@ -5,6 +5,7 @@ import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schem
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import z from 'zod';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
+import type { ChatHistoryItemResType } from '../../../../chat/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
@@ -64,6 +65,25 @@ export type LoopInteractive = InteractiveNodeType & {
     loopResult: any[];
     childrenResponse: WorkflowInteractiveResponseType;
     currentIndex: number;
+  };
+};
+
+export const LoopRunInteractiveSchema = z.object({
+  type: z.literal('loopRunInteractive'),
+  params: z.object({
+    loopHistory: z.array(z.any()),
+    childrenResponse: z.any(),
+    iteration: z.number(),
+    pendingIterationResponses: z.array(z.any()).optional()
+  })
+});
+export type LoopRunInteractive = InteractiveNodeType & {
+  type: 'loopRunInteractive';
+  params: {
+    loopHistory: any[];
+    childrenResponse: WorkflowInteractiveResponseType;
+    iteration: number;
+    pendingIterationResponses?: ChatHistoryItemResType[];
   };
 };
 
@@ -146,6 +166,7 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     ChildrenInteractiveSchema,
     ToolCallChildrenInteractiveSchema,
     LoopInteractiveSchema,
+    LoopRunInteractiveSchema,
     PaymentPauseInteractiveSchema,
     AgentPlanCheckInteractiveSchema,
     AgentPlanAskQueryInteractiveSchema

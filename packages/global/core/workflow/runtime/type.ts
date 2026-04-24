@@ -314,6 +314,18 @@ export const DispatchNodeResponseSchema = z
       .optional()
       .meta({ description: '成功任务子工作流完整响应列表' }),
 
+    // loopRun
+    loopRunInput: z
+      .any()
+      .optional()
+      .meta({ description: 'loopRun 循环输入（数组或条件模式标记）' }),
+    loopRunIterations: z.number().optional().meta({ description: 'loopRun 实际执行轮数' }),
+    loopRunHistory: z.array(z.any()).optional().meta({ description: 'loopRun 每轮快照' }),
+    loopRunDetail: z
+      .array(z.any())
+      .optional()
+      .meta({ description: 'loopRun 各轮子工作流节点响应聚合' }),
+
     childrenResponses: z.array(z.any()).optional().meta({ description: '子节点响应' }),
 
     // Tools

@@ -19,7 +19,7 @@ import {
   aggregateParallelResults,
   type ParallelFullResultItem
 } from './service';
-import { safePoints } from '../utils';
+import { pushSubWorkflowUsage } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -87,12 +87,12 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           });
 
           // Push usage per attempt (resources were consumed regardless of success)
-          const itemUsagePoint = response.flowUsages.reduce(
-            (acc, usage) => acc + safePoints(usage.totalPoints),
-            0
-          );
-          accumulatedPoints += itemUsagePoint;
-          props.usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${index}` }]);
+          accumulatedPoints += pushSubWorkflowUsage({
+            usagePush: props.usagePush,
+            response,
+            name,
+            iteration: index
+          });
 
           const result = parseTaskResponse({ index, response });
           if (result.success) return { ...result, totalPoints: accumulatedPoints };

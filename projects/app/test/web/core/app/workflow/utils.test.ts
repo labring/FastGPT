@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
@@ -235,5 +236,162 @@ describe('checkWorkflowNodeAndConnection', () => {
   it('should handle empty nodes and edges', () => {
     const result = checkWorkflowNodeAndConnection({ nodes: [], edges: [] });
     expect(result).toBeUndefined();
+  });
+
+  describe('loopRun conditional mode', () => {
+    const makeLoopRunNode = (
+      mode: LoopRunModeEnum | undefined,
+      children: string[]
+    ): Node<FlowNodeItemType> => ({
+      id: 'loop1',
+      type: FlowNodeTypeEnum.loopRun,
+      data: {
+        nodeId: 'loop1',
+        flowNodeType: FlowNodeTypeEnum.loopRun,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.loopRunMode,
+            value: mode,
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.select]
+          } as any,
+          {
+            // 模板里这个字段永远 required: true + value: []，
+            // 条件循环模式下不该因此被判无效
+            key: NodeInputKeyEnum.loopRunInputArray,
+            value: [],
+            required: true,
+            valueType: WorkflowIOValueTypeEnum.arrayAny,
+            renderTypeList: [FlowNodeInputTypeEnum.reference]
+          } as any,
+          {
+            key: NodeInputKeyEnum.childrenNodeIdList,
+            value: children,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          } as any
+        ],
+        outputs: []
+      } as any,
+      position: { x: 0, y: 0 }
+    });
+
+    const makeChild = (id: string, flowNodeType: FlowNodeTypeEnum): Node<FlowNodeItemType> => ({
+      id,
+      type: flowNodeType,
+      data: {
+        nodeId: id,
+        flowNodeType,
+        inputs: [],
+        outputs: []
+      } as any,
+      position: { x: 0, y: 0 }
+    });
+
+    const workflowStart: Node<FlowNodeItemType> = {
+      id: 'ws',
+      type: FlowNodeTypeEnum.workflowStart,
+      data: {
+        nodeId: 'ws',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        inputs: [],
+        outputs: []
+      } as any,
+      position: { x: 0, y: 0 }
+    };
+    const wsToLoop: Edge = {
+      id: 'e-ws-loop',
+      source: 'ws',
+      target: 'loop1',
+      type: EDGE_TYPE
+    };
+    // 通用「节点必须有边」校验针对画布上的每个节点，给循环子节点挂上占位边
+    const stubEdge = (nodeId: string): Edge => ({
+      id: `e-stub-${nodeId}`,
+      source: nodeId,
+      target: '__stub__',
+      type: EDGE_TYPE
+    });
+
+    it('条件循环无 loopRunBreak → 返回该 loopRun 为无效', () => {
+      const nodes = [
+        workflowStart,
+        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1']),
+        makeChild('start1', FlowNodeTypeEnum.loopRunStart)
+      ];
+      const result = checkWorkflowNodeAndConnection({
+        nodes,
+        edges: [wsToLoop, stubEdge('start1')]
+      });
+      expect(result).toEqual(['loop1']);
+    });
+
+    it('条件循环含 loopRunBreak → 有效', () => {
+      const nodes = [
+        workflowStart,
+        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1', 'break1']),
+        makeChild('start1', FlowNodeTypeEnum.loopRunStart),
+        makeChild('break1', FlowNodeTypeEnum.loopRunBreak)
+      ];
+      const startToBreak: Edge = {
+        id: 'e-start-break',
+        source: 'start1',
+        target: 'break1',
+        type: EDGE_TYPE
+      };
+      const result = checkWorkflowNodeAndConnection({
+        nodes,
+        edges: [wsToLoop, startToBreak]
+      });
+      expect(result).toBeUndefined();
+    });
+
+    it('break 节点不在 childrenNodeIdList 内 → 视为无 break', () => {
+      const nodes = [
+        workflowStart,
+        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1']),
+        makeChild('start1', FlowNodeTypeEnum.loopRunStart),
+        makeChild('break1', FlowNodeTypeEnum.loopRunBreak) // 属于别的 loopRun
+      ];
+      const result = checkWorkflowNodeAndConnection({
+        nodes,
+        edges: [wsToLoop, stubEdge('start1'), stubEdge('break1')]
+      });
+      expect(result).toEqual(['loop1']);
+    });
+
+    it('数组模式不强制要求 loopRunBreak', () => {
+      const loop = makeLoopRunNode(LoopRunModeEnum.array, ['start1']);
+      // 数组模式下 loopRunInputArray 必填，填个非空 value 走通用校验
+      const arrInput = loop.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunInputArray)!;
+      arrInput.value = ['ws', 'userChatInput'];
+      const nodes = [workflowStart, loop, makeChild('start1', FlowNodeTypeEnum.loopRunStart)];
+      const result = checkWorkflowNodeAndConnection({
+        nodes,
+        edges: [wsToLoop, stubEdge('start1')]
+      });
+      expect(result).toBeUndefined();
+    });
+
+    it('条件循环下 loopRunInputArray 必填标记被忽略', () => {
+      // 模板静态定义里 loopRunInputArray 永远 required: true + value: []；
+      // 条件循环模式下这个字段被 UI 隐藏，不应该因此拦校验。
+      const nodes = [
+        workflowStart,
+        makeLoopRunNode(LoopRunModeEnum.conditional, ['start1', 'break1']),
+        makeChild('start1', FlowNodeTypeEnum.loopRunStart),
+        makeChild('break1', FlowNodeTypeEnum.loopRunBreak)
+      ];
+      const startToBreak: Edge = {
+        id: 'e-start-break-2',
+        source: 'start1',
+        target: 'break1',
+        type: EDGE_TYPE
+      };
+      const result = checkWorkflowNodeAndConnection({
+        nodes,
+        edges: [wsToLoop, startToBreak]
+      });
+      expect(result).toBeUndefined();
+    });
   });
 });

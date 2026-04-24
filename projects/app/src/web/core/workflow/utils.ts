@@ -28,6 +28,7 @@ import {
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
@@ -355,7 +356,9 @@ export const getNodeAllSource = ({
   getNodeById,
   edges,
   chatConfig,
-  t
+  t,
+  includeChildren,
+  childrenNodeIdListMap
 }: {
   nodeId: string;
   systemConfigNode?: StoreNodeItemType;
@@ -363,6 +366,8 @@ export const getNodeAllSource = ({
   edges: Edge[];
   chatConfig: AppChatConfigType;
   t: TFunction;
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
 }): FlowNodeItemType[] => {
   // get current node
   const node = getNodeById(nodeId);
@@ -407,6 +412,17 @@ export const getNodeAllSource = ({
         findSourceNode(refNode.nodeId);
       });
     }
+  }
+
+  // Edge traversal only reaches upstream; children must be added explicitly.
+  if (includeChildren && childrenNodeIdListMap) {
+    const childIds = childrenNodeIdListMap[nodeId] ?? [];
+    childIds.forEach((childId) => {
+      if (sourceNodes.has(childId)) return;
+      const childNode = getNodeById(childId);
+      if (!childNode) return;
+      sourceNodes.set(childId, childNode);
+    });
   }
 
   sourceNodes.set(
@@ -499,6 +515,24 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.loopRun) {
+      const mode = inputs.find((input) => input.key === NodeInputKeyEnum.loopRunMode)?.value as
+        | LoopRunModeEnum
+        | undefined;
+      if (mode === LoopRunModeEnum.conditional) {
+        const children =
+          (inputs.find((input) => input.key === NodeInputKeyEnum.childrenNodeIdList)
+            ?.value as string[]) ?? [];
+        const childSet = new Set(children);
+        const hasBreak = nodes.some(
+          (n) =>
+            childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
+        );
+        if (!hasBreak) {
+          return [data.nodeId];
+        }
+      }
+    }
     if (data.flowNodeType === FlowNodeTypeEnum.toolCall) {
       const toolConnections = edges.filter(
         (edge) =>
@@ -512,9 +546,21 @@ export const checkWorkflowNodeAndConnection = ({
       }
     }
 
-    // check node input
     if (
       inputs.some((input) => {
+        // Conditional loopRun hides loopRunInputArray in the UI; its required flag is
+        // only meaningful in array mode, so skip it here to avoid spurious failures.
+        if (input.key === NodeInputKeyEnum.loopRunInputArray) {
+          const loopRunMode =
+            data.flowNodeType === FlowNodeTypeEnum.loopRun
+              ? (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
+                  | LoopRunModeEnum
+                  | undefined)
+              : undefined;
+          if (loopRunMode === LoopRunModeEnum.conditional) {
+            return false;
+          }
+        }
         if (
           !input.valueType ||
           [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
@@ -640,7 +686,10 @@ export const checkWorkflowNodeAndConnection = ({
     };
     dfsFromStart(startNode.data.nodeId);
     nodes.forEach((node) => {
-      if (node.data.flowNodeType === FlowNodeTypeEnum.nestedStart) {
+      if (
+        node.data.flowNodeType === FlowNodeTypeEnum.nestedStart ||
+        node.data.flowNodeType === FlowNodeTypeEnum.loopRunStart
+      ) {
         dfsFromStart(node.data.nodeId);
       }
     });
@@ -666,7 +715,8 @@ export const checkWorkflowNodeAndConnection = ({
       const isStartNode = [
         FlowNodeTypeEnum.workflowStart,
         FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.nestedStart
+        FlowNodeTypeEnum.nestedStart,
+        FlowNodeTypeEnum.loopRunStart
       ].includes(nodeType);
 
       // Check if node is reachable from start

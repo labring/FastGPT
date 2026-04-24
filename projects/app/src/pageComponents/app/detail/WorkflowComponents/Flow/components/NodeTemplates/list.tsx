@@ -40,6 +40,7 @@ import { useWorkflowUtils } from '../../hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
+import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -224,6 +225,7 @@ const NodeTemplateList = ({
   const { computedNewNodeName } = useWorkflowUtils();
   const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
+  const { getIntersectingNodes } = useReactFlow();
 
   const showSkill = !!feConfigs?.show_skill;
 
@@ -278,8 +280,27 @@ const NodeTemplateList = ({
         });
 
         const currentNode = getNodeById(handleParams?.nodeId);
+
+        // Popover insertion inherits the source node's parent; a dragged
+        // loopRunBreak with no inherited parent falls back to hit-testing.
+        let effectiveParentNodeId: string | undefined = currentNode?.parentNodeId;
+        if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRunBreak && !effectiveParentNodeId) {
+          const dropLoopRun = getIntersectingNodes({
+            x: position.x,
+            y: position.y,
+            width: 1,
+            height: 1
+          }).find((n) => n.type === FlowNodeTypeEnum.loopRun && !n.data?.isFolded);
+          if (dropLoopRun) {
+            effectiveParentNodeId = dropLoopRun.id;
+          }
+        }
+        const effectiveParentNode = effectiveParentNodeId
+          ? getNodeById(effectiveParentNodeId)
+          : undefined;
+
         const isNestedParentNode = isNestedParentNodeType(templateNode.flowNodeType);
-        if (isNestedParentNode && !!currentNode?.parentNodeId) {
+        if (isNestedParentNode && !!effectiveParentNodeId) {
           toast({
             status: 'warning',
             title: t('workflow:can_not_loop')
@@ -287,13 +308,21 @@ const NodeTemplateList = ({
           return;
         }
 
-        // Forbid interactive nodes inside parallelRun
-        if (currentNode?.parentNodeId && isInteractiveNodeType(templateNode.flowNodeType)) {
-          const parentNode = getNodeById(currentNode.parentNodeId);
-          if (parentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun) {
+        if (effectiveParentNodeId && isInteractiveNodeType(templateNode.flowNodeType)) {
+          if (effectiveParentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun) {
             toast({
               status: 'warning',
               title: t('workflow:can_not_parallel')
+            });
+            return;
+          }
+        }
+
+        if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRunBreak) {
+          if (effectiveParentNode?.flowNodeType !== FlowNodeTypeEnum.loopRun) {
+            toast({
+              status: 'warning',
+              title: t('workflow:loop_run_break_must_inside_loop_run')
             });
             return;
           }
@@ -318,7 +347,15 @@ const NodeTemplateList = ({
                 description: input.description ? t(input.description as any) : undefined,
                 placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
                 debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
-                toolDescription: input.toolDescription ? t(input.toolDescription as any) : undefined
+                toolDescription: input.toolDescription
+                  ? t(input.toolDescription as any)
+                  : undefined,
+                list: Array.isArray(input.list)
+                  ? input.list.map((opt: any) => ({
+                      ...opt,
+                      label: opt?.label ? t(opt.label as any) : opt?.label
+                    }))
+                  : input.list
               })),
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)
@@ -331,27 +368,37 @@ const NodeTemplateList = ({
           },
           position,
           selected: true,
-          parentNodeId: currentNode?.parentNodeId,
+          parentNodeId: effectiveParentNodeId,
           t
         });
 
         const newNodes = [newNode];
 
         if (isNestedParentNodeType(templateNode.flowNodeType)) {
-          const startNode = nodeTemplate2FlowNode({
-            template: LoopStartNode,
-            position: { x: position.x + 60, y: position.y + 280 },
-            parentNodeId: newNode.id,
-            t
-          });
-          const endNode = nodeTemplate2FlowNode({
-            template: LoopEndNode,
-            position: { x: position.x + 420, y: position.y + 680 },
-            parentNodeId: newNode.id,
-            t
-          });
-
-          newNodes.push(startNode, endNode);
+          // loopRun uses its own Start node and no End node.
+          if (templateNode.flowNodeType === FlowNodeTypeEnum.loopRun) {
+            const startNode = nodeTemplate2FlowNode({
+              template: LoopRunStartNode,
+              position: { x: position.x + 60, y: position.y + 280 },
+              parentNodeId: newNode.id,
+              t
+            });
+            newNodes.push(startNode);
+          } else {
+            const startNode = nodeTemplate2FlowNode({
+              template: LoopStartNode,
+              position: { x: position.x + 60, y: position.y + 280 },
+              parentNodeId: newNode.id,
+              t
+            });
+            const endNode = nodeTemplate2FlowNode({
+              template: LoopEndNode,
+              position: { x: position.x + 420, y: position.y + 680 },
+              parentNodeId: newNode.id,
+              t
+            });
+            newNodes.push(startNode, endNode);
+          }
         }
 
         if (newNodes && newNodes.length > 0) {
@@ -363,7 +410,16 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [computedNewNodeName, getNodeById, handleParams?.nodeId, getNodeList, onAddNode, t, toast]
+    [
+      computedNewNodeName,
+      getNodeById,
+      handleParams?.nodeId,
+      getNodeList,
+      getIntersectingNodes,
+      onAddNode,
+      t,
+      toast
+    ]
   );
 
   const formatTemplatesArrayData = useMemo(() => {

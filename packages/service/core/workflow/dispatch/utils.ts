@@ -2,6 +2,8 @@ import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { DispatchFlowResponse } from './type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -598,19 +600,41 @@ export const getNodeErrResponse = ({
   };
 };
 
-/**
- * Coerce a points value to a finite number, defaulting to 0 for
- * NaN / Infinity / null / undefined.
- */
 export const safePoints = (val: number | undefined | null): number =>
   Number.isFinite(val) ? (val as number) : 0;
 
-/**
- * Mutates nodes in-place: sets the nestedStart node as entry and injects the
- * current item / 1-based index into its inputs.
- *
- * Shared by loop and parallelRun dispatchers.
- */
+export const pushSubWorkflowUsage = ({
+  usagePush,
+  response,
+  name,
+  iteration
+}: {
+  usagePush: (usages: ChatNodeUsageType[]) => void;
+  response: DispatchFlowResponse;
+  name: string;
+  iteration: number;
+}): number => {
+  const itemUsagePoint = response.flowUsages.reduce(
+    (acc, usage) => acc + safePoints(usage.totalPoints),
+    0
+  );
+  usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${iteration}` }]);
+  return itemUsagePoint;
+};
+
+export const collectResponseFeedbacks = (
+  response: DispatchFlowResponse,
+  target: string[]
+): string[] => {
+  const feedbacks = response[DispatchNodeResponseKeyEnum.customFeedbacks];
+  if (feedbacks && feedbacks.length > 0) {
+    target.push(...feedbacks);
+  }
+  return target;
+};
+
+// Sets nestedStart as entry and injects current item + 1-based index.
+// Shared by loop and parallelRun dispatchers.
 export const injectNestedStartInputs = ({
   nodes,
   childrenNodeIdList,

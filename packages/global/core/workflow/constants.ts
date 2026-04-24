@@ -253,6 +253,11 @@ export enum NodeInputKeyEnum {
   parallelRunMaxConcurrency = 'parallelRunMaxConcurrency',
   parallelRunMaxRetryTimes = 'parallelRunMaxRetryTimes',
 
+  // loopRun
+  loopRunMode = 'loopRunMode',
+  loopRunInputArray = 'loopRunInputArray',
+  loopCustomOutputs = 'loopCustomOutputs',
+
   // form input
   userInputForms = 'userInputForms',
 
@@ -319,6 +324,11 @@ export enum NodeOutputKeyEnum {
   parallelSuccessResults = 'parallelSuccessResults',
   parallelFullResults = 'parallelFullResults',
   parallelStatus = 'parallelStatus',
+
+  // loopRunStart dynamic outputs
+  currentIndex = 'currentIndex',
+  currentItem = 'currentItem',
+  currentIteration = 'currentIteration',
 
   // form input
   formInputResult = 'formInputResult',

@@ -475,6 +475,94 @@ describe('pushChatRecords', () => {
         }
       }
     });
+
+    it('should collect citeCollectionIds from dataset search nested in loopRun / parallelRun', async () => {
+      const makeQuote = (id: string, collectionId: string) => ({
+        id,
+        chunkIndex: 0,
+        datasetId: 'dataset-1',
+        collectionId,
+        sourceId: `src-${collectionId}`,
+        sourceName: `${collectionId}.pdf`,
+        score: [{ type: 'embedding', value: 0.9, index: 0 }],
+        q: 'q',
+        a: 'a',
+        updateTime: new Date()
+      });
+      const makeDatasetSearch = (collectionId: string) => ({
+        nodeId: `ds-${collectionId}`,
+        id: `ds-${collectionId}`,
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        moduleName: 'Dataset Search',
+        runningTime: 0.1,
+        totalPoints: 1,
+        quoteList: [makeQuote(`quote-${collectionId}`, collectionId)]
+      });
+
+      const props = createMockProps(
+        {
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            responseData: [
+              {
+                nodeId: 'loopRun-1',
+                id: 'loopRun-1',
+                moduleType: FlowNodeTypeEnum.loopRun,
+                moduleName: 'LoopRun',
+                runningTime: 0.5,
+                totalPoints: 2,
+                loopRunDetail: [
+                  {
+                    nodeId: 'loopRun-1_iter_1',
+                    id: 'loopRun-1_iter_1',
+                    moduleType: FlowNodeTypeEnum.loopRun,
+                    moduleName: 'Iter 1',
+                    runningTime: 0.2,
+                    totalPoints: 1,
+                    childrenResponses: [makeDatasetSearch('collection-loop')]
+                  }
+                ]
+              },
+              {
+                nodeId: 'parallelRun-1',
+                id: 'parallelRun-1',
+                moduleType: FlowNodeTypeEnum.parallelRun,
+                moduleName: 'ParallelRun',
+                runningTime: 0.5,
+                totalPoints: 2,
+                parallelDetail: [
+                  {
+                    nodeId: 'parallelRun-1_task_0',
+                    id: 'parallelRun-1_task_0',
+                    moduleType: FlowNodeTypeEnum.parallelRun,
+                    moduleName: 'Task 1',
+                    runningTime: 0.2,
+                    totalPoints: 1,
+                    childrenResponses: [makeDatasetSearch('collection-parallel')]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await pushChatRecords(props);
+
+      const aiItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      });
+
+      if (!aiItem || !('citeCollectionIds' in aiItem)) {
+        throw new Error('aiItem does not have citeCollectionIds');
+      }
+      expect(aiItem.citeCollectionIds).toContain('collection-loop');
+      expect(aiItem.citeCollectionIds).toContain('collection-parallel');
+    });
   });
 
   describe('prepared chat round lifecycle', () => {

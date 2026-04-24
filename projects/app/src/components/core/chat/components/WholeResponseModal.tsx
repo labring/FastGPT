@@ -127,7 +127,7 @@ export const WholeResponseContent = ({
                 border: '1px solid',
                 borderColor: 'myGray.200',
                 color: 'myGray.900',
-                bg: '#F7F8FA'
+                bg: 'myGray.50'
               })}
         >
           <Box
@@ -186,8 +186,10 @@ export const WholeResponseContent = ({
             )}
           />
         )}
-        <Row label={t('workflow:response.Error')} value={activeModule?.error} />
-        <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
+        <Row
+          label={t('workflow:response.Error')}
+          value={activeModule?.errorText ?? activeModule?.error}
+        />
         <Row label={t('chat:response.node_inputs')} value={activeModule?.nodeInputs} />
       </>
       {/* ai chat */}
@@ -246,8 +248,8 @@ export const WholeResponseContent = ({
                       role={'group'}
                       alignItems={'center'}
                       gap={2}
-                      bg={'myGray.50'}
-                      borderRadius={'8px'}
+                      bg={'myGray.100'}
+                      borderRadius={'6px'}
                       px={3}
                       py={2}
                       cursor={'pointer'}
@@ -260,7 +262,8 @@ export const WholeResponseContent = ({
                         flex={'1 0 0'}
                         w={0}
                         fontSize={'12px'}
-                        lineHeight={'18px'}
+                        lineHeight={'16px'}
+                        letterSpacing={'0.4px'}
                         textOverflow={'ellipsis'}
                         overflow={'hidden'}
                         whiteSpace={'nowrap'}
@@ -509,9 +512,22 @@ export const WholeResponseContent = ({
       />
 
       {/* update var */}
+      {/* `updateVarResult` is `updateList.map(...)` — outer dim = rows in the
+          variable-update config. Single-row is the common case, where the
+          outer 1-element wrapper is noise (esp. bad when inner is itself an
+          array → visual `[[...]]`). Unwrap it for all value types for
+          consistency, but keep the wrapper if inner is null/undefined:
+          Row hides rows whose `val` falsey-coerces to undefined, and `[null]`
+          preserves the "invalid reference" signal this node emits. */}
       <Row
         label={t('common:core.chat.response.update_var_result')}
-        value={activeModule?.updateVarResult}
+        value={(() => {
+          const r = activeModule?.updateVarResult;
+          if (Array.isArray(r) && r.length === 1 && r[0] !== null && r[0] !== undefined) {
+            return r[0];
+          }
+          return r;
+        })()}
       />
 
       {/* loop */}
@@ -530,6 +546,20 @@ export const WholeResponseContent = ({
       <Row
         label={t('common:core.chat.response.parallel_run_detail')}
         value={activeModule?.parallelRunDetail}
+      />
+
+      {/* loopRun */}
+      <Row
+        label={t('common:core.chat.response.loop_run_input')}
+        value={activeModule?.loopRunInput}
+      />
+      <Row
+        label={t('common:core.chat.response.loop_run_iterations')}
+        value={activeModule?.loopRunIterations}
+      />
+      <Row
+        label={t('common:core.chat.response.loop_run_history')}
+        value={activeModule?.loopRunHistory}
       />
 
       {/* loopStart */}
@@ -776,6 +806,9 @@ export const ResponseBox = React.memo(function ResponseBox({
             if (Array.isArray(item.parallelDetail)) {
               helper(item.parallelDetail);
             }
+            if (Array.isArray(item.loopRunDetail)) {
+              helper(item.loopRunDetail);
+            }
             if (Array.isArray(item.childrenResponses)) {
               helper(item.childrenResponses);
             }
@@ -811,6 +844,7 @@ export const ResponseBox = React.memo(function ResponseBox({
         if (item?.pluginDetail) children.push(...pretreatmentResponse(item?.pluginDetail));
         if (item?.loopDetail) children.push(...pretreatmentResponse(item?.loopDetail));
         if (item?.parallelDetail) children.push(...pretreatmentResponse(item?.parallelDetail));
+        if (item?.loopRunDetail) children.push(...pretreatmentResponse(item?.loopRunDetail));
         if (item?.childrenResponses)
           children.push(...pretreatmentResponse(item?.childrenResponses));
 

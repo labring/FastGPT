@@ -20,7 +20,8 @@ export const CustomFieldConfigTypeSchema = z.object({
   // reference
   selectValueTypeList: z.array(z.enum(WorkflowIOValueTypeEnum)).optional(), // 可以选哪个数据类型, 只有1个的话,则默认选择
   showDefaultValue: z.boolean().optional(),
-  showDescription: z.boolean().optional()
+  showDescription: z.boolean().optional(),
+  hideBottomDivider: z.boolean().optional()
 });
 export type CustomFieldConfigType = z.infer<typeof CustomFieldConfigTypeSchema>;
 
@@ -38,7 +39,16 @@ export const InputComponentPropsTypeSchema = z.object({
   placeholder: z.string().optional(), // input,textarea
   maxLength: z.number().optional(), // input,textarea
   minLength: z.number().optional(), // password
-  list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
+  list: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        icon: z.string().optional(),
+        description: z.string().optional()
+      })
+    )
+    .optional(), // select
   markList: z.array(z.object({ label: z.string(), value: z.number() })).optional(), // slider
   step: z.number().optional(), // slider
   max: z.number().optional(), // slider, number input

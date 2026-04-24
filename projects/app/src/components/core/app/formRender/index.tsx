@@ -178,9 +178,15 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.select) {
-    const list =
+    const rawList: { label: string; value: string; icon?: string; description?: string }[] =
       props.list || props.enums?.map((item) => ({ label: item.value, value: item.value })) || [];
-    return <MySelect {...commonProps} list={list} h={10} />;
+    const list = rawList.map((item) => ({
+      ...item,
+      label: typeof item.label === 'string' ? t(item.label as any) : item.label,
+      description:
+        typeof item.description === 'string' ? t(item.description as any) : item.description
+    }));
+    return <MySelect {...commonProps} list={list} h={10} menuPlacement={props.menuPlacement} />;
   }
 
   if (inputType === InputTypeEnum.multipleSelect) {

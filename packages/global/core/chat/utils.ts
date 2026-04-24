@@ -305,6 +305,8 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
         ...getFlatAppResponses(item.pluginDetail || []),
         ...getFlatAppResponses(item.toolDetail || []),
         ...getFlatAppResponses(item.loopDetail || []),
+        ...getFlatAppResponses(item.loopRunDetail || []),
+        ...getFlatAppResponses(item.parallelDetail || []),
         ...getFlatAppResponses(item.childrenResponses || [])
       ];
     })
@@ -368,6 +370,14 @@ export const mergeChatResponseData = (
         loopDetail: mergeChatResponseData([
           ...(existing.loopDetail || []),
           ...(item.loopDetail || [])
+        ]),
+        loopRunDetail: mergeChatResponseData([
+          ...(existing.loopRunDetail || []),
+          ...(item.loopRunDetail || [])
+        ]),
+        parallelDetail: mergeChatResponseData([
+          ...(existing.parallelDetail || []),
+          ...(item.parallelDetail || [])
         ]),
         pluginDetail: mergeChatResponseData([
           ...(existing.pluginDetail || []),
