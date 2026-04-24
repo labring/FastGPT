@@ -35,7 +35,7 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import ToolModal from '@/pages/dashboard/create/ToolModal';
 import type { ToolModalAppType } from '@/pages/dashboard/create/ToolModal';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTabBar from '@/components/MyTabBar';
 import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 
 const EditFolderModal = dynamic(
@@ -105,222 +105,218 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     [t]
   );
 
+  const toolTypeTabList = useMemo(
+    () => [
+      { key: 'all', label: t('app:type.All') },
+      { key: AppTypeEnum.workflowTool, label: t('app:toolType_workflow') },
+      { key: AppTypeEnum.httpToolSet, label: t('app:toolType_http') },
+      { key: AppTypeEnum.mcpToolSet, label: t('app:toolType_mcp') }
+    ],
+    [t]
+  );
+
   const isSystemTool = router.pathname === '/dashboard/systemTool';
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Flex gap={5} flex={'1 0 0'} h={0}>
-        <Flex
-          flex={'1 0 0'}
-          flexDirection={'column'}
-          h={'100%'}
-          pr={folderDetail ? 4 : 4}
-          pl={4}
-          pt={6}
-          overflowY={'auto'}
-          overflowX={'hidden'}
-        >
-          <Flex alignItems={'center'}>
-            <Box>
-              {!isPc ? (
-                MenuIcon
-              ) : paths.length > 0 ? (
-                <FolderPath
-                  paths={paths}
-                  hoverStyle={{ bg: 'myGray.200' }}
-                  forbidLastClick
-                  onClick={(parentId) => {
-                    router.push({
-                      query: {
-                        ...router.query,
-                        parentId
-                      }
-                    });
-                  }}
-                />
-              ) : (
-                <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
-                  {t('common:navbar.Tools')}
-                </Box>
-              )}
-            </Box>
-            {isPc && paths.length === 0 && (
-              <Box mx={'auto'}>
-                <MyTabs
-                  tabs={toolTabList}
-                  value={isSystemTool ? 'system' : 'my'}
-                  onChange={(value) => {
-                    const tab = toolTabList.find((t) => t.value === value);
-                    if (tab) router.push(tab.path);
-                  }}
-                />
-              </Box>
-            )}
-            <Flex
-              ml={!(isPc && paths.length === 0) ? 'auto' : undefined}
-              alignItems={'center'}
-              gap={3}
-            >
-              {isPc && (
-                <>
-                  <MySelect
-                    w={'120px'}
-                    value={(router.query.type as string) || 'all'}
-                    list={[
-                      { label: t('app:toolType_all'), value: 'all' },
-                      { label: t('app:toolType_workflow'), value: AppTypeEnum.workflowTool },
-                      { label: t('app:toolType_http'), value: AppTypeEnum.httpToolSet },
-                      { label: t('app:toolType_mcp'), value: AppTypeEnum.mcpToolSet }
-                    ]}
-                    onChange={(val) => {
-                      router.push({
-                        query: {
-                          ...router.query,
-                          type: val
-                        }
-                      });
-                    }}
-                  />
-                  <SearchInput
-                    maxW={['auto', '250px']}
-                    value={searchKey}
-                    bg={'white'}
-                    onChange={(e) => setSearchKey(e.target.value)}
-                    placeholder={t('app:search_name_intro')}
-                    maxLength={30}
-                  />
-                </>
-              )}
-
-              {(folderDetail
-                ? folderDetail.permission.hasWritePer &&
-                  folderDetail?.type !== AppTypeEnum.httpPlugin
-                : userInfo?.team.permission.hasAppCreatePer) && (
-                <>
-                  <Button variant={'whiteBase'} onClick={() => setEditFolder({})} px={5}>
-                    {t('app:new_folder')}
-                  </Button>
-                  <MyMenu
-                    size="md"
-                    Button={
-                      <Button
-                        variant={'primary'}
-                        leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
-                      >
-                        {t('app:new_tool')}
-                      </Button>
-                    }
-                    menuList={[
-                      {
-                        children: [
-                          {
-                            icon: 'core/app/type/pluginFill',
-                            label: t('app:toolType_workflow'),
-                            description: t('app:type_plugin_intro'),
-                            onClick: () => setCreateAppType(AppTypeEnum.workflowTool)
-                          },
-                          {
-                            icon: 'core/app/type/httpPluginFill',
-                            label: t('app:toolType_http'),
-                            description: t('app:type.Create http toolset tip'),
-                            onClick: () => setCreateAppType(AppTypeEnum.httpToolSet)
-                          },
-                          {
-                            icon: 'core/app/type/mcpToolsFill',
-                            label: t('app:toolType_mcp'),
-                            description: t('app:type.Create mcp tools tip'),
-                            onClick: () => setCreateAppType(AppTypeEnum.mcpToolSet)
-                          }
-                        ]
-                      },
-                      {
-                        children: [
-                          {
-                            label: (
-                              <Flex alignItems="center" fontSize="14px">
-                                <MyIcon name="common/importLight" w="24px" mr={2} />
-                                {t('app:import_json_config')}
-                              </Flex>
-                            ),
-                            onClick: onOpenJsonImportModal
-                          },
-                          {
-                            label: (
-                              <Flex alignItems="center" fontSize="14px">
-                                <MyIcon name="core/app/importTemplateIcon" w="24px" mr={2} />
-                                {t('app:create_from_template')}
-                              </Flex>
-                            ),
-                            onClick: () => router.push('/dashboard/templateMarket')
-                          }
-                        ]
-                      }
-                    ]}
-                  />
-                </>
-              )}
-            </Flex>
-          </Flex>
-          {!isPc && (
-            <Box mt={2}>
-              {
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_tool')}
-                  maxLength={30}
-                />
-              }
-            </Box>
-          )}
-
-          <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
-            <List showCreateCard={false} />
-          </MyBox>
-        </Flex>
-
-        {/* Folder slider */}
-        {!!folderDetail && isPc && (
-          <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
-            <FolderSlideCard
-              refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
-              resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
-              isInheritPermission={folderDetail.inheritPermission}
-              hasParent={!!folderDetail.parentId}
-              refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
-              name={folderDetail.name}
-              intro={folderDetail.intro}
-              onEdit={() => {
-                setEditFolder({
-                  id: folderDetail._id,
-                  name: folderDetail.name,
-                  intro: folderDetail.intro
+    <MyBox h="100%" isLoading={myApps.length === 0 && isFetchingApps}>
+      <Flex flexDirection="column" h="100%" py={6}>
+        {/* 第一行：标题 + MyTabs（我的工具/系统工具，居中） */}
+        <Flex alignItems="center" px={4} mb={4} position="relative" minH="36px">
+          {!isPc ? (
+            MenuIcon
+          ) : paths.length > 0 ? (
+            <FolderPath
+              paths={paths}
+              hoverStyle={{ bg: 'myGray.200' }}
+              forbidLastClick
+              onClick={(parentId) => {
+                router.push({
+                  query: {
+                    ...router.query,
+                    parentId
+                  }
                 });
               }}
-              onMove={() => setMoveAppId(folderDetail._id)}
-              deleteTip={t('app:confirm_delete_folder_tip')}
-              onDelete={() => onDeleFolder(folderDetail._id)}
-              managePer={{
-                defaultRole: ReadRoleVal,
-                permission: folderDetail.permission,
-                onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
-                roleList: AppRoleList,
-                onUpdateCollaborators: (props) =>
-                  postUpdateAppCollaborators({
-                    ...props,
-                    appId: folderDetail._id
-                  }),
-                refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
-                onDelOneCollaborator: async (params) =>
-                  deleteAppCollaborators({
-                    ...params,
-                    appId: folderDetail._id
-                  })
-              }}
+            />
+          ) : (
+            <Box color="myGray.900" fontSize="20px" fontWeight="medium">
+              {t('common:navbar.MyTools')}
+            </Box>
+          )}
+          {isPc && paths.length === 0 && (
+            <Box position="absolute" left="50%" transform="translateX(-50%)">
+              <MyTabs
+                tabs={toolTabList}
+                value={isSystemTool ? 'system' : 'my'}
+                onChange={(value) => {
+                  const tab = toolTabList.find((tab) => tab.value === value);
+                  if (tab) router.push(tab.path);
+                }}
+              />
+            </Box>
+          )}
+        </Flex>
+
+        {/* 第二行：MyTabBar 类型筛选（左）+ 搜索框 + 操作按钮（右） */}
+        <Flex px={4} alignItems="center" gap={3}>
+          {isPc && (
+            <Box flex={1} minW={0}>
+              <MyTabBar
+                tabs={toolTypeTabList}
+                activeKey={(router.query.type as string) || 'all'}
+                onChange={(val) => {
+                  router.push({
+                    query: {
+                      ...router.query,
+                      type: val
+                    }
+                  });
+                }}
+              />
+            </Box>
+          )}
+          <Flex alignItems="center" gap={3} flexShrink={0}>
+            {isPc && (
+              <SearchInput
+                maxW={['auto', '250px']}
+                value={searchKey}
+                bg={'white'}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('app:search_name_intro')}
+                maxLength={30}
+              />
+            )}
+
+            {(folderDetail
+              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+              : userInfo?.team.permission.hasAppCreatePer) && (
+              <>
+                <Button variant={'whiteBase'} onClick={() => setEditFolder({})} px={5}>
+                  {t('app:new_folder')}
+                </Button>
+                <MyMenu
+                  size="md"
+                  Button={
+                    <Button
+                      variant={'primary'}
+                      leftIcon={<MyIcon name={'common/addLight'} w={'18px'} />}
+                    >
+                      {t('app:new_tool')}
+                    </Button>
+                  }
+                  menuList={[
+                    {
+                      children: [
+                        {
+                          icon: 'core/app/type/pluginFill',
+                          label: t('app:toolType_workflow'),
+                          description: t('app:type_plugin_intro'),
+                          onClick: () => setCreateAppType(AppTypeEnum.workflowTool)
+                        },
+                        {
+                          icon: 'core/app/type/httpPluginFill',
+                          label: t('app:toolType_http'),
+                          description: t('app:type.Create http toolset tip'),
+                          onClick: () => setCreateAppType(AppTypeEnum.httpToolSet)
+                        },
+                        {
+                          icon: 'core/app/type/mcpToolsFill',
+                          label: t('app:toolType_mcp'),
+                          description: t('app:type.Create mcp tools tip'),
+                          onClick: () => setCreateAppType(AppTypeEnum.mcpToolSet)
+                        }
+                      ]
+                    },
+                    {
+                      children: [
+                        {
+                          label: (
+                            <Flex alignItems="center" fontSize="14px">
+                              <MyIcon name="common/importLight" w="24px" mr={2} />
+                              {t('app:import_json_config')}
+                            </Flex>
+                          ),
+                          onClick: onOpenJsonImportModal
+                        },
+                        {
+                          label: (
+                            <Flex alignItems="center" fontSize="14px">
+                              <MyIcon name="core/app/importTemplateIcon" w="24px" mr={2} />
+                              {t('app:create_from_template')}
+                            </Flex>
+                          ),
+                          onClick: () => router.push('/dashboard/templateMarket')
+                        }
+                      ]
+                    }
+                  ]}
+                />
+              </>
+            )}
+          </Flex>
+        </Flex>
+
+        {/* 移动端搜索框 */}
+        {!isPc && (
+          <Box px={4} mb={2}>
+            <SearchInput
+              maxW={['auto', '250px']}
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+              placeholder={t('app:search_tool')}
+              maxLength={30}
             />
           </Box>
         )}
+
+        {/* 内容区域 */}
+        <Flex gap={5} flex="1 0 0" h={0}>
+          <Box flex="1 0 0" px={4} overflowY="auto" overflowX="hidden">
+            <List showCreateCard={false} />
+          </Box>
+
+          {/* Folder slider */}
+          {!!folderDetail && isPc && (
+            <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
+              <FolderSlideCard
+                refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
+                resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
+                isInheritPermission={folderDetail.inheritPermission}
+                hasParent={!!folderDetail.parentId}
+                refreshDeps={[folderDetail._id, folderDetail.inheritPermission]}
+                name={folderDetail.name}
+                intro={folderDetail.intro}
+                onEdit={() => {
+                  setEditFolder({
+                    id: folderDetail._id,
+                    name: folderDetail.name,
+                    intro: folderDetail.intro
+                  });
+                }}
+                onMove={() => setMoveAppId(folderDetail._id)}
+                deleteTip={t('app:confirm_delete_folder_tip')}
+                onDelete={() => onDeleFolder(folderDetail._id)}
+                managePer={{
+                  defaultRole: ReadRoleVal,
+                  permission: folderDetail.permission,
+                  onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
+                  roleList: AppRoleList,
+                  onUpdateCollaborators: (props) =>
+                    postUpdateAppCollaborators({
+                      ...props,
+                      appId: folderDetail._id
+                    }),
+                  refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
+                  onDelOneCollaborator: async (params) =>
+                    deleteAppCollaborators({
+                      ...params,
+                      appId: folderDetail._id
+                    })
+                }}
+              />
+            </Box>
+          )}
+        </Flex>
       </Flex>
 
       {!!editFolder && (
@@ -340,7 +336,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           onSuccess={loadMyApps}
         />
       )}
-    </Flex>
+    </MyBox>
   );
 };
 

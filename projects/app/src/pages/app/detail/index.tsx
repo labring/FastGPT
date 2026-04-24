@@ -1,4 +1,3 @@
-'use client';
 import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
@@ -27,6 +26,9 @@ const AppDetail = () => {
   const { setAppId, setSource } = useChatStore();
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
   const route2Tab = useContextSelector(AppContext, (e) => e.route2Tab);
+  const { isPc } = useSystem();
+
+  const hideSidebar = appDetail.type === AppTypeEnum.workflow;
 
   useEffect(() => {
     setSource('test');
@@ -42,7 +44,16 @@ const AppDetail = () => {
   return (
     <>
       <NextHead title={appDetail.name} icon={appDetail.avatar}></NextHead>
-      <Box h={'100%'} position={'relative'} bg={'transparent'}>
+      {isPc && !hideSidebar && (
+        <DashboardNavbar isCollapsed={true} setIsCollapsed={() => {}} hideCollapseButton />
+      )}
+      <Box
+        h={'100%'}
+        pl={isPc && !hideSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0}
+        position={'relative'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
+        transition="padding-left 0.2s ease"
+      >
         {!appDetail._id ? (
           <Loading fixed={false} />
         ) : (
@@ -61,35 +72,10 @@ const AppDetail = () => {
   );
 };
 
-const AppLayout = ({ children }: { children: React.ReactNode }) => {
-  const { isPc } = useSystem();
-  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
-  const hideSidebar = appDetail.type === AppTypeEnum.workflow;
-
-  return (
-    <>
-      {isPc && !hideSidebar && (
-        <DashboardNavbar isCollapsed={true} setIsCollapsed={() => {}} hideCollapseButton />
-      )}
-      <Box
-        h={'100%'}
-        pl={isPc && !hideSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0}
-        position={'relative'}
-        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
-        transition="padding-left 0.2s ease"
-      >
-        {children}
-      </Box>
-    </>
-  );
-};
-
 const Provider = () => {
   return (
     <AppContextProvider>
-      <AppLayout>
-        <AppDetail />
-      </AppLayout>
+      <AppDetail />
     </AppContextProvider>
   );
 };

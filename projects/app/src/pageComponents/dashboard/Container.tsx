@@ -1,5 +1,4 @@
 // @file Dashboard 容器组件，包含新版侧边导航栏（支持展开/折叠）
-'use client';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Collapse, Flex, Text, VStack, useDisclosure } from '@chakra-ui/react';
 import BgDecoration from './BgDecoration';
@@ -122,7 +121,7 @@ type SubNavGroupProps = {
   isCollapsed: boolean;
   isExpanded: boolean;
   onToggle: () => void;
-  items: { key: string; label: string; path: string }[];
+  items: { key: string; label: string; path: string; activePaths?: string[] }[];
   currentPath: string;
   onItemClick: (path: string) => void;
 };
@@ -216,7 +215,11 @@ const SubNavGroup = ({
               key={item.key}
               icon=""
               label={item.label}
-              isActive={currentPath.startsWith(item.path)}
+              isActive={
+                item.activePaths
+                  ? item.activePaths.some((p) => currentPath.startsWith(p))
+                  : currentPath.startsWith(item.path)
+              }
               isCollapsed={false}
               onClick={() => onItemClick(item.path)}
               indent
@@ -457,8 +460,12 @@ export const DashboardNavbar = ({
   const appBuildItems = useMemo(
     () => [
       { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
-      { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' },
-      { key: 'tool', label: t('common:navbar.Tools'), path: '/dashboard/tool' },
+      {
+        key: 'tool',
+        label: t('common:navbar.Tools'),
+        path: '/dashboard/tool',
+        activePaths: ['/dashboard/tool', '/dashboard/systemTool']
+      },
       { key: 'mcp', label: t('common:mcp_server'), path: '/dashboard/mcpServer' }
     ],
     [t]
@@ -522,7 +529,7 @@ export const DashboardNavbar = ({
             {/* 模板市场 */}
             <NavItem
               icon="core/importTemplateIcon"
-              label={t('common:template_market')}
+              label={t('common:app_market')}
               isActive={isActivePrefix(['/dashboard/templateMarket'])}
               isCollapsed={isCollapsed}
               onClick={() => router.push('/dashboard/templateMarket')}

@@ -38,8 +38,8 @@ const colorMap: Record<
   },
   yellow: {
     borderColor: 'yellow.200',
-    bg: 'yellow.50',
-    color: 'yellow.600'
+    bg: 'yellow.25',
+    color: 'yellow.700'
   },
   green: {
     borderColor: 'green.200',
