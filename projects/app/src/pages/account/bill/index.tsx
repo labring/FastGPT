@@ -82,7 +82,7 @@ const BillAndInvoice = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account_bill', 'account']))
+      ...(await serviceSideProps(content, ['account_bill', 'account', 'user']))
     }
   };
 }

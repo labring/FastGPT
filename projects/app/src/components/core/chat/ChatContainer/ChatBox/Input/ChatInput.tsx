@@ -130,7 +130,7 @@ const ChatInput = ({
     },
     [TextareaDom, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
-  const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
+  const { runAsync: handleStop } = useRequest(async () => {
     try {
       if (isChatting) {
         await postStopV2Chat({
@@ -349,14 +349,13 @@ const ChatInput = ({
           {/* Send Button Container */}
           <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
             <MyBox
-              isLoading={isStopping}
               display={'flex'}
               alignItems={'center'}
               justifyContent={'center'}
               w={[7, 9]}
               h={[7, 9]}
-              p={isChatting ? [1, 2] : 0}
-              bg={isChatting ? 'primary.50' : 'transparent'}
+              p={0}
+              bg={'transparent'}
               opacity={!isChatting && !canSendMessage ? 0.4 : 1}
               borderRadius={['md', 'lg']}
               cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
@@ -369,7 +368,7 @@ const ChatInput = ({
               }}
             >
               {isChatting ? (
-                <MyIcon {...iconSize} name={'stop'} color={'primary.600'} />
+                <Image src="/imgs/stop.svg" w={iconSize.w} h={iconSize.h} alt="stop" />
               ) : (
                 <MyTooltip label={t('common:core.chat.Send Message')}>
                   <Image src="/imgs/sendIcon.svg" w={iconSize.w} h={iconSize.h} alt="send" />
@@ -390,7 +389,6 @@ const ChatInput = ({
     whisperConfig?.open,
     inputValue,
     t,
-    isStopping,
     isChatting,
     canSendMessage,
     onOpenSelectFile,
@@ -436,7 +434,7 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={mobilePreSpeak ? '48px' : '96px'}
+        minH={mobilePreSpeak ? '48px' : InputLeftComponent ? '120px' : '96px'}
         pt={fileList.length > 0 ? '0' : mobilePreSpeak ? [0, 4] : [3, 4]}
         pb={InputLeftComponent ? 2 : 3}
         position={'relative'}

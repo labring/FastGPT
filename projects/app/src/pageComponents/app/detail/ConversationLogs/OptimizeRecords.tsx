@@ -230,7 +230,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
   return (
     <Flex flexDirection="column" h="full">
       {/* 列表内容 */}
-      <Box flex={1} px={6}>
+      <Box flex={1}>
         <ScrollData>
           <VStack align="stretch" spacing={3}>
             {optimizeRecords.map((record: ChatCorrectionListItem, index: number) => (

@@ -122,7 +122,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Box display={'grid'} gridTemplateColumns={'1fr auto 1fr'} alignItems={'center'} gap={3}>
+          <Flex alignItems={'center'}>
             <Flex alignItems={'center'}>
               {!isPc ? (
                 MenuIcon
@@ -148,8 +148,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </Box>
               )}
             </Flex>
-            <Box>
-              {isPc && paths.length === 0 && (
+            {isPc && paths.length === 0 && (
+              <Box mx={'auto'}>
                 <MyTabs
                   tabs={agentTabList}
                   value={activeAgentTab}
@@ -160,9 +160,13 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     });
                   }}
                 />
-              )}
-            </Box>
-            <Flex justifyContent={'flex-end'} alignItems={'center'} gap={3}>
+              </Box>
+            )}
+            <Flex
+              ml={!(isPc && paths.length === 0) ? 'auto' : undefined}
+              alignItems={'center'}
+              gap={3}
+            >
               {isPc && (
                 <SearchInput
                   maxW={['auto', '250px']}
@@ -243,7 +247,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 </>
               )}
             </Flex>
-          </Box>
+          </Flex>
           {!isPc && (
             <Box mt={2}>
               {
@@ -343,7 +347,7 @@ export default ContextRender;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'user', 'skill', 'account']))
+      ...(await serviceSideProps(content, ['app', 'user', 'skill', 'account', 'file', 'workflow']))
     }
   };
 }

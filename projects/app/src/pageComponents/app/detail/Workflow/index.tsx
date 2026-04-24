@@ -7,8 +7,8 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
 import Header from './Header';
-import { Flex } from '@chakra-ui/react';
-import { workflowBoxStyles } from '../constants';
+import { Box, Flex } from '@chakra-ui/react';
+import { workflowBoxStyles, cardStyles } from '../constants';
 import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash';
 import { useTranslation } from 'next-i18next';
@@ -62,9 +62,11 @@ const WorkflowEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Flow />
       ) : (
-        <Flex flexDirection={'column'} h={'100%'} mt={'72px'} px={4} pb={4} bg={'white'}>
-          {currentTab === TabEnum.publish && <PublishChannel />}
-          {currentTab === TabEnum.logs && <Logs />}
+        <Flex flexDirection={'column'} h={'100%'} mt={'48px'} p={4}>
+          <Box flex={1} minH={0} overflow={'hidden'} {...cardStyles}>
+            {currentTab === TabEnum.publish && <PublishChannel />}
+            {currentTab === TabEnum.logs && <Logs />}
+          </Box>
         </Flex>
       )}
 

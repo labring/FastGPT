@@ -111,7 +111,7 @@ const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
     }
     if (config.customDomain !== undefined) {
       items.push({
-        key: i18nT('account:custom_domain'),
+        key: i18nT('common:custom_domain'),
         value: config.customDomain,
         unit: ''
       });

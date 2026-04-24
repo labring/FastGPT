@@ -168,7 +168,7 @@
   "create_new_task_modal": "Create task",
   "task_name_input": "Name",
   "evaluation_app_select": "App",
-  "evaluation_app_support_tip": "You can select a simple app or workflow but not a plugin.",
+  "evaluation_app_support_tip": "You can select a simple app or workflow but not a tool.",
   "evaluation_app_select_placeholder": "Select",
   "evaluation_app_version_select": "App version",
   "evaluation_app_version_select_placeholder": "Select",

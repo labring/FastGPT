@@ -16,6 +16,7 @@ import { AppContext } from '../context';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { exportChatCorrectionRecords } from '@/web/core/app/api/log';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 
 type SubTabType = 'list' | 'optimize';
 
@@ -71,33 +72,16 @@ const ConversationLogs = () => {
 
   const SubTabHeader = useMemo(() => {
     return (
-      <Flex px={[4, 8]} gap={2} py={4} alignItems={'center'} justifyContent={'space-between'}>
-        <Flex gap={2} minW={'170px'}>
-          <Flex
-            px={2}
-            py={2}
-            cursor={'pointer'}
-            color={subTab === 'list' ? 'primary.600' : 'myGray.500'}
-            onClick={() => setSubTab('list')}
-            borderRadius={'8px'}
-            bg={subTab === 'list' ? 'myGray.05' : 'transparent'}
-            _hover={{ bg: 'myGray.05' }}
-          >
-            {t('app:log_detail')}
-          </Flex>
-          <Flex
-            px={2}
-            py={2}
-            cursor={'pointer'}
-            color={subTab === 'optimize' ? 'primary.600' : 'myGray.500'}
-            onClick={() => setSubTab('optimize')}
-            borderRadius={'8px'}
-            bg={subTab === 'optimize' ? 'myGray.05' : 'transparent'}
-            _hover={{ bg: 'myGray.05' }}
-          >
-            {t('app:optimize_records')}
-          </Flex>
-        </Flex>
+      <Flex gap={2} pt={4} alignItems={'center'} justifyContent={'space-between'}>
+        <FillRowTabs
+          list={[
+            { label: t('app:log_detail'), value: 'list' as SubTabType },
+            { label: t('app:optimize_records'), value: 'optimize' as SubTabType }
+          ]}
+          h={'40px'}
+          value={subTab}
+          onChange={(val) => setSubTab(val)}
+        />
 
         {subTab === 'optimize' && (
           <Flex gap={2} alignItems="center">
@@ -106,6 +90,7 @@ const ConversationLogs = () => {
               onSuccess={handleDateRangeConfirm}
               bg={'myGray.25'}
               h={10}
+              w={'223px'}
               flex={'0 1 300px'}
               rounded={'8px'}
               borderColor={'myGray.200'}
@@ -135,11 +120,9 @@ const ConversationLogs = () => {
   ]);
 
   return (
-    <Flex flexDirection={'column'} h={'full'} rounded={'lg'} bg={'white'} boxShadow={3.5}>
-      <Box bg={'myGray.25'} roundedTop={'lg'}>
-        {SubTabHeader}
-      </Box>
-      <Box flex={'1 0 0'} h={0} my={4} bg={'white'} roundedBottom={'lg'}>
+    <Flex flexDirection={'column'} h={'full'} bg={'white'} borderRadius={'8px'}>
+      <Box px={4}>{SubTabHeader}</Box>
+      <Box flex={'1 0 0'} h={0} my={4} bg={'white'} px={4}>
         {subTab === 'list' && <LogList filters={logFilters} />}
         {subTab === 'optimize' && <OptimizeRecords dateRange={dateRange} />}
       </Box>

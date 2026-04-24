@@ -1,5 +1,4 @@
-'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -27,6 +26,9 @@ const AppDetail = () => {
   const { setAppId, setSource } = useChatStore();
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
   const route2Tab = useContextSelector(AppContext, (e) => e.route2Tab);
+  const { isPc } = useSystem();
+
+  const hideSidebar = appDetail.type === AppTypeEnum.workflow;
 
   useEffect(() => {
     setSource('test');
@@ -42,7 +44,16 @@ const AppDetail = () => {
   return (
     <>
       <NextHead title={appDetail.name} icon={appDetail.avatar}></NextHead>
-      <Box h={'100%'} position={'relative'} bg={'transparent'}>
+      {isPc && !hideSidebar && (
+        <DashboardNavbar isCollapsed={true} setIsCollapsed={() => {}} hideCollapseButton />
+      )}
+      <Box
+        h={'100%'}
+        pl={isPc && !hideSidebar ? SIDEBAR_COLLAPSED_WIDTH : 0}
+        position={'relative'}
+        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
+        transition="padding-left 0.2s ease"
+      >
         {!appDetail._id ? (
           <Loading fixed={false} />
         ) : (
@@ -62,24 +73,9 @@ const AppDetail = () => {
 };
 
 const Provider = () => {
-  const { isPc } = useSystem();
-  const [isCollapsed] = useState(true);
-  const sidebarWidth = SIDEBAR_COLLAPSED_WIDTH;
-
   return (
     <AppContextProvider>
-      {isPc && (
-        <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={() => {}} hideCollapseButton />
-      )}
-      <Box
-        h={'100%'}
-        pl={isPc ? sidebarWidth : 0}
-        position={'relative'}
-        bgGradient="linear(180deg, #F2F8FF 0%, #F7F9FC 12%)"
-        transition="padding-left 0.2s ease"
-      >
-        <AppDetail />
-      </Box>
+      <AppDetail />
     </AppContextProvider>
   );
 };
@@ -98,8 +94,10 @@ export async function getServerSideProps(context: any) {
         'skill',
         'dashboard_evaluation',
         'evaluation',
+        'train',
         'database_client',
-        'skill'
+        'dataset',
+        'account_model'
       ]))
     }
   };

@@ -122,7 +122,7 @@ const OutLink = () => {
       bg="white"
       borderRadius={'16px'}
     >
-      <Box mx={[4, 8]} py={[4, 6]} borderBottom={'1px solid'} borderColor={'myGray.150'}>
+      <Box mx={'16px'} pb="16px" borderBottom={'1px solid'} borderColor={'myGray.150'}>
         <MyRadio
           gridTemplateColumns={[
             'repeat(1,1fr)',

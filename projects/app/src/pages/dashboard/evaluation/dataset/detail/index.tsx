@@ -47,7 +47,8 @@ export async function getServerSideProps(context: any) {
         'evaluation',
         'file',
         'user',
-        'dataset'
+        'dataset',
+        'chat'
       ]))
     }
   };

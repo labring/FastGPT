@@ -110,7 +110,13 @@ const Info = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
+      ...(await serviceSideProps(content, [
+        'account',
+        'account_info',
+        'user',
+        'account_model',
+        'login'
+      ]))
     }
   };
 }
@@ -509,9 +515,9 @@ const PlanUsage = () => {
             </Button>
           )}
         </ModelPriceModal>
-        <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
+        {/* <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
-        </Button>
+        </Button> */}
         {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
           <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
             {t('account_info:redeem_coupon')}
@@ -539,7 +545,7 @@ const PlanUsage = () => {
               {t(planName as any)}
             </Box>
           </Box>
-          <Button
+          {/* <Button
             onClick={() => {
               router.push(
                 subPlans?.planDescriptionUrl ? getDocPath(subPlans.planDescriptionUrl) : '/price'
@@ -549,7 +555,7 @@ const PlanUsage = () => {
             size="sm"
           >
             {t('account_info:upgrade_package')}
-          </Button>
+          </Button> */}
         </Flex>
         <Box px={[5, 7]} pb={[3, 6]}>
           {isFreeTeam && (
@@ -594,7 +600,7 @@ const PlanUsage = () => {
               {t('account_info:standard_package_and_extra_resource_package')}
             </Box>
           </Flex>
-          <Link
+          {/* <Link
             href={getWebReqUrl(getExtraPlanCardRoute())}
             transform={'translateX(15px)'}
             display={'flex'}
@@ -605,7 +611,7 @@ const PlanUsage = () => {
           >
             {t('account_info:purchase_extra_package')}
             <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
-          </Link>
+          </Link> */}
         </Flex>
         <Box width={'100%'} mt={5} fontSize={'sm'}>
           <Flex alignItems={'center'} mb={2}>

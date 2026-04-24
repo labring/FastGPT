@@ -77,7 +77,7 @@ const ChatController = ({
 
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
-  const isLogMode = chatType === 'log';
+  const isLogMode = chatType === 'log' && !isAssistantType;
   const notSharePage = chatType !== 'share';
   const isAIMsg = chat.obj === ChatRoleEnum.AI;
 
@@ -116,12 +116,12 @@ const ChatController = ({
                 <Flex
                   alignItems={'center'}
                   gap={'4px'}
-                  px={2}
+                  px={'6px'}
                   h={'24px'}
                   borderRadius={'4px'}
                   borderColor={'myGray.200'}
                   cursor={'pointer'}
-                  color={'myGray.600'}
+                  color={'myGray.450'}
                   fontSize={'xs'}
                   _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                   onClick={handleViewDetail}
@@ -140,7 +140,7 @@ const ChatController = ({
                     borderRadius={'4px'}
                     borderColor={'myGray.200'}
                     cursor={'pointer'}
-                    color={'myGray.600'}
+                    color={'myGray.450'}
                     fontSize={'xs'}
                     _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                     onClick={onCorrectError}
@@ -157,12 +157,12 @@ const ChatController = ({
         )}
 
         {/* 用户操作区域 - 单图标格式 */}
-        <Flex {...controlContainerStyle} alignItems={'center'}>
+        <Flex {...controlContainerStyle} alignItems={'center'} gap={'4px'}>
           <MyTooltip label={t('common:Copy')}>
             <MyIcon
               {...controlIconStyle}
               name={'copy'}
-              _hover={{ color: 'primary.600' }}
+              _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
               onClick={() => copyData(chatText)}
             />
           </MyTooltip>
@@ -171,7 +171,7 @@ const ChatController = ({
               <MyIcon
                 {...controlIconStyle}
                 name={'common/retryLight'}
-                _hover={{ color: 'green.500' }}
+                _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                 onClick={onRetry}
               />
             </MyTooltip>
@@ -181,7 +181,7 @@ const ChatController = ({
               <MyIcon
                 {...controlIconStyle}
                 name={'delete'}
-                _hover={{ color: 'red.600' }}
+                _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                 onClick={onDelete}
               />
             </MyTooltip>
@@ -191,7 +191,7 @@ const ChatController = ({
               <MyIcon
                 {...controlIconStyle}
                 name={'core/app/markLight'}
-                _hover={{ color: '#67c13b' }}
+                _hover={{ color: 'primary.600', borderColor: 'primary.300' }}
                 onClick={onMark}
               />
             </MyTooltip>
@@ -255,7 +255,8 @@ const ChatController = ({
                       {...(!!chat.userGoodFeedback
                         ? {
                             color: 'white',
-                            bg: 'green.500'
+                            bg: 'green.500',
+                            borderRadius: '4px'
                           }
                         : {
                             _hover: { color: 'green.600' }
@@ -270,7 +271,8 @@ const ChatController = ({
                       {...(!!chat.userBadFeedback
                         ? {
                             color: 'white',
-                            bg: 'yellow.500'
+                            bg: 'yellow.500',
+                            borderRadius: '4px'
                           }
                         : {
                             _hover: { color: 'yellow.500' }

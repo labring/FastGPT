@@ -25,10 +25,11 @@ const getAppTemplates = async () => {
     const config = dbTemplates.find((t) => t.templateId === template.templateId);
 
     if (config) {
-      return {
+      const merged = {
         ...template,
         ...config
       };
+      return merged;
     }
 
     return template;

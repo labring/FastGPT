@@ -89,7 +89,7 @@ const CustomDomain = () => {
             {loadingCustomDomainList ? <MyLoading /> : null}
             <Flex justifyContent="space-between" alignItems="center" w="100%">
               <Box fontSize="20px" fontWeight="500">
-                {t('account:custom_domain')}
+                {t('common:custom_domain')}
                 {customDomainList?.length ? (
                   `: (${customDomainList.length}/${teamPlanStatus?.standard?.customDomain})`
                 ) : (

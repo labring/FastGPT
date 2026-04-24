@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -20,12 +19,7 @@ import { useRouter } from 'next/router';
 import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import {
-  DashboardNavbar,
-  SIDEBAR_EXPANDED_WIDTH,
-  SIDEBAR_COLLAPSED_WIDTH
-} from '@/pageComponents/dashboard/Container';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
@@ -38,9 +32,6 @@ const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPl
 const ToolProvider = () => {
   const { t } = useSafeTranslation();
   const router = useRouter();
-  const { isPc } = useSystem();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
 
   const [localTools, setLocalTools] = useState<GetAdminSystemToolsResponseType>([]);
   const [editingToolId, setEditingToolId] = useState<string>();
@@ -69,178 +60,169 @@ const ToolProvider = () => {
   );
 
   return (
-    <>
-      {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
-      <Box
-        h={'100%'}
-        pl={isPc ? sidebarWidth : 0}
-        position={'relative'}
-        bg={'white'}
-        transition="padding-left 0.2s ease"
-      >
-        <MyBox pt={4} pl={3} pr={8} isLoading={loadingTools}>
-          {/* Header */}
-          <Flex alignItems={'center'}>
-            <Box flex={'1'} overflow={'auto'} color={'myGray.900'}>
-              {t('common:navbar.plugin')}
-            </Box>
-            <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
-              {t('app:toolkit_tags_manage')}
-            </Button>
-            <MyMenu
-              trigger="hover"
-              Button={
-                <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
-                  {t('app:toolkit_add_resource')}
-                </Button>
-              }
-              menuList={[
-                {
-                  children: [
-                    {
-                      label: t('app:toolkit_open_marketplace'),
-                      onClick: () => {
-                        router.push('/config/tool/marketplace');
-                      }
-                    },
-                    {
-                      label: t('app:toolkit_import_resource'),
-                      onClick: () => {
-                        onOpenImportModal();
-                      }
-                    },
-                    {
-                      label: t('app:toolkit_select_app'),
-                      onClick: () => {
-                        setEditingToolId('');
-                      }
-                    }
-                  ]
-                }
-              ]}
-            />
-          </Flex>
-
-          <Flex
-            bg={'white'}
-            mt={5}
-            h={'50px'}
-            rounded={'md'}
-            alignItems={'center'}
-            fontSize={'mini'}
-            fontWeight={'medium'}
-            color={'myGray.600'}
-          >
-            <Box w={2 / 10} pl={8}>
-              {t('app:toolkit_name')}
-            </Box>
-            <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
-            <Box w={2.5 / 10}>{t('common:Intro')}</Box>
-            <Box w={1 / 10} pl={6}>
-              {t('app:toolkit_status')}
-            </Box>
-            <Box w={1 / 10}>{t('app:toolkit_default_install')}</Box>
-            <Box w={1 / 10} display={'flex'} alignItems={'center'}>
-              {t('app:toolkit_token_fee')}
-              <QuestionTip
-                display={'flex'}
-                alignItems={'center'}
-                ml={1}
-                label={t('app:toolkit_token_fee_tip')}
-                color={'myGray.300'}
-              />
-            </Box>
-            <Box w={1 / 10} display={'flex'} alignItems={'center'}>
-              {t('app:toolkit_system_key')}
-              <QuestionTip
-                display={'flex'}
-                alignItems={'center'}
-                ml={1}
-                label={t('app:toolkit_system_key_tip')}
-                color={'myGray.300'}
-              />
-            </Box>
-          </Flex>
-
-          <Box overflow={'auto'} mt={2} h={'calc(100vh - 150px)'}>
-            {localTools.length > 0 ? (
-              <DndDrag<AdminSystemToolListItemType>
-                onDragEndCb={async (list: Array<AdminSystemToolListItemType>) => {
-                  const newOrder = list.map((item, index) => ({
-                    pluginId: item.id,
-                    pluginOrder: index
-                  }));
-                  setLocalTools(list);
-                  await putAdminUpdateToolOrder({ plugins: newOrder });
-                }}
-                dataList={localTools}
-              >
-                {({ provided }) => (
-                  <Flex
-                    gap={1}
-                    flex={1}
-                    flexDirection={'column'}
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                  >
-                    {localTools.map((item, index) => (
-                      <Draggable key={item.id} draggableId={item.id} index={index}>
-                        {(provided, snapshot) => (
-                          <ToolRow
-                            key={item.id}
-                            tool={item}
-                            setEditingToolId={setEditingToolId}
-                            setLocalTools={setLocalTools}
-                            provided={provided}
-                            snapshot={snapshot}
-                          />
-                        )}
-                      </Draggable>
-                    ))}
-                  </Flex>
-                )}
-              </DndDrag>
-            ) : (
-              <Center h={'full'}>
-                <EmptyTip text={t('app:toolkit_no_plugins')} py={2} />
-              </Center>
-            )}
+    <AccountContainer>
+      <Flex h={'100%'} flexDirection={'column'} py={4} px={6}>
+        <Flex alignItems={'center'} flexShrink={0}>
+          <Box flex={'1'} color={'myGray.900'}>
+            {t('common:system_tool_manage')}
           </Box>
+          <Button onClick={onOpenTagModal} variant={'whiteBase'} mr={2}>
+            {t('app:toolkit_tags_manage')}
+          </Button>
+          <MyMenu
+            trigger="hover"
+            Button={
+              <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
+                {t('app:toolkit_add_resource')}
+              </Button>
+            }
+            menuList={[
+              {
+                children: [
+                  {
+                    label: t('app:toolkit_open_marketplace'),
+                    onClick: () => {
+                      router.push('/config/tool/marketplace');
+                    }
+                  },
+                  {
+                    label: t('app:toolkit_import_resource'),
+                    onClick: () => {
+                      onOpenImportModal();
+                    }
+                  },
+                  {
+                    label: t('app:toolkit_select_app'),
+                    onClick: () => {
+                      setEditingToolId('');
+                    }
+                  }
+                ]
+              }
+            ]}
+          />
+        </Flex>
 
-          {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}
-          {isOpenImportModal && (
-            <ImportPluginModal
-              onClose={onCloseImportModal}
+        <Flex
+          bg={'myGray.50'}
+          mt={5}
+          h={'50px'}
+          flexShrink={0}
+          borderRadius={'md'}
+          alignItems={'center'}
+          fontSize={'mini'}
+          fontWeight={'medium'}
+          color={'myGray.600'}
+        >
+          <Box w={2 / 10} pl={8}>
+            {t('app:toolkit_name')}
+          </Box>
+          <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
+          <Box w={2.5 / 10}>{t('common:Intro')}</Box>
+          <Box w={1 / 10} pl={6}>
+            {t('app:toolkit_status')}
+          </Box>
+          <Box w={1 / 10}>{t('app:toolkit_default_install')}</Box>
+          <Box w={1 / 10} display={'flex'} alignItems={'center'}>
+            {t('app:toolkit_token_fee')}
+            <QuestionTip
+              display={'flex'}
+              alignItems={'center'}
+              ml={1}
+              label={t('app:toolkit_token_fee_tip')}
+              color={'myGray.300'}
+            />
+          </Box>
+          <Box w={1 / 10} display={'flex'} alignItems={'center'}>
+            {t('app:toolkit_system_key')}
+            <QuestionTip
+              display={'flex'}
+              alignItems={'center'}
+              ml={1}
+              label={t('app:toolkit_system_key_tip')}
+              color={'myGray.300'}
+            />
+          </Box>
+        </Flex>
+
+        <Box flex={'1 0 0'} overflow={'auto'} mt={2}>
+          {loadingTools ? null : localTools.length > 0 ? (
+            <DndDrag<AdminSystemToolListItemType>
+              onDragEndCb={async (list: Array<AdminSystemToolListItemType>) => {
+                const newOrder = list.map((item, index) => ({
+                  pluginId: item.id,
+                  pluginOrder: index
+                }));
+                setLocalTools(list);
+                await putAdminUpdateToolOrder({ plugins: newOrder });
+              }}
+              dataList={localTools}
+            >
+              {({ provided }) => (
+                <Flex
+                  gap={1}
+                  flex={1}
+                  flexDirection={'column'}
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                >
+                  {localTools.map((item, index) => (
+                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                      {(provided, snapshot) => (
+                        <ToolRow
+                          key={item.id}
+                          tool={item}
+                          setEditingToolId={setEditingToolId}
+                          setLocalTools={setLocalTools}
+                          provided={provided}
+                          snapshot={snapshot}
+                        />
+                      )}
+                    </Draggable>
+                  ))}
+                </Flex>
+              )}
+            </DndDrag>
+          ) : (
+            <Center h={'full'}>
+              <EmptyTip text={t('app:toolkit_no_plugins')} py={2} />
+            </Center>
+          )}
+        </Box>
+
+        {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}
+        {isOpenImportModal && (
+          <ImportPluginModal
+            onClose={onCloseImportModal}
+            onSuccess={refreshTools}
+            tools={localTools}
+          />
+        )}
+        {editingToolId !== undefined &&
+          splitCombineToolId(editingToolId).source === AppToolSourceEnum.systemTool && (
+            <SystemToolConfigModal
+              toolId={editingToolId}
               onSuccess={refreshTools}
-              tools={localTools}
+              onClose={() => setEditingToolId(undefined)}
             />
           )}
-          {editingToolId !== undefined &&
-            splitCombineToolId(editingToolId).source === AppToolSourceEnum.systemTool && (
-              <SystemToolConfigModal
-                toolId={editingToolId}
-                onSuccess={refreshTools}
-                onClose={() => setEditingToolId(undefined)}
-              />
-            )}
-          {editingToolId !== undefined &&
-            splitCombineToolId(editingToolId).source !== AppToolSourceEnum.systemTool && (
-              <WorkflowToolConfig
-                toolId={editingToolId}
-                onSuccess={refreshTools}
-                onClose={() => setEditingToolId(undefined)}
-              />
-            )}
-        </MyBox>
-      </Box>
-    </>
+        {editingToolId !== undefined &&
+          splitCombineToolId(editingToolId).source !== AppToolSourceEnum.systemTool && (
+            <WorkflowToolConfig
+              toolId={editingToolId}
+              onSuccess={refreshTools}
+              onClose={() => setEditingToolId(undefined)}
+            />
+          )}
+      </Flex>
+    </AccountContainer>
   );
 };
 
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['app', 'file']))
+      ...(await serviceSideProps(content, ['app', 'file', 'dataset']))
     }
   };
 }

@@ -212,7 +212,7 @@ const Header = ({
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
-            rootName={t('common:All')}
+            rootName={t('common:back')}
             paths={paths}
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
@@ -230,7 +230,6 @@ const Header = ({
               <>
                 {isPc && (
                   <MyTag
-                    mr={3}
                     type={'borderFill'}
                     showDot
                     colorSchema={
@@ -248,7 +247,7 @@ const Header = ({
                 )}
 
                 <IconButton
-                  mr={[2, 4]}
+                  mx={2}
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}

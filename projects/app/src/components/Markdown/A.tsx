@@ -24,6 +24,10 @@ import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { isDatabaseSource } from '@fastgpt/global/core/dataset/utils';
+import { isCorrectionRecord } from '@/global/core/chat/utils';
+
+export type CiteSourceInfo = { sourceName: string; datasetId: string; collectionId: string };
 
 export type AProps = {
   chatAuthData?: {
@@ -41,6 +45,7 @@ export type AProps = {
   hideCiteIcon?: boolean;
   citeStyle?: 'icon' | 'index';
   citeIndexMap?: Map<string, number>;
+  citeSourceMap?: Map<string, CiteSourceInfo>;
 };
 
 const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
@@ -63,52 +68,49 @@ const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
 const CiteLinkIndex = React.memo(function CiteLinkIndex({
   id,
   index,
-  chatAuthData
+  citeSourceMap
 }: {
   id: string;
   index: number;
-  chatAuthData?: AProps['chatAuthData'];
+  citeSourceMap?: AProps['citeSourceMap'];
 }) {
-  const { loading, runAsync } = useRequest((id: string) => getQuoteData({ id, ...chatAuthData }), {
-    manual: true
-  });
+  const sourceInfo = citeSourceMap?.get(id);
 
   if (!isObjectId(id) || index === 0) {
     return <></>;
   }
 
-  const handleClick = async () => {
-    const data = await runAsync(id);
-    if (data?.collection) {
-      const { datasetId, _id: collectionId } = data.collection;
-      window.open(
-        `/dataset/detail?datasetId=${datasetId}&collectionId=${collectionId}&currentTab=dataCard`,
-        '_blank'
-      );
-    }
+  const handleClick = () => {
+    if (!sourceInfo?.datasetId || isDatabaseSource(id) || isCorrectionRecord(id)) return;
+    window.open(
+      `/dataset/detail?datasetId=${sourceInfo.datasetId}&collectionId=${sourceInfo.collectionId}&currentTab=dataCard&activeId=${id}`,
+      '_blank'
+    );
   };
 
   return (
-    <chakra.span
-      display={'inline-flex'}
-      alignItems={'center'}
-      justifyContent={'center'}
-      verticalAlign={'1px'}
-      borderRadius={'50%'}
-      bg={'myGray.150'}
-      borderColor={'myGray.200'}
-      px={'3px'}
-      w={'16px'}
-      h={'16px'}
-      fontSize={'10px'}
-      fontWeight={500}
-      color={'#6C6F73'}
-      mx={'2px'}
-      cursor={loading ? 'wait' : 'pointer'}
-      onClick={handleClick}
-    >
-      {index}
-    </chakra.span>
+    <MyTooltip label={sourceInfo?.sourceName}>
+      <chakra.span
+        display={'inline-flex'}
+        alignItems={'center'}
+        justifyContent={'center'}
+        verticalAlign={'1px'}
+        borderRadius={'50%'}
+        bg={'myGray.150'}
+        borderColor={'myGray.200'}
+        px={'3px'}
+        w={'16px'}
+        h={'16px'}
+        fontSize={'10px'}
+        fontWeight={500}
+        color={'#6C6F73'}
+        mx={'2px'}
+        cursor={sourceInfo?.datasetId ? 'pointer' : 'default'}
+        onClick={handleClick}
+      >
+        {index}
+      </chakra.span>
+    </MyTooltip>
   );
 });
 
@@ -232,6 +234,7 @@ const A = ({
   hideCiteIcon,
   citeStyle,
   citeIndexMap,
+  citeSourceMap,
   ...props
 }: AProps & {
   children: any;
@@ -256,7 +259,7 @@ const A = ({
         <CiteLinkIndex
           id={content}
           index={citeIndexMap?.get(content) ?? 0}
-          chatAuthData={chatAuthData}
+          citeSourceMap={citeSourceMap}
         />
       );
     }

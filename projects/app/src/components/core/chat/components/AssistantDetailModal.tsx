@@ -47,7 +47,7 @@ interface ChatDetailModalProps {
 }
 
 const NodeToggleIcon = ({ isOpen, canExpand = true }: { isOpen: boolean; canExpand?: boolean }) => {
-  const color = canExpand ? (isOpen ? 'blue.600' : 'myGray.450') : 'rgba(99, 122, 153, 1)';
+  const color = canExpand ? (isOpen ? 'blue.600' : 'myGray.450') : 'rgba(99, 122, 153, 0.4)';
   const bg = canExpand && isOpen ? '#EAF3FF' : '';
 
   return (
@@ -450,6 +450,7 @@ const AgenticSearchNode = ({ data }: { data?: ChatHistoryItemResType }) => {
             borderRadius={'6px'}
             border={'1px solid'}
             borderColor={'borderColor.low'}
+            bg="myGray.35"
             p={'12px 16px'}
           >
             <Markdown source={reasoningText} />
@@ -1038,7 +1039,15 @@ const ChatDetailModal = ({
         {!loading && (
           <>
             {/* 用户问题区域 */}
-            <Box bg={'blue.50'} px={4} py={3} mb={4} borderRadius={6}>
+            <Box
+              bg={'blue.50'}
+              px={4}
+              py={3}
+              mb={4}
+              borderRadius={6}
+              border={'1px solid'}
+              borderColor={'blue.100'}
+            >
               <Box
                 fontSize={'sm'}
                 lineHeight={'22px'}

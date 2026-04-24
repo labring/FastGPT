@@ -36,7 +36,15 @@ const AppTemplateSchema = new Schema({
     type: Number,
     default: -1
   },
-  workflow: Object
+  workflow: Object,
+  experienceUrl: {
+    type: String,
+    default: ''
+  },
+  isMarketFeatured: {
+    type: Boolean,
+    default: false
+  }
 });
 
 AppTemplateSchema.index({ templateId: 1 });

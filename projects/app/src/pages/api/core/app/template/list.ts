@@ -115,7 +115,9 @@ async function handler(
       type: item.type,
       author: item.author,
       userGuide: item.userGuide,
-      workflow: {} as AppTemplateSchemaType['workflow']
+      workflow: {} as AppTemplateSchemaType['workflow'],
+      experienceUrl: item.experienceUrl,
+      isMarketFeatured: item.isMarketFeatured ?? false
     };
   });
 

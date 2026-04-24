@@ -120,7 +120,7 @@ const Team = () => {
             <Flex gap={2} color={'myGray.900'}>
               <Icon name="support/user/usersLight" w={'1.25rem'} h={'1.25rem'} />
               <Box fontWeight={'500'} fontSize={'1rem'}>
-                {t('account:team')}
+                {t('common:team')}
               </Box>
             </Flex>
             <Flex align={'center'} ml={6}>

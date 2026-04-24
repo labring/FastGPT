@@ -73,7 +73,9 @@ export async function getServerSideProps(content: any) {
         'dataset',
         'app',
         'common',
-        'account'
+        'account',
+        'chat',
+        'file'
       ]))
     }
   };

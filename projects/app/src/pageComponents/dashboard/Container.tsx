@@ -1,5 +1,4 @@
 // @file Dashboard 容器组件，包含新版侧边导航栏（支持展开/折叠）
-'use client';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Collapse, Flex, Text, VStack, useDisclosure } from '@chakra-ui/react';
 import BgDecoration from './BgDecoration';
@@ -100,7 +99,7 @@ const NavItem = ({
           <Text
             ml={indent ? 0 : '9px'}
             fontSize={indent ? '13px' : '14px'}
-            fontWeight={isActive ? 600 : 500}
+            fontWeight={isActive ? 600 : indent ? 'normal' : 500}
             color={isActive ? '#156AD9' : indent ? '#3E4A59' : '#2D3540'}
             _groupHover={{ color: isActive ? '#156AD9' : indent ? '#3E4A59' : '#2D3540' }}
             whiteSpace="nowrap"
@@ -122,7 +121,7 @@ type SubNavGroupProps = {
   isCollapsed: boolean;
   isExpanded: boolean;
   onToggle: () => void;
-  items: { key: string; label: string; path: string }[];
+  items: { key: string; label: string; path: string; activePaths?: string[] }[];
   currentPath: string;
   onItemClick: (path: string) => void;
 };
@@ -216,7 +215,11 @@ const SubNavGroup = ({
               key={item.key}
               icon=""
               label={item.label}
-              isActive={currentPath.startsWith(item.path)}
+              isActive={
+                item.activePaths
+                  ? item.activePaths.some((p) => currentPath.startsWith(p))
+                  : currentPath.startsWith(item.path)
+              }
               isCollapsed={false}
               onClick={() => onItemClick(item.path)}
               indent
@@ -353,7 +356,7 @@ const SubNavSettings = ({
             >
               <Text
                 fontSize="13px"
-                fontWeight={item.path && currentPath.startsWith(item.path) ? 600 : 500}
+                fontWeight={item.path && currentPath.startsWith(item.path) ? 600 : 'normal'}
                 color={item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'}
                 _groupHover={{
                   color: item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'
@@ -415,41 +418,41 @@ export const DashboardNavbar = ({
 
   const settingsItems = useMemo<SettingsItem[]>(
     () => [
-      { key: 'info', label: t('account:personal_information'), path: '/account/info' },
+      { key: 'info', label: t('common:personal_information'), path: '/account/info' },
       ...(feConfigs?.isPlus
         ? [
-            { key: 'team', label: t('account:team'), path: '/account/team' },
-            { key: 'usage', label: t('account:usage_records'), path: '/account/usage' }
+            { key: 'team', label: t('common:team'), path: '/account/team' },
+            { key: 'usage', label: t('common:usage_records'), path: '/account/usage' }
           ]
         : []),
       ...(feConfigs?.show_pay && userInfo?.team?.permission.hasManagePer
-        ? [{ key: 'bill', label: t('account:bills_and_invoices'), path: '/account/bill' }]
+        ? [{ key: 'bill', label: t('common:bills_and_invoices'), path: '/account/bill' }]
         : []),
-      { key: 'thirdParty', label: t('account:third_party'), path: '/account/thirdParty' },
+      { key: 'thirdParty', label: t('common:third_party'), path: '/account/thirdParty' },
       ...(feConfigs?.isPlus && feConfigs?.customDomain?.enable
         ? [
             {
               key: 'customDomain',
-              label: t('account:custom_domain'),
+              label: t('common:custom_domain'),
               path: '/account/customDomain'
             }
           ]
         : []),
-      { key: 'model', label: t('account:model_provider'), path: '/account/model' },
+      { key: 'model', label: t('common:model_provider'), path: '/account/model' },
+      ...(userInfo?.username === 'root'
+        ? [{ key: 'config', label: t('common:system_tool_manage'), path: '/config/tool' }]
+        : []),
       ...(feConfigs?.show_promotion && userInfo?.team?.permission.isOwner
-        ? [{ key: 'promotion', label: t('account:promotion_records'), path: '/account/promotion' }]
+        ? [{ key: 'promotion', label: t('common:promotion_records'), path: '/account/promotion' }]
         : []),
       ...(userInfo?.team?.permission.hasApikeyCreatePer
-        ? [{ key: 'apikey', label: t('account:api_key'), path: '/account/apikey' }]
+        ? [{ key: 'apikey', label: t('common:api_key'), path: '/account/apikey' }]
         : []),
       ...(feConfigs?.isPlus
-        ? [{ key: 'inform', label: t('account:notifications'), path: '/account/inform' }]
+        ? [{ key: 'inform', label: t('common:notifications'), path: '/account/inform' }]
         : []),
-      { key: 'setting', label: t('account:language'), path: '/account/setting' },
-      { key: 'loginout', label: t('account:logout'), isLogout: true },
-      ...(userInfo?.username === 'root'
-        ? [{ key: 'config', label: t('common:navbar.Config'), path: '/config/tool' }]
-        : [])
+      { key: 'setting', label: t('common:language'), path: '/account/setting' },
+      { key: 'loginout', label: t('common:logout'), isLogout: true }
     ],
     [feConfigs, t, userInfo]
   );
@@ -458,7 +461,12 @@ export const DashboardNavbar = ({
     () => [
       { key: 'agent', label: t('common:App'), path: '/dashboard/agent' },
       { key: 'skill', label: t('common:navbar.Skill'), path: '/dashboard/skill' },
-      { key: 'tool', label: t('common:navbar.Tools'), path: '/dashboard/tool' },
+      {
+        key: 'tool',
+        label: t('common:navbar.Tools'),
+        path: '/dashboard/tool',
+        activePaths: ['/dashboard/tool', '/dashboard/systemTool']
+      },
       { key: 'mcp', label: t('common:mcp_server'), path: '/dashboard/mcpServer' }
     ],
     [t]
@@ -474,11 +482,14 @@ export const DashboardNavbar = ({
         top={0}
         h="100vh"
         w={sidebarWidth}
-        backgroundColor="#E6F1FF"
-        backgroundImage="url('/imgs/sidebar-texture.png')"
-        backgroundSize={isCollapsed ? `${SIDEBAR_EXPANDED_WIDTH} 270px` : '100% 270px'}
-        backgroundRepeat="no-repeat"
-        backgroundPosition={isCollapsed ? 'bottom right' : 'bottom'}
+        style={{
+          backgroundImage: `url('/imgs/sidebar-texture.png'), linear-gradient(180deg, rgba(242, 248, 255, 1) 0%, rgba(239, 245, 252, 1) 26%)`,
+          backgroundSize: isCollapsed
+            ? `${SIDEBAR_EXPANDED_WIDTH} 270px, cover`
+            : '100% 270px, cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: isCollapsed ? 'bottom right' : 'bottom'
+        }}
         zIndex={200}
         transition="width 0.2s ease"
         overflow="hidden"
@@ -498,7 +509,7 @@ export const DashboardNavbar = ({
             borderRadius="8px"
           />
           {!isCollapsed && (
-            <Text ml="8px" fontSize="20px" fontWeight={600} color="#12161A" whiteSpace="nowrap">
+            <Text ml="8px" fontSize="18px" fontWeight={600} color="#12161A" whiteSpace="nowrap">
               {feConfigs?.systemTitle}
             </Text>
           )}
@@ -519,7 +530,7 @@ export const DashboardNavbar = ({
             {/* 模板市场 */}
             <NavItem
               icon="core/importTemplateIcon"
-              label={t('common:template_market')}
+              label={t('common:app_market')}
               isActive={isActivePrefix(['/dashboard/templateMarket'])}
               isCollapsed={isCollapsed}
               onClick={() => router.push('/dashboard/templateMarket')}
@@ -727,11 +738,13 @@ const DashboardContainer = ({
           '/dashboard/evaluation',
           '/dashboard/mcpServer'
         ].includes(router.pathname) && <BgDecoration />}
-        {children({
-          templateTags,
-          templateList,
-          MenuIcon
-        })}
+        <Box position="relative" zIndex={1} h="100%">
+          {children({
+            templateTags,
+            templateList,
+            MenuIcon
+          })}
+        </Box>
       </Box>
     </MyBox>
   );

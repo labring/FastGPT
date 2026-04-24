@@ -33,11 +33,13 @@ const A = dynamic(() => import('./A'), { ssr: false });
 type Props = {
   source?: string;
   showAnimation?: boolean;
+  hideCursor?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
   hideCiteIcon?: boolean;
   citeStyle?: 'icon' | 'index';
 } & AProps;
+
 const Markdown = (props: Props) => {
   const source = props.source || '';
 
@@ -50,25 +52,39 @@ const Markdown = (props: Props) => {
 const MarkdownRender = ({
   source = '',
   showAnimation,
+  hideCursor,
   isDisabled,
   forbidZhFormat,
   hideCiteIcon,
   citeStyle,
 
   chatAuthData,
-  onOpenCiteModal
+  onOpenCiteModal,
+  citeSourceMap
 }: Props) => {
   const citeIndexMap = useMemo(() => {
     if (citeStyle !== 'index') return undefined;
     const map = new Map<string, number>();
+    const collectionIndexMap = new Map<string, number>();
     const regex = /[\[【]([a-f0-9]{24})[\]】]\((?:CITE|QUOTE)[^)]*\)/g;
     let match;
     let index = 1;
     while ((match = regex.exec(source)) !== null) {
-      if (!map.has(match[1])) map.set(match[1], index++);
+      const quoteId = match[1];
+      if (!map.has(quoteId)) {
+        const collectionId = citeSourceMap?.get(quoteId)?.collectionId;
+        if (!collectionId) continue; // 跳过不在 citeSourceMap 中的引用，避免产生多余序号
+        if (collectionIndexMap.has(collectionId)) {
+          map.set(quoteId, collectionIndexMap.get(collectionId)!);
+        } else {
+          map.set(quoteId, index);
+          collectionIndexMap.set(collectionId, index);
+          index++;
+        }
+      }
     }
     return map;
-  }, [citeStyle, source]);
+  }, [citeStyle, source, citeSourceMap]);
 
   const components = useCreation(() => {
     return {
@@ -85,10 +101,11 @@ const MarkdownRender = ({
           hideCiteIcon={hideCiteIcon}
           citeStyle={citeStyle}
           citeIndexMap={citeIndexMap}
+          citeSourceMap={citeSourceMap}
         />
       )
     };
-  }, [chatAuthData, onOpenCiteModal, showAnimation, citeStyle, citeIndexMap]);
+  }, [chatAuthData, onOpenCiteModal, showAnimation, citeStyle, citeIndexMap, citeSourceMap]);
 
   const formatSource = useMemo(() => {
     const text = showAnimation || forbidZhFormat ? source : mdTextFormat(source);
@@ -103,7 +120,7 @@ const MarkdownRender = ({
     <Box position={'relative'}>
       <ReactMarkdown
         className={`markdown ${styles.markdown}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${showAnimation ? `${formatSource && !hideCursor ? styles.waitingAnimation : ''}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
         rehypePlugins={[

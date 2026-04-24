@@ -189,7 +189,7 @@ const TeamPlanStatusCard = () => {
             {t(planName as any)}
           </Box>
         </Flex>
-        <Button
+        {/* <Button
           borderRadius={'6px'}
           bg={'linear-gradient(90deg, #64C2DB 0%, #7476ED 29.42%, #C994DF 57.87%, #E56F8C 95.82%)'}
           color={'white'}
@@ -202,7 +202,7 @@ const TeamPlanStatusCard = () => {
           {teamPlanStatus.standard?.currentSubLevel === StandardSubLevelEnum.free
             ? t('app:upgrade')
             : t('app:recharge')}
-        </Button>
+        </Button> */}
       </Flex>
     </Box>
   );

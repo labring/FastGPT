@@ -6,25 +6,23 @@ import { getTeamSystemPluginList, postToggleInstallPlugin } from '@/web/core/plu
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, VStack } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMemo, useState, useReducer, useRef } from 'react';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
-import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import { useUserStore } from '../../../web/support/user/useUserStore';
 import { useRouter } from 'next/router';
-import { getDocPath } from '@/web/common/system/doc';
 import type { GetTeamPluginListResponseType } from '@fastgpt/global/openapi/core/plugin/team/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getTeamToolDetail } from '@/web/core/plugin/team/api';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
+import MyTabBar from '@/components/MyTabBar';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 type LoadingAction = { type: 'TRY_ADD'; pluginId: string } | { type: 'REMOVE'; pluginId: string };
 
@@ -55,24 +53,20 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
 
-  const [installedFilter, setInstalledFilter] = useState<'all' | 'installed' | 'uninstalled'>(
-    'all'
-  );
   const [searchText, setSearchText] = useState('');
 
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [loadingPluginIds, dispatchLoading] = useReducer(loadingReducer, new Set<string>());
   const loadingPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState<string>('all');
   const { data: tags = [] } = useRequest(getPluginToolTags, {
     manual: false
   });
 
   const toolTabList = useMemo(
     () => [
-      { label: t('common:navbar.Tools'), value: 'my', path: '/dashboard/tool' },
+      { label: t('common:navbar.MyTools'), value: 'my', path: '/dashboard/tool' },
       { label: t('common:navbar.system_tool'), value: 'system', path: '/dashboard/systemTool' }
     ],
     [t]
@@ -120,6 +114,17 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     }
   );
 
+  const filterTabList = useMemo(
+    () => [
+      { key: 'all', label: t('common:All') },
+      ...tags.map((tag) => ({
+        key: tag.tagId,
+        label: parseI18nString(tag.tagName, i18n.language)
+      }))
+    ],
+    [tags, t, i18n.language]
+  );
+
   const displayTools = useMemo(() => {
     return tools
       .filter((tool) => {
@@ -130,15 +135,8 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         return name.includes(search) || intro.includes(search);
       })
       .filter((tool) => {
-        if (selectedTagIds.length === 0) return true;
-        return tool.tags?.some((tagId) => selectedTagIds.includes(tagId));
-      })
-      .filter((tool) => {
-        if (installedFilter === 'all') return true;
-        const isInstalled = tool.installed;
-        if (installedFilter === 'installed') return !!isInstalled;
-        if (installedFilter === 'uninstalled') return !isInstalled;
-        return true;
+        if (selectedTagId === 'all') return true;
+        return tool.tags?.some((tagId) => tagId === selectedTagId);
       })
       .map<ToolCardItemType>((tool) => ({
         id: tool.id,
@@ -153,7 +151,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         installed: tool.installed,
         associatedPluginId: tool.associatedPluginId
       }));
-  }, [tools, searchText, selectedTagIds, installedFilter, tags, i18n.language]);
+  }, [tools, searchText, selectedTagId, tags, i18n.language]);
 
   return (
     <Flex flexDirection={'column'} h={'full'}>
@@ -166,13 +164,14 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flexDirection={'column'}
           isLoading={loadingTools && displayTools.length === 0}
         >
-          <Box px={4} flexShrink={0}>
-            {isPc && (
-              <Flex alignItems={'center'} position={'relative'} mt={8} mb={4}>
-                <Box fontSize={'20px'} fontWeight={'medium'} color={'myGray.900'} flex={1}>
+          <Box pt={6} flexShrink={0}>
+            {/* 第一行：标题 + MyTabs 居中 */}
+            {isPc ? (
+              <Flex alignItems="center" mb={4} position="relative" minH="36px">
+                <Box fontSize="20px" fontWeight="medium" color="myGray.900">
                   {t('app:core.module.template.System Tools')}
                 </Box>
-                <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+                <Box position="absolute" left="50%" transform="translateX(-50%)">
                   <MyTabs
                     tabs={toolTabList}
                     value="system"
@@ -182,161 +181,33 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     }}
                   />
                 </Box>
-                <Flex flex={1} justifyContent={'flex-end'} gap={4}>
-                  {feConfigs?.docUrl && (
-                    <Button
-                      onClick={() =>
-                        window.open(
-                          getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
-                          '_blank'
-                        )
-                      }
-                    >
-                      {t('app:toolkit_contribute_resource')}
-                    </Button>
-                  )}
-                  {feConfigs?.submitPluginRequestUrl && (
-                    <Button
-                      variant={'whiteBase'}
-                      onClick={() => {
-                        window.open(feConfigs.submitPluginRequestUrl);
-                      }}
-                    >
-                      {t('app:toolkit_marketplace_submit_request')}
-                    </Button>
-                  )}
-                </Flex>
               </Flex>
+            ) : (
+              <Box mb={4}>{MenuIcon}</Box>
             )}
-            {/* Tags */}
-            <Flex mt={2} mb={3} alignItems={'center'}>
-              <Flex alignItems={'start'} flex={'1 0 0'} w={0} mr={[3, 10]}>
-                {!isPc && (
-                  <Box mr={2} mt={2}>
-                    {MenuIcon}
-                  </Box>
-                )}
-                {isPc && (
-                  <Flex
-                    alignItems={'center'}
-                    transition={'all 0.3s'}
-                    w={isSearchExpanded ? '320px' : 'auto'}
-                    mr={4}
-                  >
-                    {isSearchExpanded ? (
-                      <InputGroup>
-                        <MyIcon
-                          position={'absolute'}
-                          zIndex={10}
-                          left={2.5}
-                          name={'common/searchLight'}
-                          w={5}
-                          color={'primary.600'}
-                          top={'50%'}
-                          transform={'translateY(-50%)'}
-                        />
-                        <Input
-                          px={8}
-                          h={'35px'}
-                          borderRadius={'md'}
-                          placeholder={t('common:search_tool')}
-                          value={searchText}
-                          onChange={(e) => setSearchText(e.target.value)}
-                          autoFocus
-                          onBlur={() => {
-                            if (!searchText) {
-                              setIsSearchExpanded(false);
-                            }
-                          }}
-                        />
-                        {searchText && (
-                          <MyIcon
-                            position={'absolute'}
-                            zIndex={10}
-                            right={2.5}
-                            name={'common/closeLight'}
-                            w={4}
-                            top={'50%'}
-                            transform={'translateY(-50%)'}
-                            color={'myGray.500'}
-                            cursor={'pointer'}
-                            onClick={() => {
-                              setSearchText('');
-                              setIsSearchExpanded(false);
-                            }}
-                          />
-                        )}
-                      </InputGroup>
-                    ) : (
-                      <Flex
-                        alignItems={'center'}
-                        justifyContent={'center'}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
-                        _hover={{ bg: 'myGray.100' }}
-                        onClick={() => setIsSearchExpanded(true)}
-                        p={2}
-                        h={'35px'}
-                        border={'1px solid'}
-                        borderColor={'myGray.200'}
-                      >
-                        <MyIcon name={'common/searchLight'} w={5} color={'primary.600'} mr={2} />
-                        <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.500'}>
-                          {t('common:Search')}
-                        </Box>
-                      </Flex>
-                    )}
-                  </Flex>
-                )}
-                <Box flex={'1'} overflow={'auto'} mb={-1}>
-                  <ToolTagFilterBox
-                    tags={tags}
-                    selectedTagIds={selectedTagIds}
-                    onTagSelect={setSelectedTagIds}
-                  />
-                </Box>
-              </Flex>
 
-              <MyMenu
-                trigger="hover"
-                Button={
-                  <Flex alignItems={'center'} cursor={'pointer'} pl={1}>
-                    <MyIcon name="core/chat/chevronDown" w={4} mr={1} />
-                    <Box fontSize={'12px'}>
-                      {installedFilter === 'installed'
-                        ? t('app:toolkit_installed')
-                        : installedFilter === 'uninstalled'
-                          ? t('app:toolkit_uninstalled')
-                          : t('common:All')}
-                    </Box>
-                  </Flex>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        label: t('common:All'),
-                        onClick: () => setInstalledFilter('all'),
-                        isActive: installedFilter === 'all'
-                      },
-                      {
-                        label: t('app:toolkit_installed'),
-                        onClick: () => setInstalledFilter('installed'),
-                        isActive: installedFilter === 'installed'
-                      },
-                      {
-                        label: t('app:toolkit_uninstalled'),
-                        onClick: () => setInstalledFilter('uninstalled'),
-                        isActive: installedFilter === 'uninstalled'
-                      }
-                    ]
-                  }
-                ]}
-              />
+            {/* 第二行：MyTabBar tag 筛选（左）+ 搜索框（右） */}
+            <Flex mb={4} alignItems="center" gap={3}>
+              <Box flex={1} minW={0}>
+                <MyTabBar
+                  tabs={filterTabList}
+                  activeKey={selectedTagId}
+                  onChange={(key) => setSelectedTagId(key)}
+                />
+              </Box>
+              <Box w="250px" flexShrink={0} ml={'40px'}>
+                <SearchInput
+                  h="36px"
+                  bg="white"
+                  placeholder={t('common:Search')}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                />
+              </Box>
             </Flex>
           </Box>
 
-          <Box flex={1} overflowY={'auto'} px={4} pb={6}>
+          <Box flex={1} overflowY={'auto'} pb={6}>
             {displayTools.length > 0 ? (
               <Grid
                 gridTemplateColumns={[

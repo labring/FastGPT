@@ -179,7 +179,7 @@ const LogList: React.FC<LogListProps> = ({ filters }) => {
   });
 
   return (
-    <MyBox px={[4, 8]} isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'}>
+    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'}>
       <TableContainer flex={'1 0 0'} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
