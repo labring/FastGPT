@@ -243,6 +243,7 @@ export function agentForm2AppWorkflow(
                 limit: data.dataset.limit,
                 searchMode: data.dataset.searchMode,
                 embeddingWeight: data.dataset.embeddingWeight,
+                embeddingModel: data.dataset.embeddingModel,
                 usingReRank: data.dataset.usingReRank,
                 rerankModel: data.dataset.rerankModel,
                 rerankWeight: data.dataset.rerankWeight,

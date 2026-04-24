@@ -29,6 +29,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -52,21 +53,24 @@ const DatasetParamsModal = ({
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
   collectionFilterMatch,
+  embeddingModel,
   maxTokens,
   hasDatabaseKnowledge = false,
   hasOtherKnowledge = true,
   generateSqlModel = '',
+  datasetVectorModel,
   onClose,
   onSuccess
 }: AppDatasetSearchParamsType & {
   maxTokens?: number; // limit max tokens
+  datasetVectorModel?: string;
   onClose: () => void;
   onSuccess: (e: AppDatasetSearchParamsType) => void;
   hasDatabaseKnowledge?: boolean;
   hasOtherKnowledge?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
+  const { reRankModelList, llmModelList, embeddingModelList, defaultModels } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
@@ -87,6 +91,11 @@ const DatasetParamsModal = ({
     [reRankModelList]
   );
 
+  const embeddingModelSelectList = useMemo(
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
+    [embeddingModelList, datasetVectorModel]
+  );
+
   const { register, setValue, getValues, handleSubmit, watch } =
     useForm<AppDatasetSearchParamsType>({
       defaultValues: {
@@ -102,12 +111,14 @@ const DatasetParamsModal = ({
         datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
         datasetSearchExtensionBg,
         generateSqlModel: hasDatabaseKnowledge ? generateSqlModel || defaultModels.llm?.model : '',
-        collectionFilterMatch
+        collectionFilterMatch,
+        embeddingModel: embeddingModel || ''
       }
     });
 
   const searchModeWatch = watch('searchMode');
   const embeddingWeightWatch = watch('embeddingWeight');
+  const embeddingModelWatch = watch('embeddingModel');
   const fullTextWeightWatch = useMemo(() => {
     const val = 1 - (embeddingWeightWatch || 0.5);
     return Number(val.toFixed(2));
@@ -146,6 +157,27 @@ const DatasetParamsModal = ({
     queryExtensionModel,
     setValue
   ]);
+
+  useEffect(() => {
+    if (!datasetVectorModel) {
+      setValue('embeddingModel', '');
+      return;
+    }
+    // 选项列表未加载完成时不做校验，避免异步数据导致已保存的微调模型被误清空
+    if (embeddingModelSelectList.length === 0) return;
+
+    const current = getValues('embeddingModel');
+    // 当前值为空，联动设置为知识库向量模型
+    if (!current) {
+      setValue('embeddingModel', datasetVectorModel);
+      return;
+    }
+    // 当前值有值时，校验是否在有效选项中；若无效则回退为当前知识库向量模型
+    const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
+    if (!validIds.has(current)) {
+      setValue('embeddingModel', datasetVectorModel);
+    }
+  }, [datasetVectorModel, embeddingModelSelectList, getValues, setValue]);
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
@@ -213,6 +245,29 @@ const DatasetParamsModal = ({
     );
   }, [queryExtensionModelList, showModelTitle, t]);
 
+  const embeddingModelFormItem = useMemo(
+    () => (
+      <HStack mb={3}>
+        <HStack spacing={1} flex={'0 0 100px'} color={'myGray.700'}>
+          <Box fontSize={'sm'}>{t('common:core.ai.model.Vector Model')}</Box>
+          <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+        </HStack>
+        <Box flex={'1 0 0'}>
+          <SelectAiModel
+            bg={'myGray.50'}
+            h={'36px'}
+            value={embeddingModelWatch}
+            list={embeddingModelSelectList}
+            onChange={(val) => {
+              setValue(NodeInputKeyEnum.datasetSearchEmbeddingModel, val);
+            }}
+          />
+        </Box>
+      </HStack>
+    ),
+    [embeddingModelWatch, embeddingModelSelectList, setValue, t]
+  );
+
   return (
     <MyModal
       isOpen={true}
@@ -261,7 +316,9 @@ const DatasetParamsModal = ({
                     {
                       title: t('common:core.dataset.search.mode.embedding'),
                       desc: t('common:core.dataset.search.mode.embedding desc'),
-                      value: DatasetSearchModeEnum.embedding
+                      value: DatasetSearchModeEnum.embedding,
+                      children:
+                        searchModeWatch === DatasetSearchModeEnum.embedding && embeddingModelFormItem
                     },
                     {
                       title: t('common:core.dataset.search.mode.fullTextRecall'),
@@ -274,6 +331,7 @@ const DatasetParamsModal = ({
                       value: DatasetSearchModeEnum.mixedRecall,
                       children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && (
                         <Box mt={3}>
+                          {embeddingModelFormItem}
                           <HStack justifyContent={'space-between'}>
                             <Flex alignItems={'center'}>
                               <Box fontSize={'sm'} color={'myGray.900'}>

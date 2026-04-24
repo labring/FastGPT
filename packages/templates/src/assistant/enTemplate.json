@@ -240,7 +240,7 @@
             "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
-            "value": true,
+            "value": false,
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -251,7 +251,7 @@
             "valueType": "string",
             "debugLabel": "",
             "toolDescription": "",
-            "value": "bge-reranker-large"
+            "value": ""
           },
           {
             "key": "rerankMethod",

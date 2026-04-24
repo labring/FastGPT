@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -79,7 +79,23 @@ const EditForm = ({
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const datasetVectorModel = useMemo(
+    () => selectDatasets[0]?.vectorModel?.model,
+    [selectDatasets]
+  );
   const [, startTst] = useTransition();
+
+  // 知识库向量模型切换时，联动重置 embeddingModel
+  const prevDatasetVectorModelRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevDatasetVectorModelRef.current;
+    prevDatasetVectorModelRef.current = datasetVectorModel;
+    if (prev === undefined || prev === datasetVectorModel) return;
+    setAppForm((state) => ({
+      ...state,
+      dataset: { ...state.dataset, embeddingModel: datasetVectorModel || '' }
+    }));
+  }, [datasetVectorModel, setAppForm]);
 
   const knowledgeTypeConfig = useMemo(() => {
     return {
@@ -594,6 +610,7 @@ const EditForm = ({
         <DatasetParamsModal
           {...appForm.dataset}
           maxTokens={tokenLimit}
+          datasetVectorModel={datasetVectorModel}
           onClose={onCloseDatasetParams}
           generateSqlModel={appForm.dataset.generateSqlModel}
           {...knowledgeTypeConfig}

@@ -94,6 +94,7 @@ export type AppDatasetSearchParamsType = {
   limit?: number; // limit max tokens
   similarity?: number;
   embeddingWeight?: number; // embedding weight, fullText weight = 1 - embeddingWeight
+  embeddingModel?: string; // embedding model for query vectorization
 
   usingReRank?: boolean;
   rerankModel?: string;
