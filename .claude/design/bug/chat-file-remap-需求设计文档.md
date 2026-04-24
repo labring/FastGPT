@@ -24,7 +24,7 @@
 2. 历史记录中每一条带 file URL 的 human message，都要在运行时把自己的文件内容注入回自己的 user message。
 3. 保存层保持原始 `userQuestion`，不把 `<FilesContent>` 固化入库。
 4. 不做历史数据回填，不走 `file_url` 直传模型方案。
-5. 历史文件与当前轮文件解析总量沿用 `chatConfig.fileSelectConfig.maxFiles`。
+5. 每条 user query 的文件解析数量沿用 `chatConfig.fileSelectConfig.maxFiles`，不做跨 message URL 去重或共享缓存。
 
 ### 1.2 目标
 
@@ -55,7 +55,7 @@
 |---|---|---|---|
 | 业务目标 | 文件内容进入 LLM user message，不进 system prompt | 无 | 已确认 |
 | 历史行为 | 历史记录里每条 file URL 都需要注入回对应 user message | 无 | 已确认 |
-| 文件上限 | 历史+当前轮文件解析总数沿用 `maxFiles` | 无 | 已确认 |
+| 文件上限 | 每条 user query 文件解析数量沿用 `maxFiles` | 无 | 已确认 |
 | 保存层 | 不改写 `userQuestion`，不把 `<FilesContent>` 入库 | 无 | 对齐 PR review |
 | 数据模型 | 不改 DB schema，不新增字段 | 无 | 已确认 |
 | API 行为 | 对外请求/响应协议不变 | 无 | 已确认 |
@@ -84,7 +84,7 @@
 2. Chat node 构造 LLM messages 前，对历史 human messages 与当前轮 user message 做运行时文件内容注入。
 3. Tool node 在无 `readFiles` tool 时执行同样的逐条 user message 注入；有 `readFiles` tool 时跳过预解析。
 4. 文件内容只注入 user message，不进入 system prompt。
-5. 按消息顺序解析历史+当前轮文件，总解析数量受 `maxFiles` 控制。
+5. 按 message 并行重写 user query，单条 user query 内文件解析数量受 `maxFiles` 控制。
 6. 补齐对应回归测试与文档说明。
 
 ### 4.2 Out of Scope（本期不做）
@@ -100,7 +100,7 @@
 | 方案 | 核心思路 | 优点 | 风险 | 实施成本 | 结论 |
 |---|---|---|---|---|---|
 | 方案A：保存前固化 | 在保存前把 file 解析文本拼到 `userContent` 并入库 | 后续回放天然复用 | 污染原始输入，已被 review 指出不合适 | 中 | 放弃 |
-| 方案B：运行时逐条 user 注入（推荐） | 发给模型前增强 messages 副本，每条 human file 回填到自己的 user message | 不污染保存层，满足 user 而非 system，历史文件后续可用 | 每次请求需要重新解析，受 `maxFiles` 限制 | 中 | 推荐 |
+| 方案B：运行时逐条 user 注入（推荐） | 发给模型前增强 messages 副本，每条 human file 回填到自己的 user message，messages 并行处理 | 不污染保存层，满足 user 而非 system，历史文件后续可用 | 每次请求可能重新解析，受单条 query `maxFiles` 限制 | 中 | 推荐 |
 | 方案C：直传 `file_url` 给模型 | 去掉过滤，依赖模型直接处理文件链接 | 表面改动少 | 多模型/OpenAI 兼容实现不稳定，容易报参错 | 中 | 放弃 |
 | 方案D：历史回填 + 新流量修复 | 批量补齐旧库，再修新流量 | 历史一致性最好 | 工程面大、风险高、超出本期目标 | 高 | 本期不做 |
 
@@ -127,20 +127,22 @@
 | `projects/app/src/pages/api/v2/chat/completions.ts` | `handler` | 同 v1，`prepare/finalize/updateInteractive` 使用原始 `userQuestion` | 对齐 review |
 | `projects/app/src/pages/api/core/chat/chatTest.ts` | `handler` | 同 v1/v2，调试链路也不保存增强内容 | 修复 review 评论点 |
 | `packages/service/core/workflow/dispatch/ai/chat.ts` | `getMultiInput/getChatMessages` | 构造 LLM messages 前增强运行时副本：历史和当前轮每条 user message 注入自己的文件内容；文件内容不进 system | Chat node 满足历史逐条注入 |
-| `packages/service/core/workflow/dispatch/ai/tool/index.ts` | `getMultiInput/dispatchRunTools` | 无 `readFiles` tool 时同 Chat；有 `readFiles` tool 时跳过预解析 | 避免重复读取 |
-| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `getFileContentFromLinks` / 历史文件提取能力 | 复用文件解析能力；必要时新增按 message 归属收集 URL 的局部 helper | 不改对外 API |
+| `packages/service/core/workflow/dispatch/ai/tool/index.ts` | `getMultiInput/dispatchRunTools` | 无 `readFiles` tool 时同 Chat；有 `readFiles` tool 时跳过预解析 | 避免与 readFiles tool 职责冲突 |
+| `packages/service/core/workflow/utils/context.ts` | `rewriteUserQueryWithFileContent` | 承载单条 user query 的文件内容重写逻辑，外层并行处理 history/current messages | 不污染 readFiles tool 职责 |
+| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `normalizeReadableFileUrl` / `getFileContentFromLinks` | `getFileContentFromLinks` 统一负责 URL 标准化、过滤、文件读取与解析；`normalizeReadableFileUrl` 仅作为底层清洗工具 | 不改对外 API |
 | `packages/service/core/ai/llm/utils.ts` | `loadRequestMessages` | 保持 `file_url` 过滤逻辑；确保同条消息 text 不被过滤 | 回归保障 |
 
 ### 6.4 运行时注入规则
 
 1. 使用消息副本，不修改 `histories`、`query`、`userQuestion` 原对象。
-2. 按消息顺序收集文件：历史 human messages 从旧到新，然后当前轮 user message。
-3. URL 去重后受 `maxFiles` 总量限制；超过上限的文件保留 file part，但不注入 `<FilesContent>`。
-4. 文件解析结果回填到原本所属的 user message：
+2. Chat/Tool 外层用 `Promise.all` 并行处理运行时 messages。
+3. 单条 user query 只收集本条 `file.url`；不做跨 message URL 去重，不共享解析缓存。
+4. `getFileContentFromLinks` 负责 URL 标准化、过滤、`maxFiles` 截断和文件解析。
+5. 文件解析结果回填到原本所属的 user message：
    - 原 message 已有 text：追加 `\n\n===---===---===\n\n<FilesContent>...`。
    - 原 message 只有 file：新增一个 text part 存放 `<FilesContent>`。
-5. 不把历史文件内容集中拼到最后一条 user message。
-6. system prompt 只保留模型默认 system、用户配置 system、dataset system quote。
+6. 不把历史文件内容集中拼到最后一条 user message。
+7. system prompt 只保留模型默认 system、用户配置 system、dataset system quote。
 
 ### 6.5 日志与观测设计
 
@@ -176,7 +178,7 @@ N/A（未命中 docs 站点目录）。
 
 ### 8.1 风险清单
 
-1. 每次请求可能重新解析历史文件，存在额外耗时；通过 `maxFiles` 总上限控制风险。
+1. 每次请求可能重新解析历史文件，存在额外耗时；通过单条 user query `maxFiles` 控制风险，并通过 messages 并行处理降低串行等待。
 2. 文件正文进入 user message 后 token 增加，可能触发上下文裁剪；沿用现有 `filterGPTMessageByMaxContext`。
 3. 历史文件若只剩 key 而无可解析 URL，需要实现时确认是否可通过现有 key 生成可读地址。
 
@@ -199,7 +201,7 @@ N/A（未命中 docs 站点目录）。
 | 历史逐条注入 | 单测/联调 | 多条历史 human file 分别注入到各自 user message |
 | 不污染保存层 | 单测/代码走查 | `prepare/finalize/push/updateInteractive` 保存原始 `userQuestion` |
 | system prompt 纯净 | 单测/代码走查 | system message 不包含 `<FilesContent>` |
-| `maxFiles` 生效 | 单测 | 历史+当前轮文件总解析数不超过 `maxFiles` |
+| `maxFiles` 生效 | 单测 | 单条 user query 文件解析数不超过 `maxFiles` |
 | Tool readFiles 分支 | 单测/代码走查 | 有 `readFiles` tool 时不提前注入 |
 | 普通轮次无回归 | 回归测试 | 无 file 请求与修复前行为一致 |
 
@@ -223,5 +225,5 @@ N/A（未命中 docs 站点目录）。
 
 发现问题：历史文件过多时可能带来解析成本和 token 风险。
 影响范围：性能、成本、上下文窗口。
-修订动作：确认采用 `maxFiles` 作为历史+当前轮总解析上限。
+修订动作：确认采用 `maxFiles` 作为单条 user query 的解析上限，并通过 messages 并行处理降低串行等待。
 修订后结果：需求完整且有明确成本边界。

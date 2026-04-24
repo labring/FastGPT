@@ -1,6 +1,11 @@
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  UserChatItemFileItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { AsyncLocalStorage } from 'async_hooks';
 import path from 'path';
 import type { MCPClient } from '../../app/mcp';
@@ -9,6 +14,21 @@ type ContextType = {
   queryUrlTypeMap: Record<string, ChatFileTypeEnum>;
   mcpClientMemory: Record<string, MCPClient>;
 };
+
+type GetFileContentFromLinks = (props: {
+  urls: string[];
+  requestOrigin?: string;
+  maxFiles: number;
+  teamId: string;
+  tmbId: string;
+  customPdfParse?: boolean;
+  usageId?: string;
+}) => Promise<{
+  readFilesResult: {
+    url: string;
+    text?: string;
+  }[];
+}>;
 
 export const WorkflowContext = new AsyncLocalStorage<ContextType>();
 
@@ -108,4 +128,90 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
       url
     };
   }
+};
+
+export const rewriteUserQueryWithFileContent = async ({
+  userQuery,
+  requestOrigin,
+  maxFiles,
+  customPdfParse,
+  teamId,
+  tmbId,
+  usageId,
+  version,
+  getFileContentFromLinks
+}: {
+  userQuery: UserChatItemValueItemType[];
+  requestOrigin?: string;
+  maxFiles: number;
+  customPdfParse?: boolean;
+  teamId: string;
+  tmbId: string;
+  usageId?: string;
+  version?: string;
+  getFileContentFromLinks: GetFileContentFromLinks;
+}) => {
+  const urls = userQuery
+    .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
+    .filter(Boolean);
+
+  if (urls.length === 0) {
+    return userQuery;
+  }
+
+  const { readFilesResult } = await getFileContentFromLinks({
+    urls,
+    requestOrigin,
+    maxFiles,
+    teamId,
+    tmbId,
+    customPdfParse,
+    usageId
+  });
+
+  const fileTexts = readFilesResult.map((item) => item?.text).filter(Boolean) as string[];
+
+  if (fileTexts.length === 0) {
+    return userQuery;
+  }
+
+  const filePrompt = replaceVariable(getDocumentQuotePrompt(version), {
+    quote: fileTexts.join('\n******\n')
+  });
+  if (!filePrompt) return userQuery;
+
+  const value = userQuery.map((item) => {
+    if (item.text) {
+      return {
+        ...item,
+        text: {
+          ...item.text
+        }
+      };
+    }
+    if (item.file) {
+      return {
+        ...item,
+        file: {
+          ...item.file
+        }
+      };
+    }
+    return { ...item };
+  });
+
+  const firstTextItem = value.find((item) => item.text);
+  if (firstTextItem?.text) {
+    firstTextItem.text.content = [firstTextItem.text.content, filePrompt]
+      .filter(Boolean)
+      .join('\n\n===---===---===\n\n');
+  } else {
+    value.push({
+      text: {
+        content: filePrompt
+      }
+    });
+  }
+
+  return value;
 };

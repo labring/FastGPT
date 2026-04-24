@@ -13,7 +13,7 @@
 - 代码范围：`v1/v2/chatTest` 保存层回退、`chat/tool` 运行时消息构造、文件解析 helper、相关测试与文档同步。
 - 非目标：历史数据回填、`file_url` 直传模型、API/DB schema 调整、前端交互调整。
 - 实现原则：保存层不污染原始输入；运行时只改 LLM messages 副本；文件内容进 user message，不进 system prompt。
-- 文件上限：历史+当前轮文件解析总数沿用 `chatConfig.fileSelectConfig.maxFiles`。
+- 文件上限：每条 user query 的文件解析数量沿用 `chatConfig.fileSelectConfig.maxFiles`，不做跨 message URL 去重。
 - 必须遵循规范：`references/style-standards-entry.md`。
 - 适用维度：API[ ] DB[ ] Front[ ] Logger[ ] Package[x] BugFix[x] DocUpdate[x] DocI18n[ ]。
 
@@ -22,7 +22,7 @@
 | 任务ID | 任务名称 | 责任层 | 输入 | 输出 | 完成定义（DoD） |
 |---|---|---|---|---|---|
 | T1 | 保存层回退为原始输入 | API/Service | `userQuestion` | 原始保存参数 | `v1/v2/chatTest` 不再保存 `enrichedUserQuestion` |
-| T2 | 运行时逐条文件注入 helper | Service | `histories`、当前轮 `query`、`maxFiles` | 增强后的 messages 副本 | 每条 human file 的 `<FilesContent>` 回填到所属 user message |
+| T2 | 运行时单条 user query 文件重写 helper | Service | 单条 human `value`、`maxFiles`、文件读取 helper | 增强后的 user query 副本 | 每条 human file 的 `<FilesContent>` 回填到所属 user message |
 | T3 | Chat node 接入运行时注入 | Service | Chat node runtime props | LLM messages | 文件内容进入 user message，system 不含文件内容 |
 | T4 | Tool node 接入运行时注入 | Service | Tool node runtime props | Tool-call LLM messages | 无 `readFiles` tool 时注入；有 `readFiles` tool 时跳过 |
 | T5 | 测试与清理 | Test/Service | T1-T4 改动 | 可执行测试 + 干净 import | 覆盖当前轮、历史逐条、`maxFiles`、system 纯净、保存层不污染 |
@@ -35,9 +35,10 @@
 | `projects/app/src/pages/api/v2/chat/completions.ts` | 修改 | 同 v1，`prepare/finalize/updateInteractive` 使用原始输入 | `userContent: userQuestion` | T1 |
 | `projects/app/src/pages/api/core/chat/chatTest.ts` | 修改 | 修复 review 评论点，不再改写输入问题 | `userContent: userQuestion` | T1 |
 | `packages/service/core/chat/utils.ts` | 修改 | 删除或回退保存前 `enrichUserContentWithParsedFiles` 新增能力 | 移除未使用导入/函数 | T1 |
-| `packages/service/core/workflow/dispatch/ai/chat.ts` | 修改 | 接入运行时逐条 user 文件注入，文件内容不进 system | `messages = injectFileContentToUserMessages(...)` | T2/T3 |
-| `packages/service/core/workflow/dispatch/ai/tool/index.ts` | 修改 | Tool LLM messages 同步逐条注入；保留 `hasReadFilesTool` skip | `skip: hasReadFilesTool` | T2/T4 |
-| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | 修改/复用 | 复用 `getFileContentFromLinks`，必要时增加按 message 归属收集文件的局部 helper | `collectMessageFileRefs(...)` | T2 |
+| `packages/service/core/workflow/dispatch/ai/chat.ts` | 修改 | 并行处理 human messages，逐条重写 user query，文件内容不进 system | `Promise.all(...rewriteUserQueryWithFileContent(...))` | T2/T3 |
+| `packages/service/core/workflow/dispatch/ai/tool/index.ts` | 修改 | Tool LLM messages 同步并行重写；保留 `hasReadFilesTool` skip | `skip: hasReadFilesTool` | T2/T4 |
+| `packages/service/core/workflow/utils/context.ts` | 修改/复用 | 承载单条 user query 文件内容重写 helper | `rewriteUserQueryWithFileContent(...)` | T2 |
+| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | 修改/复用 | 保留可读文件 URL 标准化、读文件与解析文件能力，供 readFiles tool 和重写 helper 复用 | `normalizeReadableFileUrl(...)` / `getFileContentFromLinks(...)` | T2 |
 | `packages/service/core/ai/llm/utils.ts` | 修改/测试驱动 | 保持 `file_url` 过滤，确保同条 text 保留 | 不改协议行为 | T5 |
 | `test/cases/...` | 修改/新增 | 替换保存前增强测试，新增运行时逐条注入测试 | 当前轮/历史/Tool/maxFiles | T5 |
 
@@ -53,14 +54,24 @@ await finalizeChatRound({
 
 ```ts
 // 运行时：只增强发给 LLM 的 messages 副本
-const messages = await injectFileContentToUserMessages({
-  histories: chatHistories,
-  currentUserMessage,
-  requestOrigin,
-  maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-  customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-  runningUserInfo
-});
+const userMessages = await Promise.all(
+  rawUserMessages.map(async (message) => {
+    if (message.obj !== ChatRoleEnum.Human) return message;
+
+    return {
+      ...message,
+      value: await rewriteUserQueryWithFileContent({
+        userQuery: message.value,
+        requestOrigin,
+        maxFiles,
+        customPdfParse,
+        getFileContentFromLinks,
+        teamId,
+        tmbId
+      })
+    };
+  })
+);
 ```
 
 ```ts
@@ -86,18 +97,19 @@ N/A（无对外接口结构变化）。
 |---|---|---|---|
 | `packages/service/core/workflow/dispatch/ai/chat.ts` | `getChatMessages` 附近 | 构造 LLM messages 前，对历史 human 与当前轮 user 做文件内容注入 | 依赖 `getFileContentFromLinks` |
 | `packages/service/core/workflow/dispatch/ai/chat.ts` | `getMultiInput` | 不再把文件正文作为 system quote；当前轮文件参与逐条注入 | 与 token 裁剪链路协同 |
-| `packages/service/core/workflow/dispatch/ai/tool/index.ts` | `dispatchRunTools` | 与 Chat 路径一致；无 `readFiles` tool 时注入，有则跳过 | 避免重复读取 |
-| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `getFileContentFromLinks` | 复用文件解析；按 URL 顺序与 `maxFiles` 控制解析量 | 保持现有错误兜底 |
+| `packages/service/core/workflow/dispatch/ai/tool/index.ts` | `dispatchRunTools` | 与 Chat 路径一致；无 `readFiles` tool 时注入，有则跳过 | 避免与 readFiles tool 重复预解析 |
+| `packages/service/core/workflow/utils/context.ts` | `rewriteUserQueryWithFileContent` | 单条 user query 重写 `<FilesContent>`，外层负责并行处理 history/current messages | 通过入参复用 `getFileContentFromLinks` |
+| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `normalizeReadableFileUrl` / `getFileContentFromLinks` | 统一负责 URL 标准化、过滤、文件读取与解析；按单条 query URL 顺序与 `maxFiles` 控制解析量 | 保持现有错误兜底 |
 | `packages/service/core/ai/llm/utils.ts` | `loadRequestMessages` | 保持 `file_url` 过滤；回归验证 text part 不丢 | 最终模型请求安全过滤 |
 
 ### 3.3 运行时注入算法
 
 1. 输入为 `chatHistories` 与当前轮 user prompt，先 clone 或新建消息数组，不能 mutate 原对象。
-2. 从旧到新扫描 historical human messages，再处理当前轮 user message。
-3. 对每条 message 收集本条 file URL，并记录 URL 到 message 的归属关系。
-4. URL 按首次出现顺序去重，总数截断到 `maxFiles`。
-5. 调用 `getFileContentFromLinks` 解析文件。
-6. 将解析结果按归属回填：
+2. Chat/Tool 外层通过 `Promise.all` 并行处理运行时 messages。
+3. 非 human message 原样返回；human message 调用 `rewriteUserQueryWithFileContent`。
+4. 单条 user query 内只收集本条 `file.url`，不做跨 message URL 去重或共享缓存。
+5. 调用 `getFileContentFromLinks` 统一完成 URL 标准化、过滤、`maxFiles` 截断与文件解析。
+6. 将解析结果回填到当前 user query：
    - message 原本有 text：追加分隔符和 `<FilesContent>`。
    - message 原本无 text：新增 text part。
 7. 构造最终 `chats2GPTMessages` / tool-call messages。
@@ -122,19 +134,28 @@ N/A（不改 schema、索引、迁移逻辑）。
 修复关键伪代码：
 
 ```ts
-const runtimeHistories = await injectFileContentToUserMessages({
-  histories: chatHistories,
-  currentUserValue,
-  maxFiles,
-  requestOrigin,
-  customPdfParse,
-  runningUserInfo
-});
+const userMessages = await Promise.all(
+  rawUserMessages.map(async (message) =>
+    message.obj === ChatRoleEnum.Human
+      ? {
+          ...message,
+          value: await rewriteUserQueryWithFileContent({
+            userQuery: message.value,
+            maxFiles,
+            requestOrigin,
+            customPdfParse,
+            getFileContentFromLinks,
+            teamId,
+            tmbId
+          })
+        }
+      : message
+  )
+);
 
 const messages = [
   ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
-  ...runtimeHistories,
-  runtimeCurrentUserMessage
+  ...userMessages
 ];
 ```
 
@@ -191,8 +212,8 @@ N/A，原因：本次只改 `.claude/design` 研发文档，不改 `document/con
 | 单元测试 | 当前轮 file-only | LLM user message 包含 `<FilesContent>`，`loadRequestMessages` 后不为 `null` |
 | 单元测试 | 当前轮 file+text | 原问题与文件正文都在当前轮 user message |
 | 单元测试 | 多条历史 human 均有 file | 每条历史 user message 各自注入自己的文件正文 |
-| 单元测试 | 历史+当前轮超过 `maxFiles` | 只解析并注入前 `maxFiles` 个去重文件 |
-| 单元测试 | Tool node 无 `readFiles` tool | 执行逐条 user 注入 |
+| 单元测试 | 单条 user query 超过 `maxFiles` | 只解析并注入该 query 内前 `maxFiles` 个文件 |
+| 单元测试 | Tool node 无 `readFiles` tool | 并行执行逐条 user query 重写 |
 | 单元测试 | Tool node 有 `readFiles` tool | 跳过预解析注入 |
 | 回归测试 | system prompt 检查 | system message 不包含 `<FilesContent>` |
 | 回归测试 | 保存层检查 | 保存参数仍为原始 `userQuestion` |
@@ -203,7 +224,7 @@ N/A，原因：本次只改 `.claude/design` 研发文档，不改 `document/con
 |---|---|---|
 | 基础场景 | 是 | 当前轮 file-only、file+text |
 | 历史场景 | 是 | 多条历史 human file 逐条注入 |
-| 边界值 | 是 | `maxFiles`、重复 URL、空解析 |
+| 边界值 | 是 | 单条 query `maxFiles`、重复 URL 分别读取、空解析 |
 | Tool 场景 | 是 | 有/无 `readFiles` tool |
 | 安全边界 | 是 | 不打印正文、不改 API/DB schema |
 | 异常场景 | 是 | 文件解析失败时不污染原 userContent |
@@ -232,7 +253,7 @@ pnpm -s vitest run test/cases/service/core/ai/llm/utils.test.ts
 - [ ] 文件内容不进入 system prompt
 - [ ] 历史 human file 逐条注入到所属 user message
 - [ ] 当前轮 user file 同样注入到当前轮 user message
-- [ ] `maxFiles` 作为历史+当前轮总解析上限
+- [ ] `maxFiles` 作为单条 user query 的解析上限
 - [ ] Tool node 有 `readFiles` tool 时跳过预解析
 - [ ] 测试覆盖当前轮、历史轮、Tool、`maxFiles`、保存层不污染
 - [ ] 文档更新提醒已填写
