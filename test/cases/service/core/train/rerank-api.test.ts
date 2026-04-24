@@ -1,4 +1,10 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Use vi.hoisted to set environment variables before all module imports
+vi.hoisted(() => {
+  process.env.TRAIN_MIN_CHUNK_COUNT = '1';
+});
+
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   RerankTrainsetStatusEnum,
@@ -159,6 +165,7 @@ describe('Rerank Train Data API', () => {
           trainsetId,
           datasetIds: [datasetId1, datasetId2],
           generateConfig: {
+            indexType: 'question',
             sampleSize: 100,
             forceRegenerate: false
           }

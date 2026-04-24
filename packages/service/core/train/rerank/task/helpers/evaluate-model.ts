@@ -12,7 +12,7 @@ import { addLog } from '../../../../../common/system/log';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import { pLimit } from '../../../common/utils';
-import { DEFAULT_EVAL_CONCURRENCY } from '../../constants';
+import { trainEnv } from '../../../common/env';
 
 const K_VALUES = [5, 10, 15];
 
@@ -75,7 +75,7 @@ export async function evaluateRerankModelHelper(
   }
 
   // Run reranker for each query with bounded concurrency to avoid overwhelming the rerank API
-  const limit = pLimit(DEFAULT_EVAL_CONCURRENCY);
+  const limit = pLimit(trainEnv.TRAIN_EVAL_CONCURRENCY);
   const cases = await Promise.all(
     validItems.map((item) =>
       limit(async () => {

@@ -57,6 +57,7 @@ export type GenerateRerankTrainDataRequest = {
     forceRegenerate?: boolean; // Whether to force regeneration
     /** buildFineTuneData parameters */
     indexType: `${DatasetDataIndexTypeEnum}`; // Index type to use as query
+    indexMultiStrategy?: 1 | 2; // Strategy for multiple index elements: 1=longest, 2=all
     negativeStrategy?: 1 | 2 | 3 | 4; // Negative sampling strategy, default 2
     minNegativeSamples?: number; // Min negative samples per sample, default 1
     maxNegativeSamples?: number; // Max negative samples per sample, default 10
@@ -123,6 +124,7 @@ export type CreateRerankTrainTaskRequest = {
     sampleSize?: number;
     weights?: Record<string, number>;
     indexType: `${DatasetDataIndexTypeEnum}`;
+    indexMultiStrategy?: 1 | 2;
     negativeStrategy?: 1 | 2 | 3 | 4;
     minNegativeSamples?: number;
     maxNegativeSamples?: number;

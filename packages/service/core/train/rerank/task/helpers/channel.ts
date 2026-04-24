@@ -1,10 +1,6 @@
 import axios from 'axios';
 import { addLog } from '../../../../../common/system/log';
-import {
-  CHANNEL_CREATE_TIMEOUT,
-  CHANNEL_AVAILABILITY_POLL_INTERVAL,
-  CHANNEL_AVAILABILITY_MAX_DURATION
-} from '../../constants';
+import { trainEnv } from '../../../common/env';
 
 /**
  * Create channel for finetuned model (idempotent)
@@ -30,8 +26,8 @@ export async function createTunedModelChannel(params: {
 }): Promise<void> {
   const { channelName, endpoint, modelConfigId } = params;
 
-  const aiproxyUrl = process.env.AIPROXY_API_ENDPOINT;
-  const aiproxyToken = process.env.AIPROXY_API_TOKEN;
+  const aiproxyUrl = trainEnv.AIPROXY_API_ENDPOINT;
+  const aiproxyToken = trainEnv.AIPROXY_API_TOKEN;
 
   if (!aiproxyUrl || !aiproxyToken) {
     throw new Error('AIPROXY_API_ENDPOINT or AIPROXY_API_TOKEN environment variable is required');
@@ -49,7 +45,7 @@ export async function createTunedModelChannel(params: {
       headers: {
         Authorization: `Bearer ${aiproxyToken}`
       },
-      timeout: CHANNEL_CREATE_TIMEOUT
+      timeout: trainEnv.TRAIN_CHANNEL_CREATE_TIMEOUT
     });
 
     // AI Proxy response format: { success: boolean, data: ChannelInfoType[] }
@@ -82,7 +78,7 @@ export async function createTunedModelChannel(params: {
             Authorization: `Bearer ${aiproxyToken}`,
             'Content-Type': 'application/json'
           },
-          timeout: CHANNEL_CREATE_TIMEOUT
+          timeout: trainEnv.TRAIN_CHANNEL_CREATE_TIMEOUT
         });
 
         if (updateResponse.data?.success === false) {
@@ -117,7 +113,7 @@ export async function createTunedModelChannel(params: {
         Authorization: `Bearer ${aiproxyToken}`,
         'Content-Type': 'application/json'
       },
-      timeout: CHANNEL_CREATE_TIMEOUT
+      timeout: trainEnv.TRAIN_CHANNEL_CREATE_TIMEOUT
     });
 
     if (!response.data) {
@@ -178,8 +174,8 @@ export async function createTunedModelChannel(params: {
  * @throws {Error} When environment variables missing or channel deletion fails
  */
 export async function deleteTunedModelChannel(modelConfigId: string): Promise<void> {
-  const aiproxyUrl = process.env.AIPROXY_API_ENDPOINT;
-  const aiproxyToken = process.env.AIPROXY_API_TOKEN;
+  const aiproxyUrl = trainEnv.AIPROXY_API_ENDPOINT;
+  const aiproxyToken = trainEnv.AIPROXY_API_TOKEN;
 
   if (!aiproxyUrl || !aiproxyToken) {
     addLog.warn('AIPROXY environment variables not configured, skipping channel deletion', {
@@ -200,7 +196,7 @@ export async function deleteTunedModelChannel(modelConfigId: string): Promise<vo
       headers: {
         Authorization: `Bearer ${aiproxyToken}`
       },
-      timeout: CHANNEL_CREATE_TIMEOUT
+      timeout: trainEnv.TRAIN_CHANNEL_CREATE_TIMEOUT
     });
 
     // AI Proxy response format: { success: boolean, data: ChannelInfoType[] }
@@ -236,7 +232,7 @@ export async function deleteTunedModelChannel(modelConfigId: string): Promise<vo
         headers: {
           Authorization: `Bearer ${aiproxyToken}`
         },
-        timeout: CHANNEL_CREATE_TIMEOUT
+        timeout: trainEnv.TRAIN_CHANNEL_CREATE_TIMEOUT
       });
 
       if (deleteResponse.data?.success === false) {
@@ -305,13 +301,13 @@ export async function waitForChannelAvailable(params: {
   const { model, endpoint } = params;
 
   // Skip polling in mock mode — mock endpoint may not be a real AI Proxy channel
-  if (process.env.USE_SFT_BRIDGE_MOCK === 'true') {
+  if (trainEnv.SFT_BRIDGE_MOCK_ENABLE) {
     addLog.info('Channel availability check skipped (mock mode enabled)', { model });
     return;
   }
 
-  const aiproxyUrl = process.env.AIPROXY_API_ENDPOINT;
-  const aiproxyToken = process.env.AIPROXY_API_TOKEN;
+  const aiproxyUrl = trainEnv.AIPROXY_API_ENDPOINT;
+  const aiproxyToken = trainEnv.AIPROXY_API_TOKEN;
 
   if (!aiproxyUrl || !aiproxyToken) {
     throw new Error('AIPROXY_API_ENDPOINT or AIPROXY_API_TOKEN environment variable is required');
@@ -320,8 +316,8 @@ export async function waitForChannelAvailable(params: {
   const rerankUrl = `${aiproxyUrl}/v1/rerank`;
   const authorization = `Bearer ${aiproxyToken}`;
 
-  const pollInterval = CHANNEL_AVAILABILITY_POLL_INTERVAL;
-  const maxDuration = CHANNEL_AVAILABILITY_MAX_DURATION;
+  const pollInterval = trainEnv.TRAIN_CHANNEL_AVAILABILITY_POLL_INTERVAL;
+  const maxDuration = trainEnv.TRAIN_CHANNEL_AVAILABILITY_MAX_DURATION;
   const startTime = Date.now();
 
   addLog.info('Starting channel availability polling', {

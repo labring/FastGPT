@@ -1,5 +1,5 @@
 import { getQueue, QueueNames } from '../../../../common/bullmq';
-import { DEFAULT_JOB_BACKOFF_DELAY } from '../constants';
+import { trainEnv } from '../../common/env';
 import type { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 /** Rerank train data generation config */
@@ -8,6 +8,7 @@ export type RerankTrainDataGenerateConfig = {
   weights?: Record<string, number>;
   forceRegenerate?: boolean;
   indexType: `${DatasetDataIndexTypeEnum}`;
+  indexMultiStrategy?: 1 | 2;
   negativeStrategy?: 1 | 2 | 3 | 4;
   minNegativeSamples?: number;
   maxNegativeSamples?: number;
@@ -24,7 +25,7 @@ export const rerankTrainDataGenerateQueue = getQueue<RerankTrainDataGenerateJobD
   {
     defaultJobOptions: {
       attempts: 3,
-      backoff: { type: 'exponential', delay: DEFAULT_JOB_BACKOFF_DELAY },
+      backoff: { type: 'exponential', delay: trainEnv.TRAIN_JOB_BACKOFF_DELAY },
       removeOnComplete: { age: 24 * 60 * 60 },
       removeOnFail: { age: 7 * 24 * 60 * 60 }
     }

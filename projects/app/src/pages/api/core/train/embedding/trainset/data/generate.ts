@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/service/support/permission/train/embedding/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { embeddingTrainDataGenerateQueue } from '@fastgpt/service/core/train/embedding/data/mq';
-import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
+import { trainEnv } from '@fastgpt/service/core/train/common/env';
 import { MongoEmbeddingTrainset } from '@fastgpt/service/core/train/embedding/trainset/schema';
 import { EmbeddingTrainsetStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { EmbeddingTrainErrEnum } from '@fastgpt/global/common/error/code/train';
@@ -60,7 +60,7 @@ async function handler(
   // 4. Validate dataset indexes
   const normalizedGenerateConfig = {
     ...generateConfig,
-    indexType: generateConfig?.indexType ?? DEFAULT_TRAIN_INDEX_TYPE
+    indexType: generateConfig?.indexType ?? trainEnv.TRAIN_INDEX_TYPE
   };
   await validateDatasetTargetIndexes(expandedDatasetIds, normalizedGenerateConfig.indexType);
 

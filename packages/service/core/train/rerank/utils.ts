@@ -1,4 +1,4 @@
-import { DEFAULT_SEARCH_SIMILARITY, DEFAULT_SEARCH_LIMIT } from './constants';
+import { trainEnv } from '../common/env';
 import type { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import type {
   RerankTrainErrEnum,
@@ -29,7 +29,7 @@ export {
 };
 
 // Re-export constants used by rerank-specific callers
-export { DEFAULT_SEARCH_SIMILARITY, DEFAULT_SEARCH_LIMIT };
+export { trainEnv } from '../common/env';
 
 /**
  * Create enhanced error message for rerank training tasks

@@ -13,12 +13,7 @@ import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { RerankMethodEnum, DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import {
-  DEFAULT_SEARCH_SIMILARITY,
-  DEFAULT_SEARCH_LIMIT,
-  MAX_SEARCH_RUN_TIMES,
-  DEFAULT_EVAL_CONCURRENCY
-} from '../../constants';
+import { trainEnv } from '../../../common/env';
 import { pLimit } from '../../../common/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { Types } from 'mongoose';
@@ -88,7 +83,7 @@ export async function evaluateEmbeddingModelHelper(
   }));
 
   // Run embedding search for each query with bounded concurrency to avoid overwhelming the vector DB
-  const limit = pLimit(DEFAULT_EVAL_CONCURRENCY);
+  const limit = pLimit(trainEnv.TRAIN_EVAL_CONCURRENCY);
   const cases = await Promise.all(
     evalDataItems.map((item) =>
       limit(async () => {
@@ -104,7 +99,7 @@ export async function evaluateEmbeddingModelHelper(
             variables: {},
             query: [],
             stream: false,
-            maxRunTimes: MAX_SEARCH_RUN_TIMES,
+            maxRunTimes: trainEnv.TRAIN_MAX_SEARCH_RUN_TIMES,
             chatId: '',
             checkIsStopping: () => false,
             workflowDispatchDeep: 0,
@@ -139,8 +134,8 @@ export async function evaluateEmbeddingModelHelper(
             runtimeEdges: [],
             params: {
               datasets,
-              similarity: DEFAULT_SEARCH_SIMILARITY,
-              limit: DEFAULT_SEARCH_LIMIT,
+              similarity: trainEnv.TRAIN_SEARCH_SIMILARITY,
+              limit: trainEnv.TRAIN_SEARCH_LIMIT,
               userChatInput: query,
               searchMode: DatasetSearchModeEnum.embedding,
               embeddingWeight: undefined,

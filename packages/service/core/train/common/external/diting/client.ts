@@ -1,12 +1,12 @@
 import axios from 'axios';
 import type { DiTingSyntheticEvalDataRequest, DiTingSyntheticEvalDataResponse } from './types';
 import { addLog } from '../../../../../common/system/log';
-import { DEFAULT_DITING_TIMEOUT } from '../../constants';
+import { trainEnv } from '../../env';
 
 function getDiTingConfig() {
   return {
-    url: process.env.DITING_BASE_URL || 'http://diting:3000',
-    timeout: Number(process.env.DITING_TIMEOUT) || DEFAULT_DITING_TIMEOUT
+    url: trainEnv.DITING_BASE_URL,
+    timeout: trainEnv.DITING_TIMEOUT
   };
 }
 
@@ -38,6 +38,7 @@ export async function synthesizeEvalData(
     url,
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
+    numCases: request.inputData.numCases,
     llmModel: request.llm_config.name
   });
 
@@ -51,13 +52,19 @@ export async function synthesizeEvalData(
 
     const apiResponse = response.data;
 
-    if (apiResponse.status !== 'success' || !apiResponse.data?.qaPair) {
+    if (
+      apiResponse.status !== 'success' ||
+      !apiResponse.data?.qaPairs ||
+      !Array.isArray(apiResponse.data.qaPairs) ||
+      apiResponse.data.qaPairs.length === 0
+    ) {
       throw new Error('Invalid response from DiTing API');
     }
 
     addLog.debug('DiTing synthesize eval data completed', {
       requestId: apiResponse.requestId,
-      question: apiResponse.data.qaPair.question?.substring(0, 50)
+      question: apiResponse.data.qaPairs[0]?.question?.substring(0, 50),
+      qaPairsCount: apiResponse.data.qaPairs.length
     });
 
     return {

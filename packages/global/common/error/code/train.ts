@@ -23,6 +23,7 @@ export enum RerankTrainErrEnum {
   rerankTaskBaseModelDisabled = 'rerankTaskBaseModelDisabled',
   rerankTaskNotCompleted = 'rerankTaskNotCompleted',
   rerankTunedModelNotFound = 'rerankTunedModelNotFound',
+  rerankTaskInsufficientChunks = 'rerankTaskInsufficientChunks',
 
   // Eval dataset errors
   rerankEvalDatasetNotGenerated = 'rerankEvalDatasetNotGenerated',
@@ -87,6 +88,7 @@ export enum RerankTrainErrEnum {
   // === Trainset Generation Errors ===
   rerankTrainsetGenNoDataset = 'rerankTrainsetGenNoDataset',
   rerankTrainsetGenDatasetEmpty = 'rerankTrainsetGenDatasetEmpty',
+  rerankTrainsetGenInsufficientChunks = 'rerankTrainsetGenInsufficientChunks',
   rerankTrainsetGenDitingFailed = 'rerankTrainsetGenDitingFailed',
   rerankTrainsetGenDitingNoData = 'rerankTrainsetGenDitingNoData',
   rerankTrainsetGenDatabaseError = 'rerankTrainsetGenDatabaseError',
@@ -119,6 +121,7 @@ export enum EmbeddingTrainErrEnum {
   embeddingTaskBaseModelDisabled = 'embeddingTaskBaseModelDisabled',
   embeddingTaskNotCompleted = 'embeddingTaskNotCompleted',
   embeddingTunedModelNotFound = 'embeddingTunedModelNotFound',
+  embeddingTaskInsufficientChunks = 'embeddingTaskInsufficientChunks',
 
   // Eval dataset errors
   embeddingEvalDatasetNotGenerated = 'embeddingEvalDatasetNotGenerated',
@@ -183,6 +186,7 @@ export enum EmbeddingTrainErrEnum {
   // === Trainset Generation Errors ===
   embeddingTrainsetGenNoDataset = 'embeddingTrainsetGenNoDataset',
   embeddingTrainsetGenDatasetEmpty = 'embeddingTrainsetGenDatasetEmpty',
+  embeddingTrainsetGenInsufficientChunks = 'embeddingTrainsetGenInsufficientChunks',
   embeddingTrainsetGenDitingFailed = 'embeddingTrainsetGenDitingFailed',
   embeddingTrainsetGenDitingNoData = 'embeddingTrainsetGenDitingNoData',
   embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',
@@ -282,6 +286,7 @@ export enum RerankTrainSuggestionEnum {
   // === Trainset Generation Suggestions ===
   rerankTrainsetGenNoDataset = 'rerankTrainsetGenNoDataset',
   rerankTrainsetGenDatasetEmpty = 'rerankTrainsetGenDatasetEmpty',
+  rerankTrainsetGenInsufficientChunks = 'rerankTrainsetGenInsufficientChunks',
   rerankTrainsetGenDitingFailed = 'rerankTrainsetGenDitingFailed',
   rerankTrainsetGenDitingNoData = 'rerankTrainsetGenDitingNoData',
   rerankTrainsetGenDatabaseError = 'rerankTrainsetGenDatabaseError',
@@ -381,6 +386,7 @@ export enum EmbeddingTrainSuggestionEnum {
   // === Trainset Generation Suggestions ===
   embeddingTrainsetGenNoDataset = 'embeddingTrainsetGenNoDataset',
   embeddingTrainsetGenDatasetEmpty = 'embeddingTrainsetGenDatasetEmpty',
+  embeddingTrainsetGenInsufficientChunks = 'embeddingTrainsetGenInsufficientChunks',
   embeddingTrainsetGenDitingFailed = 'embeddingTrainsetGenDitingFailed',
   embeddingTrainsetGenDitingNoData = 'embeddingTrainsetGenDitingNoData',
   embeddingTrainsetGenDatabaseError = 'embeddingTrainsetGenDatabaseError',

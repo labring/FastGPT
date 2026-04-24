@@ -2,15 +2,16 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // Use vi.hoisted to set environment variables before all module imports
 vi.hoisted(() => {
-  process.env.USE_DITING_MOCK = 'true';
-  process.env.USE_SFT_BRIDGE_MOCK = 'true';
+  process.env.DITING_MOCK_ENABLE = 'true';
+  process.env.SFT_BRIDGE_MOCK_ENABLE = 'true';
   // Set mock SFT endpoint env vars so completed tasks return endpoint info
-  process.env.MOCK_SFT_RERANK_ENDPOINT_BASE_URL = 'http://test-sft:8080';
-  process.env.MOCK_SFT_RERANK_ENDPOINT_MODEL = 'test-rerank-model';
-  process.env.MOCK_SFT_RERANK_ENDPOINT_API_KEY = 'test-api-key';
-  process.env.MOCK_SFT_EMBED_ENDPOINT_BASE_URL = 'http://test-sft:8080';
-  process.env.MOCK_SFT_EMBED_ENDPOINT_MODEL = 'test-embed-model';
-  process.env.MOCK_SFT_EMBED_ENDPOINT_API_KEY = 'test-api-key';
+  process.env.SFT_BRIDGE_MOCK_RERANK_ENDPOINT_BASE_URL = 'http://test-sft:8080';
+  process.env.SFT_BRIDGE_MOCK_RERANK_ENDPOINT_MODEL = 'test-rerank-model';
+  process.env.SFT_BRIDGE_MOCK_RERANK_ENDPOINT_API_KEY = 'test-api-key';
+
+  process.env.SFT_BRIDGE_MOCK_EMBED_ENDPOINT_BASE_URL = 'http://test-sft:8080';
+  process.env.SFT_BRIDGE_MOCK_EMBED_ENDPOINT_MODEL = 'test-embed-model';
+  process.env.SFT_BRIDGE_MOCK_EMBED_ENDPOINT_API_KEY = 'test-api-key';
 });
 
 import {
@@ -19,6 +20,7 @@ import {
   querySFTTaskStatus,
   SFTTaskStatus
 } from '@fastgpt/service/core/train/embedding/external';
+import { trainEnv } from '@fastgpt/service/core/train/common/env';
 
 // Mock addLog
 vi.mock('@fastgpt/service/common/system/log', () => ({
@@ -58,31 +60,33 @@ describe('Embedding Train External Mocks', () => {
       expect(response.requestId).toBeDefined();
       expect(typeof response.requestId).toBe('string');
       expect(response.status).toBe('success');
-      expect(response.data?.qaPair).toBeDefined();
-      expect(response.data?.qaPair.question).toBeDefined();
-      expect(response.data?.qaPair.answer).toBeDefined();
+      expect(response.data?.qaPairs).toBeDefined();
+      expect(Array.isArray(response.data?.qaPairs)).toBe(true);
+      expect(response.data?.qaPairs.length).toBeGreaterThan(0);
+      expect(response.data?.qaPairs[0].question).toBeDefined();
+      expect(response.data?.qaPairs[0].answer).toBeDefined();
       expect(response.usages).toBeDefined();
       expect(response.usages!.length).toBeGreaterThan(0);
     });
 
     test('synthesizeEvalData 应通过 index.ts 路由到 mock', async () => {
       const response = await synthesizeEmbeddingEvalData({
-        synthesizerConfig: { synthesizerName: 'eval_q_a_synthesizer' },
         inputData: { context: ['context1', 'context2'] },
         llm_config: { name: 'Qwen3-32B' }
       });
 
       expect(response.success).toBe(true);
       expect(response.requestId).toBeDefined();
-      expect(response.data?.qaPair.question).toBeDefined();
+      expect(Array.isArray(response.data?.qaPairs)).toBe(true);
+      expect(response.data?.qaPairs[0].question).toBeDefined();
     });
 
-    test('当 MOCK_DITING_SYNTH_FAIL=true 时应返回失败响应', async () => {
+    test('当 DITING_MOCK_SYNTH_FAIL=true 时应返回失败响应', async () => {
       const { mockSynthesizeEvalData } = await import(
         '@fastgpt/service/core/train/common/external/diting/mock'
       );
 
-      process.env.MOCK_DITING_SYNTH_FAIL = 'true';
+      trainEnv.DITING_MOCK_SYNTH_FAIL = true;
       try {
         const response = await mockSynthesizeEvalData({
           synthesizerConfig: { synthesizerName: 'eval_q_a_synthesizer' },
@@ -95,7 +99,7 @@ describe('Embedding Train External Mocks', () => {
         expect(response.error).toBeDefined();
         expect(response.data).toBeUndefined();
       } finally {
-        delete process.env.MOCK_DITING_SYNTH_FAIL;
+        trainEnv.DITING_MOCK_SYNTH_FAIL = false;
       }
     });
   });
@@ -196,8 +200,8 @@ describe('Embedding Train External Mocks', () => {
       expect(response.message).toContain('not found');
     });
 
-    test('当 MOCK_SFT_EMBED_FAIL=true 时任务应最终进入 failed 状态', async () => {
-      process.env.MOCK_SFT_EMBED_FAIL = 'true';
+    test('当 SFT_BRIDGE_MOCK_EMBED_FAIL=true 时任务应最终进入 failed 状态', async () => {
+      trainEnv.SFT_BRIDGE_MOCK_EMBED_FAIL = true;
       try {
         const createRes = await createSFTTask({
           datasetFile: Buffer.from('test'),
@@ -213,7 +217,7 @@ describe('Embedding Train External Mocks', () => {
         expect(statusRes.error).toBeDefined();
         expect(statusRes.endpoint).toBeUndefined();
       } finally {
-        delete process.env.MOCK_SFT_EMBED_FAIL;
+        trainEnv.SFT_BRIDGE_MOCK_EMBED_FAIL = false;
       }
     }, 12000);
   });

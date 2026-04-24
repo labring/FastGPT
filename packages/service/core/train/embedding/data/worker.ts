@@ -2,11 +2,7 @@ import { getWorker, QueueNames } from '../../../../common/bullmq';
 import { addLog } from '../../../../common/system/log';
 import { type EmbeddingTrainDataGenerateJobData } from './mq';
 import { embeddingTrainDataGenerateProcessor } from './processor';
-import {
-  DEFAULT_WORKER_STALLED_INTERVAL,
-  DEFAULT_TRAIN_DATA_GENERATE_CONCURRENCY,
-  DEFAULT_WORKER_MAX_STALLED_COUNT
-} from '../constants';
+import { trainEnv } from '../../common/env';
 import {
   TrainsetGenerationUnrecoverableError,
   TrainsetGenerationRetriableError
@@ -25,12 +21,12 @@ export function initEmbeddingTrainDataWorker() {
     QueueNames.embeddingTrainDataGenerate,
     embeddingTrainDataGenerateProcessor,
     {
-      stalledInterval: DEFAULT_WORKER_STALLED_INTERVAL,
+      stalledInterval: trainEnv.TRAIN_WORKER_STALLED_INTERVAL,
       maxStalledCount:
-        global.systemEnv?.trainConfig?.maxStalledCount || DEFAULT_WORKER_MAX_STALLED_COUNT,
+        global.systemEnv?.trainConfig?.maxStalledCount || trainEnv.TRAIN_WORKER_MAX_STALLED_COUNT,
       concurrency:
         global.systemEnv?.trainConfig?.dataGenerateConcurrency ||
-        DEFAULT_TRAIN_DATA_GENERATE_CONCURRENCY
+        trainEnv.TRAIN_DATA_GENERATE_CONCURRENCY
     }
   );
 

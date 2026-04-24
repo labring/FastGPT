@@ -49,6 +49,7 @@ export async function createRerankTrainTask(params: {
     sampleSize?: number;
     weights?: Record<string, number>;
     indexType: string;
+    indexMultiStrategy?: 1 | 2;
     negativeStrategy?: 1 | 2 | 3 | 4;
     minNegativeSamples?: number;
     maxNegativeSamples?: number;

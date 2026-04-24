@@ -1,5 +1,5 @@
 import { getQueue, QueueNames } from '../../../../common/bullmq';
-import { DEFAULT_JOB_BACKOFF_DELAY } from '../constants';
+import { trainEnv } from '../../common/env';
 import {
   createJobCleaner,
   type JobCleanupOptions,
@@ -15,7 +15,7 @@ export const embeddingTrainTaskQueue = getQueue<EmbeddingTrainTaskJobData>(
   {
     defaultJobOptions: {
       attempts: 3,
-      backoff: { type: 'exponential', delay: DEFAULT_JOB_BACKOFF_DELAY },
+      backoff: { type: 'exponential', delay: trainEnv.TRAIN_JOB_BACKOFF_DELAY },
       removeOnComplete: { age: 7 * 24 * 60 * 60 },
       removeOnFail: false // Keep failed jobs for troubleshooting
     }

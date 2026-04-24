@@ -7,11 +7,7 @@ import {
 import { createSFTTask, querySFTTaskStatus, SFTTaskStatus } from '../../external';
 import { addLog } from '../../../../../common/system/log';
 import { getRerankTrainTask } from '../controller';
-import {
-  DEFAULT_SFT_BRIDGE_LEARNING_RATE,
-  DEFAULT_SFT_BRIDGE_MAX_POLLS,
-  DEFAULT_SFT_BRIDGE_POLL_INTERVAL
-} from '../../constants';
+import { trainEnv } from '../../../common/env';
 import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
@@ -79,7 +75,7 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       taskType: 'rerank',
       trainMethod: task.trainMethod || 'lora',
       parameters: {
-        learning_rate: DEFAULT_SFT_BRIDGE_LEARNING_RATE,
+        learning_rate: trainEnv.SFT_BRIDGE_LEARNING_RATE,
         epochs: 3,
         batch_size: 32
       }
@@ -111,9 +107,8 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       }
     | undefined = undefined;
 
-  const maxPolls = Number(process.env.SFT_BRIDGE_MAX_POLLS) || DEFAULT_SFT_BRIDGE_MAX_POLLS;
-  const pollInterval =
-    Number(process.env.SFT_BRIDGE_POLL_INTERVAL) || DEFAULT_SFT_BRIDGE_POLL_INTERVAL;
+  const maxPolls = trainEnv.SFT_BRIDGE_MAX_POLLS;
+  const pollInterval = trainEnv.SFT_BRIDGE_POLL_INTERVAL;
 
   addLog.info('SFT task polling configuration', {
     taskId: String(task._id),

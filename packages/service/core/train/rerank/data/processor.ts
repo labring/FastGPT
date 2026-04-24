@@ -17,6 +17,7 @@ import {
   RerankTrainErrEnum,
   RerankTrainSuggestionEnum
 } from '@fastgpt/global/common/error/code/train';
+import { trainEnv } from '../../common/env';
 
 const SAVE_BATCH_SIZE = 1000;
 
@@ -81,6 +82,20 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     throw new TrainsetGenerationUnrecoverableError(error);
   }
 
+  if (sampledItems.length < trainEnv.TRAIN_MIN_CHUNK_COUNT) {
+    addLog.warn('Rerank trainset generation rejected: insufficient chunks after sampling', {
+      trainsetId,
+      sampledCount: sampledItems.length,
+      required: trainEnv.TRAIN_MIN_CHUNK_COUNT
+    });
+    const error = createRerankEnhancedError(
+      null,
+      RerankTrainErrEnum.rerankTrainsetGenInsufficientChunks,
+      RerankTrainSuggestionEnum.rerankTrainsetGenInsufficientChunks
+    );
+    throw new TrainsetGenerationUnrecoverableError(error);
+  }
+
   // 5. forceRegenerate: delete old data before streaming new data
   if (generateConfig.forceRegenerate) {
     await MongoRerankTrainsetData.deleteMany({
@@ -97,6 +112,7 @@ export const rerankTrainDataGenerateProcessor: Processor<RerankTrainDataGenerate
     for await (const sample of buildFineTuneDataStream({
       sampledItems,
       indexType: generateConfig.indexType,
+      indexMultiStrategy: generateConfig.indexMultiStrategy,
       negativeStrategy: generateConfig.negativeStrategy,
       minNegativeSamples: generateConfig.minNegativeSamples,
       maxNegativeSamples: generateConfig.maxNegativeSamples

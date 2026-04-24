@@ -5,6 +5,8 @@ export type DiTingSyntheticEvalDataRequest = {
   };
   inputData: {
     context: string[];
+    /** Number of QA pairs to generate from this context (1-to-many strategy) */
+    numCases?: number;
   };
   llm_config: {
     name: string;
@@ -18,10 +20,11 @@ export type DiTingSyntheticEvalDataResponse = {
   requestId?: string;
   status?: string;
   data?: {
-    qaPair: {
+    /** QA pairs returned by DiTing synthesizer (always an array, even for numCases=1) */
+    qaPairs: Array<{
       question: string;
       answer: string;
-    };
+    }>;
     metadata?: {
       synthesizer: string;
     };

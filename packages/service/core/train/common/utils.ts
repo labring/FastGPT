@@ -2,7 +2,8 @@ import { addLog } from '../../../common/system/log';
 import { MongoDatasetData } from '../../dataset/data/schema';
 import { Types } from 'mongoose';
 import type { GenericEnhancedErrorMessage } from '@fastgpt/global/core/train/common/error';
-import { TRAIN_DATA_SPLIT_RATIO } from './constants';
+import { trainEnv } from './env';
+import type { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 /**
  * Concurrency control utility using promise limiting
@@ -448,7 +449,7 @@ export async function sampleDataFromDataset(
     }
 
     // Step 1: kb_count[i]
-    const trainCount = Math.floor(totalValid * TRAIN_DATA_SPLIT_RATIO);
+    const trainCount = Math.floor(totalValid * trainEnv.TRAIN_DATA_SPLIT_RATIO);
     let kbCount: number;
     if (datasetType === 'eval') {
       kbCount = totalValid - trainCount;
@@ -474,7 +475,7 @@ export async function sampleDataFromDataset(
     if (quota === 0 || validDocs.length === 0) continue;
 
     const totalValid = validDocs.length;
-    const trainCount = Math.floor(totalValid * TRAIN_DATA_SPLIT_RATIO);
+    const trainCount = Math.floor(totalValid * trainEnv.TRAIN_DATA_SPLIT_RATIO);
 
     let selected: SampledDataItem[];
     if (datasetType === 'eval') {
@@ -672,4 +673,120 @@ export async function fetchSampledContent(
     });
   }
   return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dataset validation helpers (shared between embedding and rerank)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Check if a dataset has at least one document with the target index type.
+ * Returns the index type if missing, null if found.
+ */
+export async function findMissingIndexType(
+  datasetId: string,
+  indexType: `${DatasetDataIndexTypeEnum}`
+): Promise<`${DatasetDataIndexTypeEnum}` | null> {
+  const count = await MongoDatasetData.countDocuments({
+    datasetId,
+    'indexes.type': indexType
+  });
+  return count === 0 ? indexType : null;
+}
+
+/**
+ * Count total valid chunks across datasets.
+ * "Valid" means the document has at least one index (indexes.0 exists).
+ */
+export async function countValidChunksForDatasets(datasetIds: string[]): Promise<number> {
+  let total = 0;
+  for (const datasetId of datasetIds) {
+    const count = await MongoDatasetData.countDocuments({
+      datasetId,
+      'indexes.0': { $exists: true }
+    });
+    total += count;
+  }
+  return total;
+}
+
+/**
+ * Configuration for validateDatasetReadiness error enums.
+ */
+export type DatasetReadinessErrorConfig = {
+  noDatasetConfigured: string;
+  datasetNoSynthesisIndex: string;
+  insufficientChunks: string;
+};
+
+/**
+ * Validate dataset readiness for training.
+ *
+ * Performs two checks:
+ * 1. Each dataset must have at least one document with the target index type.
+ * 2. Total valid chunks across all datasets must meet the minimum threshold.
+ *
+ * @param datasetIds - Dataset IDs to validate
+ * @param indexType - Target index type to look for
+ * @param errorEnums - Module-specific error enum values
+ * @param options.minChunkThreshold - Minimum chunk count (default: trainEnv.TRAIN_MIN_TASK_CHUNK_THRESHOLD)
+ * @throws Rejects with appropriate error enum value on validation failure
+ */
+export async function validateDatasetReadiness(
+  datasetIds: string[],
+  indexType: `${DatasetDataIndexTypeEnum}`,
+  errorEnums: DatasetReadinessErrorConfig,
+  options?: { minChunkThreshold?: number }
+): Promise<void> {
+  if (datasetIds.length === 0) {
+    return Promise.reject(errorEnums.noDatasetConfigured);
+  }
+
+  const minChunkThreshold = options?.minChunkThreshold ?? trainEnv.TRAIN_MIN_TASK_CHUNK_THRESHOLD;
+
+  addLog.info('Validating dataset readiness', {
+    datasetCount: datasetIds.length,
+    datasetIds,
+    indexType,
+    minChunkThreshold
+  });
+
+  // Check 1: index type availability
+  const validationResults = await Promise.all(
+    datasetIds.map(async (datasetId) => ({
+      datasetId,
+      missing: await findMissingIndexType(datasetId, indexType)
+    }))
+  );
+
+  const invalidDatasets = validationResults.filter((r) => r.missing !== null);
+  if (invalidDatasets.length > 0) {
+    addLog.error('Dataset target index validation failed', {
+      totalDatasets: datasetIds.length,
+      invalidDatasets: invalidDatasets.length,
+      invalidDatasetDetails: invalidDatasets.map((d) => ({
+        datasetId: d.datasetId,
+        missingType: d.missing
+      })),
+      indexType
+    });
+    return Promise.reject(errorEnums.datasetNoSynthesisIndex);
+  }
+
+  // Check 2: total chunk count threshold
+  const totalChunks = await countValidChunksForDatasets(datasetIds);
+  if (totalChunks < minChunkThreshold) {
+    addLog.warn('Dataset readiness check failed: insufficient chunks', {
+      datasetIds,
+      totalChunks,
+      threshold: minChunkThreshold
+    });
+    return Promise.reject(errorEnums.insufficientChunks);
+  }
+
+  addLog.info('Dataset readiness validation successful', {
+    validatedDatasets: datasetIds.length,
+    indexType,
+    totalChunks
+  });
 }

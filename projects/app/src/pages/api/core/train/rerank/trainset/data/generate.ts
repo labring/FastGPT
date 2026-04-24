@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/service/support/permission/train/rerank/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { rerankTrainDataGenerateQueue } from '@fastgpt/service/core/train/rerank/data/mq';
-import { DEFAULT_TRAIN_INDEX_TYPE } from '@fastgpt/service/core/train/common/constants';
+import { trainEnv } from '@fastgpt/service/core/train/common/env';
 import { MongoRerankTrainset } from '@fastgpt/service/core/train/rerank/trainset/schema';
 import { RerankTrainsetStatusEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { RerankTrainErrEnum } from '@fastgpt/global/common/error/code/train';
@@ -59,7 +59,7 @@ async function handler(
   // 4. Validate dataset indexes
   const normalizedGenerateConfig = {
     ...generateConfig,
-    indexType: generateConfig?.indexType ?? DEFAULT_TRAIN_INDEX_TYPE
+    indexType: generateConfig?.indexType ?? trainEnv.TRAIN_INDEX_TYPE
   };
   await validateDatasetTargetIndexes(expandedDatasetIds, normalizedGenerateConfig.indexType);
 

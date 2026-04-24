@@ -1,5 +1,6 @@
 import type { DiTingSyntheticEvalDataRequest, DiTingSyntheticEvalDataResponse } from './types';
 import { addLog } from '../../../../../common/system/log';
+import { trainEnv } from '../../env';
 
 /**
  * Mock implementation of single evaluation data synthesis (QA pair)
@@ -11,15 +12,18 @@ import { addLog } from '../../../../../common/system/log';
 export async function mockSynthesizeEvalData(
   request: DiTingSyntheticEvalDataRequest
 ): Promise<DiTingSyntheticEvalDataResponse> {
+  const numCases = request.inputData.numCases ?? 1;
+
   addLog.debug('[MOCK] DiTing synthesize eval data', {
     synthesizerName: request.synthesizerConfig.synthesizerName,
     contextLength: request.inputData.context.length,
+    numCases,
     llmModel: request.llm_config.name
   });
 
   await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
-  if (process.env.MOCK_DITING_SYNTH_FAIL === 'true') {
+  if (trainEnv.DITING_MOCK_SYNTH_FAIL) {
     return {
       success: false,
       requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -30,18 +34,19 @@ export async function mockSynthesizeEvalData(
   }
 
   const contextText = request.inputData.context.join('\n');
-  const question = `Question based on: ${contextText.slice(0, 50)}...`;
-  const answer = `Answer based on context: ${contextText.slice(0, 100)}...`;
+
+  // Generate multiple QA pairs when numCases > 1 (1-to-many strategy)
+  const qaPairs = Array.from({ length: numCases }, (_, i) => ({
+    question: `Question ${i + 1} based on: ${contextText.slice(0, 50)}...`,
+    answer: `Answer ${i + 1} based on context: ${contextText.slice(0, 100)}...`
+  }));
 
   return {
     success: true,
     requestId: `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     status: 'success',
     data: {
-      qaPair: {
-        question,
-        answer
-      },
+      qaPairs,
       metadata: {
         synthesizer: request.synthesizerConfig.synthesizerName
       }
@@ -49,9 +54,9 @@ export async function mockSynthesizeEvalData(
     usages: [
       {
         modelType: request.llm_config.name,
-        promptTokens: 100,
-        completionTokens: 50,
-        totalTokens: 150
+        promptTokens: 100 * numCases,
+        completionTokens: 50 * numCases,
+        totalTokens: 150 * numCases
       }
     ]
   };

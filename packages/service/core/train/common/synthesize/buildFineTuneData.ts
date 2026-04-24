@@ -47,6 +47,7 @@ type FineTuneSampleIndex = {
 export async function* buildFineTuneDataStream(params: {
   sampledItems: SampledDataItem[];
   indexType: string;
+  indexMultiStrategy?: 1 | 2;
   negativeStrategy?: 1 | 2 | 3 | 4;
   minNegativeSamples?: number;
   maxNegativeSamples?: number;
@@ -54,6 +55,7 @@ export async function* buildFineTuneDataStream(params: {
   const {
     sampledItems,
     indexType,
+    indexMultiStrategy = 1,
     negativeStrategy = 2,
     minNegativeSamples = 1,
     maxNegativeSamples = 5
@@ -117,7 +119,7 @@ export async function* buildFineTuneDataStream(params: {
     }
     const uniqueIds = Array.from(idSet).map((id) => new Types.ObjectId(id));
 
-    // Batch fetch — only q, a, and target indexType index text
+    // Batch fetch — only q, a, and target indexType index texts
     const docs = await MongoDatasetData.aggregate([
       { $match: { _id: { $in: uniqueIds } } },
       {
@@ -144,7 +146,6 @@ export async function* buildFineTuneDataStream(params: {
 
       const cleanQ = cleanText(srcDoc.q ?? '');
       const cleanA = cleanText(srcDoc.a ?? '');
-      const queryText = cleanText(srcDoc.indexes[0].text);
       const positiveText = buildQAText(cleanQ, cleanA);
 
       const negatives = idx.negativeDataIds
@@ -152,13 +153,28 @@ export async function* buildFineTuneDataStream(params: {
         .filter((d: any): d is NonNullable<typeof d> => d != null)
         .map((d: any) => buildQAText(cleanText(d.q ?? ''), cleanText(d.a ?? '')));
 
-      yield {
-        query: queryText,
-        positive: [positiveText],
-        negatives,
-        sourceId: idx.sourceId,
-        datasetId: idx.datasetId
-      };
+      // Select index texts based on strategy
+      let selectedIndexes: typeof srcDoc.indexes;
+      if (indexMultiStrategy === 1) {
+        // Strategy 1: take the longest one
+        const longest = srcDoc.indexes.reduce((a: any, b: any) =>
+          (a.text?.length ?? 0) >= (b.text?.length ?? 0) ? a : b
+        );
+        selectedIndexes = [longest];
+      } else {
+        // Strategy 2: take all
+        selectedIndexes = srcDoc.indexes;
+      }
+
+      for (const indexItem of selectedIndexes) {
+        yield {
+          query: cleanText(indexItem.text),
+          positive: [positiveText],
+          negatives,
+          sourceId: idx.sourceId,
+          datasetId: idx.datasetId
+        };
+      }
     }
     // docMap + docs go out of scope → GC
   }

@@ -23,7 +23,7 @@ import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { RerankTaskCheckpointStageEnum } from '@fastgpt/global/core/train/rerank/constants';
 import { evaluateRerankModelHelper } from '@fastgpt/service/core/train/rerank/task/helpers/evaluate-model';
-import { DEFAULT_EVAL_CONCURRENCY } from '@fastgpt/service/core/train/rerank/constants';
+import { trainEnv } from '@fastgpt/service/core/train/common/env';
 
 const mockModel = {
   model: 'bge-reranker-v2',
@@ -215,8 +215,8 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
     ).rejects.toThrow();
   });
 
-  test('pLimit 限制了 reRankRecall 的并发调用数不超过 DEFAULT_EVAL_CONCURRENCY', async () => {
-    // 构造 50 条 eval item（远超 DEFAULT_EVAL_CONCURRENCY=20）
+  test('pLimit 限制了 reRankRecall 的并发调用数不超过 TRAIN_EVAL_CONCURRENCY', async () => {
+    // 构造 50 条 eval item（远超 TRAIN_EVAL_CONCURRENCY=20）
     const items = Array.from({ length: 50 }, (_, i) =>
       makeEvalItem(`q${i}`, [`doc${i}`], [`doc${i}`, `other${i}`])
     );
@@ -240,8 +240,8 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    // DEFAULT_EVAL_CONCURRENCY = 20
-    expect(peak).toBeLessThanOrEqual(DEFAULT_EVAL_CONCURRENCY);
+    // TRAIN_EVAL_CONCURRENCY = 20
+    expect(peak).toBeLessThanOrEqual(trainEnv.TRAIN_EVAL_CONCURRENCY);
     expect(peak).toBeGreaterThan(1);
   });
 });

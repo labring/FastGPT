@@ -2,8 +2,8 @@
  * SFT Bridge external service entry point
  *
  * Selects between mock implementation or real service based on environment variable:
- * - USE_SFT_BRIDGE_MOCK=true: Use mock implementation
- * - USE_SFT_BRIDGE_MOCK=false or not set: Use real SFT Bridge service (default)
+ * - SFT_BRIDGE_MOCK_ENABLE=true: Use mock implementation
+ * - SFT_BRIDGE_MOCK_ENABLE=false or not set: Use real SFT Bridge service (default)
  */
 
 import { mockCreateSFTTask, mockQuerySFTTaskStatus, mockDeleteSFTTask } from './mock';
@@ -13,15 +13,19 @@ import {
   deleteSFTTask as realDeleteSFTTask
 } from './client';
 
-const useSFTBridgeMock = process.env.USE_SFT_BRIDGE_MOCK === 'true';
+import { trainEnv } from '../../env';
 
-export const createSFTTask = useSFTBridgeMock ? mockCreateSFTTask : realCreateSFTTask;
+export const createSFTTask = trainEnv.SFT_BRIDGE_MOCK_ENABLE
+  ? mockCreateSFTTask
+  : realCreateSFTTask;
 
-export const querySFTTaskStatus = useSFTBridgeMock
+export const querySFTTaskStatus = trainEnv.SFT_BRIDGE_MOCK_ENABLE
   ? mockQuerySFTTaskStatus
   : realQuerySFTTaskStatus;
 
-export const deleteSFTTask = useSFTBridgeMock ? mockDeleteSFTTask : realDeleteSFTTask;
+export const deleteSFTTask = trainEnv.SFT_BRIDGE_MOCK_ENABLE
+  ? mockDeleteSFTTask
+  : realDeleteSFTTask;
 
 export type {
   CreateSFTTaskRequest,

@@ -133,6 +133,7 @@ export type EmbeddingTrainsetDataSchemaType = {
       weights?: Record<string, number>;
       forceRegenerate?: boolean;
       indexType: `${DatasetDataIndexTypeEnum}`;
+      indexMultiStrategy?: 1 | 2;
       negativeStrategy?: 1 | 2 | 3 | 4;
       minNegativeSamples?: number;
       maxNegativeSamples?: number;
@@ -174,6 +175,7 @@ export type EmbeddingTrainTaskSchemaType = {
     sampleSize?: number;
     weights?: Record<string, number>;
     indexType: `${DatasetDataIndexTypeEnum}`;
+    indexMultiStrategy?: 1 | 2;
     negativeStrategy?: 1 | 2 | 3 | 4;
     minNegativeSamples?: number;
     maxNegativeSamples?: number;
