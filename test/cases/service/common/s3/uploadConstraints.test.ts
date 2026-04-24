@@ -77,12 +77,15 @@ describe('preset extension lists', () => {
     expect(avatarAllowedExtensions).toEqual(['.jpg', '.jpeg', '.png']);
     expect(datasetAllowedExtensions).toEqual([
       '.txt',
+      '.doc',
       '.docx',
       '.csv',
+      '.xls',
       '.xlsx',
       '.pdf',
       '.md',
       '.html',
+      '.ppt',
       '.pptx'
     ]);
   });
