@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -18,8 +18,8 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
+import TagRowsEditor, { type TagEditorRow } from './TagRowsEditor';
 import FileSelector, { type SelectFileItemType as ImportSelectFileItemType } from '../Import/components/FileSelector';
 import { documentAndImageFileType } from '@fastgpt/global/common/file/constants';
 import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
@@ -32,23 +32,18 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
-import { postCreateCustomFileIdCollection, postCheckDuplicateCollection, postCreateCustomWebsiteCollection } from '@/web/core/dataset/api';
+import { postCreateCustomFileIdCollection, postCheckDuplicateCollection, postCreateCustomWebsiteCollection, getAllTags } from '@/web/core/dataset/api';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
 import FileSelectorBox, { type SelectFileItemType as FaqSelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { postImportFaqByTemplate } from '@/web/core/dataset/api';
 import ExcelJS from 'exceljs';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import TagManageModal from './TagManageModal';
 
 // ─── 类型定义 ────────────────────────────────────────────────────────────────
 
 type AddMode = 'file' | 'faq' | 'web';
-
-type TagRow = {
-  id: string;
-  tagId: string;
-  value: string;
-};
 
 type CrawlMode = 'root' | 'single';
 
@@ -85,7 +80,7 @@ const ADD_MODE_CARDS: { mode: AddMode; icon: string; nameKey: string; descKey: s
 
 // ─── 标签工具函数 ─────────────────────────────────────────────────────────────
 
-function tagsToCollectionTags(rows: TagRow[]): CollectionTagValueType[] {
+function tagsToCollectionTags(rows: TagEditorRow[]): CollectionTagValueType[] {
   return rows
     .filter((r) => r.tagId && r.value.trim())
     .map((r) => ({ tagId: r.tagId, value: r.value.trim() }));
@@ -104,7 +99,19 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
 
   // ── 顶层状态 ─────────────────────────────
   const [addMode, setAddMode] = useState<AddMode>('file');
-  const [tagRows, setTagRows] = useState<TagRow[]>([]);
+  const [tagRows, setTagRows] = useState<TagEditorRow[]>([]);
+  const [tagOptions, setTagOptions] = useState<{ label: string; value: string; tagType?: string }[]>([]);
+  const [showTagManageModal, setShowTagManageModal] = useState(false);
+
+  const loadTagOptions = useCallback(() => {
+    getAllTags(datasetId).then((result) => {
+      setTagOptions(result.list.map((tag) => ({ label: tag.tag, value: tag._id, tagType: tag.tagType })));
+    });
+  }, [datasetId]);
+
+  useEffect(() => {
+    loadTagOptions();
+  }, [loadTagOptions]);
 
   // ── 上传文件专有状态 ──────────────────────
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
@@ -400,15 +407,15 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
 
   // ── 标签操作 ──────────────────────────────
   const addTagRow = useCallback(() => {
-    setTagRows((prev) => [...prev, { id: getNanoid(), tagId: '', value: '' }]);
+    setTagRows((prev) => [...prev, { tagId: '', value: '' }]);
   }, []);
 
-  const updateTagRow = useCallback((id: string, field: 'tagId' | 'value', val: string) => {
-    setTagRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: val } : r)));
+  const updateTagRow = useCallback((index: number, field: 'tagId' | 'value', val: string) => {
+    setTagRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: val } : r)));
   }, []);
 
-  const removeTagRow = useCallback((id: string) => {
-    setTagRows((prev) => prev.filter((r) => r.id !== id));
+  const removeTagRow = useCallback((index: number) => {
+    setTagRows((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   // ── 标签输入区渲染 ────────────────────────
@@ -417,53 +424,30 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
       <Flex alignItems="flex-start" mt={4}>
         <FormLabel flex="0 0 95px" h="32px">{t('dataset:tag.tags')}</FormLabel>
         <Box flex={1}>
-          {tagRows.length > 0 && (
-            <VStack spacing={1} mb={1} alignItems="stretch">
-              {tagRows.map((row) => (
-                <HStack key={row.id} spacing={1} h="32px">
-                  {/* TODO: 接 API 后补充下拉选项 */}
-                  <MySelect
-                    flex={1}
-                    h="32px"
-                    value={row.tagId}
-                    list={[]}
-                    onChange={(val) => updateTagRow(row.id, 'tagId', val)}
-                  />
-                  <Input
-                    flex={3}
-                    size="sm"
-                    h="32px"
-                    placeholder={t('dataset:tag.tag_value')}
-                    value={row.value}
-                    onChange={(e) => updateTagRow(row.id, 'value', e.target.value)}
-                    bg="white"
-                  />
-                  <MyIconButton
-                    icon="delete"
-                    hoverColor="red.500"
-                    hoverBg="red.50"
-                    onClick={() => removeTagRow(row.id)}
-                  />
-                </HStack>
-              ))}
-            </VStack>
-          )}
-          <Button
-            variant="link"
-            py={2}
-            onClick={addTagRow}
-            leftIcon={<MyIcon name="common/addLight" w="16px" color="#1770E6" mt="2px" />}
-            iconSpacing="4px"
-            fontSize="12px"
-            color="#156AD9"
-            fontWeight="normal"
-          >
-            {t('dataset:tag.add_tag')}
-          </Button>
+          <TagRowsEditor
+            rows={tagRows}
+            allTagOptions={tagOptions}
+            onAddRow={addTagRow}
+            onUpdateRow={updateTagRow}
+            onRemoveRow={removeTagRow}
+            selectFooter={(closeMenu) => (
+              <Button
+                variant={'whiteBase'}
+                w="100%"
+                leftIcon={<MyIcon name={'core/dataset/tag' as any} w="12px" h="12px" color="#3E4A59" />}
+                onClick={() => {
+                  closeMenu();
+                  setShowTagManageModal(true);
+                }}
+              >
+                {t('dataset:tag.manage')}
+              </Button>
+            )}
+          />
         </Box>
       </Flex>
     ),
-    [tagRows, addTagRow, updateTagRow, removeTagRow, t]
+    [tagRows, tagOptions, addTagRow, updateTagRow, removeTagRow, t]
   );
 
   return (
@@ -572,6 +556,14 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
         onContinueUpload={handleContinueUpload}
         onReplaceFiles={handleReplaceFiles}
       />
+      {showTagManageModal && (
+        <TagManageModal
+          onClose={(refresh) => {
+            setShowTagManageModal(false);
+            if (refresh) loadTagOptions();
+          }}
+        />
+      )}
     </>
   );
 };

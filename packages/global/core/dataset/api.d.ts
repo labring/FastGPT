@@ -145,6 +145,7 @@ export type SetCollectionTagsParams = {
 export type BatchSetCollectionTagsParams = {
   collectionIds: string[];
   tags: CollectionTagValueType[];
+  deleteTagIds?: string[];
   datasetId: string;
 };
 

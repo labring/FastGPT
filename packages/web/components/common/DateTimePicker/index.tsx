@@ -238,7 +238,7 @@ const DateTimePicker = ({
             bottom={0}
             bg="rgba(0, 0, 0, 0.1)"
             zIndex={9998}
-            onClick={() => setIsOpen(false)}
+            onClick={() => (selectedDate ? handleConfirm() : setIsOpen(false))}
           />
 
           {/* 弹窗内容 */}

@@ -11,6 +11,13 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FolderPath from '@/components/common/folder/Path';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getDatasetCollectionPathById } from '@/web/core/dataset/api';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import dynamic from 'next/dynamic';
+
+const CollectionNavActions = dynamic(
+  () => import('@/pageComponents/dataset/detail/RefinedCollectionCard/CollectionNavActions')
+);
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -28,6 +35,24 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const query = router.query;
   const { isPc } = useSystem();
   const { datasetDetail, paths } = useContextSelector(DatasetPageContext, (v) => v);
+  const { parentId = '' } = router.query as { parentId: string };
+
+  const { data: collectionPaths = [] } = useRequest(
+    () => getDatasetCollectionPathById(parentId),
+    {
+      refreshDeps: [parentId],
+      manual: false,
+      ready: currentTab === TabEnum.collectionCard
+    }
+  );
+
+  const combinedCollectionPaths = useMemo(
+    () => [
+      { parentId: datasetDetail._id, parentName: datasetDetail.name },
+      ...collectionPaths
+    ],
+    [datasetDetail._id, datasetDetail.name, collectionPaths]
+  );
 
   const tabList = [
     {
@@ -71,8 +96,9 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           position={'relative'}
           flexShrink={0}
         >
-          {currentTab === TabEnum.dataCard ? (
-            <>
+          {/* 左侧：面包屑路径 */}
+          <Flex py={'0.38rem'} px={2} h={10} ml={0.5} flex={1} minW={0}>
+            {currentTab === TabEnum.dataCard ? (
               <Flex
                 alignItems={'center'}
                 cursor={'pointer'}
@@ -104,18 +130,36 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   {datasetDetail.name}
                 </Box>
               </Flex>
-            </>
-          ) : (
-            <Flex py={'0.38rem'} px={2} h={10} ml={0.5}>
+            ) : currentTab === TabEnum.collectionCard ? (
+              <FolderPath
+                paths={combinedCollectionPaths}
+                rootName={t('common:core.dataset.Dataset')}
+                showReturnIcon
+                onClick={(id) => {
+                  if (!id) {
+                    router.push('/dataset/list');
+                  } else if (id === datasetDetail._id) {
+                    router.replace({
+                      query: { datasetId: query.datasetId, currentTab: TabEnum.collectionCard }
+                    });
+                  } else {
+                    router.replace({ query: { ...router.query, parentId: id } });
+                  }
+                }}
+              />
+            ) : (
               <FolderPath
                 paths={paths}
+                rootName={t('common:core.dataset.Dataset')}
+                showReturnIcon
                 onClick={(e) => {
                   router.push(`/dataset/list?parentId=${e}`);
                 }}
               />
-            </Flex>
-          )}
+            )}
+          </Flex>
 
+          {/* 中间：TabList 绝对居中 */}
           {showNavTab && (
             <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
               <MyTabs
@@ -126,95 +170,12 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             </Box>
           )}
 
-          {/* 训练情况hover弹窗 */}
-          {/* {!isDatabaseDataset(datasetDetail.type) && (
-            <MyPopover
-              placement="bottom-end"
-              visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
-              trigger="hover"
-              Trigger={
-                <Flex
-                  visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  p={2}
-                  borderRadius={'md'}
-                  _hover={{
-                    bg: 'myGray.05'
-                  }}
-                >
-                  <MyIcon name={'common/monitor'} w={'18px'} h={'18px'} color={'myGray.500'} />
-                  <Box color={'myGray.600'} ml={1.5} fontWeight={500} userSelect={'none'}>
-                    {t('common:core.dataset.training.tag')}
-                  </Box>
-                </Flex>
-              }
-            >
-              {({ onClose }) => (
-                <Box p={6}>
-                  {rebuildingCount > 0 && (
-                    <Box mb={3}>
-                      <Box fontSize={'sm'}>
-                        {t('dataset:rebuilding_index_count', { count: rebuildingCount })}
-                      </Box>
-                    </Box>
-                  )}
-                  <Box mb={3}>
-                    <Box fontSize={'sm'} pb={1}>
-                      {t('common:core.dataset.training.Agent queue')} ({qaTrainingMap.tip})
-                    </Box>
-                    <Progress
-                      value={100}
-                      size={'xs'}
-                      colorScheme={qaTrainingMap.colorSchema}
-                      borderRadius={'md'}
-                      isAnimated
-                      hasStripe
-                    />
-                  </Box>
-                  <Box mb={3}>
-                    <Box fontSize={'sm'} pb={1}>
-                      {t('dataset:auto_training_queue')} ({autoTrainingMap.tip})
-                    </Box>
-                    <Progress
-                      value={100}
-                      size={'xs'}
-                      colorScheme={autoTrainingMap.colorSchema}
-                      borderRadius={'md'}
-                      isAnimated
-                      hasStripe
-                    />
-                  </Box>
-                  <Box mb={3}>
-                    <Box fontSize={'sm'} pb={1}>
-                      {t('dataset:image_training_queue')} ({imageTrainingMap.tip})
-                    </Box>
-                    <Progress
-                      value={100}
-                      size={'xs'}
-                      colorScheme={imageTrainingMap.colorSchema}
-                      borderRadius={'md'}
-                      isAnimated
-                      hasStripe
-                    />
-                  </Box>
-                  <Box>
-                    <Box fontSize={'sm'} pb={1}>
-                      {t('common:core.dataset.training.Vector queue')} ({vectorTrainingMap.tip})
-                    </Box>
-                    <Progress
-                      value={100}
-                      size={'xs'}
-                      colorScheme={vectorTrainingMap.colorSchema}
-                      borderRadius={'md'}
-                      isAnimated
-                      hasStripe
-                    />
-                  </Box>
-                </Box>
-              )}
-            </MyPopover>
-          )} */}
+          {/* 右侧：collectionCard tab 显示操作按钮 */}
+          {currentTab === TabEnum.collectionCard && (
+            <Flex flexShrink={0} alignItems={'center'}>
+              <CollectionNavActions />
+            </Flex>
+          )}
         </Flex>
       ) : (
         <Box mb={2}>

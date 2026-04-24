@@ -141,7 +141,7 @@ export const createOrGetCollectionTags = async ({
  * 将集合的标签 ID/对象列表转换为可展示的标签标识列表。
  *
  * - 旧格式（字符串 ObjectId）：查询数据库，将 ID 映射为对应的标签名称字符串。
- * - 新格式（CollectionTagValueType 对象）：直接透传，无需查询。
+ * - 新格式（CollectionTagValueType 对象）：查询数据库过滤掉已删除的 tagId 后返回。
  *
  * @param datasetId - 所属知识库 ID，用于查询旧格式标签
  * @param tags - 待转换的标签列表（可为 undefined）
@@ -163,21 +163,31 @@ export const collectionTagsToTagLabel = async ({
     (t): t is CollectionTagValueType => typeof t === 'object' && t !== null
   );
 
-  // 旧格式：ObjectId → 标签名
-  let oldFormatLabels: string[] = [];
-  if (oldFormatIds.length > 0) {
+  // 旧格式或新格式均需查询有效 tag 集合
+  const needsDbQuery = oldFormatIds.length > 0 || newFormatItems.length > 0;
+  let validTagIdSet = new Set<string>();
+  let tagsMap = new Map<string, string>();
+
+  if (needsDbQuery) {
     const collectionTags = await MongoDatasetCollectionTags.find({ datasetId }, undefined, {
       ...readFromSecondary
     }).lean();
-    const tagsMap = new Map<string, string>();
     collectionTags.forEach((tag) => {
-      tagsMap.set(String(tag._id), tag.tag);
+      const id = String(tag._id);
+      tagsMap.set(id, tag.tag);
+      validTagIdSet.add(id);
     });
-    oldFormatLabels = oldFormatIds.map((tag) => tagsMap.get(tag) || '').filter(Boolean);
   }
 
-  // 新格式：直接返回
-  const result: (string | CollectionTagValueType)[] = [...oldFormatLabels, ...newFormatItems];
+  // 旧格式：ObjectId → 标签名
+  const oldFormatLabels: string[] = oldFormatIds
+    .map((tag) => tagsMap.get(tag) || '')
+    .filter(Boolean);
+
+  // 新格式：过滤掉已被删除的 tagId
+  const validNewFormatItems = newFormatItems.filter((item) => validTagIdSet.has(item.tagId));
+
+  const result: (string | CollectionTagValueType)[] = [...oldFormatLabels, ...validNewFormatItems];
   return result.length > 0 ? result : undefined;
 };
 

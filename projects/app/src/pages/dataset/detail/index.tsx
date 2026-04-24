@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
@@ -28,9 +28,9 @@ const CollectionCard = dynamic(
 const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/RefinedDataCard/index'));
 const FileDataCard = dynamic(() => import('@/pageComponents/dataset/detail/FileDataCard'));
 const Test = dynamic(() => import('@/pageComponents/dataset/detail/Test'));
-const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
 const Import = dynamic(() => import('@/pageComponents/dataset/detail/Import'));
 const Synonym = dynamic(() => import('@/pageComponents/dataset/detail/Synonym'));
+const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -42,13 +42,6 @@ export enum TabEnum {
   synonym = 'synonym'
 }
 type Props = { datasetId: string; currentTab: TabEnum };
-
-const sliderStyles: FlexProps = {
-  bg: 'white',
-  borderRadius: 'md',
-  overflowY: 'auto',
-  boxShadow: 2
-};
 
 const Detail = ({ datasetId, currentTab }: Props) => {
   const { t } = useTranslation();
@@ -74,41 +67,39 @@ const Detail = ({ datasetId, currentTab }: Props) => {
       <NextHead title={datasetDetail?.name} icon={datasetDetail?.avatar} />
 
       {isPc ? (
-        <Flex h={'100%'} pb={3} pl={4} pr={3} flexDir={'column'}>
-          {![TabEnum.import, TabEnum.dataCard, TabEnum.fileDataCard].includes(currentTab) && (
-            <NavBar currentTab={currentTab} />
-          )}
-          <Flex flex={1} gap={2} overflow={'hidden'}>
-            <Flex
-              flex={1}
-              w={0}
-              bg={'white'}
-              flexDir={'column'}
-              boxShadow={'2'}
-              borderRadius={'md'}
-            >
-              <Box flex={'1'} overflowY={'auto'}>
-                {currentTab === TabEnum.collectionCard && (
-                  <CollectionPageContextProvider>
-                    <CollectionCard />
-                  </CollectionPageContextProvider>
-                )}
-                {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
-                {currentTab === TabEnum.dataCard && <DataCard />}
-                {currentTab === TabEnum.fileDataCard && <FileDataCard />}
-                {currentTab === TabEnum.import && <Import />}
-                {currentTab === TabEnum.synonym && <Synonym />}
-              </Box>
-            </Flex>
-
-            {/* Slider */}
-            {[TabEnum.collectionCard, TabEnum.test, TabEnum.synonym].includes(currentTab) && (
-              <Flex {...sliderStyles} flex={'0 0 17rem'}>
-                <Info datasetId={datasetId} />
+        (() => {
+          const showNavBar = ![TabEnum.import, TabEnum.dataCard, TabEnum.fileDataCard].includes(
+            currentTab
+          );
+          const layout = (
+            <Flex h={'100%'} pb={3} pl={4} pr={3} flexDir={'column'}>
+              {showNavBar && <NavBar currentTab={currentTab} />}
+              <Flex
+                flex={1}
+                bg={'white'}
+                flexDir={'column'}
+                boxShadow={'2'}
+                borderRadius={'md'}
+                overflow={'hidden'}
+              >
+                <Box flex={'1'} overflowY={'auto'}>
+                  {currentTab === TabEnum.collectionCard && <CollectionCard />}
+                  {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
+                  {currentTab === TabEnum.dataCard && <DataCard />}
+                  {currentTab === TabEnum.fileDataCard && <FileDataCard />}
+                  {currentTab === TabEnum.import && <Import />}
+                  {currentTab === TabEnum.synonym && <Synonym />}
+                </Box>
               </Flex>
-            )}
-          </Flex>
-        </Flex>
+            </Flex>
+          );
+
+          return currentTab === TabEnum.collectionCard ? (
+            <CollectionPageContextProvider>{layout}</CollectionPageContextProvider>
+          ) : (
+            layout
+          );
+        })()
       ) : (
         <PageContainer insertProps={{ bg: 'white' }}>
           <MyBox display={'flex'} flexDirection={'column'} h={'100%'} pt={1}>

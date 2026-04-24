@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -19,7 +19,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { postCreateDataset, putDatasetById, getDatasetById } from '@/web/core/dataset/api';
+import { postCreateDataset, putDatasetById, getDatasetById, getDatasetTrainingQueue } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -64,6 +64,8 @@ const CreateModal = ({
   const { isPc } = useSystem();
 
   const isEditMode = !!editId;
+
+  const [isTraining, setIsTraining] = useState(false);
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
@@ -120,6 +122,17 @@ const CreateModal = ({
           autoSync: data.autoSync || false,
           apiDatasetServer: data.apiDatasetServer as any
         });
+      }
+    }
+  );
+
+  useRequest(
+    () => (editId ? getDatasetTrainingQueue(editId) : Promise.resolve(null)),
+    {
+      manual: false,
+      onSuccess: (data) => {
+        if (!data) return;
+        setIsTraining(data.rebuildingCount > 0 || data.trainingCount > 0);
       }
     }
   );
@@ -325,6 +338,11 @@ const CreateModal = ({
                     label: item.name,
                     value: item.model
                   }))}
+                  disableTip={
+                    isEditMode && isTraining
+                      ? t('dataset:vector_model_processing_disabled_tip')
+                      : undefined
+                  }
                   onChange={(e) => setValue('vectorModel' as const, e)}
                 />
               </Box>
@@ -378,7 +396,7 @@ const CreateModal = ({
             <HStack
               mt={4}
               px={3}
-              py={'10px'}
+              py={2}
               bg={'#F5F9FF'}
               borderRadius={'md'}
               spacing={2}

@@ -1,4 +1,5 @@
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { Types } from 'mongoose';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -170,21 +171,22 @@ async function handler(req: ApiRequestProps) {
   const appCountMap = new Map<string, number>();
   const fileCountMap = new Map<string, number>();
   if (nonFolderDatasets.length > 0) {
-    const datasetIds = nonFolderDatasets.map((d) => d._id);
     const datasetIdStrings = nonFolderDatasets.map((d) => String(d._id));
     const datasetIdSet = new Set(datasetIdStrings);
+    // find() post-hook converts _id to string, so we need to re-wrap for aggregate $in
+    const datasetObjectIds = datasetIdStrings.map((id) => new Types.ObjectId(id));
 
     const [fileAgg, apps] = await Promise.all([
       // fileCount: 单次聚合替代 N 次 countDocuments
       MongoDatasetCollection.aggregate<{ _id: string; count: number }>([
         {
           $match: {
-            datasetId: { $in: datasetIds },
+            datasetId: { $in: datasetObjectIds },
             type: { $ne: DatasetCollectionTypeEnum.folder },
             deleteTime: null
           }
         },
-        { $group: { _id: '$datasetId', count: { $sum: 1 } } }
+        { $group: { _id: { $toString: '$datasetId' }, count: { $sum: 1 } } }
       ]),
       // appCount: 单次查询，仅投影必要字段，应用侧统计
       MongoApp.find(

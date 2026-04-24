@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
-import { Input, Button, Flex, Box, Select, ModalFooter } from '@chakra-ui/react';
+import { Button, Flex, Box, ModalFooter, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { batchUpsertCollectionTags, getDatasetCollectionTags } from '@/web/core/dataset/api';
+import {
+  batchUpsertCollectionTags,
+  delDatasetCollectionTag,
+  getDatasetCollectionTags
+} from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MyInput from '@/components/MyInput';
-import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
-type PendingTag = { tag: string; tagType: 'string' | 'number' | 'datetime' };
+type PendingTag = { id: string; tag: string; tagType: 'string' | 'number' | 'datetime' };
 
-const TagManageModal = ({ onClose }: { onClose: () => void }) => {
+const TagManageModal = ({ onClose }: { onClose: (refresh?: boolean) => void }) => {
   const { t } = useTranslation();
   const { datasetDetail, loadAllDatasetTags, setSearchTagKey } = useContextSelector(
     DatasetPageContext,
@@ -23,33 +28,44 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
 
   const [pendingNewTags, setPendingNewTags] = useState<PendingTag[]>([]);
   const [deletedTagIds, setDeletedTagIds] = useState<Set<string>>(new Set());
-  const [searchText, setSearchText] = useState('');
 
-  // Tags list
-  const {
-    data: collectionTags,
-    ScrollData,
-    refreshList,
-    total: tagsTotal
-  } = useScrollPagination(getDatasetCollectionTags, {
+  const { openConfirm: openDeleteConfirm, ConfirmModal: DeleteConfirmModal } = useConfirm({
+    type: 'delete',
+    content: t('dataset:tag.delete_confirm_tip')
+  });
+
+  const { data: collectionTags, refreshList } = useScrollPagination(getDatasetCollectionTags, {
     pageSize: 200,
     params: {
       datasetId: datasetDetail._id,
-      searchText
-    },
-    refreshDeps: [searchText],
-    EmptyTip: <EmptyTip text={t('dataset:dataset.no_tags')} />
+      searchText: ''
+    }
   });
 
-  const { runAsync: onConfirm, loading } = useRequest(
+  const displayedTags = collectionTags.filter((tag) => !deletedTagIds.has(tag._id));
+  const hasTagRows = displayedTags.length > 0 || pendingNewTags.length > 0;
+
+  const tagTypeOptions = [
+    { label: t('dataset:tag.type_string'), value: 'string' },
+    { label: t('dataset:tag.type_number'), value: 'number' },
+    { label: t('dataset:tag.type_datetime'), value: 'datetime' }
+  ];
+
+  const { runAsync: onConfirmSave, loading } = useRequest(
     async () => {
       const existingTags = collectionTags
-        .filter((t) => !deletedTagIds.has(t._id))
-        .map((t) => ({ tag: t.tag, tagType: t.tagType }));
+        .filter((tag) => !deletedTagIds.has(tag._id))
+        .map((tag) => ({ tag: tag.tag, tagType: tag.tagType }));
 
       const validNewTags = pendingNewTags
         .filter((pt) => pt.tag.trim() && !existingTags.find((et) => et.tag === pt.tag))
         .map((pt) => ({ tag: pt.tag, tagType: pt.tagType }));
+
+      await Promise.all(
+        [...deletedTagIds].map((id) =>
+          delDatasetCollectionTag({ id, datasetId: datasetDetail._id })
+        )
+      );
 
       await batchUpsertCollectionTags({
         datasetId: datasetDetail._id,
@@ -61,155 +77,164 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
         refreshList();
         setSearchTagKey('');
         loadAllDatasetTags();
-        onClose();
+        onClose(true);
       },
       successToast: t('common:save_success'),
       errorToast: t('common:save_failed')
     }
   );
 
-  const displayedTags = collectionTags.filter((t) => !deletedTagIds.has(t._id));
+  const addTagRow = () => {
+    setPendingNewTags((prev) => [...prev, { id: String(Date.now()), tag: '', tagType: 'string' }]);
+  };
 
   return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      iconSrc="core/dataset/tag"
-      iconColor={'primary.600'}
-      title={t('dataset:tag.manage')}
-      w={'580px'}
-      h={'600px'}
-      closeOnOverlayClick={false}
-    >
-      <>
-        <Flex
-          alignItems={'center'}
-          color={'myGray.900'}
-          pb={2}
-          borderBottom={'1px solid #E8EBF0'}
-          mx={8}
-          pt={6}
-        >
-          <MyIcon name="menu" w={5} />
-          <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>
-            {t('dataset:tag.total_tags', {
-              total: tagsTotal
-            })}
-          </Box>
-          <MyInput
-            placeholder={t('common:Search')}
-            w={'160px'}
-            h={8}
-            onChange={(e) => {
-              setSearchText(e.target.value);
-            }}
-          />
-        </Flex>
-        <ScrollData px={8} flex={'1 0 0'} fontSize={'sm'} pb={2}>
-          {displayedTags.map((item) => (
-            <TagRow
-              key={item._id}
-              item={item}
-              onDelete={() => setDeletedTagIds((prev) => new Set([...prev, item._id]))}
-              t={t}
-            />
-          ))}
-          {pendingNewTags.map((pt, index) => (
-            <Flex key={index} py={3} borderBottom={'1px solid #E8EBF0'} gap={2} align={'center'}>
-              <Input
-                placeholder={t('dataset:tag.Add_new_tag')}
-                value={pt.tag}
-                onChange={(e) =>
-                  setPendingNewTags((prev) =>
-                    prev.map((item, i) => (i === index ? { ...item, tag: e.target.value } : item))
-                  )
-                }
-                flex={'1'}
-              />
-              <Select
-                w={'130px'}
-                size={'sm'}
-                value={pt.tagType}
-                onChange={(e) =>
-                  setPendingNewTags((prev) =>
-                    prev.map((item, i) =>
-                      i === index ? { ...item, tagType: e.target.value as any } : item
-                    )
-                  )
-                }
-              >
-                <option value="string">{t('dataset:tag.type_string')}</option>
-                <option value="number">{t('dataset:tag.type_number')}</option>
-                <option value="datetime">{t('dataset:tag.type_datetime')}</option>
-              </Select>
+    <>
+      <MyModal
+        isOpen
+        onClose={onClose}
+        title={
+          <Flex align={'center'}>
+            {t('dataset:tag.manage')}
+            <QuestionTip label={t('dataset:tag.manage_tip')} ml={3} />
+          </Flex>
+        }
+        w={'600px'}
+        h={'600px'}
+        closeOnOverlayClick={false}
+      >
+        <>
+          <Box flex={'1 0 0'} overflow={'auto'} p={8} display={'flex'} flexDirection={'column'}>
+            {!hasTagRows && (
               <Box
-                p={1}
-                cursor={'pointer'}
-                _hover={{ bg: '#1118240D' }}
-                borderRadius={'sm'}
-                onClick={() => setPendingNewTags((prev) => prev.filter((_, i) => i !== index))}
+                fontSize={'12px'}
+                fontWeight={'normal'}
+                lineHeight={'16px'}
+                color={'#666666'}
+                mb={1}
               >
-                <MyIcon name="delete" w={4} />
+                {t('dataset:tag.manage_desc')}
               </Box>
-            </Flex>
-          ))}
-        </ScrollData>
-        {/* 添加标签按钮 */}
-        <Flex
-          px={8}
-          py={3}
-          cursor={'pointer'}
-          color={'primary.600'}
-          fontSize={'sm'}
-          alignItems={'center'}
-          gap={1}
-          _hover={{ color: 'primary.700' }}
-          onClick={() => setPendingNewTags((prev) => [...prev, { tag: '', tagType: 'string' }])}
-        >
-          <MyIcon name="common/addLight" w={4} />
-          {t('dataset:tag.add_new')}
-        </Flex>
-        <ModalFooter borderTop={'1px solid #E8EBF0'} gap={3}>
-          <Button variant={'whiteBase'} onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
-          <Button isLoading={loading} onClick={onConfirm}>
-            {t('common:Confirm')}
-          </Button>
-        </ModalFooter>
-      </>
-    </MyModal>
+            )}
+            {hasTagRows && (
+              <Box mb={1}>
+                {displayedTags.map((item, index) => (
+                  <Box
+                    key={item._id}
+                    mb={index < displayedTags.length - 1 || pendingNewTags.length > 0 ? 1 : 0}
+                  >
+                    <TagRow
+                      tag={item.tag}
+                      tagType={(item.tagType as 'string' | 'number' | 'datetime') || 'string'}
+                      isEditable={false}
+                      tagTypeOptions={tagTypeOptions}
+                      onDelete={() =>
+                        openDeleteConfirm({
+                          onConfirm: () =>
+                            setDeletedTagIds((prev) => new Set([...prev, item._id]))
+                        })()
+                      }
+                    />
+                  </Box>
+                ))}
+                {pendingNewTags.map((pt, index) => (
+                  <Box key={pt.id} mb={index < pendingNewTags.length - 1 ? 1 : 0}>
+                    <TagRow
+                      tag={pt.tag}
+                      tagType={pt.tagType}
+                      isEditable={true}
+                      tagTypeOptions={tagTypeOptions}
+                      onTagChange={(val) =>
+                        setPendingNewTags((prev) =>
+                          prev.map((item) => (item.id === pt.id ? { ...item, tag: val } : item))
+                        )
+                      }
+                      onTagTypeChange={(val) =>
+                        setPendingNewTags((prev) =>
+                          prev.map((item) =>
+                            item.id === pt.id
+                              ? { ...item, tagType: val as 'string' | 'number' | 'datetime' }
+                              : item
+                          )
+                        )
+                      }
+                      onDelete={() =>
+                        setPendingNewTags((prev) => prev.filter((item) => item.id !== pt.id))
+                      }
+                    />
+                  </Box>
+                ))}
+              </Box>
+            )}
+            <Button
+              variant="link"
+              py={2}
+              onClick={addTagRow}
+              leftIcon={
+                <MyIcon name={'common/addLight' as any} w="16px" color="#1770E6" mt="2px" />
+              }
+              iconSpacing="4px"
+              fontSize="12px"
+              color="#156AD9"
+              fontWeight="normal"
+              alignSelf="flex-start"
+            >
+              {t('dataset:tag.add_tag')}
+            </Button>
+          </Box>
+          <ModalFooter gap={3}>
+            <Button variant={'whiteBase'} onClick={() => onClose()}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={loading} onClick={onConfirmSave}>
+              {t('common:Confirm')}
+            </Button>
+          </ModalFooter>
+        </>
+      </MyModal>
+      <DeleteConfirmModal />
+    </>
   );
 };
 
 export default TagManageModal;
 
-const TagRow = ({
-  item,
-  onDelete,
-  t
-}: {
-  item: DatasetTagType;
+type TagRowProps = {
+  tag: string;
+  tagType: 'string' | 'number' | 'datetime';
+  isEditable: boolean;
+  tagTypeOptions: { label: string; value: string }[];
   onDelete: () => void;
-  t: ReturnType<typeof useTranslation>['t'];
-}) => {
+  onTagChange?: (val: string) => void;
+  onTagTypeChange?: (val: string) => void;
+};
+
+const TagRow = ({
+  tag,
+  tagType,
+  isEditable,
+  tagTypeOptions,
+  onDelete,
+  onTagChange,
+  onTagTypeChange
+}: TagRowProps) => {
+  const { t } = useTranslation();
   return (
-    <Flex py={3} borderBottom={'1px solid #E8EBF0'} gap={2} align={'center'}>
-      <Input value={item.tag} isReadOnly flex={'1'} />
-      <Select w={'130px'} size={'sm'} value={item.tagType || 'string'} isReadOnly>
-        <option value="string">{t('dataset:tag.type_string')}</option>
-        <option value="number">{t('dataset:tag.type_number')}</option>
-        <option value="datetime">{t('dataset:tag.type_datetime')}</option>
-      </Select>
-      <Box
-        p={1}
-        cursor={'pointer'}
-        _hover={{ bg: '#1118240D' }}
-        borderRadius={'sm'}
-        onClick={onDelete}
-      >
-        <MyIcon name="delete" w={4} />
-      </Box>
+    <Flex gap={2} align={'center'}>
+      <Input
+        value={tag}
+        flex={'1'}
+        onChange={(e) => onTagChange?.(e.target.value)}
+        placeholder={t('dataset:tag.tag_name')}
+      />
+      <MySelect
+        w={'130px'}
+        value={tagType}
+        list={tagTypeOptions}
+        onChange={(val) => onTagTypeChange?.(val)}
+        isDisabled={!isEditable}
+      />
+      <MyIconButton icon="delete" hoverColor="red.500" hoverBg="red.50" onClick={onDelete} />
     </Flex>
   );
 };

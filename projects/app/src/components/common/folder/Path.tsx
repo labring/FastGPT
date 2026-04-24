@@ -18,6 +18,7 @@ const FolderPath = (props: {
   hoverStyle?: BoxProps;
   forbidLastClick?: boolean;
   isSxfDesign?: boolean;
+  showReturnIcon?: boolean;
 }) => {
   const { t } = useTranslation();
   const {
@@ -28,7 +29,8 @@ const FolderPath = (props: {
     fontSize,
     hoverStyle,
     forbidLastClick = false,
-    isSxfDesign = false
+    isSxfDesign = false,
+    showReturnIcon = false
   } = props;
 
   const concatPaths = useMemo(
@@ -140,7 +142,14 @@ const FolderPath = (props: {
               })}
         {...(isLast && !forbidLastClick && clickStyles)}
       >
-        {displayName}
+        {index === 0 && showReturnIcon ? (
+          <Flex alignItems={'center'} gap={'4px'}>
+            <MyIcon name={'common/backLight'} w={'14px'} flexShrink={0} />
+            <Box>{displayName}</Box>
+          </Flex>
+        ) : (
+          displayName
+        )}
       </Box>
     );
 
