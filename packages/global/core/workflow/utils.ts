@@ -235,6 +235,14 @@ export const pluginData2FlowNodeIO = ({
   };
 };
 
+const jsonRenderValueTypes = new Set<WorkflowIOValueTypeEnum>([
+  WorkflowIOValueTypeEnum.object,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean,
+  WorkflowIOValueTypeEnum.arrayObject
+]);
+
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
@@ -255,11 +263,7 @@ export const appData2FlowNodeIO = ({
             : item.valueType;
         // 与 valueTypeToInputType 对齐：any 视为自由文本，走 input
         const isJsonValueType =
-          normalizedValueType === WorkflowIOValueTypeEnum.object ||
-          normalizedValueType === WorkflowIOValueTypeEnum.arrayString ||
-          normalizedValueType === WorkflowIOValueTypeEnum.arrayNumber ||
-          normalizedValueType === WorkflowIOValueTypeEnum.arrayBoolean ||
-          normalizedValueType === WorkflowIOValueTypeEnum.arrayObject;
+          !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
           [VariableInputEnum.input]: isJsonValueType
             ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]

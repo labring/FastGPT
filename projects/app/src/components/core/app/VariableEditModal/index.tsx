@@ -1,10 +1,6 @@
 import React, { useCallback, useMemo, useEffect } from 'react';
 import { Flex, Stack } from '@chakra-ui/react';
-import {
-  VariableInputEnum,
-  WorkflowIOValueTypeEnum,
-  textInputVariableValueTypes
-} from '@fastgpt/global/core/workflow/constants';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -18,6 +14,7 @@ import InputTypeSelector from '@fastgpt/web/components/common/InputTypeSelector'
 import { getVariableInputTypeList } from '@fastgpt/web/components/common/InputTypeSelector/configs';
 import { addVariable } from '../VariableEdit';
 import { useValidateFieldName, useSubmitErrorHandler } from '../utils/formValidation';
+import { snapTextInputValueType } from './utils';
 
 const VariableEditModal = ({
   onClose,
@@ -42,14 +39,12 @@ const VariableEditModal = ({
   const type = watch('type');
   useEffect(() => {
     reset(variable);
-    // valueType 缺省视为隐式 string，保留 legacy defaultValue；显式非法值才回退并清空
-    if (
-      variable?.type === VariableInputEnum.input &&
-      variable.valueType !== undefined &&
-      !textInputVariableValueTypes.includes(variable.valueType as WorkflowIOValueTypeEnum)
-    ) {
-      setValue('valueType', WorkflowIOValueTypeEnum.string);
-      setValue('defaultValue', '');
+    if (variable?.type === VariableInputEnum.input) {
+      const snap = snapTextInputValueType(variable.valueType);
+      if (snap.resetDefault) {
+        setValue('valueType', snap.valueType);
+        setValue('defaultValue', '');
+      }
     }
   }, [variable, reset, setValue]);
 
@@ -80,13 +75,12 @@ const VariableEditModal = ({
       if (typeEnum === VariableInputEnum.file) {
         setValue('canLocalUpload', true);
       }
-      if (
-        typeEnum === VariableInputEnum.input &&
-        value.valueType !== undefined &&
-        !textInputVariableValueTypes.includes(value.valueType as WorkflowIOValueTypeEnum)
-      ) {
-        setValue('valueType', WorkflowIOValueTypeEnum.string);
-        setValue('defaultValue', '');
+      if (typeEnum === VariableInputEnum.input) {
+        const snap = snapTextInputValueType(value.valueType);
+        if (snap.resetDefault) {
+          setValue('valueType', snap.valueType);
+          setValue('defaultValue', '');
+        }
       }
 
       setValue('type', typeEnum);
@@ -118,12 +112,8 @@ const VariableEditModal = ({
         data.valueType = inputTypeList
           .flat()
           .find((item) => item.value === data.type)?.defaultValueType;
-      } else if (
-        data.type === VariableInputEnum.input &&
-        !textInputVariableValueTypes.includes(data.valueType as WorkflowIOValueTypeEnum)
-      ) {
-        // Legacy 非法值兜底
-        data.valueType = WorkflowIOValueTypeEnum.string;
+      } else if (data.type === VariableInputEnum.input) {
+        data.valueType = snapTextInputValueType(data.valueType).valueType;
       }
 
       // Special types set required = false
