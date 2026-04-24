@@ -291,6 +291,7 @@ async function handler(
         name: fileName,
         tags: tags as unknown as string[],
         type: DatasetCollectionTypeEnum.file,
+        fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.template,
         autoIndexes: finalEnhanceConfig.autoIndexes || false,
         small2bigIndexes: finalEnhanceConfig.small2bigIndexes || false,
