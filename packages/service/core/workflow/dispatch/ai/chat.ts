@@ -34,8 +34,8 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { injectFileContentToUserMessages } from '../tools/readFiles';
-import { parseUrlToFileType } from '../../utils/context';
+import { getFileContentFromLinks } from '../tools/readFiles';
+import { parseUrlToFileType, rewriteUserQueryWithFileContent } from '../../utils/context';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
@@ -436,25 +436,38 @@ async function getChatMessages({
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
 
-  const userMessages = await injectFileContentToUserMessages({
-    messages: [
-      ...histories,
-      {
-        obj: ChatRoleEnum.Human,
-        value: runtimePrompt2ChatsValue({
-          files: userFiles,
-          text: finalUserInput
-        })
+  const rawUserMessages: ChatItemMiniType[] = [
+    ...histories,
+    {
+      obj: ChatRoleEnum.Human,
+      value: runtimePrompt2ChatsValue({
+        files: userFiles,
+        text: finalUserInput
+      })
+    }
+  ];
+  const userMessages = await Promise.all(
+    rawUserMessages.map(async (message): Promise<ChatItemMiniType> => {
+      if (message.obj !== ChatRoleEnum.Human) {
+        return message;
       }
-    ],
-    requestOrigin,
-    maxFiles,
-    customPdfParse,
-    usageId,
-    version,
-    teamId: runningUserInfo.teamId,
-    tmbId: runningUserInfo.tmbId
-  });
+
+      return {
+        ...message,
+        value: await rewriteUserQueryWithFileContent({
+          userQuery: message.value,
+          requestOrigin,
+          maxFiles,
+          customPdfParse,
+          usageId,
+          version,
+          getFileContentFromLinks,
+          teamId: runningUserInfo.teamId,
+          tmbId: runningUserInfo.tmbId
+        })
+      };
+    })
+  );
 
   const messages: ChatItemMiniType[] = [
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),

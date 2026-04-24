@@ -24,8 +24,8 @@ import {
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { getMultiplePrompt } from './constants';
 import { filterToolResponseToPreview } from './utils';
-import { injectFileContentToUserMessages } from '../../tools/readFiles';
-import { parseUrlToFileType } from '../../../utils/context';
+import { getFileContentFromLinks } from '../../tools/readFiles';
+import { parseUrlToFileType, rewriteUserQueryWithFileContent } from '../../../utils/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -153,16 +153,29 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       const runtimeMessages = lastInteractive && isEntry ? value.slice(0, -2) : value;
       if (hasReadFilesTool) return runtimeMessages;
 
-      return injectFileContentToUserMessages({
-        messages: runtimeMessages,
-        requestOrigin,
-        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId,
-        version,
-        teamId: runningUserInfo.teamId,
-        tmbId: runningUserInfo.tmbId
-      });
+      const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+      return Promise.all(
+        runtimeMessages.map(async (message): Promise<ChatItemMiniType> => {
+          if (message.obj !== ChatRoleEnum.Human) {
+            return message;
+          }
+
+          return {
+            ...message,
+            value: await rewriteUserQueryWithFileContent({
+              userQuery: message.value,
+              requestOrigin,
+              maxFiles,
+              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+              usageId,
+              version,
+              getFileContentFromLinks,
+              teamId: runningUserInfo.teamId,
+              tmbId: runningUserInfo.tmbId
+            })
+          };
+        })
+      );
     })();
 
     const messages: ChatItemMiniType[] = [
