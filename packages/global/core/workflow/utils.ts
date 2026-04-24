@@ -261,7 +261,6 @@ export const appData2FlowNodeIO = ({
           !textInputVariableValueTypes.includes(item.valueType)
             ? WorkflowIOValueTypeEnum.string
             : item.valueType;
-        // 与 valueTypeToInputType 对齐：any 视为自由文本，走 input
         const isJsonValueType =
           !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {

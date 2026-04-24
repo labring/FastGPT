@@ -801,7 +801,7 @@ describe('appData2FlowNodeIO', () => {
     ]);
   });
 
-  it('should treat any/undefined valueType as text input (aligned with chat side)', () => {
+  it('should snap legacy any valueType to string and keep undefined as text input', () => {
     const result = appData2FlowNodeIO({
       chatConfig: {
         variables: [
@@ -827,6 +827,7 @@ describe('appData2FlowNodeIO', () => {
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.reference
     ]);
+    expect(anyVar?.valueType).toBe(WorkflowIOValueTypeEnum.string);
 
     const legacyVar = result.inputs.find((i) => i.key === 'legacyVar');
     expect(legacyVar?.renderTypeList).toEqual([

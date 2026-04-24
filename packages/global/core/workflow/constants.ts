@@ -379,8 +379,7 @@ export const textInputVariableValueTypes: WorkflowIOValueTypeEnum[] = [
   WorkflowIOValueTypeEnum.arrayString,
   WorkflowIOValueTypeEnum.arrayNumber,
   WorkflowIOValueTypeEnum.arrayBoolean,
-  WorkflowIOValueTypeEnum.arrayObject,
-  WorkflowIOValueTypeEnum.any
+  WorkflowIOValueTypeEnum.arrayObject
 ];
 
 export const variableConfigs: VariableConfigType[][] = [

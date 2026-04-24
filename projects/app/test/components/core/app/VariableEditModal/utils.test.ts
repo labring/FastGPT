@@ -16,8 +16,7 @@ describe('snapTextInputValueType', () => {
     WorkflowIOValueTypeEnum.arrayString,
     WorkflowIOValueTypeEnum.arrayNumber,
     WorkflowIOValueTypeEnum.arrayBoolean,
-    WorkflowIOValueTypeEnum.arrayObject,
-    WorkflowIOValueTypeEnum.any
+    WorkflowIOValueTypeEnum.arrayObject
   ])('合法 valueType %s 原样返回，不清 defaultValue', (valueType) => {
     expect(snapTextInputValueType(valueType)).toEqual({
       valueType,
@@ -28,6 +27,7 @@ describe('snapTextInputValueType', () => {
   it.each([
     WorkflowIOValueTypeEnum.number,
     WorkflowIOValueTypeEnum.boolean,
+    WorkflowIOValueTypeEnum.any,
     WorkflowIOValueTypeEnum.arrayAny,
     WorkflowIOValueTypeEnum.chatHistory,
     WorkflowIOValueTypeEnum.datasetQuote
