@@ -277,6 +277,8 @@ export type AppTemplateSchemaType = {
   order?: number;
   // TODO: 对于建议应用，是另一个格式
   workflow: WorkflowTemplateBasicType;
+  experienceUrl?: string;
+  isMarketFeatured?: boolean;
 };
 
 export type TemplateTypeSchemaType = {

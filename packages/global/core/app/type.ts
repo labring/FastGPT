@@ -235,6 +235,8 @@ export type AppTemplateSchemaType = {
   order?: number;
   // TODO: 对于chat agent，是另一个格式
   workflow: WorkflowTemplateBasicType;
+  experienceUrl?: string;
+  isMarketFeatured?: boolean;
 };
 
 export type TemplateTypeSchemaType = {
