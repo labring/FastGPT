@@ -171,7 +171,7 @@ export const chats2GPTMessages = ({
             typeof lastResult?.content === 'string'
           ) {
             lastResult.content += value.text.content;
-          } else if (lastResult.reasoning_content) {
+          } else if (lastResult?.reasoning_content) {
             lastResult.content = value.text.content;
           } else {
             aiResults.push({
