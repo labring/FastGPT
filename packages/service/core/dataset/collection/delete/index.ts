@@ -41,7 +41,7 @@ export const addCollectionDeleteJob = (data: CollectionDeleteJobData) => {
     .createHash('md5')
     .update(data.collectionIds.slice().sort().join(','))
     .digest('hex');
-  const jobId = `${String(data.teamId)}:${idsHash}`;
+  const jobId = `${String(data.teamId)}-${idsHash}`;
 
   return collectionDeleteQueue.add('delete_collection', data, {
     jobId,

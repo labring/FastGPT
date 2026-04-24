@@ -88,18 +88,36 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     schema.post(/^find/, function (docs) {
       if (!docs) return;
 
+      const visited = new WeakSet();
       const convertObjectIds = (obj: any) => {
-        if (!obj) return;
+        if (!obj || typeof obj !== 'object') return;
+        if (visited.has(obj)) return;
+        visited.add(obj);
 
         // Convert _id
         if (obj._id && obj._id.toString) {
           obj._id = obj._id.toString();
         }
 
-        // Convert other ObjectId fields
+        // Convert ObjectId fields at current level
         Object.keys(obj).forEach((key) => {
-          if (obj[key] && obj[key]._bsontype === 'ObjectId') {
-            obj[key] = obj[key].toString();
+          const val = obj[key];
+          if (!val) return;
+
+          if (val._bsontype === 'ObjectId') {
+            obj[key] = val.toString();
+          } else if (Array.isArray(val)) {
+            for (let i = 0; i < val.length; i++) {
+              const item = val[i];
+              if (!item) continue;
+              if (item._bsontype === 'ObjectId') {
+                val[i] = item.toString();
+              } else if (typeof item === 'object') {
+                convertObjectIds(item);
+              }
+            }
+          } else if (typeof val === 'object') {
+            convertObjectIds(val);
           }
         });
       };
