@@ -65,6 +65,7 @@ const Edit = ({
             appForm={appForm}
             setRenderEdit={setRenderEdit}
             form2WorkflowFn={form2AppWorkflow}
+            debuggerMode={true}
           />
         </Box>
       )}
