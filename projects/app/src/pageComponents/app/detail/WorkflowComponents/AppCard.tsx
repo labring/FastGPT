@@ -183,7 +183,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
       <HStack>
         <Avatar src={appDetail.avatar} w={'30px'} borderRadius={'md'} />
         <Box>
-          <HStack px={1} spacing={2} alignItems={'center'}>
+          <HStack px={1} spacing={2} alignItems={'center'} h="24px">
             <Box
               color={'myGray.900'}
               maxW={'320px'}

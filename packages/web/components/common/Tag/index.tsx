@@ -92,7 +92,6 @@ const colorMap: Record<
     color: 'blue.600'
   }
 };
-
 const MyTag = ({
   children,
   colorSchema = 'blue',

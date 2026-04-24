@@ -137,7 +137,7 @@ const Header = () => {
           pr={[2, 6]}
           alignItems={['flex-start', 'center']}
           userSelect={'none'}
-          h={['auto', '67px']}
+          h={['auto', '64px']}
           flexWrap={'wrap'}
           position={'fixed'}
           top={0}
@@ -146,8 +146,7 @@ const Header = () => {
           zIndex={100}
           {...(currentTab === TabEnum.appEdit
             ? {
-                bg: 'rgba(255, 255, 255, 0.70)',
-                backdropFilter: 'blur(6px)'
+                bgGradient: 'linear(180deg, #F2F8FF 0%, #F7F9FC 12%)'
               }
             : {
                 bg: 'transparent',
@@ -173,7 +172,7 @@ const Header = () => {
           </Box>
 
           {/* app info */}
-          <Box ml={1}>
+          <Box ml={1} className="xxx">
             <AppCard isSaved={isSaved} showSaveStatus={isV2Workflow} />
           </Box>
 

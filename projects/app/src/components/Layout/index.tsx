@@ -94,6 +94,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       router.pathname.startsWith('/account') ||
       router.pathname.startsWith('/skill') ||
       router.pathname.startsWith('/config') ||
+      router.pathname.startsWith('/app/detail') ||
       router.pathname === '/app/detail',
     [router.pathname]
   );

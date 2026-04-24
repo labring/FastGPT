@@ -230,7 +230,6 @@ const Header = ({
               <>
                 {isPc && (
                   <MyTag
-                    mr={3}
                     type={'borderFill'}
                     showDot
                     colorSchema={
@@ -248,7 +247,7 @@ const Header = ({
                 )}
 
                 <IconButton
-                  mr={[2, 4]}
+                  mx={2}
                   icon={<MyIcon name={'history'} w={'18px'} />}
                   aria-label={''}
                   size={'sm'}
