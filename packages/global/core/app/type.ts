@@ -179,6 +179,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
 
   usingReRank: z.boolean().optional(),
   rerankModel: z.string().optional(),
+  embeddingModel: z.string().optional(),
   rerankMethod: z.enum(RerankMethodEnum).optional(),
   rerankWeight: z.number().optional(),
 

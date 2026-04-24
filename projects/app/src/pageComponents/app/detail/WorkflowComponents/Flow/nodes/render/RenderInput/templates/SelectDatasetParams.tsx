@@ -42,7 +42,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     datasetSearchUsingExtensionQuery: true,
     datasetSearchExtensionModel: defaultModels.llm?.model,
     datasetSearchExtensionBg: '',
-    generateSqlModel: defaultModels.llm?.model
+    generateSqlModel: defaultModels.llm?.model,
+    embeddingModel: ''
   });
 
   const [retrievalMode, setRetrievalMode] = useState<`${DatasetRetrievalModeEnum}`>(
@@ -50,6 +51,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   );
   const [agenticSearchConfig, setAgenticSearchConfig] = useState({
     agenticSearchLLMModel: defaultModels.llm?.model || '',
+    embeddingModel: '',
     agenticSearchRerankModel: defaultModels.rerank?.model || '',
     agenticSearchReasoning: true
   });
@@ -66,7 +68,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       return {
         isVariableRef: true,
         hasDatabaseKnowledge: true,
-        hasOtherKnowledge: true
+        hasOtherKnowledge: true,
+        datasetVectorModel: undefined
       };
     }
 
@@ -79,7 +82,8 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       hasOtherKnowledge:
         knowledgeInfoList.some(
           (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
-        ) || knowledgeInfoList.length === 0
+        ) || knowledgeInfoList.length === 0,
+      datasetVectorModel: knowledgeInfoList[0]?.vectorModel?.model
     };
   }, [inputs]);
 
@@ -131,6 +135,16 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       if (input.key === NodeInputKeyEnum.datasetRetrievalMode) {
         setRetrievalMode(input.value || DatasetRetrievalModeEnum.standard);
       }
+      if (input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel) {
+        setData((prev) => ({
+          ...prev,
+          embeddingModel: input.value ?? prev.embeddingModel
+        }));
+        setAgenticSearchConfig((prev) => ({
+          ...prev,
+          embeddingModel: input.value ?? prev.embeddingModel
+        }));
+      }
       if (input.key === NodeInputKeyEnum.datasetAgenticSearchLLMModel) {
         setAgenticSearchConfig((prev) => ({
           ...prev,
@@ -151,6 +165,50 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       }
     });
   }, [inputs]);
+
+  // 知识库变更时同步 embeddingModel：清空则清空；切换则更新为新的向量模型
+  const prevDatasetVectorModelRef = React.useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const datasetVectorModel = knowledgeTypeConfig.datasetVectorModel;
+    if (datasetVectorModel === prevDatasetVectorModelRef.current) return;
+
+    const prev = prevDatasetVectorModelRef.current;
+    prevDatasetVectorModelRef.current = datasetVectorModel;
+
+    if (!datasetVectorModel) {
+      if (data.embeddingModel) {
+        setData((prev) => ({ ...prev, embeddingModel: '' }));
+        const embeddingModelInput = inputs.find(
+          (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+        );
+        if (embeddingModelInput) {
+          onChangeNode({
+            nodeId,
+            type: 'updateInput',
+            key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+            value: { ...embeddingModelInput, value: '' }
+          });
+        }
+      }
+      return;
+    }
+
+    // 知识库从有值A切换为有值B时，更新 embeddingModel 为新的向量模型
+    if (prev !== undefined && prev !== datasetVectorModel) {
+      setData((state) => ({ ...state, embeddingModel: datasetVectorModel }));
+      const embeddingModelInput = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+      );
+      if (embeddingModelInput) {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+          value: { ...embeddingModelInput, value: datasetVectorModel }
+        });
+      }
+    }
+  }, [knowledgeTypeConfig.datasetVectorModel, data.embeddingModel, inputs, nodeId, onChangeNode]);
 
   const Render = useMemo(() => {
     return (
@@ -210,6 +268,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         <DatasetParamsModal
           {...data}
           {...knowledgeTypeConfig}
+          datasetVectorModel={knowledgeTypeConfig.datasetVectorModel}
           maxTokens={tokenLimit}
           onClose={onClose}
           onSuccess={(e) => {
@@ -234,6 +293,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
       {isAgenticModalOpen && (
         <MultipleRetrievalModal
           defaultValues={agenticSearchConfig}
+          datasetVectorModel={knowledgeTypeConfig.datasetVectorModel}
           onClose={onAgenticModalClose}
           onSuccess={(config: any) => {
             setAgenticSearchConfig(config);
@@ -248,6 +308,19 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                 type: 'updateInput',
                 key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,
                 value: { ...llmModelInput, value: config.agenticSearchLLMModel }
+              });
+            }
+
+            // 更新 embeddingModel
+            const embeddingModelInput = inputs.find(
+              (input) => input.key === NodeInputKeyEnum.datasetSearchEmbeddingModel
+            );
+            if (embeddingModelInput) {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+                value: { ...embeddingModelInput, value: config.embeddingModel }
               });
             }
 

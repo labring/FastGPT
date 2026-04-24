@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -66,6 +66,22 @@ const EditForm = ({
   const showSandbox = feConfigs.show_agent_sandbox;
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const datasetVectorModel = useMemo(
+    () => selectDatasets[0]?.vectorModel?.model,
+    [selectDatasets]
+  );
+
+  // 知识库向量模型切换时，联动重置 embeddingModel
+  const prevDatasetVectorModelRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevDatasetVectorModelRef.current;
+    prevDatasetVectorModelRef.current = datasetVectorModel;
+    if (prev === undefined || prev === datasetVectorModel) return;
+    setAppForm((state) => ({
+      ...state,
+      dataset: { ...state.dataset, embeddingModel: datasetVectorModel || '' }
+    }));
+  }, [datasetVectorModel, setAppForm]);
 
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
     selectedTools: appForm.selectedTools,
@@ -548,6 +564,7 @@ const EditForm = ({
         <DatasetParamsModal
           {...appForm.dataset}
           maxTokens={tokenLimit}
+          datasetVectorModel={datasetVectorModel}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
             setAppForm((state) => ({

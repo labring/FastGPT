@@ -51,6 +51,7 @@ type FormType = {
   searchParams: {
     searchMode: DatasetSearchModeEnum;
     embeddingWeight?: number;
+    embeddingModel?: string;
 
     usingReRank?: boolean;
     rerankModel?: string;
@@ -86,6 +87,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       searchParams: {
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.5,
+        embeddingModel: '',
         usingReRank: true,
         rerankModel: defaultModels?.rerank?.model,
         rerankMethod: RerankMethodEnum.content,
@@ -387,6 +389,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         <DatasetParamsModal
           {...(searchParams as any)}
           maxTokens={20000}
+          datasetVectorModel={datasetDetail.vectorModel?.model}
           onClose={onCloseSelectMode}
           onSuccess={(e) => {
             setValue('searchParams', {

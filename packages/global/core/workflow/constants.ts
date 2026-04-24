@@ -182,6 +182,7 @@ export enum NodeInputKeyEnum {
   datasetMaxTokens = 'limit',
   datasetSearchMode = 'searchMode',
   datasetSearchEmbeddingWeight = 'embeddingWeight',
+  datasetSearchEmbeddingModel = 'embeddingModel',
 
   datasetSearchUsingReRank = 'usingReRank',
   datasetSearchRerankWeight = 'rerankWeight',

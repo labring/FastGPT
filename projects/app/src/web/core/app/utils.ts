@@ -281,6 +281,13 @@ export function form2AppWorkflow(
           value: formData.dataset.embeddingWeight
         },
         {
+          key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.embeddingModel
+        },
+        {
           key: NodeInputKeyEnum.datasetSearchUsingReRank,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
@@ -1387,3 +1394,21 @@ export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): Store
 
   return updatedNodes;
 };
+
+/**
+ * 根据知识库向量模型，筛选可用的 embedding 模型选项。
+ * 包含基模本身，以及通过 trainTaskList.baseModelId 关联的 tuned 模型。
+ */
+export function getEmbeddingModelSelectList(
+  embeddingModelList: { model: string; name: string; isTuned?: boolean; trainTaskList?: { baseModelId: string }[] }[],
+  datasetVectorModel: string | undefined
+): { value: string; label: string }[] {
+  if (!datasetVectorModel) return [];
+  return embeddingModelList
+    .filter((item) => {
+      if (item.model === datasetVectorModel) return true;
+      if (!item.isTuned) return false;
+      return (item.trainTaskList || []).some((t) => t.baseModelId === datasetVectorModel);
+    })
+    .map((item) => ({ value: item.model, label: item.name }));
+}

@@ -49,7 +49,8 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
 import SfRadio from '@/components/SF/SfRadio';
 import SfLeftRadio from '@/components/SF/SfLeftRadio';
 
@@ -124,7 +125,33 @@ const EditForm = ({
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-  const { llmModelList, defaultModels } = useSystemStore();
+  const { llmModelList, embeddingModelList, reRankModelList, defaultModels } = useSystemStore();
+
+  // 从选中知识库中获取向量模型 ID（所有知识库限制使用同一向量模型）
+  const datasetVectorModel = useMemo(
+    () => selectDatasets[0]?.vectorModel?.model,
+    [selectDatasets]
+  );
+
+  // 向量模型可选项：知识库为空时展示空列表；否则展示与知识库向量模型匹配的模型
+  const embeddingModelSelectList = useMemo(
+    () => getEmbeddingModelSelectList(embeddingModelList, datasetVectorModel),
+    [embeddingModelList, datasetVectorModel]
+  );
+
+  // 当知识库向量模型变更时，校验并联动更新 embeddingModel 选中值
+  useEffect(() => {
+    if (!datasetVectorModel) return;
+
+    setAppForm((state) => {
+      const current = (state.dataset as AppDatasetSearchParamsType).embeddingModel;
+      const validIds = new Set(embeddingModelSelectList.map((m) => m.value));
+      // 当前值有效则保留，否则重置为基模（基模不在列表则置空）
+      if (current && validIds.has(current)) return state;
+      const newModel = validIds.has(datasetVectorModel) ? datasetVectorModel : '';
+      return { ...state, dataset: { ...state.dataset, embeddingModel: newModel } };
+    });
+  }, [datasetVectorModel, embeddingModelSelectList, setAppForm]);
 
   const knowledgeTypeConfig = useMemo(() => {
     return {
@@ -435,6 +462,50 @@ const EditForm = ({
                 }));
               }}
             />
+          </FormItem>
+          <FormItem
+            label={t('app:smart_customer_service_embedding_model')}
+            tooltip={t('app:smart_customer_service_embedding_model_tip')}
+          >
+            <Box flex={1}>
+              <AIModelSelector
+                h={'32px'}
+                value={appForm.dataset.embeddingModel}
+                list={embeddingModelSelectList}
+                onChange={(model) => {
+                  setAppForm((state) => ({
+                    ...state,
+                    dataset: {
+                      ...state.dataset,
+                      embeddingModel: model
+                    }
+                  }));
+                }}
+              />
+            </Box>
+          </FormItem>
+          <FormItem
+            label={t('app:smart_customer_service_rerank_model')}
+          >
+            <Box flex={1}>
+              <AIModelSelector
+                h={'32px'}
+                value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
+                list={reRankModelList.map((item) => ({
+                  value: item.model,
+                  label: item.name
+                }))}
+                onChange={(model) => {
+                  setAppForm((state) => ({
+                    ...state,
+                    dataset: {
+                      ...state.dataset,
+                      rerankModel: model
+                    }
+                  }));
+                }}
+              />
+            </Box>
           </FormItem>
           {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic && (
             <FormItem

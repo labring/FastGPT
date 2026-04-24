@@ -121,6 +121,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchEmbeddingWeight
       );
+      defaultAppForm.dataset.embeddingModel = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchEmbeddingModel
+      );
       // Rerank
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         node.inputs,
@@ -420,6 +424,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.number,
           value: formData.dataset.embeddingWeight
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchEmbeddingModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.embeddingModel
         },
         {
           key: NodeInputKeyEnum.datasetSearchUsingReRank,

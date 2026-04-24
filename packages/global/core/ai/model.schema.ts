@@ -107,7 +107,8 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
   dbConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for storage
   queryConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for query
   instruction: z.string().optional(), // Instruction for instruction-aware models (e.g. qwen3-embedding)
-  supportTrain: z.boolean().optional() // Whether the model supports training
+  supportTrain: z.boolean().optional(), // Whether the model supports training
+  trainTaskList: z.array(z.any()).optional() // Runtime: EmbeddingTrainTaskListItem[], injected for isTuned models
 });
 export type EmbeddingModelItemType = z.infer<typeof EmbeddingModelItemSchema>;
 
@@ -115,7 +116,8 @@ export const RerankModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.
   type: z.literal(ModelTypeEnum.rerank),
   maxToken: z.number().optional(), // max input token for rerank query + one document
   instruction: z.string().optional(), // Instruction for instruction-aware models
-  supportTrain: z.boolean().optional() // Whether the model supports training
+  supportTrain: z.boolean().optional(), // Whether the model supports training
+  trainTaskList: z.array(z.any()).optional() // Runtime: RerankTrainTaskListItem[], injected for isTuned models
 });
 export type RerankModelItemType = z.infer<typeof RerankModelItemSchema>;
 

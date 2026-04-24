@@ -12,6 +12,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -56,7 +57,7 @@ const CreateModal = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
-  const { feConfigs, reRankModelList, defaultModels } = useSystemStore();
+  const { feConfigs } = useSystemStore();
 
   const typeData = createAppTypeMap[type];
   const shouldRequestTemplates = useMemo(() => {
@@ -77,10 +78,7 @@ const CreateModal = ({
       avatar: typeData.icon,
       name: '',
       smartCustomerService: {
-        datasets: [],
-        rerankModel:
-          defaultModels.rerank?.model ||
-          (reRankModelList.length > 0 ? reRankModelList[0].model : '')
+        datasets: []
       }
     }
   });
@@ -103,19 +101,15 @@ const CreateModal = ({
         const template = templateDetail.workflow;
         const updatedNodes = template.nodes.map((node: StoreNodeItemType) => {
           if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-            const datasetInput = node.inputs.find(
-              (input: FlowNodeInputItemType) => input.key === 'datasets'
-            );
-            const rerankModelInput = node.inputs.find(
-              (input: FlowNodeInputItemType) => input.key === 'rerankModel'
-            );
-
-            if (datasetInput) {
-              datasetInput.value = smartCustomerService?.datasets || [];
-            }
-            if (rerankModelInput) {
-              rerankModelInput.value = smartCustomerService?.rerankModel || '';
-            }
+            node.inputs.forEach((input: FlowNodeInputItemType) => {
+              if (input.key === NodeInputKeyEnum.datasetSelectList) {
+                input.value = smartCustomerService?.datasets || [];
+              }
+              // 重置创建模板中的配置的重排模型默认值
+              if (input.key === NodeInputKeyEnum.datasetSearchRerankModel) {
+                input.value = '';
+              }
+            });
           }
           return node;
         });
@@ -186,14 +180,9 @@ const CreateModal = ({
   const renderFooterButtons = () => {
     const isSmartCustomerService = type === AppTypeEnum.assistant;
     const isDatasetsEmpty = isSmartCustomerService && smartCustomerService?.datasets?.length === 0;
-    const isRerankModelEmpty = isSmartCustomerService && !smartCustomerService?.rerankModel;
 
-    const isDisabled = isDatasetsEmpty || isRerankModelEmpty;
-    const tooltipLabel = isDatasetsEmpty
-      ? t('app:files_cascader_select_first')
-      : isRerankModelEmpty
-        ? t('app:smart_customer_service_select_rerank_model')
-        : '';
+    const isDisabled = isDatasetsEmpty;
+    const tooltipLabel = isDatasetsEmpty ? t('app:files_cascader_select_first') : '';
 
     return (
       <ModalFooter gap={4}>

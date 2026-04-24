@@ -111,15 +111,18 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchEmbeddingWeight
       );
+      defaultAppForm.dataset.embeddingModel =
+        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchEmbeddingModel) ||
+        defaultAppForm.dataset.datasets?.[0]?.vectorModel?.model;
       // Rerank
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
-      defaultAppForm.dataset.rerankModel = findInputValueByKey(
-        node.inputs,
-        NodeInputKeyEnum.datasetSearchRerankModel
-      );
+      const rerankModel1 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModel);
+      const rerankModel2 = findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModel);
+      // 使用两种是因为两种检索方式使用不同的key
+      defaultAppForm.dataset.rerankModel = rerankModel1 || rerankModel2;
       defaultAppForm.dataset.rerankMethod =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankMethod) ||
         RerankMethodEnum.content;
@@ -159,9 +162,7 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiModel
       );
-      defaultAppForm.dataset.agenticSearchRerankModel =
-        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetAgenticSearchRerankModel) ||
-        findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankModel);
+      defaultAppForm.dataset.agenticSearchRerankModel = rerankModel2 || rerankModel1;
       // 标签过滤
       defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
         node.inputs,
