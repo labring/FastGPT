@@ -42,9 +42,10 @@ const VariableEditModal = ({
   const type = watch('type');
   useEffect(() => {
     reset(variable);
-    // Legacy 数据非法组合：打开时立即回退，避免渲染到不匹配的控件
+    // valueType 缺省视为隐式 string，保留 legacy defaultValue；显式非法值才回退并清空
     if (
       variable?.type === VariableInputEnum.input &&
+      variable.valueType !== undefined &&
       !textInputVariableValueTypes.includes(variable.valueType as WorkflowIOValueTypeEnum)
     ) {
       setValue('valueType', WorkflowIOValueTypeEnum.string);
@@ -81,6 +82,7 @@ const VariableEditModal = ({
       }
       if (
         typeEnum === VariableInputEnum.input &&
+        value.valueType !== undefined &&
         !textInputVariableValueTypes.includes(value.valueType as WorkflowIOValueTypeEnum)
       ) {
         setValue('valueType', WorkflowIOValueTypeEnum.string);

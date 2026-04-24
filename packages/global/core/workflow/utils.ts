@@ -10,7 +10,8 @@ import {
   VariableInputEnum,
   variableMap,
   VARIABLE_NODE_ID,
-  NodeOutputKeyEnum
+  NodeOutputKeyEnum,
+  textInputVariableValueTypes
 } from './constants';
 import {
   type FlowNodeInputItemType,
@@ -245,13 +246,20 @@ export const appData2FlowNodeIO = ({
   const variableInput = !chatConfig?.variables
     ? []
     : chatConfig.variables.map((item) => {
+        // Legacy input+非法 valueType（如 number/boolean）视同 string，避免画布控件与 valueType 错配
+        const normalizedValueType =
+          item.type === VariableInputEnum.input &&
+          item.valueType !== undefined &&
+          !textInputVariableValueTypes.includes(item.valueType)
+            ? WorkflowIOValueTypeEnum.string
+            : item.valueType;
         // 与 valueTypeToInputType 对齐：any 视为自由文本，走 input
         const isJsonValueType =
-          item.valueType === WorkflowIOValueTypeEnum.object ||
-          item.valueType === WorkflowIOValueTypeEnum.arrayString ||
-          item.valueType === WorkflowIOValueTypeEnum.arrayNumber ||
-          item.valueType === WorkflowIOValueTypeEnum.arrayBoolean ||
-          item.valueType === WorkflowIOValueTypeEnum.arrayObject;
+          normalizedValueType === WorkflowIOValueTypeEnum.object ||
+          normalizedValueType === WorkflowIOValueTypeEnum.arrayString ||
+          normalizedValueType === WorkflowIOValueTypeEnum.arrayNumber ||
+          normalizedValueType === WorkflowIOValueTypeEnum.arrayBoolean ||
+          normalizedValueType === WorkflowIOValueTypeEnum.arrayObject;
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
           [VariableInputEnum.input]: isJsonValueType
             ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
@@ -280,7 +288,7 @@ export const appData2FlowNodeIO = ({
           label: item.label,
           debugLabel: item.label,
           description: '',
-          valueType: item.valueType || WorkflowIOValueTypeEnum.any,
+          valueType: normalizedValueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           defaultValue: item.defaultValue,
           value: item.defaultValue,

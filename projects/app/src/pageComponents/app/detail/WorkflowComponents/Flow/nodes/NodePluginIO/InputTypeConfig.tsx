@@ -580,7 +580,9 @@ const InputTypeConfig = ({
                 />
               )}
               {((inputType === FlowNodeInputTypeEnum.input && !isVariableTextInput) ||
-                (isDynamicValueTypeInput && valueType === WorkflowIOValueTypeEnum.string)) && (
+                (isDynamicValueTypeInput &&
+                  (valueType === WorkflowIOValueTypeEnum.string ||
+                    valueType === WorkflowIOValueTypeEnum.any))) && (
                 <MyTextarea
                   value={defaultValue}
                   onChange={(e) => setValue('defaultValue', e.target.value)}
@@ -596,7 +598,8 @@ const InputTypeConfig = ({
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
-                    WorkflowIOValueTypeEnum.boolean
+                    WorkflowIOValueTypeEnum.boolean,
+                    WorkflowIOValueTypeEnum.any
                   ].includes(valueType))) && (
                 <JsonEditor
                   bg={'myGray.50'}

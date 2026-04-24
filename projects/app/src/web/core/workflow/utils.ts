@@ -482,6 +482,8 @@ export const checkWorkflowNodeAndConnection = ({
       )?.value;
       if (
         ifElseList.some((item) => {
+          // 空条件组：dispatchIfElse 中 [].every(Boolean) === true 会造成永真分支
+          if (!item.list || item.list.length === 0) return true;
           return item.list.some((listItem) => {
             return (
               listItem.variable === undefined ||
@@ -553,11 +555,22 @@ export const checkWorkflowNodeAndConnection = ({
         (input) => input.key === NodeInputKeyEnum.updateList
       )?.value;
       const nodeIds = nodes.map((n) => n.data.nodeId);
+      // 全局变量引用由 clearGlobalVariableReferencesFromNodes 兜底清理，这里与通用 reference 校验口径一致
+      const isLiveReference = (value: ReferenceItemValueType | undefined) => {
+        if (!isValidReferenceValueFormat(value)) return false;
+        const [refNodeId, refOutputId] = value;
+        if (!refNodeId || !refOutputId) return false;
+        if (refNodeId === VARIABLE_NODE_ID) return true;
+        return !!nodes
+          .find((node) => node.data.nodeId === refNodeId)
+          ?.data.outputs.find((output) => output.id === refOutputId);
+      };
       if (
         !updateList ||
         updateList.length === 0 ||
         updateList.some((item) => {
-          if (!isValidReferenceValue(item.variable, nodeIds) || !item.variable[1]) return true;
+          if (!isValidReferenceValue(item.variable, nodeIds) || !isLiveReference(item.variable))
+            return true;
 
           const isArrayVar =
             typeof item.valueType === 'string' && item.valueType.startsWith('array');
@@ -567,12 +580,10 @@ export const checkWorkflowNodeAndConnection = ({
               return (
                 !Array.isArray(item.value) ||
                 item.value.length === 0 ||
-                (item.value as ReferenceItemValueType[]).some(
-                  (v) => !Array.isArray(v) || !v[0] || !v[1]
-                )
+                (item.value as ReferenceItemValueType[]).some((v) => !isLiveReference(v))
               );
             }
-            return !item.value?.[0] || !item.value?.[1];
+            return !isLiveReference(item.value as ReferenceItemValueType);
           }
 
           // input mode: clear 不需要 value；boolean 由 booleanMode 决定
