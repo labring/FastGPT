@@ -558,21 +558,28 @@ describe('checkWorkflowNodeAndConnection', () => {
 });
 
 describe('clearGlobalVariableReferencesFromNodes', () => {
-  const makeNode = (inputs: any[]): Node<FlowNodeItemType> => ({
-    id: 'n1',
-    type: FlowNodeTypeEnum.formInput,
-    position: { x: 0, y: 0 },
-    data: {
-      nodeId: 'n1',
-      flowNodeType: FlowNodeTypeEnum.formInput,
-      name: 'test',
-      avatar: '',
-      inputs,
-      outputs: [],
-      version: '1',
-      intro: ''
-    } as any
-  });
+  const makeNode = (
+    inputs: any[],
+    opts: { id?: string; flowNodeType?: FlowNodeTypeEnum } = {}
+  ): Node<FlowNodeItemType> => {
+    const id = opts.id ?? 'n1';
+    const flowNodeType = opts.flowNodeType ?? FlowNodeTypeEnum.formInput;
+    return {
+      id,
+      type: flowNodeType,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: id,
+        flowNodeType,
+        name: 'test',
+        avatar: '',
+        inputs,
+        outputs: [],
+        version: '1',
+        intro: ''
+      } as any
+    };
+  };
 
   it('no-op when changedKeys is empty', () => {
     const nodes = [makeNode([{ key: 'k1', value: [VARIABLE_NODE_ID, 'foo'], renderTypeList: [] }])];
@@ -703,5 +710,375 @@ describe('clearGlobalVariableReferencesFromNodes', () => {
     ];
     const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
     expect((result[0].data.inputs[0].value as any)[0].value).toEqual(['', 'hello']);
+  });
+
+  describe('isTargetRef 匹配边界', () => {
+    it('不清理非全局引用 [nodeId, outputId]', () => {
+      const nodes = [makeNode([{ key: 'k1', value: ['n2', 'foo'], renderTypeList: [] }])];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toEqual(['n2', 'foo']);
+    });
+
+    it('不匹配 [VARIABLE_NODE_ID, ""]（空 key）', () => {
+      const nodes = [makeNode([{ key: 'k1', value: [VARIABLE_NODE_ID, ''], renderTypeList: [] }])];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['']));
+      expect(result[0].data.inputs[0].value).toEqual([VARIABLE_NODE_ID, '']);
+    });
+
+    it('不匹配不在 changedKeys 中的 key', () => {
+      const nodes = [
+        makeNode([{ key: 'k1', value: [VARIABLE_NODE_ID, 'other'], renderTypeList: [] }])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toEqual([VARIABLE_NODE_ID, 'other']);
+    });
+
+    it.each([
+      ['string', 'hello'],
+      ['number', 42],
+      ['boolean', true],
+      ['null', null],
+      ['undefined', undefined],
+      ['object', { a: 1 }],
+      ['primitive array', ['a', 'b', 'c']],
+      ['empty array', []],
+      ['malformed tuple (length 1)', [VARIABLE_NODE_ID]],
+      ['malformed tuple (length 3)', [VARIABLE_NODE_ID, 'foo', 'extra']]
+    ])('非引用形态 %s 原样保留', (_, value) => {
+      const nodes = [makeNode([{ key: 'k1', value, renderTypeList: [] }])];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toEqual(value);
+    });
+
+    it('同时处理多个 changedKeys', () => {
+      const nodes = [
+        makeNode([
+          { key: 'k1', value: [VARIABLE_NODE_ID, 'foo'], renderTypeList: [] },
+          { key: 'k2', value: [VARIABLE_NODE_ID, 'bar'], renderTypeList: [] },
+          { key: 'k3', value: [VARIABLE_NODE_ID, 'baz'], renderTypeList: [] }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo', 'bar']));
+      expect(result[0].data.inputs[0].value).toBeUndefined();
+      expect(result[0].data.inputs[1].value).toBeUndefined();
+      expect(result[0].data.inputs[2].value).toEqual([VARIABLE_NODE_ID, 'baz']);
+    });
+  });
+
+  describe('通用引用输入：单引用清理覆盖各节点类型', () => {
+    it.each([
+      ['chatNode', FlowNodeTypeEnum.chatNode],
+      ['datasetSearchNode', FlowNodeTypeEnum.datasetSearchNode],
+      ['datasetConcatNode', FlowNodeTypeEnum.datasetConcatNode],
+      ['answerNode', FlowNodeTypeEnum.answerNode],
+      ['classifyQuestion', FlowNodeTypeEnum.classifyQuestion],
+      ['contentExtract', FlowNodeTypeEnum.contentExtract],
+      ['agent', FlowNodeTypeEnum.agent],
+      ['toolCall', FlowNodeTypeEnum.toolCall],
+      ['code', FlowNodeTypeEnum.code],
+      ['textEditor', FlowNodeTypeEnum.textEditor],
+      ['customFeedback', FlowNodeTypeEnum.customFeedback],
+      ['readFiles', FlowNodeTypeEnum.readFiles],
+      ['userSelect', FlowNodeTypeEnum.userSelect],
+      ['formInput', FlowNodeTypeEnum.formInput],
+      ['lafModule', FlowNodeTypeEnum.lafModule],
+      ['stopTool', FlowNodeTypeEnum.stopTool],
+      ['toolParams', FlowNodeTypeEnum.toolParams],
+      ['pluginModule', FlowNodeTypeEnum.pluginModule],
+      ['appModule', FlowNodeTypeEnum.appModule]
+    ])('%s: 命中的单引用清为 undefined', (_, flowNodeType) => {
+      const nodes = [
+        makeNode([{ key: 'anyInputKey', value: [VARIABLE_NODE_ID, 'foo'], renderTypeList: [] }], {
+          flowNodeType
+        })
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toBeUndefined();
+    });
+  });
+
+  describe('引用数组输入', () => {
+    it.each([
+      ['loop', FlowNodeTypeEnum.loop],
+      ['parallelRun', FlowNodeTypeEnum.parallelRun]
+    ])('%s: loopInputArray 过滤命中项', (_, flowNodeType) => {
+      const nodes = [
+        makeNode(
+          [
+            {
+              key: NodeInputKeyEnum.nestedInputArray,
+              value: [
+                [VARIABLE_NODE_ID, 'foo'],
+                [VARIABLE_NODE_ID, 'bar'],
+                ['other_node', 'x']
+              ],
+              renderTypeList: []
+            }
+          ],
+          { flowNodeType }
+        )
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toEqual([
+        [VARIABLE_NODE_ID, 'bar'],
+        ['other_node', 'x']
+      ]);
+    });
+
+    it('全部命中后引用数组变为空数组', () => {
+      const nodes = [
+        makeNode([
+          {
+            key: 'refs',
+            value: [
+              [VARIABLE_NODE_ID, 'foo'],
+              [VARIABLE_NODE_ID, 'bar']
+            ],
+            renderTypeList: []
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo', 'bar']));
+      expect(result[0].data.inputs[0].value).toEqual([]);
+    });
+  });
+
+  describe('ifElse 节点补充用例', () => {
+    const makeIfElseNode = (groups: any[]) =>
+      makeNode([{ key: NodeInputKeyEnum.ifElseList, renderTypeList: [], value: groups }], {
+        flowNodeType: FlowNodeTypeEnum.ifElseNode
+      });
+
+    it('命中后条件组内 list 变为空数组但保留 group 壳', () => {
+      const nodes = [
+        makeIfElseNode([
+          {
+            condition: 'AND',
+            list: [{ variable: [VARIABLE_NODE_ID, 'foo'], condition: 'equalTo', value: 'x' }]
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      const groups = result[0].data.inputs[0].value as any[];
+      expect(groups).toHaveLength(1);
+      expect(groups[0].condition).toBe('AND');
+      expect(groups[0].list).toEqual([]);
+    });
+
+    it('多条件组各自独立处理', () => {
+      const nodes = [
+        makeIfElseNode([
+          {
+            condition: 'AND',
+            list: [{ variable: [VARIABLE_NODE_ID, 'foo'], condition: '=', value: 'x' }]
+          },
+          {
+            condition: 'OR',
+            list: [
+              { variable: ['n2', 'out1'], condition: '=', value: [VARIABLE_NODE_ID, 'foo'] },
+              { variable: ['n2', 'out1'], condition: '=', value: 'literal' }
+            ]
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      const groups = result[0].data.inputs[0].value as any[];
+      expect(groups[0].list).toEqual([]);
+      expect(groups[1].list).toHaveLength(2);
+      expect(groups[1].list[0].value).toBeUndefined();
+      expect(groups[1].list[0].variable).toEqual(['n2', 'out1']);
+      expect(groups[1].list[1].value).toBe('literal');
+    });
+
+    it('非全局变量 + 字面值条件原样保留', () => {
+      const nodes = [
+        makeIfElseNode([
+          {
+            condition: 'AND',
+            list: [{ variable: ['n2', 'out1'], condition: '=', value: 'hello' }]
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      const list = (result[0].data.inputs[0].value as any)[0].list;
+      expect(list[0]).toEqual({ variable: ['n2', 'out1'], condition: '=', value: 'hello' });
+    });
+
+    it('右侧 value 命中时保留 variable + condition，仅清 value/valueType', () => {
+      const nodes = [
+        makeIfElseNode([
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ['n2', 'out1'],
+                condition: 'equalTo',
+                value: [VARIABLE_NODE_ID, 'foo'],
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      const cond = (result[0].data.inputs[0].value as any)[0].list[0];
+      expect(cond.variable).toEqual(['n2', 'out1']);
+      expect(cond.condition).toBe('equalTo');
+      expect(cond.value).toBeUndefined();
+      expect(cond.valueType).toBeUndefined();
+    });
+
+    it('空的 ifElseList 原样返回', () => {
+      const nodes = [makeIfElseNode([])];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toEqual([]);
+    });
+  });
+
+  describe('variableUpdate 节点补充用例', () => {
+    const makeVarUpdateNode = (rows: any[]) =>
+      makeNode([{ key: NodeInputKeyEnum.updateList, renderTypeList: [], value: rows }], {
+        flowNodeType: FlowNodeTypeEnum.variableUpdate
+      });
+
+    it('variable 和 value 都未命中：整行保留不动', () => {
+      const row = {
+        variable: ['n2', 'out1'],
+        value: [VARIABLE_NODE_ID, 'other'],
+        renderType: 'reference'
+      };
+      const nodes = [makeVarUpdateNode([row])];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect((result[0].data.inputs[0].value as any)[0]).toEqual(row);
+    });
+
+    it('variable 命中优先于 value：整行变空壳并保留 renderType', () => {
+      const nodes = [
+        makeVarUpdateNode([
+          {
+            variable: [VARIABLE_NODE_ID, 'bar'],
+            value: [VARIABLE_NODE_ID, 'foo'],
+            renderType: 'reference'
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo', 'bar']));
+      const row = (result[0].data.inputs[0].value as any)[0];
+      expect(row.variable).toBeUndefined();
+      expect(row.value).toBeUndefined();
+      expect(row.renderType).toBe('reference');
+    });
+
+    it('引用数组只命中部分：保留未命中项', () => {
+      const nodes = [
+        makeVarUpdateNode([
+          {
+            variable: ['n2', 'out1'],
+            value: [
+              [VARIABLE_NODE_ID, 'foo'],
+              [VARIABLE_NODE_ID, 'other'],
+              ['n3', 'out1']
+            ],
+            renderType: 'reference'
+          }
+        ])
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect((result[0].data.inputs[0].value as any)[0].value).toEqual([
+        [VARIABLE_NODE_ID, 'other'],
+        ['n3', 'out1']
+      ]);
+    });
+
+    it('空 updateList 原样返回', () => {
+      const nodes = [makeVarUpdateNode([])];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+      expect(result[0].data.inputs[0].value).toEqual([]);
+    });
+  });
+
+  describe('跨节点遍历', () => {
+    it('同时处理多个节点、多种 input key', () => {
+      const nodes = [
+        makeNode([{ key: 'prompt', value: [VARIABLE_NODE_ID, 'foo'], renderTypeList: [] }], {
+          id: 'a',
+          flowNodeType: FlowNodeTypeEnum.chatNode
+        }),
+        makeNode([{ key: 'code', value: 'untouched literal', renderTypeList: [] }], {
+          id: 'b',
+          flowNodeType: FlowNodeTypeEnum.code
+        }),
+        makeNode(
+          [
+            {
+              key: NodeInputKeyEnum.ifElseList,
+              renderTypeList: [],
+              value: [
+                {
+                  condition: 'AND',
+                  list: [{ variable: [VARIABLE_NODE_ID, 'foo'], condition: '=', value: 'x' }]
+                }
+              ]
+            }
+          ],
+          { id: 'c', flowNodeType: FlowNodeTypeEnum.ifElseNode }
+        ),
+        makeNode(
+          [
+            {
+              key: NodeInputKeyEnum.updateList,
+              renderTypeList: [],
+              value: [
+                {
+                  variable: [VARIABLE_NODE_ID, 'foo'],
+                  value: ['', '1'],
+                  renderType: 'input'
+                }
+              ]
+            }
+          ],
+          { id: 'd', flowNodeType: FlowNodeTypeEnum.variableUpdate }
+        ),
+        makeNode(
+          [
+            {
+              key: NodeInputKeyEnum.nestedInputArray,
+              value: [
+                [VARIABLE_NODE_ID, 'foo'],
+                ['n2', 'out1']
+              ],
+              renderTypeList: []
+            }
+          ],
+          { id: 'e', flowNodeType: FlowNodeTypeEnum.loop }
+        )
+      ];
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+
+      expect(result[0].data.inputs[0].value).toBeUndefined();
+      expect(result[1].data.inputs[0].value).toBe('untouched literal');
+      expect((result[2].data.inputs[0].value as any)[0].list).toEqual([]);
+      const updRow = (result[3].data.inputs[0].value as any)[0];
+      expect(updRow.variable).toBeUndefined();
+      expect(updRow.renderType).toBe('input');
+      expect(result[4].data.inputs[0].value).toEqual([['n2', 'out1']]);
+    });
+  });
+
+  describe('不可变性', () => {
+    it('不 mutate 入参 nodes，返回新引用', () => {
+      const originalValue = [VARIABLE_NODE_ID, 'foo'];
+      const originalInput = { key: 'k', value: originalValue, renderTypeList: [] };
+      const nodes = [makeNode([originalInput])];
+      const snapshot = JSON.stringify(nodes);
+
+      const result = clearGlobalVariableReferencesFromNodes(nodes, new Set(['foo']));
+
+      expect(JSON.stringify(nodes)).toBe(snapshot);
+      expect(originalInput.value).toBe(originalValue);
+      expect(result).not.toBe(nodes);
+      expect(result[0]).not.toBe(nodes[0]);
+      expect(result[0].data.inputs[0]).not.toBe(nodes[0].data.inputs[0]);
+    });
   });
 });
