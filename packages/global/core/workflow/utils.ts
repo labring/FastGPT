@@ -10,7 +10,8 @@ import {
   VariableInputEnum,
   variableMap,
   VARIABLE_NODE_ID,
-  NodeOutputKeyEnum
+  NodeOutputKeyEnum,
+  textInputVariableValueTypes
 } from './constants';
 import {
   type FlowNodeInputItemType,
@@ -234,6 +235,14 @@ export const pluginData2FlowNodeIO = ({
   };
 };
 
+const jsonRenderValueTypes = new Set<WorkflowIOValueTypeEnum>([
+  WorkflowIOValueTypeEnum.object,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean,
+  WorkflowIOValueTypeEnum.arrayObject
+]);
+
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
@@ -245,8 +254,19 @@ export const appData2FlowNodeIO = ({
   const variableInput = !chatConfig?.variables
     ? []
     : chatConfig.variables.map((item) => {
+        // Legacy input+非法 valueType（如 number/boolean）视同 string，避免画布控件与 valueType 错配
+        const normalizedValueType =
+          item.type === VariableInputEnum.input &&
+          item.valueType !== undefined &&
+          !textInputVariableValueTypes.includes(item.valueType)
+            ? WorkflowIOValueTypeEnum.string
+            : item.valueType;
+        const isJsonValueType =
+          !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          [VariableInputEnum.input]: isJsonValueType
+            ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+            : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           [VariableInputEnum.textarea]: [
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
@@ -271,7 +291,7 @@ export const appData2FlowNodeIO = ({
           label: item.label,
           debugLabel: item.label,
           description: '',
-          valueType: item.valueType || WorkflowIOValueTypeEnum.any,
+          valueType: normalizedValueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
           defaultValue: item.defaultValue,
           value: item.defaultValue,

@@ -285,7 +285,7 @@ export const useDebug = () => {
                 label={item.label}
                 required={item.required}
                 description={t(item.description)}
-                inputType={variableInputTypeToInputType(item.type)}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
@@ -298,7 +298,7 @@ export const useDebug = () => {
                 label={item.label}
                 required={item.required}
                 description={t(item.description)}
-                inputType={variableInputTypeToInputType(item.type)}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}
@@ -311,7 +311,7 @@ export const useDebug = () => {
                 label={item.label}
                 required={item.required}
                 description={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
                 form={variablesForm}
                 fieldName={`variables.${item.key}`}
                 bg={'myGray.50'}

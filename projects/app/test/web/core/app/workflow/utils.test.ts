@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType,
@@ -21,6 +21,7 @@ import {
   checkWorkflowNodeAndConnection
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 
 describe('nodeTemplate2FlowNode', () => {
   it('should convert template to flow node', () => {
@@ -392,6 +393,165 @@ describe('checkWorkflowNodeAndConnection', () => {
         edges: [wsToLoop, startToBreak]
       });
       expect(result).toBeUndefined();
+    });
+  });
+  describe('variableUpdate node', () => {
+    const makeVarUpdateNode = (updateList: any[]): Node<FlowNodeItemType> =>
+      ({
+        id: 'u1',
+        type: FlowNodeTypeEnum.variableUpdate,
+        position: { x: 0, y: 0 },
+        data: {
+          nodeId: 'u1',
+          flowNodeType: FlowNodeTypeEnum.variableUpdate,
+          name: 'update',
+          avatar: '',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.updateList,
+              valueType: WorkflowIOValueTypeEnum.any,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: updateList
+            }
+          ],
+          outputs: [],
+          version: '1',
+          intro: ''
+        } as any
+      }) as any;
+
+    const startNode: Node<FlowNodeItemType> = {
+      id: 's1',
+      type: FlowNodeTypeEnum.workflowStart,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: 's1',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        name: 'start',
+        avatar: '',
+        inputs: [],
+        outputs: [],
+        version: '1',
+        intro: ''
+      } as any
+    };
+
+    const connectedEdges: Edge[] = [{ id: 'e1', source: 's1', target: 'u1', type: EDGE_TYPE }];
+
+    const run = (updateList: any[]) =>
+      checkWorkflowNodeAndConnection({
+        nodes: [startNode, makeVarUpdateNode(updateList)],
+        edges: connectedEdges
+      });
+
+    it('flags empty updateList', () => {
+      expect(run([])).toEqual(['u1']);
+    });
+
+    it('flags row with empty variable', () => {
+      expect(
+        run([
+          {
+            variable: ['', ''],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('flags input row with empty value', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: ['', ''],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('passes when boolean input has no value (booleanMode decides)', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.boolean,
+            booleanMode: 'true',
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    it('passes when array clear mode has no value', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            arrayMode: 'clear',
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    it('flags reference row with incomplete value', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: ['n2', ''],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.reference
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('flags reference array row with empty array', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: [],
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            renderType: FlowNodeInputTypeEnum.reference
+          }
+        ])
+      ).toEqual(['u1']);
+    });
+
+    it('passes a fully filled input row', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    it('flags variable pointing to a non-existent node id', () => {
+      expect(
+        run([
+          {
+            variable: ['ghost-node', 'out1'],
+            value: ['', 'hello'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ])
+      ).toEqual(['u1']);
     });
   });
 });

@@ -19,7 +19,9 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId
+  getHandleId,
+  isValidReferenceValue,
+  isValidReferenceValueFormat
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -30,6 +32,7 @@ import {
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
@@ -543,6 +546,53 @@ export const checkWorkflowNodeAndConnection = ({
       )?.value;
       if (toolConnections.length === 0 && !useAgentSandbox) {
         return [data.nodeId];
+      }
+    }
+    if (data.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
+      const updateList: TUpdateListItem[] = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.updateList
+      )?.value;
+      const nodeIds = nodes.map((n) => n.data.nodeId);
+      const isLiveReference = (value: ReferenceItemValueType | undefined) => {
+        if (!isValidReferenceValueFormat(value)) return false;
+        const [refNodeId, refOutputId] = value;
+        if (!refNodeId || !refOutputId) return false;
+        if (refNodeId === VARIABLE_NODE_ID) return true;
+        return !!nodes
+          .find((node) => node.data.nodeId === refNodeId)
+          ?.data.outputs.find((output) => output.id === refOutputId);
+      };
+      if (
+        !updateList ||
+        updateList.length === 0 ||
+        updateList.some((item) => {
+          if (!isValidReferenceValue(item.variable, nodeIds) || !isLiveReference(item.variable))
+            return true;
+
+          const isArrayVar =
+            typeof item.valueType === 'string' && item.valueType.startsWith('array');
+
+          if (item.renderType === FlowNodeInputTypeEnum.reference) {
+            if (isArrayVar) {
+              return (
+                !Array.isArray(item.value) ||
+                item.value.length === 0 ||
+                (item.value as ReferenceItemValueType[]).some((v) => !isLiveReference(v))
+              );
+            }
+            return !isLiveReference(item.value as ReferenceItemValueType);
+          }
+
+          // input mode: clear 不需要 value；boolean 由 booleanMode 决定
+          if (isArrayVar && item.arrayMode === 'clear') return false;
+          if (item.valueType === WorkflowIOValueTypeEnum.boolean) return false;
+          const inputVal = item.value?.[1];
+          return inputVal === undefined || inputVal === null || inputVal === '';
+        })
+      ) {
+        return [data.nodeId];
+      } else {
+        continue;
       }
     }
 

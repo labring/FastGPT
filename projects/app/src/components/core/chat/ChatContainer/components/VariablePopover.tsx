@@ -105,7 +105,7 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
                   {...item}
                   key={item.key}
                   description={item.description}
-                  inputType={variableInputTypeToInputType(item.type)}
+                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
@@ -138,7 +138,7 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
                   {...item}
                   key={item.key}
                   description={item.description}
-                  inputType={variableInputTypeToInputType(item.type)}
+                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}
@@ -157,7 +157,7 @@ const VariablePopover = ({ chatType }: { chatType: ChatTypeEnum }) => {
                   {...item}
                   key={item.key}
                   description={item.description}
-                  inputType={variableInputTypeToInputType(item.type)}
+                  inputType={variableInputTypeToInputType(item.type, item.valueType)}
                   form={variablesForm}
                   fieldName={`variables.${item.key}`}
                   bg={'myGray.50'}

@@ -10,7 +10,9 @@ export const variableInputTypeToInputType = (
   inputType: VariableInputEnum,
   valueType?: WorkflowIOValueTypeEnum
 ) => {
-  if (inputType === VariableInputEnum.input) return InputTypeEnum.input;
+  if (inputType === VariableInputEnum.input) {
+    return valueType ? valueTypeToInputType(valueType) : InputTypeEnum.input;
+  }
   if (inputType === VariableInputEnum.textarea) return InputTypeEnum.textarea;
   if (inputType === VariableInputEnum.numberInput) return InputTypeEnum.numberInput;
   if (inputType === VariableInputEnum.select) return InputTypeEnum.select;
