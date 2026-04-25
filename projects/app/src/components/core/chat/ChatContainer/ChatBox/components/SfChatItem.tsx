@@ -27,6 +27,7 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { isEqual } from 'lodash';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import { ConfirmPlanAgentText } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
@@ -69,6 +70,7 @@ type BasicProps = {
   children?: React.ReactNode;
   hideCiteIcon?: boolean;
   datasetReadPerMap?: Record<string, boolean>;
+  hasPlanCheck?: boolean;
 } & ChatControllerProps;
 
 type Props = BasicProps & {
@@ -173,7 +175,8 @@ const ChatItem = (props: Props) => {
     chat,
     hideCiteIcon,
     datasetReadPerMap = {},
-    showExtraInfo = false
+    showExtraInfo = false,
+    hasPlanCheck = false
   } = props;
 
   const { t } = useTranslation();
@@ -280,7 +283,7 @@ const ChatItem = (props: Props) => {
 
     // Check last group is interactive, Auto add a empty text node(animation)
     const lastGroup = groupedValues[groupedValues.length - 1];
-    if (isChatting || groupedValues.length === 0) {
+    if (isLastChild && (isChatting || groupedValues.length === 0)) {
       if (
         (lastGroup &&
           lastGroup[lastGroup.length - 1] &&
@@ -296,10 +299,19 @@ const ChatItem = (props: Props) => {
           }
         ]);
       }
+    } else if (groupedValues.length === 0) {
+      groupedValues.push([
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: ''
+          }
+        }
+      ]);
     }
 
     return groupedValues;
-  }, [chat.obj, chat.value, isChatting]);
+  }, [chat.obj, chat.value, isChatting, isLastChild]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
@@ -560,6 +572,22 @@ const ChatItem = (props: Props) => {
       </Flex>
       {isLastChild && questionGuides.length > 0 && (
         <RenderQuestionGuide questionGuides={questionGuides} />
+      )}
+      {hasPlanCheck && isLastChild && (
+        <Flex mt={3}>
+          <Button
+            leftIcon={<MyIcon name={'common/check'} w={'16px'} />}
+            variant={'primaryOutline'}
+            onClick={() => {
+              eventBus.emit(EventNameEnum.sendQuestion, {
+                text: ConfirmPlanAgentText,
+                focus: true
+              });
+            }}
+          >
+            {t('chat:confirm_plan')}
+          </Button>
+        </Flex>
       )}
     </Box>
   );

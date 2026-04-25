@@ -6,6 +6,7 @@ import {
   type AppTTSConfigType,
   type AppWhisperConfigType,
   type ChatInputGuideConfigType,
+  type EntryPointItemType,
   type VariableItemType
 } from '@fastgpt/global/core/app/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
@@ -74,6 +75,7 @@ type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAut
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
   isAssistantType: boolean;
+  entryPoints: EntryPointItemType[];
 };
 
 export const ChatBoxContext = createContext<useChatStoreType>({
@@ -130,6 +132,7 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     customUrl: ''
   },
   isAssistantType: false,
+  entryPoints: [],
   // @ts-ignore
   variablesForm: undefined
 });
@@ -181,6 +184,11 @@ const Provider = ({
   const fileSelectConfig = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
+  );
+
+  const entryPoints = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.chatConfig?.entryPoints ?? []
   );
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -255,7 +263,8 @@ const Provider = ({
     chatInputGuide,
     getHistoryResponseData,
     chatType,
-    isAssistantType: false
+    isAssistantType: false,
+    entryPoints
   };
 
   return (
