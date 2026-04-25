@@ -213,7 +213,9 @@ const nextConfig: NextConfig = {
     // 按页面拆分 CSS chunk，减少首屏 CSS 体积
     cssChunking: 'strict',
     // 减少内存占用
-    memoryBasedWorkersCount: true
+    memoryBasedWorkersCount: true,
+    // 文件上传 API 通过 middleware 匹配，需要允许大文件请求体（JWT token 中 maxSize 约为 1GB）
+    proxyClientMaxBodySize: '1100mb'
   },
   outputFileTracingRoot: path.join(__dirname, '../../'),
   // Exclude build-time-only packages from standalone output file tracing
