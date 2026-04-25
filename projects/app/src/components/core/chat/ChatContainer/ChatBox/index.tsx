@@ -47,7 +47,7 @@ import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 import { WorkflowRuntimeContext } from '../context/workflowRuntimeContext';
-import ChatItem from './components/ChatItem';
+import ChatItem from './components/SfChatItem';
 import dynamic from 'next/dynamic';
 import {
   streamResumeFetch,
@@ -72,6 +72,8 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { cloneDeep } from 'lodash';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { AppTypeEnum, ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
+import BgDecoration from '@/pageComponents/dashboard/BgDecoration';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -82,6 +84,16 @@ const WelcomeHomeBox = dynamic(() => import('./components/home/WelcomeHomeBox'))
 const QuickApps = dynamic(() => import('./components/home/QuickApps'));
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 const DeletedItemsCollapse = dynamic(() => import('../DeletedItemsCollapse'));
+const AppChatEmptyBox = dynamic(() => import('./components/AppChatEmptyBox'));
+const EntryPointBar = dynamic(() => import('./components/EntryPointBar'));
+
+const sx = {
+  borderRadius: '12px',
+  borderImage:
+    'conic-gradient(from 180deg at 50% 50%, rgba(50, 170, 255, 0.6) -42deg, rgba(119, 226, 57, 0.6) 19deg, rgba(38, 219, 131, 0.6) 50deg, rgba(81, 155, 252, 0.6) 133deg, rgba(36, 131, 255, 0.6) 151deg, rgba(118, 105, 253, 0.6) 225deg, rgba(237, 125, 214, 0.6) 244deg, rgba(50, 170, 255, 0.6) 318deg, rgba(119, 226, 57, 0.6) 379deg) 1',
+  boxShadow: '0px 2px 6px 0px rgba(0, 78, 212, 0.06)',
+  background: 'linear-gradient(180deg, rgba(240, 246, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%)'
+};
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -120,7 +132,7 @@ type Props = OutLinkChatAuthProps &
     active?: boolean; // can use
     showWorkorder?: boolean;
     enableAutoResume?: boolean;
-
+    debuggerMode?: boolean;
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
         isNewChat?: boolean;
@@ -141,6 +153,7 @@ const ChatBox = ({
   enableAutoResume = false,
   onStartChat,
   chatType,
+  debuggerMode = false,
   onTriggerRefresh,
   onDeleteChatItem
 }: Props) => {
@@ -161,6 +174,7 @@ const ChatBox = ({
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { dataId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
+  const [selectedEntryPoint, setSelectedEntryPoint] = useState<string | null>(null);
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
@@ -191,9 +205,19 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const entryPoints = useContextSelector(ChatBoxContext, (v) => v.entryPoints);
 
   const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
   const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
+
+  const isAssistantType = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
+  );
+  const isNoneWelcomeAndVariable = useContextSelector(
+    ChatItemContext,
+    (v) => v.isNoneWelcomeAndVariable
+  );
 
   const syncSidebarChatGenerateStatus = useMemoizedFn(
     (
@@ -297,7 +321,8 @@ const ChatBox = ({
     chatBoxData?.appId === appId &&
     (chatRecords.length > 0 ||
       chatStartedWatch ||
-      (commonVariableList.length === 0 && !showExternalVariable));
+      (commonVariableList.length === 0 && !showExternalVariable) ||
+      isAssistantType);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -777,6 +802,11 @@ const ChatBox = ({
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 
+          // 总是传递功能入口变量，取消选中时传空字符串，清除上次的值
+          if (entryPoints?.length > 0) {
+            requestVariables[ENTRY_POINT_VARIABLE_KEY] = selectedEntryPoint || '';
+          }
+
           const humanChatId = getNanoid(24);
           const responseChatId = getNanoid(24);
 
@@ -1252,9 +1282,18 @@ const ChatBox = ({
   useEffect(() => {
     setQuestionGuide([]);
     setValue('chatStarted', false);
+    setSelectedEntryPoint(null);
     resumedChatIdRef.current = undefined;
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
+
+  // 首次进来或入口列表变化时，默认选中第一个功能入口
+  useEffect(() => {
+    if (entryPoints?.length > 0 && !selectedEntryPoint) {
+      setSelectedEntryPoint(entryPoints[0].name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryPoints?.map((item) => item.id).join(',')]);
 
   useEffect(() => {
     if (
@@ -1578,6 +1617,27 @@ const ChatBox = ({
     return chatType === ChatTypeEnum.home && chatRecords.length === 0 && !chatStartedWatch;
   }, [chatType, chatRecords.length, chatStartedWatch]);
 
+  // 非 home type, and no chat records and no var
+  // 非运行调试场景
+  // 数据已经加载完成 -> 避免日志记录里先出现问候语再出现记录
+  const isAppChatEmptyRender = useMemo(() => {
+    return (
+      chatType !== ChatTypeEnum.home &&
+      chatRecords.length === 0 &&
+      !chatStartedWatch &&
+      isNoneWelcomeAndVariable &&
+      !debuggerMode &&
+      isChatRecordsLoaded
+    );
+  }, [
+    chatType,
+    chatRecords.length,
+    chatStartedWatch,
+    isNoneWelcomeAndVariable,
+    debuggerMode,
+    isChatRecordsLoaded
+  ]);
+
   const toggleDeletedGroup = useCallback((dataIds: string[]) => {
     setExpandedDeletedGroups((prev) => {
       const newSet = new Set(prev);
@@ -1708,6 +1768,7 @@ const ChatBox = ({
                   <Box py={item.hideInUI ? 0 : 6}>
                     {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                       <ChatItem
+                        type={ChatRoleEnum.Human}
                         avatar={userAvatar}
                         chat={item}
                         onRetry={retryInput(item.dataId)}
@@ -1717,9 +1778,11 @@ const ChatBox = ({
                     )}
                     {item.obj === ChatRoleEnum.AI && (
                       <ChatItem
+                        type={ChatRoleEnum.AI}
                         avatar={appAvatar}
                         chat={item}
                         isLastChild={index === processedRecords.length - 1}
+                        hasPlanCheck={hasPlanCheck && index === processedRecords.length - 1}
                         {...{
                           showVoiceIcon,
                           statusBoxData,
@@ -1844,7 +1907,6 @@ const ChatBox = ({
       </>
     );
   }, []);
-
   return (
     <MyBox
       isLoading={isLoading}
@@ -1872,6 +1934,67 @@ const ChatBox = ({
                 <ChatHomeVariablesForm chatForm={chatForm} />
               </Box>
             ) : (
+              <Box w={'100%'} position="relative" mt={entryPoints.length > 0 ? 10 : 0}>
+                {entryPoints.length > 0 && (
+                  <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
+                    <EntryPointBar
+                      entryPoints={entryPoints}
+                      selected={selectedEntryPoint}
+                      onChange={setSelectedEntryPoint}
+                    />
+                  </Box>
+                )}
+                <ChatInput
+                  onSendMessage={sendPrompt}
+                  onStop={() => abortRequest('stop')}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                />
+              </Box>
+            )}
+          </Flex>
+        </MyBox>
+      ) : isAppChatEmptyRender ? (
+        <MyBox
+          isLoading={isLoadingRecords}
+          flex={'1 0 0'}
+          h={0}
+          w="100%"
+          position="relative"
+          overflow="hidden"
+          bg="linear-gradient(180deg, #FAFCFF, #FFFFFF)"
+        >
+          {/* 右上角装饰区域 */}
+          <BgDecoration />
+
+          {/* 居中区域：标题 + 输入框 */}
+          <Flex
+            h="100%"
+            flexDir="column"
+            justifyContent="center"
+            alignItems="center"
+            position="relative"
+            zIndex={1}
+            px={[2, 4]}
+          >
+            <AppChatEmptyBox />
+            <Box
+              w={'100%'}
+              maxW={['100%', 'min(738px, 92%)']}
+              sx={sx}
+              position="relative"
+              mt={entryPoints.length > 0 ? 10 : 0}
+            >
+              {entryPoints.length > 0 && (
+                <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
+                  <EntryPointBar
+                    entryPoints={entryPoints}
+                    selected={selectedEntryPoint}
+                    onChange={setSelectedEntryPoint}
+                  />
+                </Box>
+              )}
               <ChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => abortRequest('stop')}
@@ -1879,7 +2002,7 @@ const ChatBox = ({
                 resetInputVal={resetInputVal}
                 chatForm={chatForm}
               />
-            )}
+            </Box>
           </Flex>
         </MyBox>
       ) : (
@@ -1887,13 +2010,25 @@ const ChatBox = ({
           {AppChatRenderBox}
           {canSendPrompt && (
             <Box
-              px={[3, 5]}
-              m={['0 auto 10px', '10px auto']}
+              mx={'auto'}
+              mt={entryPoints.length > 0 ? 10 : ['0', '10px']}
+              mb={['10px', '10px']}
               w={'100%'}
-              maxW={['auto', 'min(820px, 100%)']}
+              maxW={['100%', 'min(738px, 92%)']}
+              sx={sx}
+              position="relative"
             >
               {showWorkorder && <WorkorderEntrance />}
 
+              {entryPoints.length > 0 && (
+                <Box position="absolute" bottom="calc(100% + 8px)" left={0} right={0}>
+                  <EntryPointBar
+                    entryPoints={entryPoints}
+                    selected={selectedEntryPoint}
+                    onChange={setSelectedEntryPoint}
+                  />
+                </Box>
+              )}
               <ChatInput
                 onSendMessage={sendPrompt}
                 lastInteractive={lastInteractive}

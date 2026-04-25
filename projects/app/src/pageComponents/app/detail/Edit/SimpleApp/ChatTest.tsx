@@ -25,8 +25,9 @@ type Props = {
   appForm: AppFormEditFormType;
   setRenderEdit: React.Dispatch<React.SetStateAction<boolean>>;
   form2WorkflowFn: Form2WorkflowFnType;
+  debuggerMode?: boolean;
 };
-const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
+const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn, debuggerMode = false }: Props) => {
   const { t } = useTranslation();
   const { chatId } = useChatStore();
 
@@ -63,7 +64,8 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
-    isReady: true
+    isReady: true,
+    debuggerMode
   });
   const isAssistantType = appDetail.type === AppTypeEnum.assistant;
 
@@ -131,7 +133,7 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   );
 };
 
-const Render = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
+const Render = ({ appForm, setRenderEdit, form2WorkflowFn, debuggerMode = false }: Props) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -158,6 +160,7 @@ const Render = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
           appForm={appForm}
           setRenderEdit={setRenderEdit}
           form2WorkflowFn={form2WorkflowFn}
+          debuggerMode={debuggerMode}
         />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
