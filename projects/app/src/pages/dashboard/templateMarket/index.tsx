@@ -164,7 +164,12 @@ const TemplateMarket = ({
               ))}
             </Grid>
           ) : (
-            <EmptyTip flex="1" justifyContent="center" py={0} text={t('app:template_market_empty_data')} />
+            <EmptyTip
+              flex="1"
+              justifyContent="center"
+              py={0}
+              text={t('app:template_market_empty_data')}
+            />
           )}
         </Flex>
       </Flex>

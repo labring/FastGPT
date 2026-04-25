@@ -11,9 +11,15 @@ import type { AgenticRAGStateType, AgenticRAGUpdateType } from '../types/state';
 import type { SkillBundle } from './graph';
 import type { RequestContext } from './context';
 import { TOOL_DEFINITIONS, parseAllToolCalls, getSystemPrompt } from './tools';
+import type { ToolDefinition } from '../types/message';
 import { routePlaybook } from './playbooks/router';
 import { extractChatHistoryInfo } from '../utils/compression';
 import { detectLang } from '../utils/lang';
+import {
+  buildLanguageConfig,
+  type LanguageTrackerConfig,
+  LanguageTracker
+} from '../utils/lang_directive';
 import {
   parseSearchQueries,
   isSimilarQuery,
@@ -31,6 +37,15 @@ import type { PlanStep } from '../types/state';
 
 /** 获取 logger 的辅助函数 */
 const getNodeLogger = (providers: AgenticSearchProviders) => providers.logger;
+
+/** @assess 工具支持的 playbook */
+const ASSESS_PLAYBOOKS = new Set(['deep_research', 'troubleshooting', 'comparative_analysis']);
+
+/** 按 playbook 过滤 TOOL_DEFINITIONS（移除不适用的 @assess） */
+function filterToolsByPlaybook(playbook: string): ToolDefinition[] {
+  if (ASSESS_PLAYBOOKS.has(playbook)) return TOOL_DEFINITIONS;
+  return TOOL_DEFINITIONS.filter((t) => t.function.name !== TOOLS.ASSESS);
+}
 
 // ============================================================
 // Blackboard Brief（对齐 Python _build_progress_guidance）
@@ -72,7 +87,9 @@ export function isSearchIrrelevant(chunks: ChunkItem[]): boolean {
 function buildProgressGuidance(
   state: AgenticRAGStateType,
   maxSearchCalls: number,
-  toolNames: string[]
+  toolNames: string[],
+  suppressEarlyStop = false,
+  searchOnly = false
 ): string {
   // const lines: string[] = ['[Blackboard Brief]'];
   const lines: string[] = [
@@ -80,6 +97,9 @@ function buildProgressGuidance(
     '',
     'IRON LAW: You MUST call a tool. NEVER output free text or a direct answer. ONLY use the following tool formats:'
   ];
+
+  // searchOnly 模式：完成信号用 "stop making tool calls" 替代 "@summary"
+  const completeSignal = searchOnly ? 'make no more tool calls (search complete)' : 'call @summary';
 
   // 1. Goal: 初始分析
   if (state.analysis) {
@@ -137,20 +157,28 @@ function buildProgressGuidance(
   lines.push('');
 
   // simple_query 高分命中时：强制指令立即回答
-  if (state.playbook === 'simple_query' && state.allChunks.length > 0) {
+  if (!suppressEarlyStop && state.playbook === 'simple_query' && state.allChunks.length > 0) {
     const bestScore = Math.max(...state.allChunks.map((c) => c.rerankScore ?? c.score ?? 0));
     if (bestScore >= SIMPLE_QUERY_HIGH_SCORE) {
       lines.push(
         `⚡ STOP SEARCHING. High-relevance results found (best score: ${bestScore.toFixed(3)} ≥ ${SIMPLE_QUERY_HIGH_SCORE}).`
       );
-      lines.push('→ You MUST call @summary NOW. Do NOT search again.');
+      lines.push(
+        searchOnly
+          ? '→ Search complete. Make no more tool calls.'
+          : '→ You MUST call @summary NOW. Do NOT search again.'
+      );
       return lines.join('\n');
     }
     if (state.lastSearchOverlap >= SIMPLE_QUERY_OVERLAP_THRESHOLD) {
       lines.push(
         `⚡ STOP SEARCHING. Search space saturated (${(state.lastSearchOverlap * 100).toFixed(0)}% overlap on last search).`
       );
-      lines.push('→ You MUST call @summary NOW with what you have.');
+      lines.push(
+        searchOnly
+          ? '→ Search complete. Make no more tool calls.'
+          : '→ You MUST call @summary NOW with what you have.'
+      );
       return lines.join('\n');
     }
   }
@@ -206,7 +234,11 @@ function buildProgressGuidance(
         'ONLY after @query_rewrite produces new variants; NEVER search same angle again';
     } else {
       // 所有维度都饱和了
-      lines.push('All dimensions saturated. Synthesize findings → @summary.');
+      lines.push(
+        searchOnly
+          ? 'All dimensions saturated. Search complete. Make no more tool calls.'
+          : 'All dimensions saturated. Synthesize findings → @summary.'
+      );
       return lines.join('\n');
     }
   } else {
@@ -215,7 +247,7 @@ function buildProgressGuidance(
       'Compare the Goal/Plan above against collected chunks. ' +
         'Identify which aspects are well-covered and which have gaps.'
     );
-    lines.push('- All aspects covered → call @summary.');
+    lines.push('- All aspects covered → ' + completeSignal + '.');
     lines.push('- Gaps remain → choose the best next action:');
   }
 
@@ -234,7 +266,7 @@ function buildProgressGuidance(
   }
 
   // ── 低相关性警告（注入 ⚠️ 信号，引导 agent 主动调 @summary）──────────
-  if (state.allChunks.length > 0 && (state.searchCount ?? 0) > 0) {
+  if (!suppressEarlyStop && state.allChunks.length > 0 && (state.searchCount ?? 0) > 0) {
     const bestBGE = Math.max(...state.allChunks.map((c) => c.rerankScore ?? c.score ?? 0));
     const llmScores = state.allChunks
       .map((c) => c.llm_sub_query_score)
@@ -249,11 +281,14 @@ function buildProgressGuidance(
         bestLLM !== null
           ? `LLM score: ${bestLLM.toFixed(0)}/10`
           : `BGE score: ${bestBGE.toFixed(3)}`;
+      const actionText = searchOnly
+        ? 'make no more tool calls'
+        : 'call @summary immediately — do NOT search or rewrite again';
       lines.push('');
       lines.push(
         `⚠️ RELEVANCE WARNING: All retrieved chunks have very low relevance (${scoreInfo}).` +
           ` If this query appears UNRELATED to this knowledge base domain,` +
-          ` call @summary immediately — do NOT search or rewrite again.`
+          ` ${actionText}.`
       );
     }
   }
@@ -398,22 +433,41 @@ export function createRoutePlaybookNode(
       logger?.info(
         `[route_playbook] ${routeResult.playbook}:${routeResult.method} (${Date.now() - startTime}ms)`
       );
+      logger?.debug(
+        `[route_playbook] analysis="${routeResult.analysis}" reason="${routeResult.reason}"`
+      );
 
       const historyInfo = extractChatHistoryInfo(state.chatHistory);
 
-      // 检测问题语言，注入 language directive（对齐 Python）
+      // 构建语言配置（替代旧 [LANGUAGE DIRECTIVE]）
       const userLang = detectLang(state.question);
+      const { directive: languageDirective, trackerConfig } = buildLanguageConfig(
+        state.initialLanguageStats,
+        userLang
+      );
+
+      // 调试：确认语言配置是否正确注入
+      if (state.initialLanguageStats) {
+        logger?.info(
+          `[route_playbook] language stats: ${JSON.stringify(state.initialLanguageStats)}, userLang=${userLang}`
+        );
+      } else {
+        logger?.warn(
+          '[route_playbook] NO initialLanguageStats — language directive will use fallback'
+        );
+      }
+      logger?.debug(`[route_playbook] directive: ${languageDirective.replace(/\n/g, '\\n')}`);
+
       const baseSystemPrompt = getSystemPrompt(routeResult.playbook, config.searchOnly);
-      const languageDirective = `\n\n[LANGUAGE DIRECTIVE] The user's current question is in **${userLang}**. You MUST write ALL search queries and your final answer in **${userLang}**.`;
 
       // 若有 priorContext，注入 system prompt 作为 Search Hints（对齐 Python playbook_router_node）
       const searchHints = state.priorContext
-        ? `\n\n## Search Hints\n\n${state.priorContext}\nUse these hints to guide your initial search queries. IMPORTANT: These hints may be in a different language than the user's question. Always keep your search queries and answer in the user's question language.`
+        ? `\n\n## Search Hints\n\n${state.priorContext}\nUse these hints to guide your initial search queries. These hints may be in a different language than the default search language.`
         : '';
 
       const systemMsg: LLMMessage = {
         role: 'system',
-        content: baseSystemPrompt + searchHints + languageDirective
+        content: baseSystemPrompt + '\n\n[LANGUAGE DIRECTIVE]\n' + languageDirective + searchHints
       };
       const userMsg: LLMMessage = {
         role: 'user',
@@ -424,6 +478,7 @@ export function createRoutePlaybookNode(
         playbook: routeResult.playbook,
         analysis: routeResult.analysis,
         messages: [systemMsg, userMsg],
+        languageTrackerConfig: trackerConfig,
         executionPath: [`route_playbook(${routeResult.playbook}:${routeResult.method})`],
         nodeHist: [{ node: 'route_playbook', toolCalls: [] }],
         findings:
@@ -434,19 +489,27 @@ export function createRoutePlaybookNode(
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       const userLang = detectLang(state.question);
+      const { directive: languageDirective, trackerConfig } = buildLanguageConfig(
+        null, // error path: no sampling data
+        userLang
+      );
       const searchHints = state.priorContext
-        ? `\n\n## Search Hints\n\n${state.priorContext}\nUse these hints to guide your initial search queries. IMPORTANT: These hints may be in a different language than the user's question. Always keep your search queries and answer in the user's question language.`
+        ? `\n\n## Search Hints\n\n${state.priorContext}\nUse these hints to guide your initial search queries. These hints may be in a different language than the default search language.`
         : '';
-      const languageDirective = `\n\n[LANGUAGE DIRECTIVE] The user's current question is in **${userLang}**. You MUST write ALL search queries and your final answer in **${userLang}**.`;
       return {
         playbook: 'general',
         messages: [
           {
             role: 'system',
-            content: getSystemPrompt('general', config.searchOnly) + searchHints + languageDirective
+            content:
+              getSystemPrompt('general', config.searchOnly) +
+              '\n\n[LANGUAGE DIRECTIVE]\n' +
+              languageDirective +
+              searchHints
           },
           { role: 'user', content: state.question }
         ],
+        languageTrackerConfig: trackerConfig,
         error: `route_playbook error: ${errorMsg}`,
         executionPath: ['route_playbook(error)'],
         nodeHist: [{ node: 'route_playbook', toolCalls: [] }]
@@ -480,7 +543,7 @@ export function createNativeAgentNode(
 
     try {
       const response = await providers.llm.chat(state.messages, {
-        tools: TOOL_DEFINITIONS,
+        tools: filterToolsByPlaybook(state.playbook),
         temperature: 0.1
       });
 
@@ -611,7 +674,7 @@ export function createAutoAgentNode(
 
     try {
       const response = await providers.llm.chat(state.messages, {
-        tools: TOOL_DEFINITIONS,
+        tools: filterToolsByPlaybook(state.playbook),
         temperature: 0.1
       });
 
@@ -729,6 +792,9 @@ export function createToolsNode(
     // @query_rewrite 执行计划（plan_executor 节点使用）
     let pendingPlan: PlanStep[] | undefined;
 
+    ctx.toolResultRound++;
+    const TOOL_RESULT_KEEP_ROUNDS = 2;
+
     for (const toolCall of toolCalls) {
       const toolName = toolCall.function.name;
       toolNames.push(toolName);
@@ -810,7 +876,7 @@ export function createToolsNode(
             const result = await skills.searchSkill.execute({
               context: null as never,
               queries: searchQueries,
-              datasetIds: state.datasetIds,
+              datasetIds: ctx.getActiveDatasetIds(state.datasetIds),
               tokenBudget: config.tokenBudget,
               enableRerank: !!providers.reranker,
               topK: config.rerankTopK,
@@ -824,6 +890,14 @@ export function createToolsNode(
                 rerankInputTokens?: number;
               };
               newChunks = data.chunks;
+              // ===== 多 dataset 信号追踪：记录原始检索结果（sub_query filter 前）=====
+              ctx.recordDatasetSearch(newChunks);
+              // ===== LanguageTracker: 记录原始搜索反馈（sub_query filter 前）=====
+              if (ctx.languageTracker) {
+                for (const q of searchQueries) {
+                  ctx.languageTracker.recordSearch(q, data.chunks);
+                }
+              }
               embeddingTokensInc += data.embeddingTokens ?? 0;
               rerankInputTokensInc += data.rerankInputTokens ?? 0;
               // 计算与已有 chunks 的重叠率（用于 simple_query 饱和检测）
@@ -859,6 +933,10 @@ export function createToolsNode(
                   );
                 }
                 logger?.info(`[ToolsNode] after subQueryFilter: newChunks=${newChunks.length}`);
+                // ===== 记录 sub_query filter 后各 dataset 存活 chunk =====
+                ctx.recordDatasetSurvival(newChunks);
+                // 聚合本轮信号，更新跨轮状态（决策矩阵）
+                ctx.consolidateSignals(searchQueries);
               }
 
               // ===== 对比查询：更新维度覆盖状态（对齐 Python tools.py 第 164-197 行）=====
@@ -910,6 +988,9 @@ export function createToolsNode(
               // 不能写入 newSearchQueries/state.searchQueries，否则会被精确匹配 block 导致无法实际搜索。
               // 实际搜索由 plan_executor 或 agent 后续调用 @search 完成。
               rewriteQueries = data.queries;
+
+              // 改写后进入 probe 模式：给被排除 dataset 一次重新探测机会
+              ctx.probeDatasetSignals();
 
               // ===== 构建 PlanStep 执行计划（对齐 Python tools.py 第 483-499 行）=====
               if (data.rewrites && data.rewrites.length > 0) {
@@ -1139,10 +1220,47 @@ export function createToolsNode(
 
       toolMessages.push({
         role: 'user',
-        content: `Tool @${toolName} returned:\n${toolResult}`
+        content: `Tool @${toolName} returned:\n${toolResult}`,
+        id: `tool-result-${ctx.toolResultRound}-${toolName}`
       });
 
       if (done) break;
+    }
+
+    // 压缩旧轮次的 tool result 消息（保留最近 TOOL_RESULT_KEEP_ROUNDS 轮完整结果）
+    if (ctx.toolResultRound > TOOL_RESULT_KEEP_ROUNDS) {
+      const compressRound = ctx.toolResultRound - TOOL_RESULT_KEEP_ROUNDS;
+      const oldIds = state.messages
+        .filter((m) => m.id?.startsWith(`tool-result-${compressRound}-`))
+        .map((m) => m.id!);
+      for (const id of oldIds) {
+        toolMessages.push({
+          role: 'user',
+          content: `[Compressed] Earlier tool result (round ${compressRound}).`,
+          id
+        });
+      }
+    }
+
+    // ── LanguageTracker: per-search 语言反馈 ────────────────
+    let suppressEarlyStop = false;
+    logger?.debug(
+      `[ToolsNode] LanguageTracker check: ctx.languageTracker=${!!ctx.languageTracker} newChunks=${newChunks.length}`
+    );
+    if (ctx.languageTracker && newChunks.length > 0) {
+      const langResult = ctx.languageTracker.buildGuidance(newChunks);
+      suppressEarlyStop = langResult.suppressEarlyStop;
+      ctx.suppressEarlyStop = suppressEarlyStop;
+      logger?.debug(
+        `[ToolsNode] LanguageTracker: guidance=${langResult.guidance ? 'yes' : 'null'} suppress=${suppressEarlyStop} shouldPush=${langResult.shouldPush}`
+      );
+      if (langResult.shouldPush && langResult.guidance) {
+        toolMessages.push({
+          role: 'user',
+          content: langResult.guidance,
+          id: 'language-guidance'
+        });
+      }
     }
 
     // 注入 Blackboard Brief（对齐 Python sync_blackboard 节点）
@@ -1160,32 +1278,27 @@ export function createToolsNode(
         lastSearchOverlap,
         dimensionCoverage: mergedDimCoverage
       };
-      const guidance = buildProgressGuidance(stateForBrief, config.maxSearchCalls, availableTools);
+      const guidance = buildProgressGuidance(
+        stateForBrief,
+        config.maxSearchCalls,
+        availableTools,
+        suppressEarlyStop,
+        config.searchOnly
+      );
       toolMessages.push({ role: 'user', content: guidance, id: 'progress-guidance' });
     }
 
     // 更新 ctx（Blackboard 模式，对齐 Python tools 直接修改 ctx）
-    if (newChunks.length > 0) {
-      // 追加 chunks 到 ctx.allChunks（去重）
-      for (const chunk of newChunks) {
-        if (!ctx.allChunks.some((c) => c.id === chunk.id)) {
-          ctx.allChunks.push(chunk);
-        }
-      }
-    }
-    // 更新搜索计数
+    // 注意：重叠率须在追加 chunks 前计算，否则新 chunks 自重叠恒为 1.0
     if (searchCountInc > 0) {
       ctx.searchCount += searchCountInc;
-      // 保存最近一次搜索的 chunks（用于信息增益计算）
       ctx.lastSearchChunks = newChunks;
-      // 计算重叠率
       if (newChunks.length > 0) {
         const existingIds = new Set(ctx.allChunks.map((c) => c.id));
         const overlapCount = newChunks.filter((c) => existingIds.has(c.id)).length;
         ctx.lastSearchOverlap = overlapCount / newChunks.length;
       }
       // 更新连续不相关搜索计数器
-      // 使用 Stage1 过滤后的 newChunks（已含 llm_sub_query_score）
       const irrelevant = isSearchIrrelevant(newChunks);
       ctx.consecutiveIrrelevantSearches = irrelevant ? ctx.consecutiveIrrelevantSearches + 1 : 0;
       if (irrelevant) {
@@ -1196,6 +1309,14 @@ export function createToolsNode(
               : 'N/A'
           }`
         );
+      }
+    }
+    if (newChunks.length > 0) {
+      // 追加 chunks 到 ctx.allChunks（去重）
+      for (const chunk of newChunks) {
+        if (!ctx.allChunks.some((c) => c.id === chunk.id)) {
+          ctx.allChunks.push(chunk);
+        }
       }
     }
     // 追加搜索查询
@@ -1307,6 +1428,9 @@ export function createShouldContinue(config: Required<AgenticSearchConfig>, ctx:
     // simple_query 早退机制（对齐 Python simple_query_search_capped）
     // 高分命中/饱和时不再搜索，直接进入 chunk 筛选
     if (toolNames.every((name) => name === TOOLS.SEARCH)) {
+      logger?.debug(
+        `[shouldContinue] checking simpleQuerySearchCapped: suppressEarlyStop=${ctx.suppressEarlyStop} searchCount=${ctx.searchCount} overlap=${ctx.lastSearchOverlap}`
+      );
       const reason = simpleQuerySearchCappedWithCtx(ctx);
       if (reason) {
         logger?.debug(`[shouldContinue] -> select_chunks (simpleQuerySearchCapped: ${reason})`);
@@ -1334,6 +1458,12 @@ export function createShouldContinue(config: Required<AgenticSearchConfig>, ctx:
 function simpleQuerySearchCappedWithCtx(ctx: RequestContext): string | null {
   if (ctx.playbook !== 'simple_query') return null;
   if (!ctx.allChunks || ctx.searchCount < 1) return null;
+
+  // LanguageTracker 语言异常抑制：改写后可换语种重搜，不要提前截断
+  if (ctx.suppressEarlyStop) {
+    ctx.logger?.debug(`[simpleQuerySearchCapped] suppressed by LanguageTracker`);
+    return null;
+  }
 
   // 信号1: 高分命中
   const bestScore = Math.max(...ctx.allChunks.map((c) => c.rerankScore ?? c.score ?? 0));
@@ -1646,7 +1776,7 @@ export function createPlanExecutorNode(
         const searchResult = await skills.searchSkill.execute({
           context: null as never,
           queries: newQueries,
-          datasetIds: state.datasetIds,
+          datasetIds: _ctx.getActiveDatasetIds(state.datasetIds),
           tokenBudget: config.tokenBudget,
           enableRerank: !!providers.reranker,
           topK: config.rerankTopK,
@@ -1657,6 +1787,7 @@ export function createPlanExecutorNode(
         if (searchResult.success && searchResult.data) {
           const data = searchResult.data as { chunks: ChunkItem[] };
           newChunks = data.chunks;
+          _ctx.recordDatasetSearch(newChunks);
         }
 
         // Stage 1 sub-query filter（对齐 Python）
@@ -1675,6 +1806,8 @@ export function createPlanExecutorNode(
                 selectorCfg.maxDocLength
               );
             }
+            _ctx.recordDatasetSurvival(newChunks);
+            _ctx.consolidateSignals(newQueries);
           }
         }
 
@@ -1752,9 +1885,9 @@ export function createAfterSyncRoute(ctx: RequestContext) {
       logger?.debug(`[afterSyncRoute] -> END (state.done=true)`);
       return END;
     }
-    // 检查 ctx.pending_plan（由 query_rewrite 设置）
-    if (ctx.pendingPlan && ctx.pendingPlan.length > 0) {
-      logger?.debug(`[afterSyncRoute] -> plan_executor (pendingPlan=${ctx.pendingPlan.length})`);
+    // 检查 state.pendingPlan（由 query_rewrite 设置，plan_executor 消费后写回）
+    if (state.pendingPlan && state.pendingPlan.length > 0) {
+      logger?.debug(`[afterSyncRoute] -> plan_executor (pendingPlan=${state.pendingPlan.length})`);
       return 'plan_executor';
     }
     // 对齐 Python _after_sync_route：始终回到 agent，让 LLM 决策下一步
@@ -1780,6 +1913,13 @@ export function createSyncBlackboardNode(
   toolNames?: string[]
 ) {
   return function syncBlackboardNode(_state: AgenticRAGStateType): AgenticRAGUpdateType {
+    // ── LanguageTracker 初始化（首次调用时）────────────────
+    if (!ctx.languageTracker && _state.languageTrackerConfig) {
+      ctx.languageTracker = LanguageTracker.fromConfig(
+        _state.languageTrackerConfig as LanguageTrackerConfig
+      );
+    }
+
     // 从 ctx 同步到 state
     // 注意：searchQueries 不在此同步，由 tools 节点通过 append reducer 正确累加。
     // 若在此返回 searchQueries: [...ctx.searchQueries]，会因 append reducer 导致重复追加。
@@ -1839,7 +1979,13 @@ export function createSyncBlackboardNode(
           keyChunkAnnotations: ctx.keyChunkAnnotations
         } as any; // 绕过 TypeScript 类型检查，直接传 ctx 视图
         // 使用本地 buildProgressGuidance（接受 state, maxSearchCalls, toolNames）
-        const guidance = buildProgressGuidance(ctxView, config.maxSearchCalls, toolNames);
+        const guidance = buildProgressGuidance(
+          ctxView,
+          config.maxSearchCalls,
+          toolNames,
+          false,
+          config.searchOnly
+        );
         // 使用固定 ID 替换之前的 guidance，避免消息历史膨胀
         updates.messages = [
           {

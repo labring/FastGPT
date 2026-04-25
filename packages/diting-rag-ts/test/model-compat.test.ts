@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/// <reference types="vitest/globals" />
 // test/model-compat.test.ts
 // 模型兼容性测试脚本 - 验证任意 LLM 在 diting-rag-ts 中的工具调用行为
 //
@@ -40,9 +41,8 @@ import type { AgenticSearchResult } from '../src/agent/runner.js';
 import type { LLMProvider } from '../src/ports/llm';
 import type { LLMMessage, LLMResponse, LLMCallOptions, ToolCall } from '../src/types/message';
 
-
 // 全局logger
-const logger = new ConsoleLogger({ level: LogLevel.DEBUG, prefix: 'compat testing'});
+const logger = new ConsoleLogger({ level: LogLevel.DEBUG, prefix: 'compat testing' });
 
 // ============================================================
 // 自定义 LLM Provider（直接基于端口约定，不走 BuiltInLLMAdapter）
@@ -70,7 +70,7 @@ class DirectLLMProvider implements LLMProvider {
       max_tokens: options?.maxTokens ?? 8192,
       stream: false
     };
-    if (body.model === "kimi-k2.5") {
+    if (body.model === 'kimi-k2.5') {
       body.temperature = 1;
     }
 
@@ -79,7 +79,16 @@ class DirectLLMProvider implements LLMProvider {
       body.tool_choice = options.toolChoice ?? 'auto';
     }
 
-    this.globalLogger.debug('[DirectLLM] chat request', { model, messageCount: messages.length, hasTools: !!options?.tools?.length });
+    // 透传 extra 字段（enable_thinking 等模型特定参数）
+    if (options?.extra) {
+      Object.assign(body, options.extra);
+    }
+
+    this.globalLogger.debug('[DirectLLM] chat request', {
+      model,
+      messageCount: messages.length,
+      hasTools: !!options?.tools?.length
+    });
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -101,7 +110,11 @@ class DirectLLMProvider implements LLMProvider {
         choices?: Array<{
           message: {
             content: string | null;
-            tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
+            tool_calls?: Array<{
+              id: string;
+              type: string;
+              function: { name: string; arguments: string };
+            }>;
             reasoning_content?: string;
           };
           finish_reason?: string;
@@ -112,14 +125,19 @@ class DirectLLMProvider implements LLMProvider {
       const choice = data.choices?.[0];
       const msg = choice?.message;
 
-      this.globalLogger.debug('[DirectLLM] response', { hasToolCalls: !!(msg?.tool_calls?.length), contentLen: (msg?.content ?? '').length });
+      this.globalLogger.debug('[DirectLLM] response', {
+        hasToolCalls: !!msg?.tool_calls?.length,
+        contentLen: (msg?.content ?? '').length
+      });
       return {
         content: msg?.content ?? '',
-        toolCalls: (msg?.tool_calls ?? []).map((tc): ToolCall => ({
-          id: tc.id,
-          type: 'function',
-          function: { name: tc.function.name, arguments: tc.function.arguments }
-        })),
+        toolCalls: (msg?.tool_calls ?? []).map(
+          (tc): ToolCall => ({
+            id: tc.id,
+            type: 'function',
+            function: { name: tc.function.name, arguments: tc.function.arguments }
+          })
+        ),
         reasoning: msg?.reasoning_content,
         usage: {
           inputTokens: data.usage?.prompt_tokens,
@@ -144,7 +162,7 @@ class DirectLLMProvider implements LLMProvider {
       max_tokens: options?.maxTokens ?? 8192,
       stream: true
     };
-    if (body.model === "kimi-k2.5") {
+    if (body.model === 'kimi-k2.5') {
       body.temperature = 1;
     }
 
@@ -206,7 +224,9 @@ class DirectLLMProvider implements LLMProvider {
               yield { content: delta.content || '', reasoning: delta.reasoning_content };
             }
           } catch (e) {
-            this.globalLogger.debug(`[DirectLLM] chatStream parse error: ${e instanceof Error ? e.message : String(e)}`);
+            this.globalLogger.debug(
+              `[DirectLLM] chatStream parse error: ${e instanceof Error ? e.message : String(e)}`
+            );
           }
         }
       }
@@ -233,13 +253,13 @@ export type Layer = 'api' | 'agent' | 'both';
 
 export interface CompatConfig {
   model: string;
-  endpoint: string;    // 例如: http://10.74.124.139:30001/v1
+  endpoint: string; // 例如: http://10.74.124.139:30001/v1
   apiKey: string;
   layer: Layer;
-  llmType: LLMType;    // direct = DirectLLMProvider, builtin = BuiltInLLMAdapter
-  output?: string;     // 输出 JSON 文件路径（可选）
-  timeoutMs: number;   // 单个用例超时（默认 30000ms）
-  enableThinking?: boolean;  // 是否开启思考模式（默认关闭，--thinking 开启）
+  llmType: LLMType; // direct = DirectLLMProvider, builtin = BuiltInLLMAdapter
+  output?: string; // 输出 JSON 文件路径（可选）
+  timeoutMs: number; // 单个用例超时（默认 30000ms）
+  enableThinking?: boolean; // 是否开启思考模式（默认关闭，--thinking 开启）
 }
 
 function parseArgs(): CompatConfig {
@@ -345,15 +365,15 @@ export interface TestCase {
   name: string;
   status: TestStatus;
   durationMs: number;
-  detail?: string;                 // 失败/错误时的说明
-  info?: Record<string, unknown>;  // T6 推理探测等附加信息
+  detail?: string; // 失败/错误时的说明
+  info?: Record<string, unknown>; // T6 推理探测等附加信息
   /** 完整响应内容（用于 T1-T4 调试） */
   fullResponse?: string;
 }
 
 export interface LayerResult {
-  passed: number;  // pass 状态数量（info/skip 不计入）
-  total: number;   // pass + fail + error 数量（info/skip 不计入）
+  passed: number; // pass 状态数量（info/skip 不计入）
+  total: number; // pass + fail + error 数量（info/skip 不计入）
   cases: TestCase[];
 }
 
@@ -404,7 +424,9 @@ function printLayerResults(title: string, layer: LayerResult): void {
       // pretty print the full response
       try {
         const parsed = JSON.parse(tc.fullResponse);
-        console.log(`${DIM}     full_response: ${JSON.stringify(parsed, null, 2).split('\n').join('\n     ')}${RESET}`);
+        console.log(
+          `${DIM}     full_response: ${JSON.stringify(parsed, null, 2).split('\n').join('\n     ')}${RESET}`
+        );
       } catch {
         console.log(`${DIM}     full_response: ${tc.fullResponse}${RESET}`);
       }
@@ -416,7 +438,9 @@ export function printReport(report: CompatReport, llmType?: string): void {
   const W = 62;
   const llmNote = llmType ? ` [${llmType}]` : '';
   console.log(`\n${BOLD}╔${'═'.repeat(W)}╗`);
-  console.log(`║  Model Compatibility Report${llmNote}${' '.repeat(Math.max(0, W - 28 - llmNote.length))}║`);
+  console.log(
+    `║  Model Compatibility Report${llmNote}${' '.repeat(Math.max(0, W - 28 - llmNote.length))}║`
+  );
   console.log(`║  Model:    ${report.model.slice(0, W - 14).padEnd(W - 12)}║`);
   console.log(`║  Endpoint: ${report.endpoint.slice(0, W - 14).padEnd(W - 12)}║`);
   console.log(`║  Time:     ${report.timestamp.padEnd(W - 12)}║`);
@@ -472,7 +496,9 @@ export function buildRecommendations(report: CompatReport): string[] {
   const t2 = allCases.find((c) => c.id === 'T2');
   for (const tc of [t1, t2]) {
     if (tc && tc.status === 'pass' && tc.detail?.includes('AI SDK')) {
-      recs.push(`${tc.id} passed via AI SDK fallback — model supports tools through SDK even though raw API returns null tool_calls`);
+      recs.push(
+        `${tc.id} passed via AI SDK fallback — model supports tools through SDK even though raw API returns null tool_calls`
+      );
     }
   }
   for (const tc of allCases) {
@@ -517,8 +543,8 @@ interface LLMAPIRequest {
   temperature?: number;
   max_tokens?: number;
   stream?: false;
-  enable_thinking?: boolean;  // vLLM / Qwen3 等支持，关闭思考模式
-  [key: string]: unknown;     // 透传其他字段
+  enable_thinking?: boolean; // vLLM / Qwen3 等支持，关闭思考模式
+  [key: string]: unknown; // 透传其他字段
 }
 
 /**
@@ -531,10 +557,10 @@ async function callLLMAPI(
 ): Promise<{ ok: true; data: RawLLMResponse } | { ok: false; error: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
-  if (body.model === "kimi-k2.5") {
+  if (body.model === 'kimi-k2.5') {
     body.temperature = 1;
   }
-  body.enable_thinking = (body.enable_thinking ?? false ) || (cfg.enableThinking ?? false);
+  body.enable_thinking = (body.enable_thinking ?? false) || (cfg.enableThinking ?? false);
 
   try {
     const resp = await fetch(`${cfg.endpoint}/chat/completions`, {
@@ -545,7 +571,7 @@ async function callLLMAPI(
       },
       body: JSON.stringify({
         ...body,
-        stream: false,
+        stream: false
         // 默认关闭思考模式（除非 --thinking），减少 token 浪费，让工具调用更直接
         // enable_thinking: cfg.enableThinking ?? false,
         // reasoning_split: true
@@ -599,69 +625,70 @@ async function runCase(
 }
 
 // ============================================================
-// AI SDK Fallback Helper（可选依赖，动态 import）
+// Anthropic 格式 Fallback（raw fetch，不依赖 AI SDK）
 // ============================================================
 
 /**
- * 通过 Vercel AI SDK 尝试检测工具调用
- * 仅在 raw fetch 无法检测到 tool_calls 时作为第三层后备方案
+ * 通过 Anthropic Messages API 格式尝试检测工具调用。
+ * 用于 OpenAI 兼容格式 (callLLMAPI) 无法检测到 tool_calls 时的后备方案，
+ * 覆盖原生使用 Anthropic 格式的模型（如 MiniMax）。
  * Returns { ok: true, toolCalls: string[] } or { ok: false, error: string }
  */
-async function tryAISDKToolCall(
+async function tryAnthropicFormatToolCall(
   cfg: CompatConfig,
   messages: Array<{ role: string; content: string }>,
   tools: unknown[]
 ): Promise<{ ok: true; toolCalls: string[] } | { ok: false; error: string }> {
-  
-  // console.log('skip');
-  // return { ok: false, error: "skip" };
-
   try {
-    const aiModule = await import('ai');
-    const { generateText } = aiModule;
+    // 将 OpenAI-style tools 转为 Anthropic input_schema 格式
+    const anthropicTools = (tools as any[]).map((t: any) => {
+      const fn = t.function ?? t;
+      return {
+        name: fn.name,
+        description: fn.description ?? '',
+        input_schema: fn.parameters ?? { type: 'object', properties: {} }
+      };
+    });
 
-    // 1. 先尝试 OpenAI SDK（OpenAI / vLLM 兼容端点）
-    let openaiErr = '';
-    try {
-      const openaiModule = await import('@ai-sdk/openai');
-      const { createOpenAI } = openaiModule;
-      const openai = createOpenAI({ baseURL: cfg.endpoint, apiKey: cfg.apiKey });
-      const result = await generateText({
-        model: openai(cfg.model),
-        messages: messages as any,
-        tools: tools as any,
-        temperature: 0,
-      });
-      const calls = (result.toolCalls ?? []).map(
-        (c: any) => c.toolName ?? c.function?.name ?? String(c)
-      );
-      return { ok: true, toolCalls: calls };
-    } catch (e) {
-      openaiErr = e instanceof Error ? e.message : String(e);
+    const resp = await fetch(`${cfg.endpoint}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: 1024,
+        messages,
+        tools: anthropicTools
+      }),
+      signal: AbortSignal.timeout(cfg.timeoutMs ?? 30000)
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      return { ok: false, error: `Anthropic format HTTP ${resp.status}: ${errText.slice(0, 200)}` };
     }
 
-    // 2. 尝试 Anthropic SDK（MiniMax 等原生 Anthropic 格式的模型）
-    let anthropicErr = '';
-    try {
-      const anthropicModule = await import('@ai-sdk/anthropic');
-      const { createAnthropic } = anthropicModule;
-      const anthropic = createAnthropic({ baseURL: cfg.endpoint, apiKey: cfg.apiKey });
-      const result = await generateText({
-        model: anthropic(cfg.model),
-        messages: messages as any,
-        tools: tools as any,
-        temperature: 0,
-      });
-      const calls = (result.toolCalls ?? []).map(
-        (c: any) => c.toolName ?? c.function?.name ?? String(c)
-      );
-      return { ok: true, toolCalls: calls };
-    } catch (e) {
-      anthropicErr = e instanceof Error ? e.message : String(e);
+    const data = (await resp.json()) as any;
+    const toolCalls: string[] = [];
+
+    // Anthropic 响应中 tool_use 在 content 数组里
+    for (const block of data.content ?? []) {
+      if (block.type === 'tool_use') {
+        toolCalls.push(block.name);
+      }
     }
 
-    // 两个 SDK 都失败
-    return { ok: false, error: `OpenAI SDK: ${openaiErr} | Anthropic SDK: ${anthropicErr}` };
+    if (toolCalls.length > 0) {
+      return { ok: true, toolCalls };
+    }
+
+    return {
+      ok: false,
+      error: `No tool_use blocks in Anthropic response (stop_reason=${data.stop_reason})`
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
@@ -687,7 +714,7 @@ function stripThink(content: string): { stripped: string; hadThink: boolean } {
   if (!stripped && hadThink) {
     const idx1 = content.indexOf('<think');
     stripped = content.substring(0, idx1).trim();
-    if(!stripped && stripped.includes('<think')) {
+    if (!stripped && stripped.includes('<think')) {
       const idx2 = stripped.indexOf('</think');
       stripped = stripped.substring(0, idx2).trim();
     }
@@ -699,15 +726,20 @@ function stripThink(content: string): { stripped: string; hadThink: boolean } {
 function detectTextReact(content: string): { found: boolean; format: string; toolName: string } {
   // 直接标签格式: <search>...</search>, <query_rewrite>...</query_rewrite>, <summary>...</summary>
   if (/<search\b/.test(content)) return { found: true, format: '<search>', toolName: 'search' };
-  if (/<query_rewrite\b/.test(content)) return { found: true, format: '<query_rewrite>', toolName: 'query_rewrite' };
+  if (/<query_rewrite\b/.test(content))
+    return { found: true, format: '<query_rewrite>', toolName: 'query_rewrite' };
   if (/<summary\b/.test(content)) return { found: true, format: '<summary>', toolName: 'summary' };
   // Anthropic-style: <invoke name="search"> args => {"query": "..."}
-  if (/<invoke\s+name="search"/.test(content)) return { found: true, format: '<invoke search>', toolName: 'search' };
-  if (/<invoke\s+name="query_rewrite"/.test(content)) return { found: true, format: '<invoke query_rewrite>', toolName: 'query_rewrite' };
-  if (/<invoke\s+name="summary"/.test(content)) return { found: true, format: '<invoke summary>', toolName: 'summary' };
+  if (/<invoke\s+name="search"/.test(content))
+    return { found: true, format: '<invoke search>', toolName: 'search' };
+  if (/<invoke\s+name="query_rewrite"/.test(content))
+    return { found: true, format: '<invoke query_rewrite>', toolName: 'query_rewrite' };
+  if (/<invoke\s+name="summary"/.test(content))
+    return { found: true, format: '<invoke summary>', toolName: 'summary' };
   // @search / @summary 等
   if (content.includes('@search')) return { found: true, format: '@search', toolName: 'search' };
-  if (content.includes('@query_rewrite')) return { found: true, format: '@query_rewrite', toolName: 'query_rewrite' };
+  if (content.includes('@query_rewrite'))
+    return { found: true, format: '@query_rewrite', toolName: 'query_rewrite' };
   if (content.includes('@summary')) return { found: true, format: '@summary', toolName: 'summary' };
   // XML 工具调用格式
   if (/<tool\s+name\s*=\s*"search"/.test(content) || content.includes('<tool name="search"'))
@@ -734,22 +766,31 @@ async function testT1FunctionCallingAvailability(cfg: CompatConfig): Promise<Tes
       tools: TOOL_DEFINITIONS,
       tool_choice: 'auto',
       temperature: 0,
-      max_tokens: 8192,  // 思考型模型需要足够的 token 空间完成思考 + 工具调用
-      enable_thinking: false,
+      max_tokens: 8192, // 思考型模型需要足够的 token 空间完成思考 + 工具调用
+      enable_thinking: false
     });
 
     if (!res.ok) return { status: 'error', detail: res.error, fullResponse: res.error };
 
     const choice = res.data.choices?.[0];
     const msg = choice?.message;
-    if (!msg) return { status: 'fail', detail: 'No message in response', fullResponse: JSON.stringify(res.data) };
+    if (!msg)
+      return {
+        status: 'fail',
+        detail: 'No message in response',
+        fullResponse: JSON.stringify(res.data)
+      };
 
     const finishReason = choice?.finish_reason ?? 'unknown';
     const hasCalls = Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0;
 
     // 优先：native function calling
     if (hasCalls) {
-      return { status: 'pass', detail: `tool_calls count=${msg.tool_calls!.length}, finish_reason=${finishReason}`, fullResponse: JSON.stringify(res.data) };
+      return {
+        status: 'pass',
+        detail: `tool_calls count=${msg.tool_calls!.length}, finish_reason=${finishReason}`,
+        fullResponse: JSON.stringify(res.data)
+      };
     }
 
     // Fallback：检查 content 中是否有 JSON / @search 等工具调用格式
@@ -766,7 +807,9 @@ async function testT1FunctionCallingAvailability(cfg: CompatConfig): Promise<Tes
           `No tool_calls but content contains`,
           contentCall.found ? `${contentCall.format} (tool=${contentCall.toolName})` : '',
           hasQueries ? 'JSON queries format' : ''
-        ].filter(Boolean).join(' + '),
+        ]
+          .filter(Boolean)
+          .join(' + '),
         fullResponse: JSON.stringify(res.data)
       };
     }
@@ -779,16 +822,23 @@ async function testT1FunctionCallingAvailability(cfg: CompatConfig): Promise<Tes
       };
     }
 
-    // Tier 3: AI SDK fallback
-    const aiResult = await tryAISDKToolCall(cfg, [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: SIMPLE_QUESTION }
-    ], [TOOL_DEFINITIONS[0]]);
+    // Tier 3: Anthropic format fallback
+    const aiResult = await tryAnthropicFormatToolCall(
+      cfg,
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: SIMPLE_QUESTION }
+      ],
+      [TOOL_DEFINITIONS[0]]
+    );
     if (aiResult.ok && aiResult.toolCalls.length > 0) {
       return {
         status: 'pass',
-        detail: `No tool_calls from raw API but AI SDK detected: [${aiResult.toolCalls.join(', ')}]`,
-        fullResponse: JSON.stringify({ rawFetch: res.data, aiSDK: { toolCalls: aiResult.toolCalls } })
+        detail: `No tool_calls from raw API but Anthropic format detected: [${aiResult.toolCalls.join(', ')}]`,
+        fullResponse: JSON.stringify({
+          rawFetch: res.data,
+          anthropicFormat: { toolCalls: aiResult.toolCalls }
+        })
       };
     }
 
@@ -798,7 +848,9 @@ async function testT1FunctionCallingAvailability(cfg: CompatConfig): Promise<Tes
         `No tool_calls (finish_reason=${finishReason})`,
         hasThink ? `think=YES` : `think=NO`,
         `stripped="${stripped}"`,
-        aiResult.ok ? `aiSDK: failed (${aiResult.toolCalls.length} calls)` : `aiSDK: ${aiResult.error}`
+        aiResult.ok
+          ? `anthropic format: failed (${aiResult.toolCalls.length} calls)`
+          : `anthropic format: ${aiResult.error}`
       ].join(', '),
       fullResponse: JSON.stringify(res.data)
     };
@@ -822,14 +874,19 @@ async function testT2ToolSelectionAccuracy(cfg: CompatConfig): Promise<TestCase>
       tool_choice: 'auto',
       temperature: 0,
       max_tokens: 8192,
-      enable_thinking: false,
+      enable_thinking: false
     });
 
     if (!res.ok) return { status: 'error', detail: res.error, fullResponse: res.error };
 
     const choice = res.data.choices?.[0];
     const msg = choice?.message;
-    if (!msg) return { status: 'fail', detail: 'No message in response', fullResponse: JSON.stringify(res.data) };
+    if (!msg)
+      return {
+        status: 'fail',
+        detail: 'No message in response',
+        fullResponse: JSON.stringify(res.data)
+      };
 
     const finishReason = choice?.finish_reason ?? 'unknown';
     const toolCalls = msg.tool_calls ?? [];
@@ -840,7 +897,11 @@ async function testT2ToolSelectionAccuracy(cfg: CompatConfig): Promise<TestCase>
     if (toolCalls.length > 0) {
       const firstTool = toolCalls[0].function.name;
       if (firstTool === 'search') {
-        return { status: 'pass', detail: `correct: first_tool=${firstTool}`, fullResponse: JSON.stringify(res.data) };
+        return {
+          status: 'pass',
+          detail: `correct: first_tool=${firstTool}`,
+          fullResponse: JSON.stringify(res.data)
+        };
       }
       return {
         status: 'fail',
@@ -859,7 +920,9 @@ async function testT2ToolSelectionAccuracy(cfg: CompatConfig): Promise<TestCase>
           `No tool_calls but content contains`,
           contentCall.found ? `${contentCall.format} (tool=${contentCall.toolName})` : '',
           hasQueries ? 'JSON queries format' : ''
-        ].filter(Boolean).join(' + '),
+        ]
+          .filter(Boolean)
+          .join(' + '),
         fullResponse: JSON.stringify(res.data)
       };
     }
@@ -872,16 +935,23 @@ async function testT2ToolSelectionAccuracy(cfg: CompatConfig): Promise<TestCase>
       };
     }
 
-    // Tier 3: AI SDK fallback
-    const aiResult = await tryAISDKToolCall(cfg, [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: SIMPLE_QUESTION }
-    ], TOOL_DEFINITIONS);
+    // Tier 3: Anthropic format fallback
+    const aiResult = await tryAnthropicFormatToolCall(
+      cfg,
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: SIMPLE_QUESTION }
+      ],
+      TOOL_DEFINITIONS
+    );
     if (aiResult.ok && aiResult.toolCalls.length > 0) {
       return {
         status: 'pass',
-        detail: `No tool_calls from raw API but AI SDK detected: [${aiResult.toolCalls.join(', ')}]`,
-        fullResponse: JSON.stringify({ rawFetch: res.data, aiSDK: { toolCalls: aiResult.toolCalls } })
+        detail: `No tool_calls from raw API but Anthropic format detected: [${aiResult.toolCalls.join(', ')}]`,
+        fullResponse: JSON.stringify({
+          rawFetch: res.data,
+          anthropicFormat: { toolCalls: aiResult.toolCalls }
+        })
       };
     }
 
@@ -891,7 +961,9 @@ async function testT2ToolSelectionAccuracy(cfg: CompatConfig): Promise<TestCase>
         `No tool_calls (finish_reason=${finishReason})`,
         hasThink ? `think=YES` : `think=NO`,
         `stripped="${stripped}"`,
-        aiResult.ok ? `aiSDK: failed (${aiResult.toolCalls.length} calls)` : `aiSDK: ${aiResult.error}`
+        aiResult.ok
+          ? `anthropic format: failed (${aiResult.toolCalls.length} calls)`
+          : `anthropic format: ${aiResult.error}`
       ].join(', '),
       fullResponse: JSON.stringify(res.data)
     };
@@ -918,7 +990,7 @@ async function testT3ToolArgStructure(cfg: CompatConfig): Promise<TestCase> {
       // tool_choice: 'required',      // 强制必须调用工具
       temperature: 0,
       max_tokens: 8192,
-      enable_thinking: false,
+      enable_thinking: false
     });
 
     if (!res.ok) return { status: 'error', detail: res.error, fullResponse: res.error };
@@ -938,7 +1010,11 @@ async function testT3ToolArgStructure(cfg: CompatConfig): Promise<TestCase> {
     try {
       parsed = JSON.parse(args) as Record<string, unknown>;
     } catch {
-      return { status: 'fail', detail: `arguments is not valid JSON: "${args}"`, fullResponse: JSON.stringify(res.data) };
+      return {
+        status: 'fail',
+        detail: `arguments is not valid JSON: "${args}"`,
+        fullResponse: JSON.stringify(res.data)
+      };
     }
 
     const hasQuery = 'query' in parsed || 'queries' in parsed;
@@ -964,7 +1040,7 @@ async function testT4NormalReply(cfg: CompatConfig): Promise<TestCase> {
       messages: [{ role: 'user', content: 'Only Greet' }],
       temperature: 0,
       max_tokens: 8192,
-      enable_thinking: false,
+      enable_thinking: false
     });
 
     if (!res.ok) return { status: 'error', detail: res.error, fullResponse: res.error };
@@ -972,12 +1048,24 @@ async function testT4NormalReply(cfg: CompatConfig): Promise<TestCase> {
     const msg = res.data.choices?.[0]?.message;
     const content = msg?.content ?? '';
     if (!content || content.trim().length < 5) {
-      return { status: 'fail', detail: `Empty or too-short content: "${content}"`, fullResponse: JSON.stringify(res.data) };
+      return {
+        status: 'fail',
+        detail: `Empty or too-short content: "${content}"`,
+        fullResponse: JSON.stringify(res.data)
+      };
     }
     if (Array.isArray(msg?.tool_calls) && msg!.tool_calls!.length > 0) {
-      return { status: 'fail', detail: 'Unexpected tool_calls in no-tools request', fullResponse: JSON.stringify(res.data) };
+      return {
+        status: 'fail',
+        detail: 'Unexpected tool_calls in no-tools request',
+        fullResponse: JSON.stringify(res.data)
+      };
     }
-    return { status: 'pass', detail: `content="${content}"`, fullResponse: JSON.stringify(res.data) };
+    return {
+      status: 'pass',
+      detail: `content="${content}"`,
+      fullResponse: JSON.stringify(res.data)
+    };
   });
 }
 
@@ -1002,7 +1090,7 @@ async function testT5TextReActFormat(cfg: CompatConfig): Promise<TestCase> {
       // 注意：不传 tools 参数（纯文本 ReAct 模式）
       temperature: 0,
       max_tokens: 8192,
-      enable_thinking: false,
+      enable_thinking: false
     });
 
     if (!res.ok) return { status: 'error', detail: res.error };
@@ -1026,12 +1114,9 @@ async function testT5TextReActFormat(cfg: CompatConfig): Promise<TestCase> {
 
     const thinkNote = hadThinkBlock ? ' (after stripping <think> block)' : '';
 
-    if (hasAtSearch)
-      return { status: 'pass', detail: `found @search in response${thinkNote}` };
-    if (hasXmlCall)
-      return { status: 'pass', detail: `found <tool_call> XML format${thinkNote}` };
-    if (hasJsonCall)
-      return { status: 'pass', detail: `found JSON tool call format${thinkNote}` };
+    if (hasAtSearch) return { status: 'pass', detail: `found @search in response${thinkNote}` };
+    if (hasXmlCall) return { status: 'pass', detail: `found <tool_call> XML format${thinkNote}` };
+    if (hasJsonCall) return { status: 'pass', detail: `found JSON tool call format${thinkNote}` };
 
     return {
       status: 'fail',
@@ -1057,7 +1142,7 @@ async function testT6ReasoningDetection(cfg: CompatConfig): Promise<TestCase> {
       tool_choice: 'auto',
       temperature: 0,
       max_tokens: 8192,
-      enable_thinking: true,
+      enable_thinking: true
     });
 
     if (!res.ok) {
@@ -1129,7 +1214,8 @@ async function testT7ThinkingToggle(cfg: CompatConfig): Promise<TestCase> {
     if (!msg) return { status: 'error', detail: 'No message in response' };
 
     const content = msg.content ?? '';
-    const hasReasoningField = typeof msg.reasoning_content === 'string' && msg.reasoning_content!.length > 0;
+    const hasReasoningField =
+      typeof msg.reasoning_content === 'string' && msg.reasoning_content!.length > 0;
     const hasThinkTags = content.includes('<think>');
 
     if (hasReasoningField || hasThinkTags) {
@@ -1137,9 +1223,13 @@ async function testT7ThinkingToggle(cfg: CompatConfig): Promise<TestCase> {
         status: 'fail',
         detail: [
           'enable_thinking=false was ignored — model still outputs thinking content',
-          hasReasoningField ? `reasoning_content: ${(msg.reasoning_content as string).length} chars` : '',
+          hasReasoningField
+            ? `reasoning_content: ${(msg.reasoning_content as string).length} chars`
+            : '',
           hasThinkTags ? '<think> tags present in content' : ''
-        ].filter(Boolean).join(', ')
+        ]
+          .filter(Boolean)
+          .join(', ')
       };
     }
 
@@ -1164,7 +1254,11 @@ async function runAPILayerT1T4(cfg: CompatConfig): Promise<TestCase[]> {
 /** 运行 T5-T7（并行） */
 async function runAPILayerT5T7(cfg: CompatConfig): Promise<TestCase[]> {
   console.log('  Running T5-T7 (Text ReAct + Reasoning detection + Thinking toggle)...');
-  return Promise.all([testT5TextReActFormat(cfg), testT6ReasoningDetection(cfg), testT7ThinkingToggle(cfg)]);
+  return Promise.all([
+    testT5TextReActFormat(cfg),
+    testT6ReasoningDetection(cfg),
+    testT7ThinkingToggle(cfg)
+  ]);
 }
 
 // ============================================================
@@ -1187,7 +1281,7 @@ const HIGH_RELEVANCE_CHUNKS: ChunkResult[] = [
   {
     id: 'mock-chunk-2',
     content: '超融合系统初始化完成后，通过浏览器访问管理界面，使用默认凭据 admin/Fit@12345 登录。',
-    score: 0.80,
+    score: 0.8,
     datasetId: 'test-dataset',
     sourceName: 'HCI快速入门.pdf',
     searchSource: 'vector'
@@ -1241,7 +1335,7 @@ const HIGH_RELEVANCE_CHUNKS_A4: ChunkResult[] = [
   {
     id: 'mock-chunk-2',
     content: 'vADC是虚拟应用交付设备',
-    score: 0.80,
+    score: 0.8,
     datasetId: 'test-dataset',
     sourceName: 'HCI快速入门.pdf',
     searchSource: 'vector'
@@ -1285,18 +1379,18 @@ async function runAgent(
   cfg: CompatConfig,
   question: string,
   mockChunks: ChunkResult[],
-  case_label: string,
+  case_label: string
 ): Promise<AgenticSearchResult> {
-  const case_logger = new ConsoleLogger({ level: LogLevel.DEBUG, prefix: `Case ${case_label}`});
+  const case_logger = new ConsoleLogger({ level: LogLevel.DEBUG, prefix: `Case ${case_label}` });
   const providers = buildAgentProviders(cfg, mockChunks, case_logger);
   const agent = createAgenticSearch({
     providers,
     config: {
-      maxSearchCalls: 3,  // 限制搜索轮次，防止无限循环
+      maxSearchCalls: 3, // 限制搜索轮次，防止无限循环
       maxToolCalls: 8,
       tokenBudget: 16000
     },
-    mode: 'auto'  // native 优先，无 tool_calls 时降级 text 解析
+    mode: 'auto' // native 优先，无 tool_calls 时降级 text 解析
   });
 
   const stream = agent.stream({
@@ -1330,7 +1424,7 @@ const COMPARISON_QUESTION = 'vNGAF 和 vADC 的区别是什么，哪个更适合
  */
 async function testA1AgentPipeline(cfg: CompatConfig): Promise<TestCase> {
   return runCase('A1', 'Agent 完整流程', async () => {
-    const case_label = "A1"
+    const case_label = 'A1';
     logger.info(`Case ${case_label}: ${SIMPLE_QUESTION}`);
 
     let result: AgenticSearchResult;
@@ -1352,7 +1446,7 @@ async function testA1AgentPipeline(cfg: CompatConfig): Promise<TestCase> {
     if (!hasAnswer) {
       return {
         status: 'fail',
-        detail: `No answer generated. answer="${(result.answer ?? '')}"`
+        detail: `No answer generated. answer="${result.answer ?? ''}"`
       };
     }
     return {
@@ -1368,7 +1462,7 @@ async function testA1AgentPipeline(cfg: CompatConfig): Promise<TestCase> {
  */
 async function testA2ToolCallLoop(cfg: CompatConfig): Promise<TestCase> {
   return runCase('A2', '工具调用序列合理性', async () => {
-    const case_label = "A2"
+    const case_label = 'A2';
     logger.info(`Case ${case_label}: ${SIMPLE_QUESTION}`);
     let result: AgenticSearchResult;
     try {
@@ -1419,7 +1513,7 @@ async function testA2ToolCallLoop(cfg: CompatConfig): Promise<TestCase> {
  */
 async function testA3IrrelevantQueryStop(cfg: CompatConfig): Promise<TestCase> {
   return runCase('A3', '不相关查询早停', async () => {
-    const case_label = "A3"
+    const case_label = 'A3';
     logger.info(`Case ${case_label}: ${IRRELEVANT_QUESTION}`);
     let result: AgenticSearchResult;
     try {
@@ -1451,7 +1545,7 @@ async function testA3IrrelevantQueryStop(cfg: CompatConfig): Promise<TestCase> {
  */
 async function testA4PlaybookRouting(cfg: CompatConfig): Promise<TestCase> {
   return runCase('A4', 'Playbook 路由准确性', async () => {
-    const case_label = "A4"
+    const case_label = 'A4';
     logger.info(`Case ${case_label}: ${COMPARISON_QUESTION}`);
     let result: AgenticSearchResult;
     try {
@@ -1478,7 +1572,7 @@ async function runAgentLayer(cfg: CompatConfig): Promise<TestCase[]> {
   console.log('\n  Running A1 (Agent Layer - requires real LLM + mock search)...');
   const onlya1 = await testA1AgentPipeline(cfg);
   return [onlya1];
-  
+
   // console.log('\n  Running A1-A4 (Agent Layer - requires real LLM + mock search)...');
   // const [a1, a2, a3, a4] = await Promise.all([
   //   testA1AgentPipeline(cfg),
@@ -1533,15 +1627,48 @@ async function main(): Promise<void> {
   }
 
   // 退出码：全部通过 → 0；有失败/错误 → 1
-  const allCases = [
-    ...(report.layers.api?.cases ?? []),
-    ...(report.layers.agent?.cases ?? [])
-  ];
+  const allCases = [...(report.layers.api?.cases ?? []), ...(report.layers.agent?.cases ?? [])];
   const hasFail = allCases.some((c) => c.status === 'fail' || c.status === 'error');
   process.exit(hasFail ? 1 : 0);
 }
 
-main().catch((e) => {
-  console.error('Fatal error:', e);
-  process.exit(2);
-});
+// ============================================================
+// 入口分发：区分 vitest 加载 与 tsx 直接执行
+// ============================================================
+
+const isVitestRuntime = typeof process.env.VITEST !== 'undefined';
+const hasCustomEndpoint = !!(process.env.LLM_BASE_URL || process.env.LLM_ENDPOINT);
+
+if (!isVitestRuntime) {
+  // 直接执行模式（tsx test/model-compat.test.ts）
+  main().catch((e) => {
+    console.error('Fatal error:', e);
+    process.exit(2);
+  });
+} else if (hasCustomEndpoint) {
+  // vitest 模式 + 已配置真实 LLM 端点 → 运行兼容性测试
+  describe('Model Compatibility (real LLM)', () => {
+    it('run full compatibility suite', async () => {
+      // 将 process.exit 替换为 throw，避免杀掉 vitest 进程
+      const realExit = process.exit;
+      let exitCode = 0;
+      process.exit = ((code?: number) => {
+        exitCode = code ?? 0;
+        throw new Error(`process.exit(${code})`);
+      }) as any;
+      try {
+        await main();
+      } catch (e: any) {
+        if (!e.message?.startsWith('process.exit')) throw e;
+      } finally {
+        process.exit = realExit;
+      }
+      // 正常情况下 main() 的 process.exit(0/1) 会 throw，只有无异常走完才是成功
+    });
+  });
+} else {
+  // vitest 模式 + 无真实 LLM 端点 → 跳过
+  describe('Model Compatibility (real LLM)', () => {
+    it.skip('no LLM endpoint configured — set LLM_BASE_URL to enable', () => {});
+  });
+}

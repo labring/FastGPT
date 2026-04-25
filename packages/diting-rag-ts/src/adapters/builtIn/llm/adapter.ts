@@ -2,6 +2,7 @@
 // Built-in LLM 适配器 - 调用兼容 OpenAI API 的远程服务
 
 import type { LLMProvider } from '../../../ports/llm';
+import { resolveLLMCallOptions } from '../../../ports/llm';
 import type { LLMMessage, LLMResponse, LLMCallOptions } from '../../../types/message';
 import type { Logger } from '../../../ports/logger';
 import { stripThinkBlocks } from '../../../utils/text';
@@ -163,11 +164,12 @@ export class BuiltInLLMAdapter implements LLMProvider {
    * 同步调用
    */
   async chat(messages: LLMMessage[], options?: LLMCallOptions): Promise<LLMResponse> {
-    const model = options?.model || this.modelName;
-    const enableThinking = options?.enableThinking ?? this.defaultEnableThinking;
-    const temperature = resolveTemperature(options?.temperature, this.fixedTemperature);
+    const merged = resolveLLMCallOptions(options);
+    const model = merged.model || this.modelName;
+    const enableThinking = merged.enableThinking ?? this.defaultEnableThinking;
+    const temperature = resolveTemperature(merged.temperature, this.fixedTemperature);
     const maxTokens = resolveMaxTokens(
-      options?.maxTokens,
+      merged.maxTokens,
       enableThinking,
       this.defaultEnableThinking
     );
@@ -187,10 +189,14 @@ export class BuiltInLLMAdapter implements LLMProvider {
         content: m.content
       })),
       temperature,
-      // max_tokens: maxTokens,
       stream: false,
-      ...options?.extra
+      ...merged.extra
     };
+
+    // 仅当调用方显式传了 maxTokens 时才发送，避免部分模型兼容问题
+    if (merged.maxTokens !== undefined) {
+      body.max_tokens = maxTokens;
+    }
 
     // 显式传 enable_thinking，避免 Qwen3 等模型默认开启思考模式
     if (enableThinking !== undefined) {
@@ -338,11 +344,11 @@ export class BuiltInLLMAdapter implements LLMProvider {
    * 流式调用
    */
   async *chatStream(messages: LLMMessage[], options?: LLMCallOptions): AsyncIterable<LLMResponse> {
-    const model = options?.model || this.modelName;
-    const enableThinking = options?.enableThinking ?? this.defaultEnableThinking;
-    const temperature = resolveTemperature(options?.temperature, this.fixedTemperature);
-    // maxTokens 计算保留，供后续扩展使用（当前注释掉 max_tokens 字段以避免部分模型兼容问题）
-    resolveMaxTokens(options?.maxTokens, enableThinking, this.defaultEnableThinking);
+    const merged = resolveLLMCallOptions(options);
+    const model = merged.model || this.modelName;
+    const enableThinking = merged.enableThinking ?? this.defaultEnableThinking;
+    const temperature = resolveTemperature(merged.temperature, this.fixedTemperature);
+    const maxTokens = resolveMaxTokens(merged.maxTokens, enableThinking, this.defaultEnableThinking);
 
     const body: Record<string, unknown> = {
       model,
@@ -353,8 +359,13 @@ export class BuiltInLLMAdapter implements LLMProvider {
       temperature,
       // max_tokens: maxTokens,
       stream: true,
-      ...options?.extra
+      ...merged.extra
     };
+
+    // 仅当调用方显式传了 maxTokens 时才发送，避免部分模型兼容问题
+    if (merged.maxTokens !== undefined) {
+      body.max_tokens = maxTokens;
+    }
 
     // 显式传 enable_thinking，避免 Qwen3 等模型默认开启思考模式
     if (enableThinking !== undefined) {

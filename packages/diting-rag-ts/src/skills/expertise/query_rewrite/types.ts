@@ -216,5 +216,61 @@ export const DEFAULT_STRATEGIES: RewriteStrategySpec[] = [
     exclusive_group: 'abstraction',
     enabled: true,
     parallel_search: true
+  },
+  {
+    name: 'multilingual_expand',
+    display_name: 'Multilingual Expansion',
+    description:
+      'Generate search queries in multiple KB languages for the same information need. Each query is a natural expression in that language, not a translation.',
+    applicable_when:
+      'KB contains documents in multiple languages (mixed distribution) and the topic language is uncertain',
+    prompt_template: `Generate search queries for the same information need in multiple languages.
+Each query should be a natural expression in that language, NOT a word-for-word translation.
+
+Original ({sourceLang}): {query}
+Target languages: {targetLanguages}
+
+Return as JSON:
+{{"rewrites": [{{"strategy": "multilingual_expand", "queries": ["{sourceLang} query", "{target1} query", ...], "parallel": true}}]}}
+Note: Include the original language query first, then one query per target language.`,
+    examples: [
+      {
+        input: '如何配置 API 认证',
+        output:
+          '{"rewrites": [{"strategy": "multilingual_expand", "queries": ["API认证 配置方法 步骤", "API authentication configuration guide", "API認証 設定方法 手順"], "parallel": true}]}'
+      }
+    ],
+    priority: 25,
+    exclusive_group: '',
+    enabled: true,
+    parallel_search: true
+  },
+  {
+    name: 'translate_to',
+    display_name: 'Cross-Language Query Translation',
+    description:
+      "Translate the search intent from the user's language into the KB document language. Produces natural queries in the target language that match the document vocabulary.",
+    applicable_when:
+      'KB document language differs from user question language (e.g., user asks in Arabic, KB is Chinese). The target language must be known.',
+    prompt_template: `The user asked in {sourceLang}. The KB documents are in {targetLang}.
+Translate the SEARCH INTENT into natural {targetLang} queries that match how documents are written.
+Do NOT word-for-word translate — rephrase as a native {targetLang} speaker would search for this information.
+
+Original ({sourceLang}): {query}
+
+Return as JSON:
+{{"rewrites": [{{"strategy": "translate_to", "queries": ["{targetLang} query 1", "{targetLang} query 2"], "parallel": true}}]}}
+Generate 1-2 diverse query variants in {targetLang}.`,
+    examples: [
+      {
+        input: 'ผู้เขียนหนังสือสามก๊ก',
+        output:
+          '{"rewrites": [{"strategy": "translate_to", "queries": ["三国演义 作者", "三国演义 谁写的"], "parallel": true}]}'
+      }
+    ],
+    priority: 20,
+    exclusive_group: 'translate',
+    enabled: true,
+    parallel_search: true
   }
 ];

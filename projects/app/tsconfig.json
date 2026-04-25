@@ -19,5 +19,5 @@
     "../../packages/**/*.d.ts",
     "../../test/list.test.ts"
   ],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", ".next", "dist", "coverage"]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "../../packages/**/*.test.ts", "../../packages/**/*.test.tsx", ".next", "dist", "coverage"]
 }

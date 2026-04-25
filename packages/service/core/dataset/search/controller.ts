@@ -180,6 +180,7 @@ export type SearchDatasetDataResponse = {
     playbook?: string; // 使用的 playbook
     executionPath?: string[]; // 执行路径
     confidence?: number; // 置信度 0~1
+    queryLanguage?: string; // 用户查询语言（ISO 639-1 代码）
   };
 };
 

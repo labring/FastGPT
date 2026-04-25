@@ -49,6 +49,20 @@ export const AgenticRAGState = Annotation.Root({
   datasetIds: Annotation<string[]>(),
   chatHistory: Annotation<LLMMessage[]>(),
   priorContext: Annotation<string>(),
+  // DB 采样的语言分布统计，route_playbook 一次性消费
+  initialLanguageStats: Annotation<Record<string, number> | null>({
+    reducer: (_l, r) => r,
+    default: () => null
+  }),
+  // LanguageTracker 初始化配置，route_playbook 写入，sync_blackboard 消费
+  languageTrackerConfig: Annotation<{
+    defaultLang: string;
+    userLang: string;
+    confidence: 'authoritative' | 'tentative' | 'fallback';
+  } | null>({
+    reducer: (_l, r) => r,
+    default: () => null
+  }),
 
   // ── 消息列表（支持 ID 替换，类似 Python add_messages）──
   messages: Annotation<LLMMessage[]>({

@@ -57,6 +57,14 @@ separate information before a synthesis is possible.
 - Search each dimension separately. Use parallel search when possible.
 - Continue until all dimensions have been searched at least once
 
+**Optional — @assess for chunk annotation and progress tracking:**
+After each search round, you MAY call @assess to:
+- Record key findings from the current round
+- Update the list of missing information (lacks)
+- Annotate the most useful chunks (key_chunks) for preservation in the final answer
+- Mark when information is sufficient (sufficient: true)
+This is especially useful for tracking multi-dimensional comparison progress.
+
 **Output Rule:**
 - You MUST use @summary tool to generate final response.
 - Structure the answer with a comparison table or parallel bullet points.

@@ -288,12 +288,7 @@ export async function llmClassify(
     ],
     {
       temperature: 0.3,
-      maxTokens: 1024,
-      enableThinking: false,
-      extra: {
-        enable_thinking: false,
-        chat_template_kwargs: { enable_thinking: false }
-      }
+      maxTokens: 1024
     }
   );
 

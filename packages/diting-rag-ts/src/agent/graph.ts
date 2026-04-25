@@ -157,7 +157,7 @@ export function buildNativeGraph(
     .addNode('generate_answer', createGenerateAnswerNode(providers, skills, config))
     .addNode('plan_executor', createPlanExecutorNode(providers, skills, config, ctx))
     .addEdge(START, 'route_playbook')
-    .addEdge('route_playbook', 'agent')
+    .addEdge('route_playbook', 'sync_blackboard')
     .addConditionalEdges('agent', createShouldContinue(config, ctx), {
       tools: 'tools',
       select_chunks: 'select_chunks',
@@ -209,7 +209,7 @@ export function buildTextReActGraph(
     .addNode('generate_answer', createGenerateAnswerNode(providers, skills, config))
     .addNode('plan_executor', createPlanExecutorNode(providers, skills, config, ctx))
     .addEdge(START, 'route_playbook')
-    .addEdge('route_playbook', 'agent')
+    .addEdge('route_playbook', 'sync_blackboard')
     .addConditionalEdges('agent', createShouldContinue(config, ctx), {
       tools: 'tools',
       select_chunks: 'select_chunks',
@@ -261,7 +261,7 @@ export function buildAutoGraph(
     .addNode('generate_answer', createGenerateAnswerNode(providers, skills, config))
     .addNode('plan_executor', createPlanExecutorNode(providers, skills, config, ctx))
     .addEdge(START, 'route_playbook')
-    .addEdge('route_playbook', 'agent')
+    .addEdge('route_playbook', 'sync_blackboard')
     .addConditionalEdges('agent', createShouldContinue(config, ctx), {
       tools: 'tools',
       select_chunks: 'select_chunks',

@@ -5,6 +5,7 @@
 import type { SkillInput, SkillOutput } from '../../base';
 import { BaseSkill } from '../../base';
 import type { LLMMessage } from '../../../types/message';
+import { detectLang } from '../../../utils/lang';
 import { StrategyRegistry } from './registry';
 import type { RewriteStrategySpec } from './types';
 
@@ -21,6 +22,8 @@ export interface QueryRewriteOptions {
   strategy?: string;
   /** 调用方预先检索到的上下文（如 SQL 结果），引导改写生成补充性而非重复性查询 */
   priorContext?: string;
+  /** 多语言目标列表。非空时启用 multilingual_expand 策略探测 KB 语言分布 */
+  targetLanguages?: string[];
 }
 
 /** 单条改写结果（结构化） */
@@ -75,7 +78,9 @@ Return as JSON:
 const BATCH_REWRITE_PROMPT = `Rewrite the following query according to the specified strategies. \
 Each strategy should be executed independently to produce different query variants.
 
-**Language**: All rewritten queries MUST be in the same language as the original query.
+**Language**: Write queries in the language most likely to match documents in the knowledge base. \
+If the KB contains documents in multiple languages, use the language that maximizes recall for each query. \
+Do NOT force queries to match the original query's language if documents exist in other languages.
 
 ## Original Query
 {query}
@@ -137,7 +142,8 @@ export class QueryRewriteSkill extends BaseSkill {
     const {
       query,
       strategy: specifiedStrategy,
-      priorContext
+      priorContext,
+      targetLanguages
     } = input as unknown as QueryRewriteOptions;
 
     if (!this.llm) return this.fail('LLMProvider not initialized');
@@ -156,6 +162,13 @@ export class QueryRewriteSkill extends BaseSkill {
         reasoning = result.reasoning;
       }
 
+      // 多语言探测：targetLanguages 非空时，注入 multilingual_expand 策略
+      if (targetLanguages && targetLanguages.length > 0) {
+        // 用 multilingual_expand 替代其他策略（避免 query 数量爆炸）
+        selected = ['multilingual_expand'];
+        reasoning = 'Multilingual KB — probing document languages';
+      }
+
       if (selected.length === 0) {
         return this.success({
           rewrites: [],
@@ -169,7 +182,7 @@ export class QueryRewriteSkill extends BaseSkill {
       selected = this.registry.enforceExclusiveGroups(selected);
 
       // Step 2: 批量改写（单次 LLM 调用，对齐 Python BATCH_REWRITE_PROMPT）
-      const rewriteResult = await this.batchRewrite(query, selected, priorContext);
+      const rewriteResult = await this.batchRewrite(query, selected, priorContext, targetLanguages);
       const rewrites = rewriteResult.rewrites;
 
       // 扁平化 queries（兼容旧接口）
@@ -231,14 +244,18 @@ export class QueryRewriteSkill extends BaseSkill {
   private async batchRewrite(
     query: string,
     strategies: string[],
-    priorContext?: string
+    priorContext?: string,
+    targetLanguages?: string[]
   ): Promise<{
     rewrites: RewriteEntry[];
     compare_objects?: string[];
     explicit_dimensions?: string[];
     implicit_dimensions?: string[];
   }> {
-    const instructions = this.registry.getRewriteInstructions(strategies, query);
+    const instructions = this.registry
+      .getRewriteInstructions(strategies, query)
+      .replace('{sourceLang}', detectLang(query))
+      .replace('{targetLanguages}', (targetLanguages ?? ['en']).join(', '));
     const priorContextSection = priorContext
       ? `## Prior Context (already retrieved, generate complementary queries)\n${priorContext}\n\n`
       : '';

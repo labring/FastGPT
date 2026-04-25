@@ -21,6 +21,9 @@ export interface ChunkResult {
 
   // 时间戳
   timestamp?: number;
+
+  // 语言标注（ISO 639-1 代码，由索引时 detectLang 写入 metadata.detectedLanguage）
+  detectedLanguage?: string;
 }
 
 /**

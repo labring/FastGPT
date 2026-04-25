@@ -95,13 +95,27 @@ export class SearchSkill extends BaseSkill {
       // 去重
       const deduped = this.deduplicateChunks(allChunks);
 
+      // Layer 1: Per-dataset topK cap — 防止单一 dataset 洪水
+      // 每个 dataset 最多贡献 max(3, ceil(topK / datasetIdCount)) 个 chunk
+      const activeDsCount = new Set(deduped.map((c) => c.datasetId)).size;
+      const perDatasetCap = Math.max(3, Math.ceil(topK / Math.max(activeDsCount, 1)));
+      const cappedByDs = new Map<string, ChunkItem[]>();
+      for (const c of deduped) {
+        const list = cappedByDs.get(c.datasetId) || [];
+        if (list.length < perDatasetCap) {
+          list.push(c);
+          cappedByDs.set(c.datasetId, list);
+        }
+      }
+      const capped = Array.from(cappedByDs.values()).flat();
+
       // Rerank 融合：对所有 queries 分别 rerank，每个 chunk 取最高分
       // 原因：agent 已做 alias 展开（如 "超融合 默认密码" + "HCI 默认密码"），
       //       reranker 对 "超融合" 不知道等价 "HCI"，但对 "HCI" 能正确评分。
       //       对所有 queries 求最高分，任意一个 query 命中即可保留 chunk。
-      let finalChunks = deduped;
+      let finalChunks = capped;
       let totalRerankInputTokens = 0;
-      if (enableRerank && this.rerankSkill && deduped.length > 1) {
+      if (enableRerank && this.rerankSkill && capped.length > 1) {
         // 去重合并：originalQuery + 所有搜索 queries，避免重复调用
         const rerankQueries = [...(originalQuery ? [originalQuery] : []), ...queries].filter(
           (q, i, arr) => arr.indexOf(q) === i
@@ -113,8 +127,8 @@ export class SearchSkill extends BaseSkill {
           const rerankResult = await this.rerankSkill.execute({
             context: input.context,
             query: rq,
-            chunks: deduped,
-            topK: deduped.length // 拿所有 chunk 的分数，后续统一截断
+            chunks: capped,
+            topK: capped.length // 拿所有 chunk 的分数，后续统一截断
           });
           if (rerankResult.success && rerankResult.data) {
             const rerankData = rerankResult.data as {
@@ -131,7 +145,7 @@ export class SearchSkill extends BaseSkill {
         }
 
         // 将最高分写回 chunk，排序后取 topK
-        finalChunks = deduped
+        finalChunks = capped
           .map((c) => ({ ...c, rerankScore: maxScoreMap.get(c.id) ?? c.rerankScore }))
           .sort((a, b) => (b.rerankScore ?? 0) - (a.rerankScore ?? 0))
           .slice(0, topK);

@@ -29,6 +29,18 @@ export interface LLMCallOptions {
 }
 
 /**
+ * LLM 调用默认选项。
+ * diting-rag-ts 的 agentic search 过程要求默认禁用 thinking，避免 Qwen3 等模型默认开启思考模式。
+ * 各 provider 实现应在 chat/chatStream 中以此为基础，用调用方传入的 options 覆盖。
+ */
+export const DEFAULT_LLM_CALL_OPTIONS: LLMCallOptions = {
+  enableThinking: false,
+  extra: {
+    chat_template_kwargs: { enable_thinking: false }
+  }
+};
+
+/**
  * Tool 定义（用于 function calling）
  */
 export interface ToolDefinition {

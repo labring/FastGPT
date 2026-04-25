@@ -113,8 +113,8 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
         model: config.llmModel,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature,
-        // 对齐 builtin adapter：不主动传 max_tokens，避免截断问题
-        // 若调用方显式要求，可通过 options?.extra 透传
+        // 仅当调用方显式传了 maxTokens 时才发送，避免部分模型兼容问题
+        ...(options?.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
         stream: false,
         ...options?.extra
       };
@@ -198,8 +198,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
               function: { name: tc.function.name, arguments: tc.function.arguments }
             })),
             usage: {
-              inputTokens:
-                retryResponse.usage?.prompt_tokens ?? response.usage?.prompt_tokens,
+              inputTokens: retryResponse.usage?.prompt_tokens ?? response.usage?.prompt_tokens,
               outputTokens:
                 retryResponse.usage?.completion_tokens ?? response.usage?.completion_tokens
             }
@@ -232,7 +231,7 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
         model: config.llmModel,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         temperature: options?.temperature,
-        // 对齐 builtin adapter：不主动传 max_tokens，避免截断问题
+        ...(options?.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
         stream: true,
         ...options?.extra
       };
@@ -358,6 +357,7 @@ export function createFastGPTVectorSearchProvider(
           sourceName: r.sourceName || '',
           collectionId: r.collectionId,
           metadata: r.metadata || {},
+          detectedLanguage: r.metadata?.detectedLanguage,
           vectorScore: r.score?.[0]?.value || 0,
           searchSource: 'vector',
           providerMetadata: {
@@ -437,6 +437,7 @@ export function createFastGPTFullTextSearchProvider(
             sourceName: r.sourceName || '',
             collectionId: r.collectionId,
             metadata: r.metadata || {},
+            detectedLanguage: r.metadata?.detectedLanguage,
             fullTextScore: rawScore,
             searchSource: 'fulltext',
             providerMetadata: {
@@ -620,6 +621,7 @@ export function createFastGPTMixedSearchProvider(
               sourceName: r.sourceName || '',
               collectionId: r.collectionId,
               metadata: r.metadata || {},
+              detectedLanguage: r.metadata?.detectedLanguage,
               searchSource: 'mixed',
               vectorScore,
               fullTextScore,

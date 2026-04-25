@@ -5,6 +5,7 @@
 
 import { createAgenticSearch, createLogger, LogLevel } from 'diting-rag-ts';
 import type { AgenticSearchResult } from 'diting-rag-ts';
+import { detectLang } from 'diting-rag-ts';
 import { chunkItemsToSearchResults } from './providers/agenticAdapter';
 import { createFastGPTProviders } from './providers/fastgptProviders';
 import { defaultSearchDatasetData, type SearchDatasetDataResponse } from './controller';
@@ -12,6 +13,8 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SearchDatasetDataProps } from './controller';
 import { getDefaultLLMModel, getDefaultRerankModel } from '../../ai/model';
+import { MongoDatasetData } from '../data/schema';
+import { Types } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
 import type { WorkflowResponseType } from '../../../core/workflow/dispatch/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -19,6 +22,7 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { formatAgenticLabel, getSearchingFallback } from './agenticSearchLabels';
 
 // 本地定义 AgentEvent 类型（避免依赖 diting-rag-ts 新版 dist）
 type AgentEvent = {
@@ -28,96 +32,6 @@ type AgentEvent = {
   playbook?: string;
   timestamp: number;
   extra?: Record<string, unknown>;
-};
-
-// 从问题文本检测语言
-function _detectLang(text: string): 'zh' | 'en' {
-  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-  return chineseChars / Math.max(text.length, 1) > 0.1 ? 'zh' : 'en';
-}
-
-// 面向终端用户的流式推理文本模板（中英双语）
-// 目标：状态事件自然融入 reasoning 流，体现 agentic 自主决策感，而非割裂的系统日志
-const _PROCESS_LABELS: Record<'zh' | 'en', Record<string, (e: AgentEvent) => string>> = {
-  zh: {
-    // LLM 自身的推理文本，直接透传，是整个 reasoning 流的主体
-    thinking: (e) => (e.detail ? `${e.detail}\n` : ''),
-
-    // 开始执行检索——简洁标注检索词，不重复 thinking 中已有的分析过程
-    searching: (e) => {
-      const queries = (e.extra?.queries as string[] | undefined) ?? [];
-      if (queries.length > 0) return `\n检索「${queries.join('、')}」\n`;
-      return '\n检索中...\n';
-    },
-
-    // 检索完成——只报原始结果数，不重复检索词（searching 事件已展示）
-    // count=0 静默：中间轮次失败不提示，最终不相关由 final 事件统一说明
-    // 不说"相关"：相关性由 chunk_selector 事后判断，search_done 时尚未筛选
-    search_done: (e) => {
-      const count = e.extra?.chunkCount as number | undefined;
-      if (!count) return '';
-      return `检索到 ${count} 条结果\n`;
-    },
-
-    // LLM 自主判断现有信息不足，主动扩展——体现 agentic 迭代决策
-    rewriting: () => '\n现有信息不足以完整回答，扩展检索范围...\n',
-
-    // 展示新生成的检索方向，用列表呈现，视觉上有层次感
-    rewrite_done: (e) => {
-      const queries = (e.extra?.queries as string[] | undefined) ?? [];
-      if (!queries.length) return '';
-      return queries.map((q) => `  · ${q}`).join('\n') + '\n';
-    },
-
-    // searchOnly 模式：FastGPT 侧有独立的 LLM 对话节点，此处静默
-    generating: () => '',
-
-    // 多轮检索结束，LLM 评估信息完整性
-    reflecting: () => '\n评估已收集信息的完整性...\n',
-
-    // 反思结论——有评估说明则透传，否则静默，避免暴露内部字段
-    reflect_done: (e) => (e.detail ? `${e.detail}\n` : ''),
-
-    // 路由选择playbook同时给出问题分析结果，只暴露问题分析结果
-    playbook_selected: (e) => e.extra?.analysis as string | '',
-
-    // 最终结果——不相关早停(refuse)时向用户说明
-    final: (e) => (e.extra?.refuse ? '知识库中未找到与此问题相关的内容。\n' : '')
-  },
-  en: {
-    thinking: (e) => (e.detail ? `${e.detail}\n` : ''),
-
-    searching: (e) => {
-      const queries = (e.extra?.queries as string[] | undefined) ?? [];
-      if (queries.length > 0) return `\nSearching: "${queries.join('", "')}"\n`;
-      return '\nSearching...\n';
-    },
-
-    search_done: (e) => {
-      const count = e.extra?.chunkCount as number | undefined;
-      if (!count) return '';
-      return `Retrieved ${count} result(s)\n`;
-    },
-
-    rewriting: () =>
-      '\nInsufficient information to fully answer the question, broadening search scope...\n',
-
-    rewrite_done: (e) => {
-      const queries = (e.extra?.queries as string[] | undefined) ?? [];
-      if (!queries.length) return '';
-      return queries.map((q) => `  · ${q}`).join('\n') + '\n';
-    },
-
-    generating: () => '',
-
-    reflecting: () => '\nEvaluating completeness of gathered information...\n',
-
-    reflect_done: (e) => (e.detail ? `${e.detail}\n` : ''),
-
-    playbook_selected: (e) => e.extra?.analysis as string | '',
-
-    final: (e) => (e.extra?.refuse ? 'No relevant information found in the knowledge base.\n' : '')
-  }
 };
 
 export type AgenticSearchDispatchProps = SearchDatasetDataProps & {
@@ -132,6 +46,8 @@ export type AgenticSearchDispatchProps = SearchDatasetDataProps & {
   preComputedQueries?: string[];
   /** 调用方在 agenticSearch 之前已检索到的结果（如 SQL 结构化数据），作为 priorContext 传给 agent */
   preSearchRes?: SearchDataResponseItemType[];
+  /** 调用方预先检测的用户查询语言（ISO 639-1），避免 agenticSearch 内部重复检测 */
+  queryLanguage?: string;
 };
 
 /**
@@ -146,6 +62,74 @@ function formatPreSearchResAsContext(chunks: SearchDataResponseItemType[]): stri
       return lines.join('\n');
     })
     .join('\n\n');
+}
+
+/**
+ * 从 MongoDB 采样语言分布，用于初始化 LanguageTracker。
+ * 使用 $sample 随机抽取 N 条 chunk 并聚合 detectLanguage。
+ *
+ * @param datasetIds 要采样的知识库 ID 列表
+ * @returns 语言分布 { zh: 120, en: 60 } 或 null（采样失败/空 KB）
+ */
+async function sampleLanguageDistribution(
+  datasetIds: string[]
+): Promise<Record<string, number> | null> {
+  try {
+    const sampleSize = (() => {
+      const env = process.env.AGENTIC_LANG_SAMPLE_SIZE;
+      if (env !== undefined && env !== null && env !== '') {
+        const parsed = parseInt(String(env), 10);
+        if (!isNaN(parsed)) return Math.max(10, Math.min(1000, parsed));
+      }
+      return 200;
+    })();
+
+    const results = await MongoDatasetData.aggregate([
+      {
+        $match: {
+          datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) }
+        }
+      },
+      { $sample: { size: sampleSize } },
+      {
+        $project: {
+          q: 1,
+          'metadata.detectedLanguage': 1
+        }
+      }
+      // Set allowDiskUse for large KBs with many chunks
+    ]).allowDiskUse(true);
+
+    const stats: Record<string, number> = {};
+    let usedMetadata = 0;
+    let usedDetectLang = 0;
+    let fallbackOther = 0;
+    for (const doc of results) {
+      let lang: string;
+      if (doc.metadata?.detectedLanguage) {
+        lang = doc.metadata.detectedLanguage;
+        usedMetadata++;
+      } else if (typeof doc.q === 'string') {
+        lang = detectLang(doc.q);
+        usedDetectLang++;
+      } else {
+        lang = 'other';
+        fallbackOther++;
+      }
+      stats[lang] = (stats[lang] || 0) + 1;
+    }
+
+    addLog.info('[AgenticSearch] Language sample done', {
+      sampleSize: results.length,
+      stats,
+      sources: { metadata: usedMetadata, detectLang: usedDetectLang, fallbackOther }
+    });
+
+    return Object.keys(stats).length > 0 ? stats : null;
+  } catch (err) {
+    addLog.warn('[AgenticSearch] Language sample failed', { err });
+    return null;
+  }
 }
 
 export async function agenticSearchDispatch(
@@ -164,7 +148,8 @@ export async function agenticSearchDispatch(
     limit: maxTokens,
     preResolvedQuery,
     preComputedQueries,
-    preSearchRes
+    preSearchRes,
+    queryLanguage
   } = props;
 
   try {
@@ -236,10 +221,9 @@ export async function agenticSearchDispatch(
       })
       .filter((h) => h.content.trim().length > 0);
 
-    // 检测查询语言（用于格式化思考过程文本）
-    // 优先使用指代消解后的 query（更完整的语义），回退到原始 reRankQuery
+    // 使用调用方预检测的语言，避免重复调用 detectLang
     const agentQuery = preResolvedQuery || reRankQuery;
-    const queryLang = _detectLang(agentQuery || '');
+    const queryLang = queryLanguage || detectLang(agentQuery || '');
 
     // 使用流式接口遍历所有事件，累积用户可读的推理文本；有 workflowStreamResponse 时同步推送 SSE
     let finalResult: AgenticSearchResult | undefined;
@@ -250,6 +234,9 @@ export async function agenticSearchDispatch(
       ? formatPreSearchResAsContext(preSearchRes)
       : undefined;
 
+    // DB 采样语言分布，用于初始化 LanguageTracker（不阻塞主检索流程）
+    const langSample = await sampleLanguageDistribution(datasetIds);
+
     const stream = agent.stream({
       query: agentQuery,
       datasetIds,
@@ -259,7 +246,8 @@ export async function agenticSearchDispatch(
       ...(preComputedQueries?.length ? { initialQueries: preComputedQueries } : {}),
       // 若外部已有预先检索结果（如 SQL 数据），作为 priorContext 传入
       // diting-rag-ts Agent 在 Blackboard Brief 中参考这些内容，据此决定是否补充检索
-      ...(priorContext ? { priorContext } : {})
+      ...(priorContext ? { priorContext } : {}),
+      initialLanguageStats: langSample
     });
 
     for await (const item of stream) {
@@ -267,7 +255,7 @@ export async function agenticSearchDispatch(
         finalResult = item as AgenticSearchResult;
       } else {
         const event = item as AgentEvent;
-        const reasoningText = _formatAgentEventText(event, queryLang);
+        const reasoningText = formatEventText(event, queryLang);
         if (reasoningText) {
           accumulatedReasoningText += reasoningText;
           if (workflowStreamResponse && agenticSearchReasoning) {
@@ -312,7 +300,8 @@ export async function agenticSearchDispatch(
         llmOutputTokens: result.llmOutputTokens || 0,
         playbook: result.playbook,
         executionPath: result.executionPath,
-        confidence: result.confidence
+        confidence: result.confidence,
+        queryLanguage: queryLang
       }
     };
 
@@ -334,11 +323,51 @@ export async function agenticSearchDispatch(
 }
 
 /**
- * 将 AgentEvent 格式化为可读的推理文本（对齐 Python PROCESS_LABELS）
+ * 将 AgentEvent 格式化为可读的推理文本。
+ * 多语言标签委托给 agenticSearchLabels.ts（eld 60 种语言全覆盖）。
  */
-function _formatAgentEventText(event: AgentEvent, lang: 'zh' | 'en' = 'zh'): string {
-  const labels = _PROCESS_LABELS[lang] ?? _PROCESS_LABELS.zh;
-  const formatter = labels[event.step];
-  if (!formatter) return '';
-  return formatter(event);
+function formatEventText(event: AgentEvent, lang: string): string {
+  // thinking / playbook_selected：直接透传 LLM 生成的内容
+  if (event.step === 'thinking') {
+    return event.detail ? `${event.detail}\n` : '';
+  }
+  if (event.step === 'playbook_selected') {
+    return (event.extra?.analysis as string) ?? '';
+  }
+
+  // generating：searchOnly 模式静默
+  if (event.step === 'generating') return '';
+
+  // final：refuse 时返回文本，否则静默
+  if (event.step === 'final') {
+    return event.extra?.refuse ? formatAgenticLabel('final', lang, {}) : '';
+  }
+
+  // search_done：count=0 时静默
+  if (event.step === 'search_done') {
+    const count = event.extra?.chunkCount as number | undefined;
+    if (!count) return '';
+  }
+
+  // rewrite_done：queries 为空时静默
+  if (event.step === 'rewrite_done') {
+    const queries = (event.extra?.queries as string[] | undefined) ?? [];
+    if (!queries.length) return '';
+  }
+
+  // searching：queries 为空时用 fallback
+  if (event.step === 'searching') {
+    const queries = (event.extra?.queries as string[] | undefined) ?? [];
+    if (!queries.length) {
+      return getSearchingFallback(lang) || '';
+    }
+  }
+
+  // 其他事件：委托给 agenticSearchLabels
+  return formatAgenticLabel(event.step, lang, {
+    queries: (event.extra?.queries as string[]) ?? [],
+    count: String(event.extra?.chunkCount ?? ''),
+    detail: event.detail ?? '',
+    analysis: (event.extra?.analysis as string) ?? ''
+  });
 }

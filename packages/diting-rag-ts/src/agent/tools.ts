@@ -38,7 +38,7 @@ export const AGENT_TOOLS: ToolDefinitionItem[] = [
   {
     name: TOOLS.QUERY_REWRITE,
     description:
-      'Rewrite user query to improve search results. Use when initial search returns poor results.',
+      'Rewrite user query to improve search results. Also use to translate search queries into the KB document language when the user asked in a different language. Use when initial search returns poor results.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -581,10 +581,13 @@ If you call @summary without gathering sufficient information first, you are vio
 1. All answers MUST be grounded in retrieved knowledge chunks. Never fabricate information.
 2. Cite sources using [id-xxx] inline, immediately after the relevant statement.
 3. If knowledge is insufficient, explicitly state what is missing and suggest next steps.
-4. **Language consistency**: ALL outputs — including search queries, @query_rewrite input, \
-and the final answer — MUST be in the **same language** as the user's question. \
-Even if retrieved chunks are in a different language, keep your search queries and answer \
-in the user's language. Never switch language mid-conversation.
+4. **Language Strategy**:
+   - FINAL ANSWER: MUST be in the user's question language.
+   - SEARCH QUERIES: Write in the KB's document language (specified in [LANGUAGE DIRECTIVE]), NOT necessarily the user's language.
+     If the user asks in Arabic but the KB is Chinese, search in Chinese — this is the single most important factor for recall.
+     If you don't know the KB language, search in the user's language first, then observe results and adapt.
+   - When the user's language differs from the KB language: use @query_rewrite to generate search queries in the KB language.
+     @query_rewrite can translate your search intent into the document language — it will produce natural queries, not word-for-word translations.
 
 ## Question Analysis
 
@@ -674,13 +677,16 @@ If @summary's reflection result is unfaithful or incomplete:
 ## Tools
 - @search({"query": "..."}) or @search({"queries": ["Q1", "Q2"]}) — search knowledge base
 - @query_rewrite({"query": "..."}) — rewrite query to improve search results
+- @assess({"findings": [...], "lacks": [...], "sufficient": bool}) — (deep_research/troubleshooting/comparative_analysis only) record findings and gaps after searching. Optional but recommended for multi-step research.
 - @summary({"reasoning": "..."}) — generate final answer from retrieved chunks
 
 ## CRITICAL — Language Rule
 
-Your search queries and all text output MUST match the user's question language. \
-If the user asks in Chinese, ALL your @search queries MUST be in Chinese. \
-The same applies to @query_rewrite input and the final answer.
+Your FINAL ANSWER must match the user's question language. \
+Your @search query language should target document language for maximum recall — \
+follow the [LANGUAGE DIRECTIVE] for the default, and adapt per-topic from search results.
+If the user asks in Chinese, your final answer MUST be in Chinese — \
+even if you searched in other languages.
 
 ${playbookContent}`;
 }
@@ -716,7 +722,8 @@ They are NOT documents to search for — they are pre-retrieved facts.
 
 ## Core Rules
 1. Search knowledge base only — do NOT answer from memory or chat history.
-2. Language: ALL search queries MUST be in the same language as the user's question.
+2. Language: SEARCH QUERIES should target document language for maximum recall. \
+Default language is in [LANGUAGE DIRECTIVE]. Adapt per-topic from search results.
 3. Treat Search Hints as authoritative pre-retrieved facts, not as search queries.
 
 ## Search Techniques
@@ -781,7 +788,7 @@ export function createQueryRewriteTool(_context: RequestContext): AgentTool {
   return {
     name: TOOLS.QUERY_REWRITE,
     description:
-      'Rewrite user query for better search results. Input: { query: string }. Output: { queries: string[] }',
+      'Rewrite or translate user query for better search results. Input: { query: string }. Output: { queries: string[] }. Use when KB language differs from user language, or when initial search returns poor results.',
     parameters: {
       type: 'object',
       properties: {

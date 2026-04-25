@@ -237,10 +237,11 @@ export const DispatchNodeResponseSchema = z
     sqlResult: z.array(z.any()).optional().meta({ description: 'SQL 检索结果' }),
     // agentic search result
     agenticSearchResult: z.any().optional().meta({ description: '智能检索结果' }),
-    retrievalMode: z
-      .enum(DatasetRetrievalModeEnum)
+    retrievalMode: z.enum(DatasetRetrievalModeEnum).optional().meta({ description: '检索模式' }),
+    queryLanguage: z
+      .string()
       .optional()
-      .meta({ description: '检索模式' }),
+      .meta({ description: '用户查询语言（ISO 639-1，eld 检测）' }),
     retrievalType: z
       .enum(['correction', 'faq'])
       .optional()

@@ -11,6 +11,7 @@ import { setMaxListeners } from 'events';
 setMaxListeners(0);
 
 import type { AgenticSearchProviders, AgenticSearchConfig } from '../ports/agentic';
+import { wrapProviderWithDefaults } from '../ports/llm';
 import type { ChunkItem } from '../types/chunk';
 import type { LLMMessage } from '../types/message';
 import { type AgentEvent } from './context';
@@ -21,6 +22,7 @@ import {
   type AgenticRAGStateType,
   type GraphMode
 } from './graph';
+import { detectLang } from '../utils/lang';
 import { setGlobalLogger } from '../utils/logger';
 
 // ============================================================
@@ -39,6 +41,7 @@ export interface AgenticSearchResult {
   rerankInputTokens: number;
   llmInputTokens: number;
   llmOutputTokens: number;
+  analysis?: string;
   answer?: string;
   confidence?: number;
   ttftMs?: number;
@@ -47,6 +50,7 @@ export interface AgenticSearchResult {
   reflectionReason?: string;
   refuse?: boolean;
   nodeHist?: unknown[];
+  queryLanguage?: string;
 }
 
 export interface CreateAgenticSearchOptions {
@@ -223,6 +227,7 @@ function mapStateToResult(finalState: AgenticRAGStateType): AgenticSearchResult 
     rerankInputTokens: finalState.rerankInputTokens ?? 0,
     llmInputTokens: finalState.llmInputTokens ?? 0,
     llmOutputTokens: finalState.llmOutputTokens ?? 0,
+    analysis: finalState.analysis || undefined,
     answer: finalState.answer || undefined,
     confidence: finalState.confidence || undefined,
     ttftMs: finalState.ttftMs,
@@ -230,7 +235,8 @@ function mapStateToResult(finalState: AgenticRAGStateType): AgenticSearchResult 
     reflectionLabel: finalState.reflectionLabel || undefined,
     reflectionReason: finalState.reflectionReason || undefined,
     refuse: finalState.refuse,
-    nodeHist: finalState.nodeHist ?? []
+    nodeHist: finalState.nodeHist ?? [],
+    queryLanguage: finalState.question ? detectLang(finalState.question) : undefined
   };
 }
 
@@ -246,7 +252,13 @@ function mapStateToResult(finalState: AgenticRAGStateType): AgenticSearchResult 
  * - stream：流式调用，产出中间事件 AgentEvent + 最终 AgenticSearchResult
  */
 export function createAgenticSearch(options: CreateAgenticSearchOptions) {
-  const { providers, config, mode = 'auto', logger } = options;
+  const { providers: rawProviders, config, mode = 'auto', logger } = options;
+
+  // 包裹外部 LLM provider，注入默认选项（agentic search 全程禁用 thinking）
+  const providers: AgenticSearchProviders = {
+    ...rawProviders,
+    llm: wrapProviderWithDefaults(rawProviders.llm)
+  };
 
   // 使用传入的 logger 或从 providers 获取，并注册为全局单例
   const resolvedLogger = logger ?? providers.logger;
@@ -270,8 +282,17 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
       initialQueries?: string[];
       /** 调用方预先检索到的上下文（如 SQL 检索结果），agent 在 Blackboard Brief 中参考 */
       priorContext?: string;
+      /** DB 采样的语言分布统计，用于初始化 LanguageTracker。null 表示采样失败/空 KB */
+      initialLanguageStats?: Record<string, number> | null;
     }): Promise<AgenticSearchResult> => {
-      const { query, datasetIds, history = [], initialQueries, priorContext } = params;
+      const {
+        query,
+        datasetIds,
+        history = [],
+        initialQueries,
+        priorContext,
+        initialLanguageStats
+      } = params;
       const startTime = Date.now();
 
       // per-request graph（含 RequestContext Blackboard），并发安全
@@ -283,7 +304,8 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         chatHistory: history as LLMMessage[],
         priorContext: priorContext || '',
         originalQuestion: query,
-        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {})
+        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {}),
+        ...(initialLanguageStats !== undefined ? { initialLanguageStats } : {})
       };
 
       const finalState = await compiled.invoke(initialInput as AgenticRAGStateType, {
@@ -314,8 +336,17 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
       initialQueries?: string[];
       /** 调用方预先检索到的上下文（如 SQL 检索结果），agent 在 Blackboard Brief 中参考 */
       priorContext?: string;
+      /** DB 采样的语言分布统计，用于初始化 LanguageTracker。null 表示采样失败/空 KB */
+      initialLanguageStats?: Record<string, number> | null;
     }): AsyncGenerator<AgentEvent | AgenticSearchResult> {
-      const { query, datasetIds, history = [], initialQueries, priorContext } = params;
+      const {
+        query,
+        datasetIds,
+        history = [],
+        initialQueries,
+        priorContext,
+        initialLanguageStats
+      } = params;
       const startTime = Date.now();
 
       // Yield started 事件
@@ -336,7 +367,8 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         // 软提示（soft hint）：若调用方提供了预计算的查询变体，预填 rewriteQueries。
         // Blackboard Brief 的 Plan 区将展示这些查询，引导 Agent 优先直接检索而非重新改写。
         // 注意：这是软约束，Agent 仍可在后续轮次（如 deep_research）中调用 query_rewrite 工具进行二次改写。
-        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {})
+        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {}),
+        ...(initialLanguageStats !== undefined ? { initialLanguageStats } : {})
       };
 
       // per-request graph（含 RequestContext Blackboard），并发安全
@@ -372,6 +404,8 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         if (delta.ttftMs !== undefined) accState.ttftMs = delta.ttftMs;
         if (delta.citedIds !== undefined) accState.citedIds = delta.citedIds;
         if (delta.error !== undefined) accState.error = delta.error;
+        if (delta.languageTrackerConfig !== undefined)
+          accState.languageTrackerConfig = delta.languageTrackerConfig;
         // ── additive reducers ───────────────────────────────────
         if (delta.embeddingTokens !== undefined) {
           accState.embeddingTokens = (accState.embeddingTokens ?? 0) + delta.embeddingTokens;
