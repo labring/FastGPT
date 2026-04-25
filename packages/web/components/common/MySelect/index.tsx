@@ -293,8 +293,7 @@ const MySelect = <T = any,>(
         <MenuList
           ref={MenuListRef}
           className={props.className}
-          minW={0}
-          w={(() => {
+          minW={(() => {
             const w = ButtonRef.current?.clientWidth;
             if (w) {
               return `${w}px !important`;
@@ -303,6 +302,7 @@ const MySelect = <T = any,>(
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;
           })()}
+          w={'max-content'}
           px={'6px'}
           py={'6px'}
           border={'1px solid #fff'}

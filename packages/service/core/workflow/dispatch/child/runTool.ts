@@ -50,7 +50,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     runningAppInfo,
     variables,
     workflowStreamResponse,
-
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
 
