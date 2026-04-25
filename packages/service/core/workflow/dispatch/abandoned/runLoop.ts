@@ -1,3 +1,4 @@
+/* Abandoned */
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -14,7 +15,7 @@ import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 import { env } from '../../../../env';
-import { getNestedEndOutputValue } from './service';
+import { getNestedEndOutputValue } from '../loop/service';
 import { collectResponseFeedbacks, injectNestedStartInputs, pushSubWorkflowUsage } from '../utils';
 
 type Props = ModuleDispatchProps<{

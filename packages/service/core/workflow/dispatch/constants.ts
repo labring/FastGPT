@@ -1,5 +1,6 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchAppRequest } from './abandoned/runApp';
+import { dispatchLoop } from './abandoned/runLoop';
 import { dispatchClassifyQuestion } from './ai/classifyQuestion';
 import { dispatchContentExtract } from './ai/extract';
 import { dispatchRunTools } from './ai/tool/index';
@@ -13,7 +14,6 @@ import { dispatchSystemConfig } from './init/systemConfig';
 import { dispatchWorkflowStart } from './init/workflowStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchUserSelect } from './interactive/userSelect';
-import { dispatchLoop } from './loop/runLoop';
 import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchParallelRun } from './parallelRun/runParallelRun';
@@ -68,7 +68,6 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.customFeedback]: dispatchCustomFeedback,
   [FlowNodeTypeEnum.readFiles]: dispatchReadFiles,
   [FlowNodeTypeEnum.userSelect]: dispatchUserSelect,
-  [FlowNodeTypeEnum.loop]: dispatchLoop,
   [FlowNodeTypeEnum.parallelRun]: dispatchParallelRun,
   [FlowNodeTypeEnum.loopRun]: dispatchLoopRun,
   [FlowNodeTypeEnum.loopRunStart]: dispatchLoopRunStart,
@@ -87,5 +86,7 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.toolSet]: () => Promise.resolve(),
 
   /** @deprecated */
-  [FlowNodeTypeEnum.runApp]: dispatchAppRequest
+  [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  /** @deprecated 已被 loopRun 替代 */
+  [FlowNodeTypeEnum.loop]: dispatchLoop
 };
