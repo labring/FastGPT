@@ -41,7 +41,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<Record<string, any>>;
 
 export const dispatchLoopRun = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes, runtimeEdges, node, lastInteractive } = props;
+  const { params, runtimeNodes, runtimeEdges, node, lastInteractive, checkIsStopping } = props;
   const { name } = node;
   const mode = params[NodeInputKeyEnum.loopRunMode] ?? LoopRunModeEnum.array;
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
@@ -120,6 +120,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   let maxIterationsExceeded = false;
 
   while (true) {
+    if (checkIsStopping()) {
+      break;
+    }
     // Check exhaustion before maxLength so `inputArray.length === maxLength` runs cleanly.
     const arrayItem = (() => {
       if (mode !== LoopRunModeEnum.array) {

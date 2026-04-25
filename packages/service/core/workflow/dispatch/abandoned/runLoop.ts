@@ -32,6 +32,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     runtimeEdges,
     lastInteractive,
     runtimeNodes,
+    checkIsStopping,
     node: { name }
   } = props;
   const { loopInputArray = [], childrenNodeIdList = [] } = params;
@@ -60,6 +61,9 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let index = 0;
 
   for await (const item of loopInputArray) {
+    if (checkIsStopping()) {
+      break;
+    }
     // Skip already looped
     if (lastIndex && index < lastIndex) {
       index++;
