@@ -30,6 +30,7 @@ import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { getSystemToolByIdAndVersionId } from '../../../app/tool/controller';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -59,7 +60,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   try {
     // Adapt <= 4.10 system tool
-    const { source, pluginId: formatPluginId } = splitCombineToolId(pluginId);
+    const { source, pluginId: appId } = splitCombineToolId(pluginId);
     if (source === AppToolSourceEnum.systemTool) {
       return await dispatchRunTool({
         ...props,
@@ -67,7 +68,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           ...props.node,
           toolConfig: {
             systemTool: {
-              toolId: formatPluginId
+              toolId: pluginId
             }
           }
         }
@@ -79,37 +80,59 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     }
 
     /*
-      1. Team app
-      2. Admin selected system tool
+      1. Team app (personal): 走 team 权限校验
+      2. Admin selected system tool (commercial): 系统级工具，不做用户态权限校验
     */
     const { files } = chatValue2RuntimePrompt(query);
 
-    // auth workflowTool
-    const toolData = await authWorkflowToolByTmbId({
-      appId: formatPluginId,
-      tmbId: runningAppInfo.tmbId,
-      per: ReadPermissionVal
-    });
+    // 仅在 personal 分支需要 toolData 来判断 pluginDetail 的可见性
+    const toolData =
+      source === AppToolSourceEnum.personal
+        ? await authWorkflowToolByTmbId({
+            appId,
+            tmbId: runningAppInfo.tmbId,
+            per: ReadPermissionVal
+          })
+        : undefined;
 
-    const toolVersion = await getAppVersionById({
-      appId: toolData._id,
-      versionId: version,
-      app: toolData
-    });
+    if (source === AppToolSourceEnum.personal && toolData) {
+      const toolVersion = await getAppVersionById({
+        appId: toolData._id,
+        versionId: version,
+        app: toolData
+      });
 
-    workflowTool = {
-      id: String(toolData._id),
-      teamId: toolData.teamId,
-      tmbId: toolData.tmbId,
-      name: parseI18nString(toolData.name, props.lang),
-      avatar: toolData.avatar || '',
-      showStatus: true,
-      currentCost: 0,
-      systemKeyCost: 0,
-      nodes: toolVersion.nodes,
-      edges: toolVersion.edges,
-      hasTokenFee: false
-    };
+      workflowTool = {
+        id: String(toolData._id),
+        teamId: toolData.teamId,
+        tmbId: toolData.tmbId,
+        name: parseI18nString(toolData.name, props.lang),
+        avatar: toolData.avatar || '',
+        showStatus: true,
+        currentCost: 0,
+        systemKeyCost: 0,
+        nodes: toolVersion.nodes,
+        edges: toolVersion.edges,
+        hasTokenFee: false
+      };
+    } else {
+      // commercial: 通过系统工具加载（内部会解析 associatedPluginId 对应的 app 版本）
+      const systemTool = await getSystemToolByIdAndVersionId(pluginId, version);
+
+      workflowTool = {
+        id: systemTool.id,
+        teamId: systemTool.teamId,
+        tmbId: systemTool.tmbId,
+        name: parseI18nString(systemTool.name, props.lang),
+        avatar: systemTool.avatar || '',
+        showStatus: true,
+        currentCost: systemTool.currentCost ?? 0,
+        systemKeyCost: systemTool.systemKeyCost ?? 0,
+        nodes: systemTool.workflow.nodes,
+        edges: systemTool.workflow.edges,
+        hasTokenFee: !!systemTool.hasTokenFee
+      };
+    }
 
     const outputFilterMap =
       workflowTool.nodes

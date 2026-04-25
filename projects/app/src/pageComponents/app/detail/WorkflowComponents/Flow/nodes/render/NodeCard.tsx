@@ -655,6 +655,15 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     );
   }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
 
+  const ScrollDataWrapper = useCallback(
+    (props: { children: React.ReactNode }) => (
+      <ScrollData minH={'100px'} maxH={'40vh'}>
+        {props.children}
+      </ScrollData>
+    ),
+    [ScrollData]
+  );
+
   return (
     <MySelect
       className="nowheel"
@@ -667,11 +676,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       variant={'whitePrimaryOutline'}
       size={'sm'}
       list={renderVersionList}
-      ScrollData={(props) => (
-        <ScrollData minH={'100px'} maxH={'40vh'}>
-          {props.children}
-        </ScrollData>
-      )}
+      ScrollData={ScrollDataWrapper}
       valueLabel={valueLabel}
     />
   );

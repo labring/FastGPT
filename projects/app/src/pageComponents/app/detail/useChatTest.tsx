@@ -150,30 +150,28 @@ export const useChatTest = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variableList]);
 
-  const CustomChatContainer = useCallback(
-    () =>
-      appDetail.type === AppTypeEnum.workflowTool ? (
-        <Box p={5} pb={16}>
-          <PluginRunBox
-            appId={appId}
-            chatId={chatId}
-            onNewChat={restartChat}
-            onStartChat={startChat}
-            runtimeFileSelectConfig={chatConfig.fileSelectConfig}
-          />
-        </Box>
-      ) : (
-        <ChatBox
-          isReady={isReady}
+  const CustomChatContainer = useMemoizedFn(() =>
+    appDetail.type === AppTypeEnum.workflowTool ? (
+      <Box p={5} pb={16}>
+        <PluginRunBox
           appId={appId}
           chatId={chatId}
-          showMarkIcon
-          chatType={ChatTypeEnum.test}
-          enableAutoResume
+          onNewChat={restartChat}
           onStartChat={startChat}
+          runtimeFileSelectConfig={chatConfig.fileSelectConfig}
         />
-      ),
-    [appDetail.type, appId, chatId, isReady, restartChat, startChat, chatConfig]
+      </Box>
+    ) : (
+      <ChatBox
+        isReady={isReady}
+        appId={appId}
+        chatId={chatId}
+        showMarkIcon
+        chatType={ChatTypeEnum.test}
+        enableAutoResume
+        onStartChat={startChat}
+      />
+    )
   );
 
   return {

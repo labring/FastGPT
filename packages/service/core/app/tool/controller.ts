@@ -446,7 +446,6 @@ export async function getChildAppPreviewNode({
     }
     // http tool
     else if (source === AppToolSourceEnum.http) {
-      console.log('pluginId', pluginId);
       const [parentId, ...rest] = pluginId.split('/');
       const toolName = rest.join('/');
       const toolset = await MongoApp.findById(parentId).lean();
@@ -718,10 +717,14 @@ export const refreshSystemTools = async (): Promise<AppToolTemplateItemType[]> =
   return concatTools;
 };
 
-// toolId: systemTool-id, commercial-id
+// toolId: systemTool-id, commercial-id, community-id(deprecated, 映射为 systemTool-id)
 export const getSystemToolById = async (toolId: string): Promise<AppToolTemplateItemType> => {
   const tools = await getSystemTools();
-  const tool = tools.find((item) => item.id === toolId);
+  // 兼容旧的 community- 前缀,统一归一化为 systemTool-
+  const normalizedId = toolId.startsWith(`${AppToolSourceEnum.community}-`)
+    ? `${AppToolSourceEnum.systemTool}-${toolId.slice(AppToolSourceEnum.community.length + 1)}`
+    : toolId;
+  const tool = tools.find((item) => item.id === normalizedId);
   if (tool) {
     return cloneDeep(tool);
   }
