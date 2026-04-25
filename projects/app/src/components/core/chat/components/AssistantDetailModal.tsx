@@ -741,9 +741,15 @@ const FinalAnswerNode = ({
       return removeDatasetCiteText(rawValue, false);
     }
 
-    // 原有逻辑：如果是兜底回复，使用 answerNode 的 textOutput
+    // 原有逻辑：如果是兜底回复，优先使用 answerNode 的 textOutput，若为空则尝试 chatNode 的历史记录
     if (isFallback) {
       rawValue = data?.textOutput || '';
+      if (!rawValue && chatNodeData?.historyPreview && Array.isArray(chatNodeData.historyPreview)) {
+        const aiMessages = chatNodeData.historyPreview.filter((msg: any) => msg.obj === 'AI');
+        if (aiMessages.length > 0) {
+          rawValue = aiMessages[aiMessages.length - 1].value;
+        }
+      }
     } else if (chatNodeData?.errorText) {
       // 优先检查 errorText - 如果存在错误，直接返回错误文本（不经过 removeDatasetCiteText 处理）
       return chatNodeData.errorText;

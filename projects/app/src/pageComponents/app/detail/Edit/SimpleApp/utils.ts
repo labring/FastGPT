@@ -794,9 +794,18 @@ export function form2AppWorkflow(
     return simpleChatTemplate(data);
   })();
 
+  const chatConfig = {
+    ...data.chatConfig,
+    variables: data.chatConfig?.variables?.map((variable) => {
+      const { maxLength, ...rest } = variable;
+      if (!maxLength && maxLength !== 0) return rest;
+      return variable;
+    })
+  };
+
   return {
     nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
-    chatConfig: data.chatConfig
+    chatConfig
   };
 }
