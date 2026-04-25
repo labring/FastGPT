@@ -1,9 +1,9 @@
 {
   "tags": {
-    "fastgpt": "v4.14.12",
-    "fastgpt-code-sandbox": "v4.14.11",
-    "fastgpt-mcp_server": "v4.14.10",
-    "fastgpt-plugin": "v0.6.0",
+    "fastgpt": "v4.14.15",
+    "fastgpt-code-sandbox": "v4.14.15",
+    "fastgpt-mcp_server": "v4.14.15",
+    "fastgpt-plugin": "v0.6.1",
     "volume-manager": "v0.1",
     "agent-sandbox-image": "v0.1",
     "opensandbox-server": "v0.1.9",
