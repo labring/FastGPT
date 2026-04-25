@@ -43,7 +43,9 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
             AppTypeEnum.folder,
             AppTypeEnum.simple,
             AppTypeEnum.workflow,
-            AppTypeEnum.workflowTool
+            AppTypeEnum.workflowTool,
+            AppTypeEnum.chatAgent,
+            AppTypeEnum.assistant
           ]
         }),
         searchAppNameValue.trim()
