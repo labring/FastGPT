@@ -76,9 +76,9 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
         };
 
         if (duration > 2000) {
-          logger.warn('MongoDB slow query (>2s)', getLogData());
+          console.warn('MongoDB slow query (>2s)', getLogData());
         } else if (duration > 500) {
-          logger.warn('MongoDB slow query (>500ms)', getLogData());
+          console.warn('MongoDB slow query (>500ms)', getLogData());
         }
       }
       next();
