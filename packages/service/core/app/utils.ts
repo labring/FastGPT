@@ -87,6 +87,7 @@ export async function rewriteAppWorkflowToDetail({
         const result = await loadToolNode({ id: node.pluginId, versionId: node.version });
         if (result.success) {
           const preview = result.data!;
+          node.avatar = preview.avatar ?? node.avatar;
           node.isFolder = preview.isFolder;
           node.pluginData = {
             name: preview.name,
