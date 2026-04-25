@@ -256,7 +256,7 @@ export class ObClass {
       const time = Date.now() - start;
 
       if (time > 300) {
-        logger.warn('Vector DB slow query detected', {
+        console.warn('Vector DB slow query detected', {
           provider: this.controllerType,
           durationMs: time,
           sql

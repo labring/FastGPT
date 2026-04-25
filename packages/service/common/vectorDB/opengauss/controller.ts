@@ -123,14 +123,14 @@ class OgClass {
 
       if (time > 1000) {
         const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
-        logger.warn('openGauss slow query detected', {
+        console.warn('openGauss slow query detected', {
           level: 'slow-2',
           durationMs: time,
           sql: safeSql
         });
       } else if (time > 300) {
         const safeSql = sql.replace(/'\[[^\]]*?\]'/g, "'[x]'");
-        logger.warn('openGauss slow query detected', {
+        console.warn('openGauss slow query detected', {
           level: 'slow-1',
           durationMs: time,
           sql: safeSql
