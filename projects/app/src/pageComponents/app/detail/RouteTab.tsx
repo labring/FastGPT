@@ -31,6 +31,9 @@ const RouteTab = () => {
             { label: t('app:chat_logs'), value: TabEnum.logs }
           ]
         : []),
+      ...(appDetail.permission.hasManagePer
+        ? [{ label: t('app:publish_channel'), value: TabEnum.publish }]
+        : []),
       ...(appDetail.permission.hasWritePer
         ? [
             {
@@ -41,9 +44,6 @@ const RouteTab = () => {
               value: TabEnum.appEdit
             }
           ]
-        : []),
-      ...(appDetail.permission.hasManagePer
-        ? [{ label: t('app:publish_channel'), value: TabEnum.publish }]
         : [])
     ];
 
@@ -58,17 +58,6 @@ const RouteTab = () => {
 
   const otherTypeTabList = useMemo(
     () => [
-      ...(appDetail.permission.hasWritePer
-        ? [
-            {
-              label:
-                appDetail.type === AppTypeEnum.workflowTool
-                  ? t('app:setting_plugin')
-                  : t('app:setting_app'),
-              value: TabEnum.appEdit
-            }
-          ]
-        : []),
       ...(appDetail.permission.hasManagePer
         ? [
             {
@@ -79,6 +68,17 @@ const RouteTab = () => {
         : []),
       ...(appDetail.permission.hasReadChatLogPer
         ? [{ label: t('app:chat_logs'), value: TabEnum.logs }]
+        : []),
+      ...(appDetail.permission.hasWritePer
+        ? [
+            {
+              label:
+                appDetail.type === AppTypeEnum.workflowTool
+                  ? t('app:setting_plugin')
+                  : t('app:setting_app'),
+              value: TabEnum.appEdit
+            }
+          ]
         : [])
     ],
     [

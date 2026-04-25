@@ -78,7 +78,7 @@ const ConversationLogs = () => {
             { label: t('app:log_detail'), value: 'list' as SubTabType },
             { label: t('app:optimize_records'), value: 'optimize' as SubTabType }
           ]}
-          h={'40px'}
+          h={'36px'}
           value={subTab}
           onChange={(val) => setSubTab(val)}
         />
@@ -89,7 +89,7 @@ const ConversationLogs = () => {
               dateRange={dateRange}
               onSuccess={handleDateRangeConfirm}
               bg={'myGray.25'}
-              h={10}
+              h={'36px'}
               w={'223px'}
               flex={'0 1 300px'}
               rounded={'8px'}
@@ -99,7 +99,7 @@ const ConversationLogs = () => {
               }}
             />
             <MyTooltip label={t('app:export_optimize_records_tip')}>
-              <Button h={10} variant="whiteBase" isLoading={isExporting} onClick={handleExport}>
+              <Button h={'36px'} variant="whiteBase" isLoading={isExporting} onClick={handleExport}>
                 {t('common:Export')}
               </Button>
             </MyTooltip>

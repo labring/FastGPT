@@ -349,7 +349,7 @@ const MultipleSelect = <T = any,>({
           <Flex alignItems={'center'} w={'100%'} h={'100%'} py={1.5}>
             {formLabel && (
               <Flex alignItems={'center'}>
-                <Box color={'myGray.600'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
+                <Box color={'myWhite.1000'} fontSize={formLabelFontSize} whiteSpace={'nowrap'}>
                   {formLabel}
                 </Box>
                 <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
@@ -440,7 +440,7 @@ const MultipleSelect = <T = any,>({
                 )}
               </Flex>
             )}
-            <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
+            <MyIcon name={'core/chat/chevronDown'} color={'myWhite.1000'} w={4} h={4} />
           </Flex>
         </MenuButton>
 

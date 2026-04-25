@@ -1,5 +1,5 @@
 import React, { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { HStack, Box } from '@chakra-ui/react';
+import { HStack, Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -37,7 +37,8 @@ const UserFilter = ({
   selectedUsers,
   setSelectedUsers,
   isSelectAll,
-  setIsSelectAll
+  setIsSelectAll,
+  w = '226px'
 }: {
   appId: string;
   dateRange: DateRangeType;
@@ -46,6 +47,7 @@ const UserFilter = ({
   setSelectedUsers: (users: SelectedUserType[]) => void;
   isSelectAll: boolean;
   setIsSelectAll: Dispatch<SetStateAction<boolean>>;
+  w?: string;
 }) => {
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');
@@ -99,29 +101,31 @@ const UserFilter = ({
   };
 
   return (
-    <MultipleSelect<string>
-      list={userList}
-      value={selectedKeys}
-      onSelect={(val) => handleSelect(val as string[])}
-      isSelectAll={isSelectAll}
-      setIsSelectAll={setIsSelectAll}
-      h={10}
-      w={'226px'}
-      rounded={'8px'}
-      formLabelFontSize={'sm'}
-      formLabel={t('app:logs_chat_user')}
-      tagStyle={{
-        px: 1,
-        borderRadius: 'sm',
-        bg: 'myGray.100',
-        w: '76px',
-        overflow: 'hidden'
-      }}
-      inputValue={searchKey}
-      setInputValue={setSearchKey}
-      isLoading={loading}
-      onOpenFunc={() => run()}
-    />
+    <Flex>
+      <MultipleSelect<string>
+        list={userList}
+        value={selectedKeys}
+        onSelect={(val) => handleSelect(val as string[])}
+        isSelectAll={isSelectAll}
+        setIsSelectAll={setIsSelectAll}
+        h={'36px'}
+        w={w}
+        rounded={'8px'}
+        formLabelFontSize={'sm'}
+        formLabel={t('app:logs_chat_user')}
+        tagStyle={{
+          px: 1,
+          borderRadius: 'sm',
+          bg: 'myGray.100',
+          w: '76px',
+          overflow: 'hidden'
+        }}
+        inputValue={searchKey}
+        setInputValue={setSearchKey}
+        isLoading={loading}
+        onOpenFunc={() => run()}
+      />
+    </Flex>
   );
 };
 

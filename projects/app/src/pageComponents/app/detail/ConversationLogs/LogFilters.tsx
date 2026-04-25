@@ -54,10 +54,10 @@ const FeedbackSelect = ({
       onSelect={onChange}
       isSelectAll={isSelectAll}
       setIsSelectAll={(value) => setIsSelectAll(value as boolean)}
-      h={10}
+      h={'36px'}
       w={'150px'}
       bg={'white'}
-      rounded={'8px'}
+      rounded={'4px'}
       tagStyle={{
         px: 1,
         py: 1,
@@ -241,11 +241,11 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
           onSuccess={(date) => {
             setDateRange(date);
           }}
-          bg={'myGray.25'}
-          h={10}
+          bg={'white'}
+          h={'36px'}
           w={'223px'}
           flex={'0 1 250px'}
-          rounded={'8px'}
+          rounded={'4px'}
           borderColor={'myGray.200'}
           _hover={{
             borderColor: 'primary.300'
@@ -271,9 +271,9 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
           onSelect={setChatSources}
           isSelectAll={isSelectAllSource}
           setIsSelectAll={setIsSelectAllSource}
-          h={10}
+          h={'36px'}
           w={'150px'}
-          rounded={'8px'}
+          rounded={'4px'}
           tagStyle={{
             px: 1,
             py: 1,
@@ -299,9 +299,9 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
             ScrollData={TmbScrollData}
             isSelectAll={isSelectAllTmb}
             setIsSelectAll={setIsSelectAllTmb}
-            h={10}
+            h={'36px'}
             w={'150px'}
-            rounded={'8px'}
+            rounded={'4px'}
             formLabelFontSize={'sm'}
             formLabel={t('app:logs_chat_user')}
             tagStyle={{
@@ -319,9 +319,9 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
       {/* 搜索 */}
       <Flex
         flex={'0 1 180px'}
-        h={10}
+        h={'36px'}
         alignItems={'center'}
-        rounded={'8px'}
+        rounded={'4px'}
         border={'1px solid'}
         borderColor={'myGray.200'}
         _focusWithin={{
@@ -330,7 +330,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
         }}
         px={3}
       >
-        <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
+        <Box rounded={'4px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
           {t('common:chat')}
         </Box>
         <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
@@ -349,7 +349,7 @@ const LogFilters: React.FC<LogFiltersProps> = ({ appId, onFiltersChange, initial
           }}
         />
       </Flex>
-      <Box flex={'1'} />
+
       {showSyncPopover && (
         <SyncLogKeysPopover
           appId={appId}

@@ -185,9 +185,10 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
         <Box>
           <HStack px={1} spacing={2} alignItems={'center'} h="24px">
             <Box
-              color={'myGray.900'}
+              color={'myGray.550'}
               maxW={'320px'}
               overflow={'hidden'}
+              fontWeight={500}
               textOverflow={'ellipsis'}
               whiteSpace={'nowrap'}
             >
@@ -206,11 +207,12 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
             </InfoMenu>
           </HStack>
           {showSaveStatus && (
-            <Flex alignItems={'center'} fontSize={'mini'} lineHeight={1}>
+            <Flex alignItems={'center'} fontSize={'mini'}>
               <MyTag
                 py={0}
                 px={1}
                 showDot
+                lineHeight={'14px'}
                 bg={'transparent'}
                 borderWidth={0}
                 colorSchema={

@@ -44,7 +44,7 @@ const colorMap: Record<
   green: {
     borderColor: 'green.200',
     bg: 'green.25',
-    color: 'green.700'
+    color: 'green.650'
   },
   red: {
     borderColor: 'red.200',

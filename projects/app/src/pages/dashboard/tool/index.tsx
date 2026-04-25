@@ -141,7 +141,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             />
           ) : (
             <Box color="myGray.900" fontSize="20px" fontWeight="medium">
-              {t('common:navbar.MyTools')}
+              {t('common:navbar.Tools')}
             </Box>
           )}
           {isPc && paths.length === 0 && (

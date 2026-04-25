@@ -144,7 +144,7 @@ const Workflow = () => {
               w={9}
               h={9}
               borderRadius={'50%'}
-              bg={'black'}
+              bg={'primary.600'}
               _hover={{ bg: 'myGray.700' }}
               aria-label={''}
               boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}

@@ -261,8 +261,7 @@ export const iconPaths = {
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
   'core/chat/finishSpeak': () => import('./icons/core/chat/finishSpeak.svg'),
   'core/chat/imgSelect': () => import('./icons/core/chat/imgSelect.svg'),
-  'core/chat/quoteBg': () => import('./icons/core/chat/quoteBg.svg'),
-  'core/chat/quoteBg2': () => import('./icons/core/chat/quoteBg2.svg'),
+  'core/chat/quoteBg': () => import('./icons/core/chat/quoteBg2.svg'),
   'core/chat/quoteFill': () => import('./icons/core/chat/quoteFill.svg'),
   'core/chat/quoteSign': () => import('./icons/core/chat/quoteSign.svg'),
   'core/chat/recordFill': () => import('./icons/core/chat/recordFill.svg'),
@@ -445,7 +444,7 @@ export const iconPaths = {
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/loopStartLinear': () =>
     import('./icons/core/workflow/template/loopStartLinear.tsx'),
-'core/workflow/template/parallelRun': () =>
+  'core/workflow/template/parallelRun': () =>
     import('./icons/core/workflow/template/parallelRun.svg'),
   'core/workflow/template/parallelRunLinear': () =>
     import('./icons/core/workflow/template/parallelRunLinear.tsx'),

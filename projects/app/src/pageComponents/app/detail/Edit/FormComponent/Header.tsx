@@ -12,6 +12,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { TabEnum } from '../../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { publishStatusStyle } from '../../constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -214,6 +215,7 @@ const Header = ({
           <FolderPath
             rootName={t('common:back')}
             paths={paths}
+            showReturnIcon
             hoverStyle={{ color: 'primary.600' }}
             onClick={onClickRoute}
             fontSize={'14px'}
@@ -246,16 +248,18 @@ const Header = ({
                   </MyTag>
                 )}
 
-                <IconButton
-                  mx={2}
-                  icon={<MyIcon name={'history'} w={'18px'} />}
-                  aria-label={''}
-                  size={'sm'}
-                  w={'34px'}
-                  h={'34px'}
-                  variant={'whitePrimary'}
-                  onClick={setIsShowHistories}
-                />
+                <MyTooltip label={t('app:version_history')}>
+                  <IconButton
+                    mx={3}
+                    icon={<MyIcon name={'history'} w={'18px'} />}
+                    aria-label={t('app:version_history')}
+                    size={'sm'}
+                    w={'34px'}
+                    h={'34px'}
+                    variant={'whitePrimary'}
+                    onClick={setIsShowHistories}
+                  />
+                </MyTooltip>
                 <SaveButton
                   colorSchema="primary"
                   isLoading={loading}

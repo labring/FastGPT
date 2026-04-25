@@ -169,7 +169,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             {isPc ? (
               <Flex alignItems="center" mb={4} position="relative" minH="36px">
                 <Box fontSize="20px" fontWeight="medium" color="myGray.900">
-                  {t('app:core.module.template.System Tools')}
+                  {t('common:navbar.Tools')}
                 </Box>
                 <Box position="absolute" left="50%" transform="translateX(-50%)">
                   <MyTabs

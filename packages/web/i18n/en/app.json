@@ -578,6 +578,7 @@
   "variable_repeat": "The variable name already exists.",
   "version.Revert success": "Rollback successful.",
   "version_back": "Roll back to initial status",
+  "version_history": "Version History",
   "version_copy": "Replica",
   "version_initial_copy": "Replica - Initial status",
   "vision_model_title": "Image recognition",
