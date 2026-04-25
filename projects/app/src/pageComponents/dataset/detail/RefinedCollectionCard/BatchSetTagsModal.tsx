@@ -177,16 +177,14 @@ const BatchSetTagsModal = ({
         })
       ];
 
-      // TODO: pro 项目的 batchSetCollectionTagValues / batchSetCollectionTags.ts 完成改造后，放开下方注释并去掉此 TODO
-      // const deleteTagIds = existingRows
-      //   .filter((row) => row.deleteFlag)
-      //   .map((row) => row.tagId);
+      const deleteTagIds = existingRows
+        .filter((row) => row.deleteFlag)
+        .map((row) => row.tagId);
 
       return batchSetCollectionTags({
         collectionIds: selectedCollections.map((c) => c._id),
         tags: tagsToSet,
-        // TODO: pro 项目改造完成后放开下行并去掉此 TODO
-        // deleteTagIds,
+        deleteTagIds,
         datasetId
       });
     },

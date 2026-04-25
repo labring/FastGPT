@@ -32,7 +32,7 @@
   "code_allow_packages_func": "可用依賴: {{modules}}\n全域函數: {{globals}}",
   "code_execution": "程式碼執行",
   "code_sandbox_intro": "在沙盒裡執行一段腳本程式碼，可用於進行複雜的資料處理，語法和可用依賴會受到限制。",
-  "collection_metadata_filter": "資料集詮釋資料篩選器",
+  "collection_metadata_filter": "標籤過濾",
   "complete_extraction_result": "完整擷取結果",
   "complete_extraction_result_description": "一個 JSON 字串，例如：{\"name\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",
   "concatenation_result": "串接結果",
@@ -297,7 +297,11 @@
   "tag_filter_manual": "手動輸入",
   "tag_filter_add_condition": "新增過濾條件",
   "tag_filter_input_value": "輸入值",
-  "tag_filter_no_tags": "當前知識庫節點沒有可用標籤，請先在知識庫中建立標籤",
+  "tag_filter_select_tag": "選擇標籤",
+  "tag_filter_select_op": "選擇條件",
+  "tag_filter_no_dataset": "請先選擇知識庫",
+  "tag_filter_no_tags": "當前所選知識庫沒有可用標籤，請先在知識庫中建立標籤",
+  "tag_filter_value_number": "輸入數字",
   "tag_filter_auto_tip": "自動過濾（根據用戶問題自動生成過濾條件，功能開發中）",
   "tag_filter_op_string_eq": "是",
   "tag_filter_op_string_ne": "不是",
@@ -315,5 +319,8 @@
   "tag_filter_op_datetime_after": "晚於",
   "tag_filter_op_datetime_before": "早於",
   "tag_filter_op_empty": "為空",
-  "tag_filter_op_not_empty": "不為空"
+  "tag_filter_op_not_empty": "不為空",
+  "retrieval_filter": "檢索過濾",
+  "tag_filter_label": "標籤過濾",
+  "tag_filter_label_tooltip": "根據標籤條件精準過濾知識庫文件，支持字串、數字、時間類型的標籤"
 }

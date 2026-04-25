@@ -32,7 +32,7 @@
   "code_allow_packages_func": "Available packages: {{modules}}\nGlobal functions: {{globals}}",
   "code_execution": "Code running",
   "code_sandbox_intro": "Executing a script code in the sandbox can be used to perform complex data processing, but the syntax and available dependencies will be limited.",
-  "collection_metadata_filter": "Collection metadata filtering",
+  "collection_metadata_filter": "Tag filtering",
   "complete_extraction_result": "Complete extraction result",
   "complete_extraction_result_description": "A JSON string. Example: {\"name\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",
   "concatenation_result": "Splicing result",
@@ -297,7 +297,11 @@
   "tag_filter_manual": "Manual Input",
   "tag_filter_add_condition": "Add Condition",
   "tag_filter_input_value": "Input value",
-  "tag_filter_no_tags": "No tags available in current dataset node, please create tags in the dataset first",
+  "tag_filter_select_tag": "Select tag",
+  "tag_filter_select_op": "Select condition",
+  "tag_filter_no_dataset": "Please select a dataset first",
+  "tag_filter_no_tags": "No tags available in the selected dataset, please create tags in the dataset first",
+  "tag_filter_value_number": "Enter number",
   "tag_filter_auto_tip": "Auto filter (auto-generate filter conditions based on user query, coming soon)",
   "tag_filter_op_string_eq": "Is",
   "tag_filter_op_string_ne": "Is not",
@@ -315,5 +319,8 @@
   "tag_filter_op_datetime_after": "After",
   "tag_filter_op_datetime_before": "Before",
   "tag_filter_op_empty": "Is empty",
-  "tag_filter_op_not_empty": "Is not empty"
+  "tag_filter_op_not_empty": "Is not empty",
+  "retrieval_filter": "Retrieval Filter",
+  "tag_filter_label": "Tag Filter",
+  "tag_filter_label_tooltip": "Filter knowledge base files by tag conditions. Supports string, number, and datetime tag types."
 }
