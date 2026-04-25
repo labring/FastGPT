@@ -171,7 +171,8 @@ const makeProps = (
     runtimeEdges: [],
     variables: {},
     usagePush: vi.fn(),
-    lastInteractive: undefined
+    lastInteractive: undefined,
+    checkIsStopping: () => false
   } as any;
 };
 
@@ -216,7 +217,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variables: {},
       usagePush: vi.fn(),
-      lastInteractive: undefined
+      lastInteractive: undefined,
+      checkIsStopping: () => false
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -268,7 +270,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variables: {},
       usagePush: vi.fn(),
-      lastInteractive: undefined
+      lastInteractive: undefined,
+      checkIsStopping: () => false
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -482,7 +485,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           iteration: 2,
           childrenResponse: { entryNodeIds: ['userSelectNode'] }
         }
-      }
+      },
+      checkIsStopping: () => false
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -533,7 +537,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           iteration: 2,
           childrenResponse: interactivePayload
         }
-      }
+      },
+      checkIsStopping: () => false
     } as any;
 
     await dispatchLoopRun(props);
@@ -611,7 +616,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variables: {},
       usagePush: vi.fn(),
-      lastInteractive: undefined
+      lastInteractive: undefined,
+      checkIsStopping: () => false
     } as any;
 
     const result: any = await dispatchLoopRun(props);
@@ -781,6 +787,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variables: {},
       usagePush: vi.fn(),
+      checkIsStopping: () => false,
       lastInteractive: {
         type: 'loopRunInteractive',
         params: {

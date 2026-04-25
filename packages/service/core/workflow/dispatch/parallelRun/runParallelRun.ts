@@ -35,7 +35,7 @@ type Response = DispatchNodeResultType<{
 }>;
 
 export const dispatchParallelRun = async (props: Props): Promise<Response> => {
-  const { params, runtimeNodes, runtimeEdges, node } = props;
+  const { params, runtimeNodes, runtimeEdges, node, checkIsStopping } = props;
   const { name } = node;
   const {
     loopInputArray = [],
@@ -70,6 +70,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       let accumulatedPoints = 0;
 
       for (let attempt = 0; attempt < maxRetryAttempts + 1; attempt++) {
+        if (checkIsStopping()) {
+          return;
+        }
         const { taskRuntimeNodes, taskRuntimeEdges } = buildTaskRuntimeContext({
           runtimeNodes,
           runtimeEdges,
@@ -108,7 +111,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         // taskRuntimeNodes / taskRuntimeEdges go out of scope → GC
       }
 
-      return lastResult!;
+      return lastResult;
     },
     concurrency
   );
@@ -122,10 +125,13 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     responseDetails,
     assistantResponses,
     customFeedbacks
-  } = aggregateParallelResults(taskResults, {
-    taskInputs: loopInputArray,
-    parentNodeId: node.nodeId
-  });
+  } = aggregateParallelResults(
+    taskResults.filter((item) => item !== undefined),
+    {
+      taskInputs: loopInputArray,
+      parentNodeId: node.nodeId
+    }
+  );
 
   return {
     data: {
