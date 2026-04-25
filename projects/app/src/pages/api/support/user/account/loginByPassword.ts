@@ -56,9 +56,10 @@ async function handler(
     userId: user._id
   });
 
-  user.lastLoginTmbId = userDetail.team.tmbId;
-  user.language = language;
-  await user.save();
+  await MongoUser.findByIdAndUpdate(user._id, {
+    lastLoginTmbId: userDetail.team.tmbId,
+    language
+  });
 
   const token = await createUserSession({
     userId: user._id,
