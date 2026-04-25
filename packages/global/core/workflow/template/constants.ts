@@ -27,7 +27,7 @@ import { IfElseNode } from './system/ifElse/index';
 import { FormInputNode } from './system/interactive/formInput';
 import { UserSelectNode } from './system/interactive/userSelect';
 import { LafModule } from './system/laf';
-import { LoopNode } from './system/loop/loop';
+import { LoopNode } from './system/abandoned/loop/index';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { LoopStartNode } from './system/loop/loopStart';
 import { LoopRunNode } from './system/loopRun/loopRun';
@@ -61,7 +61,6 @@ const systemNodes: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode,
-  LoopNode,
   ParallelRunNode,
   LoopRunNode,
   LoopRunBreakNode
@@ -94,6 +93,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunPluginModule,
   RunAppNode,
   RunAppModule,
+  LoopNode,
   LoopStartNode,
   LoopEndNode,
   LoopRunStartNode,
