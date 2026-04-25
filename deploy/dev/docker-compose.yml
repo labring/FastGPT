@@ -174,7 +174,7 @@ services:
       retries: 3
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.11
+    image: ghcr.io/labring/fastgpt-code-sandbox:v4.14.15
     ports:
       - 3002:3000
     networks:
@@ -220,7 +220,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.10
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.15
     ports:
       - 3003:3000
     networks:
@@ -229,7 +229,7 @@ services:
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v0.6.0
+    image: ghcr.io/labring/fastgpt-plugin:v0.6.1
     container_name: fastgpt-plugin
     restart: always
     ports:
