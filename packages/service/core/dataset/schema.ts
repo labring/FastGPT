@@ -13,7 +13,8 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { PermissionEffectScopeEnum } from '@fastgpt/global/support/permission/constant';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { getLogger, LogCategories } from '../../common/logger';
 
 export const DatasetCollectionName = 'datasets';
@@ -232,6 +233,11 @@ const DatasetSchema = new Schema({
   inheritPermission: {
     type: Boolean,
     default: true
+  },
+  permissionEffectScope: {
+    type: String,
+    enum: Object.values(PermissionEffectScopeEnum),
+    default: PermissionEffectScopeEnum.allChildren
   },
 
   // 同义词文件ID数组 - 该知识库绑定的同义词文件

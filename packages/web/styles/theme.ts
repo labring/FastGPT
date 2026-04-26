@@ -9,7 +9,14 @@ import {
   radioAnatomy
 } from '@chakra-ui/anatomy';
 import { createMultiStyleConfigHelpers, defineStyle } from '@chakra-ui/styled-system';
-import { getWebReqUrl } from './../common/system/utils';
+
+const _subRoute = process.env.NEXT_PUBLIC_BASE_URL || '';
+const getWebReqUrl = (url: string = '') => {
+  if (!url) return '/';
+  if (!_subRoute) return url;
+  if (!url.startsWith('/') || url.startsWith(_subRoute)) return url;
+  return `${_subRoute}${url}`;
+};
 
 const { definePartsStyle: modalPart, defineMultiStyleConfig: modalMultiStyle } =
   createMultiStyleConfigHelpers(modalAnatomy.keys);

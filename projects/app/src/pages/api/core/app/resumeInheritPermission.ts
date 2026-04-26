@@ -8,6 +8,7 @@ import {
 import { resumeInheritPermission } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 export type ResumeInheritPermissionQuery = {
   appId: string;
 };
@@ -24,22 +25,15 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  if (app.parentId) {
-    await resumeInheritPermission({
-      resource: app,
-      folderTypeList: AppFolderTypeList,
-      resourceType: PerResourceTypeEnum.app,
-      resourceModel: MongoApp
-    });
-  } else {
-    await MongoApp.updateOne(
-      {
-        _id: appId
-      },
-      {
-        inheritPermission: true
-      }
-    );
+  if (!app.parentId) {
+    return Promise.reject(new Error(CommonErrEnum.inheritPermissionError));
   }
+
+  await resumeInheritPermission({
+    resource: app,
+    folderTypeList: AppFolderTypeList,
+    resourceType: PerResourceTypeEnum.app,
+    resourceModel: MongoApp
+  });
 }
 export default NextAPI(handler);

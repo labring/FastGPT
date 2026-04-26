@@ -434,6 +434,34 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  [AuditEventEnum.UPDATE_COLLECTION_COLLABORATOR]: {
+    content: i18nT('account_team:log_update_collection_collaborator'),
+    typeLabel: i18nT('account_team:update_collection_collaborator'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      datasetType: string;
+      collectionId: string;
+      collectionName: string;
+      tmbList: string[];
+      groupList: string[];
+      orgList: string[];
+      permission: string;
+    }
+  },
+  [AuditEventEnum.DELETE_COLLECTION_COLLABORATOR]: {
+    content: i18nT('account_team:log_delete_collection_collaborator'),
+    typeLabel: i18nT('account_team:delete_collection_collaborator'),
+    params: {} as {
+      name?: string;
+      datasetName: string;
+      datasetType: string;
+      collectionId: string;
+      collectionName: string;
+      itemName: string;
+      itemValueName: string;
+    }
+  },
   //Data
   [AuditEventEnum.CREATE_DATA]: {
     content: i18nT('account_team:log_create_data'),

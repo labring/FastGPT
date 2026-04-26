@@ -23,6 +23,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
+import { PermissionEffectScopeEnum } from '../../support/permission/constant';
 
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
@@ -91,6 +92,10 @@ export const DatasetSchema = z
     tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
+    permissionEffectScope: z
+      .nativeEnum(PermissionEffectScopeEnum)
+      .optional()
+      .meta({ description: '权限生效范围' }),
 
     avatar: z.string().meta({ description: '头像' }),
     name: z.string().meta({ description: '名称' }),
@@ -162,6 +167,13 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
+
+  // Permission
+  inheritPermission: z.boolean().optional().meta({ description: '继承权限' }),
+  permissionEffectScope: z
+    .nativeEnum(PermissionEffectScopeEnum)
+    .optional()
+    .meta({ description: '权限生效范围' }),
 
   fileId: z.string().optional().meta({ description: '文件 ID' }),
   rawLink: z.string().optional().meta({ description: '原始链接' }),
@@ -321,6 +333,10 @@ export const DatasetListItemSchema = z.object({
   permission: PermissionSchema,
   vectorModel: EmbeddingModelItemSchema.meta({ description: '向量模型' }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
+  permissionEffectScope: z
+    .nativeEnum(PermissionEffectScopeEnum)
+    .optional()
+    .meta({ description: '权限生效范围' }),
   private: z.boolean().optional().meta({ description: '是否私有' }),
   sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' }),
   dataCount: z.number().optional().meta({ description: '数据数量' }),

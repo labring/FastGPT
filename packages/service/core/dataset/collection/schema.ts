@@ -8,6 +8,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { PermissionEffectScopeEnum } from '@fastgpt/global/support/permission/constant';
 
 export const DatasetColCollectionName = 'dataset_collections';
 
@@ -135,6 +136,17 @@ const DatasetCollectionSchema = new Schema({
   },
 
   forbid: Boolean,
+
+  // Permission
+  inheritPermission: {
+    type: Boolean,
+    default: true
+  },
+  permissionEffectScope: {
+    type: String,
+    enum: Object.values(PermissionEffectScopeEnum),
+    default: PermissionEffectScopeEnum.allChildren
+  },
 
   // Soft delete
   deleteTime: {

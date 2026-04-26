@@ -1,5 +1,9 @@
 import z from 'zod';
-import { DatasetSearchModeEnum, DatasetTypeEnum, RerankMethodEnum } from '../../../core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetTypeEnum,
+  RerankMethodEnum
+} from '../../../core/dataset/constants';
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ParentIdSchema } from '../../../common/parentFolder/type';
@@ -289,6 +293,9 @@ export const UpdateDatasetBodySchema = z.object({
   }),
   chunkSettings: ChunkSettingsSchema.optional().meta({
     description: '分块配置'
+  }),
+  inheritParentPermission: z.boolean().optional().meta({
+    description: '是否继承新父级权限（移动时使用）'
   })
 });
 export type UpdateDatasetBody = z.infer<typeof UpdateDatasetBodySchema>;

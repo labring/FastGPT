@@ -557,6 +557,8 @@ function NewList() {
           resumeInheritPermission={() =>
             resumeInheritPer(editPerDataset._id).then(() => Promise.all([loadMyDatasets()]))
           }
+          showEffectScope
+          effectScope={editPerDataset.permissionEffectScope}
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
           managePer={{
@@ -570,6 +572,13 @@ function NewList() {
               deleteDatasetCollaborators({ ...props, datasetId: editPerDataset._id }),
             refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
+          onConfirmPermission={({ collaborators, permissionEffectScope }) =>
+            postUpdateDatasetCollaborators({
+              collaborators,
+              datasetId: editPerDataset._id,
+              permissionEffectScope
+            }).then(() => loadMyDatasets())
+          }
           onClose={() => setEditPerDatasetId(undefined)}
         />
       )}

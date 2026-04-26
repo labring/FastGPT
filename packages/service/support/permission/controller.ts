@@ -1,5 +1,5 @@
 import type { ClientSession, AnyBulkWriteOperation } from '../../common/mongo';
-import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ManageRoleVal, OwnerRoleVal } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from './schema';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
@@ -8,7 +8,11 @@ import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
-import { getCollaboratorId, sumPer } from '@fastgpt/global/support/permission/utils';
+import {
+  getCollaboratorId,
+  sumPer,
+  mergeCollaboratorList
+} from '@fastgpt/global/support/permission/utils';
 import { type SyncChildrenPermissionResourceType } from './inheritPermission';
 import { pickCollaboratorIdFields } from './utils';
 import type {
@@ -19,6 +23,7 @@ import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
 import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
+import { MongoDataset } from '../../core/dataset/schema';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -177,6 +182,72 @@ export const getClbsInfo = async ({
     };
   });
 };
+
+/**
+ * Delete all direct clbs of a resource.
+ * Used when moving or resuming inheritance for non-folder resources.
+ */
+export async function deleteResourceClbs({
+  resourceType,
+  teamId,
+  resourceId,
+  session
+}: {
+  resourceType: PerResourceTypeEnum;
+  teamId: string;
+  resourceId: string;
+  session?: ClientSession;
+}) {
+  await MongoResourcePermission.deleteMany(
+    {
+      resourceId,
+      resourceType,
+      teamId
+    },
+    { ...(session ? { session } : {}) }
+  );
+}
+
+/**
+ * Get effective collaborators for a dataset, including inherited permissions.
+ * If the dataset is in inherited state (inheritPermission=true and has parentId),
+ * merges the parent's clbs with the dataset's own clbs.
+ */
+export async function getDatasetEffectiveClbs({
+  datasetId,
+  teamId,
+  session
+}: {
+  datasetId: string;
+  teamId: string;
+  session?: ClientSession;
+}) {
+  let clbs = await getResourceOwnedClbs({
+    resourceId: datasetId,
+    resourceType: PerResourceTypeEnum.dataset,
+    teamId,
+    session
+  });
+
+  const dataset = await MongoDataset.findOne({ _id: datasetId }, 'inheritPermission parentId')
+    .lean()
+    .session(session ?? null);
+
+  if (dataset?.inheritPermission && dataset.parentId) {
+    const parentClbs = await getResourceOwnedClbs({
+      resourceId: String(dataset.parentId),
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      session
+    });
+    clbs = mergeCollaboratorList({
+      parentClbs: parentClbs,
+      childClbs: clbs
+    });
+  }
+
+  return clbs;
+}
 
 export const createResourceDefaultCollaborators = async ({
   resource,

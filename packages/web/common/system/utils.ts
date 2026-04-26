@@ -1,6 +1,5 @@
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
-
 export const getUserFingerprint = async () => {
+  const FingerprintJS = (await import('@fingerprintjs/fingerprintjs')).default;
   const fp = await FingerprintJS.load();
   const result = await fp.get();
   console.log(result.visitorId);

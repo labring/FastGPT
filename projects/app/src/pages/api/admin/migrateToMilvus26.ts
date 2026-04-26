@@ -156,7 +156,7 @@ async function handler(
   // 异步处理所有数据集
   (async () => {
     for (const dataset of datasets) {
-      await rebuild(dataset);
+      await rebuild(dataset as DatasetSchemaType);
     }
     startTrainingQueue();
     addLog.info('[Milvus 2.6 Migration] Complete', {

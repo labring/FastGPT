@@ -33,7 +33,7 @@ export async function findDatasetAndAllChildren({
     return Promise.reject(new UserError('Dataset not found'));
   }
 
-  const allDatasets: DatasetSchemaType[] = [rootDataset];
+  const allDatasets: DatasetSchemaType[] = [rootDataset as DatasetSchemaType];
   let currentQueue = [datasetId];
 
   // BFS：每层一次批量查询，复杂度从 O(N) 降为 O(depth)
@@ -42,7 +42,7 @@ export async function findDatasetAndAllChildren({
       { teamId, parentId: { $in: currentQueue } },
       fields
     ).lean();
-    allDatasets.push(...children);
+    allDatasets.push(...(children as DatasetSchemaType[]));
     currentQueue = children.map((c) => String(c._id));
   }
 

@@ -47,6 +47,57 @@ import type {
   CreateCollectionWithResultResponseType,
   ApiCreateDatasetCollectionParams
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import {
+  PermissionEffectScopeEnum,
+  OwnerRoleVal,
+  ManageRoleVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
+import { MongoDataset } from '../schema';
+import { MongoResourcePermission } from '../../../support/permission/schema';
+import { getResourceOwnedClbs } from '../../../support/permission/controller';
+import { pickCollaboratorIdFields } from '../../../support/permission/utils';
+import type { AnyBulkWriteOperation } from '../../../common/mongo';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import {
+  syncCollaborators,
+  syncChildrenPermission,
+  replaceResourceClbs,
+  type SyncChildrenPermissionResourceType
+} from '../../../support/permission/inheritPermission';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { UserError } from '@fastgpt/global/common/error/utils';
+
+/* find all collectionId by top collectionId */
+export async function findCollectionAndAllChildren({
+  teamId,
+  collectionId,
+  fields
+}: {
+  teamId: string;
+  collectionId: string;
+  fields?: string;
+}): Promise<DatasetCollectionSchemaType[]> {
+  const rootCollection = await MongoDatasetCollection.findById(collectionId, fields).lean();
+  if (!rootCollection) {
+    return Promise.reject(new UserError('Collection not found'));
+  }
+
+  const allCollections: DatasetCollectionSchemaType[] = [rootCollection];
+  let currentQueue = [collectionId];
+
+  // BFS：每层一次批量查询，复杂度从 O(N) 降为 O(depth)
+  while (currentQueue.length > 0) {
+    const children = await MongoDatasetCollection.find(
+      { teamId, parentId: { $in: currentQueue } },
+      fields
+    ).lean();
+    allCollections.push(...children);
+    currentQueue = children.map((c) => String(c._id));
+  }
+
+  return allCollections;
+}
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -332,7 +383,7 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   hashRawText?: string;
   createTime?: Date;
   updateTime?: Date;
-tableSchema?: TableSchemaType;
+  tableSchema?: TableSchemaType;
   forbid?: boolean;
   session?: ClientSession;
 };
@@ -360,6 +411,29 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     session
   });
 
+  // Determine inheritPermission based on parent's permissionEffectScope
+  let inheritPermission = true;
+  if (parentId) {
+    // Parent is a collection
+    const parentCollection = await MongoDatasetCollection.findOne(
+      { _id: parentId },
+      'permissionEffectScope'
+    )
+      .lean()
+      .session(session ?? null);
+    if (parentCollection?.permissionEffectScope === PermissionEffectScopeEnum.currentOnly) {
+      inheritPermission = false;
+    }
+  } else {
+    // Parent is the dataset
+    const parentDataset = await MongoDataset.findOne({ _id: datasetId }, 'permissionEffectScope')
+      .lean()
+      .session(session ?? null);
+    if (parentDataset?.permissionEffectScope === PermissionEffectScopeEnum.currentOnly) {
+      inheritPermission = false;
+    }
+  }
+
   // Create collection
   const [collection] = await MongoDatasetCollection.create(
     [
@@ -370,6 +444,8 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
         parentId: parentId || null,
 
         tags: collectionTags,
+
+        inheritPermission,
 
         ...(fileId ? { fileId } : {}),
         ...(rawLink ? { rawLink } : {}),
@@ -386,6 +462,56 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
 
   if (isS3ObjectKey(fileId, 'dataset')) {
     await removeS3TTL({ key: fileId, bucketName: 'private', session });
+  }
+
+  if (inheritPermission && props.type === DatasetCollectionTypeEnum.folder) {
+    // folder 类型：继承父级协作者，并将创建者设为 owner
+    // 父级可能是另一个 collection（有 parentId）或 dataset（无 parentId）
+    const parentClbs = await getResourceOwnedClbs({
+      resourceId: parentId || datasetId,
+      resourceType: parentId ? PerResourceTypeEnum.collection : PerResourceTypeEnum.dataset,
+      teamId,
+      session
+    });
+
+    const collaborators = [
+      ...parentClbs
+        .filter((clb) => clb.tmbId !== props.tmbId)
+        .map((clb) => {
+          if (clb.permission === OwnerRoleVal) clb.permission = ManageRoleVal;
+          return clb;
+        }),
+      { tmbId: props.tmbId, permission: OwnerRoleVal }
+    ];
+
+    const ops: AnyBulkWriteOperation<ResourcePermissionType>[] = collaborators.map((clb) => ({
+      updateOne: {
+        filter: {
+          ...pickCollaboratorIdFields(clb),
+          teamId,
+          resourceId: collection._id,
+          resourceType: PerResourceTypeEnum.collection
+        },
+        update: { $set: { permission: clb.permission } },
+        upsert: true
+      }
+    }));
+
+    await MongoResourcePermission.bulkWrite(ops, { session });
+  } else {
+    // 为创建者写入 owner 权限
+    await MongoResourcePermission.create(
+      [
+        {
+          teamId,
+          tmbId: props.tmbId,
+          resourceId: collection._id,
+          permission: OwnerRoleVal,
+          resourceType: PerResourceTypeEnum.collection
+        }
+      ],
+      { session }
+    );
   }
 
   return collection;
@@ -537,4 +663,57 @@ export async function delCollection({
     // delete s3 images which are uploaded by users
     await s3DatasetSource.deleteDatasetFilesByKeys(imageIds);
   });
+}
+
+/**
+ * 同步 Dataset 权限到其下属所有根级 Folder Collection，并递归传播到子 Collection。
+ * 在 Dataset 移动或协作者权限变更后调用。
+ */
+export async function syncDatasetFolderCollectionPermissions({
+  datasetId,
+  teamId,
+  collaborators,
+  session
+}: {
+  datasetId: string;
+  teamId: string;
+  collaborators: CollaboratorItemType[];
+  session: ClientSession;
+}) {
+  const rootFolderCollections = await MongoDatasetCollection.find(
+    {
+      datasetId,
+      type: DatasetCollectionTypeEnum.folder,
+      parentId: null,
+      inheritPermission: true
+    },
+    '_id type teamId parentId'
+  )
+    .lean<SyncChildrenPermissionResourceType[]>()
+    .session(session);
+
+  for (const folderCollection of rootFolderCollections) {
+    await replaceResourceClbs({
+      teamId,
+      resourceId: String(folderCollection._id),
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators,
+      session
+    });
+
+    await syncChildrenPermission({
+      resource: {
+        _id: String(folderCollection._id),
+        type: folderCollection.type,
+        teamId,
+        parentId: undefined
+      },
+      folderTypeList: [DatasetCollectionTypeEnum.folder],
+      resourceType: PerResourceTypeEnum.collection,
+      resourceModel: MongoDatasetCollection,
+      collaborators,
+      additionalFilter: { datasetId },
+      session
+    });
+  }
 }

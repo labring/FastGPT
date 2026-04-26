@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetTypeEnum,
   DatasetCollectionTypeEnum,
@@ -122,7 +123,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         });
 
         await createCollectionAndInsertData({
-          dataset,
+          dataset: dataset as unknown as DatasetSchemaType,
           createCollectionParams: {
             datasetId: dataset._id,
             teamId,
