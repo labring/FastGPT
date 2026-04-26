@@ -37,8 +37,8 @@ catalogs:
       specifier: 0.1.2
       version: 0.1.2
     '@fastgpt-sdk/storage':
-      specifier: 0.6.15
-      version: 0.6.15
+      specifier: 0.6.17
+      version: 0.6.17
     '@modelcontextprotocol/sdk':
       specifier: ^1
       version: 1.26.0
@@ -136,7 +136,7 @@ importers:
     devDependencies:
       '@chakra-ui/cli':
         specifier: ^2.4.1
-        version: 2.5.8(encoding@0.1.13)(react@18.3.1)(ws@8.20.0)
+        version: 2.5.8(react@18.3.1)(ws@8.20.0)
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.21.0
         version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.8.2))(eslint@8.57.1)(typescript@5.8.2)
@@ -266,7 +266,7 @@ importers:
         version: 0.0.36
       '@fastgpt-sdk/storage':
         specifier: 'catalog:'
-        version: 0.6.15(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+        version: 0.6.17(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
@@ -676,7 +676,7 @@ importers:
         version: 11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1)
       '@fastgpt-sdk/storage':
         specifier: 'catalog:'
-        version: 0.6.15(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+        version: 0.6.17(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -1222,7 +1222,7 @@ importers:
         specifier: ^1.43.0
         version: 1.43.0
       minio:
-        specifier: 'catalog:'
+        specifier: 8.0.7
         version: 8.0.7
       vitest:
         specifier: ^4.0.16
@@ -1232,13 +1232,13 @@ importers:
         specifier: ^6.16.13
         version: 6.16.13
       '@types/node':
-        specifier: 'catalog:'
+        specifier: ^20
         version: 20.17.24
       tsdown:
-        specifier: 'catalog:'
+        specifier: 0.21.4
         version: 0.21.4(typescript@5.9.3)
       typescript:
-        specifier: 'catalog:'
+        specifier: ^5.9.3
         version: 5.9.3
 
 packages:
@@ -2909,9 +2909,9 @@ packages:
     resolution: {integrity: sha512-RPwK6kFmpv5U2tqPNj+HzDoZEQ06fgMsrOzXx/uT33rubikOLHmNV4kJ8Mra+EhzzYbNmFq2iFapaocy4ExbwQ==}
     engines: {node: '>=18'}
 
-  '@fastgpt-sdk/storage@0.6.15':
-    resolution: {integrity: sha512-oPbm6EtXQ3ysad/OebF2ovwbIax6PeCvYqA3cGAVEHEJMBU3633ktl1ZaIIkmyjWJLsABZpMf6m7lPBMyISGrA==}
-    engines: {node: '>=20'}
+  '@fastgpt-sdk/storage@0.6.17':
+    resolution: {integrity: sha512-4WpP1EHIX4D4RujOWgRmcAwlsCE6LJP7GbYMQXJ/QE+Ty1cCGguJDUpMLSKh2Lii5nP6ho43wFZYogr+Ue7Slg==}
+    engines: {node: '>=20', pnpm: 9.x}
 
   '@fingerprintjs/fingerprintjs@4.6.1':
     resolution: {integrity: sha512-62TPnX6fXXMlxS7SOR3DJWEOKab7rCALwSWkuKWYMRrnsZ/jD9Ju4CUyy9VWDUYuhQ2ZW1RGLwOZJXTXR6K1pg==}
@@ -7444,9 +7444,6 @@ packages:
   fast-uri@3.0.6:
     resolution: {integrity: sha512-Atfo14OibSv5wAp4VWNsFYE1AchQRTv9cBGWET4pZWHzYshFSS9NQI6I57rdKn9croWVMbYFbLhJ+yJvmZIIHw==}
 
-  fast-xml-builder@1.0.0:
-    resolution: {integrity: sha512-fpZuDogrAgnyt9oDDz+5DBz0zgPdPZz6D4IR7iESxRXElrlGTRkHJ9eEt+SACRJwT0FNFrt71DFQIUFBJfX/uQ==}
-
   fast-xml-builder@1.1.4:
     resolution: {integrity: sha512-f2jhpN4Eccy0/Uz9csxh3Nu6q4ErKxf0XIsasomfOihuSUa3/xw6w8dnOtCDgEItQFJG8KyXPzQXzcODDrrbOg==}
 
@@ -7456,10 +7453,6 @@ packages:
 
   fast-xml-parser@5.2.5:
     resolution: {integrity: sha512-pfX9uG9Ki0yekDHx2SiuRIyFdyAr1kMIMitPvb0YBo8SUfKvia7w7FIyd/l6av85pFYRhZscS75MwMnbvY+hcQ==}
-    hasBin: true
-
-  fast-xml-parser@5.4.2:
-    resolution: {integrity: sha512-pw/6pIl4k0CSpElPEJhDppLzaixDEuWui2CUQQBH/ECDf7+y6YwA4Gf7Tyb0Rfe4DIMuZipYj4AEL0nACKglvQ==}
     hasBin: true
 
   fast-xml-parser@5.5.8:
@@ -13913,11 +13906,11 @@ snapshots:
 
   '@chakra-ui/anatomy@2.3.6': {}
 
-  '@chakra-ui/cli@2.5.8(encoding@0.1.13)(react@18.3.1)(ws@8.20.0)':
+  '@chakra-ui/cli@2.5.8(react@18.3.1)(ws@8.20.0)':
     dependencies:
       bundle-n-require: 1.1.2
       chokidar: 3.6.0
-      cli-welcome: 2.2.3(encoding@0.1.13)(react@18.3.1)(ws@8.20.0)
+      cli-welcome: 2.2.3(react@18.3.1)(ws@8.20.0)
       commander: 11.1.0
       ora: 7.0.1
       prettier: 3.2.4
@@ -14611,7 +14604,7 @@ snapshots:
       '@alibaba-group/opensandbox': 0.1.6
       '@e2b/code-interpreter': 2.4.0
 
-  '@fastgpt-sdk/storage@0.6.15(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
+  '@fastgpt-sdk/storage@0.6.17(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
       '@aws-sdk/client-s3': 3.948.0
       '@aws-sdk/lib-storage': 3.948.0(@aws-sdk/client-s3@3.948.0)
@@ -14646,7 +14639,7 @@ snapshots:
       - tsx
       - yaml
 
-  '@fastgpt-sdk/storage@0.6.15(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
+  '@fastgpt-sdk/storage@0.6.17(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(proxy-agent@6.5.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)':
     dependencies:
       '@aws-sdk/client-s3': 3.948.0
       '@aws-sdk/lib-storage': 3.948.0(@aws-sdk/client-s3@3.948.0)
@@ -17789,6 +17782,14 @@ snapshots:
     optionalDependencies:
       vite: 5.4.14(@types/node@24.0.13)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)
 
+  '@vitest/mocker@3.1.1(vite@6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))':
+    dependencies:
+      '@vitest/spy': 3.1.1
+      estree-walker: 3.0.3
+      magic-string: 0.30.17
+    optionalDependencies:
+      vite: 6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1)
+
   '@vitest/mocker@3.1.1(vite@6.2.2(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
       '@vitest/spy': 3.1.1
@@ -18802,9 +18803,9 @@ snapshots:
 
   claygl@1.3.0: {}
 
-  clear-any-console@1.16.3(encoding@0.1.13)(react@18.3.1)(ws@8.20.0):
+  clear-any-console@1.16.3(react@18.3.1)(ws@8.20.0):
     dependencies:
-      langbase: 1.1.44(encoding@0.1.13)(react@18.3.1)(ws@8.20.0)
+      langbase: 1.1.44(react@18.3.1)(ws@8.20.0)
     transitivePeerDependencies:
       - encoding
       - react
@@ -18823,10 +18824,10 @@ snapshots:
       slice-ansi: 5.0.0
       string-width: 5.1.2
 
-  cli-welcome@2.2.3(encoding@0.1.13)(react@18.3.1)(ws@8.20.0):
+  cli-welcome@2.2.3(react@18.3.1)(ws@8.20.0):
     dependencies:
       chalk: 2.4.2
-      clear-any-console: 1.16.3(encoding@0.1.13)(react@18.3.1)(ws@8.20.0)
+      clear-any-console: 1.16.3(react@18.3.1)(ws@8.20.0)
     transitivePeerDependencies:
       - encoding
       - react
@@ -20215,8 +20216,6 @@ snapshots:
 
   fast-uri@3.0.6: {}
 
-  fast-xml-builder@1.0.0: {}
-
   fast-xml-builder@1.1.4:
     dependencies:
       path-expression-matcher: 1.5.0
@@ -20227,11 +20226,6 @@ snapshots:
 
   fast-xml-parser@5.2.5:
     dependencies:
-      strnum: 2.1.2
-
-  fast-xml-parser@5.4.2:
-    dependencies:
-      fast-xml-builder: 1.0.0
       strnum: 2.1.2
 
   fast-xml-parser@5.5.8:
@@ -21516,10 +21510,10 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langbase@1.1.44(encoding@0.1.13)(react@18.3.1)(ws@8.20.0):
+  langbase@1.1.44(react@18.3.1)(ws@8.20.0):
     dependencies:
       dotenv: 16.5.0
-      openai: 4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76)
+      openai: 4.104.0(ws@8.20.0)(zod@3.25.76)
       zod: 3.25.76
       zod-validation-error: 3.4.0(zod@3.25.76)
     optionalDependencies:
@@ -22452,7 +22446,7 @@ snapshots:
       browser-or-node: 2.1.1
       buffer-crc32: 1.0.0
       eventemitter3: 5.0.1
-      fast-xml-parser: 5.4.2
+      fast-xml-parser: 5.5.8
       ipaddr.js: 2.3.0
       lodash: 4.17.23
       mime-types: 2.1.35
@@ -22814,21 +22808,6 @@ snapshots:
     dependencies:
       mimic-fn: 4.0.0
 
-  openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@3.25.76):
-    dependencies:
-      '@types/node': 18.19.80
-      '@types/node-fetch': 2.6.12
-      abort-controller: 3.0.0
-      agentkeepalive: 4.6.0
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0(encoding@0.1.13)
-    optionalDependencies:
-      ws: 8.20.0
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - encoding
-
   openai@4.104.0(encoding@0.1.13)(ws@8.20.0)(zod@4.1.12):
     dependencies:
       '@types/node': 18.19.80
@@ -22841,6 +22820,21 @@ snapshots:
     optionalDependencies:
       ws: 8.20.0
       zod: 4.1.12
+    transitivePeerDependencies:
+      - encoding
+
+  openai@4.104.0(ws@8.20.0)(zod@3.25.76):
+    dependencies:
+      '@types/node': 18.19.80
+      '@types/node-fetch': 2.6.12
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+    optionalDependencies:
+      ws: 8.20.0
+      zod: 3.25.76
     transitivePeerDependencies:
       - encoding
 
@@ -25531,7 +25525,7 @@ snapshots:
   vitest@3.1.1(@types/debug@4.1.12)(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       '@vitest/expect': 3.1.1
-      '@vitest/mocker': 3.1.1(vite@6.2.2(@types/node@24.0.13)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))
+      '@vitest/mocker': 3.1.1(vite@6.2.2(@types/node@20.17.24)(jiti@2.6.0)(lightningcss@1.30.1)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.1))
       '@vitest/pretty-format': 3.1.1
       '@vitest/runner': 3.1.1
       '@vitest/snapshot': 3.1.1

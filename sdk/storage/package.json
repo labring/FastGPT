@@ -1,7 +1,7 @@
 {
   "name": "@fastgpt-sdk/storage",
   "private": false,
-  "version": "0.6.15",
+  "version": "0.6.17",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -53,13 +53,13 @@
     "ali-oss": "^6.23.0",
     "cos-nodejs-sdk-v5": "^2.15.4",
     "es-toolkit": "^1.43.0",
-    "minio": "catalog:",
+    "minio": "8.0.7",
     "vitest": "^4.0.16"
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.13",
-    "@types/node": "catalog:",
-    "tsdown": "catalog:",
-    "typescript": "catalog:"
+    "@types/node": "^20",
+    "tsdown": "0.21.4",
+    "typescript": "^5.9.3"
   }
 }

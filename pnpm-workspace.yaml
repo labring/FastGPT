@@ -24,7 +24,7 @@ catalog:
   '@emotion/styled': ^11
   '@fastgpt-sdk/logger': 0.1.2
   '@fastgpt-sdk/otel': 0.1.2
-  '@fastgpt-sdk/storage': 0.6.15
+  '@fastgpt-sdk/storage': 0.6.17
   '@modelcontextprotocol/sdk': ^1
   '@types/lodash': ^4
   '@types/mime-types': 3.0.1
