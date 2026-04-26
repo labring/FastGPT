@@ -21,10 +21,10 @@ FastGPT is an AI Agent building platform that provides out-of-the-box capabiliti
   <a href="https://fastgpt.io/">
     <img height="21" src="https://img.shields.io/badge/Online_Usage-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/docs/introduction">
+  <a href="https://doc.fastgpt.io/introduction">
     <img height="21" src="https://img.shields.io/badge/Documentation-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.io/docs/self-host/dev">
+  <a href="https://doc.fastgpt.io/self-host/dev">
     <img height="21" src="https://img.shields.io/badge/Local_Development-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="#-our-projects--links">
@@ -47,7 +47,7 @@ docker compose up -d
 
 After fully started, you can access FastGPT at `http://localhost:3000`. The default account is `root` and the password is `1234`.
 
-If you encounter any issues, you can [view the complete Docker deployment tutorial](https://doc.fastgpt.io/docs/self-host/deploy/docker)
+If you encounter any issues, you can [view the complete Docker deployment tutorial](https://doc.fastgpt.io/self-host/deploy/docker)
 
 ## 🛸 Usage
 
@@ -55,10 +55,10 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
   If you don't need private deployment, you can directly use our cloud service at: [fastgpt.io](https://fastgpt.io/)
 
 - **Community Self-Hosted Version**  
-  You can quickly deploy using [Docker](https://doc.fastgpt.io/docs/self-host/deploy/docker) or use [Sealos Cloud](https://doc.fastgpt.io/docs/self-host/deploy/sealos) to deploy FastGPT with one click.
+  You can quickly deploy using [Docker](https://doc.fastgpt.io/self-host/deploy/docker) or use [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) to deploy FastGPT with one click.
 
 - **Commercial Version**  
-  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/docs/introduction/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/introduction/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
 
 ## 💡 Core Features
 
@@ -115,8 +115,8 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 
 ## 💪 Our Projects & Links
 
-- [Quick Start Local Development](https://doc.fastgpt.io/docs/self-host/dev/)
-- [OpenAPI Documentation](https://doc.fastgpt.io/docs/openapi/intro)
+- [Quick Start Local Development](https://doc.fastgpt.io/self-host/dev/)
+- [OpenAPI Documentation](https://doc.fastgpt.io/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Model Aggregation Load Balancing Service](https://github.com/labring/aiproxy)
 - [Laf: Quick 3-Minute Access to Third-Party Applications](https://github.com/labring/laf)
@@ -203,4 +203,4 @@ This repository follows the [FastGPT Open Source License](./LICENSE).
 1. Commercial use as backend services is allowed, but SaaS services are not permitted.
 2. Any commercial services without commercial authorization must retain the relevant copyright information.
 3. Please see [FastGPT Open Source License](./LICENSE) for full details.
-4. Contact: Dennis@sealos.io, [View Commercial Pricing](https://doc.fastgpt.io/docs/introduction/commercial/)
+4. Contact: Dennis@sealos.io, [View Commercial Pricing](https://doc.fastgpt.io/introduction/commercial/)

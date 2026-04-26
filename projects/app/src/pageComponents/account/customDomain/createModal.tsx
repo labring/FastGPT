@@ -294,7 +294,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
           <Link
             href={
               feConfigs.openAPIDocUrl ||
-              getDocPath('/docs/introduction/guide/team_permissions/customDomain')
+              getDocPath('/introduction/guide/team_permissions/customDomain')
             }
             target={'_blank'}
             mt="2"

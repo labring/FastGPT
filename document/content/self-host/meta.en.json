@@ -1,0 +1,20 @@
+{
+  "title": "Self-Hosting",
+  "description": "FastGPT self-hosting guide",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "...deploy",
+    "dev",
+    "---Configuration---",
+    "...config",
+    "---Troubleshooting---",
+    "...troubleshooting",
+    "---Version Upgrades---",
+    "...upgrading",
+    "---Other---",
+    "migration",
+    "custom-models",
+    "design"
+  ]
+}

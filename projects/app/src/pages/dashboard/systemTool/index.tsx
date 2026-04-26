@@ -173,10 +173,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 <Button
                   mr={4}
                   onClick={() =>
-                    window.open(
-                      getDocPath('/docs/introduction/guide/plugins/dev_system_tool'),
-                      '_blank'
-                    )
+                    window.open(getDocPath('/introduction/guide/plugins/dev_system_tool'), '_blank')
                   }
                 >
                   {t('app:toolkit_contribute_resource')}

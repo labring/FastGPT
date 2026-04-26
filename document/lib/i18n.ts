@@ -32,7 +32,7 @@ export function t(key: string, locale?: string) {
 
 /**
  * Get localized URL path based on i18n configuration
- * @param path - The base path (e.g., '/docs/introduction')
+ * @param path - The base path (e.g., '/introduction')
  * @param lang - The language code
  * @returns Localized path with language prefix if needed
  */

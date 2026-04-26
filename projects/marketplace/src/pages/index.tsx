@@ -241,7 +241,7 @@ const ToolkitMarketplace = () => {
             <Button
               onClick={() => {
                 window.open(
-                  'https://doc.fastgpt.io/docs/introduction/guide/plugins/dev_system_tool',
+                  'https://doc.fastgpt.io/introduction/guide/plugins/dev_system_tool',
                   '_blank'
                 );
               }}

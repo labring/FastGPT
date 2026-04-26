@@ -73,7 +73,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={getDocPath('/docs/use-cases/external-integration/feishu')}
+              href={getDocPath('/use-cases/external-integration/feishu')}
               target={'_blank'}
               color={'primary.500'}
               fontSize={'sm'}

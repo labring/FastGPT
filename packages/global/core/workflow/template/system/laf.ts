@@ -33,7 +33,7 @@ export const LafModule: FlowNodeTemplateType = {
   showStatus: true,
   isTool: true,
   catchError: false,
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/laf/',
+  courseUrl: '/introduction/guide/dashboard/workflow/laf/',
   inputs: [
     {
       ...Input_Template_DynamicInput,

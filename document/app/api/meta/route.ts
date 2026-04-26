@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
-const docsRoot = path.resolve(process.cwd(), 'content/docs');
+const docsRoot = path.resolve(process.cwd(), 'content');
 
 function isInvalidPage(str: string): boolean {
   if (!str || typeof str !== 'string') return true;
@@ -60,25 +60,23 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const rawPath = url.searchParams.get('path');
 
-  if (!rawPath || !rawPath.startsWith('/docs')) {
+  if (!rawPath) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
 
-  // 去除 /docs 前缀，且清理首尾斜杠
-  const relPath = rawPath.replace(/^\/docs\/?/, '').replace(/^\/|\/$/g, '');
+  // 兼容老调用：若以 /docs 开头先剥离；同时清理首尾斜杠
+  const relPath = rawPath
+    .replace(/^\/docs\/?/, '')
+    .replace(/^\/|\/$/g, '');
 
   try {
-    // 先检测是否有该 mdx 文件
     const maybeFile = path.join(docsRoot, relPath + '.mdx');
     await fs.access(maybeFile);
-    // 如果存在，返回完整路径（带 /docs）
-    return NextResponse.json('/docs/' + relPath);
+    return NextResponse.json('/' + relPath);
   } catch {
-    // 不存在，尝试递归寻找第一个有效页面
     const found = await findFirstValidPage(relPath);
     if (found) {
-      // 返回带 /docs 前缀的完整路径
-      return NextResponse.json('/docs/' + found.replace(/\\/g, '/'));
+      return NextResponse.json('/' + found.replace(/\\/g, '/'));
     } else {
       return NextResponse.json({ error: 'No valid mdx page found' }, { status: 404 });
     }

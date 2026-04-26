@@ -75,7 +75,7 @@ const Wecom = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={getDocPath('/docs/use-cases/external-integration/wecom')}
+              href={getDocPath('/use-cases/external-integration/wecom')}
               target={'_blank'}
               ml={2}
               color={'primary.500'}
