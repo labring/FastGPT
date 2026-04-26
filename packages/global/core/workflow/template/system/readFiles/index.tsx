@@ -27,7 +27,7 @@ export const ReadFilesNode: FlowNodeTemplateType = {
   showStatus: true,
   version: '4.9.2',
   isTool: false,
-  courseUrl: '/docs/introduction/guide/course/fileinput/',
+  courseUrl: '/introduction/guide/course/fileinput/',
   inputs: [
     {
       key: NodeInputKeyEnum.fileUrlList,

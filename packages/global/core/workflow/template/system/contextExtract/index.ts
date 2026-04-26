@@ -28,7 +28,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   showStatus: true,
   isTool: true,
   catchError: false,
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/content_extract/',
+  courseUrl: '/introduction/guide/dashboard/workflow/content_extract/',
   version: '4.9.2',
   inputs: [
     Input_Template_SelectAIModel,

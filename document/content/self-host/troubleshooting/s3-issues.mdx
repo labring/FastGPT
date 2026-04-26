@@ -1,0 +1,36 @@
+---
+title: 存储桶问题排查
+description: FastGPT 私有部署存储桶问题排查方式
+---
+
+## 1. 日志出现 ERR 等级的 “Failed to ensure external public/private bucket exists”，导致无法连接上对象存储
+
+### 1.1 错误栈显示
+- error: Error: getaddrinfo ENOTFOUND
+
+示例
+- ![](../../../public/imgs/faq4.png)
+
+### 可能的错误
+- STORAGE_S3_FORCE_PATH_STYLE 配置错误
+
+### 解决
+- 将 STORAGE_S3_FORCE_PATH_STYLE 选项开启为 `true`，否则客户端无法找到目标服务
+
+---
+
+## 2. 上传对话文件 / 知识库文件报错
+
+示例
+- ![](../../../public/imgs/faq5.png)
+
+### 2.1 SignatureDoesNotMatched
+- 签名不一致，大部分情况是因为 Nginx 配置错误
+
+### 可能的错误
+- Nginx 转发时未透传必要的请求头（如 Headers、Host）
+
+### 解决
+- 配置 proxy_set_header Host $http_host，不要设置成 $host，Nginx 的 $host内置变量会把端口去掉，要设置成 $http_host
+
+---

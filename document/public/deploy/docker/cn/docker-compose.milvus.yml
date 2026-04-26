@@ -20,7 +20,7 @@ x-share-db-config: &x-share-db-config
   MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin
   DB_MAX_LINK: 100
   REDIS_URL: redis://default:mypassword@fastgpt-redis:6379
-  # @see https://doc.fastgpt.cn/docs/self-host/config/object-storage
+  # @see https://doc.fastgpt.cn/self-host/config/object-storage
   STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
   STORAGE_REGION: us-east-1
   STORAGE_ACCESS_KEY_ID: minioadmin
@@ -43,7 +43,6 @@ x-log-config: &x-log-config
 x-vec-config: &x-vec-config
   MILVUS_ADDRESS: http://fastgpt-vector:19530
   MILVUS_TOKEN: none
-    
 
 services:
   # Vector DB
@@ -118,7 +117,19 @@ services:
     volumes:
       - fastgpt-mongo:/data/db
     healthcheck:
-      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          'myusername',
+          '-p',
+          'mypassword',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -192,7 +203,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.15 
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.15
     ports:
       - 3000:3000
     networks:
@@ -287,7 +298,7 @@ services:
       LLM_REQUEST_TRACKING_RETENTION_HOURS: 6
       # ==================== 功能开关与特殊配置 ====================
       # 自定义跨域；不配置时默认允许所有跨域（逗号分割）
-      ALLOWED_ORIGINS: 
+      ALLOWED_ORIGINS:
       # HTML 转 Markdown 最大字符数（超过后不执行转换）
       MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
@@ -332,12 +343,13 @@ services:
       # Python allowed modules whitelist (comma-separated)
       SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
     healthcheck:
-      test: [
-        'CMD',                                                                                                                                                        
-        'bun',                                                               
-        '-e',
-        "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
-      ]     
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+        ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -547,4 +559,3 @@ configs:
 
       [ingress]
       mode = "direct"
-  

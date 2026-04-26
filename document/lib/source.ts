@@ -8,7 +8,7 @@ import { createElement } from 'react';
 export const source = loader({
   i18n,
   // it assigns a URL to your pages
-  baseUrl: '/docs',
+  baseUrl: '/',
   source: docs.toFumadocsSource(),
   icon(iconName) {
     return iconName && icons[iconName as keyof typeof icons]

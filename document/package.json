@@ -6,7 +6,12 @@
     "build": "next build",
     "dev": "next dev --turbo",
     "start": "next start",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "fumadocs-mdx",
+    "format-doc": "zhlint --dir ./ *.mdx --fix",
+    "initDocTime": "node ./script/initDocTime.js",
+    "initDocToc": "node ./script/generateToc.js",
+    "checkDocRefs": "node ./script/checkDocRefs.js",
+    "removeInvalidImg": "node ./script/removeInvalidImg.js"
   },
   "dependencies": {
     "@orama/orama": "^3.1.11",

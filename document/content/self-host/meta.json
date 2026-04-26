@@ -1,0 +1,20 @@
+{
+  "title": "自部署",
+  "description": "FastGPT 自部署使用案例",
+  "root": true,
+  "pages": [
+    "---开始---",
+    "...deploy",
+    "dev",
+    "---配置说明---",
+    "...config",
+    "---故障排查---",
+    "...troubleshooting",
+    "---版本升级---",
+    "...upgrading",
+    "---其他---",
+    "migration",
+    "custom-models",
+    "design"
+  ]
+}

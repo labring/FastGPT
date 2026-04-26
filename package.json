@@ -4,10 +4,6 @@
   "private": true,
   "scripts": {
     "prepare": "husky install",
-    "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
-    "format-doc": "zhlint --dir ./document/ *.mdx --fix",
-    "initDocTime": "node ./document/script/initDocTime.js",
-    "initDocToc": "node ./document/lib/generateToc.js",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "gen:deploy": "node deploy/init.mjs",
     "postinstall": "pnpm gen:theme-typings",
@@ -39,15 +35,17 @@
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": [
-      "pnpm format-code"
+      "prettier --config ./.prettierrc.js --write --ignore-unknown"
     ],
     "./**/**/*.{ts,tsx}": [
-      "pnpm lint"
+      "eslint --fix --ignore-path .eslintignore"
     ],
     "./document/**/**/*.mdx": [
-      "pnpm format-doc",
-      "pnpm initDocTime",
-      "pnpm initDocToc",
+      "pnpm -C ./document run format-doc",
+      "pnpm -C ./document run initDocTime",
+      "pnpm -C ./document run initDocToc",
+      "pnpm -C ./document run checkDocRefs",
+      "pnpm -C ./document run removeInvalidImg",
       "git add ."
     ]
   },

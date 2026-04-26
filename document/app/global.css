@@ -48,6 +48,12 @@
   gap: 0;
 }
 
+/* Sidebar active nested border: keep the left marker color in sync with text. */
+#nd-sidebar a[data-active='true'] > div:first-child,
+#nd-sidebar-mobile a[data-active='true'] > div:first-child {
+  background-color: currentColor !important;
+}
+
 /* 移除导航栏图标的上边距 - 使用通用选择器匹配所有 radix 弹窗 */
 [data-radix-popper-content-wrapper] > div > a {
   padding: 8px 6px;

@@ -458,7 +458,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
               {feConfigs?.docUrl && (
                 <Button
                   onClick={() => {
-                    const url = getDocPath('/docs/introduction/guide/plugins/dev_system_tool');
+                    const url = getDocPath('/introduction/guide/plugins/dev_system_tool');
                     if (url) {
                       window.open(url, '_blank');
                     }

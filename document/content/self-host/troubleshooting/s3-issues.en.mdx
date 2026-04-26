@@ -1,0 +1,36 @@
+---
+title: S3 Issues Troubleshooting
+description: FastGPT Self-Hosting Common S3 Issues Troubleshooting
+---
+
+## 1. Log shows ERR level "Failed to ensure external public/private bucket exists", resulting in inability to connect to object storage
+
+### 1.1 Error Stack Display
+- error: Error: getaddrinfo ENOTFOUND
+
+Example
+- ![](../../../public/imgs/faq4.png)
+
+### Possible Errors
+- STORAGE_S3_FORCE_PATH_STYLE configuration error
+
+### Solution
+- Turn on the STORAGE_S3_FORCE_PATH_STYLE option to `true`, otherwise the client cannot find the target service
+
+---
+
+## 2. Upload conversation file / knowledge base file error
+
+Example
+- ![](../../../public/imgs/faq5.png)
+
+### 2.1 SignatureDoesNotMatched
+- Signature inconsistency, mostly due to Nginx configuration error
+
+### Possible Errors
+- Necessary request headers (such as Headers, Host) were not passed during Nginx forwarding
+
+### Solution
+- Configure proxy_set_header Host $http_host, do not set to $host, Nginx's $host built-in variable will remove the port, set to $http_host
+
+---
