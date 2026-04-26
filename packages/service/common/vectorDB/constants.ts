@@ -11,6 +11,9 @@ export const MILVUS_TOKEN = process.env.MILVUS_TOKEN;
 export const MILVUS_TIMEOUT = process.env.MILVUS_TIMEOUT
   ? parseInt(process.env.MILVUS_TIMEOUT)
   : 300000; // Default: 5 minutes
+export const MILVUS_INSERT_TIMEOUT = process.env.MILVUS_INSERT_TIMEOUT
+  ? parseInt(process.env.MILVUS_INSERT_TIMEOUT)
+  : 120000; // Default: 2 minutes
 export const HNSW_M = process.env.HNSW_M || 32;
 export const HNSW_EF_CONSTRUCTION = process.env.HNSW_EF_CONSTRUCTION || 128;
 

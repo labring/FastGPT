@@ -102,6 +102,7 @@ export const EmbeddingModelItemSchema = PriceTypeSchema.extend(BaseModelItemSche
   weight: z.number(), // training weight
   hidden: z.boolean().optional(), // Disallow creation
   normalization: z.boolean().optional(), // normalization processing
+  dimensions: z.number().optional(), // vector dimensions (e.g. 1536 for ada-002, 3072 for text-embedding-3-large)
   batchSize: z.number().optional(), // batch request size
   defaultConfig: z.record(z.string(), z.any()).optional(), // post request config
   dbConfig: z.record(z.string(), z.any()).optional(), // Custom parameters for storage

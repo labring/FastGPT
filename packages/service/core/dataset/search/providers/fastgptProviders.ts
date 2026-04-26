@@ -129,7 +129,7 @@ export function createFastGPTEmbeddingProvider(config: FastGPTProvidersConfig): 
       const model = getEmbeddingModel(config.embedModel);
       return {
         name: model?.model || config.embedModel,
-        dimension: (model as any)?.dimensions || 1536
+        dimension: model?.dimensions || 1536
       };
     }
   };

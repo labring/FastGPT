@@ -6,7 +6,8 @@ import {
   DBDatasetValueVectorTableName,
   MILVUS_ADDRESS,
   MILVUS_TOKEN,
-  MILVUS_TIMEOUT
+  MILVUS_TIMEOUT,
+  MILVUS_INSERT_TIMEOUT
 } from '../constants';
 import type {
   VectorControllerType,
@@ -33,7 +34,11 @@ export class MilvusCtrl implements VectorControllerType {
     if (!MILVUS_ADDRESS) {
       return Promise.reject('MILVUS_ADDRESS is not set');
     }
-    if (global.milvusClient) return global.milvusClient;
+    if (global.milvusClient) {
+      // Ensure database context is set for every operation
+      await global.milvusClient.useDatabase({ db_name: DatasetVectorDbName });
+      return global.milvusClient;
+    }
 
     global.milvusClient = new MilvusClient({
       address: MILVUS_ADDRESS,
@@ -41,8 +46,9 @@ export class MilvusCtrl implements VectorControllerType {
       timeout: MILVUS_TIMEOUT
     });
     await global.milvusClient.connectPromise;
+    await global.milvusClient.useDatabase({ db_name: DatasetVectorDbName });
 
-    logger.info('Milvus connected', { address: MILVUS_ADDRESS });
+    logger.info('Milvus connected', { address: MILVUS_ADDRESS, db: DatasetVectorDbName });
 
     return global.milvusClient;
   };
@@ -108,6 +114,11 @@ export class MilvusCtrl implements VectorControllerType {
     for (const config of collectionDefinitions) {
       await this.createMilvusCollection(client, config);
       await this.loadCollection(client, config.name);
+      // Milvus 2.6 在 loadCollection 完成后会更新 schemaTs（索引/BM25 Function 注册）
+      // 必须重新 describeCollection 以刷新 SDK 内部的 schema 时间戳缓存，
+      // 否则后续 insert 请求携带旧 schemaTs 会触发 "collection schema mismatch" 错误
+      await client.describeCollection({ collection_name: config.name });
+      logger.info(`Milvus collection schema synced: ${config.name}`);
     }
   };
 
@@ -126,6 +137,15 @@ export class MilvusCtrl implements VectorControllerType {
       textContents,
       metadataList
     } = props;
+
+    logger.debug('[Milvus] Insert start', {
+      teamId: String(teamId),
+      datasetId: String(datasetId),
+      collectionId: String(collectionId),
+      vectorCount: vectors?.length,
+      firstVectorDim: vectors?.[0]?.length,
+      tableName
+    });
 
     const generateId = () => {
       // in js, the max safe integer is 2^53 - 1: 9007199254740991
@@ -153,8 +173,9 @@ export class MilvusCtrl implements VectorControllerType {
         row.columnValIndex = column_val_index;
       }
       // Milvus 2.6+ 添加原始文本（BM25 Function 会自动生成 sparse 字段）
-      if (textContents && textContents[index] && milvusVersionManager.supportsFullText()) {
-        const rawText = textContents[index];
+      // 当 supportsFullText 时必须传 text，否则 BM25 Function 无法生成 non-nullable 的 sparse 字段导致 insert 卡死
+      if (milvusVersionManager.supportsFullText()) {
+        const rawText = (textContents && textContents[index]) || '';
         if (rawText.length > MILVUS_TEXT_MAX_LENGTH) {
           logger.warn(
             `[Milvus] text field truncated: original length ${rawText.length} exceeds max_length ${MILVUS_TEXT_MAX_LENGTH}, id=${row.id}, collectionId=${collectionId}`
@@ -172,10 +193,38 @@ export class MilvusCtrl implements VectorControllerType {
       return row;
     });
 
-    const result = await client.insert({
-      collection_name: tableName,
-      data
-    } as any);
+    logger.debug('[Milvus] Calling client.insert...', {
+      tableName,
+      rowCount: data.length,
+      firstRowId: data[0]?.id,
+      supportsFullText: milvusVersionManager.supportsFullText(),
+      hasTextField: data[0] ? 'text' in data[0] : false,
+      hasMetadataField: data[0] ? 'metadata' in data[0] : false
+    });
+
+    const insertTimeoutMs = MILVUS_INSERT_TIMEOUT;
+    const result = await Promise.race([
+      client.insert({
+        collection_name: tableName,
+        data,
+        // skip_check_schema=true 让 SDK 不在请求中附加 schema_timestamp，
+        // 避免 SDK 12h LRU 缓存中的旧 schemaTs 与服务端不一致导致 insert 被拒绝卡死
+        skip_check_schema: true
+      } as any),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => {
+          // 超时后清理僵尸连接，下次操作强制重连
+          global.milvusClient = undefined as any;
+          reject(new Error(`[Milvus] insert timeout after ${insertTimeoutMs}ms`));
+        }, insertTimeoutMs)
+      )
+    ]);
+
+    logger.debug('[Milvus] client.insert returned', {
+      hasIDs: result.IDs !== null,
+      errorCode: result.status?.error_code,
+      errorReason: result.status?.reason
+    });
 
     if (result.IDs === null) {
       logger.error(
@@ -192,6 +241,11 @@ export class MilvusCtrl implements VectorControllerType {
       }
       return result.IDs.str_id.data.map((id) => String(id));
     })();
+
+    logger.debug('[Milvus] Insert success', {
+      insertCount: insertIds.length,
+      firstInsertId: insertIds[0]
+    });
 
     return {
       insertIds
@@ -561,6 +615,7 @@ export class MilvusCtrl implements VectorControllerType {
 
     const result = await client.query({
       collection_name: DatasetVectorTableName,
+      db_name: DatasetVectorDbName,
       output_fields: ['count(*)'],
       filter: filter || undefined
     });
@@ -577,6 +632,7 @@ export class MilvusCtrl implements VectorControllerType {
 
     const result = await client.query({
       collection_name: DatasetVectorTableName,
+      db_name: DatasetVectorDbName,
       output_fields: ['id', 'teamId', 'datasetId'],
       filter: `(createTime >= ${startTimestamp}) and (createTime <= ${endTimestamp})`
     });
