@@ -1,0 +1,14 @@
+diff --git a/package.json b/package.json
+index 65321cd7b0f37032cb19d918e50c728672e2b2e0..f0aef4d776172bc3baf7c8703dd689dd66a06e65 100644
+--- a/package.json
++++ b/package.json
+@@ -8,7 +8,8 @@
+ 	"exports": {
+ 		".": {
+ 			"types": "./dist/index.d.ts",
+-			"import": "./dist/index.js"
++			"import": "./dist/index.js",
++			"require": "./dist/index.js"
+ 		},
+ 		"./anthropic": {
+ 			"types": "./dist/providers/anthropic.d.ts",

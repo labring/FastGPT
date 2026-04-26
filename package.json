@@ -63,6 +63,9 @@
       "allowedVersions": {
         "openai>zod": "*"
       }
+    },
+    "patchedDependencies": {
+      "@mariozechner/pi-ai": "patches/@mariozechner__pi-ai.patch"
     }
   },
   "mongodbMemoryServer": {
