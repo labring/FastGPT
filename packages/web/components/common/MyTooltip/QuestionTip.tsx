@@ -1,16 +1,23 @@
 import React from 'react';
 import MyTooltip from '.';
-import { type IconProps } from '@chakra-ui/icons';
 import MyIcon from '../Icon';
 
-type Props = IconProps & {
+interface Props {
   label?: string | React.ReactNode;
-};
+  maxW?: string | number;
+  [key: string]: any;
+}
 
 const QuestionTip = ({ label, maxW, ...props }: Props) => {
   return (
     <MyTooltip label={label} maxW={maxW}>
-      <MyIcon name={'help' as any} w={'16px'} color={'myGray.500'} display={'block'} {...props} />
+      <MyIcon
+        name={'help' as any}
+        w={'16px'}
+        color={'myGray.500'}
+        display={'block'}
+        {...(props as any)}
+      />
     </MyTooltip>
   );
 };
