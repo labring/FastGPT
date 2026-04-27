@@ -4,8 +4,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@test/*": ["./test/*"],
-      "@repo-test/*": ["../../test/*"]
+      "#fastgpt/app/test/*": ["./test/*"],
+      "@test/*": ["../../test/*"]
     }
   },
   "include": [

@@ -1,7 +1,9 @@
 import type { CollaboratorIdType, CollaboratorItemType } from './collaborator';
-import { ManageRoleVal, OwnerRoleVal } from './constant';
 import type { RoleValueType } from './type';
 import { type PermissionValueType } from './type';
+
+const OwnerRoleVal = ~0 >>> 0;
+const ManageRoleVal = 0b001;
 /**
  * Sum the permission value.
  * If no permission value is provided, return undefined to fallback to default value.

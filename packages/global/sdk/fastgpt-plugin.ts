@@ -6,7 +6,7 @@ export {
   ToolTagsNameMap
 } from '@fastgpt-sdk/plugin';
 export type {
-  AiproxyMapProviderType,
+  AIProxyChannelsType,
   I18nStringStrictType,
   ToolDetailType,
   ToolSimpleType

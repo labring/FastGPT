@@ -54,7 +54,7 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": ">=9"
+    "pnpm": "10.x"
   },
   "license": "Apache-2.0",
   "dependencies": {

@@ -3,7 +3,7 @@
   "ui": "tui",
   "tasks": {
     "dev": {
-      "with": ["admin#dev"],
+      "with": ["@fastgpt/admin#dev"],
       "cache": false,
       "persistent": true
     },

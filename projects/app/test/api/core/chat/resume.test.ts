@@ -737,7 +737,7 @@ describe('stream resume helpers', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.useRealTimers();
     resetStreamResumeMirrorGuardForTest();
   });
 
@@ -745,7 +745,7 @@ describe('stream resume helpers', () => {
     vi.useFakeTimers();
     try {
       const redis = getGlobalRedisConnection() as any;
-      const delSpy = vi.spyOn(redis, 'del').mockResolvedValue(1);
+      redis.del.mockClear?.();
 
       const mirror = mirrorChatStream({
         teamId,
@@ -761,8 +761,8 @@ describe('stream resume helpers', () => {
       const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
       const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-      expect(delSpy).toHaveBeenCalledWith(keys.keyOfUnavailable);
-      expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
+      expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
+      expect(redis.del).toHaveBeenCalledWith(keys.keyOfStream);
       expect(redis.call).toHaveBeenNthCalledWith(
         1,
         'XADD',
@@ -810,6 +810,7 @@ describe('stream resume helpers', () => {
 
   it('should clear old redis mirror when mirror starts (before first chunk)', async () => {
     const redis = getGlobalRedisConnection() as any;
+    redis.del.mockClear?.();
     const { keyOfStream } = getStreamResumeRedisKeys({
       teamId,
       appId,
@@ -826,12 +827,13 @@ describe('stream resume helpers', () => {
 
     await mirror.flush();
 
+    expect(redis.del).toHaveBeenCalledWith(keyOfStream);
     expect(await redis.get(keyOfStream)).toBeFalsy();
   });
 
   it('should continue mirroring chunks after the original response is already closed', async () => {
     const redis = getGlobalRedisConnection() as any;
-    const delSpy = vi.spyOn(redis, 'del').mockResolvedValue(1);
+    redis.del.mockClear?.();
 
     const mirror = mirrorChatStream({
       teamId,
@@ -847,8 +849,8 @@ describe('stream resume helpers', () => {
     const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
     const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
-    expect(delSpy).toHaveBeenCalledWith(keys.keyOfUnavailable);
-    expect(delSpy).toHaveBeenCalledWith(keys.keyOfStream);
+    expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
+    expect(redis.del).toHaveBeenCalledWith(keys.keyOfStream);
     expect(redis.call).toHaveBeenNthCalledWith(1, 'XADD', rawStream, '*', 'raw', 'event: answer\n');
     expect(redis.call).toHaveBeenNthCalledWith(2, 'XADD', rawStream, '*', 'raw', 'data: hello\n\n');
   });
@@ -878,7 +880,7 @@ describe('stream resume helpers', () => {
   it('should skip creating a mirror when redis memory usage crosses the watermark', async () => {
     const redis = getGlobalRedisConnection() as any;
     const usedMemory = Math.ceil(STREAM_RESUME_REDIS_MAXMEMORY_RATIO * 100) + 1;
-    const setSpy = vi.spyOn(redis, 'set');
+    redis.set.mockClear?.();
     redis.info = vi.fn().mockResolvedValue(`used_memory:${usedMemory}\r\nmaxmemory:100\r\n`);
 
     const mirror = await getStreamResumeMirror({
@@ -890,7 +892,7 @@ describe('stream resume helpers', () => {
 
     expect(mirror).toBeUndefined();
     expect(redis.info).toHaveBeenCalledTimes(1);
-    expect(setSpy).toHaveBeenCalledWith(
+    expect(redis.set).toHaveBeenCalledWith(
       getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfUnavailable,
       JSON.stringify({
         reason: StreamResumeUnavailableReasonEnum.memoryPressure

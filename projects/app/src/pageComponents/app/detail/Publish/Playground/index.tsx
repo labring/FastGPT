@@ -16,7 +16,6 @@ import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
-  showSkillReferences: true,
   showRunningStatus: true,
   showSkillReferences: false,
   showCite: true,

@@ -1,7 +1,18 @@
+import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { LocationName } from './type';
 
-export const dbPath = path.join(process.cwd(), 'data/GeoLite2-City.mmdb');
+const dbFileName = 'GeoLite2-City.mmdb';
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+
+const dbPathCandidates = [
+  path.resolve(currentDir, '../../../../projects/app/data', dbFileName),
+  path.resolve(process.cwd(), 'data', dbFileName),
+  path.resolve(process.cwd(), '../../projects/app/data', dbFileName)
+];
+
+export const dbPath = dbPathCandidates.find((item) => fs.existsSync(item)) ?? dbPathCandidates[0];
 
 export const privateOrOtherLocationName: LocationName = {
   city: undefined,

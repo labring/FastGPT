@@ -5,8 +5,14 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('..'),
+      '@fastgpt-sdk/logger': resolve('../../sdk/logger/src/index.ts'),
+      '@fastgpt-sdk/storage': resolve('../../sdk/storage/src/index.ts'),
+      '@fastgpt-sdk/otel/logger': resolve('../../sdk/otel/src/logger-entry.ts'),
+      '@fastgpt-sdk/otel/metrics': resolve('../../sdk/otel/src/metrics-entry.ts'),
+      '@fastgpt-sdk/otel/tracing': resolve('../../sdk/otel/src/tracing-entry.ts'),
+      '@fastgpt-sdk/otel': resolve('../../sdk/otel/src/index.ts'),
       '@fastgpt': resolve('..'),
-      '@repo-test': resolve('../../test')
+      '@test': resolve('../../test')
     }
   },
   test: {
@@ -14,7 +20,6 @@ export default defineConfig({
       enabled: true,
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
-      all: false,
       include: ['common/**/*.ts', 'core/**/*.ts', 'support/**/*.ts', 'openapi/**/*.ts'],
       exclude: [
         '**/node_modules/**',

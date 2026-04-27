@@ -8,8 +8,8 @@ import {
   mockGetVectorCountByTeamId,
   mockGetVectorCount,
   resetVectorMocks
-} from '@repo-test/mocks/common/vector';
-import { mockGetVectorsByText } from '@repo-test/mocks/core/ai/embedding';
+} from '@test/mocks/common/vector';
+import { mockGetVectorsByText } from '@test/mocks/core/ai/embedding';
 
 // Import controller functions after mocks are set up
 import {

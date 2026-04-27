@@ -21,7 +21,7 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   },
   "exports": {
     ".": {
@@ -53,8 +53,8 @@
     "ali-oss": "^6.23.0",
     "cos-nodejs-sdk-v5": "^2.15.4",
     "es-toolkit": "^1.43.0",
-    "minio": "8.0.7",
-    "vitest": "^4.0.16"
+    "minio": "catalog:",
+    "vitest": "catalog:"
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.13",

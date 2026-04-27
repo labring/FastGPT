@@ -1,5 +1,5 @@
 {
-  "name": "code-sandbox",
+  "name": "@fastgpt/code-sandbox",
   "version": "5.0.0",
   "description": "FastGPT Code Sandbox - Bun + Hono + 统一子进程模型",
   "author": "",
@@ -14,10 +14,10 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   },
   "dependencies": {
-    "@fastgpt-sdk/logger": "catalog:",
+    "@fastgpt-sdk/logger": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "axios": "catalog:",
     "crypto-js": "^4.2.0",
@@ -33,9 +33,9 @@
   },
   "devDependencies": {
     "@types/bun": "^1.2.4",
-    "@types/node": "^20.14.2",
-    "vitest": "^3.0.9",
-    "@vitest/coverage-v8": "^3.0.9",
-    "typescript": "^5.7.3"
+    "@types/node": "catalog:",
+    "vitest": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:"
   }
 }

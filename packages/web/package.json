@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   },
   "dependencies": {
     "@chakra-ui/anatomy": "catalog:",
@@ -25,8 +25,8 @@
     "@lexical/text": "0.12.6",
     "@lexical/utils": "0.12.6",
     "@monaco-editor/react": "^4.7.0",
-    "@tanstack/react-query": "^4.24.10",
-    "ahooks": "^3.9.5",
+    "@tanstack/react-query": "catalog:",
+    "ahooks": "catalog:",
     "axios": "catalog:",
     "date-fns": "catalog:",
     "dayjs": "catalog:",
@@ -41,13 +41,13 @@
     "react-beautiful-dnd": "^13.1.1",
     "react-day-picker": "^9.14.0",
     "react-dom": "catalog:",
-    "react-hook-form": "7.43.1",
+    "react-hook-form": "catalog:",
     "react-i18next": "catalog:",
-    "react-markdown": "^9.0.1",
+    "react-markdown": "catalog:",
     "react-photo-view": "^1.2.6",
-    "recharts": "^2.15.0",
+    "recharts": "catalog:",
     "rehype-external-links": "^3.0.0",
-    "remark-gfm": "^4.0.1",
+    "remark-gfm": "catalog:",
     "use-context-selector": "^1.4.4",
     "zustand": "^4.3.5"
   },

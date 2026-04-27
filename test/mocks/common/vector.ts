@@ -29,15 +29,17 @@ export const mockGetVectorCountByTeamId = vi.fn().mockResolvedValue(100);
 
 export const mockGetVectorCount = vi.fn().mockResolvedValue(50);
 
-const MockVectorCtrl = vi.fn().mockImplementation(() => ({
-  init: mockVectorInit,
-  insert: mockVectorInsert,
-  delete: mockVectorDelete,
-  embRecall: mockVectorEmbRecall,
-  getVectorDataByTime: mockGetVectorDataByTime,
-  getVectorCountByTeamId: mockGetVectorCountByTeamId,
-  getVectorCount: mockGetVectorCount
-}));
+const MockVectorCtrl = vi.fn().mockImplementation(function () {
+  return {
+    init: mockVectorInit,
+    insert: mockVectorInsert,
+    delete: mockVectorDelete,
+    embRecall: mockVectorEmbRecall,
+    getVectorDataByTime: mockGetVectorDataByTime,
+    getVectorCountByTeamId: mockGetVectorCountByTeamId,
+    getVectorCount: mockGetVectorCount
+  };
+});
 
 // Mock PgVectorCtrl
 vi.mock('@fastgpt/service/common/vectorDB/pg', () => ({

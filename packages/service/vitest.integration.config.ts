@@ -6,7 +6,7 @@ export default defineConfig({
     alias: {
       '@': resolve('../../projects/app/src'),
       '@fastgpt': resolve('..'),
-      '@repo-test': resolve('../../test')
+      '@test': resolve('../../test')
     }
   },
   test: {
