@@ -170,7 +170,7 @@
   "current_iteration_desc": "條件迴圈模式下的 1-based 迭代次數。",
   "max_dialog_rounds": "最多攜帶幾輪對話紀錄",
   "max_tokens": "最大 Token 數",
-  "mouse_priority": "滑鼠優先\n- 按下左鍵拖曳畫布\n- 按住 Shift 鍵並點選左鍵可批次選取",
+  "mouse_priority": "滑鼠優先\n- 按下左鍵拖曳畫布\n- 按住 Shift 並拖曳可框選多個節點",
   "new_context": "新的脈絡",
   "next": "下一個",
   "no_edit_permission": "沒有編輯權限",

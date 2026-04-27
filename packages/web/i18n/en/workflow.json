@@ -170,7 +170,7 @@
   "current_iteration_desc": "1-based iteration counter in conditional mode.",
   "max_dialog_rounds": "Maximum Number of Dialog Rounds",
   "max_tokens": "Maximum Tokens",
-  "mouse_priority": "Mouse first\n- Press the left button to drag the canvas\n- Hold down shift and left click to select batches",
+  "mouse_priority": "Mouse first\n- Press the left button to drag the canvas\n- Hold down Shift and drag to box-select multiple nodes",
   "new_context": "New Context",
   "next": "Next",
   "no_edit_permission": "No editing rights",

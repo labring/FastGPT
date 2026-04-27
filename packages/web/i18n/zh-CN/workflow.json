@@ -170,7 +170,7 @@
   "current_iteration_desc": "条件循环模式下的 1-based 迭代次数。",
   "max_dialog_rounds": "最多携带多少轮对话记录",
   "max_tokens": "最大 Tokens",
-  "mouse_priority": "鼠标优先\n- 左键按下后可拖动画布\n- 按住 shift 后左键可批量选择",
+  "mouse_priority": "鼠标优先\n- 左键按下后可拖动画布\n- 按住 Shift 并拖动可框选多个节点",
   "new_context": "新的上下文",
   "next": "下一个",
   "no_edit_permission": "没有编辑权限",
