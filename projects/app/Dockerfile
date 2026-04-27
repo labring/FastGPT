@@ -43,6 +43,9 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
+# Build SDK workspace packages first so subpath exports like
+# @fastgpt-sdk/otel/logger have generated dist type files.
+RUN pnpm --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage build
 RUN pnpm --filter=app build
 
 # Bundle server.ts into a single CJS file; only 'next' is kept external (already in standalone output)
