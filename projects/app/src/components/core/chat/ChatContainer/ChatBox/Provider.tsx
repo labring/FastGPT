@@ -27,6 +27,7 @@ import type { ChatTypeEnum } from './constants';
 import { ChatTypeEnum as ChatTypeEnumValue } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type ChatProviderProps = {
   appId: string;
@@ -191,6 +192,11 @@ const Provider = ({
     (v) => v.chatBoxData?.app?.chatConfig?.entryPoints ?? []
   );
 
+  const isAssistantType = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.app?.type === AppTypeEnum.assistant
+  );
+
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
 
@@ -263,7 +269,7 @@ const Provider = ({
     chatInputGuide,
     getHistoryResponseData,
     chatType,
-    isAssistantType: false,
+    isAssistantType,
     entryPoints
   };
 

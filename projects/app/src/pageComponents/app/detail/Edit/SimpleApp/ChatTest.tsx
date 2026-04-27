@@ -39,7 +39,8 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn, debuggerMode = fals
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
-    edges: appDetail.edges || []
+    edges: appDetail.edges || [],
+    chatConfig: appDetail.chatConfig
   });
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
@@ -53,17 +54,18 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn, debuggerMode = fals
   });
 
   useEffect(() => {
-    const { nodes, edges } = form2WorkflowFn(appForm, t);
-    setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, t, appDetail.type]);
+    const { nodes, edges, chatConfig } = form2WorkflowFn(appForm, t);
+    setWorkflowData({ nodes, edges, chatConfig });
+  }, [appForm, setWorkflowData, t, appDetail.type, form2WorkflowFn]);
 
   useEffect(() => {
     setRenderEdit(!datasetCiteData);
   }, [datasetCiteData, setRenderEdit]);
 
   const { ChatContainer, restartChat } = useChatTest({
-    ...workflowData,
-    chatConfig: appForm.chatConfig,
+    nodes: workflowData.nodes,
+    edges: workflowData.edges,
+    chatConfig: workflowData.chatConfig,
     isReady: true,
     debuggerMode
   });
