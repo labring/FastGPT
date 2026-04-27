@@ -601,24 +601,7 @@ const BaseModelTrainModal = ({
                             size={'sm'}
                           />
                         </Box>
-                        <Box
-                          w={5}
-                          ml={2}
-                          mr={1.5}
-                          display={'flex'}
-                          alignItems={'center'}
-                          justifyContent={'center'}
-                          color={'myGray.500'}
-                        >
-                          {isFolder && childrenIds.length > 0 ? (
-                            isExpanded ? (
-                              <ChevronDownIcon w={5} h={5} />
-                            ) : (
-                              <ChevronRightIcon w={5} h={5} />
-                            )
-                          ) : null}
-                        </Box>
-                        <Avatar src={item.avatar} w={7} h={7} borderRadius={'sm'} mr={2.5} />
+                        <Avatar src={item.avatar} w={7} h={7} borderRadius={'sm'} ml={2} mr={2.5} />
                         <Box flex={1} minW={0}>
                           <Box fontSize={'sm'} color={'myGray.900'} lineHeight={1}>
                             {item.name}
@@ -627,6 +610,20 @@ const BaseModelTrainModal = ({
                             {isFolder ? t('common:Folder') : item.vectorModel?.name}
                           </Box>
                         </Box>
+                        {isFolder && childrenIds.length > 0 && (
+                          <Box
+                            display={'flex'}
+                            alignItems={'center'}
+                            justifyContent={'center'}
+                            color={'myGray.500'}
+                          >
+                            {isExpanded ? (
+                              <ChevronDownIcon w={5} h={5} />
+                            ) : (
+                              <ChevronRightIcon w={5} h={5} />
+                            )}
+                          </Box>
+                        )}
                       </Flex>
                     </Box>
                   );
