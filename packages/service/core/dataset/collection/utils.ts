@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { MongoDatasetCollection } from './schema';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';

@@ -39,7 +39,7 @@ catalog:
   date-fns: ^3.6.0
   dayjs: 1.11.19
   eslint: ^8.57.0
-  eslint-config-next: 16.2.4
+  eslint-config-next: 15.5.12
   express: ^4
   file-type: 21.3.0
   i18next: 23.16.8

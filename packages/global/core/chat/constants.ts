@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { i18nT } from '../../../web/i18n/utils';
 
 export enum ChatRoleEnum {
