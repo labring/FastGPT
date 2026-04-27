@@ -24,6 +24,9 @@ RUN if [ -z "$proxy" ]; then \
         pnpm install --frozen-lockfile --ignore-scripts --registry=https://registry.npmmirror.com; \
     fi
 
+# 先构建 SDK workspace 包，确保 dist 入口可被 bun build 解析
+RUN pnpm --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage build
+
 # 编译主入口文件
 RUN cd /app/projects/code-sandbox && pnpm build
 
