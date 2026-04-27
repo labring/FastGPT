@@ -1616,7 +1616,7 @@
   "bills_and_invoices": "账单与发票",
   "third_party": "第三方账号",
   "custom_domain": "自定义域名",
-  "model_provider": "模型提供商",
+  "model_provider": "模型管理",
   "system_tool_manage": "系统工具管理",
   "promotion_records": "促销记录",
   "api_key": "API 密钥",
