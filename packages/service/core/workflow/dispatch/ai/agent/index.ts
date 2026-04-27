@@ -3,6 +3,7 @@ import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   DispatchNodeResultType,
   ModuleDispatchProps
@@ -45,6 +46,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { env } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
+import { i18nT } from '../../../../../../web/i18n/utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -83,6 +85,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   }
 
   const MAX_PLAN_ITERATIONS = 10; // 最大规划轮次
+  const MAX_STEP_CALL_RETRY_TIMES = 3; // 每步最大重试次数
+  const shouldRetryStepCall = (result: Awaited<ReturnType<typeof masterCall>>) =>
+    !result.stepResponse?.rawResponse?.trim() &&
+    !!(result.nodeResponse.errorText || result.nodeResponse.finishReason === 'error');
+  const getFinalStepResponseText = (result: Awaited<ReturnType<typeof masterCall>>) => {
+    const rawResponse = result.stepResponse?.rawResponse;
+    if (rawResponse?.trim()) return rawResponse;
+
+    return (
+      result.nodeResponse.errorText?.trim() ||
+      result.stepResponse?.summary?.trim() ||
+      i18nT('chat:completion_finish_error')
+    );
+  };
+  const getLogErrorText = (errorText?: string | null) => errorText?.slice(0, 300);
 
   let {
     checkIsStopping,
@@ -464,19 +481,100 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             });
 
             // Step call
-            const result = await masterCall({
-              ...props,
-              systemPrompt: formatedSystemPrompt,
-              masterMessages: [],
-              planMessages: [],
-              getSubAppInfo,
-              getSubApp,
-              completionTools: agentCompletionTools,
-              steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
-              step,
-              filesMap,
-              capabilityToolCallHandler
-            });
+            let result: Awaited<ReturnType<typeof masterCall>> | undefined;
+            let retryTimes = 0;
+            for (let attempt = 0; attempt <= MAX_STEP_CALL_RETRY_TIMES; attempt++) {
+              result = await masterCall({
+                ...props,
+                workflowStreamResponse: attempt === 0 ? workflowStreamResponse : undefined,
+                systemPrompt: formatedSystemPrompt,
+                masterMessages: [],
+                planMessages: [],
+                getSubAppInfo,
+                getSubApp,
+                completionTools: agentCompletionTools,
+                steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
+                step,
+                filesMap,
+                capabilityToolCallHandler
+              });
+
+              const shouldRetry =
+                !checkIsStopping() &&
+                attempt < MAX_STEP_CALL_RETRY_TIMES &&
+                shouldRetryStepCall(result);
+
+              if (!shouldRetry) break;
+
+              retryTimes++;
+              getLogger(LogCategories.MODULE.AI.AGENT).warn('Step call empty response, retrying', {
+                planId: agentPlan!.planId,
+                stepId: step.id,
+                stepTitle: step.title,
+                attempt,
+                nextAttempt: attempt + 1,
+                maxRetryTimes: MAX_STEP_CALL_RETRY_TIMES,
+                finishReason: result.nodeResponse.finishReason,
+                errorText: getLogErrorText(result.nodeResponse.errorText)
+              });
+            }
+
+            if (!result) break;
+
+            if (retryTimes > 0) {
+              const retryFinalLog = {
+                planId: agentPlan.planId,
+                stepId: step.id,
+                stepTitle: step.title,
+                retryTimes,
+                finishReason: result.nodeResponse.finishReason,
+                errorText: getLogErrorText(result.nodeResponse.errorText)
+              };
+              if (shouldRetryStepCall(result)) {
+                getLogger(LogCategories.MODULE.AI.AGENT).error(
+                  'Step call retry exhausted',
+                  retryFinalLog
+                );
+              } else {
+                getLogger(LogCategories.MODULE.AI.AGENT).debug(
+                  'Step call retry succeeded',
+                  retryFinalLog
+                );
+              }
+            }
+
+            if (shouldRetryStepCall(result)) {
+              const errorText = getFinalStepResponseText(result);
+              nodeResponses.push(result.nodeResponse);
+              assistantResponses.push({
+                text: { content: errorText },
+                planId: agentPlan.planId,
+                stepId: step.id
+              });
+              workflowStreamResponse?.({
+                event: SseResponseEventEnum.answer,
+                data: textAdaptGptResponse({ text: errorText })
+              });
+              const answerText = assistantResponses
+                .filter((item) => item.text?.content)
+                .map((item) => item.text!.content)
+                .join('');
+
+              return {
+                data: {
+                  [NodeOutputKeyEnum.answerText]: answerText
+                },
+                [DispatchNodeResponseKeyEnum.memories]: {
+                  [masterMessagesKey]: undefined,
+                  [agentPlanKey]: undefined,
+                  [planMessagesKey]: undefined,
+                  [planBufferKey]: undefined
+                },
+                [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+                [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+              };
+            }
+
             nodeResponses.push(result.nodeResponse);
 
             // Merge response
@@ -502,8 +600,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               );
             }
 
-            step.response = result.stepResponse?.rawResponse;
-            step.summary = result.stepResponse?.summary;
+            step.response = getFinalStepResponseText(result);
+            step.summary = result.stepResponse?.summary || step.response;
           }
         }
 
