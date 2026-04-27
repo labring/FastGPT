@@ -20,8 +20,13 @@ jobs:
         with:
           fetch-depth: 1
       - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
         run: |
           if [ -f .gitmodules ]; then
+            if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            fi
             git submodule update --init --recursive
           fi
       - name: Install Dependencies

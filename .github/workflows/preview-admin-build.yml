@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   build-and-push:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository || secrets.PRO_SUBMODULE_TOKEN != '' }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -27,8 +28,13 @@ jobs:
           fetch-depth: 0
 
       - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
         run: |
           if [ -f .gitmodules ]; then
+            if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            fi
             git submodule update --init --recursive
           fi
 

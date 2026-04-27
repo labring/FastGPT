@@ -9,6 +9,7 @@ concurrency:
 
 jobs:
   test:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || secrets.PRO_SUBMODULE_TOKEN != '' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -21,8 +22,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
       - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
         run: |
           if [ -f .gitmodules ]; then
+            if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            fi
             git submodule update --init --recursive
           fi
       - name: Install system deps for node-canvas
