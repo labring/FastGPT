@@ -1,4 +1,3 @@
 [submodule "pro"]
-	path = pro
-	url = https://github.com/labring/fastgpt-pro.git
-	branch = codex/pro-content-restructure
+path = pro
+url = https://github.com/labring/fastgpt-pro.git
