@@ -1234,10 +1234,19 @@ export function form2AppWorkflow(
     return simpleChatTemplate(data);
   })();
 
+  const chatConfig = {
+    ...data.chatConfig,
+    variables: data.chatConfig?.variables?.map((variable) => {
+      const { maxLength, ...rest } = variable;
+      if (!maxLength && maxLength !== 0) return rest;
+      return variable;
+    })
+  };
+
   return {
     nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
-    chatConfig: data.chatConfig
+    chatConfig
   };
 }
 export function filterSensitiveFormData(appForm: AppFormEditFormType) {
@@ -1400,7 +1409,12 @@ export const updateDatasetSearchNodesLimit = (nodes: StoreNodeItemType[]): Store
  * 包含基模本身，以及通过 trainTaskList.baseModelId 关联的 tuned 模型。
  */
 export function getEmbeddingModelSelectList(
-  embeddingModelList: { model: string; name: string; isTuned?: boolean; trainTaskList?: { baseModelId: string }[] }[],
+  embeddingModelList: {
+    model: string;
+    name: string;
+    isTuned?: boolean;
+    trainTaskList?: { baseModelId: string }[];
+  }[],
   datasetVectorModel: string | undefined
 ): { value: string; label: string }[] {
   if (!datasetVectorModel) return [];

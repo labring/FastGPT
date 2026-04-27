@@ -14,6 +14,7 @@ FastGPT 使用统一的侧边导航栏组件 `DashboardNavbar`，适用于 Dashb
 |------|------|
 | `projects/app/src/pageComponents/dashboard/Container.tsx` | 导航栏核心组件，含所有子组件定义、`DashboardContainer` 和导航数据 |
 | `projects/app/src/pages/app/detail/index.tsx` | 应用详情页，直接使用 `DashboardNavbar`，固定折叠 |
+| `projects/app/src/pages/skill/detail.tsx` | Skill 详情页，直接使用 `DashboardNavbar`，固定折叠 |
 | `projects/app/src/pages/dataset/list/index.tsx` | 知识库列表页，直接使用 `DashboardNavbar`，默认展开 |
 | `projects/app/src/pages/dataset/detail/index.tsx` | 知识库详情页，直接使用 `DashboardNavbar`，固定折叠 |
 | `projects/app/src/pageComponents/account/AccountContainer.tsx` | 账户设置容器，直接使用 `DashboardNavbar`，默认展开 |
@@ -47,6 +48,7 @@ DashboardNavbar（定义于 pageComponents/dashboard/Container.tsx）
 │
 └── [直接] 二级页面（固定折叠 + hideCollapseButton，不可展开）
     ├── pages/app/detail/index.tsx                   — 应用详情
+    ├── pages/skill/detail.tsx                       — Skill 详情
     └── pages/dataset/detail/index.tsx               — 知识库详情
 ```
 
@@ -234,7 +236,7 @@ const sidebarWidth = SIDEBAR_COLLAPSED_WIDTH;
 |--------|----------|
 | 门户 | `pathname.startsWith('/chat')` |
 | 模板市场 | `pathname.startsWith('/dashboard/templateMarket')` |
-| 应用构建（折叠态） | `pathname` 匹配 appBuildItems 任意 path 或 `/app/detail` |
+| 应用构建（折叠态） | `pathname` 匹配 appBuildItems 任意 path、`/app/detail` 或 `/skill/detail` |
 | 知识库 | `pathname.startsWith('/dataset')` |
 | 应用测评 | `pathname.startsWith('/dashboard/evaluation')` |
 | 设置（折叠态） | `settingsItems` 中任意 item.path 与 pathname 匹配 |
