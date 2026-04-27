@@ -67,6 +67,7 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   censor: z.boolean().optional(),
   vision: z.boolean().optional(),
   reasoning: z.boolean().optional(),
+  reasoningEffort: z.boolean().optional(),
 
   functionCall: z.boolean(),
   toolChoice: z.boolean(),

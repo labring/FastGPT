@@ -86,6 +86,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt,
       aiChatVision,
       aiChatReasoning = true,
+      aiChatReasoningEffort,
       aiChatTopP,
       aiChatStopSign,
       aiChatResponseFormat,
@@ -186,6 +187,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         max_tokens,
         top_p: aiChatTopP,
         stop: aiChatStopSign,
+        reasoning_effort: aiChatReasoningEffort,
         response_format: {
           type: aiChatResponseFormat,
           json_schema: aiChatJsonSchema

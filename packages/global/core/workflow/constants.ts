@@ -163,6 +163,7 @@ export enum NodeInputKeyEnum {
   aiChatVision = 'aiChatVision',
   stringQuoteText = 'stringQuoteText',
   aiChatReasoning = 'aiChatReasoning',
+  aiChatReasoningEffort = 'aiChatReasoningEffort',
   aiChatTopP = 'aiChatTopP',
   aiChatStopSign = 'aiChatStopSign',
   aiChatResponseFormat = 'aiChatResponseFormat',

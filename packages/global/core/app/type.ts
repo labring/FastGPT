@@ -4,6 +4,7 @@ import type { NodeInputKeyEnum } from '../workflow/constants';
 import { VariableInputEnum } from '../workflow/constants';
 import { InputComponentPropsTypeSchema } from '../workflow/type/io';
 import { DatasetSearchModeEnum } from '../dataset/constants';
+import type { ReasoningEffortEnum } from '../ai/constants';
 import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
@@ -180,6 +181,7 @@ export type SettingAIDataType = {
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
   [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
+  [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffortEnum;
   [NodeInputKeyEnum.aiChatTopP]?: number;
   [NodeInputKeyEnum.aiChatStopSign]?: string;
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;

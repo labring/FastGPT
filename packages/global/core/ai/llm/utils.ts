@@ -13,6 +13,7 @@ export const getLLMSupportParams = (llm?: LLMModelItemType) => {
     vision: !!llm?.vision,
     temperature: typeof llm?.maxTemperature === 'number',
     reasoning: !!llm?.reasoning,
+    reasoningEffort: !!llm?.reasoningEffort,
     topP: !!llm?.showTopP,
     stop: !!llm?.showStopSign,
     responseFormat: !!(llm?.responseFormatList && llm?.responseFormatList.length > 0),

@@ -88,6 +88,24 @@ export enum EmbeddingTypeEnm {
   db = 'db'
 }
 
+export enum ReasoningEffortEnum {
+  none = 'none',
+  minimal = 'minimal',
+  low = 'low',
+  medium = 'medium',
+  high = 'high',
+  xhigh = 'xhigh'
+}
+
+export const reasoningEffortList = [
+  { label: i18nT('common:reasoning_effort.none'), value: ReasoningEffortEnum.none },
+  { label: i18nT('common:reasoning_effort.minimal'), value: ReasoningEffortEnum.minimal },
+  { label: i18nT('common:reasoning_effort.low'), value: ReasoningEffortEnum.low },
+  { label: i18nT('common:reasoning_effort.medium'), value: ReasoningEffortEnum.medium },
+  { label: i18nT('common:reasoning_effort.high'), value: ReasoningEffortEnum.high },
+  { label: i18nT('common:reasoning_effort.xhigh'), value: ReasoningEffortEnum.xhigh }
+];
+
 export const completionFinishReasonMap = {
   error: i18nT('chat:completion_finish_error'),
   close: i18nT('chat:completion_finish_close'),

@@ -1074,6 +1074,11 @@ export const ModelEditModal = ({
                 field={'reasoning'}
                 register={register}
               />
+              <SwitchField
+                label={t('account:model.reasoning_effort')}
+                field={'reasoningEffort'}
+                register={register}
+              />
               {feConfigs?.isPlus && (
                 <SwitchField
                   label={t('account:model.censor')}

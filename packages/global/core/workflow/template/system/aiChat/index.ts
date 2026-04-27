@@ -99,6 +99,12 @@ export const AiChatModule: FlowNodeTemplateType = {
       value: true
     },
     {
+      key: NodeInputKeyEnum.aiChatReasoningEffort,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
       key: NodeInputKeyEnum.aiChatTopP,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',

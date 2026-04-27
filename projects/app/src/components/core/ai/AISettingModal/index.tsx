@@ -36,6 +36,7 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import { ReasoningEffortEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -91,6 +92,7 @@ const AIChatSettingsModal = ({
   });
   const model = watch('model');
   const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
+  const reasoningEffort = watch(NodeInputKeyEnum.aiChatReasoningEffort);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
@@ -415,19 +417,54 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {supportParams.reasoning && showReasoning && (
-          <Flex {...FlexItemStyles} h={'25px'}>
-            <Box {...LabelStyles}>
-              <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>
-              <Switch
-                isChecked={reasoning || false}
-                size={'sm'}
-                onChange={(e) => {
-                  const value = e.target.checked;
-                  setValue(NodeInputKeyEnum.aiChatReasoning, value);
-                }}
-              />
-            </Box>
-          </Flex>
+          <>
+            <Flex {...FlexItemStyles}>
+              <Box {...LabelStyles}>
+                <Flex alignItems={'center'}>{t('app:reasoning_effort')}</Flex>
+              </Box>
+              <Box flex={'1 0 0'}>
+                {supportParams.reasoningEffort ? (
+                  <MySelect<string>
+                    size={'sm'}
+                    bg={'myGray.25'}
+                    list={[
+                      { label: t('app:reasoning_effort_default'), value: '' },
+                      ...reasoningEffortList.map((item) => ({
+                        label: t(item.label as any),
+                        value: item.value
+                      }))
+                    ]}
+                    value={reasoningEffort ?? ''}
+                    onChange={(e) => {
+                      setValue(
+                        NodeInputKeyEnum.aiChatReasoningEffort,
+                        e === '' ? undefined : (e as ReasoningEffortEnum)
+                      );
+                    }}
+                  />
+                ) : (
+                  <Box fontSize={'sm'} color={'myGray.500'}>
+                    {t('app:reasoning_effort_unsupported')}
+                  </Box>
+                )}
+              </Box>
+            </Flex>
+            {reasoningEffort !== ReasoningEffortEnum.none && (
+              <Flex {...FlexItemStyles} h={'25px'}>
+                <Box {...LabelStyles}>
+                  <Flex alignItems={'center'}>{t('app:hide_reasoning_response')}</Flex>
+                  {/* WHY: 字段反义保留 aiChatReasoning 旧语义 (true=输出),UI 翻转 ! 表达"隐藏" */}
+                  <Switch
+                    isChecked={!reasoning}
+                    size={'sm'}
+                    onChange={(e) => {
+                      setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);
+                    }}
+                  />
+                </Box>
+              </Flex>
+            )}
+          </>
         )}
         {showVisionSwitch && (
           <Flex {...FlexItemStyles} h={'25px'}>
@@ -457,15 +494,15 @@ const AIChatSettingsModal = ({
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
               <Flex alignItems={'center'}>
-                {t('app:stream_response')}
-                <QuestionTip ml={1} label={t('app:stream_response_tip')}></QuestionTip>
+                {t('app:hide_response')}
+                <QuestionTip ml={1} label={t('app:hide_response_tip')}></QuestionTip>
               </Flex>
+              {/* WHY: 字段反义保留 aiChatIsResponseText 旧语义 (true=输出),UI 翻转 ! 表达"隐藏" */}
               <Switch
-                isChecked={getValues(NodeInputKeyEnum.aiChatIsResponseText)}
+                isChecked={!getValues(NodeInputKeyEnum.aiChatIsResponseText)}
                 size={'sm'}
                 onChange={(e) => {
-                  const value = e.target.checked;
-                  setValue(NodeInputKeyEnum.aiChatIsResponseText, value);
+                  setValue(NodeInputKeyEnum.aiChatIsResponseText, !e.target.checked);
                   setRefresh((state) => !state);
                 }}
               />
