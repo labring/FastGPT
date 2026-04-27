@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
 import QuoteList from '../ChatContainer/ChatBox/components/ChunkCardList';
 import {
@@ -79,7 +79,7 @@ export const WholeResponseContent = ({
   const RowRender = useCallback(
     ({
       children,
-      mb,
+      mb = 1,
       label,
       ...props
     }: { children: React.ReactNode; label: string } & BoxProps) => {
@@ -142,13 +142,13 @@ export const WholeResponseContent = ({
                 border: '1px solid',
                 borderColor: 'myGray.200',
                 color: 'myGray.900',
-                bg: '#F7F8FA'
+                bg: 'white'
               })}
         >
           <Box
             sx={{
-              '& .markdown': { fontSize: '12px !important' },
-              '& .markdown pre': { fontSize: '12px !important' }
+              '& .markdown': { fontSize: '14px !important' },
+              '& .markdown pre': { fontSize: '14px !important' }
             }}
           >
             <Markdown source={formatValue} />
@@ -322,8 +322,9 @@ export const WholeResponseContent = ({
     <Box
       h={'100%'}
       ref={ContentRef}
-      py={2}
       px={4}
+      py={1}
+      backgroundColor={'white'}
       {...(hideTabs
         ? {}
         : {
@@ -896,21 +897,15 @@ const SideTabItem = ({
           />
           <Box ml={2}>
             <Box
-              fontSize={'12px'}
+              fontSize={'14px'}
               lineHeight={'16px'}
               fontWeight={500}
-              color={'myGray.900'}
+              color={'myGray.550'}
               letterSpacing={'0.5px'}
             >
               {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
             </Box>
-            <Box
-              fontSize={'11px'}
-              lineHeight={'16px'}
-              fontWeight={500}
-              color={'myGray.500'}
-              letterSpacing={'0.5px'}
-            >
+            <Box fontSize={'12px'} lineHeight={'16px'} color={'#667085'} letterSpacing={'0.5px'}>
               {t(sideBarItem.runningTime as any) + 's'}
             </Box>
           </Box>
@@ -1097,11 +1092,10 @@ export const ResponseBox = React.memo(function ResponseBox({
         <Flex
           overflow={'hidden'}
           height={'100%'}
-          mx={'32px'}
           bg={'myGray.25'}
-          border={'1px solid'}
+          borderTop={'1px solid'}
+          borderBottom={'1px solid'}
           borderColor={'myGray.200'}
-          borderRadius={'12px'}
         >
           <Box
             w={'204px'}
@@ -1111,6 +1105,7 @@ export const ResponseBox = React.memo(function ResponseBox({
             p={3}
             overflowY={'auto'}
             overflowX={'hidden'}
+            bg={'white'}
           >
             <WholeResponseSideTab
               response={sliderResponseList}
@@ -1240,11 +1235,10 @@ const WholeResponseModal = ({
       h={['90vh', '80vh']}
       maxH={['90vh', '700px']}
       px={0}
-      py={8}
-      headerPx={'32px'}
+      py={0}
       title={
         <Flex alignItems={'center'} gap={2}>
-          <Box fontSize={'20px'} lineHeight={'26px'} letterSpacing={'0.15px'} fontWeight={500}>
+          <Box fontSize={'16px'} lineHeight={'32px'} fontWeight={500}>
             {t('common:core.chat.response.Complete Response')}
           </Box>
           <QuestionTip label={t('chat:question_tip')} />
