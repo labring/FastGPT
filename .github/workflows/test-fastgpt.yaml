@@ -1,11 +1,11 @@
-name: 'FastGPT-Test'
+name: "FastGPT-Test"
 on:
   pull_request:
   workflow_dispatch:
 
-# Only one build per PR branch at a time
+    # Only one build per PR branch at a time
 concurrency:
-  group: 'test-fastgpt-${{ github.event.pull_request.number || github.ref }}'
+  group: "test-fastgpt-${{ github.event.pull_request.number || github.ref }}"
   cancel-in-progress: true
 
 permissions:
@@ -21,7 +21,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -29,22 +30,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
 
-      - name: 'Install Deps'
+      - name: "Install Deps"
         run: pnpm install --frozen-lockfile
 
-      - name: 'Test Global'
+      - name: "Test Global"
         run: pnpm test:global
 
-      - name: 'Test Service'
+      - name: "Test Service"
         run: pnpm test:service
 
-      - name: 'Test App'
+      - name: "Test App"
         run: pnpm test:app
 
-      - name: 'Report Coverage'
+      - name: "Report Coverage"
         # Set if: always() to also generate the report if tests are failing
         # Only works if you set `reportOnFailure: true` in your vite config as specified above
         if: always()
