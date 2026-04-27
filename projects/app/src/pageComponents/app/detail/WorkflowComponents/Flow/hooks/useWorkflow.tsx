@@ -661,32 +661,24 @@ export const useWorkflow = () => {
     if (change.selected === false && isDowningCtrl) {
       change.selected = true;
     }
-  });
 
-  // 后操作优先:父子同选冲突时,新选中的一方接管;同批次进入或兜底走父优先。
-  // 走最终 state 校正而非 changes 流拦截 —— 触摸板 selectionOnDrag 与鼠标 ctrl+click 走不同 ReactFlow 路径,
-  // changes 顺序/批次差异大,统一拦截不可靠。
-  const reconcileSelectionExclusion = useMemoizedFn((newlySelectedIds: Set<string>) => {
-    setNodes((curr) => {
-      const idToNode = new Map(curr.map((n) => [n.id, n]));
-      const toDeselect = new Set<string>();
-      for (const n of curr) {
-        if (!n.selected || !n.data.parentNodeId) continue;
-        const parent = idToNode.get(n.data.parentNodeId);
-        if (!parent?.selected || !isNestedParentNodeType(parent.data.flowNodeType)) continue;
+    // 父子互斥(后操作优先): 选父则取消其已选 children;选子则取消已选父。
+    if (!change.selected) return;
+    const node = getRawNodeById(change.id);
+    if (!node) return;
 
-        const childIsNew = newlySelectedIds.has(n.id);
-        const parentIsNew = newlySelectedIds.has(parent.id);
-        if (childIsNew && !parentIsNew) {
-          toDeselect.add(parent.id);
-        } else {
-          toDeselect.add(n.id);
-        }
+    if (isNestedParentNodeType(node.data.flowNodeType)) {
+      setNodes((curr) =>
+        curr.map((n) =>
+          n.data.parentNodeId === node.id && n.selected ? { ...n, selected: false } : n
+        )
+      );
+    } else if (node.data.parentNodeId) {
+      const parent = getRawNodeById(node.data.parentNodeId);
+      if (parent?.selected) {
+        setNodes((curr) => curr.map((n) => (n.id === parent.id ? { ...n, selected: false } : n)));
       }
-      if (toDeselect.size === 0) return curr;
-
-      return curr.map((n) => (toDeselect.has(n.id) ? { ...n, selected: false } : n));
-    });
+    }
   });
   const handlePositionNode = useMemoizedFn(
     (change: NodePositionChange, node: Node<FlowNodeItemType>) => {
@@ -832,17 +824,6 @@ export const useWorkflow = () => {
 
     // Remove separately
     onNodesChange(changes.filter((c) => c.type !== 'remove').concat(childChanges as any));
-
-    const newlySelectedIds = new Set<string>();
-    let hasSelectChange = false;
-    for (const c of changes) {
-      if (c.type !== 'select') continue;
-      hasSelectChange = true;
-      if (c.selected) newlySelectedIds.add(c.id);
-    }
-    if (hasSelectChange) {
-      reconcileSelectionExclusion(newlySelectedIds);
-    }
   });
 
   const handleEdgeChange = useCallback(
