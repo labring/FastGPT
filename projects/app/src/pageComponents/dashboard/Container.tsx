@@ -527,15 +527,6 @@ export const DashboardNavbar = ({
               onClick={() => window.open(`/chat?appId=${lastChatAppId}&pane=${lastPane}`)}
             />
 
-            {/* 模板市场 */}
-            <NavItem
-              icon="core/importTemplateIcon"
-              label={t('common:app_market')}
-              isActive={isActivePrefix(['/dashboard/templateMarket'])}
-              isCollapsed={isCollapsed}
-              onClick={() => router.push('/dashboard/templateMarket')}
-            />
-
             {/* 应用构建（可展开） */}
             <SubNavGroup
               icon="navbar/appBuildNew"
@@ -543,7 +534,7 @@ export const DashboardNavbar = ({
               collapsedLabel={t('common:navbar.app_build')}
               isActive={
                 isCollapsed &&
-                isActivePrefix([...appBuildItems.map((item) => item.path), '/app/detail'])
+                isActivePrefix([...appBuildItems.map((item) => item.path), '/app/detail', '/skill/detail'])
               }
               isCollapsed={isCollapsed}
               isExpanded={expandedKeys.includes('app-build')}
@@ -566,6 +557,15 @@ export const DashboardNavbar = ({
               isActive={isActivePrefix(['/dataset'])}
               isCollapsed={isCollapsed}
               onClick={() => router.push('/dataset/list')}
+            />
+
+            {/* 模板市场 */}
+            <NavItem
+              icon="core/app/importTemplateIcon"
+              label={t('common:app_market')}
+              isActive={isActivePrefix(['/dashboard/templateMarket'])}
+              isCollapsed={isCollapsed}
+              onClick={() => router.push('/dashboard/templateMarket')}
             />
 
             {/* 应用测评（Beta） */}

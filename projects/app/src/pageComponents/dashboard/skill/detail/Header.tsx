@@ -6,6 +6,7 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { MyTabs } from '@fastgpt/web/components/common/MyTabs';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { SkillDetailContext, TabEnum } from './context';
@@ -41,33 +42,11 @@ const RouteTab = () => {
   ];
 
   return (
-    <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} backdropBlur={'blur(5px)'} p={1}>
-      {tabList.map((tab) => (
-        <HStack
-          key={tab.value}
-          justifyContent={'center'}
-          cursor={'pointer'}
-          w={'120px'}
-          h={8}
-          fontSize={'12px'}
-          fontWeight={'medium'}
-          userSelect={'none'}
-          {...(currentTab === tab.value
-            ? {
-                bg: 'white',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                color: 'black',
-                borderRadius: '2px'
-              }
-            : {
-                color: 'myGray.500',
-                onClick: () => setCurrentTab(tab.value)
-              })}
-        >
-          <Box>{tab.label}</Box>
-        </HStack>
-      ))}
-    </HStack>
+    <MyTabs
+      tabs={tabList}
+      value={currentTab}
+      onChange={(v) => setCurrentTab(v as TabEnum)}
+    />
   );
 };
 

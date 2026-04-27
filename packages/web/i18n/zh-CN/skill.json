@@ -60,7 +60,7 @@
   "permission.des.manage": "可管理 Agent Skill 和协作者",
   "permission.des.read": "可查看 Agent Skill",
   "permission.des.write": "可编辑 Agent Skill",
-  "permission_settings": "权限设置",
+  "permission_settings": "权限",
   "related_apps_count": "关联应用 {{count}}",
   "related_count": "关联应用",
   "sandbox_checking": "正在检查现有沙箱环境...",

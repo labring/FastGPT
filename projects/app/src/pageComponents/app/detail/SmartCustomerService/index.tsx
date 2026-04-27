@@ -19,10 +19,12 @@ import {
 import { useDebounceEffect, useMount } from 'ahooks';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
-import {
-  form2AppWorkflow,
-  appWorkflow2Form as simpleAppWorkflow2Form
-} from '../Edit/SimpleApp/utils';
+import { form2AppWorkflow as baseForm2AppWorkflow } from '@/web/core/app/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { appWorkflow2Form as simpleAppWorkflow2Form } from '../Edit/SimpleApp/utils';
+
+const assistantForm2Workflow = (data: any, t: any) =>
+  baseForm2AppWorkflow(data, t, AppTypeEnum.assistant);
 
 const Edit = dynamic(() => import('./Edit'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -126,7 +128,7 @@ const SmartCustomerServiceEdit = () => {
         past={past}
         setPast={setPast}
         saveSnapshot={saveSnapshot}
-        form2WorkflowFn={form2AppWorkflow}
+        form2WorkflowFn={assistantForm2Workflow}
         form2AppWorkflowFn={simpleAppWorkflow2Form}
       />
       {currentTab === TabEnum.appEdit ? (

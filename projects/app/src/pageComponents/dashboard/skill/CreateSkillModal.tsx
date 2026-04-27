@@ -110,24 +110,14 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
                   <Avatar src={avatar} borderRadius={'4.667px'} />
                 </Flex>
               </MyTooltip>
-              <Input
-                flex={1}
-                h={'34px'}
-                placeholder={t('skill:skill_name_placeholder')}
-                {...register('name', { required: true })}
-              />
+              <Input flex={1} h={'34px'} {...register('name', { required: true })} />
             </Flex>
           </Box>
 
           {/* 介绍 */}
           <Box mb={5}>
             <FormLabel mb={2.5}>{t('skill:skill_intro_label')}</FormLabel>
-            <Textarea
-              {...register('intro')}
-              rows={3}
-              placeholder={t('skill:skill_intro_placeholder')}
-              resize={'vertical'}
-            />
+            <Textarea {...register('intro')} rows={3} resize={'vertical'} />
           </Box>
 
           {/* Skill 需求 */}
@@ -169,7 +159,7 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
             <Textarea
               value={requirement}
               onChange={(e) => setValue('requirement', e.target.value)}
-              minH={'120px'}
+              minH={'200px'}
               resize={'vertical'}
             />
           </Box>

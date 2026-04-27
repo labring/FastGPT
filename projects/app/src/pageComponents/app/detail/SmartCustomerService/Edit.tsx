@@ -11,12 +11,16 @@ import EditForm from './EditForm';
 import AssistantCard from './AssistantCard';
 import { type AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { Form2WorkflowFnType } from '../Edit/FormComponent/type';
-import { form2AppWorkflow } from '../Edit/SimpleApp/utils';
+import { form2AppWorkflow as baseForm2AppWorkflow } from '@/web/core/app/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { cardStyles } from '../constants';
 
 import styles from '../Edit/FormComponent/styles.module.scss';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { type SimpleAppSnapshotType } from '../Edit/FormComponent/useSnapshots';
+
+const assistantForm2Workflow: Form2WorkflowFnType = (data, t) =>
+  baseForm2AppWorkflow(data as any, t, AppTypeEnum.assistant);
 
 const Edit = ({
   appForm,
@@ -64,7 +68,7 @@ const Edit = ({
           <ChatTest
             appForm={appForm}
             setRenderEdit={setRenderEdit}
-            form2WorkflowFn={form2AppWorkflow}
+            form2WorkflowFn={assistantForm2Workflow}
             debuggerMode={true}
           />
         </Box>

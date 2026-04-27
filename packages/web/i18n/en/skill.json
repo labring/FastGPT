@@ -37,7 +37,7 @@
   "related_count": "Related Apps",
   "creator_tooltip": "Creator: {{creator}}",
   "update_time_tooltip": "Updated: {{updateTime}}",
-  "permission_settings": "Permission Settings",
+  "permission_settings": "Permission",
   "export_config": "Export Config",
   "create_folder": "New Folder",
   "skill_name_placeholder": "Enter skill name",

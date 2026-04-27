@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
 
-const BgDecoration = () => {
+const BgDecoration = (props: { hideBgImg?: boolean }) => {
   return (
     <Box
       position="absolute"
@@ -15,15 +15,17 @@ const BgDecoration = () => {
       zIndex={0}
     >
       {/* 主装饰图 */}
-      <Box
-        as="img"
-        src="/imgs/bg-decoration.png"
-        position="absolute"
-        w="787px"
-        h="255px"
-        top="0"
-        right="0"
-      />
+      {!props.hideBgImg && (
+        <Box
+          as="img"
+          src="/imgs/bg-decoration.png"
+          position="absolute"
+          w="787px"
+          h="255px"
+          top="0"
+          right="0"
+        />
+      )}
     </Box>
   );
 };

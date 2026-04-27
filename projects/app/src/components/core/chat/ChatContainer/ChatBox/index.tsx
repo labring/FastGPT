@@ -1966,7 +1966,7 @@ const ChatBox = ({
           bg="linear-gradient(180deg, #FAFCFF, #FFFFFF)"
         >
           {/* 右上角装饰区域 */}
-          <BgDecoration />
+          <BgDecoration hideBgImg={true} />
 
           {/* 居中区域：标题 + 输入框 */}
           <Flex
