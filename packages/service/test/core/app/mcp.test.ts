@@ -18,7 +18,7 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
   }
 }));
 
-import { MCPClient, getMCPChildren } from '@fastgpt/service/core/app/mcp';
+import { MCPClient, assertMCPUrlNotInternal, getMCPChildren } from '@fastgpt/service/core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 
 // Access private client via prototype for spying
@@ -37,6 +37,18 @@ beforeEach(() => {
 
 describe('MCPClient', () => {
   const config = { url: 'http://localhost:3000/mcp', headers: { Authorization: 'Bearer test' } };
+
+  describe('assertMCPUrlNotInternal', () => {
+    it('should reject localhost MCP endpoints', async () => {
+      await expect(assertMCPUrlNotInternal('http://localhost:3000/mcp')).rejects.toBe(
+        'Request to private network not allowed'
+      );
+    });
+
+    it('should allow public MCP endpoints', async () => {
+      await expect(assertMCPUrlNotInternal('https://example.com/mcp')).resolves.toBeUndefined();
+    });
+  });
 
   // Helper: stub getConnection to avoid real network calls
   const stubConnection = (mcpClient: MCPClient) => {

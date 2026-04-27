@@ -13,12 +13,15 @@ import {
   UpdateMcpToolsBodySchema,
   type UpdateMcpToolsBodyType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
 
 export type updateMCPToolsQuery = {};
 
 async function handler(req: ApiRequestProps<UpdateMcpToolsBodyType>, res: ApiResponseType) {
   const { appId, url, toolList, headerSecret } = UpdateMcpToolsBodySchema.parse(req.body);
   const { app } = await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
+
+  await assertMCPUrlNotInternal(url);
 
   const formatedHeaderAuth = storeSecretValue(headerSecret);
 

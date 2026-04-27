@@ -16,7 +16,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
-import { MCPClient } from '../../../../../../app/mcp';
+import { assertMCPUrlNotInternal, MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
 import { getS3ChatSource } from '../../../../../../../common/s3/sources/chat';
 import { parseToolId } from '../../../../child/runTool';
@@ -197,6 +197,9 @@ export const dispatchTool = async ({
 
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
+
+      await assertMCPUrlNotInternal(url);
+
       const mcpClient = new MCPClient({
         url,
         headers: getSecretValue({

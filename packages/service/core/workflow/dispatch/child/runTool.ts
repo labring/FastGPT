@@ -7,7 +7,7 @@ import {
   type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { MCPClient } from '../../../app/mcp';
+import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
@@ -214,6 +214,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const { headerSecret, url } =
         tool.nodes[0].toolConfig?.mcpToolSet ?? tool.nodes[0].inputs[0].value;
 
+      await assertMCPUrlNotInternal(url);
+
       const context = getWorkflowContext();
       // Buffer mcpClient in this workflow
       const mcpClient =
@@ -300,6 +302,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       // mcp tool (old version compatible)
       const { toolData, system_toolData, ...restParams } = params;
       const { name: toolName, url, headerSecret } = toolData || system_toolData;
+
+      await assertMCPUrlNotInternal(url);
 
       const mcpClient = new MCPClient({
         url,
