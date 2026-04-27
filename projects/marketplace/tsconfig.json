@@ -7,5 +7,10 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "../../packages/**/*.ts"],
-  "exclude": ["**/*.test.ts", "../../packages/**/test/**"]
+  "exclude": [
+    "**/*.test.ts",
+    "../../packages/**/vitest.config.ts",
+    "../../packages/**/vitest.integration.config.ts",
+    "../../packages/**/test/**"
+  ]
 }
