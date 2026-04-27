@@ -47,5 +47,8 @@ jobs:
       - name: Test
         run: pnpm test:admin
       - name: Report Coverage
-        if: always()
+        if: always() && hashFiles('pro/admin/coverage/coverage-summary.json') != ''
         uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          jsonFinalPath: pro/admin/coverage/coverage-final.json
+          jsonSummaryPath: pro/admin/coverage/coverage-summary.json
