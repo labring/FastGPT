@@ -10,9 +10,9 @@ import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 
 // Mock the S3 bucket
 vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
-  S3PrivateBucket: vi.fn().mockImplementation(() => ({
-    bucketName: 'fastgpt-private',
-    client: {
+  S3PrivateBucket: vi.fn(function (this: any) {
+    this.bucketName = 'fastgpt-private';
+    this.client = {
       uploadObject: vi.fn().mockResolvedValue(undefined),
       downloadObject: vi.fn().mockResolvedValue({
         // body must be async-iterable; an array satisfies for-await-of
@@ -20,8 +20,8 @@ vi.mock('@fastgpt/service/common/s3/buckets/private', () => ({
       }),
       deleteObject: vi.fn().mockResolvedValue(undefined),
       checkObjectExists: vi.fn().mockResolvedValue({ exists: true })
-    }
-  }))
+    };
+  })
 }));
 
 describe('storage', () => {
@@ -131,12 +131,12 @@ describe('storage', () => {
       const { S3PrivateBucket: MockBucket } = await import(
         '@fastgpt/service/common/s3/buckets/private'
       );
-      (MockBucket as any).mockImplementationOnce(() => ({
-        bucketName: 'fastgpt-private',
-        client: {
+      (MockBucket as any).mockImplementationOnce(function (this: any) {
+        this.bucketName = 'fastgpt-private';
+        this.client = {
           downloadObject: vi.fn().mockResolvedValue({ body: null })
-        }
-      }));
+        };
+      });
 
       const storageInfo = {
         bucket: 'fastgpt-private',
