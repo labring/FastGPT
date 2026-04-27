@@ -43,7 +43,4 @@ document/.source
 projects/app/worker/
 pro/admin/worker/
 
-# Agent
-.codex
-
 .turbo
