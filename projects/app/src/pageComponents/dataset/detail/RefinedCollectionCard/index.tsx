@@ -17,7 +17,9 @@ import {
   HStack,
   Button,
   Alert,
-  Text
+  Text,
+  ModalBody,
+  ModalFooter
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
@@ -32,6 +34,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
@@ -62,6 +65,17 @@ import MoveCollectionDuplicateModal from './MoveCollectionDuplicateModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import {
+  getCollectionCollaboratorList,
+  postUpdateCollectionCollaborators,
+  deleteCollectionCollaborators,
+  postResumeCollectionInheritPermission,
+  postChangeCollectionOwner
+} from '@/web/core/dataset/api/collaborator';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 
 const EmptyCollectionTip = dynamic(() => import('../CollectionCard/EmptyCollectionTip'));
 const DatabaseListTable = dynamic(() => import('../CollectionCard/DatabaseListTable'));
@@ -87,6 +101,7 @@ const CollectionCard = () => {
   }>();
   const [setTagsCollectionId, setSetTagsCollectionId] = useState<string | undefined>();
   const [showBatchSetTags, setShowBatchSetTags] = useState(false);
+  const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionsListItemType>();
 
   // Track if current getData call is from polling (to suppress loading state)
   const isPollingRef = useRef(false);
@@ -196,10 +211,16 @@ const CollectionCard = () => {
     collectionId: string;
     collectionName: string;
   }>();
+  const [pendingMoveData, setPendingMoveData] = useState<{
+    collectionId: string;
+    collectionName: string;
+    parentId: string | null | undefined;
+  }>();
   const [moveDuplicateData, setMoveDuplicateData] = useState<{
     duplicateFiles: string[];
     parentId: string;
     collectionId: string;
+    inheritParentPermission: boolean;
   }>();
   const [isMoveLoading, setIsMoveLoading] = useState(false);
 
@@ -521,14 +542,16 @@ const CollectionCard = () => {
                 {formatCollections.map((collection) => (
                   <Tr
                     key={collection._id}
-                    _hover={{ bg: 'myGray.50' }}
-                    cursor={'pointer'}
+                    _hover={{ bg: collection.permission.hasReadPer ? 'myGray.50' : undefined }}
+                    cursor={collection.permission.hasReadPer ? 'pointer' : 'not-allowed'}
+                    opacity={collection.permission.hasReadPer ? 1 : 0.5}
                     {...getBoxProps({
                       dataId: collection._id,
                       isFolder: collection.type === DatasetCollectionTypeEnum.folder
                     })}
                     draggable={false}
                     onClick={() => {
+                      if (!collection.permission.hasReadPer) return;
                       if (collection.type === DatasetCollectionTypeEnum.folder) {
                         router.push({
                           query: {
@@ -877,7 +900,26 @@ const CollectionCard = () => {
                                         onClick: () => setSetTagsCollectionId(collection._id)
                                       }
                                     ]
-                                  : [])
+                                  : []),
+                                ...[
+                                  {
+                                    label: (
+                                      <Flex
+                                        alignItems={'center'}
+                                        opacity={collection.permission.hasManagePer ? 1 : 0.4}
+                                      >
+                                        <MyIcon name={'key'} w={'0.9rem'} mr={2} />
+                                        {t('common:permission.Permission config')}
+                                      </Flex>
+                                    ),
+                                    onClick: collection.permission.hasManagePer
+                                      ? () => setEditPerCollection(collection)
+                                      : undefined,
+                                    menuItemStyles: collection.permission.hasManagePer
+                                      ? undefined
+                                      : { cursor: 'not-allowed' }
+                                  }
+                                ]
                               ]
                             },
                             {
@@ -988,30 +1030,13 @@ const CollectionCard = () => {
               setMoveDuplicateData(undefined);
             }}
             onSuccess={async ({ parentId }) => {
-              const checkResult = await postCheckDuplicateCollection({
-                datasetId: datasetDetail._id,
-                parentId: parentId || undefined,
-                fileNames: [moveCollectionData.collectionName]
+              if (!moveCollectionData) return;
+              setPendingMoveData({
+                collectionId: moveCollectionData.collectionId,
+                collectionName: moveCollectionData.collectionName,
+                parentId
               });
-
-              if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
-                setMoveDuplicateData({
-                  duplicateFiles: checkResult.duplicateFileNames,
-                  parentId: parentId ?? '',
-                  collectionId: moveCollectionData.collectionId
-                });
-              } else {
-                await putDatasetCollectionById({
-                  id: moveCollectionData.collectionId,
-                  parentId: parentId ?? undefined
-                });
-                getData(pageNum);
-                setMoveCollectionData(undefined);
-                toast({
-                  status: 'success',
-                  title: t('common:move_success')
-                });
-              }
+              setMoveCollectionData(undefined);
             }}
           />
         )}
@@ -1028,7 +1053,8 @@ const CollectionCard = () => {
               try {
                 await putDatasetCollectionById({
                   id: moveDuplicateData.collectionId,
-                  parentId: moveDuplicateData.parentId ?? undefined
+                  parentId: moveDuplicateData.parentId,
+                  inheritParentPermission: moveDuplicateData.inheritParentPermission
                 });
                 getData(pageNum);
                 setMoveCollectionData(undefined);
@@ -1047,7 +1073,8 @@ const CollectionCard = () => {
                 await putDatasetCollectionById({
                   id: moveDuplicateData.collectionId,
                   parentId: moveDuplicateData.parentId,
-                  overwriteDuplicate: true
+                  overwriteDuplicate: true,
+                  inheritParentPermission: moveDuplicateData.inheritParentPermission
                 });
                 getData(pageNum);
                 setMoveCollectionData(undefined);
@@ -1078,6 +1105,125 @@ const CollectionCard = () => {
               setShowBatchSetTags(false);
               setSelectedItems([]);
             }}
+          />
+        )}
+
+        {!!pendingMoveData && (
+          <MyModal
+            isOpen
+            iconSrc="common/info"
+            w={'30rem'}
+            title={t('common:Move')}
+            onClose={() => setPendingMoveData(undefined)}
+          >
+            <ModalBody>{t('dataset:move.permission_choice_tip')}</ModalBody>
+            <ModalFooter gap={3}>
+              <Button variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
+                {t('common:Cancel')}
+              </Button>
+              <Button
+                onClick={async () => {
+                  const { collectionId, collectionName, parentId } = pendingMoveData;
+                  setPendingMoveData(undefined);
+                  const checkResult = await postCheckDuplicateCollection({
+                    datasetId: datasetDetail._id,
+                    parentId: parentId || undefined,
+                    fileNames: [collectionName]
+                  });
+                  if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
+                    setMoveDuplicateData({
+                      duplicateFiles: checkResult.duplicateFileNames,
+                      parentId: parentId ?? '',
+                      collectionId,
+                      inheritParentPermission: true
+                    });
+                  } else {
+                    await putDatasetCollectionById({
+                      id: collectionId,
+                      parentId: parentId ?? undefined,
+                      inheritParentPermission: true
+                    });
+                    getData(pageNum);
+                    toast({ status: 'success', title: t('common:move_success') });
+                  }
+                }}
+              >
+                {t('dataset:move.inherit_folder_permission')}
+              </Button>
+              <Button
+                variant={'whiteBase'}
+                onClick={async () => {
+                  const { collectionId, collectionName, parentId } = pendingMoveData;
+                  setPendingMoveData(undefined);
+                  const checkResult = await postCheckDuplicateCollection({
+                    datasetId: datasetDetail._id,
+                    parentId: parentId || undefined,
+                    fileNames: [collectionName]
+                  });
+                  if (checkResult.duplicateFileNames && checkResult.duplicateFileNames.length > 0) {
+                    setMoveDuplicateData({
+                      duplicateFiles: checkResult.duplicateFileNames,
+                      parentId: parentId ?? '',
+                      collectionId,
+                      inheritParentPermission: false
+                    });
+                  } else {
+                    await putDatasetCollectionById({
+                      id: collectionId,
+                      parentId: parentId ?? undefined,
+                      inheritParentPermission: false
+                    });
+                    getData(pageNum);
+                    toast({ status: 'success', title: t('common:move_success') });
+                  }
+                }}
+              >
+                {t('dataset:move.keep_independent_permission')}
+              </Button>
+            </ModalFooter>
+          </MyModal>
+        )}
+
+        {!!editPerCollection && (
+          <ConfigPerModal
+            name={editPerCollection.name}
+            showEffectScope
+            effectScope={editPerCollection.permissionEffectScope}
+            isInheritPermission={editPerCollection.inheritPermission}
+            hasParent={true}
+            resumeInheritPermission={() =>
+              postResumeCollectionInheritPermission(editPerCollection._id).then(() =>
+                getData(pageNum)
+              )
+            }
+            onChangeOwner={(tmbId: string) =>
+              postChangeCollectionOwner({
+                collectionId: editPerCollection._id,
+                ownerId: tmbId
+              }).then(() => getData(pageNum))
+            }
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: editPerCollection.permission,
+              onGetCollaboratorList: () => getCollectionCollaboratorList(editPerCollection._id),
+              roleList: DatasetRoleList,
+              onUpdateCollaborators: (props) =>
+                postUpdateCollectionCollaborators({
+                  ...props,
+                  collectionId: editPerCollection._id
+                }),
+              onDelOneCollaborator: async (props) =>
+                deleteCollectionCollaborators({ ...props, collectionId: editPerCollection._id }),
+              refreshDeps: [editPerCollection._id, editPerCollection.inheritPermission]
+            }}
+            onConfirmPermission={({ collaborators, permissionEffectScope }) =>
+              postUpdateCollectionCollaborators({
+                collaborators,
+                collectionId: editPerCollection._id,
+                permissionEffectScope
+              }).then(() => getData(pageNum))
+            }
+            onClose={() => setEditPerCollection(undefined)}
           />
         )}
       </Flex>

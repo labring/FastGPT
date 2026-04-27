@@ -16,7 +16,7 @@ import type {
 export type DatasetCollectionsListItemType = {
   tableSchemaDescription: DatasetCollectionSchemaType['tableSchema']['description'];
   _id: string;
-  parentId?: DatasetCollectionSchemaType['parentId'];
+  parentId?: string | null;
   tmbId: DatasetCollectionSchemaType['tmbId'];
   name: DatasetCollectionSchemaType['name'];
   type: DatasetCollectionSchemaType['type'];
@@ -31,6 +31,8 @@ export type DatasetCollectionsListItemType = {
   fileId?: string;
   rawLink?: string;
   permission: DatasetPermission;
+  inheritPermission?: DatasetCollectionSchemaType['inheritPermission'];
+  permissionEffectScope?: DatasetCollectionSchemaType['permissionEffectScope'];
 
   dataAmount: number;
   trainingAmount: number;

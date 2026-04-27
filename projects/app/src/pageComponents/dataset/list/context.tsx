@@ -24,6 +24,9 @@ import { type EditResourceInfoFormType } from '@/components/common/Modal/EditRes
 import { useTranslation } from 'next-i18next';
 import { useInfiniteScroll } from '@fastgpt/web/hooks/useInfiniteScroll';
 import { useDebounce } from 'ahooks';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
@@ -78,7 +81,12 @@ export const DatasetsContext = createContext<DatasetContextType>({
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
+  const [pendingMoveData, setPendingMoveData] = useState<{
+    datasetId: string;
+    parentId: ParentIdType;
+  }>();
   const [searchKey, setSearchKey] = useState('');
   const { parentId = null } = router.query as { parentId?: string | null };
   const debouncedSearchKey = useDebounce(searchKey, { wait: 500 });
@@ -119,13 +127,12 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
 
   const onMoveDataset = useCallback(
     async (parentId: ParentIdType) => {
-      if (!moveDatasetId) return;
-      await onUpdateDataset({
-        id: moveDatasetId,
-        parentId
-      });
+      if (!moveDatasetId) return Promise.reject('');
+      setPendingMoveData({ datasetId: moveDatasetId, parentId });
+      setMoveDatasetId(undefined);
+      return Promise.reject('');
     },
-    [moveDatasetId, onUpdateDataset]
+    [moveDatasetId]
   );
 
   const getDatasetFolderList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
@@ -178,8 +185,52 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
           title={t('common:Move')}
           onClose={() => setMoveDatasetId(undefined)}
           onConfirm={(parentId) => onMoveDataset(parentId)}
-          moveHint={t('dataset:move.hint')}
         />
+      )}
+      {!!pendingMoveData && (
+        <MyModal
+          isOpen
+          iconSrc="common/info"
+          w={'30rem'}
+          title={t('common:Move')}
+          onClose={() => setPendingMoveData(undefined)}
+        >
+          <ModalBody>
+            <Box>{t('dataset:move.permission_choice_tip')}</Box>
+          </ModalBody>
+          <ModalFooter gap={3}>
+            <Button variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
+              {t('common:Cancel')}
+            </Button>
+            <Button
+              onClick={async () => {
+                await onUpdateDataset({
+                  id: pendingMoveData.datasetId,
+                  parentId: pendingMoveData.parentId,
+                  inheritParentPermission: true
+                });
+                setPendingMoveData(undefined);
+                toast({ status: 'success', title: t('common:move_success') });
+              }}
+            >
+              {t('dataset:move.inherit_folder_permission')}
+            </Button>
+            <Button
+              variant={'whiteBase'}
+              onClick={async () => {
+                await onUpdateDataset({
+                  id: pendingMoveData.datasetId,
+                  parentId: pendingMoveData.parentId,
+                  inheritParentPermission: false
+                });
+                setPendingMoveData(undefined);
+                toast({ status: 'success', title: t('common:move_success') });
+              }}
+            >
+              {t('dataset:move.keep_independent_permission')}
+            </Button>
+          </ModalFooter>
+        </MyModal>
       )}
     </DatasetsContext.Provider>
   );

@@ -31,6 +31,7 @@ export type MemberManagerInputPropsType = {
   onGetCollaboratorList: () => Promise<CollaboratorListType>;
   roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
+  onUpdateCollaboratorsDetail?: (details: CollaboratorItemDetailType[]) => void;
   onDelOneCollaborator?: (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
   ) => Promise<any>;
@@ -83,6 +84,7 @@ const CollaboratorContextProvider = ({
   onGetCollaboratorList,
   roleList,
   onUpdateCollaborators,
+  onUpdateCollaboratorsDetail,
   onDelOneCollaborator,
   children,
   refetchResource,
@@ -202,6 +204,7 @@ const CollaboratorContextProvider = ({
     isFetchingCollaborator,
     roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
+    onUpdateCollaboratorsDetail,
     onDelOneCollaborator: onDelOneCollaboratorThen,
     getRoleLabelList,
     defaultRole,

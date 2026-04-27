@@ -1,5 +1,5 @@
 import type { CollaboratorIdType, CollaboratorItemType } from './collaborator';
-import { ManageRoleVal, OwnerRoleVal } from './constant';
+import { ManageRoleVal, OwnerRoleVal, ReadRoleVal, WriteRoleVal } from './constant';
 import type { RoleValueType } from './type';
 import { type PermissionValueType } from './type';
 /**
@@ -23,10 +23,11 @@ export const sumPer = (...per: PermissionValueType[]) => {
 
 /**
  * Check if the update cause conflict (need to remove inheritance permission).
- * Conflict condition:
- * The updated collaborator is a parent collaborator.
+ * Conflict rules:
+ * 1. Parent is Owner -> child must be Manage or Owner, otherwise conflict
+ * 2. Child is Owner -> parent must be Write or Manage or Owner, otherwise conflict
+ * 3. Others -> any difference is conflict
  * @param parentClbs parent collaborators
- * @param oldChildClbs old child collaborators
  * @param newChildClbs new child collaborators
  */
 export const checkRoleUpdateConflict = ({
@@ -36,10 +37,6 @@ export const checkRoleUpdateConflict = ({
   parentClbs: CollaboratorItemType[];
   newChildClbs: CollaboratorItemType[];
 }): boolean => {
-  if (parentClbs.length === 0) {
-    return false;
-  }
-
   // Use a Map for faster lookup by teamId
   const parentClbRoleMap = new Map(
     parentClbs.map((clb) => [
@@ -57,7 +54,33 @@ export const checkRoleUpdateConflict = ({
 
   for (const changedClb of changedClbs) {
     const parent = parentClbRoleMap.get(getCollaboratorId(changedClb));
-    if (parent && ((changedClb.changedRole & parent.permission) !== 0 || changedClb.deleted)) {
+    if (!parent) {
+      // New collaborator added without parent: only conflict if parentClbs is non-empty
+      if (parentClbs.length > 0) return true;
+      continue;
+    }
+
+    const parentRole = parent.permission;
+    const childRole = changedClb.permission;
+
+    // Rule 1: Parent is Owner -> child must be Manage or Owner
+    if (parentRole === OwnerRoleVal) {
+      if (!(childRole & ManageRoleVal) || changedClb.deleted) {
+        return true;
+      }
+      continue;
+    }
+
+    // Rule 2: Child is Owner -> parent must be Write or Manage or Owner
+    if (childRole === OwnerRoleVal) {
+      if (!parentRole || parentRole === ReadRoleVal) {
+        return true;
+      }
+      continue;
+    }
+
+    // Rule 3: Others -> any difference is conflict
+    if (changedClb.changedRole !== 0 || changedClb.deleted) {
       return true;
     }
   }
@@ -68,6 +91,7 @@ export const checkRoleUpdateConflict = ({
 export type ChangedClbType = {
   changedRole: RoleValueType;
   deleted: boolean;
+  permission: PermissionValueType;
 } & CollaboratorIdType;
 
 /**
@@ -145,6 +169,20 @@ export const getChangedCollaborators = ({
 export const getCollaboratorId = (clb: CollaboratorIdType) =>
   (clb.tmbId || clb.groupId || clb.orgId)!;
 
+export const getRealCollaboratorList = <T extends CollaboratorItemType>({
+  isInherit,
+  parentClbs,
+  childClbs
+}: {
+  isInherit: boolean;
+  parentClbs: T[];
+  childClbs: T[];
+}): T[] => {
+  if (!isInherit) return childClbs;
+  return mergeCollaboratorList({ parentClbs, childClbs });
+};
+
+// childClbs 中的所有者可能不同
 export const mergeCollaboratorList = <T extends CollaboratorItemType>({
   parentClbs,
   childClbs

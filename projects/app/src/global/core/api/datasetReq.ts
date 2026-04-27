@@ -1,4 +1,10 @@
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import type {
+  CollectionStatusEnum
+} from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { PaginationProps } from '@fastgpt/global/openapi/api';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
@@ -12,6 +18,9 @@ export type GetDatasetCollectionsProps = PaginationProps<{
   filterTags?: string[];
   simple?: boolean;
   selectFolder?: boolean;
+  sortBy?: 'name' | 'updateTime' | 'createTime' | 'dataAmount';
+  sortOrder?: 'asc' | 'desc';
+  status?: CollectionStatusEnum | CollectionStatusEnum[];
 }>;
 
 /* ==== data ===== */

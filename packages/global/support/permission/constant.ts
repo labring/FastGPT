@@ -50,9 +50,15 @@ export enum PerResourceTypeEnum {
   team = 'team',
   app = 'app',
   dataset = 'dataset',
+  collection = 'collection',
   evaluation = 'evaluation',
   model = 'model',
   agentSkill = 'agentSkill'
+}
+
+export enum PermissionEffectScopeEnum {
+  allChildren = 'allChildren', // 对所有子集资源生效（默认）
+  currentOnly = 'currentOnly' // 仅对当前资源生效
 }
 
 /* new permission */

@@ -9,7 +9,11 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManagePermissionVal,
+  PerResourceTypeEnum,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -22,7 +26,14 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
-import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import {
+  syncChildrenPermission,
+  replaceResourceClbs
+} from '@fastgpt/service/support/permission/inheritPermission';
+import {
+  deleteResourceClbs,
+  getResourceOwnedClbs
+} from '@fastgpt/service/support/permission/controller';
 export type UpdateDatasetCollectionParams = {
   id?: string;
   parentId?: string;
@@ -35,6 +46,9 @@ export type UpdateDatasetCollectionParams = {
   // External file id
   datasetId?: string;
   externalFileId?: string;
+
+  // move option: whether to inherit new parent's permission (default true)
+  inheritParentPermission?: boolean;
 };
 
 // Set folder collection children forbid status
@@ -83,21 +97,21 @@ const updateFolderChildrenForbid = async ({
   );
 };
 
-async function handler(req: ApiRequestProps) {
-  let { datasetId, externalFileId, id, parentId, name, tags, forbid, createTime } =
-    UpdateDatasetCollectionBodySchema.parse(req.body);
-  const { overwriteDuplicate } = req.body as { overwriteDuplicate?: boolean };
+async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
+  let {
+    datasetId,
+    externalFileId,
+    id,
+    parentId,
+    name,
+    tags,
+    forbid,
+    createTime,
+    overwriteDuplicate,
+    inheritParentPermission = true
+  } = req.body;
 
-  // 通过 externalFileId 查找 collection：先鉴权 dataset，再查询
   if (datasetId && externalFileId) {
-    await authDataset({
-      req,
-      authToken: true,
-      authApiKey: true,
-      datasetId,
-      per: WritePermissionVal
-    });
-
     const collection = await MongoDatasetCollection.findOne({ datasetId, externalFileId }, '_id');
     if (!collection) {
       return Promise.reject(CommonErrEnum.fileNotFound);
@@ -132,6 +146,45 @@ async function handler(req: ApiRequestProps) {
   // Determine if this is a move or rename operation
   const isMoving = parentId !== undefined && String(parentId) !== String(collection.parentId);
   const isRenaming = name && name !== collection.name;
+
+  // Additional permission checks for move operation (mirroring dataset update logic)
+  if (isMoving) {
+    const normalizedNewParentId =
+      parentId && String(parentId).trim() !== '' ? String(parentId) : null;
+
+    if (normalizedNewParentId) {
+      // Moving to a folder collection: check manage permission on target folder
+      await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: normalizedNewParentId,
+        per: ManagePermissionVal
+      });
+    }
+
+    if (collection.parentId) {
+      // Moving from a folder collection: check manage permission on old folder
+      await authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: String(collection.parentId),
+        per: ManagePermissionVal
+      });
+    }
+
+    if (!normalizedNewParentId || !collection.parentId) {
+      // Moving to or from root (dataset level): check manage permission on the dataset
+      await authDataset({
+        req,
+        authToken: true,
+        authApiKey: true,
+        datasetId: collection.datasetId,
+        per: ManagePermissionVal
+      });
+    }
+  }
 
   await mongoSessionRun(async (session) => {
     let finalName = name;
@@ -261,6 +314,7 @@ async function handler(req: ApiRequestProps) {
       {
         $set: {
           ...(parentId !== undefined && { parentId: parentId || null }),
+          ...(isMoving && { inheritPermission: inheritParentPermission }),
           ...(finalName && {
             name: finalName,
             updateTime: getCollectionUpdateTime({ name: finalName })
@@ -282,6 +336,60 @@ async function handler(req: ApiRequestProps) {
         forbid,
         session
       });
+    }
+
+    // Sync permissions when moving collection to a new parent
+    if (isMoving) {
+      if (inheritParentPermission) {
+        const normalizedParentId =
+          parentId && String(parentId).trim() !== '' ? String(parentId) : null;
+
+        // Get new parent's collaborators:
+        // - Moving into a folder collection → use PerResourceTypeEnum.collection
+        // - Moving to dataset root (parentId = null):
+        //   * Non-folder: inherits from dataset via inheritPermission: true, no direct clbs needed
+        //   * Folder: must sync dataset's clbs since folders always have independent permissions
+        const parentClbs = normalizedParentId
+          ? await getResourceOwnedClbs({
+              teamId,
+              resourceId: normalizedParentId,
+              resourceType: PerResourceTypeEnum.collection,
+              session
+            })
+          : collection.type === DatasetCollectionTypeEnum.folder
+            ? await getResourceOwnedClbs({
+                teamId,
+                resourceId: collection.datasetId,
+                resourceType: PerResourceTypeEnum.dataset,
+                session
+              })
+            : [];
+
+        // Replace own clbs with parent clbs (move = full inheritance)
+        await replaceResourceClbs({
+          resourceType: PerResourceTypeEnum.collection,
+          teamId,
+          resourceId: String(id),
+          collaborators: parentClbs,
+          session
+        });
+
+        await syncChildrenPermission({
+          resource: {
+            _id: String(collection._id),
+            type: collection.type,
+            teamId,
+            parentId: normalizedParentId ?? undefined
+          },
+          folderTypeList: [DatasetCollectionTypeEnum.folder],
+          resourceType: PerResourceTypeEnum.collection,
+          resourceModel: MongoDatasetCollection,
+          collaborators: parentClbs,
+          additionalFilter: { datasetId: collection.datasetId },
+          session
+        });
+      }
+      // else: keep independent, no permission sync
     }
   });
 

@@ -1,4 +1,5 @@
 import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/model.d';
+import type { PermissionEffectScopeEnum } from '../../support/permission/constant';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import type { PushDatasetDataChunkProps } from './api';
 import type {
@@ -152,6 +153,7 @@ export type DatasetSchemaType = {
   chunkSettings?: ChunkSettingsType;
 
   inheritPermission: boolean;
+  permissionEffectScope?: PermissionEffectScopeEnum;
 
   // 同义词文件ID数组（当前版本仅支持单个文件）
   synonymFiles?: string[];
@@ -187,6 +189,10 @@ export type DatasetCollectionSchemaType = ChunkSettingsType & {
 
   // Status
   forbid?: boolean;
+
+  // Permission
+  inheritPermission?: boolean;
+  permissionEffectScope?: PermissionEffectScopeEnum;
 
   // Collection metadata
   fileId?: string; // local file id
@@ -324,6 +330,7 @@ export type DatasetListItemType = {
   permission: DatasetPermission;
   vectorModel?: EmbeddingModelItemType;
   inheritPermission: boolean;
+  permissionEffectScope?: PermissionEffectScopeEnum;
   private?: boolean;
   sourceMember?: SourceMemberType;
   dataCount?: number;

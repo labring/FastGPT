@@ -17,6 +17,7 @@ import type {
 } from './constants';
 import type { ParentIdType } from '../../common/parentFolder/type';
 import type { APIFileItemType } from './apiDataset/type';
+import type { PermissionEffectScopeEnum } from '../../support/permission/constant';
 
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {
@@ -38,9 +39,13 @@ export type DatasetUpdateBody = {
   externalReadUrl?: DatasetSchemaType['externalReadUrl'];
   defaultPermission?: DatasetSchemaType['defaultPermission'];
   chunkSettings?: DatasetSchemaType['chunkSettings'];
+  permissionEffectScope?: PermissionEffectScopeEnum;
 
   // sync schedule
   autoSync?: boolean;
+
+  // move option: whether to inherit new parent's permission (default true)
+  inheritParentPermission?: boolean;
 };
 
 /* ================= collection ===================== */

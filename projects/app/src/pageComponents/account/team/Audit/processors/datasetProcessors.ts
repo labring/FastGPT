@@ -12,5 +12,6 @@ export const processUpdateDatasetCollaboratorSpecific = (metadata: any) => {
 };
 
 export const createDatasetProcessors = {
-  UPDATE_DATASET_COLLABORATOR: processUpdateDatasetCollaboratorSpecific
+  UPDATE_DATASET_COLLABORATOR: processUpdateDatasetCollaboratorSpecific,
+  UPDATE_COLLECTION_COLLABORATOR: processUpdateDatasetCollaboratorSpecific
 };

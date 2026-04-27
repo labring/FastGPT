@@ -13,7 +13,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   syncChildrenPermission,
-  syncCollaborators
+  replaceResourceClbs
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ClientSession } from 'mongoose';
@@ -47,14 +47,24 @@ export type AppUpdateBody = AppUpdateParams;
 //  (2) 目标目录的管理权限
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
 async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
-  const { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags } = req.body;
+  const {
+    parentId,
+    name,
+    avatar,
+    type,
+    intro,
+    nodes,
+    edges,
+    chatConfig,
+    teamTags,
+    inheritParentPermission = true
+  } = req.body;
 
   const { appId } = req.query;
 
   if (!appId) {
     Promise.reject(CommonErrEnum.missingParams);
   }
-  const isMove = parentId !== undefined;
 
   // this step is to get the app and its permission, and we will check the permission manually for
   // different cases
@@ -68,6 +78,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   if (!app) {
     Promise.reject(AppErrEnum.unExist);
   }
+
+  const isMove = parentId !== undefined && String(parentId) !== String(app.parentId ?? '');
 
   let targetName = '';
 
@@ -134,7 +146,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
           edges
         }),
         ...(chatConfig && { chatConfig }),
-        ...(isMove && { inheritPermission: true }),
+        ...(isMove && { inheritPermission: inheritParentPermission }),
         updateTime: new Date()
       },
       { session }
@@ -161,30 +173,34 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   // Move
   if (isMove) {
     await mongoSessionRun(async (session) => {
-      // Inherit folder: Sync children permission and it's clbs
-      const parentClbs = await getResourceOwnedClbs({
-        teamId: app.teamId,
-        resourceId: parentId,
-        resourceType: PerResourceTypeEnum.app,
-        session
-      });
-      // sync self
-      await syncCollaborators({
-        resourceId: app._id,
-        resourceType: PerResourceTypeEnum.app,
-        collaborators: parentClbs,
-        session,
-        teamId: app.teamId
-      });
-      // sync the children
-      await syncChildrenPermission({
-        resource: app,
-        resourceType: PerResourceTypeEnum.app,
-        resourceModel: MongoApp,
-        folderTypeList: AppFolderTypeList,
-        collaborators: parentClbs,
-        session
-      });
+      if (inheritParentPermission) {
+        // Inherit folder: Sync children permission and it's clbs
+        const parentClbs = await getResourceOwnedClbs({
+          teamId: app.teamId,
+          resourceId: parentId,
+          resourceType: PerResourceTypeEnum.app,
+          session
+        });
+        // Replace own clbs with parent clbs (move = full inheritance)
+        await replaceResourceClbs({
+          resourceType: PerResourceTypeEnum.app,
+          teamId: app.teamId,
+          resourceId: String(app._id),
+          collaborators: parentClbs,
+          session
+        });
+        // sync the children
+        await syncChildrenPermission({
+          resource: app,
+          resourceType: PerResourceTypeEnum.app,
+          resourceModel: MongoApp,
+          folderTypeList: AppFolderTypeList,
+          collaborators: parentClbs,
+          session
+        });
+      }
+      // else: keep independent, no permission sync
+
       logAppMove({ tmbId, teamId, app, targetName });
       return onUpdate(session);
     });

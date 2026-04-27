@@ -12,6 +12,7 @@ export type AppUpdateParams = {
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
   teamTags?: AppSchemaType['teamTags'];
+  inheritParentPermission?: boolean;
 };
 
 export type PostPublishAppProps = {

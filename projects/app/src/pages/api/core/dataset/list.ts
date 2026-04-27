@@ -72,7 +72,7 @@ async function handler(req: ApiRequestProps) {
       : [])
   ]);
 
-  // Get team all app permissions
+  // Get team all permissions
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.dataset,
@@ -263,6 +263,7 @@ async function handler(req: ApiRequestProps) {
           dataset.parentId &&
           dataset.type !== DatasetTypeEnum.folder
         ) {
+          // Inherited non-folder: permission = parent + own (own should be empty after upgrade)
           return {
             Per: getPer(String(dataset.parentId)).addRole(getPer(String(dataset._id)).role),
             privateDataset: getClbCount(String(dataset.parentId)) <= 1
@@ -285,6 +286,7 @@ async function handler(req: ApiRequestProps) {
             ? getEmbeddingModel(dataset.vectorModel)
             : undefined,
         inheritPermission: dataset.inheritPermission,
+        permissionEffectScope: dataset.permissionEffectScope,
         tmbId: dataset.tmbId,
         updateTime: dataset.updateTime,
         permission: Per,
