@@ -35,10 +35,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     per: WritePermissionVal
   });
 
-  const mode = getTrainingModeByCollection({
-    ...collection,
-    trainingType: collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk
-  });
+  const mode = getTrainingModeByCollection(collection);
 
   // auth dataset limit
   await checkDatasetIndexLimit({
