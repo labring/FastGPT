@@ -32,6 +32,10 @@ const officeZipFormats = [
   }
 ] as const;
 
+// Temporary escape hatch for encrypted customer files: keep filename extension checks, but skip
+// content sniffing because encrypted bytes cannot be identified by magic headers.
+const skipContentTypeValidation = process.env.SKIP_UPLOAD_CONTENT_TYPE_VALIDATION !== 'false';
+
 const decodeFileName = (filename?: string) => {
   if (!filename) return '';
   try {
@@ -171,6 +175,14 @@ export async function validateUploadFile({
     extension,
     uploadConstraints
   });
+
+  if (skipContentTypeValidation) {
+    return {
+      filename: normalizedFileName,
+      contentType: expectedMime
+    };
+  }
+
   const detected = await fileTypeFromBuffer(buffer).catch((error) => {
     if (error?.name === 'EndOfStreamError' || error?.message === 'End-Of-Stream') {
       return undefined;
