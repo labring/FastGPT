@@ -31,6 +31,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { upsertDatasetSyncJobScheduler } from '@fastgpt/service/core/dataset/datasetSync';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
@@ -42,7 +43,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDatasetModel()?.model,
     vlmModel = getDefaultVLMModel()?.model,
-    apiDatasetServer
+    apiDatasetServer,
+    websiteConfig,
+    autoSync
   } = CreateDatasetBodySchema.parse(req.body);
 
   // auth
@@ -92,7 +95,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           vlmModel,
           avatar,
           type,
-          apiDatasetServer
+          apiDatasetServer,
+          ...(websiteConfig && { websiteConfig }),
+          ...(typeof autoSync === 'boolean' && { autoSync })
         }
       ],
       { session, ordered: true }
@@ -110,6 +115,10 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
 
     return dataset._id;
   });
+
+  if (autoSync) {
+    await upsertDatasetSyncJobScheduler({ datasetId: String(datasetId) });
+  }
 
   pushTrack.createDataset({
     type,

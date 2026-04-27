@@ -24,7 +24,7 @@ import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { getWebLLMModel, getWebEmbeddingModel } from '@/web/common/system/utils';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
@@ -118,6 +118,7 @@ export const DatasetPageContextProvider = ({
         ...state,
         ...data,
         agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
+        vectorModel: data.vectorModel ? getWebEmbeddingModel(data.vectorModel) : state.vectorModel,
         vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
         apiDatasetServer: filterApiDatasetServerPublicData(data.apiDatasetServer)
       }));

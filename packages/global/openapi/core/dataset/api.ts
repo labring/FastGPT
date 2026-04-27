@@ -52,6 +52,18 @@ export const CreateDatasetBodySchema = z.object({
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀)'
+  }),
+  websiteConfig: z
+    .object({
+      url: z.string().meta({ description: '网站 URL' }),
+      selector: z.string().meta({ description: '网站选择器' })
+    })
+    .optional()
+    .meta({
+      description: '网站知识库配置'
+    }),
+  autoSync: z.boolean().optional().meta({
+    description: '是否自动同步'
   })
 });
 
@@ -249,6 +261,10 @@ export const UpdateDatasetBodySchema = z.object({
     example: 'gpt-4o-mini',
     description: '知识库 Agent 模型名称'
   }),
+  vectorModel: z.string().optional().meta({
+    example: 'text-embedding-3-small',
+    description: '向量嵌入模型名称'
+  }),
   vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
     description: '视觉语言模型名称'
@@ -307,6 +323,10 @@ export const CreateDatasetFolderBodySchema = z.object({
   intro: z.string().meta({
     example: '存放产品相关知识库',
     description: '文件夹简介'
+  }),
+  avatar: z.string().optional().meta({
+    example: '/imgs/dataset/avatar.png',
+    description: '文件夹头像'
   })
 });
 export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;

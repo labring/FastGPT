@@ -34,6 +34,11 @@ export type CreateDatasetParams = {
   agentModel?: string;
   vlmModel?: string;
   apiDatasetServer?: ApiDatasetServerType;
+  websiteConfig?: {
+    url: string;
+    selector: string;
+  };
+  autoSync?: boolean;
 };
 
 export type RebuildEmbeddingProps = {

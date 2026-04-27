@@ -19,6 +19,7 @@ const RenderList: Record<
   | {
       Component: React.ComponentType<RenderInputProps>;
       LableRightComponent?: React.ComponentType<RenderInputProps>;
+      LableAfterSwitchComponent?: React.ComponentType<RenderInputProps>;
     }
   | undefined
 > = {
@@ -96,7 +97,7 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.selectTool]: undefined,
   [FlowNodeInputTypeEnum.tagFilterConfig]: {
     Component: dynamic(() => import('./templates/TagFilterConfigInput')),
-    LableRightComponent: dynamic(() =>
+    LableAfterSwitchComponent: dynamic(() =>
       import('./templates/TagFilterConfigInput').then((mod) => mod.TagFilterLogicToggle)
     )
   },
@@ -161,6 +162,13 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
                 item={input}
                 nodeId={nodeId}
               />
+            ) : undefined,
+            LableAfterSwitchComponent: RenderItem.LableAfterSwitchComponent ? (
+              <RenderItem.LableAfterSwitchComponent
+                inputs={filterProInputs}
+                item={input}
+                nodeId={nodeId}
+              />
             ) : undefined
           };
         })();
@@ -181,6 +189,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
                 nodeId={nodeId}
                 input={input}
                 RightComponent={RenderComponent?.LableRightComponent}
+                AfterSwitchComponent={RenderComponent?.LableAfterSwitchComponent}
               />
             )}
 

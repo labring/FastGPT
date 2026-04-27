@@ -198,9 +198,9 @@ const HeaderTagPopOver = () => {
       </MyPopover>
       {isTagManageModalOpen && (
         <TagManageModal
-          onClose={() => {
+          onClose={(refresh) => {
             onCloseTagManageModal();
-            getData(1);
+            if (refresh) getData(1);
           }}
         />
       )}

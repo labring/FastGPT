@@ -9,3 +9,4 @@ export const CreatePostPresignedUrlResponseSchema = z.object({
 export type CreatePostPresignedUrlResponseType = z.infer<
   typeof CreatePostPresignedUrlResponseSchema
 >;
+export type CreatePostPresignedUrlResult = CreatePostPresignedUrlResponseType;

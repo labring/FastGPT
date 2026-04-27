@@ -31,6 +31,7 @@ export type DatasetUpdateBody = {
 
   agentModel?: string;
   vlmModel?: string;
+  vectorModel?: string;
 
   websiteConfig?: DatasetSchemaType['websiteConfig'];
   databaseConfig?: DatasetSchemaType['databaseConfig'];
@@ -144,6 +145,7 @@ export type SetCollectionTagsParams = {
 export type BatchSetCollectionTagsParams = {
   collectionIds: string[];
   tags: CollectionTagValueType[];
+  deleteTagIds?: string[];
   datasetId: string;
 };
 

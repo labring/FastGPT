@@ -4,9 +4,7 @@ import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/r
 import { addDays, format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { zhCN } from 'date-fns/locale/zh-CN';
-import { zhTW } from 'date-fns/locale/zh-TW';
-import { enUS } from 'date-fns/locale/en-US';
+import { zhCN, zhTW, enUS } from 'date-fns/locale';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 

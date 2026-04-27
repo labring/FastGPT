@@ -22,11 +22,12 @@ export type CreateAppFolderBody = {
   parentId?: ParentIdType;
   name: string;
   intro?: string;
+  avatar?: string;
   type: AppTypeEnum.folder | AppTypeEnum.toolFolder;
 };
 
 async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
-  const { name, intro, parentId, type } = req.body;
+  const { name, intro, parentId, type, avatar } = req.body;
 
   if (!name || !type) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -47,7 +48,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
   await mongoSessionRun(async (session) => {
     const app = await MongoApp.create({
       ...parseParentIdInMongo(parentId),
-      avatar: FolderImgUrl,
+      avatar: avatar || FolderImgUrl,
       name,
       intro,
       teamId,

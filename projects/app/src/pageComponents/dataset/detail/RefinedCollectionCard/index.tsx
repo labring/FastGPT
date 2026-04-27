@@ -63,7 +63,6 @@ import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelec
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
-const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('../CollectionCard/EmptyCollectionTip'));
 const DatabaseListTable = dynamic(() => import('../CollectionCard/DatabaseListTable'));
 const SetTagsModal = dynamic(() => import('./SetTagsModal'));
@@ -331,10 +330,7 @@ const CollectionCard = () => {
     errorToast: t('common:core.dataset.error.Start Sync Failed')
   });
 
-  const hasTrainingData = useMemo(
-    () => !!formatCollections.find((item) => item.trainingAmount > 0),
-    [formatCollections]
-  );
+  const hasTrainingData = useContextSelector(CollectionPageContext, (v) => v.hasTrainingData);
 
   // Check if there are any collections in processing state
   const hasProcessingCollections = useMemo(
@@ -393,7 +389,7 @@ const CollectionCard = () => {
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
-      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
+      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 4]}>
         {/* banner */}
         {isDatabase && (
           <Alert status="info" mb={4} borderRadius="md">
@@ -403,9 +399,6 @@ const CollectionCard = () => {
             </Flex>
           </Alert>
         )}
-        {/* header */}
-        <Header hasTrainingData={hasTrainingData} />
-
         {/* collection table */}
         {isDatabase ? (
           <DatabaseListTable
@@ -426,7 +419,7 @@ const CollectionCard = () => {
             }}
           />
         ) : (
-          <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
+          <TableContainer overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
             <Table variant={'simple'} draggable={false}>
               <Thead draggable={false}>
                 <Tr>
@@ -654,75 +647,81 @@ const CollectionCard = () => {
                               );
                               if (tagValues.length === 0) return <Box color="myGray.400">-</Box>;
                               const visible = tagValues.slice(0, 2);
-                              const overflow = tagValues.slice(2);
-                              return (
-                                <Flex flexWrap={'wrap'} gap={1} align={'center'}>
-                                  {visible.map((tv, idx) => {
-                                    const tagDef = allDatasetTags.find((t) => t._id === tv.tagId);
-                                    return (
-                                      <Box
-                                        key={idx}
-                                        px={2}
-                                        py={'1px'}
-                                        fontSize={'xs'}
-                                        bg={'#F0FBFF'}
-                                        color={'#0884DD'}
-                                        borderRadius={'xs'}
-                                        whiteSpace={'nowrap'}
-                                      >
-                                        {tagDef
-                                          ? `${tagDef.tag}：${tagDef.tagType === 'datetime' ? formatTime2YMDHMUtc(Number(tv.value)) : tv.value}`
-                                          : tv.value}
-                                      </Box>
-                                    );
-                                  })}
-                                  {overflow.length > 0 && (
-                                    <MyPopover
-                                      hasArrow={false}
-                                      trigger={'hover'}
-                                      w={'160px'}
-                                      Trigger={
-                                        <Box
-                                          px={2}
-                                          py={'1px'}
-                                          bg={'#1118240D'}
-                                          borderRadius={'33px'}
-                                          fontSize={'xs'}
-                                          cursor={'pointer'}
-                                        >
-                                          {`+${overflow.length}`}
-                                        </Box>
-                                      }
+                              const overflowCount = tagValues.length - 2;
+                              const getTagText = (tv: CollectionTagValueType) => {
+                                const tagDef = allDatasetTags.find((t) => t._id === tv.tagId);
+                                return tagDef
+                                  ? `${tagDef.tag}：${tagDef.tagType === 'datetime' ? formatTime2YMDHMUtc(Number(tv.value)) : tv.value}`
+                                  : tv.value;
+                              };
+                              const tagBadge = (tv: CollectionTagValueType, idx: number) => (
+                                <Box
+                                  key={idx}
+                                  px={2}
+                                  py={1}
+                                  fontSize={'xs'}
+                                  bg={'#F4F4F7'}
+                                  color={'#505F73'}
+                                  borderRadius={'6px'}
+                                  whiteSpace={'nowrap'}
+                                  lineHeight={'14px'}
+                                >
+                                  {getTagText(tv)}
+                                </Box>
+                              );
+                              const trigger = (
+                                <Flex gap={1} align={'center'} flexWrap={'nowrap'}>
+                                  {visible.map((tv, idx) => tagBadge(tv, idx))}
+                                  {overflowCount > 0 && (
+                                    <Box
+                                      px={2}
+                                      py={1}
+                                      bg={'#F4F4F7'}
+                                      borderRadius={'6px'}
+                                      fontSize={'xs'}
+                                      color={'#505F73'}
+                                      whiteSpace={'nowrap'}
+                                      cursor={'pointer'}
+                                      lineHeight={'14px'}
                                     >
-                                      {({}) => (
-                                        <Flex gap={1} p={3} flexWrap={'wrap'}>
-                                          {overflow.map((tv, idx) => {
-                                            const tagDef = allDatasetTags.find(
-                                              (t) => t._id === tv.tagId
-                                            );
-                                            return (
-                                              <Box
-                                                key={idx}
-                                                px={2}
-                                                py={'1px'}
-                                                fontSize={'xs'}
-                                                bg={'#F0FBFF'}
-                                                color={'#0884DD'}
-                                                borderRadius={'xs'}
-                                                whiteSpace={'nowrap'}
-                                              >
-                                                {tagDef
-                                                  ? `${tagDef.tag}：${tagDef.tagType === 'datetime' ? formatTime2YMDHMUtc(Number(tv.value)) : tv.value}`
-                                                  : tv.value}
-                                              </Box>
-                                            );
-                                          })}
-                                        </Flex>
-                                      )}
-                                    </MyPopover>
+                                      {`+${overflowCount}`}
+                                    </Box>
                                   )}
                                 </Flex>
                               );
+                              if (tagValues.length >= 3) {
+                                return (
+                                  <MyPopover
+                                    hasArrow={true}
+                                    trigger={'hover'}
+                                    w="fit-content"
+                                    maxW="none"
+                                    Trigger={trigger}
+                                  >
+                                    {({}) => (
+                                      <Flex flexDirection={'column'} gap={2} p={3}>
+                                        {tagValues.map((tv, idx) => (
+                                          <Box
+                                            key={idx}
+                                            px={2}
+                                            py={1}
+                                            fontSize={'xs'}
+                                            bg={'#F4F4F7'}
+                                            color={'#505F73'}
+                                            borderRadius={'6px'}
+                                            whiteSpace={'nowrap'}
+                                            lineHeight={'14px'}
+                                            alignSelf={'flex-start'}
+                                          >
+                                            {getTagText(tv)}
+                                          </Box>
+                                        ))}
+                                      </Flex>
+                                    )}
+                                  </MyPopover>
+                                );
+                              }
+                              return trigger;
                             })()}
                           </Td>
                         )}

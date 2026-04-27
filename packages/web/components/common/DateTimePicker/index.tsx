@@ -4,9 +4,7 @@ import { Box, Card, Flex, Button, Input, HStack, Text } from '@chakra-ui/react';
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { zhCN } from 'date-fns/locale/zh-CN';
-import { zhTW } from 'date-fns/locale/zh-TW';
-import { enUS } from 'date-fns/locale/en-US';
+import { zhCN, zhTW, enUS } from 'date-fns/locale';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../Icon';
 import MySelect from '../MySelect';
@@ -238,7 +236,7 @@ const DateTimePicker = ({
             bottom={0}
             bg="rgba(0, 0, 0, 0.1)"
             zIndex={9998}
-            onClick={() => setIsOpen(false)}
+            onClick={() => (selectedDate ? handleConfirm() : setIsOpen(false))}
           />
 
           {/* 弹窗内容 */}

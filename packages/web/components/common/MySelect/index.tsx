@@ -48,12 +48,14 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
     description?: string;
     value: T;
     showBorder?: boolean;
+    isDisabled?: boolean;
   }[];
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   customOnOpen?: () => void;
   customOnClose?: () => void;
+  footer?: (closeMenu: () => void) => React.ReactNode;
 
   isInvalid?: boolean;
   isDisabled?: boolean;
@@ -86,6 +88,7 @@ const MySelect = <T = any,>(
     ScrollData,
     customOnOpen,
     customOnClose,
+    footer,
     isInvalid,
     isDisabled,
     ...props
@@ -160,11 +163,13 @@ const MySelect = <T = any,>(
                       bg: 'myGray.100'
                     }
                   : {
-                      color: 'myGray.900'
+                      color: item.isDisabled ? 'myGray.400' : 'myGray.900'
                     })}
+                cursor={item.isDisabled ? 'not-allowed' : 'pointer'}
+                opacity={item.isDisabled ? 0.6 : 1}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (value !== item.value) {
+                  if (!item.isDisabled && value !== item.value) {
                     onClickChange(item.value);
                   }
                 }}
@@ -189,7 +194,7 @@ const MySelect = <T = any,>(
             </Box>
           ))
         ) : (
-          <EmptyTip py={0} />
+          <EmptyTip py={0} mb={5} />
         )}
       </>
     );
@@ -314,6 +319,7 @@ const MySelect = <T = any,>(
           }}
         >
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+          {footer && footer(onClose)}
         </MenuList>
       </Menu>
     </Box>

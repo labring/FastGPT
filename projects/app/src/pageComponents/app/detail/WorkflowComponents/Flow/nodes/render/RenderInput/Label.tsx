@@ -17,9 +17,10 @@ type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
   RightComponent?: React.JSX.Element;
+  AfterSwitchComponent?: React.JSX.Element;
 };
 
-const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
+const InputLabel = ({ nodeId, input, RightComponent, AfterSwitchComponent }: Props) => {
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -69,6 +70,9 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
           />
         </Box>
       )}
+
+      {/* After switch component - renders immediately after type switcher */}
+      {AfterSwitchComponent}
 
       {input.deprecated && (
         <>

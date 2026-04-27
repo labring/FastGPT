@@ -1,4 +1,5 @@
 import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { Types } from 'mongoose';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -170,38 +171,67 @@ async function handler(req: ApiRequestProps) {
   const appCountMap = new Map<string, number>();
   const fileCountMap = new Map<string, number>();
   if (nonFolderDatasets.length > 0) {
-    const [appCounts, fileCounts] = await Promise.all([
-      Promise.all(
-        nonFolderDatasets.map((dataset) =>
-          MongoApp.countDocuments({
-            teamId,
-            modules: {
-              $elemMatch: {
-                inputs: {
-                  $elemMatch: {
-                    key: 'datasets',
-                    'value.datasetId': String(dataset._id)
-                  }
+    const datasetIdStrings = nonFolderDatasets.map((d) => String(d._id));
+    const datasetIdSet = new Set(datasetIdStrings);
+    // find() post-hook converts _id to string, so we need to re-wrap for aggregate $in
+    const datasetObjectIds = datasetIdStrings.map((id) => new Types.ObjectId(id));
+
+    const [fileAgg, apps] = await Promise.all([
+      // fileCount: 单次聚合替代 N 次 countDocuments
+      MongoDatasetCollection.aggregate<{ _id: string; count: number }>([
+        {
+          $match: {
+            datasetId: { $in: datasetObjectIds },
+            type: { $ne: DatasetCollectionTypeEnum.folder },
+            deleteTime: null
+          }
+        },
+        { $group: { _id: { $toString: '$datasetId' }, count: { $sum: 1 } } }
+      ]),
+      // appCount: 单次查询，仅投影必要字段，应用侧统计
+      MongoApp.find(
+        {
+          teamId,
+          modules: {
+            $elemMatch: {
+              inputs: {
+                $elemMatch: {
+                  key: 'datasets',
+                  'value.datasetId': { $in: datasetIdStrings }
                 }
               }
             }
-          })
-        )
-      ),
-      Promise.all(
-        nonFolderDatasets.map((dataset) =>
-          MongoDatasetCollection.countDocuments({
-            datasetId: dataset._id,
-            type: { $ne: DatasetCollectionTypeEnum.folder },
-            deleteTime: null
-          })
-        )
-      )
+          }
+        },
+        { _id: 1, 'modules.inputs': 1 }
+      ).lean()
     ]);
-    nonFolderDatasets.forEach((dataset, index) => {
-      appCountMap.set(String(dataset._id), appCounts[index]);
-      fileCountMap.set(String(dataset._id), fileCounts[index]);
-    });
+
+    for (const item of fileAgg) {
+      fileCountMap.set(String(item._id), item.count);
+    }
+
+    // 应用侧用 Set 对 appId 去重，确保同一 App 引用同一数据集多次只计 1 次
+    const appIdSetMap = new Map<string, Set<string>>();
+    for (const app of apps) {
+      for (const mod of (app.modules as any[]) ?? []) {
+        for (const input of (mod.inputs as any[]) ?? []) {
+          if (input.key === 'datasets' && Array.isArray(input.value)) {
+            for (const item of input.value as { datasetId: string }[]) {
+              if (datasetIdSet.has(item.datasetId)) {
+                if (!appIdSetMap.has(item.datasetId)) {
+                  appIdSetMap.set(item.datasetId, new Set());
+                }
+                appIdSetMap.get(item.datasetId)!.add(String(app._id));
+              }
+            }
+          }
+        }
+      }
+    }
+    for (const [datasetId, appIdSet] of appIdSetMap) {
+      appCountMap.set(datasetId, appIdSet.size);
+    }
   }
 
   const formatDatasets = myDatasets

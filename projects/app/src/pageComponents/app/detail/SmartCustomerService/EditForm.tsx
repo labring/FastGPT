@@ -53,6 +53,7 @@ import { type AppChatConfigType, type AppDatasetSearchParamsType } from '@fastgp
 import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
 import SfRadio from '@/components/SF/SfRadio';
 import SfLeftRadio from '@/components/SF/SfLeftRadio';
+import TagFilterSection from './TagFilterSection';
 
 const SfDatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 const QGConfig = dynamic(() => import('@/components/core/app/assistant/QGConfig'));
@@ -124,6 +125,10 @@ const EditForm = ({
   const { t } = useTranslation();
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+  const datasetIds = useMemo(
+    () => appForm.dataset.datasets.map((d) => d.datasetId),
+    [appForm.dataset.datasets]
+  );
   const [, startTst] = useTransition();
   const { llmModelList, embeddingModelList, reRankModelList, defaultModels } = useSystemStore();
 
@@ -423,6 +428,19 @@ const EditForm = ({
             </MyTooltip>
           ))}
         </Grid>
+      </Box>
+      {/* 检索过滤 */}
+      <Box {...BOX_STYLES}>
+        <TagFilterSection
+          datasetIds={datasetIds}
+          value={appForm.dataset.collectionFilterMatch}
+          onChange={(v) =>
+            setAppForm((state) => ({
+              ...state,
+              dataset: { ...state.dataset, collectionFilterMatch: v }
+            }))
+          }
+        />
       </Box>
       {/* 检索配置 */}
       <Box {...BOX_STYLES}>

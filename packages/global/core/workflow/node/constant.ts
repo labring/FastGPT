@@ -120,7 +120,7 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/input'
   },
   [FlowNodeInputTypeEnum.off]: {
-    icon: 'common/disable'
+    icon: 'circleMinus'
   }
 };
 

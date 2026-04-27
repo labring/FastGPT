@@ -59,6 +59,7 @@ type CollectionPageContextType = {
     databaseName?: string,
     activeStep?: number
   ) => void;
+  hasTrainingData: boolean;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -105,7 +106,8 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
     throw new Error('Function not implemented.');
   },
   hasDatabaseConfig: false,
-  handleOpenConfigPage: () => {}
+  handleOpenConfigPage: () => {},
+  hasTrainingData: false
 });
 
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
@@ -164,6 +166,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       );
     });
   }, [collections, filterTagValues]);
+
+  const hasTrainingData = useMemo(
+    () => collections.some((c) => c.trainingAmount > 0),
+    [collections]
+  );
 
   const syncDataset = useCallback(async () => {
     if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
@@ -259,7 +266,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       pageNum,
       pageSize,
       hasDatabaseConfig,
-      handleOpenConfigPage
+      handleOpenConfigPage,
+      hasTrainingData
     }),
     [
       Pagination,
@@ -270,6 +278,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       getData,
       hasDatabaseConfig,
       handleOpenConfigPage,
+      hasTrainingData,
       isGetting,
       onOpenWebsiteModal,
       openDatasetSyncConfirm,
