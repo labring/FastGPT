@@ -50,15 +50,14 @@ const ToolSelect = ({
 
   return (
     <>
-      <Flex alignItems={'center'}>
+      <Flex h={'32px'} alignItems={'center'}>
         <Flex alignItems={'center'} flex={1}>
-          <MyIcon name={'core/app/toolCall'} w={'20px'} />
-          <FormLabel ml={2}>{t('app:tools')}</FormLabel>
+          <FormLabel>{t('app:tools')}</FormLabel>
           <QuestionTip ml={1} label={t('app:tools_tip')} />
         </Flex>
         <Button
           variant={'transparentBase'}
-          leftIcon={<SmallAddIcon />}
+          leftIcon={<MyIcon name="common/selectLight" w={'0.8rem'} />}
           iconSpacing={1}
           mr={'-5px'}
           size={'sm'}
@@ -87,11 +86,11 @@ const ToolSelect = ({
               <Flex
                 overflow={'hidden'}
                 alignItems={'center'}
-                p={2.5}
+                p={3}
                 bg={'white'}
-                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                borderRadius={'md'}
-                border={'base'}
+                h="40px"
+                borderRadius={'4px'}
+                border={'1px solid #E8EBF0'}
                 borderColor={toolError ? 'red.600' : ''}
                 userSelect={'none'}
                 _hover={{

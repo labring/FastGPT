@@ -46,7 +46,7 @@ Next.js 14+ 内部用 `undici` 执行 rewrites 代理。`undici` 有独立的 TL
 cd projects/app
 pnpm dev:proxy
 # 或指定目标地址
-pnpm dev:proxy url=https://10.109.96.194:19443
+pnpm dev:proxy url=https://10.109.96.195:19443
 ```
 
 ### 配置文件

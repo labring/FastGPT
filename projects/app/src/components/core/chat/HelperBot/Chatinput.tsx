@@ -1,5 +1,6 @@
 import type { FlexProps } from '@chakra-ui/react';
-import { Box, Flex, Textarea, useBoolean } from '@chakra-ui/react';
+import { Box, Flex, Textarea, useBoolean, Image } from '@chakra-ui/react';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import React, { useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -130,7 +131,7 @@ const ChatInput = ({
             height={[5, 6]}
             lineHeight={[5, 6]}
             maxHeight={[24, 32]}
-            minH={'50px'}
+            minH={textareaMinH}
             mb={0}
             maxLength={-1}
             overflowY={'hidden'}
@@ -144,7 +145,7 @@ const ChatInput = ({
             letterSpacing={'0.5px'}
             w={'100%'}
             _placeholder={{
-              color: '#707070',
+              color: 'myWhite.850',
               fontSize: 'sm'
             }}
             value={inputValue}
@@ -230,8 +231,8 @@ const ChatInput = ({
 
   const RenderButtonGroup = useMemo(() => {
     const iconSize = {
-      w: isPc ? '20px' : '16px',
-      h: isPc ? '20px' : '16px'
+      w: isPc ? '30px' : '16px',
+      h: isPc ? '30px' : '16px'
     };
 
     return (
@@ -245,7 +246,7 @@ const ChatInput = ({
         h={[8, 9]}
         gap={[0, 1]}
       >
-        <Box flex={1} />
+        <Flex alignItems={'center'} gap={2} flex={'1 0 0'} w={0} />
         {/* Right button group */}
         <Flex alignItems={'center'} gap={[0, 1]}>
           {/* Attachment Group */}
@@ -260,14 +261,14 @@ const ChatInput = ({
                 p={[1, 2]}
                 borderRadius={'sm'}
                 cursor={'pointer'}
-                _hover={{ bg: 'rgba(0, 0, 0, 0.04)' }}
+                _hover={{ bg: 'myGray.05' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenSelectFile();
                 }}
               >
                 <MyTooltip label={selectFileLabel}>
-                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
+                  <MyIcon name={selectFileIcon as any} w="18px" h="18px" color={'myWhite.850'} />
                 </MyTooltip>
                 <File onSelect={(files) => onSelectFile({ files })} />
               </Flex>
@@ -283,15 +284,15 @@ const ChatInput = ({
 
           {/* Send Button Container */}
           <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
-            <Flex
+            <MyBox
+              display={'flex'}
               alignItems={'center'}
               justifyContent={'center'}
               w={[7, 9]}
               h={[7, 9]}
-              p={[1, 2]}
-              bg={
-                isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
-              }
+              p={0}
+              bg={'transparent'}
+              opacity={!isChatting && !canSendMessage ? 0.4 : 1}
               borderRadius={['md', 'lg']}
               cursor={isChatting ? 'pointer' : canSendMessage ? 'pointer' : 'not-allowed'}
               onClick={(e) => {
@@ -303,13 +304,13 @@ const ChatInput = ({
               }}
             >
               {isChatting ? (
-                <MyIcon {...iconSize} name={'stop'} color={'primary.600'} />
+                <Image src="/imgs/stop.svg" w={iconSize.w} h={iconSize.h} alt="stop" />
               ) : (
                 <MyTooltip label={t('common:core.chat.Send Message')}>
-                  <MyIcon name={'core/chat/sendFill'} {...iconSize} color={'white'} />
+                  <Image src="/imgs/sendIcon.svg" w={iconSize.w} h={iconSize.h} alt="send" />
                 </MyTooltip>
               )}
-            </Flex>
+            </MyBox>
           </Flex>
         </Flex>
       </Flex>
@@ -330,8 +331,9 @@ const ChatInput = ({
   ]);
 
   const activeStyles: FlexProps = {
-    boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
-    border: '0.5px solid rgba(0, 0, 0, 0.24)'
+    boxShadow: '0px 4px 12px 0px rgba(0, 65, 178, 0.12)',
+    border: '1px solid',
+    borderColor: 'borderColor.low'
   };
 
   return (
@@ -364,19 +366,20 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={['96px', '120px']}
+        minH={'96px'}
         pt={fileList.length > 0 ? '0' : [3, 4]}
         pb={3}
         position={'relative'}
-        borderRadius={['xl', 'xxl']}
+        borderRadius={'8px'}
         bg={'white'}
         overflow={'display'}
         {...(focusing
           ? activeStyles
           : {
               _hover: activeStyles,
-              border: '0.5px solid rgba(0, 0, 0, 0.18)',
-              boxShadow: `0px 5px 16px -4px rgba(19, 51, 107, 0.08)`
+              border: '1px solid',
+              borderColor: 'borderColor.low',
+              boxShadow: '0px 2px 6px 0px rgba(0, 65, 178, 0.06)'
             })}
         onClick={() => TextareaDom?.current?.focus()}
       >

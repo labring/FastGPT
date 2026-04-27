@@ -11,7 +11,7 @@ const FormLabel = ({
 }) => {
   return (
     <Box
-      color={'myGray.900'}
+      color={'myWhite.1000'}
       fontWeight={'medium'}
       fontSize={'sm'}
       flexShrink={0}

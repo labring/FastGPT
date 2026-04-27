@@ -182,7 +182,7 @@ const AIItem = ({
       }}
     >
       <Flex alignItems={'flex-start'} justifyContent={'flex-start'} gap={2} w={'100%'}>
-        <ChatAvatar type={ChatRoleEnum.AI} src={'/imgs/bot.svg'} />
+        {/* <ChatAvatar type={ChatRoleEnum.AI} src={'/imgs/bot.svg'} /> */}
         <Box
           px={4}
           py={3}

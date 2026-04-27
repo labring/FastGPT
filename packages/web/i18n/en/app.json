@@ -647,7 +647,7 @@
   "smart_customer_service_no_knowledge_found_mode_tooltip": "When no knowledge base content is retrieved, select the response method.",
   "smart_customer_service_use_fallback_reply": "Use specified reply",
   "smart_customer_service_llm_reply": "LLM-generated reply",
-  "retrieval_config": "Retrieval configuration",
+  "retrieval_config": "Retrieval strategy",
   "retrieval_mode": "Retrieval mode",
   "retrieval_mode_tooltip": "Standard retrieval: Finds relevant knowledge in a single search, fast response, suitable for simple Q&A scenarios.\nMulti-round intelligent retrieval: Intelligently analyzes and decomposes questions, progressively enriches and filters knowledge through multiple retrieval rounds, suitable for complex problems (longer response time).",
   "retrieval_mode_single": "Standard retrieval",

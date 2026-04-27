@@ -31,8 +31,9 @@ type Props = {
   setAppForm: React.Dispatch<React.SetStateAction<AppFormEditFormType>>;
   setRenderEdit: React.Dispatch<React.SetStateAction<boolean>>;
   form2WorkflowFn: Form2WorkflowFnType;
+  debuggerMode?: boolean;
 };
-const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
+const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn, debuggerMode = false }: Props) => {
   const { t } = useTranslation();
   const { chatId } = useChatStore();
 
@@ -72,7 +73,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
-    isReady: true
+    isReady: true,
+    debuggerMode
   });
 
   // 构建 TopAgent metadata,从 appForm 中提取配置
@@ -229,7 +231,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   );
 };
 
-const Render = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
+const Render = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn, debuggerMode = false }: Props) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -257,6 +259,7 @@ const Render = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) 
           setAppForm={setAppForm}
           setRenderEdit={setRenderEdit}
           form2WorkflowFn={form2WorkflowFn}
+          debuggerMode={debuggerMode}
         />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>

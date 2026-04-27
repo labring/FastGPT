@@ -620,7 +620,7 @@
   "smart_customer_service_no_knowledge_found_mode_tooltip": "當檢索不到知識庫內容時,選擇回答方式",
   "smart_customer_service_use_fallback_reply": "指定回復內容",
   "smart_customer_service_llm_reply": "大模型生成回復",
-  "retrieval_config": "檢索配置",
+  "retrieval_config": "檢索策略",
   "retrieval_mode": "檢索方式",
   "retrieval_mode_tooltip": "標準檢索：通過一次檢索找到相關知識，響應速度快，適用於簡單問答場景。\n多輪智能檢索：智能分析並拆解問題，通過多輪檢索逐步補充和過濾知識，適用於複雜問題（響應時間較長）。",
   "retrieval_mode_single": "標準檢索",
