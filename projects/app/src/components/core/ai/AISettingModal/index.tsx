@@ -25,7 +25,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import PriceTiersLabel from '../PriceTiersLabel';
+import { PriceLine } from '../PriceTiersLabel';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
@@ -203,11 +203,11 @@ const AIChatSettingsModal = ({
               />
             </SettingRow>
 
-            <TableContainer borderRadius={'md'} borderWidth={'1px'} borderColor={'myGray.200'}>
-              <Table fontSize={'xs'} overflow={'overlay'}>
+            <TableContainer borderRadius={'sm'} borderWidth={'1px'} borderColor={'myGray.200'}>
+              <Table variant={'bordered'}>
                 <Thead>
-                  <Tr bg={'myGray.25'} color={'myGray.500'}>
-                    <Th fontSize={'mini'} py={2}>
+                  <Tr>
+                    <Th>
                       <HStack spacing={1}>
                         <Box>{t('app:ai_point_price')}</Box>
                         <ModelPriceModal>
@@ -217,10 +217,8 @@ const AIChatSettingsModal = ({
                         </ModelPriceModal>
                       </HStack>
                     </Th>
-                    <Th fontSize={'mini'} py={2}>
-                      {t('common:core.ai.Max context')}
-                    </Th>
-                    <Th fontSize={'mini'} py={2}>
+                    <Th>{t('common:core.ai.Max context')}</Th>
+                    <Th>
                       <HStack spacing={1}>
                         <Box>{t('common:core.ai.Support tool')}</Box>
                         <QuestionTip label={t('common:core.module.template.AI support tool tip')} />
@@ -229,20 +227,34 @@ const AIChatSettingsModal = ({
                   </Tr>
                 </Thead>
                 <Tbody>
-                  <Tr color={'myGray.900'}>
-                    <Td py={2}>
+                  <Tr>
+                    <Td>
                       {!!selectedModel && (
-                        <PriceTiersLabel
+                        <PriceLine
                           config={selectedModel}
                           unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                          priceKey={'input'}
+                          fontSize={'mini'}
                         />
                       )}
                     </Td>
-                    <Td py={2}>{Math.round((selectedModel?.maxContext || 4096) / 1000)}K</Td>
-                    <Td py={2}>
+                    <Td rowSpan={2}>{Math.round((selectedModel?.maxContext || 4096) / 1000)}K</Td>
+                    <Td rowSpan={2}>
                       {selectedModel?.toolChoice || selectedModel?.functionCall
                         ? t('common:support')
                         : t('common:not_support')}
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>
+                      {!!selectedModel && (
+                        <PriceLine
+                          config={selectedModel}
+                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                          priceKey={'output'}
+                          fontSize={'mini'}
+                        />
+                      )}
                     </Td>
                   </Tr>
                 </Tbody>

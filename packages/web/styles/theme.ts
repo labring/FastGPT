@@ -709,6 +709,57 @@ const Table = tableMultiStyle({
           }
         }
       }
+    },
+    bordered: {
+      table: {
+        bg: 'white'
+      },
+      thead: {
+        tr: {
+          bg: 'myGray.25',
+          th: {
+            px: 3,
+            py: 2,
+            height: '32px',
+            bg: 'myGray.25',
+            color: 'myGray.500',
+            fontSize: 'mini',
+            fontWeight: 'medium',
+            letterSpacing: '0.5px',
+            textTransform: 'none',
+            borderRadius: 'none !important',
+            borderBottom: '1px solid',
+            borderColor: 'myGray.200',
+            '&:not(:first-of-type)': {
+              borderLeft: '1px solid',
+              borderColor: 'myGray.200'
+            }
+          }
+        }
+      },
+      tbody: {
+        tr: {
+          td: {
+            px: 3,
+            py: 2,
+            color: 'myGray.500',
+            fontSize: 'mini',
+            letterSpacing: '0.4px',
+            borderRadius: 'none !important',
+            borderBottom: 'none',
+            '&:not(:first-of-type)': {
+              borderLeft: '1px solid',
+              borderColor: 'myGray.200'
+            }
+          },
+          '&:not(:first-of-type)': {
+            td: {
+              borderTop: '1px solid',
+              borderColor: 'myGray.200'
+            }
+          }
+        }
+      }
     }
   },
   defaultProps: {
