@@ -1,15 +1,16 @@
 # --------- install dependence -----------
-FROM node:20.14.0-alpine AS maindeps
+FROM node:24-alpine AS maindeps
 WORKDIR /app
 
 ARG proxy
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY ./packages ./packages
+COPY ./sdk ./sdk
 COPY ./projects/marketplace/package.json ./projects/marketplace/package.json
 
 RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
@@ -22,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:20.14.0-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -32,19 +33,21 @@ ARG base_url
 COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json ./
 COPY --from=maindeps /app/node_modules ./node_modules
 COPY --from=maindeps /app/packages ./packages
+COPY --from=maindeps /app/sdk ./sdk
 COPY ./projects/marketplace ./projects/marketplace
 COPY --from=maindeps /app/projects/marketplace/node_modules ./projects/marketplace/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
+RUN pnpm --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage build
 RUN pnpm --filter=marketplace build
 
 # --------- runner -----------
-FROM node:20.14.0-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ARG proxy

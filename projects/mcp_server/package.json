@@ -1,5 +1,5 @@
 {
-  "name": "mcp_server",
+  "name": "@fastgpt/mcp_server",
   "version": "0.1",
   "keywords": [],
   "author": "fastgpt",
@@ -15,13 +15,13 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@fastgpt-sdk/logger": "catalog:",
+    "@fastgpt-sdk/logger": "workspace:*",
     "@modelcontextprotocol/sdk": "catalog:",
-    "chalk": "^5.3.0",
+    "chalk": "catalog:",
     "dayjs": "catalog:",
     "dotenv": "^16.5.0",
     "express": "catalog:"

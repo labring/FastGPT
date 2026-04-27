@@ -3,10 +3,11 @@ import { ProxyAgent } from 'proxy-agent';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 
 export function createProxyAxios(config?: AxiosRequestConfig) {
+  const agent = new ProxyAgent();
+
   if (isDevEnv) {
     return _.create(config);
   }
-  const agent = new ProxyAgent();
 
   return _.create({
     proxy: false,

@@ -6,6 +6,7 @@ import path from 'path';
 const ROOT_DIR = path.resolve(__dirname, '../../..');
 const WORKER_SOURCE_DIR = path.join(ROOT_DIR, 'packages/service/worker');
 const WORKER_OUTPUT_DIR = path.join(__dirname, '../worker');
+const OTEL_SDK_DIR = path.join(ROOT_DIR, 'sdk/otel/src');
 
 /**
  * Worker 预编译脚本
@@ -47,6 +48,12 @@ async function buildWorkers(watch: boolean = false) {
     minify: true,
     treeShaking: true,
     keepNames: false,
+    alias: {
+      '@fastgpt-sdk/otel': path.join(OTEL_SDK_DIR, 'index.ts'),
+      '@fastgpt-sdk/otel/logger': path.join(OTEL_SDK_DIR, 'logger-entry.ts'),
+      '@fastgpt-sdk/otel/metrics': path.join(OTEL_SDK_DIR, 'metrics-entry.ts'),
+      '@fastgpt-sdk/otel/tracing': path.join(OTEL_SDK_DIR, 'tracing-entry.ts')
+    },
     // 移除调试代码
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   };

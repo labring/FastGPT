@@ -1,0 +1,54 @@
+name: 'FastGPT-Pro-Test'
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: 'fastgpt-pro-test-${{ github.event.pull_request.number || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || secrets.PRO_SUBMODULE_TOKEN != '' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+      - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
+        run: |
+          if [ -f .gitmodules ]; then
+            if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            fi
+            git submodule update --init --recursive
+          fi
+      - name: Install system deps for node-canvas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install Deps
+        run: pnpm install --frozen-lockfile
+      - name: Test
+        run: pnpm test:admin
+      - name: Report Coverage
+        if: always() && hashFiles('pro/admin/coverage/coverage-summary.json') != ''
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-final-path: pro/admin/coverage/coverage-final.json
+          json-summary-path: pro/admin/coverage/coverage-summary.json

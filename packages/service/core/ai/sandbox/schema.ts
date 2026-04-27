@@ -55,6 +55,8 @@ SandboxInstanceSchema.index(
   {
     unique: true,
     partialFilterExpression: {
+      // Keep the index compatible with Mongo-compatible backends that do not
+      // support `$ne: null` inside partial indexes.
       appId: { $exists: true },
       userId: { $exists: true },
       chatId: { $exists: true }

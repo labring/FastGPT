@@ -1,9 +1,13 @@
 {
   "name": "@fastgpt/global",
   "version": "1.0.0",
+  "scripts": {
+    "test": "vitest run -c vitest.config.ts",
+    "test:watch": "vitest -c vitest.config.ts"
+  },
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   },
   "dependencies": {
     "@fastgpt-sdk/plugin": "0.6.0",
@@ -16,7 +20,7 @@
     "js-yaml": "catalog:",
     "jschardet": "3.1.1",
     "json5": "catalog:",
-    "nanoid": "^5.1.3",
+    "nanoid": "catalog:",
     "next": "catalog:",
     "openai": "4.104.0",
     "openapi-types": "^12.1.3",
@@ -27,7 +31,7 @@
   },
   "devDependencies": {
     "@types/lodash": "catalog:",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "20.14.0"
+    "@types/js-yaml": "catalog:",
+    "@types/node": "catalog:"
   }
 }

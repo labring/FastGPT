@@ -1,11 +1,11 @@
 # --------- install dependence -----------
-FROM node:20.14.0-alpine AS maindeps
+FROM node:24-alpine AS maindeps
 WORKDIR /app
 
 ARG proxy
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
@@ -23,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:20.14.0-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -39,10 +39,13 @@ COPY --from=maindeps /app/projects/app/node_modules ./projects/app/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
-RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
+RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
+# Build SDK workspace packages first so subpath exports like
+# @fastgpt-sdk/otel/logger have generated dist type files.
+RUN pnpm build:sdks
 RUN pnpm --filter=app build
 
 # Bundle server.ts into a single CJS file; only 'next' is kept external (already in standalone output)
@@ -66,7 +69,7 @@ RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding
     projects/app/.next/standalone/node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/
 
 # --------- runner -----------
-FROM node:20.14.0-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ARG proxy
@@ -85,13 +88,16 @@ RUN apk add --no-cache curl ca-certificates \
 # copy running files
 COPY --from=builder /app/projects/app/public /app/projects/app/public
 COPY --from=builder /app/projects/app/next.config.ts /app/projects/app/next.config.ts
+COPY --from=builder /app/projects/app/next-i18next.config.js /app/projects/app/next-i18next.config.js
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/standalone /app/
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/static /app/projects/app/.next/static
+# next-i18next loads locale json files from ../../packages/web/i18n at runtime.
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web/i18n /app/packages/web/i18n
 # copy server chunks
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks /app/projects/app/.next/server/chunks
 # copy worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/projects/app/worker
-COPY --from=builder --chown=nextjs:nodejs /app/projects/app/server-proxy.js /app/projects/app/server-proxy.js
+COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 
 # copy standload packages
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken

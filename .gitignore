@@ -2,6 +2,7 @@
 node_modules/
 # next.js
 .next/
+.turbo/
 out/
 # production
 build/
@@ -40,6 +41,9 @@ coverage
 document/.source
 
 projects/app/worker/
+pro/admin/worker/
 
 # Agent
 .codex
+
+.turbo
