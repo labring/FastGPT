@@ -4,8 +4,7 @@ import {
   Prompt_systemQuotePromptList,
   Prompt_QuoteTemplateList,
   getQuoteTemplate,
-  getQuotePrompt,
-  getDocumentQuotePrompt
+  getQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 
 /**
@@ -242,43 +241,5 @@ describe('getQuotePrompt', () => {
       expect(userResult).toContain('{{question}}');
       expect(systemResult).not.toContain('{{question}}');
     });
-  });
-});
-
-// ===========================================================================
-// 6. getDocumentQuotePrompt
-// ===========================================================================
-describe('getDocumentQuotePrompt', () => {
-  it('should return a prompt containing <FilesContent> tags', () => {
-    const result = getDocumentQuotePrompt('4.9.7');
-    expect(result).toContain('<FilesContent>');
-    expect(result).toContain('</FilesContent>');
-  });
-
-  it('should return a prompt containing {{quote}} placeholder', () => {
-    const result = getDocumentQuotePrompt('4.9.7');
-    expect(result).toContain('{{quote}}');
-  });
-
-  it('should return the 4.9.7 version when that version is requested', () => {
-    const result = getDocumentQuotePrompt('4.9.7');
-    expect(typeof result).toBe('string');
-    expect(result!.length).toBeGreaterThan(0);
-  });
-
-  it('should return highest version when no version is provided', () => {
-    const result = getDocumentQuotePrompt();
-    expect(typeof result).toBe('string');
-    expect(result).toContain('{{quote}}');
-    expect(result).toContain('<FilesContent>');
-  });
-
-  it('should fall back to highest version for non-existing version', () => {
-    const result = getDocumentQuotePrompt('99.99.99');
-    expect(result).toBe(getDocumentQuotePrompt());
-  });
-
-  it('should return the same result for undefined and non-existing version', () => {
-    expect(getDocumentQuotePrompt(undefined)).toBe(getDocumentQuotePrompt('0.0.1'));
   });
 });

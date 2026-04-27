@@ -1,365 +1,322 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-const mockGetRawTextBuffer = vi.hoisted(() => vi.fn());
+const mockGetFileContentFromLinks = vi.hoisted(() => vi.fn());
 
-vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
-  getS3RawTextSource: () => ({
-    getRawTextBuffer: mockGetRawTextBuffer
-  })
+vi.mock('@fastgpt/service/core/workflow/utils/file', () => ({
+  getFileContentFromLinks: mockGetFileContentFromLinks
 }));
 
 import {
-  getFileContentFromLinks,
-  normalizeReadableFileUrl
+  dispatchReadFiles,
+  getHistoryFileLinks
 } from '@fastgpt/service/core/workflow/dispatch/tools/readFiles';
-import { rewriteUserQueryWithFileContent } from '@fastgpt/service/core/workflow/utils/context';
 
-type RewriteUserQueryProps = Parameters<typeof rewriteUserQueryWithFileContent>[0];
-type GetFileContentFromLinksProps = Parameters<RewriteUserQueryProps['getFileContentFromLinks']>[0];
-type GetFileContentFromLinksResult = Awaited<
-  ReturnType<RewriteUserQueryProps['getFileContentFromLinks']>
->;
+const baseProps = {
+  requestOrigin: 'http://localhost:3000',
+  runningUserInfo: { teamId: 'team-1', tmbId: 'tmb-1' },
+  histories: [] as ChatItemMiniType[],
+  chatConfig: {} as any,
+  node: { version: '490' } as any,
+  params: { fileUrlList: [] as string[] },
+  usageId: 'usage-1'
+} as any;
 
-const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
-  obj: ChatRoleEnum.Human,
-  value
-});
-
-const rewriteMessagesWithFileContent = async ({
-  messages,
-  maxFiles = 20,
-  getFileContentFromLinksFn = getFileContentFromLinks
-}: {
-  messages: ChatItemMiniType[];
-  maxFiles?: number;
-  getFileContentFromLinksFn?: RewriteUserQueryProps['getFileContentFromLinks'];
-}) =>
-  Promise.all(
-    messages.map(async (message): Promise<ChatItemMiniType> => {
-      if (message.obj !== ChatRoleEnum.Human) {
-        return message;
-      }
-
-      return {
-        ...message,
-        value: await rewriteUserQueryWithFileContent({
-          userQuery: message.value,
-          maxFiles,
-          teamId: 'team-1',
-          tmbId: 'tmb-1',
-          getFileContentFromLinks: getFileContentFromLinksFn
-        })
-      };
-    })
-  );
-
-describe('normalizeReadableFileUrl', () => {
-  it('标准化可读取的文档 URL，并过滤非文档 URL', () => {
-    expect(
-      normalizeReadableFileUrl({
-        url: ' http://localhost:3000/a.pdf ',
-        requestOrigin: 'http://localhost:3000'
-      })
-    ).toBe('/a.pdf');
-    expect(normalizeReadableFileUrl({ url: '/a.pdf' })).toBe('/a.pdf');
-    expect(normalizeReadableFileUrl({ url: '/image.png' })).toBe('');
-    expect(normalizeReadableFileUrl({ url: 'chat/a.pdf' })).toBe('');
-    expect(normalizeReadableFileUrl({ url: '' })).toBe('');
-  });
-});
-
-describe('getFileContentFromLinks', () => {
+describe('dispatchReadFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetRawTextBuffer.mockImplementation(({ sourceId }: { sourceId: string }) => {
-      const textMap: Record<string, string> = {
-        '/a.pdf': 'Alpha',
-        '/b.pdf': 'Beta'
-      };
-
-      return textMap[sourceId]
-        ? {
-            filename: sourceId.split('/').pop(),
-            text: textMap[sourceId]
-          }
-        : undefined;
-    });
+    mockGetFileContentFromLinks.mockResolvedValue([]);
   });
 
-  it('在读取前统一标准化 URL', async () => {
-    const result = await getFileContentFromLinks({
-      urls: ['http://localhost:3000/a.pdf', '/b.pdf'],
+  it('成功读取并返回文本/原始响应/节点响应/工具响应结构', async () => {
+    mockGetFileContentFromLinks.mockResolvedValue([
+      { success: true, filename: 'a.pdf', url: '/a.pdf', content: 'Alpha' },
+      { success: true, filename: 'b.pdf', url: '/b.pdf', content: 'Beta' }
+    ]);
+
+    const result = await dispatchReadFiles({
+      ...baseProps,
+      params: { fileUrlList: ['/a.pdf', '/b.pdf'] }
+    });
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith({
+      urls: ['/a.pdf', '/b.pdf'],
       requestOrigin: 'http://localhost:3000',
       maxFiles: 20,
       teamId: 'team-1',
-      tmbId: 'tmb-1'
+      tmbId: 'tmb-1',
+      customPdfParse: false,
+      usageId: 'usage-1'
     });
 
-    expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(1, {
-      sourceId: '/a.pdf',
-      customPdfParse: undefined
+    const text = result.data?.[NodeOutputKeyEnum.text];
+    expect(text).toContain('Alpha');
+    expect(text).toContain('Beta');
+    expect(text).toContain('a.pdf');
+    expect(text).toContain('b.pdf');
+
+    expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual([
+      { filename: 'a.pdf', url: '/a.pdf', text: 'Alpha' },
+      { filename: 'b.pdf', url: '/b.pdf', text: 'Beta' }
+    ]);
+
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse] as any;
+    expect(nodeResponse.readFiles).toEqual([
+      { name: 'a.pdf', url: '/a.pdf' },
+      { name: 'b.pdf', url: '/b.pdf' }
+    ]);
+    expect(nodeResponse.readFilesResult).toContain('## a.pdf');
+    expect(nodeResponse.readFilesResult).toContain('Alpha');
+    expect(nodeResponse.readFilesResult).toContain('## b.pdf');
+    expect(nodeResponse.readFilesResult).toContain('Beta');
+
+    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({
+      fileContent: text
     });
-    expect(mockGetRawTextBuffer).toHaveBeenNthCalledWith(2, {
-      sourceId: '/b.pdf',
-      customPdfParse: undefined
+  });
+
+  it('chatConfig 提供 maxFiles 和 customPdfParse 时按其值传入', async () => {
+    await dispatchReadFiles({
+      ...baseProps,
+      chatConfig: {
+        fileSelectConfig: {
+          maxFiles: 5,
+          customPdfParse: true
+        }
+      },
+      params: { fileUrlList: ['/a.pdf'] }
     });
-    expect(result.readFilesResult.map((item) => item.url)).toEqual(['/a.pdf', '/b.pdf']);
-    expect(result.text).toContain('Alpha');
-    expect(result.text).toContain('Beta');
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxFiles: 5,
+        customPdfParse: true
+      })
+    );
+  });
+
+  it('chatConfig 缺失时 maxFiles 兜底为 20，customPdfParse 兜底为 false', async () => {
+    await dispatchReadFiles({
+      ...baseProps,
+      chatConfig: undefined,
+      params: { fileUrlList: ['/a.pdf'] }
+    });
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+      expect.objectContaining({ maxFiles: 20, customPdfParse: false })
+    );
+  });
+
+  it('fileSelectConfig.maxFiles 为 0/undefined 时仍兜底为 20', async () => {
+    await dispatchReadFiles({
+      ...baseProps,
+      chatConfig: { fileSelectConfig: { maxFiles: 0 } },
+      params: { fileUrlList: ['/a.pdf'] }
+    });
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+      expect.objectContaining({ maxFiles: 20 })
+    );
+  });
+
+  it('node.version === "489" 时拼接 histories 中的文件链接', async () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: 'history.pdf',
+              url: '/history.pdf'
+            }
+          }
+        ]
+      }
+    ];
+
+    await dispatchReadFiles({
+      ...baseProps,
+      node: { version: '489' },
+      histories,
+      params: { fileUrlList: ['/current.pdf'] }
+    });
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        urls: ['/current.pdf', '/history.pdf']
+      })
+    );
+  });
+
+  it('node.version !== "489" 时忽略 histories', async () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: 'history.pdf',
+              url: '/history.pdf'
+            }
+          }
+        ]
+      }
+    ];
+
+    await dispatchReadFiles({
+      ...baseProps,
+      node: { version: '490' },
+      histories,
+      params: { fileUrlList: ['/current.pdf'] }
+    });
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        urls: ['/current.pdf']
+      })
+    );
+  });
+
+  it('params.fileUrlList 缺省时按空数组处理', async () => {
+    await dispatchReadFiles({
+      ...baseProps,
+      params: {}
+    });
+
+    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(expect.objectContaining({ urls: [] }));
+  });
+
+  it('空文件结果返回空文本和空数组结构', async () => {
+    mockGetFileContentFromLinks.mockResolvedValue([]);
+
+    const result = await dispatchReadFiles({
+      ...baseProps,
+      params: { fileUrlList: [] }
+    });
+
+    expect(result.data?.[NodeOutputKeyEnum.text]).toBe('');
+    expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual([]);
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse] as any;
+    expect(nodeResponse.readFiles).toEqual([]);
+    expect(nodeResponse.readFilesResult).toBe('');
+    expect(result[DispatchNodeResponseKeyEnum.toolResponses]).toEqual({ fileContent: '' });
+  });
+
+  it('超大内容下预览仍按 sliceStrStartEnd 截断 (start/end 各 1000)', async () => {
+    const huge = 'x'.repeat(5000);
+    mockGetFileContentFromLinks.mockResolvedValue([
+      { success: true, filename: 'big.txt', url: '/big.txt', content: huge }
+    ]);
+
+    const result = await dispatchReadFiles({
+      ...baseProps,
+      params: { fileUrlList: ['/big.txt'] }
+    });
+
+    const preview = (result[DispatchNodeResponseKeyEnum.nodeResponse] as any)
+      .readFilesResult as string;
+
+    // sliceStrStartEnd 在超长文本上会截断中间，preview 长度远小于原文
+    expect(preview.length).toBeLessThan(huge.length);
+    expect(preview).toContain('## big.txt');
+  });
+
+  it('getFileContentFromLinks 抛错时通过 getNodeErrResponse 返回错误结构', async () => {
+    mockGetFileContentFromLinks.mockRejectedValue(new Error('boom'));
+
+    const result = await dispatchReadFiles({
+      ...baseProps,
+      params: { fileUrlList: ['/a.pdf'] }
+    });
+
+    expect((result as any).error?.[NodeOutputKeyEnum.errorText]).toBe('boom');
+    expect((result[DispatchNodeResponseKeyEnum.nodeResponse] as any).errorText).toBe('boom');
+    expect((result[DispatchNodeResponseKeyEnum.toolResponses] as any).error).toBe('boom');
   });
 });
 
-describe('rewriteUserQueryWithFileContent', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetRawTextBuffer.mockImplementation(({ sourceId }: { sourceId: string }) => {
-      const textMap: Record<string, string> = {
-        '/a.pdf': 'Alpha',
-        '/b.pdf': 'Beta',
-        '/c.pdf': 'Gamma'
-      };
-
-      return textMap[sourceId]
-        ? {
-            filename: sourceId.split('/').pop(),
-            text: textMap[sourceId]
-          }
-        : undefined;
-    });
+describe('getHistoryFileLinks', () => {
+  it('空历史返回空数组', () => {
+    expect(getHistoryFileLinks([])).toEqual([]);
   });
 
-  it('把历史和当前轮文件内容分别注入到所属 user message', async () => {
-    const messages: ChatItemMiniType[] = [
-      createHumanMessage([
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a.pdf',
-            url: '/a.pdf'
-          }
-        }
-      ]),
+  it('仅保留 Human 消息中的文件 URL', () => {
+    const histories: ChatItemMiniType[] = [
       {
-        obj: ChatRoleEnum.AI,
+        obj: ChatRoleEnum.Human,
         value: [
           {
-            text: {
-              content: '上一轮回答'
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: 'a.pdf',
+              url: '/a.pdf'
             }
           }
         ]
       },
-      createHumanMessage([
-        {
-          text: {
-            content: '继续回答'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'b.pdf',
-            url: '/b.pdf'
-          }
-        }
-      ])
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'AI 不会贡献文件' } }]
+      } as any
     ];
 
-    const result = await rewriteMessagesWithFileContent({ messages });
-
-    expect(messages[0].value.some((item) => item.text)).toBe(false);
-    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(2);
-    expect(result[0].value.find((item) => item.text)?.text?.content).toContain('Alpha');
-    expect(result[2].value.find((item) => item.text)?.text?.content).toContain('继续回答');
-    expect(result[2].value.find((item) => item.text)?.text?.content).toContain('Beta');
-    expect(result[2].value.find((item) => item.text)?.text?.content).not.toContain('Alpha');
+    expect(getHistoryFileLinks(histories)).toEqual(['/a.pdf']);
   });
 
-  it('单条 user query 的文件解析数量受 maxFiles 控制', async () => {
-    const messages: ChatItemMiniType[] = [
-      createHumanMessage([
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a.pdf',
-            url: '/a.pdf'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'b.pdf',
-            url: '/b.pdf'
-          }
-        }
-      ])
+  it('单条消息内多个文件按顺序展开', () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            file: { type: ChatFileTypeEnum.file, name: 'a.pdf', url: '/a.pdf' }
+          },
+          {
+            file: { type: ChatFileTypeEnum.file, name: 'b.pdf', url: '/b.pdf' }
+          },
+          { text: { content: '附带说明' } }
+        ]
+      }
     ];
 
-    const result = await rewriteMessagesWithFileContent({ messages, maxFiles: 1 });
-
-    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(1);
-    expect(mockGetRawTextBuffer).toHaveBeenCalledWith({
-      sourceId: '/a.pdf',
-      customPdfParse: undefined
-    });
-    expect(result[0].value.find((item) => item.text)?.text?.content).toContain('Alpha');
-    expect(result[0].value.find((item) => item.text)?.text?.content).not.toContain('Beta');
+    expect(getHistoryFileLinks(histories)).toEqual(['/a.pdf', '/b.pdf']);
   });
 
-  it('同一条 user query 内重复 URL 不去重', async () => {
-    const getFileContentFromLinksMock = vi.fn(
-      ({ urls }: GetFileContentFromLinksProps): Promise<GetFileContentFromLinksResult> =>
-        Promise.resolve({
-          readFilesResult: urls.map((url, index) => ({
-            url,
-            text: `Alpha-${index + 1}`
-          }))
-        })
-    );
-
-    const result = await rewriteUserQueryWithFileContent({
-      userQuery: [
-        {
-          text: {
-            content: '总结这个文件'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a.pdf',
-            url: '/a.pdf'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a-copy.pdf',
-            url: '/a.pdf'
-          }
-        }
-      ],
-      maxFiles: 20,
-      teamId: 'team-1',
-      tmbId: 'tmb-1',
-      getFileContentFromLinks: getFileContentFromLinksMock
-    });
-
-    expect(getFileContentFromLinksMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        urls: ['/a.pdf', '/a.pdf'],
-        maxFiles: 20
-      })
-    );
-    expect(result.find((item) => item.text)?.text?.content).toContain('总结这个文件');
-    expect(result.find((item) => item.text)?.text?.content).toContain('Alpha-1');
-    expect(result.find((item) => item.text)?.text?.content).toContain('Alpha-2');
-  });
-
-  it('相同 URL 出现在不同 message 时会分别读取并注入', async () => {
-    const messages: ChatItemMiniType[] = [
-      createHumanMessage([
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a.pdf',
-            url: '/a.pdf'
-          }
-        }
-      ]),
-      createHumanMessage([
-        {
-          text: {
-            content: '再次引用'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a-copy.pdf',
-            url: '/a.pdf'
-          }
-        }
-      ])
+  it('Human 消息中无文件时被过滤', () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: '只是文本' } }]
+      }
     ];
 
-    const result = await rewriteMessagesWithFileContent({ messages });
-
-    expect(mockGetRawTextBuffer).toHaveBeenCalledTimes(2);
-    expect(result[0].value.find((item) => item.text)?.text?.content).toContain('Alpha');
-    expect(result[1].value.find((item) => item.text)?.text?.content).toContain('Alpha');
+    expect(getHistoryFileLinks(histories)).toEqual([]);
   });
 
-  it('多条 user message 会并行重写', async () => {
-    const messages: ChatItemMiniType[] = [
-      createHumanMessage([
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'a.pdf',
-            url: '/a.pdf'
-          }
-        }
-      ]),
-      createHumanMessage([
-        {
-          text: {
-            content: '继续回答'
-          }
-        },
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'b.pdf',
-            url: '/b.pdf'
-          }
-        }
-      ])
+  it('混合多条消息时按出现顺序汇总 Human 文件', () => {
+    const histories: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ file: { type: ChatFileTypeEnum.file, name: 'a.pdf', url: '/a.pdf' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: '回答' } }]
+      } as any,
+      {
+        obj: ChatRoleEnum.Human,
+        value: [
+          { text: { content: '继续' } },
+          { file: { type: ChatFileTypeEnum.file, name: 'b.pdf', url: '/b.pdf' } }
+        ]
+      }
     ];
-    const resolveList: (() => void)[] = [];
-    const getFileContentFromLinksMock = vi.fn(
-      ({ urls }: GetFileContentFromLinksProps) =>
-        new Promise<GetFileContentFromLinksResult>((resolve) => {
-          resolveList.push(() =>
-            resolve({
-              readFilesResult: urls.map((url) => ({
-                url,
-                text: url === '/a.pdf' ? 'Alpha' : 'Beta'
-              }))
-            })
-          );
-        })
-    );
 
-    const pendingResult = rewriteMessagesWithFileContent({
-      messages,
-      getFileContentFromLinksFn: getFileContentFromLinksMock
-    });
-
-    await Promise.resolve();
-
-    expect(getFileContentFromLinksMock).toHaveBeenCalledTimes(2);
-    expect(getFileContentFromLinksMock).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({
-        urls: ['/a.pdf'],
-        maxFiles: 20
-      })
-    );
-    expect(getFileContentFromLinksMock).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        urls: ['/b.pdf'],
-        maxFiles: 20
-      })
-    );
-
-    resolveList.forEach((resolve) => resolve());
-    const result = await pendingResult;
-
-    expect(result[0].value.find((item) => item.text)?.text?.content).toContain('Alpha');
-    expect(result[1].value.find((item) => item.text)?.text?.content).toContain('Beta');
+    expect(getHistoryFileLinks(histories)).toEqual(['/a.pdf', '/b.pdf']);
   });
 });

@@ -11,11 +11,13 @@ description: 'FastGPT V4.15.0 更新说明'
 ## ⚙️ 优化
 
 1. 增加父子节点选中互斥功能，解决：同时选中父子节点时，移动节点会出现抖动。
+2. 调整文件注入 messages 位置，从 system 调整至 user，便于命中缓存。
 
 ## 🐛 修复
 
 
 ## 代码优化
 
-1. 优化 Agent tool 声明和运行，统一所有 tool 的声明和运行方式。
-2. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率
+1. 重新调整代码结构，升级 nextjs 最新版，切换至 turbopack 构建，提高构建速度；升级容器默认 node 至 24。
+2. 优化 Agent tool 声明和运行，统一所有 tool 的声明和运行方式。
+3. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率

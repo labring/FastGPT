@@ -311,16 +311,3 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 
   return getPromptByVersion(version, defaultTemplate);
 };
-
-// Document quote prompt
-export const getDocumentQuotePrompt = (version?: string) => {
-  const promptMap = {
-    ['4.9.7']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
-<FilesContent>
-{{quote}}
-</FilesContent>
-`
-  };
-
-  return getPromptByVersion(version, promptMap);
-};

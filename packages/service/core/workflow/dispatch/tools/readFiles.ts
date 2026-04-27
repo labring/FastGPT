@@ -3,56 +3,20 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { axios } from '../../../../common/api/axios';
-import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  detectFileEncoding,
-  parseContentDispositionFilename
-} from '@fastgpt/global/common/file/tools';
-import { parseUrlToFileType } from '../../utils/context';
-import { readFileContentByBuffer } from '../../../../common/file/read/utils';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { addDays } from 'date-fns';
 import { getNodeErrResponse } from '../utils';
-import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
-import { replaceS3KeyToPreviewUrl } from '../../../dataset/utils';
-import { getFileS3Key } from '../../../../common/s3/utils';
-import { S3ChatSource } from '../../../../common/s3/sources/chat';
-import path from 'node:path';
-import { S3Buckets } from '../../../../common/s3/config/constants';
-import { S3Sources } from '../../../../common/s3/contracts/type';
-import { getS3RawTextSource } from '../../../../common/s3/sources/rawText';
+import { getFileContentFromLinks } from '../../utils/file';
+import { getUserFilesPrompt } from '../../../ai/llm/agentLoop/prompt';
+import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
-  [NodeOutputKeyEnum.rawResponse]: ReturnType<typeof formatResponseObject>[];
+  [NodeOutputKeyEnum.rawResponse]: { filename: string; url: string; text: string }[];
 }>;
-
-const formatResponseObject = ({
-  filename,
-  url,
-  content
-}: {
-  filename: string;
-  url: string;
-  content: string;
-}) => ({
-  filename,
-  url,
-  text: `File: ${filename}
-<Content>
-${content}
-</Content>`,
-  nodeResponsePreviewText: `File: ${filename}
-<Content>
-${content.slice(0, 100)}${content.length > 100 ? '......' : ''}
-</Content>`
-});
 
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
@@ -71,7 +35,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
 
   try {
-    const { text, readFilesResult } = await getFileContentFromLinks({
+    const readFilesResult = await getFileContentFromLinks({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
       requestOrigin,
@@ -81,20 +45,33 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       customPdfParse,
       usageId
     });
+    const files = readFilesResult.map((item, index) => ({
+      id: `${index}`,
+      name: item.filename,
+      content: item.content
+    }));
+
+    const text = getUserFilesPrompt(files);
+
+    const getPreviewResponse = files
+      .map((item) => `## ${item.name}\n${sliceStrStartEnd(item.content, 1000, 1000)}`)
+      .join('\n\n');
 
     return {
       data: {
         [NodeOutputKeyEnum.text]: text,
-        [NodeOutputKeyEnum.rawResponse]: readFilesResult
+        [NodeOutputKeyEnum.rawResponse]: readFilesResult.map((item) => ({
+          filename: item.filename,
+          url: item.url,
+          text: item.content
+        }))
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         readFiles: readFilesResult.map((item) => ({
-          name: item?.filename || '',
-          url: item?.url || ''
+          name: item.filename,
+          url: item.url
         })),
-        readFilesResult: readFilesResult
-          .map((item) => item?.nodeResponsePreviewText ?? '')
-          .join('\n******\n')
+        readFilesResult: getPreviewResponse
       },
       [DispatchNodeResponseKeyEnum.toolResponses]: {
         fileContent: text
@@ -119,172 +96,4 @@ export const getHistoryFileLinks = (histories: ChatItemMiniType[]) => {
       }
       return [];
     });
-};
-
-export const normalizeReadableFileUrl = ({
-  url,
-  requestOrigin
-}: {
-  url?: string;
-  requestOrigin?: string;
-}) => {
-  if (typeof url !== 'string') return '';
-
-  let normalizedUrl = url.trim();
-  if (!normalizedUrl) return '';
-
-  const validPrefixList = ['/', 'http', 'ws'];
-  if (!validPrefixList.some((prefix) => normalizedUrl.startsWith(prefix))) {
-    return '';
-  }
-
-  if (parseUrlToFileType(normalizedUrl)?.type !== ChatFileTypeEnum.file) {
-    return '';
-  }
-
-  try {
-    const parsedURL = new URL(normalizedUrl, 'http://localhost:3000');
-    if (requestOrigin && parsedURL.origin === requestOrigin) {
-      normalizedUrl = normalizedUrl.replace(requestOrigin, '');
-    }
-
-    return normalizedUrl;
-  } catch {
-    return '';
-  }
-};
-
-export const getFileContentFromLinks = async ({
-  urls,
-  requestOrigin,
-  maxFiles,
-  teamId,
-  tmbId,
-  customPdfParse,
-  usageId
-}: {
-  urls: string[];
-  requestOrigin?: string;
-  maxFiles: number;
-  teamId: string;
-  tmbId: string;
-  customPdfParse?: boolean;
-  usageId?: string;
-}) => {
-  const parseUrlList = urls
-    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
-    .filter(Boolean)
-    .slice(0, maxFiles);
-
-  const readFilesResult = await Promise.all(
-    parseUrlList
-      .map(async (url) => {
-        // Get from buffer
-        const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
-          sourceId: url,
-          customPdfParse
-        });
-        if (rawTextBuffer) {
-          return formatResponseObject({
-            filename: rawTextBuffer.filename || url,
-            url,
-            content: rawTextBuffer.text
-          });
-        }
-
-        try {
-          if (await isInternalAddress(url)) {
-            return Promise.reject(PRIVATE_URL_TEXT);
-          }
-
-          // Get file buffer data
-          const response = await axios.get(url, {
-            baseURL: serverRequestBaseUrl,
-            responseType: 'arraybuffer'
-          });
-
-          const buffer = Buffer.from(response.data, 'binary');
-
-          const urlObj = new URL(url, 'http://localhost:3000');
-          const isChatExternalUrl = !urlObj.pathname.startsWith(
-            `/${S3Buckets.private}/${S3Sources.chat}/`
-          );
-
-          // Get file name
-          const { filename, extension, imageParsePrefix } = (() => {
-            if (isChatExternalUrl) {
-              const contentDisposition = response.headers['content-disposition'] || '';
-              const matchFilename = parseContentDispositionFilename(contentDisposition);
-              const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
-              const extension = path.extname(filename).replace('.', '');
-
-              return {
-                filename,
-                extension,
-                imageParsePrefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
-              };
-            }
-
-            return S3ChatSource.parseChatUrl(url);
-          })();
-
-          // Get encoding
-          const encoding = (() => {
-            const contentType = response.headers['content-type'];
-            if (contentType) {
-              const charsetRegex = /charset=([^;]*)/;
-              const matches = charsetRegex.exec(contentType);
-              if (matches != null && matches[1]) {
-                return matches[1];
-              }
-            }
-
-            return detectFileEncoding(buffer);
-          })();
-
-          const { rawText } = await readFileContentByBuffer({
-            extension,
-            teamId,
-            tmbId,
-            buffer,
-            encoding,
-            customPdfParse,
-            getFormatText: true,
-            imageKeyOptions: imageParsePrefix
-              ? {
-                  prefix: imageParsePrefix,
-                  // 聊天对话里面上传的外部链接，解析出来的图片过期时间设置为1天，而且是存储在临时文件夹的
-                  expiredTime: isChatExternalUrl ? addDays(new Date(), 1) : undefined
-                }
-              : undefined,
-            usageId
-          });
-
-          const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
-
-          // Add to buffer
-          getS3RawTextSource().addRawTextBuffer({
-            sourceId: url,
-            sourceName: filename,
-            text: replacedText,
-            customPdfParse
-          });
-
-          return formatResponseObject({ filename, url, content: replacedText });
-        } catch (error) {
-          return formatResponseObject({
-            filename: '',
-            url,
-            content: getErrText(error, 'Load file error')
-          });
-        }
-      })
-      .filter(Boolean)
-  );
-  const text = readFilesResult.map((item) => item?.text ?? '').join('\n******\n');
-
-  return {
-    text,
-    readFilesResult
-  };
 };

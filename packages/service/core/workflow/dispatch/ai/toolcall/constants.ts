@@ -4,19 +4,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChildResponseItemType } from './type';
 import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
 
-export const getMultiplePrompt = (obj: {
-  fileCount: number;
-  imgCount: number;
-  question: string;
-}) => {
-  const prompt = `Number of session file inputs：
-Document：{{fileCount}}
-Image：{{imgCount}}
-------
-{{question}}`;
-  return replaceVariable(prompt, obj);
-};
-
 export const getSandboxToolWorkflowResponse = ({
   name,
   logo,
