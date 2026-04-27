@@ -92,7 +92,7 @@ RUN adduser --system --uid 1001 nextjs
 RUN sed -i 's#https\?://dl-cdn\.alpinelinux\.org/alpine/v3\.20/main#http://mirrors.sangfor.com/nexus/repository/alpine/v3.20/main#g' /etc/apk/repositories && \
     sed -i 's#https\?://dl-cdn\.alpinelinux\.org/alpine/v3\.20/community#http://mirrors.sangfor.com/nexus/repository/alpine/v3.20/community#g' /etc/apk/repositories
 RUN npm config set registry http://mirrors.sangfor.org/nexus/repository/npm
-RUN apk add --no-cache curl ca-certificates \
+RUN apk add --no-cache curl ca-certificates bash \
   && update-ca-certificates
 
 # copy running files
