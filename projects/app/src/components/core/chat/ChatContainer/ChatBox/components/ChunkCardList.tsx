@@ -48,7 +48,7 @@ const ChunkCardList = React.memo(function QuoteList({
   const collectionIdList = useMemo(
     () =>
       [...new Set(rawSearch.map((item) => item.collectionId))].filter(
-        (v) => !isDatabaseSource(v) && !isCorrectionRecord(v)
+        (v) => !isDatabaseSource(v) && !isCorrectionRecord(v) && v
       ),
     [rawSearch]
   );
