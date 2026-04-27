@@ -20,6 +20,7 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -103,6 +104,10 @@ export async function generateVector(): Promise<any> {
             data
           };
         } catch (error) {
+          logger.error('[generateVector] Fetch training task failed', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
           return {
             error: true
           };
@@ -145,6 +150,14 @@ export async function generateVector(): Promise<any> {
       });
 
       try {
+        addLog.debug('[generateVector] Routing task', {
+          trainingId: String(data._id),
+          mode: data.mode,
+          hasDataId: !!data.dataId,
+          hasData: !!data.data,
+          dataIndexesLength: data.data?.indexes?.length ?? 0
+        });
+
         const { tokens } = await (async () => {
           // Route to different processors based on mode
           // rebuildData: 已有数据向量重建（向量模型变更场景）
@@ -156,8 +169,14 @@ export async function generateVector(): Promise<any> {
             data.data &&
             data.data.indexes.length > 0
           ) {
+            addLog.debug('[generateVector] Route to rebuildData', {
+              trainingId: String(data._id)
+            });
             return rebuildData({ trainingData: data });
           } else if (data.mode === TrainingModeEnum.chunk) {
+            addLog.debug('[generateVector] Route to insertData', {
+              trainingId: String(data._id)
+            });
             return insertData({ trainingData: data });
           } else if (data.mode === TrainingModeEnum.synonymStandardize) {
             // Import dynamically to avoid circular dependencies
@@ -310,6 +329,13 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
+    addLog.debug('[insertData] Step 1: Calling insertData2Dataset', {
+      trainingId: String(trainingData._id),
+      dataId: trainingData.dataId,
+      q: trainingData.q?.substring(0, 100),
+      indexesCount: trainingData.indexes?.length
+    });
+
     // insert new data to dataset
     const { tokens, insertId } = await insertData2Dataset({
       id: trainingData.dataId,
@@ -332,6 +358,12 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
         : undefined,
       embeddingModel: trainingData.dataset.vectorModel,
       session
+    });
+
+    addLog.debug('[insertData] Step 2: insertData2Dataset success', {
+      trainingId: String(trainingData._id),
+      insertId: String(insertId),
+      tokens
     });
 
     // ========== Check if Hype index enhancement is needed ==========
@@ -358,8 +390,16 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       );
     }
 
+    addLog.debug('[insertData] Step 3: Deleting training record', {
+      trainingId: String(trainingData._id)
+    });
+
     // delete data from training
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+
+    addLog.debug('[insertData] Step 4: Training record deleted, done', {
+      trainingId: String(trainingData._id)
+    });
 
     return {
       tokens

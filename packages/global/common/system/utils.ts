@@ -6,11 +6,21 @@ export const delay = (ms: number) =>
   });
 
 export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3, delayMs = 500): Promise<T> => {
+  const initialAttempts = attempts;
   while (true) {
     try {
       return await fn();
     } catch (error) {
+      const currentAttempt = initialAttempts - attempts + 1;
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[retryFn] Attempt ${currentAttempt}/${initialAttempts} failed: ${errMsg}`, {
+        error: errMsg,
+        stack: error instanceof Error ? error.stack : undefined,
+        remainingAttempts: attempts,
+        delayMs
+      });
       if (attempts <= 0) {
+        console.error(`[retryFn] All ${initialAttempts} attempts exhausted, rejecting`);
         return Promise.reject(error);
       }
       await delay(delayMs);

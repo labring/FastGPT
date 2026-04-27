@@ -66,6 +66,7 @@ export type EmbeddingModelItemType = PriceType &
     weight: number; // training weight
     hidden?: boolean; // Disallow creation
     normalization?: boolean; // normalization processing
+    dimensions?: number; // vector dimensions (e.g. 1536 for ada-002, 3072 for text-embedding-3-large)
     batchSize?: number;
     defaultConfig?: Record<string, any>; // post request config
     dbConfig?: Record<string, any>; // Custom parameters for storage

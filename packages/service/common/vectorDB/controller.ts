@@ -99,6 +99,15 @@ export const insertDatasetDataVector = async ({
 
     if (batchVectors.length === 0) return;
 
+    addLog.debug('[insertDatasetDataVector] Inserting batch', {
+      startIndex,
+      batchSize: batchVectors.length,
+      vectorDim: batchVectors[0]?.length,
+      teamId: props.teamId,
+      datasetId: props.datasetId,
+      collectionId: props.collectionId
+    });
+
     try {
       // 插入 Milvus/PG（带全文内容）
       const { insertIds } = await retryFn(() =>
@@ -116,10 +125,21 @@ export const insertDatasetDataVector = async ({
         })
       );
 
+      addLog.debug('[insertDatasetDataVector] Batch insert success', {
+        startIndex,
+        insertCount: insertIds?.length,
+        insertIds: insertIds?.slice(0, 5)
+      });
+
       if (insertIds) {
         allInsertIds.push(...insertIds);
       }
     } catch (error) {
+      addLog.error('[insertDatasetDataVector] Batch insert failed', {
+        startIndex,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
 

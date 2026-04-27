@@ -19,6 +19,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 const formatIndexes = async ({
   indexes = [],
@@ -192,11 +193,29 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
+  addLog.debug('[insertData2Dataset] Start', {
+    teamId: String(teamId),
+    datasetId: String(datasetId),
+    collectionId: String(collectionId),
+    q: q?.substring(0, 100),
+    hasIndexes: !!indexes?.length,
+    indexCount: indexes?.length,
+    embeddingModel,
+    hasSession: !!session
+  });
+
   const embModel = getEmbeddingModel(embeddingModel);
   indexSize = Math.min(embModel.maxToken, indexSize);
 
+  addLog.debug('[insertData2Dataset] embModel loaded', {
+    model: embModel.model,
+    maxToken: embModel.maxToken,
+    indexSize
+  });
+
   // 1. Get vector indexes and insert
   // Empty indexes check, if empty, create default index
+  addLog.debug('[insertData2Dataset] Step 1: formatIndexes...');
   const newIndexes = await formatIndexes({
     indexes,
     q,
@@ -205,8 +224,17 @@ export async function insertData2Dataset({
     maxIndexSize: embModel.maxToken,
     indexPrefix
   });
+  addLog.debug('[insertData2Dataset] Step 1 done', {
+    newIndexCount: newIndexes.length,
+    firstIndexText: newIndexes[0]?.text?.substring(0, 50)
+  });
 
   // insert to vector store
+  addLog.debug('[insertData2Dataset] Step 2: insertDatasetDataVector...', {
+    inputCount: newIndexes.length,
+    model: embModel.model,
+    vectorDimension: embModel?.dimensions
+  });
   const { tokens, insertIds } = await insertDatasetDataVector({
     inputs: newIndexes.map((item) => item.text),
     model: embModel,
@@ -214,11 +242,23 @@ export async function insertData2Dataset({
     datasetId,
     collectionId
   });
+  addLog.debug('[insertData2Dataset] Step 2 done', {
+    tokens,
+    insertIdCount: insertIds?.length,
+    firstInsertId: insertIds?.[0]
+  });
+
   const results = newIndexes.map((item, index) => ({
     ...item,
     dataId: insertIds[index]
   }));
 
+  addLog.debug('[insertData2Dataset] Step 3: MongoDatasetData.create...', {
+    teamId: String(teamId),
+    datasetId: String(datasetId),
+    collectionId: String(collectionId),
+    resultCount: results.length
+  });
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
@@ -236,8 +276,12 @@ export async function insertData2Dataset({
     ],
     { session, ordered: true }
   );
+  addLog.debug('[insertData2Dataset] Step 3 done', { _id: String(_id) });
 
   // 3. Create mongo data text
+  addLog.debug('[insertData2Dataset] Step 4: MongoDatasetDataText.create...', {
+    dataId: String(_id)
+  });
   await MongoDatasetDataText.create(
     [
       {
@@ -250,6 +294,7 @@ export async function insertData2Dataset({
     ],
     { session, ordered: true }
   );
+  addLog.debug('[insertData2Dataset] Step 4 done');
 
   // 只移除图片数据集的图片的 TTL
   if (isS3ObjectKey(imageId, 'dataset')) {
@@ -261,6 +306,11 @@ export async function insertData2Dataset({
     collectionId: String(collectionId),
     datasetId: String(datasetId),
     teamId: String(teamId)
+  });
+
+  addLog.debug('[insertData2Dataset] All done', {
+    insertId: String(_id),
+    tokens
   });
 
   return {
