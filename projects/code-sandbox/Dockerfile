@@ -11,6 +11,7 @@ RUN apk add --no-cache nodejs npm && npm install -g pnpm@10.33.2
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/global ./packages/global
 COPY packages/service ./packages/service
+COPY sdk ./sdk
 COPY projects/code-sandbox/ ./projects/code-sandbox/
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
