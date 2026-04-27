@@ -23,7 +23,7 @@ import MyTag from '@fastgpt/web/components/common/Tag';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { format } from 'date-fns/format';
+import { format } from 'date-fns';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';

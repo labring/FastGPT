@@ -1,5 +1,5 @@
 import z from 'zod';
-import { ChunkSettingsSchema } from '../../../../core/dataset/type';
+import { ChunkSettingsSchema, CollectionTagValueSchema } from '../../../../core/dataset/type';
 import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -19,7 +19,7 @@ const DatasetCollectionStoreDataSchema = ChunkSettingsSchema.extend({
 // API 创建集合通用基础 Schema
 export const ApiCreateCollectionBaseSchema = DatasetCollectionStoreDataSchema.extend({
   datasetId: z.string().meta({ description: '数据集 ID' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签列表' })
+  tags: z.array(z.union([z.string(), CollectionTagValueSchema])).optional().meta({ description: '标签列表' })
 });
 export type ApiCreateDatasetCollectionParams = z.infer<typeof ApiCreateCollectionBaseSchema>;
 
@@ -50,7 +50,7 @@ export const CreateCollectionBodySchema = z.object({
   type: z
     .enum([DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.virtual])
     .meta({ description: '集合类型（folder: 文件夹，virtual: 手动集合）' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签列表' })
+  tags: z.array(z.union([z.string(), CollectionTagValueSchema])).optional().meta({ description: '标签列表' })
 });
 export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
 

@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { format } from 'date-fns/format';
+import { format } from 'date-fns';
 import type { EvaluationDisplayType } from '@fastgpt/global/core/evaluation/type';
 import type { AppDetailType } from '@fastgpt/global/core/app/type';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';

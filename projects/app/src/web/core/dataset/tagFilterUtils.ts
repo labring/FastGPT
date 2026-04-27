@@ -1,6 +1,6 @@
 import { datetimeLocalToUtcTs, utcTsToDatetimeLocal } from '@fastgpt/global/common/string/time';
 import type { DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io.d';
+import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 
 export type ConditionRow = {
   tagId: string;

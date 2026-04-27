@@ -285,6 +285,7 @@ export type CustomEnhanceConfigType = {
   indexPrefixTitle?: boolean;
   small2bigIndexes?: boolean;
   small2bigConfig?: small2bigConfigType;
+  syntheticIndex?: boolean;
 };
 
 // Prompt 配置

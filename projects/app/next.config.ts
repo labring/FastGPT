@@ -215,6 +215,7 @@ const nextConfig: NextConfig = {
     // 减少内存占用
     memoryBasedWorkersCount: true,
     // 文件上传 API 通过 middleware 匹配，需要允许大文件请求体（JWT token 中 maxSize 约为 1GB）
+    // @ts-ignore: proxyClientMaxBodySize is a valid but un-typed Next.js experimental option
     proxyClientMaxBodySize: '1100mb'
   },
   outputFileTracingRoot: path.join(__dirname, '../../'),

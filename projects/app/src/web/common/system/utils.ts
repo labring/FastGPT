@@ -57,6 +57,12 @@ export const getWebLLMModel = (model?: string) => {
 
   return list.find((item) => item.model === model || item.name === model) ?? defaultModels.llm!;
 };
+export const getWebEmbeddingModel = (model?: string) => {
+  const list = useSystemStore.getState().embeddingModelList;
+  const defaultModels = useSystemStore.getState().defaultModels;
+
+  return list.find((item) => item.model === model || item.name === model) ?? defaultModels.embedding!;
+};
 export const getWebDefaultLLMModel = (llmList: LLMModelItemType[] = []) => {
   const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
   const defaultModels = useSystemStore.getState().defaultModels;

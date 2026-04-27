@@ -261,6 +261,10 @@ export const UpdateDatasetBodySchema = z.object({
     example: 'gpt-4o-mini',
     description: '知识库 Agent 模型名称'
   }),
+  vectorModel: z.string().optional().meta({
+    example: 'text-embedding-3-small',
+    description: '向量嵌入模型名称'
+  }),
   vlmModel: z.string().optional().meta({
     example: 'gpt-4o',
     description: '视觉语言模型名称'

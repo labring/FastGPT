@@ -22,7 +22,7 @@ import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import TagRowsEditor, { type TagEditorRow } from './TagRowsEditor';
 import FileSelector, { type SelectFileItemType as ImportSelectFileItemType } from '../Import/components/FileSelector';
 import { documentAndImageFileType } from '@fastgpt/global/common/file/constants';
-import { getUploadDatasetFilePresignedUrl } from '@/web/common/file/api';
+import { getUploadDatasetFilePresignedUrl } from '@/web/core/dataset/api';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';

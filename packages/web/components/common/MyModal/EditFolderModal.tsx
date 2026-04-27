@@ -17,7 +17,7 @@ import { useForm } from 'react-hook-form';
 import Avatar from '../Avatar';
 import { useUploadAvatar } from '../../../common/file/hooks/useUploadAvatar';
 import MyTooltip from '../MyTooltip';
-import type { CreatePostPresignedUrlResult } from '../../../../service/common/s3/type';
+import type { CreatePostPresignedUrlResult } from '@fastgpt/global/common/file/s3/type';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 
 export type EditFolderFormType = {

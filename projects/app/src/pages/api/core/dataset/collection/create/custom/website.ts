@@ -14,7 +14,7 @@ import {
   adaptiveAdjustConfig,
   logAdaptiveAdjustments
 } from '@fastgpt/service/core/dataset/collection/adaptiveConfig';
-import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types/index.d';
+import type { CustomLinkImportModeType } from '@fastgpt/global/common/system/types/index';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
