@@ -88,8 +88,11 @@ RUN apk add --no-cache curl ca-certificates \
 # copy running files
 COPY --from=builder /app/projects/app/public /app/projects/app/public
 COPY --from=builder /app/projects/app/next.config.ts /app/projects/app/next.config.ts
+COPY --from=builder /app/projects/app/next-i18next.config.js /app/projects/app/next-i18next.config.js
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/standalone /app/
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/static /app/projects/app/.next/static
+# next-i18next loads locale json files from ../../packages/web/i18n at runtime.
+COPY --from=builder --chown=nextjs:nodejs /app/packages/web/i18n /app/packages/web/i18n
 # copy server chunks
 COPY --from=builder --chown=nextjs:nodejs /app/projects/app/.next/server/chunks /app/projects/app/.next/server/chunks
 # copy worker
