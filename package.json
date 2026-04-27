@@ -3,19 +3,16 @@
   "version": "4.0",
   "private": true,
   "scripts": {
-    "dev:app": "turbo run dev --filter=@fastgpt/app",
-    "dev:admin": "turbo run dev --filter=@fastgpt/admin",
-    "dev": "turbo run dev --filter=@fastgpt/app",
+    "proDev": "turbo run dev --filter=@fastgpt/app",
     "prepare": "husky install",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
-    "gen:deploy": "node deploy/init.mjs",
-    "postinstall": "pnpm gen:theme-typings",
+    "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
+    "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "create:i18n": "node ./scripts/i18n/index.js",
     "clean:unused:pro": "node --experimental-strip-types ./pro/scripts/cleanup-unused.ts",
     "clean:unused:pro:write": "node --experimental-strip-types ./pro/scripts/cleanup-unused.ts --write",
-    "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
     "test": "pnpm test:workspace",
     "test:all": "pnpm test:workspace && pnpm test:vector",
     "test:repo": "vitest run --config vitest.config.mts --coverage --passWithNoTests",
@@ -26,8 +23,7 @@
     "test:service": "turbo run test --filter=@fastgpt/service",
     "test:service:integration": "turbo run test:integration --filter=@fastgpt/service",
     "test:vector": "turbo run test:integration --filter=@fastgpt/service",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel build",
-    "predev": "pnpm run build:sdks"
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel build"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

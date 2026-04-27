@@ -19,7 +19,7 @@ endif
 filePath=$(projectDir)/Dockerfile
 
 dev:
-	pnpm --prefix $(projectDir) dev
+	pnpm --filter=@fastgpt/$(name) dev
 
 build:
 ifeq ($(proxy), taobao)
