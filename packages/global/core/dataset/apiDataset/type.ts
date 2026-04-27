@@ -1,10 +1,9 @@
-import { ParentIdSchema } from '../../../common/parentFolder/type';
 import z from 'zod';
 
 export const APIFileItemSchema = z.object({
   id: z.string(),
   rawId: z.string(),
-  parentId: ParentIdSchema,
+  parentId: z.string().nullish(),
   name: z.string(),
   type: z.enum(['file', 'folder']),
   updateTime: z.coerce.date(),

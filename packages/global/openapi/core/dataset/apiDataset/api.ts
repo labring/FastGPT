@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import {
   APIFileItemSchema,
   ApiDatasetServerSchema
@@ -15,7 +14,7 @@ export const GetApiDatasetCatalogBodySchema = z.object({
     example: '产品文档',
     description: '搜索关键词'
   }),
-  parentId: ParentIdSchema.meta({
+  parentId: z.string().nullish().meta({
     example: '68ad85a7463006c963799a05',
     description: '父级节点 ID，不传或 null 表示根目录'
   }),
@@ -39,7 +38,7 @@ export const GetApiDatasetPathNamesBodySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '知识库 ID，传入时从知识库配置中读取 apiDatasetServer'
   }),
-  parentId: ParentIdSchema.meta({
+  parentId: z.string().nullish().meta({
     example: '68ad85a7463006c963799a05',
     description: '当前节点 ID，不传或 null 时返回空字符串'
   }),
@@ -68,7 +67,7 @@ export const GetApiDatasetFileListBodySchema = z.object({
     example: '产品文档',
     description: '搜索关键词'
   }),
-  parentId: ParentIdSchema.meta({
+  parentId: z.string().nullish().meta({
     example: '68ad85a7463006c963799a05',
     description: '父级节点 ID，不传或 null 表示根目录'
   })
