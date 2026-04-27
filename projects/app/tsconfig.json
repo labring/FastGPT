@@ -18,6 +18,8 @@
   "exclude": [
     "**/*.test.ts",
     "**/*.test.tsx",
+    "../../packages/**/vitest.config.ts",
+    "../../packages/**/vitest.integration.config.ts",
     "../../packages/**/test/**",
     ".next",
     "dist",
