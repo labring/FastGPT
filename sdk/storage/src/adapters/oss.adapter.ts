@@ -107,7 +107,11 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async ensureBucket(): Promise<EnsureBucketResult> {
-    await this.client.getBucketInfo(this.options.bucket);
+    // Use list() instead of getBucketInfo() to verify bucket access.
+    // getBucketInfo() references a variable named `name` internally which conflicts
+    // with JavaScript's global `name` property in bundled environments (e.g. Next.js),
+    // causing "ReferenceError: name is not defined".
+    await this.client.list({ 'max-keys': 1 }, {});
 
     return {
       exists: true,
