@@ -242,6 +242,14 @@ export type CompletionFinishReason = z.infer<typeof CompletionFinishReasonSchema
 export * from 'openai';
 export * from 'openai/resources';
 
+// openai v6 把 ChatCompletionTool 拆成 function | custom 联合，FastGPT 内部仅产/消费 function
+import type {
+  ChatCompletionFunctionTool,
+  ChatCompletionReasoningEffort
+} from 'openai/resources/chat/completions';
+export type ChatCompletionTool = ChatCompletionFunctionTool;
+export type ReasoningEffort = ChatCompletionReasoningEffort;
+
 export type PromptTemplateItem = {
   title: string;
   desc: string;

@@ -72,7 +72,6 @@
     "proxy-from-env": "^1.1.0",
     "request-ip": "catalog:",
     "tiktoken": "1.0.17",
-    "tunnel": "^0.0.6",
     "turndown": "^7.1.2",
     "undici": "^7.18.2",
     "winston": "^3.17.0",

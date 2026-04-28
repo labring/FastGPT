@@ -4,6 +4,7 @@ import type {
   ChatCompletionCreateParamsStreaming,
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
+  ChatCompletionTool,
   CompletionFinishReason,
   CompletionUsage,
   OpenAI,
@@ -258,10 +259,14 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       ...(toolCalls?.length && { tool_calls: toolCalls })
     };
 
-    // Usage count
+    // requestBody 运行时是经 LLMRequestBodyType narrow 进来的 FastGPT 数据，
+    // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）
     const inputTokens =
       usage?.prompt_tokens ||
-      (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
+      (await countGptMessagesTokens(
+        requestBody.messages as ChatCompletionMessageParam[],
+        requestBody.tools as ChatCompletionTool[] | undefined
+      ));
     const outputTokens =
       usage?.completion_tokens || (await countGptMessagesTokens([assistantMessage]));
 
@@ -358,8 +363,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         inputTokens: 0,
         outputTokens: 0
       },
-      requestMessages: requestBody.messages,
-      completeMessages: [...requestBody.messages]
+      requestMessages,
+      completeMessages: [...requestMessages]
     };
   }
 };
@@ -634,8 +639,12 @@ export const createCompleteResponse = async ({
   const { toolCalls } = (() => {
     if (tools?.length) {
       if (toolCallMode === 'toolChoice') {
+        // openai v6 的 tool_calls 是 function | custom 联合，FastGPT 仅消费 function 形态。
         return {
-          toolCalls: response.choices?.[0]?.message?.tool_calls || []
+          toolCalls:
+            response.choices?.[0]?.message?.tool_calls?.filter(
+              (call): call is ChatCompletionMessageToolCall => call.type === 'function'
+            ) || []
         };
       }
 
@@ -682,7 +691,12 @@ type InferCompletionsBody<T> = T extends { stream: true }
     ? ChatCompletionCreateParamsNonStreaming
     : ChatCompletionCreateParams;
 
-type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
+// tools 同步用 FastGPT narrow 后的 ChatCompletionTool（function-only），
+// 避免 SDK 联合类型透过 T['tools'] 漏到下游。
+type LLMRequestBodyType<T> = Omit<
+  T,
+  'model' | 'stop' | 'response_format' | 'messages' | 'tools'
+> & {
   model: string | LLMModelItemType;
   stop?: string;
   response_format?: {
@@ -690,6 +704,7 @@ type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'mes
     json_schema?: string;
   };
   messages: ChatCompletionMessageParam[];
+  tools?: ChatCompletionTool[];
 
   // Custom field
   retainDatasetCite?: boolean;

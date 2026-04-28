@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model.schema';
@@ -218,7 +218,7 @@ export const PriceLine = React.memo(
     fontSize?: string;
     color?: string;
   }) => {
-    const tiers = useMemo(() => config.priceTiers || [], [config]);
+    const tiers = config.priceTiers || [];
     if (tiers.length === 0) return <Box>-</Box>;
     return (
       <TierTooltip tiers={tiers} color={color}>
@@ -229,7 +229,7 @@ export const PriceLine = React.memo(
 );
 
 const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
-  const tiers = useMemo(() => config.priceTiers || [], [config]);
+  const tiers = config.priceTiers || [];
   if (tiers.length === 0) return <Box>-</Box>;
   return (
     <TierTooltip tiers={tiers} color={'myGray.700'}>

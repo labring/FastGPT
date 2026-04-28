@@ -771,10 +771,11 @@ export const ModelEditModal = ({
 
   const reasoningEnabled = useWatch({ control, name: 'reasoning' });
   useEffect(() => {
-    if (!reasoningEnabled) {
-      setValue('reasoningEffort', false);
+    // 仅在 reasoning 关闭且 reasoningEffort 实际为 true 时才清，避免挂载即把表单标 dirty
+    if (!reasoningEnabled && getValues('reasoningEffort')) {
+      setValue('reasoningEffort', false, { shouldDirty: false });
     }
-  }, [reasoningEnabled, setValue]);
+  }, [reasoningEnabled, getValues, setValue]);
 
   const isCustom = !!modelData.isCustom;
   const isLLMModel = modelData?.type === ModelTypeEnum.llm;

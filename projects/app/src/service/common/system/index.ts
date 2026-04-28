@@ -1,4 +1,3 @@
-import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import fs, { existsSync } from 'fs';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
@@ -84,7 +83,6 @@ export function initGlobalVariables() {
   global.datasetParseQueueLen = global.datasetParseQueueLen ?? 0;
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
-  initHttpAgent();
   initPlusRequest();
 }
 

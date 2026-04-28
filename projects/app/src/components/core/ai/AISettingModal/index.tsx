@@ -491,10 +491,10 @@ const AIChatSettingsModal = ({
                   label={t('app:reasoning_response')}
                   switchControl={
                     <Switch
-                      isChecked={!!reasoning}
+                      isChecked={!reasoning}
                       size={'sm'}
                       onChange={(e) => {
-                        setValue(NodeInputKeyEnum.aiChatReasoning, e.target.checked);
+                        setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);
                       }}
                     />
                   }
