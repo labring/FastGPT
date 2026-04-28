@@ -1,15 +1,25 @@
-name: 'FastGPT-Pro-Test'
+name: "FastGPT-Pro-Test"
 on:
-  pull_request:
+  pull_request_target:
+    types: [ opened, synchronize, reopened ]
+    paths:
+      - "pro"
+      - "pro/**"
+      - "packages/**"
+      - "sdk/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".gitmodules"
+      - ".github/workflows/fastgpt-pro-test.yaml"
   workflow_dispatch:
 
 concurrency:
-  group: 'fastgpt-pro-test-${{ github.event.pull_request.number || github.ref }}'
+  group: "fastgpt-pro-test-${{ github.event.pull_request.number || github.ref }}"
   cancel-in-progress: true
 
 jobs:
   test:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || secrets.PRO_SUBMODULE_TOKEN != '' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -19,17 +29,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name || github.repository
+            }}
       - name: Update submodules
         env:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
         run: |
           if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro submodule. Add it to this repository's Actions secrets, or run this workflow from a repository that has the secret configured."
+              exit 1
+            fi
             if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
               git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
-            git submodule update --init --recursive
+            git submodule update --init --recursive --jobs 8
           fi
       - name: Install system deps for node-canvas
         run: |
@@ -40,8 +57,8 @@ jobs:
           version: 10.33.2
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
       - name: Install Deps
         run: pnpm install --frozen-lockfile
       - name: Test

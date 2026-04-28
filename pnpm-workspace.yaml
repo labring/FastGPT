@@ -1,10 +1,11 @@
 packages:
   - packages/*
   - projects/*
-  - pro/admin
-  - pro/sso
   - scripts/icon
   - sdk/*
+
+  - pro/admin
+  - pro/sso
 
 catalog:
   "@fastgpt-sdk/logger": 0.1.2

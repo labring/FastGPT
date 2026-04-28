@@ -3,7 +3,8 @@
   "version": "4.14.16",
   "private": false,
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=8192' pnpm run build:workers && next dev",
+    "dev": "pnpm run build:workers && next dev",
+    "dev:pro": "pnpm run dev",
     "build": "pnpm run build:workers && next build --debug",
     "build:webpack": "pnpm run build:workers && next build --webpack --debug",
     "analyze": "next experimental-analyze",
