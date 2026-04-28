@@ -56,6 +56,9 @@ const SelectAiModelRender = ({ inputs = [], nodeId }: RenderInputProps) => {
         inputs.find((input) => input.key === NodeInputKeyEnum.aiChatVision)?.value ?? true,
       aiChatReasoning:
         inputs.find((input) => input.key === NodeInputKeyEnum.aiChatReasoning)?.value ?? true,
+      aiChatReasoningEffort: inputs.find(
+        (input) => input.key === NodeInputKeyEnum.aiChatReasoningEffort
+      )?.value,
       aiChatTopP: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTopP)?.value,
       aiChatStopSign: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatStopSign)?.value,
       aiChatResponseFormat: inputs.find(

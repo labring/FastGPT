@@ -22,10 +22,7 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { customNanoid, getNanoid } from '@fastgpt/global/common/string/tools';
 import { parsePromptToolCall, promptToolCallMessageRewrite } from './promptCall';
 import { getLLMModel } from '../model';
-import {
-  ChatCompletionRequestMessageRoleEnum,
-  type ReasoningEffortEnum
-} from '@fastgpt/global/core/ai/constants';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from './utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -685,10 +682,7 @@ type InferCompletionsBody<T> = T extends { stream: true }
     ? ChatCompletionCreateParamsNonStreaming
     : ChatCompletionCreateParams;
 
-type LLMRequestBodyType<T> = Omit<
-  T,
-  'model' | 'stop' | 'response_format' | 'messages' | 'reasoning_effort'
-> & {
+type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
   model: string | LLMModelItemType;
   stop?: string;
   response_format?: {

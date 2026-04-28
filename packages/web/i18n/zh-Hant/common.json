@@ -945,6 +945,7 @@
   "question_feedback": "工單諮詢",
   "read_course": "閱讀教學",
   "read_doc": "閱讀文件",
+  "reasoning_effort.default": "預設",
   "reasoning_effort.high": "深度思考",
   "reasoning_effort.low": "輕量思考",
   "reasoning_effort.medium": "標準思考",

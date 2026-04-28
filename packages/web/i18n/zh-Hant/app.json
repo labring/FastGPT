@@ -287,7 +287,6 @@
   "hide_response": "隱藏 AI 輸出",
   "hide_response_tip": "勾選後,模型輸出內容不會直接展示給用戶,但可以在 AI 回覆的輸出中取得本次模型輸出的內容進行二次處理。",
   "reasoning_effort": "思考配置",
-  "reasoning_effort_default": "預設",
   "reasoning_effort_unsupported": "該模型不支援關閉思考",
   "recharge": "去充值",
   "reference_variable": "引用變量",

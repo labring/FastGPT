@@ -955,6 +955,7 @@
   "question_feedback": "工单咨询",
   "read_course": "查看教程",
   "read_doc": "查看文档",
+  "reasoning_effort.default": "默认",
   "reasoning_effort.high": "深度思考",
   "reasoning_effort.low": "轻量思考",
   "reasoning_effort.medium": "标准思考",

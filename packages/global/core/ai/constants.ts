@@ -1,5 +1,5 @@
 import { i18nT } from '../../../web/i18n/utils';
-import type { CompletionUsage } from './llm/type';
+import type { CompletionUsage, ReasoningEffort } from './llm/type';
 import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {
@@ -88,22 +88,14 @@ export enum EmbeddingTypeEnm {
   db = 'db'
 }
 
-export enum ReasoningEffortEnum {
-  none = 'none',
-  minimal = 'minimal',
-  low = 'low',
-  medium = 'medium',
-  high = 'high',
-  xhigh = 'xhigh'
-}
-
-export const reasoningEffortList = [
-  { label: i18nT('common:reasoning_effort.none'), value: ReasoningEffortEnum.none },
-  { label: i18nT('common:reasoning_effort.minimal'), value: ReasoningEffortEnum.minimal },
-  { label: i18nT('common:reasoning_effort.low'), value: ReasoningEffortEnum.low },
-  { label: i18nT('common:reasoning_effort.medium'), value: ReasoningEffortEnum.medium },
-  { label: i18nT('common:reasoning_effort.high'), value: ReasoningEffortEnum.high },
-  { label: i18nT('common:reasoning_effort.xhigh'), value: ReasoningEffortEnum.xhigh }
+export const reasoningEffortList: { label: string; value: ReasoningEffort }[] = [
+  { label: i18nT('common:reasoning_effort.default'), value: null },
+  { label: i18nT('common:reasoning_effort.none'), value: 'none' },
+  { label: i18nT('common:reasoning_effort.minimal'), value: 'minimal' },
+  { label: i18nT('common:reasoning_effort.low'), value: 'low' },
+  { label: i18nT('common:reasoning_effort.medium'), value: 'medium' },
+  { label: i18nT('common:reasoning_effort.high'), value: 'high' },
+  { label: i18nT('common:reasoning_effort.xhigh'), value: 'xhigh' }
 ];
 
 export const completionFinishReasonMap = {

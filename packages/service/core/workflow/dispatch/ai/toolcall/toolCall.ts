@@ -75,6 +75,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       aiChatResponseFormat,
       aiChatJsonSchema,
       aiChatReasoning,
+      aiChatReasoningEffort,
       isResponseAnswerText = true,
       useAgentSandbox
     }
@@ -208,6 +209,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       temperature,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
+      reasoning_effort: aiChatReasoningEffort,
       response_format: {
         type: aiChatResponseFormat,
         json_schema: aiChatJsonSchema

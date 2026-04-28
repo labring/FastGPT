@@ -198,6 +198,7 @@ const EditForm = ({
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,
                   aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                  aiChatReasoningEffort: appForm.aiSettings.aiChatReasoningEffort,
                   aiChatTopP: appForm.aiSettings.aiChatTopP,
                   aiChatStopSign: appForm.aiSettings.aiChatStopSign,
                   aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,

@@ -35,7 +35,7 @@ import EmptyTip from '../EmptyTip';
  * customOnOpen: 自定义打开回调
  * customOnClose: 自定义关闭回调
  * */
-export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
+export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   value?: T;
   valueLabel?: string | React.ReactNode;
   placeholder?: string;

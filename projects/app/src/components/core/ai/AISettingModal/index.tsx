@@ -33,7 +33,8 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
-import { ReasoningEffortEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
+import { reasoningEffortList } from '@fastgpt/global/core/ai/constants';
+import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -115,7 +116,7 @@ const AIChatSettingsModal = ({
   const [refresh, setRefresh] = useState(false);
   const { feConfigs } = useSystemStore();
 
-  const { handleSubmit, getValues, setValue, watch, register } = useForm({
+  const { handleSubmit, getValues, setValue, watch, register } = useForm<SettingAIDataType>({
     defaultValues: defaultData
   });
   const model = watch('model');
@@ -468,21 +469,15 @@ const AIChatSettingsModal = ({
             <SectionCard title={t('app:ai_setting_reasoning_config')}>
               <SettingRow label={t('app:reasoning_effort')}>
                 {supportParams.reasoningEffort ? (
-                  <MySelect<string>
+                  <MySelect<ReasoningEffort>
                     h={'38px'}
-                    list={[
-                      { label: t('app:reasoning_effort_default'), value: '' },
-                      ...reasoningEffortList.map((item) => ({
-                        label: t(item.label as any),
-                        value: item.value
-                      }))
-                    ]}
-                    value={reasoningEffort ?? ''}
+                    list={reasoningEffortList.map((item) => ({
+                      label: t(item.label),
+                      value: item.value
+                    }))}
+                    value={reasoningEffort ?? null}
                     onChange={(e) => {
-                      setValue(
-                        NodeInputKeyEnum.aiChatReasoningEffort,
-                        e === '' ? undefined : (e as ReasoningEffortEnum)
-                      );
+                      setValue(NodeInputKeyEnum.aiChatReasoningEffort, e);
                     }}
                   />
                 ) : (
@@ -491,7 +486,7 @@ const AIChatSettingsModal = ({
                   </Box>
                 )}
               </SettingRow>
-              {reasoningEffort !== ReasoningEffortEnum.none && (
+              {reasoningEffort !== 'none' && (
                 <SettingRow
                   label={t('app:reasoning_response')}
                   switchControl={

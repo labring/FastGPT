@@ -41,6 +41,9 @@ export const AppFormEditFormV1TypeSchema = z.object({
     [NodeInputKeyEnum.aiChatIsResponseText]: z.boolean(),
     maxHistories: z.int().min(0).max(100),
     [NodeInputKeyEnum.aiChatReasoning]: z.boolean().optional(),
+    [NodeInputKeyEnum.aiChatReasoningEffort]: z
+      .enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh'])
+      .nullish(),
     [NodeInputKeyEnum.aiChatTopP]: z.number().optional(),
     [NodeInputKeyEnum.aiChatStopSign]: z.string().optional(),
     [NodeInputKeyEnum.aiChatResponseFormat]: z.string().optional(),

@@ -955,6 +955,7 @@
   "question_feedback": "Work order",
   "read_course": "Read Course",
   "read_doc": "Read Document",
+  "reasoning_effort.default": "Default",
   "reasoning_effort.high": "High",
   "reasoning_effort.low": "Low",
   "reasoning_effort.medium": "Medium",
