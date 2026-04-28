@@ -99,7 +99,14 @@ const getOfficeZipFormatByExtension = (extension: string) =>
 const MIME_EQUIVALENCE_GROUPS: ReadonlyArray<ReadonlySet<string>> = [
   new Set(['video/x-msvideo', 'video/vnd.avi', 'video/avi', 'video/msvideo']),
   new Set(['video/mpeg', 'video/mp1s', 'video/mp2p']),
-  new Set(['audio/mp4', 'audio/x-m4a'])
+  new Set(['audio/mp4', 'audio/x-m4a']),
+  // CFB (Compound File Binary) format used by legacy Office documents (.doc, .ppt, .xls)
+  new Set([
+    'application/x-cfb',
+    'application/msword',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.ms-excel'
+  ])
 ];
 
 const normalizeMimeForCompare = (mime: string) => mime.split(';')[0]?.trim().toLowerCase() || '';
