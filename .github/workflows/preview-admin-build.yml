@@ -1,7 +1,7 @@
 name: Preview Admin Image - Build
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
     branches: ['*']
     paths:
@@ -25,6 +25,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ github.event.pull_request.author_association == 'MEMBER' }}
     runs-on: ubuntu-24.04
 
     steps:
