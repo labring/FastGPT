@@ -387,6 +387,8 @@
   "remove_warning": "Confirm",
   "config_prompt": "Configure prompt",
   "process.Hype_Index": "generate hypothetical prompt index",
+  "process.Synonym_Restore": "Synonym Restore",
+  "process.Synonym_Standardize": "Synonym Standardize",
   "data_index_hype": "Hypothetical Prompt Index",
   "data_index_small2big": "Segmented Enhanced Index",
   "data_index_correction": "Correction Index",

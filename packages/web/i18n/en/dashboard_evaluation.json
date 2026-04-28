@@ -280,6 +280,7 @@
   "run_failed_please_retry": "Test run failed. Please try again.",
   "intelligent_generate_data": "Auto generate data",
   "evaluation_completed": "Evaluation completed.",
+  "evaluation_completed_no_result": "Evaluation completed without result",
   "generation_error": "Generation error",
   "data_generating": "Generating data",
   "delete_dataset_error": "Error occurred while deleting the dataset.",

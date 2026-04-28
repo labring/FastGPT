@@ -272,6 +272,7 @@
   "run_failed_please_retry": "運行失敗，請重試",
   "intelligent_generate_data": "智能生成數據",
   "evaluation_completed": "評估完成",
+  "evaluation_completed_no_result": "評測已完成，暫無結果",
   "generation_error": "生成異常",
   "data_generating": "數據生成中",
   "delete_dataset_error": "刪除數據集異常",

@@ -1242,6 +1242,7 @@
   "Role": "Permission",
   "app_evaluation_collapsed": "Evaluation",
   "app_not_version": "The app is not published. Please publish it first.",
+  "version": "Version",
   "app_type": "Application Type",
   "base_config": "Basics",
   "bill_already_processed": "Processed",
