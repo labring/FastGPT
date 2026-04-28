@@ -124,6 +124,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const {
       teamId,
       tmbId,
+      userTmbId,
       app,
       showCite,
       authType,
@@ -137,6 +138,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // share chat
       if (shareId && outLinkUid) {
         return authShareChat({
+          req,
           shareId,
           outLinkUid,
           chatId,
@@ -288,7 +290,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
           },
-          runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+          runningUserInfo: await getRunningUserInfoByTmbId(userTmbId || tmbId),
           uid: String(outLinkUserId || tmbId),
 
           chatId: saveChatId,
@@ -510,9 +512,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 export default NextAPI(handler);
 
 const authShareChat = async ({
+  req,
   chatId,
   ...data
 }: AuthOutLinkChatProps & {
+  req: NextApiRequest;
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
@@ -539,10 +543,23 @@ const authShareChat = async ({
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
+  // 尝试获取登录用户身份（share outLink 登录场景）
+  let userTmbId: string | undefined;
+  try {
+    const { tmbId: loginTmbId, teamId: loginTeamId } = await authCert({ req, authToken: true });
+    // 校验登录用户与应用属于同一团队，避免跨团队身份混用
+    if (loginTmbId && String(loginTeamId) === String(teamId)) {
+      userTmbId = loginTmbId;
+    }
+  } catch {
+    // 未登录，保持 undefined
+  }
+
   return {
     sourceName,
     teamId,
     tmbId,
+    userTmbId,
     app,
     apikey: '',
     authType,
