@@ -1,7 +1,7 @@
 name: Preview Admin Image - Build & Push
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
     paths:
       - 'pro'
@@ -27,15 +27,14 @@ permissions:
 
 jobs:
   build-and-push:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
-          repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name || github.repository }}
           fetch-depth: 1
 
       - name: Update submodules
@@ -43,6 +42,10 @@ jobs:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
         run: |
           if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro submodule. Add it to this repository's Actions secrets, or run this workflow from a repository that has the secret configured."
+              exit 1
+            fi
             if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
               git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
@@ -66,14 +69,14 @@ jobs:
           file: pro/admin/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pro-pr:${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          tags: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-pro-pr:${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt-pro admin image
-            org.opencontainers.image.revision=${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+            org.opencontainers.image.revision=${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Add PR comment on success
-        if: success() && github.event_name == 'pull_request'
+        if: success() && github.event_name == 'pull_request_target'
         uses: actions/github-script@v7
         with:
           script: |

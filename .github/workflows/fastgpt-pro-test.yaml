@@ -1,6 +1,6 @@
 name: "FastGPT-Pro-Test"
 on:
-  pull_request:
+  pull_request_target:
     types: [ opened, synchronize, reopened ]
     paths:
       - "pro"
@@ -20,8 +20,6 @@ concurrency:
 
 jobs:
   test:
-    if: ${{ github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -31,9 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' &&
+          ref: ${{ github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.sha || github.ref }}
-          repository: ${{ github.event_name == 'pull_request' &&
+          repository: ${{ github.event_name == 'pull_request_target' &&
             github.event.pull_request.head.repo.full_name || github.repository
             }}
       - name: Update submodules
@@ -41,6 +39,10 @@ jobs:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
         run: |
           if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro submodule. Add it to this repository's Actions secrets, or run this workflow from a repository that has the secret configured."
+              exit 1
+            fi
             if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
               git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
