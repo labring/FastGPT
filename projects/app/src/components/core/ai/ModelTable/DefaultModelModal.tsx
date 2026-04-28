@@ -32,7 +32,8 @@ const DefaultModelModal = ({
     ttsModelList,
     sttModelList,
     reRankModelList,
-    getVlmModelList
+    getVlmModelList,
+    feConfigs
   } = useSystemStore();
   const vlmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 
@@ -194,30 +195,32 @@ const DefaultModelModal = ({
             />
           </Box>
         </Box>
-        <Box mt={4}>
-          <Flex {...labelStyles} alignItems={'center'}>
-            <Box mr={0.5}>{t('account_model:evaluation_model')}</Box>
-            <QuestionTip label={t('account_model:evaluation_model_tip')} />
-          </Flex>
-          <Box flex={1}>
-            <AIModelSelector
-              bg="myGray.50"
-              value={defaultData.evaluation?.model}
-              list={llmModelList
-                .filter((item) => item.useInEvaluation)
-                .map((item) => ({
-                  value: item.model,
-                  label: item.name
-                }))}
-              onChange={(e) => {
-                setDefaultData((state) => ({
-                  ...state,
-                  evaluation: llmModelList.find((item) => item.model === e)
-                }));
-              }}
-            />
+        {feConfigs?.show_evaluation && (
+          <Box mt={4}>
+            <Flex {...labelStyles} alignItems={'center'}>
+              <Box mr={0.5}>{t('account_model:evaluation_model')}</Box>
+              <QuestionTip label={t('account_model:evaluation_model_tip')} />
+            </Flex>
+            <Box flex={1}>
+              <AIModelSelector
+                bg="myGray.50"
+                value={defaultData.evaluation?.model}
+                list={llmModelList
+                  .filter((item) => item.useInEvaluation)
+                  .map((item) => ({
+                    value: item.model,
+                    label: item.name
+                  }))}
+                onChange={(e) => {
+                  setDefaultData((state) => ({
+                    ...state,
+                    evaluation: llmModelList.find((item) => item.model === e)
+                  }));
+                }}
+              />
+            </Box>
           </Box>
-        </Box>
+        )}
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
