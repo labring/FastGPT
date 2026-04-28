@@ -10,6 +10,7 @@ import type { FileSelection } from './FilesCascader';
 import EvaluationDatasetSelector from './EvaluationDatasetSelector';
 import { getEvaluationList } from '@/web/core/evaluation/task';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
@@ -40,6 +41,7 @@ const SelectMarkCollection = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
 
   // 从路由查询参数获取appId
   const appId = useMemo(() => {
@@ -94,8 +96,8 @@ const SelectMarkCollection = ({
 
   // 检查是否有评测权限
   const hasEvaluationPermission = useMemo(() => {
-    return userInfo?.team?.permission.hasEvaluationCreatePer;
-  }, [userInfo]);
+    return feConfigs?.show_evaluation && userInfo?.team?.permission.hasEvaluationCreatePer;
+  }, [feConfigs?.show_evaluation, userInfo]);
 
   // 检查是否可以选择（需要同时选择了数据集和集合，且不是"不加入知识库"）
   const canConfirm =
