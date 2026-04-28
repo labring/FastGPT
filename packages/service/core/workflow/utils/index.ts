@@ -1,7 +1,7 @@
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getSystemToolByIdAndVersionId, getSystemTools } from '../../app/tool/controller';
+import { getSystemToolByIdAndVersionIdNode, getSystemTools } from '../../app/tool/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -53,7 +53,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
         (item) => item.toolId === child.id
       );
 
-      const tool = await getSystemToolByIdAndVersionId(child.id);
+      const tool = await getSystemToolByIdAndVersionIdNode({ toolId: child.id });
 
       const inputs = tool.inputs ?? [];
       if (toolsetInputConfig?.value) {

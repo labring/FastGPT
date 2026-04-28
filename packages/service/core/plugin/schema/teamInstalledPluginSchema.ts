@@ -6,6 +6,9 @@ const { Schema } = connectionMongo;
 
 export const collectionName = 'team_installed_plugins';
 
+/**
+ * 暂时没用, 后续改造成团队层面的对插件的管理库
+ */
 const TeamInstalledPluginSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,

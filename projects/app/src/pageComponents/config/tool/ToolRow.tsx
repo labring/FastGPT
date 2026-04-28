@@ -1,4 +1,4 @@
-import { Box, Flex, Switch, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, Switch } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   DraggableProvided,
@@ -8,11 +8,21 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { putAdminUpdateTool } from '@/web/core/plugin/admin/tool/api';
-import React, { useRef, useState, useEffect } from 'react';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
-import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import {
+  getAdminSystemToolDetail,
+  putAdminUpdateSystemTool,
+  putAdminUpdateWorkflowTool
+} from '@/web/core/plugin/admin/tool/api';
+import React, { useMemo } from 'react';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
+import type {
+  GetAdminSystemToolsResponseType,
+  UpdateSystemToolBodyType,
+  UpdateWorkflowToolBodyType
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 const ToolRow = ({
   tool,
@@ -27,21 +37,43 @@ const ToolRow = ({
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const isWorkflowTool = useMemo(() => {
+    return splitCombineToolId(tool.id).source !== AppToolSourceEnum.systemTool;
+  }, [tool.id]);
 
   const { runAsync: updateSystemTool, loading } = useRequest(
-    async (updateFields: {
-      defaultInstalled?: boolean;
-      hasTokenFee?: boolean;
-      status?: PluginStatusEnum;
-    }) => {
-      return putAdminUpdateTool({
-        ...tool,
-        pluginId: tool.id,
-        defaultInstalled: updateFields.defaultInstalled,
-        hasTokenFee: updateFields.hasTokenFee,
-        status: updateFields.status
-      });
+    async (updateFields: { hasTokenFee?: boolean; status?: PluginStatusType }) => {
+      if (isWorkflowTool) {
+        const detail = await getAdminSystemToolDetail({ toolId: tool.id });
+
+        const requestBody: UpdateWorkflowToolBodyType = {
+          id: tool.id,
+          name: detail.name,
+          avatar: detail.avatar,
+          intro: detail.intro,
+          tags: detail.tags ?? [],
+          userGuide: detail.userGuide,
+          author: detail.author,
+          currentCost: detail.currentCost,
+          systemKeyCost: detail.systemKeyCost,
+          secretsVal: detail.secretsVal,
+          promoteTags: detail.promoteTags,
+          hideTags: detail.hideTags,
+          hasTokenFee: updateFields.hasTokenFee ?? detail.hasTokenFee,
+          status: updateFields.status ?? detail.status
+        };
+
+        return putAdminUpdateWorkflowTool(requestBody);
+      }
+
+      const requestBody: UpdateSystemToolBodyType = {
+        id: tool.id,
+        hasTokenFee: updateFields.hasTokenFee ?? tool.hasTokenFee,
+        status: updateFields.status ?? tool.status
+      };
+
+      return putAdminUpdateSystemTool(requestBody);
     },
     {
       onSuccess: (_, updateFields) => {
@@ -79,7 +111,7 @@ const ToolRow = ({
         setEditingToolId(tool.id);
       }}
     >
-      <Box display={'flex'} w={2 / 10} pl={2}>
+      <Box display={'flex'} w={2.2 / 10} pl={2}>
         <Flex
           h={'full'}
           rounded={'xs'}
@@ -134,10 +166,10 @@ const ToolRow = ({
           </Box>
         )}
       </Box>
-      <Box w={2.5 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+      <Box w={3 / 10} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
         {tool?.intro || '-'}
       </Box>
-      <Box w={1 / 10} pl={6}>
+      <Box w={1.1 / 10} pl={6}>
         <Box
           as={'span'}
           color={
@@ -155,30 +187,8 @@ const ToolRow = ({
               : t('app:toolkit_status_normal')}
         </Box>
       </Box>
-      <Box w={1 / 10} pl={4}>
-        <Box
-          as={'span'}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const newDefaultInstalled = !tool?.defaultInstalled;
-            const updateFields: {
-              defaultInstalled: boolean;
-              status?: number;
-            } = {
-              defaultInstalled: newDefaultInstalled
-            };
-            if (newDefaultInstalled && tool.status !== PluginStatusEnum.Normal) {
-              updateFields.status = PluginStatusEnum.Normal;
-            }
-            updateSystemTool(updateFields);
-          }}
-        >
-          <Checkbox isChecked={tool.defaultInstalled} colorScheme="primary" />
-        </Box>
-      </Box>
-      <Box w={1 / 10}>
-        {tool?.associatedPluginId ? (
+      <Box w={1.1 / 10}>
+        {isWorkflowTool ? (
           <Box
             as={'span'}
             onClick={(e: React.MouseEvent) => {
@@ -196,8 +206,8 @@ const ToolRow = ({
           <Box pl={4}>-</Box>
         )}
       </Box>
-      <Box w={1 / 10}>
-        {!!tool?.hasSecretInput ? (
+      <Box w={1.1 / 10}>
+        {!!tool?.needsSystemSecret ? (
           <Box color={tool?.hasSystemSecret ? 'green.600' : 'myGray.500'}>
             {tool?.hasSystemSecret
               ? t('app:toolkit_system_key_configured')

@@ -187,6 +187,7 @@ const RenderList = React.memo(function RenderList({
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
       const res = await getToolPreviewNode({ appId: template.id });
+      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       /* Invalid plugin check
         1. Reference type. but not tool description;
@@ -201,6 +202,7 @@ const RenderList = React.memo(function RenderList({
         chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
       const invalidFileInput = oneFileInput && !!canUploadFile;
       if (
+        !isToolSetTemplate &&
         res.inputs.some(
           (input) =>
             (input.renderTypeList.length === 1 &&

@@ -5,11 +5,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FileSelectorBox, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
-import {
-  getPkgPluginUploadURL,
-  parseUploadedPkgPlugin,
-  confirmPkgPluginUpload
-} from '@/web/core/plugin/admin/api';
+import { confirmPkgPluginUpload, uploadPkgPlugin } from '@/web/core/plugin/admin/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
@@ -17,12 +13,14 @@ import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { putFileToS3 } from '@fastgpt/web/common/file/utils';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 type UploadedPluginFile = SelectFileItemType & {
   status: 'uploading' | 'parsing' | 'success' | 'error' | 'duplicate';
   errorMsg?: string;
   toolId?: string;
+  version?: string;
+  etag?: string;
   toolName?: string;
   toolIntro?: string;
   toolTags?: string[];
@@ -55,33 +53,19 @@ const ImportPluginModal = ({
         )
       );
 
-      const { formData, objectName, postURL } = await getPkgPluginUploadURL({
-        filename: file.name
-      });
+      const formData = new FormData();
+      formData.append('file', file.file, encodeURIComponent(file.name));
 
-      await putFileToS3({
-        url: postURL,
-        headers: formData,
-        file: file.file,
-        t,
-        onSuccess: () => {
-          setUploadedFiles((prev) =>
-            prev.map((f) => (f.name === file.name ? { ...f, status: 'parsing' } : f))
-          );
-        }
-      });
-
-      const parseResult = await parseUploadedPkgPlugin({ objectName });
-
-      const parentId = parseResult.find((item) => !item.parentId)?.toolId;
-      if (!parentId) {
-        return Promise.reject(new Error(`${t('app:custom_plugin_parse_error')}`));
+      const parseResult = await uploadPkgPlugin(formData);
+      if (!parseResult || !parseResult.pluginId) {
+        throw new Error(t('app:custom_plugin_upload_failed'));
       }
-      const toolDetail = parseResult.find((item) => item.toolId === parentId);
-      if (!toolDetail) {
-        return Promise.reject(new Error(`${t('app:custom_plugin_parse_error')}`));
-      }
-      const isDuplicated = tools.some((tool) => tool.id.includes(toolDetail.toolId));
+
+      const isDuplicated = tools.some(
+        (tool) => tool.id === `${AppToolSourceEnum.systemTool}-${parseResult.pluginId}`
+      );
+
+      const toolId = `${AppToolSourceEnum.systemTool}-${parseResult.pluginId}`;
 
       setUploadedFiles((prev) =>
         prev.map((prevFile) =>
@@ -89,15 +73,17 @@ const ImportPluginModal = ({
             ? {
                 ...prevFile,
                 status: isDuplicated ? 'duplicate' : 'success',
-                toolId: parentId,
-                toolName: parseI18nString(toolDetail.name || '', i18n.language),
-                icon: toolDetail.icon || '',
-                toolIntro: parseI18nString(toolDetail.description || '', i18n.language) || '',
+                toolId,
+                toolName: parseI18nString(parseResult.name || '', i18n.language),
+                icon: parseResult.icon || '',
+                toolIntro: parseI18nString(parseResult.description || '', i18n.language) || '',
                 toolTags:
-                  toolDetail.tags?.map((tag) => {
+                  parseResult.tags?.map((tag) => {
                     const currentTag = allTags.find((item) => item.tagId === tag);
                     return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
-                  }) || []
+                  }) || [],
+                version: parseResult.version || '',
+                etag: parseResult.etag || ''
               }
             : prevFile
         )
@@ -106,7 +92,13 @@ const ImportPluginModal = ({
       setUploadedFiles((prev) =>
         prev.map((prevFile) =>
           prevFile.name === file.name
-            ? { ...prevFile, status: 'error', errorMsg: error.message }
+            ? {
+                ...prevFile,
+                status: 'error',
+                errorMsg: error.message.reason
+                  ? parseI18nString(error.message.reason, i18n.language)
+                  : error.message
+              }
             : prevFile
         )
       );
@@ -151,7 +143,7 @@ const ImportPluginModal = ({
         handleBatchUpload(filteredFiles);
       }
     },
-    [handleBatchUpload, t, toast, uploadedFiles]
+    [handleBatchUpload, selectFiles, t, toast, uploadedFiles]
   );
 
   const handleRetry = async (file: UploadedPluginFile) => {
@@ -167,7 +159,11 @@ const ImportPluginModal = ({
     async () => {
       const successToolIds = uploadedFiles
         .filter((file) => (file.status === 'success' || file.status === 'duplicate') && file.toolId)
-        .map((file) => file.toolId!);
+        .map((file) => ({
+          pluginId: file.toolId!,
+          version: file.version!,
+          etag: file.etag!
+        }));
 
       await confirmPkgPluginUpload({ toolIds: successToolIds });
     },

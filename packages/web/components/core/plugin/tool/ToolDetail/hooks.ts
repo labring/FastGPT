@@ -1,17 +1,93 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { ToolDetailResponseType, ToolDetailExtendedType } from './types';
-import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
+import type {
+  ToolDetailFetchResponse,
+  ToolDetailResponseType,
+  ToolDetailExtendedType
+} from './types';
 import { useRequest } from '../../../../../hooks/useRequest';
 
 export type UseToolDetailProps = {
   toolId?: string;
+  version?: string;
   tags?: string[];
-  onFetchDetail?: (toolId: string) => Promise<GetTeamToolDetailResponseType>;
+  onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
   autoFetch?: boolean;
+};
+
+const normalizeToolDetail = (
+  detail?: ToolDetailFetchResponse
+): ToolDetailResponseType | undefined => {
+  if (!detail) return undefined;
+
+  if (Array.isArray(detail.tools)) {
+    return {
+      ...detail,
+      tools: detail.tools.map((tool: Record<string, any>) => ({
+        ...tool,
+        pluginId: tool.pluginId || tool.toolId || tool.id,
+        id: tool.id || tool.toolId || tool.pluginId,
+        name: tool.name || '',
+        intro: tool.intro || tool.description || '',
+        description: tool.description || tool.intro || '',
+        icon: tool.icon || tool.avatar,
+        readme: tool.readme || tool.readmeUrl,
+        versionList: tool.versionList || [
+          {
+            inputs: tool.inputs || [],
+            outputs: tool.outputs || []
+          }
+        ]
+      }))
+    };
+  }
+
+  const tool = detail as Record<string, any>;
+  const parentTool: ToolDetailExtendedType = {
+    ...tool,
+    pluginId: tool.id,
+    id: tool.id,
+    name: tool.name || '',
+    intro: tool.intro || '',
+    description: tool.intro || tool.description || '',
+    icon: tool.avatar || tool.icon,
+    readme: tool.readmeUrl || tool.readme,
+    tags: tool.tags,
+    versionList: [
+      {
+        inputs: tool.inputs || [],
+        outputs: tool.outputs || []
+      }
+    ]
+  };
+
+  const childTools: ToolDetailExtendedType[] = (tool.children || []).map(
+    (child: Record<string, any>) => ({
+      ...child,
+      pluginId: child.id,
+      id: child.id,
+      parentId: tool.id,
+      name: child.name || '',
+      intro: child.description || '',
+      description: child.description || '',
+      icon: child.icon,
+      version: tool.version,
+      versionList: [
+        {
+          inputs: child.inputs || [],
+          outputs: child.outputs || []
+        }
+      ]
+    })
+  );
+
+  return {
+    tools: [parentTool, ...childTools]
+  };
 };
 
 export const useToolDetail = ({
   toolId,
+  version,
   tags,
   onFetchDetail,
   autoFetch = true
@@ -24,10 +100,10 @@ export const useToolDetail = ({
     loading: loadingDetail,
     run: fetchToolDetail
   } = useRequest(
-    async (id: string) => {
+    async (id: string, version?: string) => {
       if (!onFetchDetail) return undefined;
-      const detail = await onFetchDetail(id);
-      return detail as any as ToolDetailResponseType;
+      const detail = await onFetchDetail(id, version);
+      return normalizeToolDetail(detail);
     },
     {
       manual: true,
@@ -38,9 +114,9 @@ export const useToolDetail = ({
   // 自动获取工具详情
   useEffect(() => {
     if (toolId && autoFetch && onFetchDetail) {
-      fetchToolDetail(toolId);
+      fetchToolDetail(toolId, version);
     }
-  }, [toolId, autoFetch]);
+  }, [toolId, version, autoFetch]);
 
   // Calculate tool structure
   const isToolSet = useMemo(() => {
@@ -69,7 +145,10 @@ export const useToolDetail = ({
     const fetchReadme = async () => {
       if (!toolDetail) return;
       const readmeUrl = parentTool?.readme;
-      if (!readmeUrl) return;
+      if (!readmeUrl) {
+        setReadmeContent('');
+        return;
+      }
 
       try {
         const response = await fetch(readmeUrl);

@@ -19,7 +19,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
 import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import type { AdminSystemToolListItemType } from '@fastgpt/global/core/plugin/admin/tool/type';
+import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
 
 const SystemToolConfigModal = dynamic(
   () => import('@/pageComponents/config/tool/SystemToolConfigModal')
@@ -48,7 +48,7 @@ const ToolProvider = () => {
   } = useDisclosure();
 
   const { runAsync: refreshTools, loading: loadingTools } = useRequest(
-    () => getAdminSystemTools({ parentId: null }),
+    () => getAdminSystemTools({}),
     {
       onSuccess: (data) => {
         if (data) {
@@ -113,16 +113,15 @@ const ToolProvider = () => {
         fontWeight={'medium'}
         color={'myGray.600'}
       >
-        <Box w={2 / 10} pl={8}>
+        <Box w={2.2 / 10} pl={8}>
           {t('app:toolkit_name')}
         </Box>
         <Box w={1.5 / 10}>{t('app:toolkit_tags')}</Box>
-        <Box w={2.5 / 10}>{t('common:Intro')}</Box>
-        <Box w={1 / 10} pl={6}>
+        <Box w={3 / 10}>{t('common:Intro')}</Box>
+        <Box w={1.1 / 10} pl={6}>
           {t('app:toolkit_status')}
         </Box>
-        <Box w={1 / 10}>{t('app:toolkit_default_install')}</Box>
-        <Box w={1 / 10} display={'flex'} alignItems={'center'}>
+        <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
           {t('app:toolkit_token_fee')}
           <QuestionTip
             display={'flex'}
@@ -132,7 +131,7 @@ const ToolProvider = () => {
             color={'myGray.300'}
           />
         </Box>
-        <Box w={1 / 10} display={'flex'} alignItems={'center'}>
+        <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
           {t('app:toolkit_system_key')}
           <QuestionTip
             display={'flex'}

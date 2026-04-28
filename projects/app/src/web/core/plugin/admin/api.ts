@@ -1,26 +1,17 @@
-import { GET, PUT, POST, DELETE } from '@/web/common/api/request';
+import { POST, DELETE } from '@/web/common/api/request';
 import type {
-  GetPkgPluginUploadURLQueryType,
-  GetPkgPluginUploadURLResponseType,
-  ParseUploadedPkgPluginQueryType,
-  ParseUploadedPkgPluginResponseType,
   ConfirmUploadPkgPluginBodyType,
-  DeletePkgPluginQueryType,
   InstallPluginFromUrlBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/api';
 
-// Pkg plugin
-export const getPkgPluginUploadURL = (params: GetPkgPluginUploadURLQueryType) =>
-  GET<GetPkgPluginUploadURLResponseType>(`/core/plugin/admin/pkg/presign`, params);
+import type { PluginSummaryType } from '@fastgpt/global/sdk/fastgpt-plugin';
 
-export const parseUploadedPkgPlugin = (params: ParseUploadedPkgPluginQueryType) =>
-  GET<ParseUploadedPkgPluginResponseType>(`/core/plugin/admin/pkg/parse`, params);
+// Pkg plugin
+export const uploadPkgPlugin = (formData: FormData) =>
+  POST<PluginSummaryType>(`/core/plugin/admin/pkg/upload`, formData);
 
 export const confirmPkgPluginUpload = (data: ConfirmUploadPkgPluginBodyType) =>
   POST(`/core/plugin/admin/pkg/confirm`, data);
-
-export const deletePkgPlugin = (data: DeletePkgPluginQueryType) =>
-  DELETE('/core/plugin/admin/pkg/delete', data);
 
 export const intallPluginWithUrl = (data: InstallPluginFromUrlBodyType) =>
   POST('/core/plugin/admin/installWithUrl', data);

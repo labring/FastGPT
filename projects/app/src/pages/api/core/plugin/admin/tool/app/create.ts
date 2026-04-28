@@ -2,8 +2,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { refreshVersionKey } from '@fastgpt/service/common/cache';
-import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { CreateAppToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
@@ -24,14 +22,13 @@ async function handler(
     name,
     avatar,
     intro,
-    tagIds,
-    inputListVal,
+    tags,
+    secretsVal,
     originCost,
     currentCost,
     systemKeyCost,
     hasTokenFee,
     status,
-    defaultInstalled,
     associatedPluginId,
     userGuide,
     author
@@ -45,8 +42,7 @@ async function handler(
   await MongoSystemTool.create({
     pluginId,
     status: status ?? PluginStatusEnum.Normal,
-    defaultInstalled: defaultInstalled ?? false,
-    inputListVal,
+    secretsVal,
     originCost,
     currentCost,
     systemKeyCost,
@@ -57,15 +53,12 @@ async function handler(
       avatar,
       intro,
       version: getNanoid(),
-      tags: tagIds,
+      tags,
       associatedPluginId,
       userGuide,
       author
     }
   });
-
-  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
-
   return {};
 }
 

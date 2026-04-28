@@ -32,3 +32,6 @@ export const langMap = {
     avatar: 'common/language/China'
   }
 };
+
+export const I18nUnionStringSchema = z.union([I18nStringSchema, z.string()]);
+export type I18nUnionStringType = z.infer<typeof I18nUnionStringSchema>;

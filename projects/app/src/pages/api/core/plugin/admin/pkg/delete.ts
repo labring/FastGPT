@@ -1,3 +1,4 @@
+// TODO: Remove this file
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -7,8 +8,6 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 import type { DeletePkgPluginQueryType } from '@fastgpt/global/openapi/core/plugin/admin/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { refreshVersionKey } from '@fastgpt/service/common/cache';
-import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 export type GetUploadURLQuery = DeletePkgPluginQueryType;
 
@@ -31,9 +30,6 @@ async function handler(
 
     await MongoSystemTool.deleteMany({ pluginId }, { session });
   });
-
-  await refreshVersionKey(SystemCacheKeyEnum.systemTool);
-
   return result;
 }
 

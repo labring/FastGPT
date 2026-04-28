@@ -38,6 +38,7 @@ declare global {
   var ModelProviderRawCache: { provider: string; value: I18nStringStrictType; avatar: string }[];
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
+  // TODO: check 一下这个 channel type 是什么鬼
   var aiproxyChannelsCache: AIProxyChannelsType;
 
   var systemModelList: SystemModelItemType[];

@@ -185,7 +185,6 @@ const HandleTypeSchema = z.object({
 // system template
 export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   id: z.string(),
-  templateType: z.string(),
   status: PluginStatusSchema.optional(),
 
   showSourceHandle: BoolSchema.optional(),
@@ -206,7 +205,9 @@ export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
   /** @deprecated */
   sourceHandle: HandleTypeSchema.optional(),
   /** @deprecated */
-  targetHandle: HandleTypeSchema.optional()
+  targetHandle: HandleTypeSchema.optional(),
+  /** @deprecated */
+  templateType: z.string().optional()
 });
 export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
 
@@ -233,9 +234,12 @@ export const NodeTemplateListItemTypeSchema = z.object({
   hasTokenFee: BoolSchema.optional(),
   instructions: z.string().optional(), // 使用说明
   courseUrl: z.string().optional(),
-  sourceMember: SourceMemberSchema.optional(),
-  toolSource: z.enum(['uploaded', 'built-in']).optional()
+  readmeUrl: z.string().optional(),
+
+  sourceMember: SourceMemberSchema.optional()
+  // toolSource: z.enum(['uploaded', 'built-in']).optional()
 });
+
 export type NodeTemplateListItemType = z.infer<typeof NodeTemplateListItemTypeSchema>;
 export const NodeTemplateListTypeSchema = z.array(
   z.object({

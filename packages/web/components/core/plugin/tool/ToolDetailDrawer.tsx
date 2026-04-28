@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -15,16 +15,20 @@ import { useTranslation } from 'next-i18next';
 import Avatar from '../../../common/Avatar';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyIconButton from '../../../common/Icon/button';
+import MyIcon from '../../../common/Icon';
+import MyMenu from '../../../common/MyMenu';
 import LightRowTabs from '../../../common/Tabs/LightRowTabs';
 import { type ToolCardItemType } from './ToolCard';
 import MyBox from '../../../common/MyBox';
 import Markdown from '../../../common/Markdown';
-import type { GetTeamToolDetailResponseType } from '@fastgpt/global/openapi/core/plugin/team/toolApi';
+import { useRequest } from '../../../../hooks/useRequest';
 import {
   ParamSection,
   SubToolAccordionItem,
   useToolDetail,
-  drawerScrollbarStyles
+  drawerScrollbarStyles,
+  type ToolDetailFetchResponse,
+  type ToolDetailVersionType
 } from './ToolDetail';
 
 const ToolDetailDrawer = ({
@@ -35,35 +39,70 @@ const ToolDetailDrawer = ({
   isUpdating,
   systemTitle,
   onFetchDetail,
+  onFetchVersions,
   isLoading,
   showPoint,
-  mode
+  mode,
+  showActionButton = true
 }: {
   onClose: () => void;
   selectedTool: ToolCardItemType;
-  onToggleInstall: (installed: boolean) => void;
+  onToggleInstall?: (installed: boolean) => void;
   onUpdate?: () => void;
   isUpdating?: boolean;
   systemTitle?: string;
-  onFetchDetail?: (toolId: string) => Promise<GetTeamToolDetailResponseType>;
+  onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
+  onFetchVersions?: (toolId: string) => Promise<ToolDetailVersionType[]>;
   isLoading?: boolean;
   showPoint: boolean;
   mode: 'admin' | 'team' | 'marketplace';
+  showActionButton?: boolean;
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
   const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
+  const [selectedVersion, setSelectedVersion] = useState<string | undefined>(selectedTool.version);
 
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
   }, [mode]);
 
+  const {
+    data: toolVersions = [],
+    loading: loadingVersions,
+    run: fetchToolVersions
+  } = useRequest(
+    async (toolId: string) => {
+      if (!onFetchVersions) return [];
+      return onFetchVersions(toolId);
+    },
+    {
+      manual: true,
+      errorToast: ''
+    }
+  );
+
+  useEffect(() => {
+    if (selectedTool.id && onFetchVersions) {
+      fetchToolVersions(selectedTool.id);
+    }
+  }, [selectedTool.id]);
+
+  useEffect(() => {
+    if (!selectedVersion && toolVersions[0]?.version) {
+      setSelectedVersion(toolVersions[0].version);
+    }
+  }, [selectedVersion, toolVersions]);
+
   // Use tool detail hook
   const { parentTool, isToolSet, subTools, readmeContent, loadingDetail } = useToolDetail({
     toolId: selectedTool.id,
+    version: selectedVersion,
     tags: selectedTool.tags || undefined,
     onFetchDetail
   });
+
+  const currentVersion = selectedVersion || parentTool?.version || selectedTool.version;
 
   return (
     <Drawer isOpen={true} onClose={onClose} placement="right">
@@ -76,6 +115,43 @@ const ToolDetailDrawer = ({
               {parseI18nString(parentTool?.name || '', i18n.language)}
             </Box>
             <Box flex={1} />
+            {toolVersions.length > 0 && (
+              <MyMenu
+                trigger="hover"
+                placement="bottom-end"
+                Button={
+                  <Flex
+                    alignItems={'center'}
+                    gap={1}
+                    px={2}
+                    h={7}
+                    border={'1px solid'}
+                    borderColor={'myGray.200'}
+                    borderRadius={'md'}
+                    cursor={'pointer'}
+                    color={'myGray.700'}
+                  >
+                    <Box fontSize={'12px'}>{currentVersion || t('common:Version')}</Box>
+                    <MyIcon name="core/chat/chevronDown" w={4} />
+                  </Flex>
+                }
+                menuList={[
+                  {
+                    children: toolVersions.map((item) => ({
+                      label: item.version,
+                      description: item.versionDescription,
+                      isActive: item.version === currentVersion,
+                      onClick: () => setSelectedVersion(item.version)
+                    }))
+                  }
+                ]}
+              />
+            )}
+            {loadingVersions && currentVersion && (
+              <Box fontSize={'12px'} color={'myGray.500'}>
+                {currentVersion}
+              </Box>
+            )}
             <MyIconButton icon={'common/closeLight'} onClick={onClose} />
           </Flex>
         </DrawerHeader>
@@ -105,45 +181,47 @@ const ToolDetailDrawer = ({
             <Box fontSize={'12px'} color="myGray.500" mt={3}>
               {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
             </Box>
-            <Flex mt={3} gap={2}>
-              {/* Determine if we have two buttons */}
-              {(() => {
-                const hasUpdateButton = selectedTool.update && onUpdate && mode !== 'marketplace';
-                const buttonFlex = hasUpdateButton ? 1 : 1; // Both use flex=1, but when single button it fills the space
+            {(showActionButton || (selectedTool.update && onUpdate && mode !== 'marketplace')) && (
+              <Flex mt={3} gap={2}>
+                {/* Determine if we have two buttons */}
+                {(() => {
+                  const hasUpdateButton = selectedTool.update && onUpdate && mode !== 'marketplace';
+                  const buttonFlex = hasUpdateButton ? 1 : 1; // Both use flex=1, but when single button it fills the space
 
-                return (
-                  <>
-                    <Button
-                      flex={buttonFlex}
-                      variant={isInstalled ? 'primaryOutline' : 'primary'}
-                      isLoading={isLoading || loadingDetail}
-                      isDisabled={isUpdating}
-                      onClick={async () => {
-                        onToggleInstall(!isInstalled);
-                        if (mode === 'marketplace') return;
-                        setIsInstalled(!isInstalled);
-                      }}
-                    >
-                      {isDownload
-                        ? t('common:Download')
-                        : isInstalled
-                          ? t('app:toolkit_uninstall')
-                          : t('app:toolkit_install')}
-                    </Button>
-                    {hasUpdateButton && (
+                  return (
+                    <>
                       <Button
-                        variant="primary"
-                        flex={1}
-                        isLoading={isUpdating || loadingDetail}
-                        onClick={onUpdate}
+                        flex={buttonFlex}
+                        variant={isInstalled ? 'primaryOutline' : 'primary'}
+                        isLoading={isLoading || loadingDetail}
+                        isDisabled={isUpdating}
+                        onClick={async () => {
+                          onToggleInstall?.(!isInstalled);
+                          if (mode === 'marketplace') return;
+                          setIsInstalled(!isInstalled);
+                        }}
                       >
-                        {t('app:custom_plugin_update')}
+                        {isDownload
+                          ? t('common:Download')
+                          : isInstalled
+                            ? t('app:toolkit_uninstall')
+                            : t('app:toolkit_install')}
                       </Button>
-                    )}
-                  </>
-                );
-              })()}
-            </Flex>
+                      {hasUpdateButton && (
+                        <Button
+                          variant="primary"
+                          flex={1}
+                          isLoading={isUpdating || loadingDetail}
+                          onClick={onUpdate}
+                        >
+                          {t('app:custom_plugin_update')}
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
+              </Flex>
+            )}
 
             {showPoint && (
               <Flex mt={4} gap={1.5} alignItems={'center'}>
@@ -164,6 +242,7 @@ const ToolDetailDrawer = ({
               </Box>
               <Box fontSize={'12px'} color={'myGray.600'}>
                 {parentTool?.hasSystemSecret ||
+                (parentTool?.secrets && parentTool?.secrets.length > 0) ||
                 (parentTool?.secretInputConfig && parentTool?.secretInputConfig.length > 0) ||
                 (parentTool?.inputList && parentTool?.inputList.length > 0)
                   ? t('app:toolkit_activation_required')
@@ -227,7 +306,7 @@ const ToolDetailDrawer = ({
                       {...(subTools.length === 1 ? { defaultIndex: [0] } : {})}
                     >
                       {subTools.map((subTool) => (
-                        <SubToolAccordionItem key={subTool.toolId} tool={subTool} />
+                        <SubToolAccordionItem key={subTool.pluginId} tool={subTool} />
                       ))}
                     </Accordion>
                   )}

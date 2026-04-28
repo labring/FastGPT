@@ -1,27 +1,53 @@
-import type { AdminSystemToolDetailSchema } from '../../../../../core/plugin/admin/tool/type';
-import {
-  AdminSystemToolListItemSchema,
-  ToolsetChildSchema
-} from '../../../../../core/plugin/admin/tool/type';
 import z from 'zod';
-import { ParentIdSchema } from '../../../../../common/parentFolder/type';
-import { PluginStatusSchema } from '../../../../../core/plugin/type';
-import { UserTagsEnum } from '../../../../../support/user/type';
+import {
+  SystemToolRuntimeSchema,
+  SystemToolVersionSchema
+} from '../../../../../core/app/tool/systemTool/type/base';
+import type { AdminSystemToolDetailType } from '../../../../../core/app/tool/systemTool/type';
+import {
+  AdminSystemToolChildDetailSchema,
+  AdminSystemToolDetailSchema,
+  AdminSystemToolListItemSchema
+} from '../../../../../core/app/tool/systemTool/type';
 
 // Admin tool list
-export const GetAdminSystemToolsQuery = z.object({
-  parentId: ParentIdSchema
-});
+export const GetAdminSystemToolsQuery = z.object({});
 export type GetAdminSystemToolsQueryType = z.infer<typeof GetAdminSystemToolsQuery>;
 export const GetAdminSystemToolsResponseSchema = z.array(AdminSystemToolListItemSchema);
 export type GetAdminSystemToolsResponseType = z.infer<typeof GetAdminSystemToolsResponseSchema>;
 
 // Admin tool detail
 export const GetAdminSystemToolDetailQuerySchema = z.object({
-  toolId: z.string()
+  toolId: z.string(),
+  version: z.string().optional()
 });
 export type GetAdminSystemToolDetailQueryType = z.infer<typeof GetAdminSystemToolDetailQuerySchema>;
-export type GetAdminSystemToolDetailResponseType = z.infer<typeof AdminSystemToolDetailSchema>;
+export type GetAdminSystemToolDetailResponseType = AdminSystemToolDetailType;
+
+// Admin tool versions
+export const GetAdminSystemToolVersionsQuerySchema = z.object({
+  toolId: z.string()
+});
+export type GetAdminSystemToolVersionsQueryType = z.infer<
+  typeof GetAdminSystemToolVersionsQuerySchema
+>;
+export const GetAdminSystemToolVersionsResponseSchema = z.array(SystemToolVersionSchema);
+export type GetAdminSystemToolVersionsResponseType = z.infer<
+  typeof GetAdminSystemToolVersionsResponseSchema
+>;
+
+// Update/reset tool runtime config
+export const RuntimeConfigSchema = SystemToolRuntimeSchema;
+export const UpdateToolRuntimeConfigBodySchema = z.object({
+  pluginId: z.string(),
+  runtimeConfig: RuntimeConfigSchema
+});
+export type UpdateToolRuntimeConfigBodyType = z.infer<typeof UpdateToolRuntimeConfigBodySchema>;
+
+export const ResetToolRuntimeConfigBodySchema = z.object({
+  pluginId: z.string()
+});
+export type ResetToolRuntimeConfigBodyType = z.infer<typeof ResetToolRuntimeConfigBodySchema>;
 
 // Update Tool Order Schema
 export const UpdateToolOrderBodySchema = z.object({
@@ -35,32 +61,67 @@ export const UpdateToolOrderBodySchema = z.object({
 export type UpdateToolOrderBodyType = z.infer<typeof UpdateToolOrderBodySchema>;
 
 // Update system tool Schema
-const UpdateChildToolSchema = ToolsetChildSchema.omit({
-  name: true
+const UpdateChildToolSchema = AdminSystemToolDetailSchema.shape.children.unwrap().element.pick({
+  id: true,
+  systemKeyCost: true
 });
-export const UpdateToolBodySchema = z.object({
-  pluginId: z.string(),
-  status: PluginStatusSchema.optional(),
-  defaultInstalled: z.boolean().optional(),
-  originCost: z.number().optional(),
-  currentCost: z.number().nullish(),
-  systemKeyCost: z.number().optional(),
-  hasTokenFee: z.boolean().optional(),
-  inputListVal: z.record(z.string(), z.any()).nullish(),
-  childTools: z.array(UpdateChildToolSchema).optional(),
-  promoteTags: z.array(UserTagsEnum).nullish(),
-  hideTags: z.array(UserTagsEnum).nullish(),
 
-  // App tool fields
-  name: z.string().optional(),
-  avatar: z.string().optional(),
-  intro: z.string().optional(),
-  tagIds: z.array(z.string()).nullish(),
-  associatedPluginId: z.string().optional(),
-  userGuide: z.string().nullish(),
-  author: z.string().optional()
+export const UpdateSystemToolBodySchema = AdminSystemToolDetailSchema.pick({
+  id: true,
+  status: true,
+  tags: true,
+  currentCost: true,
+  systemKeyCost: true,
+  hasTokenFee: true,
+  secretsVal: true,
+  promoteTags: true,
+  hideTags: true,
+  originCost: true,
+  runtimeConfig: true
+})
+  .partial()
+  .extend({
+    id: z.string(),
+    children: z.array(UpdateChildToolSchema).optional()
+  });
+export type UpdateSystemToolBodyType = z.infer<typeof UpdateSystemToolBodySchema>;
+
+// Update workflow tool Schema
+export const UpdateWorkflowToolBodySchema = AdminSystemToolDetailSchema.pick({
+  id: true,
+  status: true,
+  name: true,
+  avatar: true,
+  intro: true,
+  author: true,
+  tags: true,
+  userGuide: true,
+  currentCost: true,
+  systemKeyCost: true,
+  hasTokenFee: true,
+  secretsVal: true,
+  promoteTags: true,
+  hideTags: true,
+  originCost: true
+})
+  .partial()
+  .extend({
+    id: z.string(),
+    associatedPluginId: z.string().optional()
+  });
+export type UpdateWorkflowToolBodyType = z.infer<typeof UpdateWorkflowToolBodySchema>;
+
+// Create app type tool
+export const CreateAppToolBodySchema = UpdateWorkflowToolBodySchema.omit({
+  id: true
+}).extend({
+  name: z.string(),
+  avatar: z.string(),
+  intro: z.string(),
+  associatedPluginId: z.string(),
+  originCost: z.number().optional()
 });
-export type UpdateToolBodyType = z.infer<typeof UpdateToolBodySchema>;
+export type CreateAppToolBodyType = z.infer<typeof CreateAppToolBodySchema>;
 
 // Delete system Tool
 export const DeleteSystemToolQuerySchema = z.object({
@@ -82,9 +143,3 @@ export const GetAllSystemAppsResponseSchema = z.array(
   })
 );
 export type GetAllSystemAppTypeToolsResponse = z.infer<typeof GetAllSystemAppsResponseSchema>;
-
-// Create app type tool
-export const CreateAppToolBodySchema = UpdateToolBodySchema.omit({
-  childTools: true
-});
-export type CreateAppToolBodyType = z.infer<typeof CreateAppToolBodySchema>;

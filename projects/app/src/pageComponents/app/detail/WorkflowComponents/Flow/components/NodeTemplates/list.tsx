@@ -30,6 +30,7 @@ import {
   isNestedParentNodeType,
   isInteractiveNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
@@ -237,10 +238,25 @@ const NodeTemplateList = ({
       try {
         const templateNode = await (async () => {
           try {
-            if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
+            const shouldLoadPreviewNode = [
+              FlowNodeTypeEnum.tool,
+              FlowNodeTypeEnum.toolSet,
+              FlowNodeTypeEnum.appModule,
+              FlowNodeTypeEnum.pluginModule
+            ].includes(template.flowNodeType);
+
+            if (shouldLoadPreviewNode) {
               const node = await getToolPreviewNode({ appId: template.id });
               return {
                 ...node,
+                flowNodeType:
+                  template.flowNodeType === FlowNodeTypeEnum.toolSet
+                    ? FlowNodeTypeEnum.toolSet
+                    : node.flowNodeType,
+                isFolder:
+                  template.flowNodeType === FlowNodeTypeEnum.toolSet
+                    ? true
+                    : node.isFolder,
                 colorSchema: node.colorSchema ?? getColorSchemaByFlowNodeType(node.flowNodeType)
               };
             }

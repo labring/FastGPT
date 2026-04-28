@@ -1,3 +1,4 @@
+// TODO: DELETE this file
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -10,6 +11,7 @@ import {
   getSystemToolById,
   getSystemToolByIdAndVersionId
 } from '@fastgpt/service/core/app/tool/controller';
+import { getSystemToolByIdAndVersionIdNode } from '@fastgpt/service/core/app/tool/controller';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -42,15 +44,16 @@ async function handler(
 
   // System tool plugin
   if (source === AppToolSourceEnum.systemTool) {
-    const item = await getSystemToolByIdAndVersionId(pluginId);
+    const item = await getSystemToolByIdAndVersionIdNode(pluginId);
+    const list =
+      item.versionList?.map((item) => ({
+        _id: item.value,
+        versionName: item.value
+      })) || [];
 
     return {
-      total: 0,
-      list:
-        item.versionList?.map((item) => ({
-          _id: item.value,
-          versionName: item.value
-        })) || []
+      total: list.length,
+      list
     };
   }
 

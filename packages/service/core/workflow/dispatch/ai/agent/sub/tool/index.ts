@@ -1,10 +1,9 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { getSystemToolById } from '../../../../../../app/tool/controller';
+import { getToolRawId, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import { MongoSystemTool } from '../../../../../../plugin/tool/systemToolSchema';
-import { APIRunSystemTool } from '../../../../../../app/tool/api';
 import type {
   ChatDispatchProps,
   RuntimeNodeItemType
@@ -23,6 +22,8 @@ import { parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
+import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -84,7 +85,13 @@ export const dispatchTool = async ({
 
   try {
     if (toolConfig?.systemTool?.toolId) {
-      const tool = await getSystemToolById(toolConfig?.systemTool.toolId);
+      // TODO: 应当获取 runtime 数据
+      const systemToolRepo = SystemToolRepo.getInstance();
+      const tool = await systemToolRepo.getSystemToolDetail({
+        pluginId: toolConfig.systemTool.toolId,
+        source: 'system',
+        version
+      });
       const inputConfigParams = await (async () => {
         switch (system_input_config?.type) {
           case SystemToolSecretInputTypeEnum.team:
@@ -99,20 +106,18 @@ export const dispatchTool = async ({
             const dbPlugin = await MongoSystemTool.findOne({
               pluginId: tool.id
             }).lean();
-            return dbPlugin?.inputListVal || {};
+            return dbPlugin?.secretsVal ?? dbPlugin?.inputListVal ?? {};
         }
       })();
-      const inputs = {
-        ...Object.fromEntries(Object.entries(params)),
-        ...inputConfigParams
-      };
 
-      const formatToolId = tool.id.split('-')[1];
+      const formatToolId = getToolRawId(tool.id);
       let answerText = '';
 
-      const res = await APIRunSystemTool({
-        toolId: formatToolId,
-        inputs,
+      const res = await pluginClient.runToolStream({
+        pluginId: formatToolId,
+        source: 'system', // TODO: 后续 source 需要从节点配置中获取到
+        input: Object.fromEntries(Object.entries(params)),
+        secrets: inputConfigParams,
         systemVar: {
           user: {
             id: uid,
@@ -129,7 +134,7 @@ export const dispatchTool = async ({
           },
           tool: {
             id: formatToolId,
-            version: version || tool.versionList?.[0]?.value || '',
+            version: version || '',
             prefix: getS3ChatSource().getToolFilePrefix({
               appId: runningAppInfo.id,
               chatId,
@@ -151,7 +156,7 @@ export const dispatchTool = async ({
         }
       });
 
-      let result = res.output || {};
+      let result: any = res.output || {};
 
       if (res.error) {
         return getErrResponse(res.error);

@@ -2,13 +2,14 @@ import z from 'zod';
 import { type ToolSimpleType } from '../../../../sdk/fastgpt-plugin';
 import { PaginationSchema } from '../../../api';
 import { PluginToolTagSchema } from '../../../../core/plugin/type';
+import { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
 
 const formatToolDetailSchema = z.object({});
 const formatToolSimpleSchema = z.object({});
 
 // Create intersection types for extended schemas
 export const MarketplaceToolListItemSchema = formatToolSimpleSchema;
-export type MarketplaceToolListItemType = ToolSimpleType & {
+export type MarketplaceToolListItemType = ToolListItemType & {
   downloadCount: number;
 };
 

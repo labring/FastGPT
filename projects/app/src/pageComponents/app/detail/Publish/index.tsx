@@ -12,7 +12,7 @@ import { AppContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { UserTagsEnum } from '@fastgpt/global/support/user/type';
+import { UserTagsSchema } from '@fastgpt/global/support/user/type';
 
 const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
@@ -58,7 +58,7 @@ const OutLink = () => {
         ]
       : []),
     ...(feConfigs?.show_publish_feishu !== false &&
-    !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
+    !userInfo?.tags?.includes(UserTagsSchema.enum.wecom)
       ? [
           {
             icon: 'core/app/publish/lark',
@@ -70,7 +70,7 @@ const OutLink = () => {
         ]
       : []),
     ...(feConfigs?.show_publish_dingtalk !== false &&
-    !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
+    !userInfo?.tags?.includes(UserTagsSchema.enum.wecom)
       ? [
           {
             icon: 'common/dingtalkFill',

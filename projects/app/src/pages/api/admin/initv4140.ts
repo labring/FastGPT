@@ -8,8 +8,6 @@ import { connectionMongo } from '@fastgpt/service/common/mongo/index';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
-import { refreshVersionKey } from '@fastgpt/service/common/cache';
-import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 
 const logger = getLogger(['initv4140']);
 
@@ -36,8 +34,6 @@ async function handler(req: ApiRequestProps<any, any>, res: ApiResponseType<any>
     const { migratedCount, typeToGroupMap } = await migrateGroupsToTags();
     // 2. 把 app_system_plugins 的数据迁移到 system_plugin_tools 里
     const migratedToolsCount = await migrateSystemPluginsToTools(typeToGroupMap);
-
-    await refreshVersionKey(SystemCacheKeyEnum.systemTool);
 
     return {
       success: true,

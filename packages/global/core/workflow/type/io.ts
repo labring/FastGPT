@@ -193,7 +193,19 @@ export const InputComponentPropsTypeSchema = z.object({
 });
 export type InputComponentPropsType = z.infer<typeof InputComponentPropsTypeSchema>;
 
-// 输入配置
+export const InputConfigInputTypeSchema = z.enum([
+  'input',
+  'numberInput',
+  'secret',
+  'switch',
+  'select'
+]);
+
+export const InputConfigInputTypeEnum = InputConfigInputTypeSchema.enum;
+
+export type InputConfigInputTypeType = z.infer<typeof InputConfigInputTypeSchema>;
+
+/** 系统密钥输入配置 */
 export const InputConfigTypeSchema = z.object({
   key: z.string().meta({
     description: '输入配置键名'
@@ -207,7 +219,7 @@ export const InputConfigTypeSchema = z.object({
   required: BoolSchema.optional().meta({
     description: '该输入配置是否必填'
   }),
-  inputType: z.enum(['input', 'numberInput', 'secret', 'switch', 'select']).meta({
+  inputType: InputConfigInputTypeSchema.meta({
     description: '输入配置渲染组件类型'
   }),
   value: SecretValueTypeSchema.optional().meta({

@@ -1,49 +1,50 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { getSystemTools } from '@fastgpt/service/core/app/tool/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import type {
-  GetAdminSystemToolsQueryType,
-  GetAdminSystemToolsResponseType
-} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import { AdminSystemToolListItemSchema } from '@fastgpt/global/core/plugin/admin/tool/type';
+import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
+import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type/admin';
+import { AdminSystemToolListItemSchema } from '@fastgpt/global/core/app/tool/systemTool/type/admin';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 
-export type getSystemToolsQuery = GetAdminSystemToolsQueryType;
+export type AdminGetSystemToolsQuery = {};
 
-export type getSystemToolsBody = {};
+export type AdminGetSystemToolsBody = {};
 
-export type getSystemToolsResponse = {};
+export type AdminGetSystemToolsResponse = AdminSystemToolListItemType[];
 
 async function handler(
-  req: ApiRequestProps<getSystemToolsBody, getSystemToolsQuery>,
+  req: ApiRequestProps<AdminGetSystemToolsBody, AdminGetSystemToolsQuery>,
   res: ApiResponseType<any>
 ): Promise<GetAdminSystemToolsResponseType> {
-  const parentId = req.query.parentId;
   const lang = getLocale(req);
 
   await authSystemAdmin({ req });
 
+  const systemToolRepo = SystemToolRepo.getInstance();
+
   const [systemTools, tags] = await Promise.all([
-    getSystemTools(),
-    MongoPluginToolTag.find().lean()
+    systemToolRepo.getSystemToolList({
+      sources: ['system'],
+      lang
+    }),
+    MongoPluginToolTag.find({}).lean()
   ]);
 
-  return systemTools
-    .filter((item) => (parentId ? item.parentId === parentId : !item.parentId))
-    .map((item) => {
-      return AdminSystemToolListItemSchema.parse({
-        ...item,
-        name: parseI18nString(item.name, lang),
-        intro: parseI18nString(item.intro, lang),
-        hasSecretInput: !!item.inputList,
-        tags: tags
-          .filter((tag) => item.tags?.includes(tag.tagId))
-          .map((tag) => parseI18nString(tag.tagName, lang))
-      });
-    });
+  return systemTools.map((item) => {
+    return AdminSystemToolListItemSchema.parse({
+      ...item,
+      name: item.name,
+      intro: item.intro,
+      needsSystemSecret: !!item.secrets,
+      hasSystemSecret: item.hasSystemSecret,
+      tags: tags
+        .filter((tag) => item.tags?.includes(tag.tagId))
+        .map((tag) => parseI18nString(tag.tagName, lang))
+    } satisfies AdminSystemToolListItemType);
+  });
 }
 
 export default NextAPI(handler);

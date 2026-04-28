@@ -19,7 +19,6 @@ import type {
   ConcatUsageProps,
   CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { hasAgentSandboxConfig, serviceEnv } from '@fastgpt/service/env';
@@ -196,7 +195,7 @@ export async function initSystemConfig() {
 
 export async function initSystemPluginTags() {
   try {
-    const tags = await getSystemToolTags();
+    const tags = pluginTagList;
 
     if (tags.length > 0) {
       const bulkOps = tags.map((tag, index) => ({

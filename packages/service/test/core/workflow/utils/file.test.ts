@@ -534,6 +534,7 @@ describe('formatUserQueryWithFiles', () => {
         file: {
           type: ChatFileTypeEnum.file,
           name: 'bad.pdf',
+          // 不以 / http ws 开头，会被 normalizeReadableFileUrl 过滤掉
           url: 'chat/bad.pdf'
         }
       }

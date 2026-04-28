@@ -1,0 +1,307 @@
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import {
+  jsonSchema2NodeInput,
+  jsonSchema2NodeOutput,
+  jsonSchema2SecretInput
+} from '@fastgpt/global/core/app/jsonschema';
+import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { getToolRawId, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { PluginListParamsType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
+import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
+import { MongoApp } from '../../schema';
+import {
+  getAppVersionById,
+  getAppLatestVersion,
+  checkIsLatestVersion
+} from '../../version/controller';
+import type {
+  SystemToolListItemType,
+  SystemToolDetailType
+} from '@fastgpt/global/core/app/tool/systemTool/type';
+import type {
+  SystemToolVersionType,
+  ToolChildDetailType
+} from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { MongoAppVersion } from '../../version/schema';
+
+/**
+ * SystemTool Repo
+ * 系统工具仓储层
+ * 1. 管理系统工具的来源：plugin service 获取 / mongo 中存的
+ * 2. @unimplement 对于业务层透明的缓存
+ */
+export class SystemToolRepo {
+  private static _instance: SystemToolRepo;
+  private constructor() {}
+
+  public static getInstance(): SystemToolRepo {
+    if (!SystemToolRepo._instance) {
+      SystemToolRepo._instance = new SystemToolRepo();
+    }
+    return SystemToolRepo._instance;
+  }
+
+  /** 获取系统工具列表，归一化为一个相同的列表类型，业务层做 pick */
+  getSystemToolList = async ({
+    op,
+    sources,
+    tags,
+    lang
+  }: {
+    tags?: string[];
+    op?: PluginListParamsType['op'];
+    sources?: PluginListParamsType['sources'];
+    lang?: `${LangEnum}`;
+  }): Promise<SystemToolListItemType[]> => {
+    // 1. get all tools from plugin by sources
+    const tools = await pluginClient.listTools({
+      op,
+      sources,
+      tags: tags ? filterPluginTags(tags) : undefined
+    });
+
+    // 2. 加载数据库中的插件配置，将所有插件 normalize
+    const DBPlugins = await MongoSystemTool.find({});
+    const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
+
+    const formattedTools = tools.map((tool) =>
+      SystemToolCodec.attachToolConfig({
+        tool,
+        config: DBPluginsMap.get(tool.pluginId),
+        lang
+      })
+    );
+
+    /** 工作流插件，admin 后台配的 */
+    const DBWorkflowPlugins = DBPlugins.filter((item) => item.customConfig?.associatedPluginId);
+
+    const concatTools = [
+      ...formattedTools,
+      ...DBWorkflowPlugins.map(SystemToolCodec.fromDBTypeToListItemType)
+    ];
+
+    concatTools.sort((a, b) => (a.pluginOrder ?? 999) - (b.pluginOrder ?? 999));
+
+    return concatTools;
+  };
+
+  /** 获取单一插件的 Detail 信息 */
+  getSystemToolDetail = async ({
+    pluginId,
+    version,
+    source = 'system',
+    lang
+  }: {
+    pluginId: string;
+    version?: string;
+    source?: string;
+    lang?: `${LangEnum}`;
+  }): Promise<SystemToolDetailType> => {
+    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const [parentPluginId, childPluginId] = rawPluginId.split('/');
+    const getChildToolDetail = !!childPluginId;
+
+    const dbTool = await MongoSystemTool.findOne({
+      pluginId
+    });
+
+    if (!childPluginId && dbTool?.customConfig?.associatedPluginId) {
+      // 说明是 workflow 工具，需要拿这个 app
+      const associatedPluginId = dbTool.customConfig.associatedPluginId;
+      const app = await MongoApp.findById(associatedPluginId).lean();
+      if (!app) return Promise.reject(PluginErrEnum.unExist);
+      const appVersion = version
+        ? await getAppVersionById({
+            appId: associatedPluginId,
+            versionId: version,
+            app
+          })
+        : await getAppLatestVersion(associatedPluginId, app);
+      if (!appVersion.versionId) return Promise.reject(new UserError('App version not found'));
+
+      const isLatest = appVersion.versionId
+        ? await checkIsLatestVersion({
+            appId: associatedPluginId,
+            versionId: appVersion.versionId
+          })
+        : true;
+
+      return {
+        id: pluginId,
+        name: dbTool.customConfig.name,
+        status: dbTool.status,
+        toolDescription: dbTool.customConfig.toolDescription ?? dbTool.customConfig.intro ?? '',
+        version: dbTool.customConfig.version ?? '',
+        intro: dbTool.customConfig.intro ?? '',
+        tags: dbTool.customConfig.tags ?? [],
+        author: global.feConfigs.systemTitle ?? '',
+        avatar: app.avatar,
+        hasSystemSecret: false,
+        inputs:
+          appVersion.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
+            ?.inputs ?? [],
+        outputs:
+          appVersion.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput)
+            ?.outputs ?? [],
+        isToolSet: false,
+        currentCost: dbTool.currentCost ?? 0,
+        hasTokenFee: dbTool.hasTokenFee ?? false,
+        systemKeyCost: dbTool.systemKeyCost ?? 0,
+        pluginOrder: dbTool.pluginOrder ?? 0,
+        hideTags: dbTool.hideTags ?? [],
+        promoteTags: dbTool.promoteTags ?? [],
+        source: 'system',
+        isLatestVersion: isLatest
+        // TODO: courseUrl support
+        // courseUrl: dbTool.customConfig.courseUrl ?? '',
+      } satisfies SystemToolDetailType;
+    }
+
+    // System tool
+    const [tool, runtimeConfig] = await Promise.all([
+      pluginClient.getTool({
+        pluginId: parentPluginId,
+        version,
+        source
+      }),
+      pluginClient.getPluginRuntimeConfig(getToolRawId(pluginId))
+    ]);
+
+    const getToolParent = tool.isToolset && !getChildToolDetail;
+
+    const child = getChildToolDetail
+      ? tool.children?.find((item) => item.id === childPluginId)
+      : undefined;
+
+    if (getChildToolDetail && !child) return Promise.reject(PluginErrEnum.unExist);
+
+    const childrenPluginIds = getToolParent
+      ? tool.children?.map((item) => `${pluginId}/${item.id}`)
+      : [];
+
+    const dbChildren = await MongoSystemTool.find({
+      pluginId: {
+        $in: childrenPluginIds
+      }
+    });
+
+    const dbChildrenMap = new Map(dbChildren.map((item) => [item.pluginId, item]));
+    const children = tool.isToolset
+      ? tool.children?.map((item) => {
+          const dbChild = dbChildrenMap.get(`${pluginId}/${item.id}`);
+          return {
+            id: item.id,
+            name: parseI18nString(item.name, lang),
+            description: parseI18nString(item.description, lang),
+            systemKeyCost: dbChild?.systemKeyCost ?? 0,
+            currentCost: dbChild?.currentCost ?? 0,
+            icon: item.icon,
+            inputs: jsonSchema2NodeInput(item.inputSchema),
+            outputs: jsonSchema2NodeOutput(item.outputSchema)
+          } satisfies ToolChildDetailType;
+        })
+      : undefined;
+
+    const toolDetail: SystemToolDetailType = {
+      id: pluginId,
+      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      avatar: tool.icon,
+      currentCost: dbTool?.currentCost ?? 0,
+      hasSystemSecret: !!tool.secretSchema,
+      secretsVal: dbTool?.secretsVal ?? dbTool?.inputListVal,
+      hasTokenFee: dbTool?.hasTokenFee ?? false,
+      intro: dbTool?.customConfig?.intro ?? parseI18nString(tool.description, lang),
+      isToolSet: tool.isToolset && !childPluginId,
+      ...(children ? { children } : {}),
+      name:
+        dbTool?.customConfig?.name ??
+        parseI18nString(childPluginId ? child!.name : tool.name, lang),
+      status: dbTool?.status ?? PluginStatusEnum.Normal,
+      systemKeyCost: dbTool?.systemKeyCost ?? 0,
+      tags: dbTool?.customConfig?.tags ?? tool.tags ?? [],
+      source: tool.source,
+      userGuide: dbTool?.customConfig?.userGuide,
+      toolDescription:
+        dbTool?.customConfig?.toolDescription ??
+        (childPluginId ? child!.toolDescription : tool.toolDescription),
+      // courseUrl: dbTool?.customConfig?.courseUrl ?? tool.tutorialUrl,
+      courseUrl: tool.tutorialUrl,
+      readmeUrl: tool.readmeUrl,
+      version: tool.version,
+      runtimeConfig,
+      hideTags: dbTool?.hideTags ?? [],
+      promoteTags: dbTool?.promoteTags ?? [],
+      pluginOrder: dbTool?.pluginOrder,
+      secrets: jsonSchema2SecretInput(tool.secretSchema),
+      isLatestVersion: tool.isLatestVersion,
+      ...(childPluginId
+        ? {
+            inputs: jsonSchema2NodeInput(child!.inputSchema),
+            outputs: jsonSchema2NodeOutput(child!.outputSchema)
+          }
+        : {
+            inputs: tool.inputSchema ? jsonSchema2NodeInput(tool.inputSchema) : [],
+            outputs: tool.outputSchema ? jsonSchema2NodeOutput(tool.outputSchema) : []
+          })
+    };
+    return toolDetail;
+  };
+
+  getVersions = async ({
+    pluginId,
+    source = 'system',
+    lang
+  }: {
+    pluginId: string;
+    source?: string;
+    lang?: `${LangEnum}`;
+  }): Promise<SystemToolVersionType[]> => {
+    const { pluginId: rawPluginId, source: pluginSource } = splitCombineToolId(pluginId);
+    if (pluginSource === AppToolSourceEnum.commercial) {
+      const tool = await MongoSystemTool.findOne(
+        {
+          pluginId: pluginId
+        },
+        {
+          customConfig: 1
+        }
+      );
+
+      if (!tool || !tool.customConfig?.associatedPluginId) {
+        return Promise.reject('Plugin is not associated with a app');
+      }
+
+      const { associatedPluginId } = tool.customConfig;
+      const appVersions = await MongoAppVersion.find(
+        {
+          appId: associatedPluginId
+        },
+        {
+          versionName: 1
+        }
+      );
+
+      return appVersions.map((item) => ({
+        version: item.versionName
+      }));
+    }
+
+    const versions = await pluginClient.listPluginVersions({
+      pluginId: rawPluginId,
+      source
+    });
+
+    return versions.map((item) => ({
+      version: item.version,
+      versionDescription: parseI18nString(item.versionDescription, lang)
+    }));
+  };
+}

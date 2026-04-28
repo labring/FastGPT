@@ -35,6 +35,7 @@ import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilter
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRouter } from 'next/router';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getToolConfigStatus,
   validateToolConfiguration
@@ -263,22 +264,25 @@ const RenderList = React.memo(function RenderList({
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
       const res = await getToolPreviewNode({ appId: template.id });
+      const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
-      const toolValid = validateToolConfiguration({
-        toolTemplate: res,
-        canUploadFile: !!(
-          fileSelectConfig?.canSelectFile ||
-          fileSelectConfig?.canSelectImg ||
-          fileSelectConfig?.canSelectVideo ||
-          fileSelectConfig?.canSelectAudio ||
-          fileSelectConfig?.canSelectCustomFileExtension
-        )
-      });
-      if (!toolValid) {
-        return toast({
-          title: t('app:simple_tool_tips'),
-          status: 'warning'
+      if (!isToolSetTemplate) {
+        const toolValid = validateToolConfiguration({
+          toolTemplate: res,
+          canUploadFile: !!(
+            fileSelectConfig?.canSelectFile ||
+            fileSelectConfig?.canSelectImg ||
+            fileSelectConfig?.canSelectVideo ||
+            fileSelectConfig?.canSelectAudio ||
+            fileSelectConfig?.canSelectCustomFileExtension
+          )
         });
+        if (!toolValid) {
+          return toast({
+            title: t('app:simple_tool_tips'),
+            status: 'warning'
+          });
+        }
       }
 
       // 添加与 top 相同工具的配置

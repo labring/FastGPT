@@ -1,10 +1,15 @@
 import type { OpenAPIPath } from '../../../type';
-import { GetTeamPluginListResponseSchema, ToggleInstallPluginBodySchema } from './api';
 import { TagsMap } from '../../../tag';
-import { GetTeamToolDetailQuerySchema, TeamToolDetailSchema } from './toolApi';
+import {
+  GetTeamPluginListResponseSchema,
+  GetTeamToolDetailQuerySchema,
+  GetTeamToolVersionsQuerySchema,
+  GetTeamToolVersionsResponseSchema,
+  TeamToolDetailSchema
+} from './tool/dto';
 
 export const PluginTeamPath: OpenAPIPath = {
-  '/core/plugin/team/list': {
+  '/core/plugin/team/tool/list': {
     get: {
       summary: '获取团队插件列表',
       description: '获取团队插件列表',
@@ -21,29 +26,8 @@ export const PluginTeamPath: OpenAPIPath = {
       }
     }
   },
-  '/core/plugin/team/toggleInstall': {
-    post: {
-      summary: '切换插件安装状态',
-      description: '切换团队插件的安装状态，支持安装或卸载插件',
-      tags: [TagsMap.pluginTeam],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: ToggleInstallPluginBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '请求成功',
-          content: {}
-        }
-      }
-    }
-  },
-
   // Tool
-  '/core/plugin/team/toolDetail': {
+  '/core/plugin/team/tool/detail': {
     get: {
       summary: '获取工具卡片详情',
       description: '获取工具片详情',
@@ -57,6 +41,26 @@ export const PluginTeamPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: TeamToolDetailSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/plugin/team/tool/versions': {
+    get: {
+      summary: '获取团队工具版本列表',
+      description: '获取团队工具版本列表',
+      tags: [TagsMap.pluginTeam],
+      requestParams: {
+        query: GetTeamToolVersionsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '获取团队工具版本列表成功',
+          content: {
+            'application/json': {
+              schema: GetTeamToolVersionsResponseSchema
             }
           }
         }
