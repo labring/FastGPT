@@ -63,6 +63,10 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     onOpen: onOpenJsonImportModal,
     onClose: onCloseJsonImportModal
   } = useDisclosure();
+  const hasCreatePer = folderDetail
+    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+    : userInfo?.team.permission.hasAppCreatePer;
+
   //if there is a workflow url in the session storage, open the json import modal and import the workflow
   useMount(() => {
     if (getUtmWorkflow()) {
@@ -105,7 +109,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowX={'hidden'}
         >
           {/* Only shown on pc root page */}
-          {!folderDetail && isPc && <TemplateCreatePanel type={appType} />}
+          {!folderDetail && isPc && hasCreatePer && <TemplateCreatePanel type={appType} />}
           <Flex alignItems={'center'}>
             {!isPc ? (
               MenuIcon
@@ -143,10 +147,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 />
               )}
 
-              {(folderDetail
-                ? folderDetail.permission.hasWritePer &&
-                  folderDetail?.type !== AppTypeEnum.httpPlugin
-                : userInfo?.team.permission.hasAppCreatePer) && (
+              {hasCreatePer && (
                 <>
                   <Button
                     variant={'grayBase'}
