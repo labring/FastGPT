@@ -1,5 +1,5 @@
-import React, { useMemo, useRef } from 'react';
-import { postChangeOwner, resumeInheritPer } from '@/web/core/dataset/api';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { postChangeOwner, resumeInheritPer, getAppsByDatasetId } from '@/web/core/dataset/api';
 import { Box, Flex, Grid, HStack, IconButton, Spacer, Spinner } from '@chakra-ui/react';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRouter } from 'next/router';
@@ -27,6 +27,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import SideTag from './SideTag';
@@ -34,11 +35,99 @@ import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import type { CreateDatasetType } from '@/pageComponents/dataset/list/CreateModal';
+import type { AppsByDatasetIdItem } from '@/pages/api/core/dataset/apps';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
 const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateModal'));
+
+// ─── RelatedAppsPopover ───────────────────────────────────────────────────────
+
+// 5 items × 36px + 4 dividers × (1px + 8px top + 8px bottom) = 248px
+const RELATED_APPS_MAX_H = '248px';
+
+const RelatedAppsContent = ({ datasetId }: { datasetId: string }) => {
+  const { t } = useTranslation();
+  const [apps, setApps] = useState<AppsByDatasetIdItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getAppsByDatasetId(datasetId)
+      .then(setApps)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [datasetId]);
+
+  return (
+    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} p={'8px'}>
+      <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
+        {apps.map((app, index) => (
+          <Box key={app._id}>
+            {index > 0 && <Box h={'1px'} bg={'#E8EBF0'} my={'8px'} />}
+            <Flex h={'36px'} px={'8px'} align={'center'} justify={'space-between'}>
+              <Flex align={'center'} gap={'8px'} overflow={'hidden'}>
+                <Avatar src={app.avatar} w={'20px'} h={'20px'} borderRadius={'sm'} flexShrink={0} />
+                <Box
+                  fontSize={'14px'}
+                  fontWeight={'600'}
+                  lineHeight={'20px'}
+                  color={'#333'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {app.name}
+                </Box>
+              </Flex>
+              {app.sourceMember && (
+                <HStack spacing={'4px'} flexShrink={0} ml={'8px'}>
+                  <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
+                  <Box
+                    color={'#999'}
+                    maxW={'80px'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                    fontSize={'xs'}
+                  >
+                    {app.sourceMember.name}
+                  </Box>
+                </HStack>
+              )}
+            </Flex>
+          </Box>
+        ))}
+      </Box>
+    </MyBox>
+  );
+};
+
+const RelatedAppsPopover = ({ datasetId, count }: { datasetId: string; count: number }) => {
+  const { t } = useTranslation();
+
+  return (
+    <MyPopover
+      trigger={'hover'}
+      placement={'bottom-start'}
+      hasArrow={false}
+      w={'260px'}
+      p={0}
+      Trigger={
+        <HStack spacing={'4px'} cursor={'pointer'}>
+          <Box color={'#666'} fontSize={'mini'}>
+            {t('dataset:related_app')}
+          </Box>
+          <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+            {count}
+          </Box>
+        </HStack>
+      }
+    >
+      {() => <RelatedAppsContent datasetId={datasetId} />}
+    </MyPopover>
+  );
+};
 
 // ─── NewDatasetCard ────────────────────────────────────────────────────────────
 
@@ -151,6 +240,11 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
                   icon: 'delete',
                   type: 'danger' as const,
                   label: t('common:Delete'),
+                  disabled: !isFolder && (dataset.appCount ?? 0) > 0,
+                  disabledTip:
+                    !isFolder && (dataset.appCount ?? 0) > 0
+                      ? t('common:delete_disabled_by_related_apps')
+                      : undefined,
                   onClick: () =>
                     openConfirmDel({
                       onConfirm: () =>
@@ -322,14 +416,18 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
         {/* 左侧：关联应用数 + 文件数 */}
         {!isFolder && (
           <HStack spacing={'12px'}>
-            <HStack spacing={'4px'}>
-              <Box color={'#666'} fontSize={'mini'}>
-                {t('dataset:related_app')}
-              </Box>
-              <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
-                {dataset.appCount ?? 0}
-              </Box>
-            </HStack>
+            {(dataset.appCount ?? 0) > 0 ? (
+              <RelatedAppsPopover datasetId={dataset._id} count={dataset.appCount!} />
+            ) : (
+              <HStack spacing={'4px'}>
+                <Box color={'#666'} fontSize={'mini'}>
+                  {t('dataset:related_app')}
+                </Box>
+                <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+                  0
+                </Box>
+              </HStack>
+            )}
             <HStack spacing={'4px'}>
               <Box color={'#666'} fontSize={'mini'}>
                 {dataset.type === DatasetTypeEnum.websiteDataset

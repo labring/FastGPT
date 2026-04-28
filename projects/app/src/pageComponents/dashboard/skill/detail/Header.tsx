@@ -184,7 +184,7 @@ const Header = () => {
 
       {/* Skill 信息 */}
       <HStack ml={1.5} spacing={2}>
-        <Avatar src={skillDetail.avatar} w={'30px'} borderRadius={'md'} />
+        <Avatar src={skillDetail.avatar || 'core/skill/default'} w={'30px'} borderRadius={'md'} />
         <MyMenu
           Button={
             <Flex

@@ -744,6 +744,7 @@
   "day": "Day",
   "deep_rag_search": "Deep search",
   "delete_api": "Are you sure you want to delete the API key? The key will become invalid immediately, but the corresponding chat logs will not be deleted. Would you like to proceed?",
+  "delete_disabled_by_related_apps": "Cannot delete: related apps exist",
   "delete_failed": "Deletion failed.",
   "delete_folder": "Delete folder",
   "delete_success": "Deleted successfully.",
