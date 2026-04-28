@@ -8,6 +8,7 @@ export const topAgentParamsSchema = z.object({
   selectedTools: z.array(z.string()).nullish(),
   selectedDatasets: z.array(z.string()).nullish(),
   fileUpload: z.boolean().nullish(),
-  enableSandbox: z.boolean().nullish()
+  enableSandbox: z.boolean().nullish(),
+  model: z.string().nullish()
 });
 export type TopAgentParamsType = z.infer<typeof topAgentParamsSchema>;
