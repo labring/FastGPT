@@ -106,7 +106,7 @@ export const readFileRawTextByUrl = async ({
 
       try {
         // 合并所有 chunks 为单个 buffer
-        const buffer = Buffer.concat(chunks);
+        const buffer = Buffer.concat(chunks as unknown as Uint8Array[]);
 
         // 立即清理 chunks 数组释放内存
         chunks.length = 0;

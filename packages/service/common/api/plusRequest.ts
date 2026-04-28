@@ -69,14 +69,17 @@ function responseError(err: any) {
 }
 
 /* 创建请求实例 */
-const instance = createProxyAxios({
-  timeout: 60000,
-  headers: {
-    'content-type': 'application/json',
-    'Cache-Control': 'no-cache',
-    rootkey: process.env.ROOT_KEY
-  }
-});
+const instance = createProxyAxios(
+  {
+    timeout: 60000,
+    headers: {
+      'content-type': 'application/json',
+      'Cache-Control': 'no-cache',
+      rootkey: process.env.ROOT_KEY
+    }
+  },
+  false
+);
 
 /* 请求拦截 */
 instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));

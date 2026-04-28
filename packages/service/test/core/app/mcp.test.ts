@@ -36,7 +36,7 @@ beforeEach(() => {
 });
 
 describe('MCPClient', () => {
-  const config = { url: 'http://localhost:3000/mcp', headers: { Authorization: 'Bearer test' } };
+  const config = { url: 'https://example.com/mcp', headers: { Authorization: 'Bearer test' } };
 
   describe('assertMCPUrlNotInternal', () => {
     it('should reject localhost MCP endpoints', async () => {

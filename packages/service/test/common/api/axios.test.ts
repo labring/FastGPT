@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createProxyAxios } from '@fastgpt/service/common/api/axios';
+import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 
 type AxiosRequestConfig = {
   timeout?: number;
@@ -85,6 +86,69 @@ describe('axios.ts', () => {
       expect(typeof instance.put).toBe('function');
       expect(typeof instance.delete).toBe('function');
       expect(typeof instance.request).toBe('function');
+    });
+
+    it('应该在请求前阻止内网地址', async () => {
+      const adapter = vi.fn().mockResolvedValue({
+        data: {},
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({ adapter });
+
+      await expect(instance.get('http://127.0.0.1/admin')).rejects.toThrow(PRIVATE_URL_TEXT);
+      expect(adapter).not.toHaveBeenCalled();
+    });
+
+    it('应该校验 baseURL 和相对路径合成后的地址', async () => {
+      const adapter = vi.fn().mockResolvedValue({
+        data: {},
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({
+        baseURL: 'http://169.254.169.254',
+        adapter
+      });
+
+      await expect(instance.get('/latest/meta-data/')).rejects.toThrow(PRIVATE_URL_TEXT);
+      expect(adapter).not.toHaveBeenCalled();
+    });
+
+    it('应该允许公网地址继续进入 adapter', async () => {
+      const adapter = vi.fn().mockResolvedValue({
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({ adapter });
+
+      const response = await instance.get('https://example.com/api');
+
+      expect(response.data).toEqual({ ok: true });
+      expect(adapter).toHaveBeenCalled();
+    });
+
+    it('应该允许显式关闭 SSRF 检查', async () => {
+      const adapter = vi.fn().mockResolvedValue({
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({ adapter }, false);
+
+      const response = await instance.get('http://127.0.0.1/admin');
+
+      expect(response.data).toEqual({ ok: true });
+      expect(adapter).toHaveBeenCalled();
     });
   });
 

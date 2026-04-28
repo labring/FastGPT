@@ -60,13 +60,16 @@ function responseError(err: any) {
 }
 
 /* 创建请求实例 */
-const instance = createProxyAxios({
-  timeout: 60000, // 超时时间
-  headers: {
-    'content-type': 'application/json',
-    'Cache-Control': 'no-cache'
-  }
-});
+const instance = createProxyAxios(
+  {
+    timeout: 60000, // 超时时间
+    headers: {
+      'content-type': 'application/json',
+      'Cache-Control': 'no-cache'
+    }
+  },
+  false
+);
 export const serverRequestBaseUrl = `http://${SERVICE_LOCAL_HOST}`;
 
 /* 请求拦截 */

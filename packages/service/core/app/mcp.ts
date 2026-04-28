@@ -50,6 +50,8 @@ export class MCPClient {
   }
 
   private async doConnect(): Promise<Client> {
+    await assertMCPUrlNotInternal(this.url);
+
     // 避免连接重复，强制关闭一次
     await this.client.close().catch(() => {});
 
