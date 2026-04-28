@@ -1,7 +1,7 @@
 import React from 'react';
 import type { HelperBotChatItemSiteType } from '@fastgpt/global/core/chat/helperBot/type';
 import { formatChatValue2InputType } from '../../ChatContainer/ChatBox/utils';
-import { Box, Card, Flex } from '@chakra-ui/react';
+import { Box, Card, Flex, type BoxProps } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
 import FileBlock from '../../ChatContainer/ChatBox/components/FilesBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -14,12 +14,21 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
+const styleMap: BoxProps = {
+  borderRadius: '8px',
+  justifyContent: 'flex-end',
+  textAlign: 'right',
+  bg: 'blue.100',
+  padding: '12px',
+  fontSize: '14px',
+  fontWeight: '400',
+  color: 'myWhite.1000'
+};
 const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { text, files = [] } = formatChatValue2InputType(chat.value);
   const userInfo = useUserStore((state) => state.userInfo);
-  const humanAvatar = userInfo?.avatar || getWebReqUrl('/imgs/botClosed.svg');
 
   // TODO: delete chatitem
 
@@ -37,12 +46,10 @@ const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
         <Box
           px={4}
           py={3}
-          borderRadius={'sm'}
           display="inline-block"
           maxW={['calc(80% - 25px)', 'calc(80% - 40px)']}
-          color={'myGray.900'}
-          bg={'primary.100'}
           order={0}
+          {...styleMap}
         >
           <Flex flexDirection={'column'} gap={4}>
             {files.length > 0 && <FileBlock files={files} />}
@@ -53,7 +60,7 @@ const HumanItem = ({ chat }: { chat: UserChatItemType }) => {
             )}
           </Flex>
         </Box>
-        <ChatAvatar type={ChatRoleEnum.Human} src={humanAvatar} />
+        {/* <ChatAvatar type={ChatRoleEnum.Human} src={humanAvatar} /> */}
       </Flex>
       {/* Controller */}
       <Flex h={'26px'} mt={1}>

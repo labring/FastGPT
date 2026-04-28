@@ -86,16 +86,17 @@ const AppCard = ({
   return (
     <>
       {/* basic info */}
-      <Box px={[4, 6]} py={5} position={'relative'}>
+      <Box p={'24px'} position={'relative'}>
         {/* Header: Avatar, Name and Action Icons */}
-        <Flex alignItems={'center'} justifyContent={'space-between'} mb={5}>
-          <Flex alignItems={'center'} flex={1} minW={0}>
-            <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} h={'28px'} />
+        <Flex alignItems={'center'} justifyContent={'space-between'} mb={4}>
+          <Flex alignItems={'center'} flex={1} minW={0} h="32px">
+            <Avatar src={appDetail.avatar} borderRadius={'md'} w={'32px'} h={'32px'} />
             <Box
               ml={3}
-              fontWeight={'bold'}
-              fontSize={'lg'}
-              color={'myGray.900'}
+              fontWeight={'500'}
+              fontSize={'16'}
+              lineHeight={'24px'}
+              color={'myGray.550'}
               flex={1}
               noOfLines={1}
             >
@@ -105,27 +106,25 @@ const AppCard = ({
 
           {/* Right Action Icons */}
           <HStack spacing={2} ml={4}>
-            <IconButton
-              variant={'whitePrimary'}
-              size={'mdSquare'}
-              icon={<MyIcon name={'core/chat/chatLight'} w={'18px'} />}
-              aria-label={'chat'}
-              onClick={() =>
-                window.open(
-                  `/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
-                  '_blank'
-                )
-              }
-            />
             {appDetail.permission.hasManagePer && (
               <IconButton
                 variant={'whitePrimary'}
                 size={'mdSquare'}
-                icon={<MyIcon name={'common/settingLight'} w={'18px'} />}
+                icon={<MyIcon name={'edit'} w={'16px'} />}
                 aria-label={'settings'}
                 onClick={onOpenInfoEdit}
               />
             )}
+            <IconButton
+              variant={'whitePrimary'}
+              w="32px"
+              h="32px"
+              icon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
+              aria-label={'chat'}
+              onClick={() =>
+                router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
+              }
+            />
             {appDetail.permission.isOwner && (
               <>
                 {configToWorkflow ? (
@@ -135,7 +134,7 @@ const AppCard = ({
                       <IconButton
                         variant={'whitePrimary'}
                         size={'mdSquare'}
-                        icon={<MyIcon name={'more'} w={'18px'} />}
+                        icon={<MyIcon name={'more'} w={'16px'} />}
                         aria-label={'more'}
                       />
                     }
@@ -203,10 +202,10 @@ const AppCard = ({
         <Box
           className={'textEllipsis2'}
           wordBreak={'break-all'}
-          color={'myGray.600'}
-          fontSize={'sm'}
-          lineHeight={'1.6'}
-          height={'40px'}
+          color={'#667085'}
+          fontSize={'12px'}
+          lineHeight={'16px'}
+          height={'32px'}
         >
           {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>

@@ -1,7 +1,7 @@
 import { type BoxProps, type FlexProps } from '@chakra-ui/react';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 export const cardStyles: BoxProps = {
-  borderRadius: 'lg',
+  borderRadius: '8px',
   // overflow: 'hidden',
   bg: 'white'
 };

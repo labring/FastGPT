@@ -29,11 +29,13 @@ import { FileTypeSelectorPanel } from '@fastgpt/web/components/core/app/FileType
 
 const FileSelect = ({
   forbidVision = false,
+  hideMaxFiles = false,
   value = defaultAppSelectFileConfig,
   onChange,
   ...labelStyle
 }: Omit<BoxProps, 'onChange'> & {
   forbidVision?: boolean;
+  hideMaxFiles?: boolean;
   value?: AppFileSelectConfigType;
   onChange: (e: AppFileSelectConfigType) => void;
 }) => {
@@ -99,29 +101,31 @@ const FileSelect = ({
         w={'500px'}
       >
         <ModalBody>
-          <Box>
-            <HStack spacing={1}>
-              <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
-              <QuestionTip label={t('app:upload_file_max_amount_tip')} />
-            </HStack>
+          {!hideMaxFiles && (
+            <Box>
+              <HStack spacing={1}>
+                <FormLabel>{t('app:upload_file_max_amount')}</FormLabel>
+                <QuestionTip label={t('app:upload_file_max_amount_tip')} />
+              </HStack>
 
-            <Box mt={2} alignItems={'center'} gap={5}>
-              <InputSlider
-                min={1}
-                max={maxSelectFiles}
-                step={1}
-                value={localValue.maxFiles ?? 5}
-                onChange={(e) => {
-                  setLocalValue((state) => ({
-                    ...state,
-                    maxFiles: e
-                  }));
-                }}
-              />
+              <Box mt={2} alignItems={'center'} gap={5}>
+                <InputSlider
+                  min={1}
+                  max={maxSelectFiles}
+                  step={1}
+                  value={localValue.maxFiles ?? 5}
+                  onChange={(e) => {
+                    setLocalValue((state) => ({
+                      ...state,
+                      maxFiles: e
+                    }));
+                  }}
+                />
+              </Box>
             </Box>
-          </Box>
+          )}
 
-          <VStack spacing={2} alignItems={'flex-start'} mt={6}>
+          <VStack spacing={2} alignItems={'flex-start'} mt={hideMaxFiles ? 0 : 6}>
             <FormLabel>{t('app:upload_file_extension_types')}</FormLabel>
 
             <VStack

@@ -13,13 +13,7 @@ import {
   useDisclosure,
   Button,
   Switch,
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
-  Input,
-  VStack
+  Input
 } from '@chakra-ui/react';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useRouter } from 'next/router';
@@ -49,11 +43,15 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import { type AppChatConfigType, type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import {
+  type AppChatConfigType,
+  type AppDatasetSearchParamsType
+} from '@fastgpt/global/core/app/type';
 import { getEmbeddingModelSelectList } from '@/web/core/app/utils';
 import SfRadio from '@/components/SF/SfRadio';
 import SfLeftRadio from '@/components/SF/SfLeftRadio';
 import TagFilterSection from './TagFilterSection';
+import AccordionSection from '@/components/core/app/AccordionSection';
 
 const SfDatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 const QGConfig = dynamic(() => import('@/components/core/app/assistant/QGConfig'));
@@ -88,31 +86,6 @@ const FormItem: React.FC<{
   </Flex>
 );
 
-// 手风琴组件包装器
-const AccordionSection: React.FC<{
-  title: string;
-  icon?: any;
-  iconColor?: string;
-  children: React.ReactNode;
-  defaultIndex?: number[];
-}> = ({ title, children, defaultIndex = [] }) => (
-  <Accordion allowToggle defaultIndex={defaultIndex}>
-    <AccordionItem border="none">
-      <AccordionButton _hover={{}} px={0}>
-        <Flex flex="1" color={'myGray.900'} fontSize={'sm'} fontWeight="500" alignItems={'center'}>
-          {title}
-        </Flex>
-        <AccordionIcon />
-      </AccordionButton>
-      <AccordionPanel pb={4} px={0}>
-        <VStack spacing={3} align="stretch">
-          {children}
-        </VStack>
-      </AccordionPanel>
-    </AccordionItem>
-  </Accordion>
-);
-
 const EditForm = ({
   appForm,
   setAppForm
@@ -133,10 +106,7 @@ const EditForm = ({
   const { llmModelList, embeddingModelList, reRankModelList, defaultModels } = useSystemStore();
 
   // 从选中知识库中获取向量模型 ID（所有知识库限制使用同一向量模型）
-  const datasetVectorModel = useMemo(
-    () => selectDatasets[0]?.vectorModel?.model,
-    [selectDatasets]
-  );
+  const datasetVectorModel = useMemo(() => selectDatasets[0]?.vectorModel?.model, [selectDatasets]);
 
   // 向量模型可选项：知识库为空时展示空列表；否则展示与知识库向量模型匹配的模型
   const embeddingModelSelectList = useMemo(
@@ -444,7 +414,7 @@ const EditForm = ({
       </Box>
       {/* 检索配置 */}
       <Box {...BOX_STYLES}>
-        <AccordionSection title={t('app:retrieval_config')}>
+        <AccordionSection title={t('app:retrieval_config')} nested defaultIndex={[]}>
           <FormItem
             label={t('app:retrieval_mode')}
             tooltip={
@@ -502,9 +472,7 @@ const EditForm = ({
               />
             </Box>
           </FormItem>
-          <FormItem
-            label={t('app:smart_customer_service_rerank_model')}
-          >
+          <FormItem label={t('app:smart_customer_service_rerank_model')}>
             <Box flex={1}>
               <AIModelSelector
                 h={'32px'}
@@ -551,7 +519,8 @@ const EditForm = ({
         <Box {...BOX_STYLES}>
           <AccordionSection
             title={t('app:smart_customer_service_qa_config')}
-            icon="core/app/assistant/answer"
+            nested
+            defaultIndex={[]}
           >
             {/* 猜你想问 */}
             <Box>
@@ -618,7 +587,8 @@ const EditForm = ({
         <Box {...BOX_STYLES}>
           <AccordionSection
             title={t('app:smart_customer_service_ai_config')}
-            icon="core/app/assistant/robot"
+            nested
+            defaultIndex={[]}
           >
             <FormItem
               label={t('app:smart_customer_service_ai_model')}

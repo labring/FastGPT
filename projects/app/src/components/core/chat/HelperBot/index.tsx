@@ -32,6 +32,14 @@ import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
+const sx = {
+  borderRadius: '12px',
+  borderImage:
+    'conic-gradient(from 180deg at 50% 50%, rgba(50, 170, 255, 0.6) -42deg, rgba(119, 226, 57, 0.6) 19deg, rgba(38, 219, 131, 0.6) 50deg, rgba(81, 155, 252, 0.6) 133deg, rgba(36, 131, 255, 0.6) 151deg, rgba(118, 105, 253, 0.6) 225deg, rgba(237, 125, 214, 0.6) 244deg, rgba(50, 170, 255, 0.6) 318deg, rgba(119, 226, 57, 0.6) 379deg) 1',
+  boxShadow: '0px 2px 6px 0px rgba(0, 78, 212, 0.06)',
+  background: 'linear-gradient(180deg, rgba(240, 246, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%)'
+};
+
 const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -392,10 +400,12 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
         ))}
       </ScrollData>
       <Box
-        px={[3, 5]}
-        m={['0 auto 10px', '10px auto']}
+        mx={'auto'}
+        mb={['10px', '10px']}
         w={'100%'}
-        maxW={['auto', 'min(820px, 100%)']}
+        maxW={['100%', 'min(738px, 92%)']}
+        sx={sx}
+        position="relative"
       >
         <ChatInput
           TextareaDom={TextareaDom}

@@ -32,7 +32,6 @@ const Edit = ({
       h={0}
       mt={[4, 0]}
       gap={1}
-      borderRadius={'lg'}
       overflowY={['auto', 'unset']}
       overflowX={'hidden'}
       position={'relative'}
@@ -46,7 +45,7 @@ const Edit = ({
           minW={['auto', '580px']}
           flex={'1'}
         >
-          <Box {...cardStyles} boxShadow={'2'}>
+          <Box {...cardStyles} border={'base'} overflow={'hidden'}>
             <AppCard
               appForm={appForm}
               setPast={setPast}
@@ -54,10 +53,10 @@ const Edit = ({
               configToWorkflow={false}
             />
           </Box>
-
+          {/* 
           <Box mt={4} p={4} {...cardStyles} boxShadow={'2'} whiteSpace={'pre-wrap'} fontSize={'sm'}>
             {t('app:chat_agent_beta_tip')}
-          </Box>
+          </Box> */}
 
           <Box pb={4}>
             <EditForm appForm={appForm} setAppForm={setAppForm} />
@@ -71,6 +70,7 @@ const Edit = ({
             setAppForm={setAppForm}
             setRenderEdit={setRenderEdit}
             form2WorkflowFn={agentForm2AppWorkflow}
+            debuggerMode={true}
           />
         </Box>
       )}

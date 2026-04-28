@@ -13,9 +13,11 @@ import SkillSelectModal from './SkillSelectModal';
 const SkillSelect = ({
   selectedSkills = [],
   onAddSkill,
-  onRemoveSkill
+  onRemoveSkill,
+  title
 }: {
   selectedSkills?: SelectedAgentSkillItemType[];
+  title?: string;
   onAddSkill: (skill: SelectedAgentSkillItemType) => void;
   onRemoveSkill: (skillId: string) => void;
 }) => {
@@ -29,14 +31,13 @@ const SkillSelect = ({
 
   return (
     <>
-      <Flex alignItems={'center'}>
+      <Flex h={'32px'} alignItems={'center'}>
         <Flex alignItems={'center'} flex={1}>
-          <MyIcon name={'common/skill'} w={'20px'} color={'#487FFF'} />
-          <FormLabel ml={2}>{t('skill:associated_skills')}</FormLabel>
+          <FormLabel fontWeight="600">{title || t('skill:associated_skills')}</FormLabel>
         </Flex>
         <Button
           variant={'transparentBase'}
-          leftIcon={<SmallAddIcon />}
+          leftIcon={<MyIcon name="common/selectLight" w={'0.8rem'} />}
           iconSpacing={1}
           mr={'-5px'}
           size={'sm'}
@@ -56,11 +57,11 @@ const SkillSelect = ({
             <Flex
               overflow={'hidden'}
               alignItems={'center'}
-              p={2.5}
+              p={3}
               bg={'white'}
-              boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-              borderRadius={'md'}
-              border={'base'}
+              h="40px"
+              borderRadius={'4px'}
+              border={'1px solid #E8EBF0'}
               userSelect={'none'}
               _hover={{
                 borderColor: 'primary.300',
