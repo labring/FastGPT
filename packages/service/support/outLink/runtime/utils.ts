@@ -23,7 +23,10 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { appendRedisCache } from '../../../common/redis/cache';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { getUsageSourceByPublishChannel } from '@fastgpt/global/support/wallet/usage/tools';
-import { getChatSourceByPublishChannel } from '@fastgpt/global/core/chat/utils';
+import {
+  getChatSourceByPublishChannel,
+  removeAIResponseCite
+} from '@fastgpt/global/core/chat/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoChat } from '../../../core/chat/chatSchema';
@@ -226,7 +229,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     });
 
     // Format results
-    let responseContent = assistantResponses
+    const formatAssistantResponses = removeAIResponseCite(assistantResponses, false);
+    let responseContent = formatAssistantResponses
       .map((response) => {
         return response.text?.content;
       })
