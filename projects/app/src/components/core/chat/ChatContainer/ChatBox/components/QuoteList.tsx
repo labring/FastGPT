@@ -42,13 +42,13 @@ const QuoteList = React.memo(function QuoteList({
     () =>
       rawSearch
         .map((item) => item.id)
-        .filter((v) => !isDatabaseSource(v) && !isCorrectionRecord(v)),
+        .filter((v) => v && !isDatabaseSource(v) && !isCorrectionRecord(v)),
     [rawSearch]
   );
   const collectionIdList = useMemo(
     () =>
       [...new Set(rawSearch.map((item) => item.collectionId))].filter(
-        (v) => !isDatabaseSource(v) && !isCorrectionRecord(v)
+        (v) => v && !isDatabaseSource(v) && !isCorrectionRecord(v)
       ),
     [rawSearch]
   );

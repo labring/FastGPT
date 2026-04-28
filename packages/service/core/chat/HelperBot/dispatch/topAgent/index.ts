@@ -2,7 +2,7 @@ import { type HelperBotDispatchParamsType, type HelperBotDispatchResponseType } 
 import { helperChats2GPTMessages } from '@fastgpt/global/core/chat/helperBot/adaptor';
 import { getPrompt } from './prompt';
 import { createLLMResponse } from '../../../../ai/llm/request';
-import { getDefaultHelperBotModel } from '../../../../ai/model';
+import { getDefaultHelperBotModel, getLLMModel } from '../../../../ai/model';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -29,7 +29,7 @@ export const dispatchTopAgent = async (
 ): Promise<HelperBotDispatchResponseType> => {
   const { query, files, data, histories, workflowResponseWrite, user } = props;
 
-  const modelData = getDefaultHelperBotModel();
+  const modelData = getLLMModel(data.model ?? undefined) || getDefaultHelperBotModel();
   if (!modelData) {
     return Promise.reject('Can not get model data');
   }

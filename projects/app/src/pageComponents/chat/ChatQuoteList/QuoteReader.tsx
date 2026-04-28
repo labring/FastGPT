@@ -28,11 +28,11 @@ const QuoteReader = ({
   }, [rawSearch, metadata.collectionIdList]);
 
   const datasetDataIdList = useMemo(
-    () => filterRawSearch.map((item) => item.id).filter((v) => !isDatabaseSource(v)),
+    () => filterRawSearch.map((item) => item.id).filter((v) => v && !isDatabaseSource(v)),
     [filterRawSearch]
   );
   const collectionIdList = useMemo(
-    () => metadata.collectionIdList?.filter((v) => !isDatabaseSource(v)),
+    () => metadata.collectionIdList?.filter((v) => v && !isDatabaseSource(v)),
     [metadata.collectionIdList]
   );
 
