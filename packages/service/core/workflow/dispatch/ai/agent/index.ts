@@ -85,21 +85,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   }
 
   const MAX_PLAN_ITERATIONS = 10; // 最大规划轮次
-  const MAX_STEP_CALL_RETRY_TIMES = 3; // 每步最大重试次数
-  const shouldRetryStepCall = (result: Awaited<ReturnType<typeof masterCall>>) =>
-    !result.stepResponse?.rawResponse?.trim() &&
-    !!(result.nodeResponse.errorText || result.nodeResponse.finishReason === 'error');
-  const getFinalStepResponseText = (result: Awaited<ReturnType<typeof masterCall>>) => {
-    const rawResponse = result.stepResponse?.rawResponse;
-    if (rawResponse?.trim()) return rawResponse;
-
-    return (
-      result.nodeResponse.errorText?.trim() ||
-      result.stepResponse?.summary?.trim() ||
-      i18nT('chat:completion_finish_error')
-    );
-  };
-  const getLogErrorText = (errorText?: string | null) => errorText?.slice(0, 300);
 
   let {
     checkIsStopping,
@@ -481,80 +466,37 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
             });
 
             // Step call
-            let result: Awaited<ReturnType<typeof masterCall>> | undefined;
-            let retryTimes = 0;
-            for (let attempt = 0; attempt <= MAX_STEP_CALL_RETRY_TIMES; attempt++) {
-              result = await masterCall({
-                ...props,
-                workflowStreamResponse: attempt === 0 ? workflowStreamResponse : undefined,
-                systemPrompt: formatedSystemPrompt,
-                masterMessages: [],
-                planMessages: [],
-                getSubAppInfo,
-                getSubApp,
-                completionTools: agentCompletionTools,
-                steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
-                step,
-                filesMap,
-                capabilityToolCallHandler
-              });
-
-              const shouldRetry =
-                !checkIsStopping() &&
-                attempt < MAX_STEP_CALL_RETRY_TIMES &&
-                shouldRetryStepCall(result);
-
-              if (!shouldRetry) break;
-
-              retryTimes++;
-              getLogger(LogCategories.MODULE.AI.AGENT).warn('Step call empty response, retrying', {
-                planId: agentPlan!.planId,
-                stepId: step.id,
-                stepTitle: step.title,
-                attempt,
-                nextAttempt: attempt + 1,
-                maxRetryTimes: MAX_STEP_CALL_RETRY_TIMES,
-                finishReason: result.nodeResponse.finishReason,
-                errorText: getLogErrorText(result.nodeResponse.errorText)
-              });
-            }
-
-            if (!result) break;
-
-            if (retryTimes > 0) {
-              const retryFinalLog = {
-                planId: agentPlan.planId,
-                stepId: step.id,
-                stepTitle: step.title,
-                retryTimes,
-                finishReason: result.nodeResponse.finishReason,
-                errorText: getLogErrorText(result.nodeResponse.errorText)
-              };
-              if (shouldRetryStepCall(result)) {
-                getLogger(LogCategories.MODULE.AI.AGENT).error(
-                  'Step call retry exhausted',
-                  retryFinalLog
-                );
-              } else {
-                getLogger(LogCategories.MODULE.AI.AGENT).debug(
-                  'Step call retry succeeded',
-                  retryFinalLog
-                );
-              }
-            }
-
-            if (shouldRetryStepCall(result)) {
-              const errorText = getFinalStepResponseText(result);
+            const result = await masterCall({
+              ...props,
+              systemPrompt: formatedSystemPrompt,
+              masterMessages: [],
+              planMessages: [],
+              getSubAppInfo,
+              getSubApp,
+              completionTools: agentCompletionTools,
+              steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
+              step,
+              filesMap,
+              capabilityToolCallHandler
+            });
+            const stepCallErrorText =
+              result.nodeResponse.errorText?.trim() ||
+              (result.nodeResponse.finishReason === 'error'
+                ? i18nT('chat:completion_finish_error')
+                : '');
+            if (stepCallErrorText) {
               nodeResponses.push(result.nodeResponse);
               assistantResponses.push({
-                text: { content: errorText },
+                text: { content: stepCallErrorText },
                 planId: agentPlan.planId,
                 stepId: step.id
               });
               workflowStreamResponse?.({
+                stepId: step.id,
                 event: SseResponseEventEnum.answer,
-                data: textAdaptGptResponse({ text: errorText })
+                data: textAdaptGptResponse({ text: stepCallErrorText })
               });
+
               const answerText = assistantResponses
                 .filter((item) => item.text?.content)
                 .map((item) => item.text!.content)
@@ -564,6 +506,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 data: {
                   [NodeOutputKeyEnum.answerText]: answerText
                 },
+                error: {
+                  [NodeOutputKeyEnum.errorText]: stepCallErrorText
+                },
                 [DispatchNodeResponseKeyEnum.memories]: {
                   [masterMessagesKey]: undefined,
                   [agentPlanKey]: undefined,
@@ -571,7 +516,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                   [planBufferKey]: undefined
                 },
                 [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-                [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses
+                [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses,
+                [DispatchNodeResponseKeyEnum.toolResponses]: {
+                  error: stepCallErrorText
+                }
               };
             }
 
@@ -600,8 +548,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               );
             }
 
-            step.response = getFinalStepResponseText(result);
-            step.summary = result.stepResponse?.summary || step.response;
+            step.response = result.stepResponse?.rawResponse;
+            step.summary = result.stepResponse?.summary;
           }
         }
 
