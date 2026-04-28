@@ -14,7 +14,8 @@ COPY ./node-xlsx-0.24.0.tgz ./
 COPY ./xlsx-0.20.2.tgz ./
 
 # copy packages and one project
-COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc package.json ./
+COPY ./patches ./patches
 COPY ./packages ./packages
 COPY ./sdk ./sdk
 COPY ./projects/app/package.json ./projects/app/package.json
