@@ -30,6 +30,8 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   toolNodes: ToolNodeItemType[];
   toolModel: LLMModelItemType;
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
+  allFiles: Map<string, FileInputType>;
+  currentInputFiles: FileInputType[];
 };
 
 export type ToolNodeItemType = {
@@ -48,4 +50,11 @@ export type ChildResponseItemType = {
   flowResponses: DispatchFlowResponse['flowResponses'];
   runTimes: DispatchFlowResponse['runTimes'];
   flowUsages: DispatchFlowResponse['flowUsages'];
+};
+
+export type FileInputType = {
+  id: string;
+  name: string;
+  url: string;
+  sandboxPath?: string;
 };

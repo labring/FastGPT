@@ -129,7 +129,7 @@
 | `packages/service/core/workflow/dispatch/ai/chat.ts` | `getMultiInput/getChatMessages` | 构造 LLM messages 前增强运行时副本：历史和当前轮每条 user message 注入自己的文件内容；文件内容不进 system | Chat node 满足历史逐条注入 |
 | `packages/service/core/workflow/dispatch/ai/tool/index.ts` | `getMultiInput/dispatchRunTools` | 无 `readFiles` tool 时同 Chat；有 `readFiles` tool 时跳过预解析 | 避免与 readFiles tool 职责冲突 |
 | `packages/service/core/workflow/utils/context.ts` | `rewriteUserQueryWithFileContent` | 承载单条 user query 的文件内容重写逻辑，外层并行处理 history/current messages | 不污染 readFiles tool 职责 |
-| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `normalizeReadableFileUrl` / `getFileContentFromLinks` | `getFileContentFromLinks` 统一负责 URL 标准化、过滤、文件读取与解析；`normalizeReadableFileUrl` 仅作为底层清洗工具 | 不改对外 API |
+| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `normalizeReadableFileUrl` / `parseFileContentFromUrls` | `parseFileContentFromUrls` 统一负责 URL 标准化、过滤、文件读取与解析；`normalizeReadableFileUrl` 仅作为底层清洗工具 | 不改对外 API |
 | `packages/service/core/ai/llm/utils.ts` | `loadRequestMessages` | 保持 `file_url` 过滤逻辑；确保同条消息 text 不被过滤 | 回归保障 |
 
 ### 6.4 运行时注入规则
@@ -137,7 +137,7 @@
 1. 使用消息副本，不修改 `histories`、`query`、`userQuestion` 原对象。
 2. Chat/Tool 外层用 `Promise.all` 并行处理运行时 messages。
 3. 单条 user query 只收集本条 `file.url`；不做跨 message URL 去重，不共享解析缓存。
-4. `getFileContentFromLinks` 负责 URL 标准化、过滤、`maxFiles` 截断和文件解析。
+4. `parseFileContentFromUrls` 负责 URL 标准化、过滤、`maxFiles` 截断和文件解析。
 5. 文件解析结果回填到原本所属的 user message：
    - 原 message 已有 text：追加 `\n\n===---===---===\n\n<FilesContent>...`。
    - 原 message 只有 file：新增一个 text part 存放 `<FilesContent>`。

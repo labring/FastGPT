@@ -29,19 +29,20 @@ type GetFileProps = {
   usageId?: string;
 };
 
-export const rewriteUserQueryWithFiles = async ({
-  queryId,
+export const formatUserQueryWithFiles = async ({
   userQuery,
-  requestOrigin,
-  maxFiles,
-  customPdfParse,
-  teamId,
-  tmbId,
-  usageId
-}: GetFileProps & {
-  queryId: string;
+  parseFileFn
+}: {
   userQuery: UserChatItemValueItemType[];
-}) => {
+  parseFileFn: (urls: string[]) => Promise<
+    {
+      id?: string;
+      name: string;
+      sandboxPath?: string;
+      content?: string;
+    }[]
+  >;
+}): Promise<UserChatItemValueItemType[]> => {
   const urls = userQuery
     .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
     .filter(Boolean);
@@ -50,29 +51,15 @@ export const rewriteUserQueryWithFiles = async ({
     return userQuery;
   }
 
-  const readFilesResult = await getFileContentFromLinks({
-    urls,
-    requestOrigin,
-    maxFiles,
-    teamId,
-    tmbId,
-    customPdfParse,
-    usageId
-  });
+  const readFilesResult = await parseFileFn(urls);
 
   if (readFilesResult.length === 0) {
     return userQuery;
   }
 
-  const files = readFilesResult.map((item, index) => ({
-    id: `${queryId}-${index}`,
-    name: item.filename,
-    content: item.content
-  }));
-
   // 把 file 和 text 合并成一个 text(实际上应该只会有一个 text+多个 files)
   const text = userQuery.find((item) => item.text?.content)?.text?.content;
-  const fileQuery = getUserFilesPrompt(files);
+  const fileQuery = getUserFilesPrompt(readFilesResult);
 
   const finalQuery = injectUserQueryPrompt({
     query: text,
@@ -124,7 +111,122 @@ export const normalizeReadableFileUrl = ({
   }
 };
 
-export const getFileContentFromLinks = async ({
+export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+  // Get file buffer data
+  const response = await axios.get(url, {
+    baseURL: serverRequestBaseUrl,
+    responseType: 'arraybuffer'
+  });
+
+  const urlObj = new URL(url, 'http://localhost:3000');
+  const isChatExternalUrl = !urlObj.pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`);
+
+  // Get file name
+  const { filename, extension, imageParsePrefix } = (() => {
+    if (isChatExternalUrl) {
+      const contentDisposition = response.headers['content-disposition'] || '';
+      const matchFilename = parseContentDispositionFilename(contentDisposition);
+      const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
+      const extension = path.extname(filename).replace('.', '');
+
+      return {
+        filename,
+        extension,
+        imageParsePrefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
+      };
+    }
+
+    return S3ChatSource.parseChatUrl(url);
+  })();
+
+  return {
+    isChatExternalUrl,
+    filename,
+    extension,
+    imageParsePrefix,
+    contentType: response.headers['content-type'],
+    stream: response.data
+  };
+};
+
+export const getFileContentByUrl = async ({
+  url,
+  teamId,
+  tmbId,
+  customPdfParse,
+  usageId
+}: {
+  url: string;
+  teamId: string;
+  tmbId: string;
+  customPdfParse?: boolean;
+  usageId?: string;
+}) => {
+  // Get from buffer
+  const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
+    sourceId: url,
+    customPdfParse
+  });
+  if (rawTextBuffer) {
+    return {
+      name: rawTextBuffer.filename,
+      url,
+      content: rawTextBuffer.text
+    };
+  }
+
+  const { isChatExternalUrl, filename, extension, imageParsePrefix, contentType, stream } =
+    await getFileInfoFromUrl({ teamId, url });
+
+  const buffer = Buffer.from(stream, 'binary');
+  // Get encoding
+  const encoding = (() => {
+    if (contentType) {
+      const charsetRegex = /charset=([^;]*)/;
+      const matches = charsetRegex.exec(contentType);
+      if (matches != null && matches[1]) {
+        return matches[1];
+      }
+    }
+
+    return detectFileEncoding(buffer);
+  })();
+
+  const { rawText } = await readFileContentByBuffer({
+    extension,
+    teamId,
+    tmbId,
+    buffer,
+    encoding,
+    customPdfParse,
+    getFormatText: true,
+    imageKeyOptions: imageParsePrefix
+      ? {
+          prefix: imageParsePrefix,
+          // 聊天对话里面上传的外部链接，解析出来的图片过期时间设置为1天，而且是存储在临时文件夹的
+          expiredTime: isChatExternalUrl ? addDays(new Date(), 1) : undefined
+        }
+      : undefined,
+    usageId
+  });
+
+  const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
+
+  // Add to buffer
+  getS3RawTextSource().addRawTextBuffer({
+    sourceId: url,
+    sourceName: filename,
+    text: replacedText,
+    customPdfParse
+  });
+
+  return {
+    name: filename,
+    url,
+    content: replacedText
+  };
+};
+export const parseFileContentFromUrls = async ({
   urls,
   requestOrigin,
   maxFiles,
@@ -134,7 +236,72 @@ export const getFileContentFromLinks = async ({
   usageId
 }: GetFileProps & {
   urls: string[];
-}) => {
+}): Promise<
+  {
+    success: boolean;
+    name: string;
+    url: string;
+    content: string;
+  }[]
+> => {
+  const parseUrlList = urls
+    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
+    .filter(Boolean)
+    .slice(0, maxFiles);
+
+  const readFilesResult = await Promise.all(
+    parseUrlList
+      .map(async (url) => {
+        try {
+          if (await isInternalAddress(url)) {
+            return {
+              success: false,
+              name: '',
+              url,
+              content: PRIVATE_URL_TEXT
+            };
+          }
+
+          const { name, content } = await getFileContentByUrl({
+            url,
+            teamId,
+            tmbId,
+            customPdfParse,
+            usageId
+          });
+
+          return { success: true, name, url, content: content };
+        } catch (error) {
+          return {
+            success: false,
+            name: '',
+            url,
+            content: getErrText(error, 'Load file error')
+          };
+        }
+      })
+      .filter(Boolean)
+  );
+
+  return readFilesResult;
+};
+export const parseFileInfoFromUrls = async ({
+  urls,
+  requestOrigin,
+  maxFiles,
+  teamId
+}: {
+  requestOrigin?: string;
+  maxFiles: number;
+  teamId: string;
+  urls: string[];
+}): Promise<
+  {
+    success: boolean;
+    name: string;
+    url: string;
+  }[]
+> => {
   const parseUrlList = urls
     .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
     .filter(Boolean)
@@ -146,102 +313,33 @@ export const getFileContentFromLinks = async ({
         // Get from buffer
         const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
           sourceId: url,
-          customPdfParse
+          customPdfParse: false
         });
         if (rawTextBuffer) {
           return {
             success: true,
-            filename: rawTextBuffer.filename,
-            url,
-            content: rawTextBuffer.text
+            name: rawTextBuffer.filename,
+            url
           };
         }
 
         try {
           if (await isInternalAddress(url)) {
-            return Promise.reject(PRIVATE_URL_TEXT);
+            return {
+              success: false,
+              name: '',
+              url
+            };
           }
 
-          // Get file buffer data
-          const response = await axios.get(url, {
-            baseURL: serverRequestBaseUrl,
-            responseType: 'arraybuffer'
-          });
+          const { filename } = await getFileInfoFromUrl({ teamId, url });
 
-          const buffer = Buffer.from(response.data, 'binary');
-
-          const urlObj = new URL(url, 'http://localhost:3000');
-          const isChatExternalUrl = !urlObj.pathname.startsWith(
-            `/${S3Buckets.private}/${S3Sources.chat}/`
-          );
-
-          // Get file name
-          const { filename, extension, imageParsePrefix } = (() => {
-            if (isChatExternalUrl) {
-              const contentDisposition = response.headers['content-disposition'] || '';
-              const matchFilename = parseContentDispositionFilename(contentDisposition);
-              const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
-              const extension = path.extname(filename).replace('.', '');
-
-              return {
-                filename,
-                extension,
-                imageParsePrefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
-              };
-            }
-
-            return S3ChatSource.parseChatUrl(url);
-          })();
-
-          // Get encoding
-          const encoding = (() => {
-            const contentType = response.headers['content-type'];
-            if (contentType) {
-              const charsetRegex = /charset=([^;]*)/;
-              const matches = charsetRegex.exec(contentType);
-              if (matches != null && matches[1]) {
-                return matches[1];
-              }
-            }
-
-            return detectFileEncoding(buffer);
-          })();
-
-          const { rawText } = await readFileContentByBuffer({
-            extension,
-            teamId,
-            tmbId,
-            buffer,
-            encoding,
-            customPdfParse,
-            getFormatText: true,
-            imageKeyOptions: imageParsePrefix
-              ? {
-                  prefix: imageParsePrefix,
-                  // 聊天对话里面上传的外部链接，解析出来的图片过期时间设置为1天，而且是存储在临时文件夹的
-                  expiredTime: isChatExternalUrl ? addDays(new Date(), 1) : undefined
-                }
-              : undefined,
-            usageId
-          });
-
-          const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
-
-          // Add to buffer
-          getS3RawTextSource().addRawTextBuffer({
-            sourceId: url,
-            sourceName: filename,
-            text: replacedText,
-            customPdfParse
-          });
-
-          return { success: true, filename, url, content: replacedText };
+          return { success: true, name: filename, url };
         } catch (error) {
           return {
             success: false,
-            filename: '',
-            url,
-            content: getErrText(error, 'Load file error')
+            name: '',
+            url
           };
         }
       })

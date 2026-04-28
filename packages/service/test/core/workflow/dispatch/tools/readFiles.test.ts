@@ -4,10 +4,10 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-const mockGetFileContentFromLinks = vi.hoisted(() => vi.fn());
+const mockparseFileContentFromUrls = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/workflow/utils/file', () => ({
-  getFileContentFromLinks: mockGetFileContentFromLinks
+  parseFileContentFromUrls: mockparseFileContentFromUrls
 }));
 
 import {
@@ -28,13 +28,13 @@ const baseProps = {
 describe('dispatchReadFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetFileContentFromLinks.mockResolvedValue([]);
+    mockparseFileContentFromUrls.mockResolvedValue([]);
   });
 
   it('成功读取并返回文本/原始响应/节点响应/工具响应结构', async () => {
-    mockGetFileContentFromLinks.mockResolvedValue([
-      { success: true, filename: 'a.pdf', url: '/a.pdf', content: 'Alpha' },
-      { success: true, filename: 'b.pdf', url: '/b.pdf', content: 'Beta' }
+    mockparseFileContentFromUrls.mockResolvedValue([
+      { success: true, name: 'a.pdf', url: '/a.pdf', content: 'Alpha' },
+      { success: true, name: 'b.pdf', url: '/b.pdf', content: 'Beta' }
     ]);
 
     const result = await dispatchReadFiles({
@@ -42,7 +42,7 @@ describe('dispatchReadFiles', () => {
       params: { fileUrlList: ['/a.pdf', '/b.pdf'] }
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith({
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith({
       urls: ['/a.pdf', '/b.pdf'],
       requestOrigin: 'http://localhost:3000',
       maxFiles: 20,
@@ -90,7 +90,7 @@ describe('dispatchReadFiles', () => {
       params: { fileUrlList: ['/a.pdf'] }
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
       expect.objectContaining({
         maxFiles: 5,
         customPdfParse: true
@@ -105,7 +105,7 @@ describe('dispatchReadFiles', () => {
       params: { fileUrlList: ['/a.pdf'] }
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
       expect.objectContaining({ maxFiles: 20, customPdfParse: false })
     );
   });
@@ -117,7 +117,7 @@ describe('dispatchReadFiles', () => {
       params: { fileUrlList: ['/a.pdf'] }
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
       expect.objectContaining({ maxFiles: 20 })
     );
   });
@@ -145,7 +145,7 @@ describe('dispatchReadFiles', () => {
       params: { fileUrlList: ['/current.pdf'] }
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
       expect.objectContaining({
         urls: ['/current.pdf', '/history.pdf']
       })
@@ -175,7 +175,7 @@ describe('dispatchReadFiles', () => {
       params: { fileUrlList: ['/current.pdf'] }
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
       expect.objectContaining({
         urls: ['/current.pdf']
       })
@@ -188,11 +188,13 @@ describe('dispatchReadFiles', () => {
       params: {}
     });
 
-    expect(mockGetFileContentFromLinks).toHaveBeenCalledWith(expect.objectContaining({ urls: [] }));
+    expect(mockparseFileContentFromUrls).toHaveBeenCalledWith(
+      expect.objectContaining({ urls: [] })
+    );
   });
 
   it('空文件结果返回空文本和空数组结构', async () => {
-    mockGetFileContentFromLinks.mockResolvedValue([]);
+    mockparseFileContentFromUrls.mockResolvedValue([]);
 
     const result = await dispatchReadFiles({
       ...baseProps,
@@ -209,8 +211,8 @@ describe('dispatchReadFiles', () => {
 
   it('超大内容下预览仍按 sliceStrStartEnd 截断 (start/end 各 1000)', async () => {
     const huge = 'x'.repeat(5000);
-    mockGetFileContentFromLinks.mockResolvedValue([
-      { success: true, filename: 'big.txt', url: '/big.txt', content: huge }
+    mockparseFileContentFromUrls.mockResolvedValue([
+      { success: true, name: 'big.txt', url: '/big.txt', content: huge }
     ]);
 
     const result = await dispatchReadFiles({
@@ -226,8 +228,8 @@ describe('dispatchReadFiles', () => {
     expect(preview).toContain('## big.txt');
   });
 
-  it('getFileContentFromLinks 抛错时通过 getNodeErrResponse 返回错误结构', async () => {
-    mockGetFileContentFromLinks.mockRejectedValue(new Error('boom'));
+  it('parseFileContentFromUrls 抛错时通过 getNodeErrResponse 返回错误结构', async () => {
+    mockparseFileContentFromUrls.mockRejectedValue(new Error('boom'));
 
     const result = await dispatchReadFiles({
       ...baseProps,

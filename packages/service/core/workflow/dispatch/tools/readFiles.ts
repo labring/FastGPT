@@ -6,7 +6,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
-import { getFileContentFromLinks } from '../../utils/file';
+import { parseFileContentFromUrls } from '../../utils/file';
 import { getUserFilesPrompt } from '../../../ai/llm/agentLoop/prompt';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
@@ -35,7 +35,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
 
   try {
-    const readFilesResult = await getFileContentFromLinks({
+    const readFilesResult = await parseFileContentFromUrls({
       // Concat fileUrlList and filesFromHistories; remove not supported files
       urls: [...fileUrlList, ...filesFromHistories],
       requestOrigin,
@@ -47,7 +47,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     });
     const files = readFilesResult.map((item, index) => ({
       id: `${index}`,
-      name: item.filename,
+      name: item.name,
       content: item.content
     }));
 
@@ -61,14 +61,14 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       data: {
         [NodeOutputKeyEnum.text]: text,
         [NodeOutputKeyEnum.rawResponse]: readFilesResult.map((item) => ({
-          filename: item.filename,
+          filename: item.name,
           url: item.url,
           text: item.content
         }))
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         readFiles: readFilesResult.map((item) => ({
-          name: item.filename,
+          name: item.name,
           url: item.url
         })),
         readFilesResult: getPreviewResponse

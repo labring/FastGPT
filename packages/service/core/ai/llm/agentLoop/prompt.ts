@@ -46,16 +46,18 @@ ${list}
 
 /* ===== Inject user query ===== */
 export const getUserFilesPrompt = (
-  files: { id: string; name: string; content?: string }[] = []
+  files: { id?: string; name: string; sandboxPath?: string; content?: string }[] = []
 ) => {
   if (files.length === 0) return '';
   return `# Input Files
-本次用户上传的文件：
+用户本次上传的文件：
 
 ${files
   .map((file) =>
     `<file>
+${file.id ? `<id>${file.id}</id>` : ''}
 <name>${file.name}</name>
+${file.sandboxPath ? `<sandboxPath>${file.sandboxPath}</sandboxPath>` : ''}
 ${file.content ? `<content>${file.content}</content>` : ''}
 </file>`.trim()
   )

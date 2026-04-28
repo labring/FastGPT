@@ -19,7 +19,18 @@ import type { ToolCallChildrenInteractive } from '@fastgpt/global/core/workflow/
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import { SANDBOX_SYSTEM_PROMPT, SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxToolWorkflowResponse } from './constants';
-import { getSandboxToolInfo, runSandboxTools } from '../../../../ai/sandbox/toolCall';
+import {
+  getSandboxToolInfo,
+  injectSandboxFiles,
+  runSandboxTools
+} from '../../../../ai/sandbox/toolCall';
+import {
+  dispatchReadFileTool,
+  ReadFileTooData,
+  ReadFileToolParamsSchema,
+  ReadFileToolSchema
+} from './tools/file';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 
 type ResponseType = {
   requestIds: string[];
@@ -40,6 +51,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     toolNodes,
     toolModel,
     childrenInteractiveParams,
+    allFiles,
+    currentInputFiles,
 
     ...workflowProps
   } = props;
@@ -114,7 +127,12 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     };
   });
 
-  // 注入 sandbox 提示
+  // 注入 readFile tool
+  if (allFiles.size > 0) {
+    tools.push(ReadFileToolSchema);
+  }
+
+  // 注入 sandbox tool
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     // 注入 sandbox_shell 工具
     tools.push(...SANDBOX_TOOLS);
@@ -128,9 +146,27 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     } else {
       finalMessages = [{ role: 'system', content: SANDBOX_SYSTEM_PROMPT }, ...messages];
     }
+
+    // 注入文件到沙盒里
+    await injectSandboxFiles({
+      appId: workflowProps.runningAppInfo.id,
+      userId: workflowProps.uid,
+      chatId: workflowProps.chatId,
+      files: currentInputFiles.map((file) => ({
+        path: file.sandboxPath!,
+        url: file.url
+      }))
+    });
   }
 
   const getToolInfo = (name: string) => {
+    if (name === ReadFileTooData.id) {
+      return {
+        type: 'file' as const,
+        name: parseI18nString(ReadFileTooData.name, workflowProps.lang),
+        avatar: ReadFileTooData.avatar
+      };
+    }
     const sandboxToolInfo = getSandboxToolInfo(name, workflowProps.lang);
     if (sandboxToolInfo) {
       return {
@@ -276,6 +312,20 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           });
 
           return { response, flowResponse };
+        } else if (toolInfo.type === 'file') {
+          const { ids } = ReadFileToolParamsSchema.parse(parseJsonArgs(call.function.arguments));
+          const { response, usages, nodeResponse } = await dispatchReadFileTool({
+            files: ids.map((id) => ({ id, url: allFiles.get(id)?.url! })),
+            teamId: workflowProps.runningUserInfo.teamId,
+            tmbId: workflowProps.runningUserInfo.tmbId,
+            customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
+            usageId: workflowProps.usageId
+          });
+          return {
+            response,
+            usages,
+            nodeResponse
+          };
         } else {
           const toolNode = toolInfo.rawData;
 

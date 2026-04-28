@@ -77,11 +77,14 @@ export const SANDBOX_GET_FILE_URL_TOOL: ChatCompletionTool = {
 };
 
 // Prompt
-export const SANDBOX_SYSTEM_PROMPT = `你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令：
-- 预装：bash / python3 / node / bun / git / curl
+export const SANDBOX_USER_FILES_PATH = 'user_files/';
+export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
+你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 ${SANDBOX_TOOL_NAME} 工具执行命令。
+- 系统预装：bash / python3 / node / bun / git / curl
 - 可自行安装软件包（apt / pip / npm）
 - 生成的文件内容都保存在当前目录下即可
-- 若需要将生成的文件分享给用户，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 工具获取文件的临时访问链接`;
+- 用户主动上传的文件存储在 ${SANDBOX_USER_FILES_PATH} 目录下
+- 若需要将生成的文件链接，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 工具获取文件的临时访问链接`;
 
 // 聚合
 export const sandboxToolMap: Record<

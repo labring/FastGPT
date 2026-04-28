@@ -30,9 +30,9 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { getFileContentFromLinks } from '../../utils/file';
+import { parseFileContentFromUrls } from '../../utils/file';
 import { parseUrlToFileType } from '../../utils/context';
-import { rewriteUserQueryWithFiles } from '../../utils/file';
+import { formatUserQueryWithFiles } from '../../utils/file';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
@@ -166,9 +166,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         }
       })()
     ]);
-
-    console.log(111111);
-    console.dir(filterMessages, { depth: null });
 
     const {
       completeMessages,
@@ -422,18 +419,29 @@ const getChatMessages = async ({
         return message;
       }
 
+      const query = await formatUserQueryWithFiles({
+        userQuery: message.value,
+        parseFileFn: async (urls) => {
+          const files = await parseFileContentFromUrls({
+            urls,
+            requestOrigin,
+            maxFiles,
+            teamId: runningUserInfo.teamId,
+            tmbId: runningUserInfo.tmbId,
+            customPdfParse,
+            usageId
+          });
+
+          return files.map((file) => ({
+            name: file.name,
+            content: file.content
+          }));
+        }
+      });
+
       return {
         ...message,
-        value: await rewriteUserQueryWithFiles({
-          queryId: message.dataId || `${index}`,
-          userQuery: message.value,
-          requestOrigin,
-          maxFiles,
-          customPdfParse,
-          usageId,
-          teamId: runningUserInfo.teamId,
-          tmbId: runningUserInfo.tmbId
-        })
+        value: query
       };
     })
   );

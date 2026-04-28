@@ -1,4 +1,3 @@
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChildResponseItemType } from './type';

@@ -38,7 +38,7 @@
 | `packages/service/core/workflow/dispatch/ai/chat.ts` | 修改 | 并行处理 human messages，逐条重写 user query，文件内容不进 system | `Promise.all(...rewriteUserQueryWithFileContent(...))` | T2/T3 |
 | `packages/service/core/workflow/dispatch/ai/tool/index.ts` | 修改 | Tool LLM messages 同步并行重写；保留 `hasReadFilesTool` skip | `skip: hasReadFilesTool` | T2/T4 |
 | `packages/service/core/workflow/utils/context.ts` | 修改/复用 | 承载单条 user query 文件内容重写 helper | `rewriteUserQueryWithFileContent(...)` | T2 |
-| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | 修改/复用 | 保留可读文件 URL 标准化、读文件与解析文件能力，供 readFiles tool 和重写 helper 复用 | `normalizeReadableFileUrl(...)` / `getFileContentFromLinks(...)` | T2 |
+| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | 修改/复用 | 保留可读文件 URL 标准化、读文件与解析文件能力，供 readFiles tool 和重写 helper 复用 | `normalizeReadableFileUrl(...)` / `parseFileContentFromUrls(...)` | T2 |
 | `packages/service/core/ai/llm/utils.ts` | 修改/测试驱动 | 保持 `file_url` 过滤，确保同条 text 保留 | 不改协议行为 | T5 |
 | `test/cases/...` | 修改/新增 | 替换保存前增强测试，新增运行时逐条注入测试 | 当前轮/历史/Tool/maxFiles | T5 |
 
@@ -65,7 +65,7 @@ const userMessages = await Promise.all(
         requestOrigin,
         maxFiles,
         customPdfParse,
-        getFileContentFromLinks,
+        parseFileContentFromUrls,
         teamId,
         tmbId
       })
@@ -95,11 +95,11 @@ N/A（无对外接口结构变化）。
 
 | 模块 | 函数/类型 | 具体改动 | 依赖关系 |
 |---|---|---|---|
-| `packages/service/core/workflow/dispatch/ai/chat.ts` | `getChatMessages` 附近 | 构造 LLM messages 前，对历史 human 与当前轮 user 做文件内容注入 | 依赖 `getFileContentFromLinks` |
+| `packages/service/core/workflow/dispatch/ai/chat.ts` | `getChatMessages` 附近 | 构造 LLM messages 前，对历史 human 与当前轮 user 做文件内容注入 | 依赖 `parseFileContentFromUrls` |
 | `packages/service/core/workflow/dispatch/ai/chat.ts` | `getMultiInput` | 不再把文件正文作为 system quote；当前轮文件参与逐条注入 | 与 token 裁剪链路协同 |
 | `packages/service/core/workflow/dispatch/ai/tool/index.ts` | `dispatchRunTools` | 与 Chat 路径一致；无 `readFiles` tool 时注入，有则跳过 | 避免与 readFiles tool 重复预解析 |
-| `packages/service/core/workflow/utils/context.ts` | `rewriteUserQueryWithFileContent` | 单条 user query 重写 `<FilesContent>`，外层负责并行处理 history/current messages | 通过入参复用 `getFileContentFromLinks` |
-| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `normalizeReadableFileUrl` / `getFileContentFromLinks` | 统一负责 URL 标准化、过滤、文件读取与解析；按单条 query URL 顺序与 `maxFiles` 控制解析量 | 保持现有错误兜底 |
+| `packages/service/core/workflow/utils/context.ts` | `rewriteUserQueryWithFileContent` | 单条 user query 重写 `<FilesContent>`，外层负责并行处理 history/current messages | 通过入参复用 `parseFileContentFromUrls` |
+| `packages/service/core/workflow/dispatch/tools/readFiles.ts` | `normalizeReadableFileUrl` / `parseFileContentFromUrls` | 统一负责 URL 标准化、过滤、文件读取与解析；按单条 query URL 顺序与 `maxFiles` 控制解析量 | 保持现有错误兜底 |
 | `packages/service/core/ai/llm/utils.ts` | `loadRequestMessages` | 保持 `file_url` 过滤；回归验证 text part 不丢 | 最终模型请求安全过滤 |
 
 ### 3.3 运行时注入算法
@@ -108,7 +108,7 @@ N/A（无对外接口结构变化）。
 2. Chat/Tool 外层通过 `Promise.all` 并行处理运行时 messages。
 3. 非 human message 原样返回；human message 调用 `rewriteUserQueryWithFileContent`。
 4. 单条 user query 内只收集本条 `file.url`，不做跨 message URL 去重或共享缓存。
-5. 调用 `getFileContentFromLinks` 统一完成 URL 标准化、过滤、`maxFiles` 截断与文件解析。
+5. 调用 `parseFileContentFromUrls` 统一完成 URL 标准化、过滤、`maxFiles` 截断与文件解析。
 6. 将解析结果回填到当前 user query：
    - message 原本有 text：追加分隔符和 `<FilesContent>`。
    - message 原本无 text：新增 text part。
@@ -144,7 +144,7 @@ const userMessages = await Promise.all(
             maxFiles,
             requestOrigin,
             customPdfParse,
-            getFileContentFromLinks,
+            parseFileContentFromUrls,
             teamId,
             tmbId
           })

@@ -4,6 +4,7 @@ import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
+import type { FileInputType } from './type';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
 import type { UserChatItemFileItemType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -16,11 +17,12 @@ import {
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { filterToolResponseToPreview } from './utils';
 import { parseUrlToFileType } from '../../../utils/context';
-import { rewriteUserQueryWithFiles } from '../../../utils/file';
+import { formatUserQueryWithFiles, parseFileInfoFromUrls } from '../../../utils/file';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -38,6 +40,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     runningUserInfo,
     externalProvider,
     usageId,
+    responseChatItemId,
     params: {
       model,
       systemPrompt,
@@ -46,9 +49,12 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       fileUrlList: fileLinks,
       aiChatVision,
       aiChatReasoning,
-      isResponseAnswerText = true
+      isResponseAnswerText = true,
+      useAgentSandbox
     }
   } = props;
+
+  const useSandbox = !!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox;
 
   try {
     const toolModel = getLLMModel(model);
@@ -120,11 +126,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       .filter(Boolean)
       .join('\n\n-----\n\n');
 
+    const allFiles = new Map<string, FileInputType>();
+    const currentInputFiles: FileInputType[] = [];
     const messages = await (async () => {
       const value: ChatItemMiniType[] = [
         ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
         ...chatHistories,
         {
+          dataId: responseChatItemId,
           obj: ChatRoleEnum.Human,
           value: runtimePrompt2ChatsValue({
             text: userChatInput,
@@ -142,18 +151,40 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
             return message;
           }
 
+          const prefixId = message.dataId || `${index}`;
+          const query = await formatUserQueryWithFiles({
+            userQuery: message.value,
+            parseFileFn: async (urls) => {
+              const files = await parseFileInfoFromUrls({
+                urls,
+                requestOrigin,
+                maxFiles,
+                teamId: runningUserInfo.teamId
+              }).then((res) =>
+                res
+                  .filter((item) => item.success)
+                  .map((item, index) => ({
+                    id: `${prefixId}-${index}`,
+                    name: item.name,
+                    url: item.url,
+                    sandboxPath: useSandbox ? `${SANDBOX_USER_FILES_PATH}${item.name}` : undefined
+                  }))
+              );
+
+              files.forEach((file) => {
+                allFiles.set(file.id, file);
+              });
+              if (index === runtimeMessages.length - 1) {
+                currentInputFiles.push(...files);
+              }
+
+              return files;
+            }
+          });
+
           return {
             ...message,
-            value: await rewriteUserQueryWithFiles({
-              queryId: message.dataId || `${index}`,
-              userQuery: message.value,
-              requestOrigin,
-              maxFiles,
-              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-              usageId,
-              teamId: runningUserInfo.teamId,
-              tmbId: runningUserInfo.tmbId
-            })
+            value: query
           };
         })
       );
@@ -188,6 +219,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
       return runToolCall({
         ...props,
+        allFiles,
+        currentInputFiles,
         runtimeNodes,
         runtimeEdges,
         toolNodes,
