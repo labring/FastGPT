@@ -138,15 +138,6 @@ export class MilvusCtrl implements VectorControllerType {
       metadataList
     } = props;
 
-    logger.debug('[Milvus] Insert start', {
-      teamId: String(teamId),
-      datasetId: String(datasetId),
-      collectionId: String(collectionId),
-      vectorCount: vectors?.length,
-      firstVectorDim: vectors?.[0]?.length,
-      tableName
-    });
-
     const generateId = () => {
       // in js, the max safe integer is 2^53 - 1: 9007199254740991
       // so we can generate a random number between 1-8 as the first digit
@@ -193,15 +184,6 @@ export class MilvusCtrl implements VectorControllerType {
       return row;
     });
 
-    logger.debug('[Milvus] Calling client.insert...', {
-      tableName,
-      rowCount: data.length,
-      firstRowId: data[0]?.id,
-      supportsFullText: milvusVersionManager.supportsFullText(),
-      hasTextField: data[0] ? 'text' in data[0] : false,
-      hasMetadataField: data[0] ? 'metadata' in data[0] : false
-    });
-
     const insertTimeoutMs = MILVUS_INSERT_TIMEOUT;
     const result = await Promise.race([
       client.insert({
@@ -220,12 +202,6 @@ export class MilvusCtrl implements VectorControllerType {
       )
     ]);
 
-    logger.debug('[Milvus] client.insert returned', {
-      hasIDs: result.IDs !== null,
-      errorCode: result.status?.error_code,
-      errorReason: result.status?.reason
-    });
-
     if (result.IDs === null) {
       logger.error(
         `[Milvus] insert error: ${result.status.error_code},detail: ${result.status.reason}`
@@ -241,11 +217,6 @@ export class MilvusCtrl implements VectorControllerType {
       }
       return result.IDs.str_id.data.map((id) => String(id));
     })();
-
-    logger.debug('[Milvus] Insert success', {
-      insertCount: insertIds.length,
-      firstInsertId: insertIds[0]
-    });
 
     return {
       insertIds
