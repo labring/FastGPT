@@ -562,7 +562,9 @@ async function getChatMessages({
       index,
       role: msg.role,
       contentLength:
-        typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content).length,
+        typeof msg.content === 'string'
+          ? msg.content.length
+          : JSON.stringify(msg.content)?.length ?? 0,
       content: msg.content
     }))
   });
