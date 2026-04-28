@@ -1,3 +1,4 @@
 [submodule "pro"]
 path = pro
 url = https://github.com/labring/fastgpt-pro.git
+branch = v4.14.x
