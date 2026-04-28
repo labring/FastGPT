@@ -7,7 +7,6 @@ declare global {
       PRO_URL: string;
       LOG_DEPTH: string;
       DB_MAX_LINK: string;
-      FILE_TOKEN_KEY: string;
 
       STORAGE_VENDOR?: 'minio' | 'aws-s3' | 'cos' | 'oss';
       STORAGE_PUBLIC_BUCKET?: string;

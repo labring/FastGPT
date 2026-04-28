@@ -1,0 +1,17 @@
+---
+title: 'V4.14.17(处理中)'
+description: 'FastGPT V4.14.17 更新说明'
+---
+
+## 升级指南
+
+### 1. 更新镜像 tag
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.17
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.14.17
+
+## 🐛 修复
+
+1. API 知识库 parentId 类型校验错误。
+2. 门户页对话无法上传文件。
+3. 商业版未包含内部文件解析接口，如果未配置 S3 External Endpoint，会导致文件解析失败。

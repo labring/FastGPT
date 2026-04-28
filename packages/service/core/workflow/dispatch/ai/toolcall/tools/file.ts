@@ -23,7 +23,7 @@ export const ReadFileToolSchema: ChatCompletionTool = {
   type: 'function',
   function: {
     name: ReadFileTooData.id,
-    description: 'Read files by ids',
+    description: '解析文件内容，获取文本。',
     parameters: {
       type: 'object',
       properties: {
