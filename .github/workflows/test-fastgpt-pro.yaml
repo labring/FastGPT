@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   test:
-    if: ${{ github.event_name != 'pull_request_target' || github.event.pull_request.author_association == 'MEMBER' }}
+    if: ${{ github.event_name != 'pull_request_target' || contains(fromJSON('["COLLABORATOR", "OWNER"]'), github.event.pull_request.author_association) }}
     runs-on: ubuntu-latest
 
     permissions:

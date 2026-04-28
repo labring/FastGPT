@@ -1,7 +1,7 @@
 import { Box, Divider, Flex, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -56,6 +56,12 @@ const DashboardContainer = ({
     type: string;
     appType?: AppTypeEnum | 'all';
   };
+
+  useEffect(() => {
+    if (userInfo && currentTab === TabEnum.app_templates && !hasAppCreatePer) {
+      router.replace('/dashboard/agent');
+    }
+  }, [currentTab, hasAppCreatePer, router, userInfo]);
 
   // Template market
   const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest(

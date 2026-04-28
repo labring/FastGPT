@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event.pull_request.author_association == 'MEMBER' }}
+    if: ${{ contains(fromJSON('["COLLABORATOR", "OWNER"]'), github.event.pull_request.author_association) }}
     runs-on: ubuntu-24.04
 
     steps:
