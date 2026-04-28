@@ -2,22 +2,22 @@ name: Preview Admin Image - Build
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [ opened, synchronize, reopened ]
     paths:
-      - 'pro'
-      - 'pro/**'
-      - 'packages/**'
-      - 'sdk/**'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'turbo.json'
-      - '.gitmodules'
-      - '.github/workflows/preview-admin-build.yml'
-      - '.github/workflows/preview-admin-push.yml'
+      - "pro"
+      - "pro/**"
+      - "packages/**"
+      - "sdk/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".gitmodules"
+      - ".github/workflows/preview-admin-build.yml"
+      - ".github/workflows/preview-admin-push.yml"
   workflow_dispatch:
 
 concurrency:
-  group: 'preview-admin-build-${{ github.event.pull_request.number || github.ref }}'
+  group: "preview-admin-build-${{ github.event.pull_request.number || github.ref }}"
   cancel-in-progress: true
 
 permissions:
@@ -31,8 +31,11 @@ jobs:
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.ref }}
-          repository: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.sha || github.ref }}
+          repository: ${{ github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name || github.repository
+            }}
           fetch-depth: 1
 
       - name: Update submodules
@@ -60,7 +63,8 @@ jobs:
           file: pro/admin/Dockerfile
           platforms: linux/amd64
           push: false
-          tags: fastgpt-pro-pr:${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          tags: fastgpt-pro-pr:${{ github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.sha || github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt-pro admin image
