@@ -7,6 +7,7 @@ import { LogCategories } from '../../../../../../common/logger';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 import z from 'zod';
+import type { ChildResponseItemType } from '../type';
 
 const logger = getLogger(LogCategories.MODULE.AI.TOOL_CALL);
 
@@ -39,6 +40,7 @@ export const ReadFileToolParamsSchema = z.object({
 });
 type FileReadParams = {
   files: { id: string; url: string }[];
+  toolCallId: string;
 
   teamId: string;
   tmbId: string;
@@ -47,13 +49,32 @@ type FileReadParams = {
 };
 export const dispatchReadFileTool = async ({
   files,
+  toolCallId,
   teamId,
   tmbId,
   customPdfParse,
   usageId
 }: FileReadParams) => {
+  const startTime = Date.now();
+  const usages: ChatNodeUsageType[] = [];
+  const getFlowResponse = (nodeResponse: Record<string, any> = {}): ChildResponseItemType => ({
+    flowResponses: [
+      {
+        ...nodeResponse,
+        moduleType: FlowNodeTypeEnum.readFiles,
+        moduleName: i18nT('chat:read_file'),
+        moduleLogo: ReadFileTooData.avatar,
+        id: toolCallId,
+        nodeId: toolCallId,
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        totalPoints: usages.reduce((sum, item) => sum + item.totalPoints, 0)
+      }
+    ],
+    flowUsages: usages,
+    runTimes: 0
+  });
+
   try {
-    const usages: ChatNodeUsageType[] = [];
     const readFilesResult = await Promise.all(
       files.map(async ({ url, id }) => {
         try {
@@ -93,21 +114,19 @@ export const dispatchReadFileTool = async ({
     return {
       response,
       usages,
-      nodeResponse: {
-        moduleType: FlowNodeTypeEnum.readFiles,
-        moduleName: i18nT('chat:read_file')
-      }
+      flowResponse: getFlowResponse()
     };
   } catch (error) {
     logger.error('[File Read] Compression failed, using original content', { error });
+    const response = `Failed to read file: ${getErrText(error)}`;
+    const nodeResponse = {
+      errorText: response
+    };
+
     return {
-      response: `Failed to read file: ${getErrText(error)}`,
-      usages: [],
-      nodeResponse: {
-        moduleType: FlowNodeTypeEnum.readFiles,
-        moduleName: i18nT('chat:read_file'),
-        errorText: `Failed to read file: ${getErrText(error)}`
-      }
+      response,
+      usages,
+      flowResponse: getFlowResponse(nodeResponse)
     };
   }
 };

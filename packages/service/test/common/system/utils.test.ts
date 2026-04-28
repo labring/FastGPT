@@ -1,15 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
-
-// Mock dns module
-vi.mock('dns/promises', () => ({
-  default: {
-    resolve4: vi.fn(),
-    resolve6: vi.fn()
-  }
-}));
-
-// Import mocked dns after mock setup
 import dns from 'dns/promises';
 
 describe('SSRF Protection - isInternalAddress', () => {
@@ -17,8 +7,10 @@ describe('SSRF Protection - isInternalAddress', () => {
 
   beforeEach(() => {
     process.env.CHECK_INTERNAL_IP = 'true';
-    // 清除所有 mock
-    vi.clearAllMocks();
+    // 重建 DNS spy，避免真实 DNS 解析和用例之间的 mock 实现串味
+    vi.restoreAllMocks();
+    vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('No A records'));
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
   });
 
   afterEach(() => {

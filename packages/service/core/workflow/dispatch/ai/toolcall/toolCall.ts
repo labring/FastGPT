@@ -314,8 +314,9 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           return { response, flowResponse };
         } else if (toolInfo.type === 'file') {
           const { ids } = ReadFileToolParamsSchema.parse(parseJsonArgs(call.function.arguments));
-          const { response, usages, nodeResponse } = await dispatchReadFileTool({
+          const { response, usages, flowResponse } = await dispatchReadFileTool({
             files: ids.map((id) => ({ id, url: allFiles.get(id)?.url! })),
+            toolCallId: call.id,
             teamId: workflowProps.runningUserInfo.teamId,
             tmbId: workflowProps.runningUserInfo.tmbId,
             customPdfParse: workflowProps.chatConfig?.fileSelectConfig?.customPdfParse,
@@ -324,7 +325,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           return {
             response,
             usages,
-            nodeResponse
+            flowResponse
           };
         } else {
           const toolNode = toolInfo.rawData;
