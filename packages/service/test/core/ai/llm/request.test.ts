@@ -73,6 +73,8 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/core/ai/utils';
+import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 
 // Import the function to test
 import {
@@ -87,6 +89,19 @@ const mockLoadRequestMessages = vi.mocked(loadRequestMessages);
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockParseLLMStreamResponse = vi.mocked(parseLLMStreamResponse);
 const mockParseReasoningContent = vi.mocked(parseReasoningContent);
+const mockGetLLMSupportParams = vi.mocked(getLLMSupportParams);
+const mockPromptToolCallMessageRewrite = vi.mocked(promptToolCallMessageRewrite);
+
+const defaultSupportParams = {
+  vision: false,
+  temperature: true,
+  reasoning: false,
+  reasoningEffort: false,
+  topP: true,
+  stop: true,
+  responseFormat: false,
+  supportToolCall: true
+};
 
 // Helper to create mock model data
 const createMockModelData = (overrides?: Partial<LLMModelItemType>): LLMModelItemType => ({
@@ -1250,6 +1265,117 @@ describe('createLLMResponse', () => {
       expect(result.finish_reason).toBe('length');
     });
   });
+
+  describe('reasoning_effort handling', () => {
+    const buildOkResponse = () => ({
+      choices: [
+        {
+          message: { role: 'assistant', content: 'ok' },
+          finish_reason: 'stop'
+        }
+      ],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+    });
+
+    it('should preserve reasoning_effort when model supports it', async () => {
+      mockGetLLMModel.mockReturnValue(createMockModelData({ reasoning: true }));
+      mockGetLLMSupportParams.mockReturnValueOnce({
+        ...defaultSupportParams,
+        reasoning: true,
+        reasoningEffort: true
+      });
+
+      const mockCreate = vi.fn().mockResolvedValue(buildOkResponse());
+      mockGetAIApi.mockReturnValue({
+        chat: { completions: { create: mockCreate } }
+      } as any);
+
+      await createLLMResponse({
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          reasoning_effort: 'high',
+          stream: false
+        }
+      });
+
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate.mock.calls[0][0].reasoning_effort).toBe('high');
+    });
+
+    it('should strip reasoning_effort when model does not support it', async () => {
+      mockGetLLMSupportParams.mockReturnValueOnce({
+        ...defaultSupportParams,
+        reasoningEffort: false
+      });
+
+      const mockCreate = vi.fn().mockResolvedValue(buildOkResponse());
+      mockGetAIApi.mockReturnValue({
+        chat: { completions: { create: mockCreate } }
+      } as any);
+
+      await createLLMResponse({
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          reasoning_effort: 'high',
+          stream: false
+        }
+      });
+
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate.mock.calls[0][0]).not.toHaveProperty('reasoning_effort');
+    });
+  });
+
+  describe('Error handling - requestMessages provenance', () => {
+    it('should return prompt-rewritten requestMessages on API error', async () => {
+      const loaded: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'sys' },
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' }
+      ];
+      const rewritten: ChatCompletionMessageParam[] = [
+        ...loaded,
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'rewritten-suffix' }
+      ];
+
+      mockLoadRequestMessages.mockResolvedValueOnce(loaded as any);
+      mockPromptToolCallMessageRewrite.mockReturnValueOnce(rewritten as any);
+
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockRejectedValue(new Error('boom'))
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(mockAI as any);
+
+      const result = await createLLMResponse({
+        throwError: false,
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'q' }],
+          tools: [
+            {
+              type: 'function' as const,
+              function: {
+                name: 'noop',
+                description: 'n',
+                parameters: { type: 'object', properties: {} }
+              }
+            }
+          ],
+          toolCallMode: 'prompt',
+          stream: false
+        }
+      });
+
+      expect(result.error).toBeDefined();
+      expect(result.requestMessages).toEqual(rewritten);
+      expect(result.completeMessages).toEqual(rewritten);
+    });
+  });
 });
 
 describe('createCompleteResponse', () => {
@@ -1340,6 +1466,58 @@ describe('createCompleteResponse', () => {
     expect(result.toolCalls).toHaveLength(1);
     expect(result.toolCalls![0].function.name).toBe('test_tool');
     expect(toolCalls).toHaveLength(1);
+  });
+
+  it('should drop non-function tool_calls (e.g. custom type) in toolChoice mode', async () => {
+    const response = {
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_fn',
+                type: 'function',
+                function: { name: 'test_tool', arguments: '{}' }
+              },
+              {
+                id: 'call_custom',
+                type: 'custom',
+                custom: { name: 'shell', input: 'ls' }
+              }
+            ]
+          },
+          finish_reason: 'tool_calls'
+        }
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
+    };
+
+    const tools = [
+      {
+        type: 'function' as const,
+        function: {
+          name: 'test_tool',
+          description: 'Test',
+          parameters: { type: 'object', properties: {} }
+        }
+      }
+    ];
+
+    const result = await createCompleteResponse({
+      body: {
+        model: 'gpt-4',
+        messages: [],
+        tools,
+        stream: false
+      },
+      response: response as any
+    });
+
+    expect(result.toolCalls).toHaveLength(1);
+    expect(result.toolCalls![0].id).toBe('call_fn');
+    expect(result.toolCalls![0].type).toBe('function');
   });
 });
 

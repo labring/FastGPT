@@ -363,8 +363,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         inputTokens: 0,
         outputTokens: 0
       },
-      requestMessages,
-      completeMessages: [...requestMessages]
+      // requestBody.messages 在类型层是 SDK v6 的联合（含 custom tool），运行时 FastGPT 仅产 function 形态
+      requestMessages: requestBody.messages as ChatCompletionMessageParam[],
+      completeMessages: [...requestBody.messages] as ChatCompletionMessageParam[]
     };
   }
 };
