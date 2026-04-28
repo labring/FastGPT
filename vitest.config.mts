@@ -5,9 +5,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('projects/app/src'),
-      '@fastgpt/global': resolve('packages/global'),
-      '@fastgpt/service': resolve('packages/service'),
-      '@fastgpt/web': resolve('packages/web'),
+      '@fastgpt-sdk/logger': resolve('sdk/logger/src/index.ts'),
+      '@fastgpt-sdk/storage': resolve('sdk/storage/src/index.ts'),
+      '@fastgpt-sdk/otel/logger': resolve('sdk/otel/src/logger-entry.ts'),
+      '@fastgpt-sdk/otel/metrics': resolve('sdk/otel/src/metrics-entry.ts'),
+      '@fastgpt-sdk/otel/tracing': resolve('sdk/otel/src/tracing-entry.ts'),
+      '@fastgpt-sdk/otel': resolve('sdk/otel/src/index.ts'),
+      '@fastgpt': resolve('packages'),
       '@test': resolve('test')
     }
   },
@@ -22,7 +26,6 @@ export default defineConfig({
       reporter: ['html', 'json-summary', 'json'],
       // reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
-      all: false, // 只包含被测试实际覆盖的文件，不包含空目录
       include: ['projects/app/**/*.ts', 'packages/**/*.ts'],
       exclude: [
         '**/node_modules/**',
@@ -52,11 +55,8 @@ export default defineConfig({
     pool: 'threads',
     testTimeout: 20000,
     hookTimeout: 30000,
+    passWithNoTests: true,
     reporters: ['github-actions', 'default'],
-    include: [
-      'test/**/*.test.ts',
-      'projects/app/test/**/*.test.ts',
-      'projects/marketplace/test/**/*.test.ts'
-    ]
+    include: ['test/**/*.test.ts']
   }
 });

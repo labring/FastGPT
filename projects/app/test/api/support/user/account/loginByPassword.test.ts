@@ -9,8 +9,8 @@ import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-import { Call } from '@test/utils/request';
 import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 
 describe('loginByPassword API', () => {

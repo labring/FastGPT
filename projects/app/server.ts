@@ -1,6 +1,5 @@
 import type { IncomingMessage } from 'http';
 import { createServer, ServerResponse } from 'http';
-import { parse } from 'url';
 import next from 'next';
 import httpProxy from 'http-proxy';
 import { Readable } from 'stream';
@@ -267,7 +266,7 @@ async function main() {
   }
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-    const parsedUrl = parse(req.url || '');
+    const parsedUrl = new URL(req.url || '/', 'http://localhost');
 
     // ① Check subdomain proxy first: {port}--{sandboxId}.{baseDomain}
     const subdomain = parseSubdomainProxy(req.headers.host);
@@ -287,7 +286,7 @@ async function main() {
     }
 
     // ③ Fall through to Next.js handler
-    handle(req, res, parsedUrl as any);
+    handle(req, res);
   });
 
   // WebSocket upgrade handler — supports all three proxy modes

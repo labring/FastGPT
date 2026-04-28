@@ -17,6 +17,7 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getVlmModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const body = PushDataBodySchema.parse(req.body);

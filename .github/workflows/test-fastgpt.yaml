@@ -1,11 +1,11 @@
-name: 'FastGPT-Test'
+name: "FastGPT-Test"
 on:
   pull_request:
   workflow_dispatch:
 
-# Only one build per PR branch at a time
+    # Only one build per PR branch at a time
 concurrency:
-  group: 'test-fastgpt-${{ github.head_ref }}'
+  group: "test-fastgpt-${{ github.event.pull_request.number || github.ref }}"
   cancel-in-progress: true
 
 permissions:
@@ -20,18 +20,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
-      - name: 'Install Deps'
-        run: pnpm install
-      - name: 'Test'
-        run: pnpm run test
-      - name: 'Report Coverage'
+          version: 10.33.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: "Install Deps"
+        run: pnpm install --frozen-lockfile
+
+      - name: "Test Global"
+        run: pnpm test:global
+
+      - name: "Test Service"
+        run: pnpm test:service
+
+      - name: "Test App"
+        run: pnpm test:app
+
+      - name: "Report Coverage (Global)"
         # Set if: always() to also generate the report if tests are failing
         # Only works if you set `reportOnFailure: true` in your vite config as specified above
-        if: always()
+        if: always() && hashFiles('packages/global/coverage/coverage-summary.json') != ''
         uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: global
+          json-final-path: packages/global/coverage/coverage-final.json
+          json-summary-path: packages/global/coverage/coverage-summary.json
+
+      - name: "Report Coverage (Service)"
+        if: always() && hashFiles('packages/service/coverage/coverage-summary.json') != ''
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: service
+          json-final-path: packages/service/coverage/coverage-final.json
+          json-summary-path: packages/service/coverage/coverage-summary.json
+
+      - name: "Report Coverage (App)"
+        if: always() && hashFiles('projects/app/coverage/coverage-summary.json') != ''
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: app
+          json-final-path: projects/app/coverage/coverage-final.json
+          json-summary-path: projects/app/coverage/coverage-summary.json

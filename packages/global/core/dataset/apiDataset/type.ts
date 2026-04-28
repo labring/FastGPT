@@ -21,6 +21,7 @@ export const APIFileServerSchema = z
   })
   .meta({ description: 'API 服务器配置' });
 export type APIFileServerType = z.infer<typeof APIFileServerSchema>;
+export type APIFileServer = APIFileServerType;
 export const FeishuServerSchema = z
   .object({
     appId: z.string(),
@@ -29,6 +30,7 @@ export const FeishuServerSchema = z
   })
   .meta({ description: '飞书服务器配置' });
 export type FeishuServerType = z.infer<typeof FeishuServerSchema>;
+export type FeishuServer = FeishuServerType;
 export const YuqueServerSchema = z
   .object({
     userId: z.string(),
@@ -37,6 +39,7 @@ export const YuqueServerSchema = z
   })
   .meta({ description: '语雀服务器配置' });
 export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
+export type YuqueServer = YuqueServerType;
 
 export const ApiDatasetServerSchema = z
   .object({
@@ -53,10 +56,12 @@ export const ApiFileReadContentResponseSchema = z.object({
   rawText: z.string()
 });
 export type ApiFileReadContentResponseType = z.infer<typeof ApiFileReadContentResponseSchema>;
+export type ApiFileReadContentResponse = ApiFileReadContentResponseType;
 
 export const APIFileReadResponseSchema = z.object({
   url: z.string()
 });
 export type APIFileReadResponseType = z.infer<typeof APIFileReadResponseSchema>;
+export type APIFileReadResponse = APIFileReadResponseType;
 
 export type ApiDatasetDetailResponse = APIFileItemType;

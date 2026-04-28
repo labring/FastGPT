@@ -1,15 +1,10 @@
-'use client';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 
 // 动态加载 @scalar/api-reference-react，避免其 CSS side-effect 在 Node 端
 // (next build 的 collecting page data 阶段) 被解析导致 ERR_UNKNOWN_FILE_EXTENSION。
 const ApiReferenceReact = dynamic(
-  () =>
-    Promise.all([
-      import('@scalar/api-reference-react'),
-      import('@scalar/api-reference-react/style.css')
-    ]).then(([mod]) => mod.ApiReferenceReact),
+  () => Promise.all([import('@scalar/api-reference-react')]).then(([mod]) => mod.ApiReferenceReact),
   { ssr: false }
 );
 

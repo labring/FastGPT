@@ -17,6 +17,8 @@ import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
 import { useRouter } from 'next/router';
 import { errorLogger } from '@/web/common/utils/errorLogger';
 
+import '@scalar/api-reference-react/style.css';
+
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
 };

@@ -1,9 +1,10 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 
+const truthyBoolStrs = ['true', '1', 'yes', 'y'];
 const BoolSchema = z
   .string()
-  .transform((val) => val === 'true')
+  .transform((val) => truthyBoolStrs.includes(val.toLowerCase()))
   .pipe(z.boolean());
 
 const NumSchema = z.coerce.number<number>();
@@ -17,6 +18,7 @@ const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
 export const env = createEnv({
   server: {
     FILE_TOKEN_KEY: z.string().min(6, 'FILE_TOKEN_KEY must be at least 6 characters'),
+
     // ===== Agent sandbox =====
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
@@ -124,7 +126,9 @@ export const env = createEnv({
     SHOW_SKILL: BoolSchema.default(false),
 
     // Agent engine selection: 'default' uses the built-in Plan+Step engine, 'pi' uses pi-agent-core
-    AGENT_ENGINE: z.enum(['default', 'pi']).default('default')
+    AGENT_ENGINE: z.enum(['default', 'pi']).default('default'),
+
+    SKIP_FILE_TYPE_CHECK: BoolSchema.default(false)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

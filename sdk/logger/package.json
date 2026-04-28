@@ -29,7 +29,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/labring/FastGPT.git",
-    "directory": "FastGPT/sdk/logger"
+    "directory": "sdk/logger"
   },
   "homepage": "https://github.com/labring/FastGPT",
   "bugs": {
@@ -40,7 +40,7 @@
   },
   "engines": {
     "node": ">=20",
-    "pnpm": "9.x"
+    "pnpm": "10.x"
   },
   "license": "Apache-2.0",
   "dependencies": {
