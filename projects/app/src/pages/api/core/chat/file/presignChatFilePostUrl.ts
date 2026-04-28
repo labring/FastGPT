@@ -12,6 +12,7 @@ import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
   const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } =
@@ -31,12 +32,16 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
   ]);
   const effectiveFileSelectConfig = fileSelectConfig
     ? await (async () => {
-        await authApp({
-          req,
-          authToken: true,
-          appId,
-          per: WritePermissionVal
-        });
+        const isHomeApp = await MongoChatSetting.exists({ teamId, appId });
+
+        if (!isHomeApp) {
+          await authApp({
+            req,
+            authToken: true,
+            appId,
+            per: WritePermissionVal
+          });
+        }
         return fileSelectConfig;
       })()
     : app?.chatConfig?.fileSelectConfig;

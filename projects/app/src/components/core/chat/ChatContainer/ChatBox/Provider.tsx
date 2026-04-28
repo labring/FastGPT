@@ -254,13 +254,22 @@ const Provider = ({
     getHistoryResponseData,
     chatType
   };
+  const runtimeFileSelectConfig = useMemo(() => {
+    if (chatType === ChatTypeEnumValue.test) {
+      return fileSelectConfig;
+    }
+    if (chatType === ChatTypeEnumValue.home && !props.currentQuickAppId) {
+      return fileSelectConfig;
+    }
+    return undefined;
+  }, [chatType, fileSelectConfig, props.currentQuickAppId]);
 
   return (
     <WorkflowRuntimeContextProvider
       appId={appId}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
-      runtimeFileSelectConfig={chatType === ChatTypeEnumValue.test ? fileSelectConfig : undefined}
+      runtimeFileSelectConfig={runtimeFileSelectConfig}
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>
