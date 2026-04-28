@@ -113,7 +113,8 @@ export class SandboxClient {
             }
           }),
           metadata: {
-            volumeEnabled: !!this.opts?.vmConfig
+            volumeEnabled: !!this.opts?.vmConfig,
+            ...(this.opts?.createConfig?.metadata || {})
           },
           createdAt: new Date()
         }
