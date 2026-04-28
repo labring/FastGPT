@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { UploadConstraints } from '../contracts/type';
 import { DEFAULT_CONTENT_TYPE, resolveMimeType } from '../utils/mime';
 import { normalizeAllowedExtensions, normalizeFileExtension } from '../utils/uploadConstraints';
+import { env } from '../../../env';
 
 const defaultInspectBytes = 8192;
 const officeZipInspectBytes = 64 * 1024;
@@ -171,6 +172,14 @@ export async function validateUploadFile({
     extension,
     uploadConstraints
   });
+
+  if (env.SKIP_FILE_TYPE_CHECK) {
+    return {
+      filename: normalizedFileName,
+      contentType: expectedMime
+    };
+  }
+
   const detected = await fileTypeFromBuffer(buffer).catch((error) => {
     if (error?.name === 'EndOfStreamError' || error?.message === 'End-Of-Stream') {
       return undefined;
