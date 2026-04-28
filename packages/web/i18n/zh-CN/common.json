@@ -1035,6 +1035,7 @@
   "support.wallet.Dataset_amount_not_sufficient": "您的知识库数量已达上限，请升级套餐后继续使用。",
   "support.wallet.Dataset_not_sufficient": "您的知识库容量不足，请先升级套餐或购买额外知识库容量后继续使用。",
   "support.wallet.Not sufficient": "您的 AI 积分不足，请先升级套餐或购买额外 AI 积分后继续使用。",
+  "support.wallet.Not_sufficient_contact_admin": "您的 AI 积分不足，请联系团队管理员。",
   "support.wallet.Team_member_over_size": "您的团队成员数量已达上限，请升级套餐后继续使用。",
   "support.wallet.To read plan": "查看套餐",
   "support.wallet.amount_0": "购买数量不能为0",
