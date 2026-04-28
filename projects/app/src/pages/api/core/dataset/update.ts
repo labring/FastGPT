@@ -70,7 +70,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     autoSync,
     chunkSettings,
     databaseConfig
-  } = UpdateDatasetBodySchema.parse(req.body) as UpdateDatasetBody & { databaseConfig?: any };
+  } = UpdateDatasetBodySchema.parse(req.body);
   const { inheritParentPermission = true } = req.body as { inheritParentPermission?: boolean };
 
   const { dataset, permission, tmbId, teamId } = await authDataset({

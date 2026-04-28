@@ -294,6 +294,24 @@ export const UpdateDatasetBodySchema = z.object({
   chunkSettings: ChunkSettingsSchema.optional().meta({
     description: '分块配置'
   }),
+  databaseConfig: z
+    .object({
+      clientType: z.string(),
+      version: z.string().optional(),
+      host: z.string(),
+      port: z.number().optional(),
+      database: z.string(),
+      user: z.string(),
+      password: z.string(),
+      poolSize: z.number().optional(),
+      schema: z.string().optional(),
+      encrypt: z.boolean().optional(),
+      trustServerCertificate: z.boolean().optional()
+    })
+    .optional()
+    .meta({
+      description: '数据库配置'
+    }),
   inheritParentPermission: z.boolean().optional().meta({
     description: '是否继承新父级权限（移动时使用）'
   })
