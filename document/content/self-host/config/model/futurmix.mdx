@@ -1,0 +1,44 @@
+---
+title: FuturMix 接入示例
+description: FuturMix 接入示例
+---
+
+[FuturMix](https://futurmix.ai) 是一个统一 AI 网关，提供 22+ 模型（GPT-4o、Claude、Gemini 等）的统一访问，兼容 OpenAI 协议。用户无需分别在 OpenAI、Anthropic、Google 等平台申请 API Key，只需一个 FuturMix API Key 即可在 FastGPT 中访问所有主流模型。
+
+在阅读该章之前，请先确保你阅读了[模型配置说明](./intro.mdx)。
+
+## 1. 获取 API Key
+
+1. 访问 [FuturMix](https://futurmix.ai)，注册并登录账号。
+2. 进入控制台，创建 API Key。
+
+## 2. 新增模型
+
+在`模型配置`页面，搜索并添加您需要使用的模型。FuturMix 支持的模型包括但不限于：
+
+- **OpenAI**：gpt-4o、gpt-4o-mini、o3-mini 等
+- **Anthropic**：claude-sonnet-4-20250514、claude-3.5-haiku 等
+- **Google**：gemini-2.5-pro、gemini-2.0-flash 等
+
+如果系统内置模型列表中没有您需要的模型，可以[手动添加](./intro.mdx#新增自定义模型)。
+
+## 3. 新增模型渠道
+
+在模型渠道页，新增一个 FuturMix 的渠道：
+
+- 协议类型选择 **OpenAI**
+- 代理地址填写：`https://futurmix.ai/v1`
+- 填写 FuturMix 的 API Key
+- 选择刚刚启用的模型
+
+由于 FuturMix 兼容 OpenAI 协议，所有通过 FuturMix 提供的模型（包括 Claude、Gemini 等）均可使用 OpenAI 协议类型接入，无需为不同厂商的模型分别创建渠道。
+
+## 4. 测试模型
+
+配置完成后，可以在渠道列表中点击测试按钮，验证模型是否正常工作。
+
+## 优势
+
+- **统一接入**：一个 API Key 访问 22+ 模型，无需分别配置 OpenAI、Anthropic、Google 等渠道
+- **OpenAI 兼容**：完全兼容 OpenAI 协议，配置简单
+- **高可用**：99.99% SLA，内置故障转移和负载均衡

@@ -1,0 +1,44 @@
+---
+title: FuturMix Integration Example
+description: FuturMix integration example for FastGPT
+---
+
+[FuturMix](https://futurmix.ai) is a unified AI gateway that provides access to 22+ models (GPT-4o, Claude, Gemini, etc.) through a single OpenAI-compatible API endpoint. Instead of obtaining separate API keys from OpenAI, Anthropic, and Google, you can use a single FuturMix API key to access all major models in FastGPT.
+
+Before reading this guide, make sure you've read the [Model Configuration Guide](./intro.en.mdx).
+
+## 1. Get an API Key
+
+1. Visit [FuturMix](https://futurmix.ai), register and log in.
+2. Go to the console and create an API Key.
+
+## 2. Add Models
+
+On the `Model Configuration` page, search and add the models you need. FuturMix supports models including but not limited to:
+
+- **OpenAI**: gpt-4o, gpt-4o-mini, o3-mini, etc.
+- **Anthropic**: claude-sonnet-4-20250514, claude-3.5-haiku, etc.
+- **Google**: gemini-2.5-pro, gemini-2.0-flash, etc.
+
+If the model you need is not in the built-in model list, you can [add it manually](./intro.en.mdx#add-a-custom-model).
+
+## 3. Add a Model Channel
+
+On the Model Channels page, add a new FuturMix channel:
+
+- Protocol type: Select **OpenAI**
+- Proxy URL: `https://futurmix.ai/v1`
+- Enter your FuturMix API Key
+- Select the models you just enabled
+
+Since FuturMix is OpenAI-compatible, all models provided through FuturMix (including Claude, Gemini, etc.) can be accessed using the OpenAI protocol type. There is no need to create separate channels for different providers.
+
+## 4. Test Models
+
+After configuration, click the test button in the channel list to verify the models are working properly.
+
+## Advantages
+
+- **Unified Access**: One API key for 22+ models — no need to configure separate channels for OpenAI, Anthropic, Google, etc.
+- **OpenAI Compatible**: Fully compatible with the OpenAI protocol for simple configuration
+- **High Availability**: 99.99% SLA with built-in failover and load balancing
