@@ -484,8 +484,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               (result.nodeResponse.finishReason === 'error'
                 ? i18nT('chat:completion_finish_error')
                 : '');
+
+            nodeResponses.push(result.nodeResponse);
+
             if (stepCallErrorText) {
-              nodeResponses.push(result.nodeResponse);
               assistantResponses.push({
                 text: { content: stepCallErrorText },
                 planId: agentPlan.planId,
@@ -517,13 +519,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 },
                 [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
                 [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponses,
-                [DispatchNodeResponseKeyEnum.toolResponses]: {
-                  error: stepCallErrorText
-                }
+                [DispatchNodeResponseKeyEnum.toolResponses]: stepCallErrorText
               };
             }
-
-            nodeResponses.push(result.nodeResponse);
 
             // Merge response
             const assistantResponse = GPTMessages2Chats({

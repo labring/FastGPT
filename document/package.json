@@ -47,7 +47,7 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
-    "zhlint": "^0.7.4",
+    "zhlint": "^0.8.2",
     "zod": "^4.0.5"
   }
 }
