@@ -1,8 +1,9 @@
 name: Preview Admin Image - Build
 
 on:
-  pull_request_target:
-    types: [ opened, synchronize, reopened ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ['*']
     paths:
       - "pro"
       - "pro/**"
@@ -14,10 +15,9 @@ on:
       - ".gitmodules"
       - ".github/workflows/preview-admin-build.yml"
       - ".github/workflows/preview-admin-push.yml"
-  workflow_dispatch:
 
 concurrency:
-  group: "preview-admin-build-${{ github.event.pull_request.number || github.ref }}"
+  group: 'preview-admin-build-${{ github.head_ref || github.ref }}'
   cancel-in-progress: true
 
 permissions:
@@ -31,11 +31,8 @@ jobs:
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.sha || github.ref }}
-          repository: ${{ github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name || github.repository
-            }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
           fetch-depth: 1
 
       - name: Update submodules
@@ -63,20 +60,19 @@ jobs:
           file: pro/admin/Dockerfile
           platforms: linux/amd64
           push: false
-          tags: fastgpt-pro-pr:${{ github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.sha || github.sha }}
+          tags: fastgpt-pro-pr:${{ github.event.pull_request.head.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt-pro admin image
-            org.opencontainers.image.revision=${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
           outputs: type=docker,dest=/tmp/fastgpt-pro-image.tar
           cache-from: type=gha,scope=fastgpt-pro
           cache-to: type=gha,mode=max,scope=fastgpt-pro
 
       - name: Save PR metadata
         run: |
-          echo "${{ github.event.pull_request.number || '' }}" > /tmp/pr-number.txt
-          echo "${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}" > /tmp/pr-sha.txt
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
