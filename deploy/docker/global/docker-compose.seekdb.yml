@@ -428,7 +428,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.5.3
+    image: ghcr.io/labring/aiproxy:v0.5.6
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
