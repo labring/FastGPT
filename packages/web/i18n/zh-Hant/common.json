@@ -1219,6 +1219,7 @@
   "annotation_answer": "標註答案",
   "app_evaluation_collapsed": "應用評測",
   "app_not_version": "該應用未發布過，請先發布應用",
+  "version": "版本",
   "app_type": "應用類型",
   "base_config": "基本設定",
   "bill_already_processed": "訂單已處理",

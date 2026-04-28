@@ -279,6 +279,7 @@
   "run_failed_please_retry": "运行失败，请重试",
   "intelligent_generate_data": "智能生成数据",
   "evaluation_completed": "评估完成",
+  "evaluation_completed_no_result": "评测已完成，暂无结果",
   "generation_error": "生成异常",
   "data_generating": "数据生成中",
   "delete_dataset_error": "删除数据集异常",

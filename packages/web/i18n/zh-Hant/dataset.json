@@ -386,6 +386,8 @@
   "remove_warning": "移除警告",
   "config_prompt": "配置提示詞",
   "process.Hype_Index": "假定問題索引產生",
+  "process.Synonym_Restore": "同義詞還原",
+  "process.Synonym_Standardize": "同義詞標準化",
   "data_index_hype": "假定提示索引",
   "hype_enhanced_index": "HyPE增強索引",
   "data_index_small2big": "分段增强索引",
