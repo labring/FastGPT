@@ -12,6 +12,7 @@ const CHUNK_SIZE_MULTIPLIER = 1.2;
 const MIN_CHUNK_SIZE_RATIO = 0.8;
 const SMALL_CHUNK_THRESHOLD = 400;
 const SMALL_CHUNK_MERGE_THRESHOLD = 0.4;
+const MAX_TABLE_SIZE = 4000; // 表格超过此大小才进行切分
 
 export type SplitProps = {
   text: string;
@@ -405,6 +406,12 @@ const strIsMdTable = (str: string) => {
 const markdownTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitResponse => {
   let { text = '', chunkSize, maxSize = defaultMaxChunkSize, headerPrefix = '' } = props;
 
+  // 表格总大小不超过 4000，不切分（仅按纯表格文本判断，不含 headerPrefix）
+  if (getTextValidLength(text) <= MAX_TABLE_SIZE) {
+    const fullText = headerPrefix + text;
+    return { chunks: [fullText], chars: fullText.length };
+  }
+
   // split by rows
   const splitText2Lines = text.split('\n').filter((line) => line.trim());
 
@@ -579,6 +586,13 @@ const strIsHtmlTable = (str: string) => {
     return false;
   }
 
+  // 确保只有一张顶层表格：第一个 </table> 必须就是末尾
+  // 防止整个多表格文档被误判为单张表格，导致表格间文字被 htmlTableSplit 丢弃
+  const firstCloseIdx = trimmedStr.indexOf('</table>');
+  if (firstCloseIdx !== trimmedStr.length - '</table>'.length) {
+    return false;
+  }
+
   // 检查是否包含 tr 标签
   if (!str.includes('<tr')) {
     return false;
@@ -593,6 +607,12 @@ const strIsHtmlTable = (str: string) => {
 };
 const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitResponse => {
   let { text = '', chunkSize, headerPrefix = '' } = props;
+
+  // 表格总大小不超过 4000，不切分（仅按纯表格文本判断，不含 headerPrefix）
+  if (getTextValidLength(text) <= MAX_TABLE_SIZE) {
+    const fullText = headerPrefix + text;
+    return { chunks: [fullText], chars: fullText.length };
+  }
 
   // 将 finalChunks 提升到函数作用域，以便在 catch 块中访问
   let finalChunks: string[] = [];
@@ -609,20 +629,42 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
       return { chunks: [text], chars: text.length };
     }
 
-    // 第一个 tr 作为表头（可能在 thead 中，也可能直接在 tbody 中）
-    const headerRow = trMatches[0];
-
     // 提取 thead（如果存在）
     const theadMatch = text.match(/<thead[^>]*>[\s\S]*?<\/thead>/);
     const theadContent = theadMatch ? theadMatch[0] : '';
 
+    // 无 thead 时，通过扫描 rowspan 自动检测表头边界
+    // Excel 复杂表头常跨越多行，只取一行会导致子分块表格结构断裂
+    const getHeaderRowCount = (allTrs: string[]): number => {
+      let maxCoveredRow = 0;
+      const rowsToCheck = Math.min(allTrs.length, 10);
+      for (let ri = 0; ri < rowsToCheck; ri++) {
+        const rowspans = allTrs[ri].match(/rowspan="(\d+)"/gi);
+        if (rowspans) {
+          for (const rs of rowspans) {
+            const val = parseInt(rs.match(/\d+/)?.[0] || '1', 10);
+            maxCoveredRow = Math.max(maxCoveredRow, ri + val - 1);
+          }
+        }
+      }
+      return maxCoveredRow > 0 ? maxCoveredRow + 1 : 1;
+    };
+
+    const headerRowCount = theadContent ? 0 : getHeaderRowCount(trMatches);
+    // 有 thead 时，计算 thead 内的 tr 数量，body 循环需从此偏移量开始跳过这些行
+    const theadTrCount = theadContent
+      ? (theadContent.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || []).length
+      : 0;
+    // 无 thead 时，headerRow 为完整表头行组；有 thead 时 headerRow 不会被用到
+    const headerRow = theadContent
+      ? trMatches[0]
+      : trMatches.slice(0, headerRowCount).join('\n');
+    const startIndex = theadContent ? theadTrCount : headerRowCount;
+
     const chunks: string[] = [];
 
-    // 如果有 thead，使用 thead；否则使用第一个 tr
-    let currentBodyContent = theadContent ? '' : `${headerRow}\n`;
-
-    // 从第二个 tr 开始遍历（如果有 thead 则从第一个开始）
-    const startIndex = theadContent ? 0 : 1;
+    // body 只装数据行，表头由 buildHtmlTableChunk 通过 headerRow 参数加入
+    let currentBodyContent = '';
 
     for (let i = startIndex; i < trMatches.length; i++) {
       const currentRow = trMatches[i];
@@ -680,12 +722,19 @@ const htmlTableSplit = (props: SplitProps & { headerPrefix?: string }): SplitRes
         // 找到表头行（第一个 tr 或 thead 中的 tr）
         const chunkTheadMatch = tableChunk.match(/<thead[^>]*>[\s\S]*?<\/thead>/);
         const chunkTheadContent = chunkTheadMatch ? chunkTheadMatch[0] : null;
+        const chunkHeaderRowCount = chunkTheadMatch
+          ? 0
+          : getHeaderRowCount(chunkTrMatches);
         const chunkHeaderRow = chunkTheadMatch
           ? chunkTheadMatch[0].match(/<tr[^>]*>[\s\S]*?<\/tr>/)?.[0] || chunkTrMatches[0]
-          : chunkTrMatches[0];
+          : chunkTrMatches.slice(0, chunkHeaderRowCount).join('\n');
+        const chunkTheadTrCount = chunkTheadContent
+          ? (chunkTheadContent.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) || []).length
+          : 0;
+        const chunkStartIndex = chunkTheadMatch ? chunkTheadTrCount : chunkHeaderRowCount;
 
         // 遍历每一行，检查是否需要切分
-        for (let j = chunkTheadMatch ? 0 : 1; j < chunkTrMatches.length; j++) {
+        for (let j = chunkStartIndex; j < chunkTrMatches.length; j++) {
           const row = chunkTrMatches[j];
           const rowTokens = getTextValidLength(row);
 
@@ -855,6 +904,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
   // 确保 HTML 表格前有换行符
   text = text.replace(/([^\n])(<table)/gi, '$1\n$2');
+
+  // 压缩表格内部多余换行为单个 \n，防止 CRLF 等多余空行触发段落分割器截断表格结构
+  text = text.replace(/(<table[^>]*>[\s\S]*?<\/table>)/gi, (match) =>
+    match.replace(/\n{2,}/g, '\n')
+  );
 
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const customRegLen = customReg.length;
@@ -1071,7 +1125,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         const { chunks: tableChunks } = matchedHandler.split({
           text: currentText,
-          chunkSize: chunkSize * CHUNK_SIZE_MULTIPLIER,
+          chunkSize: Math.max(chunkSize * CHUNK_SIZE_MULTIPLIER, MAX_TABLE_SIZE),
           headerPrefix: headerPrefix
         });
 
@@ -1285,7 +1339,9 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   // 第一步：对小于smallChunkThreshold的连续小块进行两两合并（多轮迭代直到无法继续合并）
   // 使用就地双指针写，避免每轮创建新数组
   let preProcessedChunks = chunks;
+
   let hasSmallChunks = true;
+  
 
   while (hasSmallChunks) {
     hasSmallChunks = false;
@@ -1406,3 +1462,4 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     chars: mergedChunks.reduce((sum, chunk) => sum + chunk.length, 0)
   };
 };
+
