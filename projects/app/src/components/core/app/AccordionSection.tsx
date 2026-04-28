@@ -20,6 +20,8 @@ export interface AccordionSectionProps {
   nested?: boolean;
   /** false: 禁止折叠，始终展开且不显示折叠图标，默认 true */
   collapsible?: boolean;
+  /** VStack 子项间距，Chakra spacing 值，默认 3 (12px) */
+  spacing?: number;
 }
 
 const AccordionSection: React.FC<AccordionSectionProps> = ({
@@ -27,7 +29,8 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
   children,
   defaultIndex = [0],
   nested = false,
-  collapsible = true
+  collapsible = true,
+  spacing = 3
 }) => (
   <Accordion
     allowToggle={collapsible}
@@ -48,7 +51,7 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({
         {collapsible && <AccordionIcon />}
       </AccordionButton>
       <AccordionPanel pt={0} pb={4} pr={nested ? 0 : 6} pl={nested ? 0 : '25px'}>
-        <VStack spacing={3} align="stretch">
+        <VStack spacing={spacing} align="stretch">
           {children}
         </VStack>
       </AccordionPanel>
