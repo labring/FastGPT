@@ -294,4 +294,71 @@ describe('validateUploadFile', () => {
       contentType: 'audio/x-m4a'
     });
   });
+
+  it('accepts legacy .doc when file-type detects CFB but mime-types expects application/msword', async () => {
+    // CFB (Compound File Binary) magic number used by legacy .doc/.ppt/.xls
+    const cfbBuffer = Buffer.from([
+      0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00
+    ]);
+
+    await expect(
+      validateUploadFile({
+        buffer: cfbBuffer,
+        filename: 'demo.doc',
+        uploadConstraints: {
+          defaultContentType: 'application/msword',
+          allowedExtensions: ['.doc']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'demo.doc',
+      contentType: 'application/x-cfb'
+    });
+  });
+
+  it('accepts legacy .ppt when file-type detects CFB but mime-types expects application/vnd.ms-powerpoint', async () => {
+    const cfbBuffer = Buffer.from([
+      0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00
+    ]);
+
+    await expect(
+      validateUploadFile({
+        buffer: cfbBuffer,
+        filename: 'demo.ppt',
+        uploadConstraints: {
+          defaultContentType: 'application/vnd.ms-powerpoint',
+          allowedExtensions: ['.ppt']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'demo.ppt',
+      contentType: 'application/x-cfb'
+    });
+  });
+
+  it('accepts legacy .xls when file-type detects CFB but mime-types expects application/vnd.ms-excel', async () => {
+    const cfbBuffer = Buffer.from([
+      0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00
+    ]);
+
+    await expect(
+      validateUploadFile({
+        buffer: cfbBuffer,
+        filename: 'demo.xls',
+        uploadConstraints: {
+          defaultContentType: 'application/vnd.ms-excel',
+          allowedExtensions: ['.xls']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'demo.xls',
+      contentType: 'application/x-cfb'
+    });
+  });
 });
