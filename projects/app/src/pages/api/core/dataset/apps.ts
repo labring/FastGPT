@@ -12,21 +12,26 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
-import type {
-  ListAppsBySkillIdQuery,
-  AppsBySkillIdItem
-} from '@fastgpt/global/core/agentSkills/api';
-import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
-async function handler(
-  req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
-): Promise<AppsBySkillIdItem[]> {
-  const { skillId } = req.query;
+type Query = { datasetId: string };
 
-  if (!skillId) {
-    return Promise.reject(SkillErrEnum.invalidSkillId);
+export type AppsByDatasetIdItem = {
+  _id: string;
+  name: string;
+  avatar: string;
+  intro: string;
+  tmbId: string;
+  type: string;
+  updateTime: Date;
+  sourceMember: { name: string; avatar?: string | null; status: string };
+};
+
+async function handler(req: ApiRequestProps<unknown, Query>): Promise<AppsByDatasetIdItem[]> {
+  const { datasetId } = req.query;
+
+  if (!datasetId) {
+    return Promise.reject(new Error('datasetId is required'));
   }
 
   const {
@@ -40,7 +45,6 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  // Fetch all app permission records under the team, along with the user's groups and orgs
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.app,
@@ -55,7 +59,6 @@ async function handler(
     getOrgIdSetWithParentByTmbId({ teamId, tmbId })
   ]);
 
-  // Compute the current user's permission list
   const myPerList = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
@@ -63,7 +66,6 @@ async function handler(
       myOrgSet.has(String(item.orgId))
   );
 
-  // Query apps whose modules contain the given skillId
   const apps = await MongoApp.find(
     {
       teamId,
@@ -72,8 +74,8 @@ async function handler(
         $elemMatch: {
           inputs: {
             $elemMatch: {
-              key: NodeInputKeyEnum.skills,
-              'value.skillId': skillId
+              key: 'datasets',
+              'value.datasetId': datasetId
             }
           }
         }
@@ -84,7 +86,6 @@ async function handler(
     .sort({ updateTime: -1 })
     .lean();
 
-  // Filter apps with read permission and resolve per-app permissions
   const formatApps = apps
     .map((app) => {
       const getPer = (appId: string) => {

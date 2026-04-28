@@ -623,6 +623,11 @@ export const deleteSynonymFile = (datasetId: string, fileId: string) =>
     success: boolean;
   }>(`/core/dataset/synonym/delete?id=${fileId}&datasetId=${datasetId}`);
 
+export const getAppsByDatasetId = (datasetId: string) =>
+  GET<import('@/pages/api/core/dataset/apps').AppsByDatasetIdItem[]>(
+    `/core/dataset/apps?datasetId=${datasetId}`
+  );
+
 /* ======================== Re-exports from sub-modules (not already defined above) ======================= */
 export { getCollectionSource } from './api/collection';
 

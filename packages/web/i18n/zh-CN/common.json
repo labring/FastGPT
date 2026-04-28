@@ -742,6 +742,7 @@
   "day": "日",
   "deep_rag_search": "深度搜索",
   "delete_api": "确认删除该API密钥？删除后该密钥立即失效，对应的对话日志不会删除，请确认！",
+  "delete_disabled_by_related_apps": "存在关联应用，无法删除",
   "delete_failed": "删除失败",
   "delete_folder": "删除文件夹",
   "delete_success": "删除成功",
