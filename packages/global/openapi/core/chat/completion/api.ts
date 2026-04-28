@@ -128,7 +128,9 @@ export const AuthResponseSchema = z.object({
   outLinkUserId: z.string().optional().meta({ description: '外部链接用户ID' }),
   sourceName: z.string().optional().meta({ description: '来源名称' })
 });
-export type AuthResponseType = z.infer<typeof AuthResponseSchema>;
+export type AuthResponseType = z.infer<typeof AuthResponseSchema> & {
+  userTmbId?: string;
+};
 
 /* ====== Chat test ====== */
 export const ChatTestPropsSchema = z.object({
