@@ -53,6 +53,7 @@ import ChatFunctionTip from '@/components/core/app/Tip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import AccordionSection from '@/components/core/app/AccordionSection';
+import TagFilterSection from '../../SmartCustomerService/TagFilterSection';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -61,8 +62,9 @@ const FormItem: React.FC<{
   label: string;
   children: React.ReactNode;
   tooltip?: string | React.ReactNode;
-}> = ({ label, children, tooltip }) => (
-  <Flex alignItems={'center'} w={'100%'}>
+  h?: string | number;
+}> = ({ label, children, tooltip, h }) => (
+  <Flex alignItems={'center'} w={'100%'} h={h}>
     <FormLabel
       display={'flex'}
       alignItems={'center'}
@@ -514,6 +516,19 @@ const EditForm = ({
           </Grid>
         </Box>
         <Box h="1px" bg="myGray.200" mx="16px" />
+        <Box px="25px" py="16px">
+          <TagFilterSection
+            datasetIds={datasetIds}
+            value={appForm.dataset.collectionFilterMatch}
+            onChange={(v) =>
+              setAppForm((state) => ({
+                ...state,
+                dataset: { ...state.dataset, collectionFilterMatch: v }
+              }))
+            }
+          />
+        </Box>
+        <Box h="1px" bg="myGray.200" mx="16px" />
         <AccordionSection title={t('app:retrieval_config')} defaultIndex={[0]}>
           {/* 检索方式 */}
           <FormItem
@@ -617,26 +632,14 @@ const EditForm = ({
             </FormItem>
           )}
         </AccordionSection>
-        {/* <AccordionSection title={t('app:dataset')}>
-          <TagFilterSection
-            datasetIds={datasetIds}
-            value={appForm.dataset.collectionFilterMatch}
-            onChange={(v) =>
-              setAppForm((state) => ({
-                ...state,
-                dataset: { ...state.dataset, collectionFilterMatch: v }
-              }))
-            }
-          />
-       
-        </AccordionSection> */}
+
       </SectionCard>
 
       {/* 模块四：问答配置 */}
       <SectionCard>
-        <AccordionSection title={t('app:smart_customer_service_qa_config')}>
+        <AccordionSection title={t('app:smart_customer_service_qa_config')} spacing={2}>
           {/* 对话开场白 */}
-          <Flex alignItems={'center'} w={'100%'}>
+          <Flex alignItems={'center'} w={'100%'} h={'32px'}>
             <FormLabel
               display={'flex'}
               alignItems={'center'}
@@ -651,6 +654,7 @@ const EditForm = ({
             </FormLabel>
             <Input
               flex={1}
+              h={'32px'}
               value={appForm.chatConfig.welcomeText || ''}
               placeholder={t('app:smart_customer_service_welcome_text_placeholder')}
               onChange={(e) =>
@@ -663,7 +667,7 @@ const EditForm = ({
           </Flex>
 
           {/* 文件上传开关 */}
-          <Flex alignItems={'center'} w={'100%'}>
+          <Flex alignItems={'center'} w={'100%'} h={'32px'}>
             <FormLabel
               display={'flex'}
               alignItems={'center'}
@@ -701,12 +705,13 @@ const EditForm = ({
               <FormItem
                 label={t('app:upload_file_max_amount')}
                 tooltip={t('app:upload_file_max_amount_tip')}
+                h={'32px'}
               >
                 <MyNumberInput
                   min={1}
                   flex={1}
                   max={maxSelectFiles}
-                  inputFieldProps={{ background: 'white' }}
+                  inputFieldProps={{ background: 'white', h: '32px' }}
                   step={1}
                   value={fileSelectConfig.maxFiles ?? 10}
                   onChange={(val) => {
@@ -716,7 +721,7 @@ const EditForm = ({
               </FormItem>
 
               {/* 支持上传类型 */}
-              <FormItem label={t('app:upload_file_extension_types')}>
+              <FormItem label={t('app:upload_file_extension_types')} h={'32px'}>
                 <Flex flex={1} alignItems={'center'} gap={2} flexWrap={'wrap'}>
                   {fileTypeTags.map((tag) => (
                     <MyTag key={tag} colorSchema={'gray'}>
@@ -779,7 +784,7 @@ const EditForm = ({
           </MyModal>
 
           {/* 语音输入开关 */}
-          <FormItem label={t('common:core.app.Whisper')}>
+          <FormItem label={t('common:core.app.Whisper')} h={'32px'}>
             <Switch
               isChecked={whisperConfig.open}
               onChange={(e) => updateWhisperConfig({ open: e.target.checked })}
@@ -793,6 +798,7 @@ const EditForm = ({
               <FormItem
                 label={t('common:core.app.whisper.Auto send')}
                 tooltip={t('common:core.app.whisper.Auto send tip')}
+                h={'32px'}
               >
                 <Switch
                   isChecked={whisperConfig.autoSend}
@@ -805,6 +811,7 @@ const EditForm = ({
                 <FormItem
                   label={t('common:core.app.whisper.Auto tts response')}
                   tooltip={t('common:core.app.whisper.Auto tts response tip')}
+                  h={'32px'}
                 >
                   <Switch
                     isChecked={whisperConfig.autoTTSResponse}

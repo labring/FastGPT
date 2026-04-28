@@ -150,7 +150,8 @@ export async function buildAgentTools({
                 rerankWeight: datasetParams.rerankWeight || 0.5,
                 usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
                 extensionModel: datasetParams.datasetSearchExtensionModel,
-                extensionBg: datasetParams.datasetSearchExtensionBg
+                extensionBg: datasetParams.datasetSearchExtensionBg,
+                collectionFilterMatch: datasetParams.collectionFilterMatch
               },
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,

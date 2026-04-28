@@ -206,7 +206,8 @@ export const dispatchAgentDatasetSearch = async ({
       rerankWeight: config.rerankWeight,
       datasetSearchUsingExtensionQuery: config.usingExtensionQuery,
       datasetSearchExtensionModel: config.extensionModel,
-      datasetSearchExtensionBg: config.extensionBg
+      datasetSearchExtensionBg: config.extensionBg,
+      collectionFilterMatch: config.collectionFilterMatch
     };
     const {
       searchRes,
