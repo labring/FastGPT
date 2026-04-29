@@ -233,6 +233,5 @@ export const allSandboxTools: ChatCompletionTool[] = [
   sandboxWriteFileTool,
   sandboxEditFileTool,
   sandboxExecuteTool,
-  sandboxSearchTool,
   sandboxFetchUserFileTool
 ];

@@ -4,6 +4,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 import { AIAskTool } from './ask/constants';
 import type { GetSubAppInfoFnType } from '../../type';
 import type { PlanAgentParamsType } from './constants';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 const getSubAppPrompt = ({
   getSubAppInfo,
@@ -49,6 +50,34 @@ ${selectedDataset.map((item) => `- ${item.name} (ID: ${item.datasetId})`).join('
 如果和 <user_background></user_background> 没有任何关系则忽略参考信息。
 
 **重要**：如果背景信息中包含工具引用（@工具名），请优先使用这些工具。当有多个同类工具可选时（如多个搜索工具），优先选择背景信息中已使用的工具，避免功能重叠。`;
+};
+
+export const parsePiAgentSystemPrompt = ({
+  userSystemPrompt,
+  selectedDataset = [],
+  lang
+}: {
+  userSystemPrompt?: string;
+  selectedDataset?: SelectedDatasetType[];
+  lang?: localeType;
+}) => {
+  const presetDatasetPrompt =
+    selectedDataset.length > 0
+      ? `<preset_resources>
+已选知识库:
+${selectedDataset.map((item) => `- ${item.name} (ID: ${item.datasetId})`).join('\n')}
+</preset_resources>`
+      : '';
+
+  if (!userSystemPrompt && !presetDatasetPrompt) {
+    return '';
+  }
+
+  const list = [userSystemPrompt, presetDatasetPrompt];
+
+  return `${list.filter(Boolean).join('\n\n')}
+
+**Important**: If the background information contains tool references (@ToolName), please prioritize using those tools.`;
 };
 
 // 通用的基础部分
