@@ -35,6 +35,7 @@
   "ai_point_price": "AI 積分計費",
   "ai_setting_basic_config": "基礎設定",
   "ai_setting_reasoning_config": "思考設定",
+  "ai_setting_reasoning_config_tip": "部分模型未完全適配所有思考設定，如提示報錯，請嘗試切換其他思考設定選項或使用預設選項。",
   "ai_settings": "AI 設定",
   "all_apps": "所有應用程式",
   "app.Version name": "版本名稱",

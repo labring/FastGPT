@@ -10,7 +10,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
-    "@fastgpt-sdk/plugin": "0.6.0",
+    "@fastgpt-sdk/plugin": "0.6.1",
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
     "axios": "catalog:",

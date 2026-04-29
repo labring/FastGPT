@@ -467,7 +467,10 @@ const AIChatSettingsModal = ({
           {/* 思考配置 */}
           {showReasoningSection && (
             <SectionCard title={t('app:ai_setting_reasoning_config')}>
-              <SettingRow label={t('app:reasoning_effort')}>
+              <SettingRow
+                label={t('app:reasoning_effort')}
+                tip={t('app:ai_setting_reasoning_config_tip')}
+              >
                 {supportParams.reasoningEffort ? (
                   <MySelect<ReasoningEffort>
                     h={'38px'}

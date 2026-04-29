@@ -128,6 +128,8 @@ export const loadSystemModels = async (init = false, language = 'en') => {
 
       const dbModel = dbModels.find((item) => item.model === model.model);
       const provider = getModelProvider(dbModel?.metadata?.provider || model.provider, language);
+      const dbLlmMetadata =
+        dbModel?.metadata?.type === ModelTypeEnum.llm ? dbModel.metadata : undefined;
 
       const modelData: any = {
         ...model,
@@ -138,7 +140,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         isCustom: false,
 
         ...(model.type === ModelTypeEnum.llm && {
-          maxResponse: model.maxTokens ?? 16000
+          maxResponse: model.maxTokens ?? 16000,
+          reasoning: dbLlmMetadata?.reasoning ?? model.reasoning ?? false,
+          reasoningEffort: dbLlmMetadata?.reasoningEffort ?? model.reasoningEffort ?? false
         }),
 
         ...(model.type === ModelTypeEnum.llm && dbModel?.metadata?.type === ModelTypeEnum.llm

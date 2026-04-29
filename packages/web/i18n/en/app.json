@@ -37,6 +37,7 @@
   "ai_point_price": "Billing",
   "ai_setting_basic_config": "Basic settings",
   "ai_setting_reasoning_config": "Reasoning settings",
+  "ai_setting_reasoning_config_tip": "Some models do not fully support every reasoning option. If you see an error, try a different reasoning option or use the default.",
   "ai_settings": "AI Settings",
   "all_apps": "All Applications",
   "app.Version name": "Version Name",

@@ -37,6 +37,7 @@
   "ai_point_price": "AI积分计费",
   "ai_setting_basic_config": "基础配置",
   "ai_setting_reasoning_config": "思考配置",
+  "ai_setting_reasoning_config_tip": "部分模型未完全适配所有思考配置，如提示报错，请尝试切换其他思考配置选项或使用默认选项。",
   "ai_settings": "AI 配置",
   "all_apps": "全部应用",
   "app.Version name": "版本名称",
