@@ -61,6 +61,7 @@
   "dataset.common_dataset": "知识库",
   "dataset.external_file": "外部文件",
   "dataset.feishu_dataset": "飞书云文档",
+  "dataset.dingtalk_dataset": "钉钉知识库",
   "dataset.folder_dataset": "文件夹",
   "dataset.website_dataset": "网站同步",
   "dataset.yuque_dataset": "语雀知识库",

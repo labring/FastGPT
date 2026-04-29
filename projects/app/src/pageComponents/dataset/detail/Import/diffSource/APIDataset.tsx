@@ -69,12 +69,7 @@ const CustomAPIFileInput = () => {
       });
     },
     {
-      refreshDeps: [
-        datasetDetail._id,
-        datasetDetail.apiDatasetServer?.apiServer,
-        parent,
-        searchKey
-      ],
+      refreshDeps: [datasetDetail._id, datasetDetail.apiDatasetServer, parent, searchKey],
       throttleWait: 500,
       manual: false
     }

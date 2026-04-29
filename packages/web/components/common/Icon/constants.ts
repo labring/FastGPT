@@ -218,6 +218,10 @@ export const iconPaths = {
     import('./icons/core/dataset/externalDatasetColor.svg'),
   'core/dataset/externalDatasetOutline': () =>
     import('./icons/core/dataset/externalDatasetOutline.svg'),
+  'core/dataset/dingtalkDatasetColor': () =>
+    import('./icons/core/dataset/dingtalkDatasetColor.svg'),
+  'core/dataset/dingtalkDatasetOutline': () =>
+    import('./icons/core/dataset/dingtalkDatasetOutline.svg'),
   'core/dataset/feishuDatasetColor': () => import('./icons/core/dataset/feishuDatasetColor.svg'),
   'core/dataset/feishuDatasetOutline': () =>
     import('./icons/core/dataset/feishuDatasetOutline.svg'),

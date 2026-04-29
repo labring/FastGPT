@@ -61,6 +61,7 @@
   "dataset.common_dataset": "Dataset",
   "dataset.external_file": "External File",
   "dataset.feishu_dataset": "Feishu Cloud Documentation",
+  "dataset.dingtalk_dataset": "DingTalk Knowledge Base",
   "dataset.folder_dataset": "Folder",
   "dataset.website_dataset": "Website Sync",
   "dataset.yuque_dataset": "Yuque Knowledge Base",

@@ -17,7 +17,8 @@ describe('filterApiDatasetServerPublicData', () => {
     expect(result).toEqual({
       apiServer: undefined,
       yuqueServer: undefined,
-      feishuServer: undefined
+      feishuServer: undefined,
+      dingtalkServer: undefined
     });
   });
 
@@ -39,7 +40,8 @@ describe('filterApiDatasetServerPublicData', () => {
         basePath: '/v1'
       },
       yuqueServer: undefined,
-      feishuServer: undefined
+      feishuServer: undefined,
+      dingtalkServer: undefined
     });
   });
 
@@ -61,7 +63,8 @@ describe('filterApiDatasetServerPublicData', () => {
         token: '',
         basePath: '/docs'
       },
-      feishuServer: undefined
+      feishuServer: undefined,
+      dingtalkServer: undefined
     });
   });
 
@@ -83,7 +86,8 @@ describe('filterApiDatasetServerPublicData', () => {
         appId: 'app-123',
         appSecret: '',
         folderToken: 'folder-token-456'
-      }
+      },
+      dingtalkServer: undefined
     });
   });
 
@@ -123,7 +127,8 @@ describe('filterApiDatasetServerPublicData', () => {
         appId: 'feishu-app',
         appSecret: '',
         folderToken: 'feishu-folder'
-      }
+      },
+      dingtalkServer: undefined
     });
   });
 
@@ -161,7 +166,8 @@ describe('filterApiDatasetServerPublicData', () => {
         appId: 'app-id',
         appSecret: '',
         folderToken: 'folder-token'
-      }
+      },
+      dingtalkServer: undefined
     });
   });
 
@@ -192,6 +198,37 @@ describe('filterApiDatasetServerPublicData', () => {
         appId: 'app',
         appSecret: '',
         folderToken: 'folder'
+      },
+      dingtalkServer: undefined
+    });
+  });
+
+  it('should filter dingtalkServer and clear appSecret', () => {
+    const input: ApiDatasetServerType = {
+      dingtalkServer: {
+        appKey: 'ding-app',
+        appSecret: 'ding-secret',
+        userId: 'user-id',
+        operatorId: 'operator-id',
+        workspaceId: 'workspace-id',
+        rootNodeId: 'root-node-id',
+        workspaceName: 'Workspace'
+      }
+    };
+    const result = filterApiDatasetServerPublicData(input);
+
+    expect(result).toEqual({
+      apiServer: undefined,
+      yuqueServer: undefined,
+      feishuServer: undefined,
+      dingtalkServer: {
+        appKey: 'ding-app',
+        appSecret: '',
+        userId: 'user-id',
+        operatorId: 'operator-id',
+        workspaceId: 'workspace-id',
+        rootNodeId: 'root-node-id',
+        workspaceName: 'Workspace'
       }
     });
   });

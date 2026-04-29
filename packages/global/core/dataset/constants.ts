@@ -9,7 +9,8 @@ export enum DatasetTypeEnum {
 
   apiDataset = 'apiDataset',
   feishu = 'feishu',
-  yuque = 'yuque'
+  yuque = 'yuque',
+  dingtalk = 'dingtalk'
 }
 
 // @ts-ignore
@@ -43,6 +44,13 @@ export const ApiDatasetTypeMap: Record<
     label: i18nT('dataset:yuque_dataset'),
     collectionLabel: i18nT('common:File'),
     courseUrl: '/introduction/guide/knowledge_base/yuque_dataset/'
+  },
+  [DatasetTypeEnum.dingtalk]: {
+    icon: 'core/dataset/dingtalkDatasetOutline',
+    avatar: 'core/dataset/dingtalkDatasetColor',
+    label: i18nT('dataset:dingtalk_dataset'),
+    collectionLabel: i18nT('common:File'),
+    courseUrl: '/introduction/guide/knowledge_base/dingtalk_dataset/'
   }
 };
 export const DatasetTypeMap: Record<

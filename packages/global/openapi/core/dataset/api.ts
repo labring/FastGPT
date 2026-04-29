@@ -51,7 +51,7 @@ export const CreateDatasetBodySchema = z.object({
     description: '视觉语言模型名称'
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
-    description: '第三方知识库服务器配置(API/飞书/语雀)'
+    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
   })
 });
 
@@ -266,7 +266,7 @@ export const UpdateDatasetBodySchema = z.object({
     description: '外部读取 URL'
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
-    description: '第三方知识库服务器配置(API/飞书/语雀)'
+    description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
   }),
   autoSync: z.boolean().optional().meta({
     description: '是否自动同步'

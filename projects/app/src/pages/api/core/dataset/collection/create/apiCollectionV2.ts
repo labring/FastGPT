@@ -75,7 +75,8 @@ export const createApiDatasetCollection = async ({
   const startId =
     dataset.apiDatasetServer?.apiServer?.basePath ||
     dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken;
+    dataset.apiDatasetServer?.feishuServer?.folderToken ||
+    dataset.apiDatasetServer?.dingtalkServer?.rootNodeId;
 
   // check if the directory is selected
   const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === RootCollectionId;

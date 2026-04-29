@@ -267,6 +267,43 @@ const ApiDatasetForm = ({
           {renderDirectoryModal()}
         </>
       )}
+      {type === DatasetTypeEnum.dingtalk && (
+        <>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              App Key
+            </FormLabel>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'App Key'}
+              maxLength={200}
+              {...register('apiDatasetServer.dingtalkServer.appKey', { required: true })}
+            />
+          </Flex>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              App Secret
+            </FormLabel>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'App Secret'}
+              maxLength={200}
+              {...register('apiDatasetServer.dingtalkServer.appSecret', { required: true })}
+            />
+          </Flex>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              User ID
+            </FormLabel>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'User ID'}
+              maxLength={200}
+              {...register('apiDatasetServer.dingtalkServer.userId', { required: true })}
+            />
+          </Flex>
+        </>
+      )}
     </>
   );
 };

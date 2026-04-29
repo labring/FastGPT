@@ -8,6 +8,7 @@
     "api_dataset",
     "lark_dataset",
     "yuque_dataset",
+    "dingtalk_dataset",
     "websync",
     "third_dataset",
     "template"

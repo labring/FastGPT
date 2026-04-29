@@ -40,12 +40,26 @@ export const YuqueServerSchema = z
   .meta({ description: '语雀服务器配置' });
 export type YuqueServerType = z.infer<typeof YuqueServerSchema>;
 export type YuqueServer = YuqueServerType;
+export const DingtalkServerSchema = z
+  .object({
+    appKey: z.string(),
+    appSecret: z.string().optional(),
+    userId: z.string(),
+    operatorId: z.string().optional(),
+    workspaceId: z.string().optional(),
+    rootNodeId: z.string().optional(),
+    workspaceName: z.string().optional()
+  })
+  .meta({ description: '钉钉知识库配置' });
+export type DingtalkServerType = z.infer<typeof DingtalkServerSchema>;
+export type DingtalkServer = DingtalkServerType;
 
 export const ApiDatasetServerSchema = z
   .object({
     apiServer: APIFileServerSchema.optional(),
     feishuServer: FeishuServerSchema.optional(),
-    yuqueServer: YuqueServerSchema.optional()
+    yuqueServer: YuqueServerSchema.optional(),
+    dingtalkServer: DingtalkServerSchema.optional()
   })
   .meta({ description: '第三方知识库配置' });
 export type ApiDatasetServerType = z.infer<typeof ApiDatasetServerSchema>;

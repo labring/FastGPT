@@ -14,6 +14,7 @@ import {
 import {
   ApiDatasetServerSchema,
   APIFileServerSchema,
+  DingtalkServerSchema,
   FeishuServerSchema,
   YuqueServerSchema
 } from './apiDataset/type';
@@ -106,6 +107,10 @@ export const DatasetSchema = z
     }),
     yuqueServer: YuqueServerSchema.optional().meta({
       description: '语雀服务器配置',
+      deprecated: true
+    }),
+    dingtalkServer: DingtalkServerSchema.optional().meta({
+      description: '钉钉知识库配置',
       deprecated: true
     })
   })

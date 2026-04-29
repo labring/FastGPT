@@ -19,7 +19,7 @@ export const GetApiDatasetCatalogBodySchema = z.object({
     description: '父级节点 ID，不传或 null 表示根目录'
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
-    description: '第三方知识库服务器配置（API/飞书/语雀）'
+    description: '第三方知识库服务器配置（API/飞书/语雀/钉钉）'
   })
 });
 export type GetApiDatasetCatalogBody = z.infer<typeof GetApiDatasetCatalogBodySchema>;

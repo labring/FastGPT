@@ -60,6 +60,7 @@
   "dataset.common_dataset": "知識庫",
   "dataset.external_file": "外部文件",
   "dataset.feishu_dataset": "飛書云文檔",
+  "dataset.dingtalk_dataset": "釘釘知識庫",
   "dataset.folder_dataset": "資料夾",
   "dataset.website_dataset": "網站同步",
   "dataset.yuque_dataset": "語雀知識庫",
