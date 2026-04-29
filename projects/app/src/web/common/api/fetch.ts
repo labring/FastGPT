@@ -320,7 +320,6 @@ function $ssefetch(params: SSEFetchParams) {
         async onopen(res) {
           clearTimeout(timer);
           const contentType = res.headers.get('content-type');
-
           if (contentType?.startsWith('text/plain')) {
             return onfailed(await res.clone().text());
           }

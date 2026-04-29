@@ -244,7 +244,7 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
-            <Flex alignItems={'center'}>
+            <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
                 <>{valueLabel}</>

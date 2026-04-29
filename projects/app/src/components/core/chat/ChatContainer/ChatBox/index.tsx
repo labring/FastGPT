@@ -1771,6 +1771,7 @@ const ChatBox = ({
                         type={ChatRoleEnum.Human}
                         avatar={userAvatar}
                         chat={item}
+                        debuggerMode={debuggerMode}
                         onRetry={retryInput(item.dataId)}
                         onDelete={delOneMessage(item.dataId)}
                         isLastChild={index === processedRecords.length - 1}
@@ -1781,6 +1782,7 @@ const ChatBox = ({
                         type={ChatRoleEnum.AI}
                         avatar={appAvatar}
                         chat={item}
+                        debuggerMode={debuggerMode}
                         isLastChild={index === processedRecords.length - 1}
                         hasPlanCheck={hasPlanCheck && index === processedRecords.length - 1}
                         {...{
@@ -1963,7 +1965,6 @@ const ChatBox = ({
           w="100%"
           position="relative"
           overflow="hidden"
-          bg="linear-gradient(180deg, #FAFCFF, #FFFFFF)"
         >
           {/* 右上角装饰区域 */}
           <BgDecoration hideBgImg={true} />

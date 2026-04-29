@@ -14,6 +14,7 @@ import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimi
 import { addSeconds } from 'date-fns';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { sseErrRes } from '@fastgpt/service/common/response';
 
 export type completionsBody = HelperBotCompletionsParamsType;
 
@@ -42,6 +43,12 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     .lean();
   histories.reverse();
 
+  // 设置 SSE 响应头，确保前端 fetchEventSource 识别为流式响应
+  res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+
   const workflowResponseWrite = getWorkflowResponseWrite({
     res,
     detail: true,
@@ -50,36 +57,43 @@ async function handler(req: ApiRequestProps<completionsBody>, res: ApiResponseTy
     showNodeStatus: true
   });
 
-  // 执行不同逻辑
-  const fn = dispatchMap[metadata.type];
-  if (!fn) {
-    return Promise.reject('Invalid helper bot type');
-  }
-  const result = await fn({
-    query,
-    files,
-    data: metadata.data,
-    histories,
-    workflowResponseWrite,
-    user: {
-      teamId,
-      tmbId,
-      userId,
-      isRoot,
-      lang: getLocale(req)
+  try {
+    // 执行不同逻辑
+    const fn = dispatchMap[metadata.type];
+    if (!fn) {
+      throw new Error('Invalid helper bot type');
     }
-  });
+    const result = await fn({
+      query,
+      files,
+      data: metadata.data,
+      histories,
+      workflowResponseWrite,
+      user: {
+        teamId,
+        tmbId,
+        userId,
+        isRoot,
+        lang: getLocale(req)
+      }
+    });
 
-  // Save chat
-  await pushChatRecords({
-    type: metadata.type,
-    userId,
-    chatId,
-    chatItemId,
-    query,
-    files,
-    aiResponse: result.aiResponse
-  });
+    // Save chat
+    await pushChatRecords({
+      type: metadata.type,
+      userId,
+      chatId,
+      chatItemId,
+      query,
+      files,
+      aiResponse: result.aiResponse
+    });
+
+    res.end();
+  } catch (err) {
+    sseErrRes(res, err);
+    res.end();
+  }
   // Push usage
   // pushHelperBotUsage({
   //   teamId,

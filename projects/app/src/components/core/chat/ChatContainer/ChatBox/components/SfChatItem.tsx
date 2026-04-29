@@ -75,6 +75,7 @@ type BasicProps = {
 
 type Props = BasicProps & {
   type: ChatRoleEnum.Human | ChatRoleEnum.AI;
+  debuggerMode?: boolean;
 };
 
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
@@ -354,6 +355,10 @@ const ChatItem = (props: Props) => {
     }
   );
 
+  // 调试场景需要显示节点运行状态
+  const showStatusTag =
+    !!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && props.debuggerMode;
+
   return (
     <Box
       data-chat-id={chat.dataId}
@@ -363,8 +368,8 @@ const ChatItem = (props: Props) => {
         }
       }}
     >
-      {/* <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
+      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
+        {showStatusTag && (
           <Flex
             alignItems={'center'}
             px={3}
@@ -386,7 +391,7 @@ const ChatItem = (props: Props) => {
             </Box>
           </Flex>
         )}
-      </Flex> */}
+      </Flex>
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
         showFeedbackContent &&

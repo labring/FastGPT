@@ -90,7 +90,13 @@ export const WorkflowModalProvider = ({ children }: { children: React.ReactNode 
   return (
     <WorkflowModalContext.Provider value={contextValue}>
       {children}
-      <ChatTest isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} chatId={chatId} />
+      <ChatTest
+        isOpen={isOpenTest}
+        {...workflowTestData}
+        onClose={onCloseTest}
+        chatId={chatId}
+        debuggerMode={true}
+      />
     </WorkflowModalContext.Provider>
   );
 };
