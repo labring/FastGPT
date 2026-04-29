@@ -40,6 +40,7 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { isDatabaseDataset } from '@/pageComponents/dataset/utils/index';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -281,6 +282,21 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const selectedDatasets = useMemo(
     () => (Array.isArray(datasetSelectInput?.value) ? datasetSelectInput!.value : []),
     [datasetSelectInput]
+  );
+  const datasetVectorModel = useMemo(
+    () => selectedDatasets[0]?.vectorModel?.model as string | undefined,
+    [selectedDatasets]
+  );
+  const datasetKnowledgeTypeConfig = useMemo(
+    () => ({
+      hasDatabaseKnowledge: selectedDatasets.some(
+        (item) => item.datasetType && isDatabaseDataset(item.datasetType)
+      ),
+      hasOtherKnowledge: selectedDatasets.some(
+        (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
+      ) || selectedDatasets.length === 0
+    }),
+    [selectedDatasets]
   );
   const datasetOtherInputs = useMemo(
     () =>
@@ -763,6 +779,8 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       {isOpenDatasetParams && (
         <DatasetParamsModal
           {...datasetParamsData}
+          {...datasetKnowledgeTypeConfig}
+          datasetVectorModel={datasetVectorModel}
           maxTokens={llmMaxQuoteContext}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
