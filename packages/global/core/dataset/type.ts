@@ -144,6 +144,7 @@ export type DatasetSchemaType = z.infer<typeof DatasetSchema>;
 export type CollectionTagValueType = {
   tagId: string; // 引用 dataset_collection_tags._id
   value: string | number; // string 类型存字符串，datetime 类型存 UTC 毫秒时间戳（number）
+  label?: string; // 标签名称（展示用），由服务端在列表接口返回时附加
 };
 export const CollectionTagValueSchema = z.object({
   tagId: z.string().meta({ description: '标签 ID' }),

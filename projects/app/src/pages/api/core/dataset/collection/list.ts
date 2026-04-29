@@ -67,7 +67,8 @@ async function handler(req: NextApiRequest) {
     fileId: 1,
     rawLink: 1,
     tags: 1,
-    externalFileId: 1
+    externalFileId: 1,
+    autoSync: 1
   };
 
   // not count data amount

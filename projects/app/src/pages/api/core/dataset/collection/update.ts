@@ -40,6 +40,7 @@ export type UpdateDatasetCollectionParams = {
   name?: string;
   tags?: string[]; // Not tag id, is tag label
   forbid?: boolean;
+  autoSync?: boolean;
   createTime?: Date;
   overwriteDuplicate?: boolean; // If true, delete duplicate files in the same folder; otherwise add suffix
 
@@ -106,6 +107,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
     name,
     tags,
     forbid,
+    autoSync,
     createTime,
     overwriteDuplicate,
     inheritParentPermission = true
@@ -321,6 +323,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
           }),
           ...(collectionTags !== undefined && { tags: collectionTags }),
           ...(forbid !== undefined && { forbid }),
+          ...(autoSync !== undefined && { autoSync }),
           ...(createTime !== undefined && { createTime })
         }
       },
