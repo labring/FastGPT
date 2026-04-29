@@ -24,7 +24,6 @@ import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { formatHttpError } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
@@ -504,10 +503,10 @@ async function fetchData({
     return Promise.reject(PRIVATE_URL_TEXT);
   }
 
+  // 都认为是用户的请求，强制 SSRF 检查
   const { data: response } = await axios({
     method,
     maxContentLength: serviceRequestMaxContentLength,
-    baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {
       ...headers

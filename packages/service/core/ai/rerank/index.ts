@@ -1,4 +1,4 @@
-import { axios } from '../../../common/api/axios';
+import { axiosWithoutSSRF } from '../../../common/api/axios';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
 import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -93,8 +93,9 @@ export async function reRankRecall({
   const { baseUrl, authorization } = getAxiosConfig();
   const start = Date.now();
 
+  // 模型的请求 url，允许是内网
   const requestUrl = model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`;
-  const apiResult = await axios
+  const apiResult = await axiosWithoutSSRF
     .post<PostReRankResponse>(
       requestUrl,
       {

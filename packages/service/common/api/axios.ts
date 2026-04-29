@@ -43,6 +43,7 @@ export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) 
 
 /** @see https://github.com/axios/axios/issues/4531 */
 export const axios = createProxyAxios();
+export const axiosWithoutSSRF = createProxyAxios(undefined, false);
 
 /**
  * 内部相对路径请求专用的 axios 实例:
