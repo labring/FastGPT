@@ -76,6 +76,13 @@ describe('clientIp', () => {
       expect(isTrustedProxyIp('10.0.0.1')).toBe(false);
     });
 
+    it('should trust loopback proxies when NODE_ENV is unset on the first call', () => {
+      setNodeEnv(undefined);
+      setTrustedProxyIps(undefined);
+
+      expect(isTrustedProxyIp('127.0.0.1')).toBe(true);
+    });
+
     it('should trust configured exact IP and CIDR ranges', () => {
       setTrustedProxyIps('10.0.0.10, 172.16.0.0/12');
 

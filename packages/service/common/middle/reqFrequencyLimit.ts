@@ -21,7 +21,7 @@ export function useIPFrequencyLimit({
   force?: boolean;
 }) {
   return async (req: ApiRequestProps, res: NextApiResponse) => {
-    if (!serviceEnv.CHECK_INTERNAL_IP || !force) {
+    if (!serviceEnv.CHECK_INTERNAL_IP && !force) {
       return;
     }
 

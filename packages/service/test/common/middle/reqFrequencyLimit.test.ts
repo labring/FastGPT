@@ -1,7 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { MongoFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/schema';
 import { jsonRes } from '@fastgpt/service/common/response';
+import { env } from '@fastgpt/service/env';
+
+const originalUseIpLimit = env.USE_IP_LIMIT;
+
+const setUseIpLimit = (value: boolean) => {
+  (env as { USE_IP_LIMIT: boolean }).USE_IP_LIMIT = value;
+};
 
 const createRes = () =>
   ({
@@ -31,6 +38,77 @@ describe('useIPFrequencyLimit', () => {
     await MongoFrequencyLimit.deleteMany({
       eventId: /^ip-qps-limit-ip-spoof-test-/
     });
+  });
+
+  afterEach(() => {
+    setUseIpLimit(originalUseIpLimit);
+  });
+
+  it('should enforce IP limit when USE_IP_LIMIT is enabled without force', async () => {
+    setUseIpLimit(true);
+    const middleware = useIPFrequencyLimit({
+      id: 'ip-spoof-test-toggle-enabled',
+      seconds: 60,
+      limit: 10
+    });
+
+    await middleware(
+      createReq({
+        remoteAddress: '198.51.100.40'
+      }),
+      createRes()
+    );
+
+    const record = await MongoFrequencyLimit.findOne({
+      eventId: 'ip-qps-limit-ip-spoof-test-toggle-enabled-198.51.100.40'
+    }).lean();
+
+    expect(record?.amount).toBe(1);
+  });
+
+  it('should skip IP limit when USE_IP_LIMIT is disabled without force', async () => {
+    setUseIpLimit(false);
+    const middleware = useIPFrequencyLimit({
+      id: 'ip-spoof-test-toggle-disabled',
+      seconds: 60,
+      limit: 10
+    });
+
+    await middleware(
+      createReq({
+        remoteAddress: '198.51.100.41'
+      }),
+      createRes()
+    );
+
+    const record = await MongoFrequencyLimit.findOne({
+      eventId: 'ip-qps-limit-ip-spoof-test-toggle-disabled-198.51.100.41'
+    }).lean();
+
+    expect(record).toBeNull();
+  });
+
+  it('should enforce IP limit when force is true even if USE_IP_LIMIT is disabled', async () => {
+    setUseIpLimit(false);
+    const middleware = useIPFrequencyLimit({
+      id: 'ip-spoof-test-toggle-forced',
+      seconds: 60,
+      limit: 10,
+      force: true
+    });
+
+    await middleware(
+      createReq({
+        remoteAddress: '198.51.100.42'
+      }),
+      createRes()
+    );
+
+    const record = await MongoFrequencyLimit.findOne({
+      eventId: 'ip-qps-limit-ip-spoof-test-toggle-forced-198.51.100.42'
+    }).lean();
+
+    expect(record?.amount).toBe(1);
   });
 
   it('should ignore spoofed forwarding headers from untrusted direct clients', async () => {

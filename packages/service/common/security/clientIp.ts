@@ -20,8 +20,8 @@ type TrustProxyFn = (addr: string, i: number) => boolean;
 const MAX_FORWARDED_FOR_LENGTH = 2048;
 const MAX_FORWARDED_FOR_HOPS = 32;
 
-let cachedTrustedProxyIpEnv: string | undefined;
-let cachedNodeEnv: string | undefined;
+let cachedTrustedProxyIpEnv: string | undefined | null = null;
+let cachedNodeEnv: string | undefined | null = null;
 let cachedTrustProxyFn: TrustProxyFn = proxyaddr.compile([]);
 let warnedInvalidTrustedProxyIpEnv: string | undefined;
 
@@ -77,34 +77,34 @@ const isValidTrustedProxyAddress = (rawValue: string) => {
 
 // 按逗号/空白拆分 TRUSTED_PROXY_IPS,过滤非法项并去重打印一次警告;非 test 环境下提示运维。
 const parseTrustedProxyIpEnv = (trustedProxyIpEnv?: string) => {
-  const validAddresses: string[] = [];
-  const invalidAddresses: string[] = [];
+  const validAddresses = new Set<string>();
+  const invalidAddresses = new Set<string>();
 
   (trustedProxyIpEnv ?? '')
     .split(/[,\s]+/)
     .filter(Boolean)
     .forEach((item) => {
       if (isValidTrustedProxyAddress(item)) {
-        validAddresses.push(item);
+        validAddresses.add(item);
       } else {
-        invalidAddresses.push(item);
+        invalidAddresses.add(item);
       }
     });
 
   if (
-    invalidAddresses.length > 0 &&
+    invalidAddresses.size > 0 &&
     process.env.NODE_ENV !== 'test' &&
     warnedInvalidTrustedProxyIpEnv !== trustedProxyIpEnv
   ) {
     warnedInvalidTrustedProxyIpEnv = trustedProxyIpEnv;
     console.warn(
-      `[security:client-ip] Ignored invalid TRUSTED_PROXY_IPS entries: ${invalidAddresses.join(
-        ', '
-      )}`
+      `[security:client-ip] Ignored invalid TRUSTED_PROXY_IPS entries: ${Array.from(
+        invalidAddresses
+      ).join(', ')}`
     );
   }
 
-  return validAddresses;
+  return Array.from(validAddresses);
 };
 
 // 构建并缓存 proxy-addr 的信任判定函数;非生产环境默认信任 loopback,叠加 TRUSTED_PROXY_IPS 配置。
@@ -177,14 +177,9 @@ const isForwardedForSafeToParse = (forwardedFor: string) => {
 
 // 构造一个最小化的 IncomingMessage 形状对象供 proxy-addr 使用:
 // 仅保留经过调用方校验的 XFF 头与指定 remoteAddress,避免外部 header 干扰判定。
-const createProxyAddrRequest = (
-  req: RequestWithClientIp,
-  remoteAddress: string,
-  forwardedFor: string
-) => {
+const createProxyAddrRequest = (remoteAddress: string, forwardedFor: string) => {
   return {
     headers: {
-      ...(req.headers ?? {}),
       'x-forwarded-for': forwardedFor
     },
     socket: {
@@ -212,7 +207,7 @@ export const getClientIpFromRequest = (req: RequestWithClientIp) => {
       }
 
       const forwardedIp = normalizeClientIp(
-        proxyaddr(createProxyAddrRequest(req, remoteIp, forwardedFor), trustProxy)
+        proxyaddr(createProxyAddrRequest(remoteIp, forwardedFor), trustProxy)
       );
 
       if (forwardedIp && forwardedIp !== remoteIp && !trustProxy(forwardedIp, 0)) {
