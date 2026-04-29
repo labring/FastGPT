@@ -542,31 +542,32 @@ export async function deleteSynonymFile({
     throw new Error(DatasetErrEnum.unExist);
   }
 
+  // 【改造】删除同义词文件不再触发索引恢复，注释以下代码：
   // 3. 创建 usageId (用于费用追踪)
-  const { usageId } = await createTrainingUsage({
-    teamId,
-    tmbId,
-    appName: '同义词恢复',
-    billSource: UsageSourceEnum.training,
-    vectorModel: getEmbeddingModel(dataset.vectorModel)?.name
-  });
+  // const { usageId } = await createTrainingUsage({
+  //   teamId,
+  //   tmbId,
+  //   appName: '同义词恢复',
+  //   billSource: UsageSourceEnum.training,
+  //   vectorModel: getEmbeddingModel(dataset.vectorModel)?.name
+  // });
 
   // 4. 标记所有需要恢复的数据
   // 注意：synonymFileIds 存储在 indexes.synonymMetadata.synonymFileIds
-  await MongoDatasetData.updateMany(
-    {
-      teamId: new Types.ObjectId(teamId),
-      datasetId: new Types.ObjectId(datasetId),
-      // ✅ 查询 indexes 数组中，synonymMetadata.synonymFileIds 包含该同义词文件ID的数据
-      'indexes.synonymMetadata.synonymFileIds': synonymId
-    },
-    {
-      $set: {
-        synonymProcessing: 'restore',
-        synonymFileIds: [synonymId]
-      }
-    }
-  );
+  // await MongoDatasetData.updateMany(
+  //   {
+  //     teamId: new Types.ObjectId(teamId),
+  //     datasetId: new Types.ObjectId(datasetId),
+  //     // ✅ 查询 indexes 数组中，synonymMetadata.synonymFileIds 包含该同义词文件ID的数据
+  //     'indexes.synonymMetadata.synonymFileIds': synonymId
+  //   },
+  //   {
+  //     $set: {
+  //       synonymProcessing: 'restore',
+  //       synonymFileIds: [synonymId]
+  //     }
+  //   }
+  // );
 
   // 5. 创建初始批次的恢复任务
   /**
@@ -574,71 +575,71 @@ export async function deleteSynonymFile({
    * deleteSynonymFile 的恢复任务创建逻辑与标准化任务创建相同，
    * 存在同样的多实例并发竞争问题。
    */
-  const max = global.systemEnv?.vectorMaxProcess || 10;
-  const initialBatch = new Array(max * 2).fill(0);
+  // const max = global.systemEnv?.vectorMaxProcess || 10;
+  // const initialBatch = new Array(max * 2).fill(0);
 
-  for await (const _ of initialBatch) {
-    try {
-      const hasNext = await retryFn(
-        async () => {
-          return await mongoSessionRun(async (session) => {
-            const data = await MongoDatasetData.findOneAndUpdate(
-              {
-                synonymProcessing: 'restore',
-                teamId: new Types.ObjectId(teamId),
-                datasetId: new Types.ObjectId(datasetId)
-              },
-              {
-                $unset: { synonymProcessing: null }
-              },
-              { session }
-            ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
+  // for await (const _ of initialBatch) {
+  //   try {
+  //     const hasNext = await retryFn(
+  //       async () => {
+  //         return await mongoSessionRun(async (session) => {
+  //           const data = await MongoDatasetData.findOneAndUpdate(
+  //             {
+  //               synonymProcessing: 'restore',
+  //               teamId: new Types.ObjectId(teamId),
+  //               datasetId: new Types.ObjectId(datasetId)
+  //             },
+  //             {
+  //               $unset: { synonymProcessing: null }
+  //             },
+  //             { session }
+  //           ).select({ _id: 1, collectionId: 1, synonymFileIds: 1 });
 
-            if (data) {
-              // 幂等性检查：避免重复创建任务
-              const existingTask = await MongoDatasetTraining.findOne(
-                {
-                  datasetId: new Types.ObjectId(datasetId),
-                  dataId: data._id,
-                  mode: TrainingModeEnum.synonymRestore
-                },
-                { _id: 1 },
-                { session }
-              );
+  //           if (data) {
+  //             // 幂等性检查：避免重复创建任务
+  //             const existingTask = await MongoDatasetTraining.findOne(
+  //               {
+  //                 datasetId: new Types.ObjectId(datasetId),
+  //                 dataId: data._id,
+  //                 mode: TrainingModeEnum.synonymRestore
+  //               },
+  //               { _id: 1 },
+  //               { session }
+  //             );
 
-              if (!existingTask) {
-                await MongoDatasetTraining.create(
-                  [
-                    {
-                      teamId: new Types.ObjectId(teamId),
-                      tmbId: new Types.ObjectId(tmbId),
-                      datasetId: new Types.ObjectId(datasetId),
-                      collectionId: data.collectionId,
-                      mode: TrainingModeEnum.synonymRestore,
-                      dataId: data._id,
-                      dataMetadata: {
-                        synonymFileIds: data.synonymFileIds
-                      },
-                      retryCount: 3,
-                      billId: usageId
-                    }
-                  ],
-                  { session, ordered: true }
-                );
-              }
-            }
+  //             if (!existingTask) {
+  //               await MongoDatasetTraining.create(
+  //                 [
+  //                   {
+  //                     teamId: new Types.ObjectId(teamId),
+  //                     tmbId: new Types.ObjectId(tmbId),
+  //                     datasetId: new Types.ObjectId(datasetId),
+  //                     collectionId: data.collectionId,
+  //                     mode: TrainingModeEnum.synonymRestore,
+  //                     dataId: data._id,
+  //                     dataMetadata: {
+  //                       synonymFileIds: data.synonymFileIds
+  //                     },
+  //                     retryCount: 3,
+  //                     billId: usageId
+  //                   }
+  //                 ],
+  //                 { session, ordered: true }
+  //               );
+  //             }
+  //           }
 
-            return !!data;
-          });
-        },
-        3 // 最多重试3次
-      );
+  //           return !!data;
+  //         });
+  //       },
+  //       3 // 最多重试3次
+  //     );
 
-      if (!hasNext) break;
-    } catch (error) {
-      addLog.error('Failed to create synonym restore task:', error);
-    }
-  }
+  //     if (!hasNext) break;
+  //   } catch (error) {
+  //     addLog.error('Failed to create synonym restore task:', error);
+  //   }
+  // }
 
   // 6. 删除 S3 中的文件
   await getS3DatasetSource().deleteDatasetFileByKey(String(synonymFile.fileId));
@@ -934,4 +935,3 @@ export async function batchGetSynonymMappings({
 
   return result;
 }
-
