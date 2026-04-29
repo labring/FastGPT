@@ -56,8 +56,12 @@ describe('Irrelevant Query Early Stop', () => {
       // 1. route_playbook LLM 调用
       '{"playbook": "simple_query"}',
       // 2. agent 第一次调用，执行 @search
-      '@search({"query": "腾讯有多少员工"})'
-      // routing 在此截断，不会有第 3 次 LLM 调用
+      '@search({"query": "腾讯有多少员工"})',
+      // 3-5. Stage 1 subQueryFilter LLM 评分（3 个 chunk 并发）
+      '1',
+      '1',
+      '1'
+      // text_agent(2) → 循环到 response 1 = playbook JSON → 无 tool calls → select_chunks
     ]);
 
     const agent = createAgenticSearch({

@@ -14,6 +14,7 @@ import type { RerankSkill, ChunkSelectorSkill } from '../skills/atomic/index';
 import type { AgenticRAGStateType } from '../types/state';
 import { DEFAULT_SEARCH_CONFIG } from '../utils/constants';
 import { createSkills as createSkillBundle } from './graph';
+import type { LanguageTracker } from '../utils/lang_directive';
 
 // ============================================================
 // 类型定义
@@ -53,6 +54,23 @@ export interface AgentEvent {
 // ============================================================
 // RequestContext - 完整 Blackboard
 // ============================================================
+
+/** 单轮 dataset 信号 */
+interface DatasetRoundSignal {
+  round: number;
+  searchCount: number;
+  survivedCount: number;
+  totalScore: number;
+}
+
+type DatasetStatus = 'active' | 'excluded' | 'probe_pending' | 'low_priority';
+
+/** 跨轮聚合 signal */
+interface DatasetAggregateSignal {
+  status: DatasetStatus;
+  history: DatasetRoundSignal[];
+  excludedAtRound?: number;
+}
 
 export class RequestContext {
   // ─── 配置 ─────────────────────────────────────────────
@@ -104,7 +122,7 @@ export class RequestContext {
 
   // ─── Answer 结果暂存 ────────────────────────────────
   lastAnswer: AnswerResult | null = null;
-  answerGenerated: boolean = false; // @answer tool 成功完成后设为 true
+  answerGenerated: boolean = false; // @summary tool 成功完成后设为 true
 
   // ─── 流事件缓冲 ─────────────────────────────────────
   pendingEvents: AgentEvent[] = [];
@@ -117,6 +135,24 @@ export class RequestContext {
   rewriteSkill!: QueryRewriteSkill;
   rerankSkill!: RerankSkill;
   chunkSelectorSkill!: ChunkSelectorSkill;
+
+  // ─── LanguageTracker（sync_blackboard 初始化）────────
+  languageTracker?: LanguageTracker;
+
+  // ─── 语言异常压制早停（LanguageTracker 写入，simpleQuerySearchCapped 读取）
+  suppressEarlyStop: boolean = false;
+
+  // ─── 多 dataset 跨轮信号追踪 ───────────────────────────
+  // 默认禁用，通过 AGENTIC_ENABLE_DATASET_PRUNING=true 开启
+  datasetSignalMap: Map<string, DatasetAggregateSignal> = new Map();
+  lastSearchQueries: string[] = [];
+  signalRound: number = 0;
+  datasetPruningEnabled: boolean =
+    (process.env.AGENTIC_ENABLE_DATASET_PRUNING ?? 'false').toLowerCase() === 'true';
+
+  private static readonly ACTIVE_THRESHOLD = 4.0;
+  private static readonly EXCLUDE_THRESHOLD = 3.0;
+  private static readonly JACCARD_CHANGE = 0.5;
 
   // ─── 首次 LLM 调用分析结果 ─────────────────────────
   analysis: string = '';
@@ -135,6 +171,7 @@ export class RequestContext {
   // ─── 可观测性 ───────────────────────────────────────
   executionPath: string[] = [];
   toolCallCount: number = 0;
+  toolResultRound: number = 0; // tools 节点轮次计数，用于 tool result 消息 id
 
   // ─── Logger ───────────────────────────────────────
   logger?: Logger;
@@ -330,6 +367,45 @@ export class RequestContext {
    * 从 LangGraph state 恢复 ctx（初始化时调用）
    * 对应 Python 中从 state 读取初始值到 ctx
    */
+  // ─── 信号辅助方法 ─────────────────────────────────
+
+  private getAvgScore(dsId: string): number {
+    const sig = this.datasetSignalMap.get(dsId);
+    if (!sig || sig.history.length === 0) return 0;
+    const last = sig.history[sig.history.length - 1];
+    return last.survivedCount > 0 ? last.totalScore / last.survivedCount : 0;
+  }
+
+  private getDelta(dsId: string): number {
+    const sig = this.datasetSignalMap.get(dsId);
+    if (!sig || sig.history.length < 2) return 0;
+    const [prev, last] = [sig.history[0], sig.history[1]];
+    const prevAvg = prev.survivedCount > 0 ? prev.totalScore / prev.survivedCount : 0;
+    const lastAvg = last.survivedCount > 0 ? last.totalScore / last.survivedCount : 0;
+    return lastAvg - prevAvg;
+  }
+
+  /** 检测本轮 searchQueries 是否相比上轮有显著变化（Jaccard < 0.5） */
+  private hasQueryChanged(currentQueries: string[]): boolean {
+    if (this.lastSearchQueries.length === 0) return false;
+    const prev = new Set(this.lastSearchQueries.map((q) => q.toLowerCase()));
+    const curr = new Set(currentQueries.map((q) => q.toLowerCase()));
+    const intersection = new Set([...prev].filter((q) => curr.has(q)));
+    const union = new Set([...prev, ...curr]);
+    const jaccard = union.size === 0 ? 1 : intersection.size / union.size;
+    return jaccard < RequestContext.JACCARD_CHANGE;
+  }
+
+  /** 全局低信号检查：所有 dataset 中 best avgScore < EXCLUDE_THRESHOLD → 不触发排除 */
+  private isGlobalLowSignal(): boolean {
+    let bestAvg = 0;
+    for (const dsId of this.datasetSignalMap.keys()) {
+      const avg = this.getAvgScore(dsId);
+      if (avg > bestAvg) bestAvg = avg;
+    }
+    return bestAvg < RequestContext.EXCLUDE_THRESHOLD;
+  }
+
   static fromState(state: Partial<AgenticRAGStateType>): RequestContext {
     const ctx = new RequestContext();
     ctx.allChunks = state.allChunks || [];
@@ -341,6 +417,144 @@ export class RequestContext {
     ctx.playbook = state.playbook || 'general';
     ctx.analysis = state.analysis || '';
     return ctx;
+  }
+
+  // ─── 多 dataset 动态信号追踪 ───────────────────────────
+
+  /**
+   * 记录一轮搜索中每个 dataset 返回的 chunk 数。
+   * 调用时机：@search 返回后、sub_query filter 前。
+   */
+  recordDatasetSearch(chunks: ChunkItem[]): void {
+    if (!this.datasetPruningEnabled) return;
+    const perDataset = new Map<string, number>();
+    for (const c of chunks) {
+      perDataset.set(c.datasetId, (perDataset.get(c.datasetId) || 0) + 1);
+    }
+    for (const [dsId, count] of perDataset) {
+      let sig = this.datasetSignalMap.get(dsId);
+      if (!sig) {
+        sig = { status: 'active', history: [] };
+        this.datasetSignalMap.set(dsId, sig);
+      }
+      sig.history.push({
+        round: this.signalRound,
+        searchCount: count,
+        survivedCount: 0,
+        totalScore: 0
+      });
+      if (sig.history.length > 2) sig.history = sig.history.slice(-2);
+    }
+  }
+
+  /**
+   * 记录 sub_query filter 后每个 dataset 存活了多少 chunk。
+   * 调用时机：sub_query filter 后。
+   */
+  recordDatasetSurvival(survivedChunks: ChunkItem[]): void {
+    if (!this.datasetPruningEnabled) return;
+    const perDataset = new Map<string, { count: number; totalScore: number }>();
+    for (const c of survivedChunks) {
+      const cur = perDataset.get(c.datasetId) || { count: 0, totalScore: 0 };
+      cur.count++;
+      cur.totalScore += (c as any).llm_sub_query_score ?? 0;
+      perDataset.set(c.datasetId, cur);
+    }
+    for (const [dsId, { count, totalScore }] of perDataset) {
+      const sig = this.datasetSignalMap.get(dsId);
+      if (!sig || sig.history.length === 0) continue;
+      const last = sig.history[sig.history.length - 1];
+      last.survivedCount = count;
+      last.totalScore = totalScore;
+    }
+  }
+
+  /** 聚合本轮信号，执行决策矩阵（每轮 @search 后调用一次） */
+  consolidateSignals(searchQueries: string[]): void {
+    if (!this.datasetPruningEnabled) return;
+    this.signalRound++;
+
+    if (this.isGlobalLowSignal()) return;
+
+    const allDsIds = Array.from(this.datasetSignalMap.keys());
+    let excludeCount = 0;
+    const maxExclude = Math.floor(allDsIds.length * 0.3);
+
+    for (const dsId of allDsIds) {
+      const sig = this.datasetSignalMap.get(dsId)!;
+      if (sig.status === 'excluded' || sig.status === 'probe_pending') continue;
+
+      const avg = this.getAvgScore(dsId);
+      const delta = this.getDelta(dsId);
+      const queryChanged = this.hasQueryChanged(searchQueries);
+
+      // A-真不相关：连续 2 轮低分 + sub_query 已变化
+      if (avg < RequestContext.EXCLUDE_THRESHOLD && queryChanged && sig.history.length >= 2) {
+        const prevAvg =
+          sig.history[0].survivedCount > 0
+            ? sig.history[0].totalScore / sig.history[0].survivedCount
+            : 0;
+        if (prevAvg < RequestContext.EXCLUDE_THRESHOLD) {
+          const activeCount = allDsIds.filter((id) => {
+            const s = this.datasetSignalMap.get(id);
+            return s && s.status === 'active';
+          }).length;
+          if (activeCount > 2 && excludeCount < maxExclude) {
+            sig.status = 'excluded';
+            sig.excludedAtRound = this.signalRound;
+            excludeCount++;
+          }
+          continue;
+        }
+      }
+
+      // D-衰减：高分但趋势下降 → 低优先级
+      if (avg >= RequestContext.ACTIVE_THRESHOLD && delta < -2) {
+        sig.status = 'low_priority';
+        continue;
+      }
+
+      // C-假阴性恢复：上轮低分，本轮恢复
+      if (avg >= RequestContext.ACTIVE_THRESHOLD && sig.status === 'low_priority') {
+        sig.status = 'active';
+      }
+    }
+
+    // probe_pending → 一轮探测后决策
+    for (const dsId of allDsIds) {
+      const sig = this.datasetSignalMap.get(dsId)!;
+      if (sig.status !== 'probe_pending') continue;
+      sig.status =
+        this.getAvgScore(dsId) >= RequestContext.ACTIVE_THRESHOLD ? 'active' : 'excluded';
+      if (sig.status === 'excluded') sig.excludedAtRound = this.signalRound;
+    }
+
+    this.lastSearchQueries = [...searchQueries];
+  }
+
+  /**
+   * 返回下一轮搜索应使用的 dataset ID 列表。
+   */
+  getActiveDatasetIds(allDatasetIds: string[]): string[] {
+    if (!this.datasetPruningEnabled) return allDatasetIds;
+    if (this.signalRound === 0 || this.isGlobalLowSignal()) return allDatasetIds;
+
+    return allDatasetIds.filter((dsId) => {
+      const sig = this.datasetSignalMap.get(dsId);
+      if (!sig) return true;
+      return sig.status !== 'excluded';
+    });
+  }
+
+  /**
+   * query_rewrite 后调用：标记 excluded → probe_pending（非 wipe）。
+   * 给被排除 dataset 一次重新探测的机会。
+   */
+  probeDatasetSignals(): void {
+    if (!this.datasetPruningEnabled) return;
+    for (const [, sig] of this.datasetSignalMap) {
+      if (sig.status === 'excluded') sig.status = 'probe_pending';
+    }
   }
 }
 

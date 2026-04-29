@@ -24,9 +24,7 @@
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:watch": "vitest",
-    "compat": "tsx scripts/test-model-compat.ts",
-    "compat:api": "tsx scripts/test-model-compat.ts --layer api",
-    "compat:agent": "tsx scripts/test-model-compat.ts --layer agent"
+    "compat": "tsx test/model-compat.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.69",
@@ -37,7 +35,9 @@
     "ai": "^6.0.158",
     "commander": "^11.1.0",
     "dotenv": "^16.3.0",
+    "eld": "2.0.3",
     "hono": "^4.0.0",
+    "iso-639-1-dir": "^3.0.5",
     "jieba-wasm": "^2.2.0",
     "js-yaml": "^4.1.0",
     "mongodb": "^6.3.0",
@@ -45,11 +45,14 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
+    "@ai-sdk/openai": "^1.3.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.10.0",
     "@types/pg": "^8.10.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
+    "ai": "^4.3.0",
     "eslint": "^8.56.0",
     "prettier": "^3.2.0",
     "tsx": "^4.7.0",

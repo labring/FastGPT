@@ -11,6 +11,7 @@ import { setMaxListeners } from 'events';
 setMaxListeners(0);
 
 import type { AgenticSearchProviders, AgenticSearchConfig } from '../ports/agentic';
+import { wrapProviderWithDefaults } from '../ports/llm';
 import type { ChunkItem } from '../types/chunk';
 import type { LLMMessage } from '../types/message';
 import { type AgentEvent } from './context';
@@ -21,42 +22,8 @@ import {
   type AgenticRAGStateType,
   type GraphMode
 } from './graph';
-import { setGlobalLogger } from '../utils/logger';
-import { playbooks } from '../prompts/playbooks/index';
-import { buildClassifierPrompt } from '../utils/prompt_loader';
 import { detectLang } from '../utils/lang';
-import { stripThinkBlocks } from '../utils/text';
-import { compressChatHistory } from '../utils/compression';
-
-/**
- * 压缩 chat_history 为摘要（使用 utils/compression.ts 中的完整实现）
- */
-function compressHistoryToString(history?: Array<{ role: string; content: string }>): string {
-  if (!history || history.length === 0) {
-    return 'No additional chat_history';
-  }
-  // 转换为 LLMMessage 格式
-  const messages: LLMMessage[] = history.map((h) => ({
-    role: h.role as 'user' | 'assistant' | 'system',
-    content: h.content
-  }));
-  // 使用完整的 compressChatHistory 函数
-  const compressed = compressChatHistory(messages);
-  return compressed ? compressed.summary : 'No additional chat_history';
-}
-
-/**
- * 解析 JSON（对齐 Python parse_llm_json）
- */
-function parseLLMJson(text: string): Record<string, unknown> | null {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return null;
-  try {
-    return JSON.parse(jsonMatch[0]);
-  } catch {
-    return null;
-  }
-}
+import { setGlobalLogger } from '../utils/logger';
 
 // ============================================================
 // 公共结果类型
@@ -74,6 +41,7 @@ export interface AgenticSearchResult {
   rerankInputTokens: number;
   llmInputTokens: number;
   llmOutputTokens: number;
+  analysis?: string;
   answer?: string;
   confidence?: number;
   ttftMs?: number;
@@ -82,6 +50,7 @@ export interface AgenticSearchResult {
   reflectionReason?: string;
   refuse?: boolean;
   nodeHist?: unknown[];
+  queryLanguage?: string;
 }
 
 export interface CreateAgenticSearchOptions {
@@ -136,6 +105,7 @@ function mapNodeUpdateToEvent(
         step: AGENT_EVENTS.PLAYBOOK_SELECTED,
         detail: `Playbook selected: ${nodeOutput.playbook ?? 'general'}`,
         playbook: nodeOutput.playbook ?? 'general',
+        extra: { analysis: nodeOutput.analysis ?? '' },
         timestamp: Date.now()
       };
 
@@ -172,7 +142,7 @@ function mapNodeUpdateToEvent(
           timestamp: Date.now()
         };
       }
-      if (toolNames.includes('answer')) {
+      if (toolNames.includes('summary')) {
         return {
           step: AGENT_EVENTS.GENERATING,
           detail: 'Generating answer',
@@ -210,7 +180,7 @@ function mapNodeUpdateToEvent(
           extra: { queries: nodeOutput.rewriteQueries ?? [] }
         };
       }
-      if (lastPath.includes('answer') || nodeOutput.answer) {
+      if (lastPath.includes('summary') || nodeOutput.answer) {
         return {
           step: AGENT_EVENTS.ANSWER_DONE,
           detail: `Answer generated (confidence: ${nodeOutput.confidence ?? 0})`,
@@ -257,6 +227,7 @@ function mapStateToResult(finalState: AgenticRAGStateType): AgenticSearchResult 
     rerankInputTokens: finalState.rerankInputTokens ?? 0,
     llmInputTokens: finalState.llmInputTokens ?? 0,
     llmOutputTokens: finalState.llmOutputTokens ?? 0,
+    analysis: finalState.analysis || undefined,
     answer: finalState.answer || undefined,
     confidence: finalState.confidence || undefined,
     ttftMs: finalState.ttftMs,
@@ -264,7 +235,8 @@ function mapStateToResult(finalState: AgenticRAGStateType): AgenticSearchResult 
     reflectionLabel: finalState.reflectionLabel || undefined,
     reflectionReason: finalState.reflectionReason || undefined,
     refuse: finalState.refuse,
-    nodeHist: finalState.nodeHist ?? []
+    nodeHist: finalState.nodeHist ?? [],
+    queryLanguage: finalState.question ? detectLang(finalState.question) : undefined
   };
 }
 
@@ -280,7 +252,13 @@ function mapStateToResult(finalState: AgenticRAGStateType): AgenticSearchResult 
  * - stream：流式调用，产出中间事件 AgentEvent + 最终 AgenticSearchResult
  */
 export function createAgenticSearch(options: CreateAgenticSearchOptions) {
-  const { providers, config, mode = 'auto', logger } = options;
+  const { providers: rawProviders, config, mode = 'auto', logger } = options;
+
+  // 包裹外部 LLM provider，注入默认选项（agentic search 全程禁用 thinking）
+  const providers: AgenticSearchProviders = {
+    ...rawProviders,
+    llm: wrapProviderWithDefaults(rawProviders.llm)
+  };
 
   // 使用传入的 logger 或从 providers 获取，并注册为全局单例
   const resolvedLogger = logger ?? providers.logger;
@@ -288,9 +266,6 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
 
   const resolvedConfig = buildRequiredConfig(config);
   const recursionLimit = calculateRecursionLimit(resolvedConfig);
-
-  // 直接访问 providers 中的 LLM（用于 LLM 分类）
-  const analysisLLM = providers.llm;
 
   return {
     /**
@@ -307,8 +282,17 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
       initialQueries?: string[];
       /** 调用方预先检索到的上下文（如 SQL 检索结果），agent 在 Blackboard Brief 中参考 */
       priorContext?: string;
+      /** DB 采样的语言分布统计，用于初始化 LanguageTracker。null 表示采样失败/空 KB */
+      initialLanguageStats?: Record<string, number> | null;
     }): Promise<AgenticSearchResult> => {
-      const { query, datasetIds, history = [], initialQueries, priorContext } = params;
+      const {
+        query,
+        datasetIds,
+        history = [],
+        initialQueries,
+        priorContext,
+        initialLanguageStats
+      } = params;
       const startTime = Date.now();
 
       // per-request graph（含 RequestContext Blackboard），并发安全
@@ -320,7 +304,8 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         chatHistory: history as LLMMessage[],
         priorContext: priorContext || '',
         originalQuestion: query,
-        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {})
+        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {}),
+        ...(initialLanguageStats !== undefined ? { initialLanguageStats } : {})
       };
 
       const finalState = await compiled.invoke(initialInput as AgenticRAGStateType, {
@@ -351,8 +336,17 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
       initialQueries?: string[];
       /** 调用方预先检索到的上下文（如 SQL 检索结果），agent 在 Blackboard Brief 中参考 */
       priorContext?: string;
+      /** DB 采样的语言分布统计，用于初始化 LanguageTracker。null 表示采样失败/空 KB */
+      initialLanguageStats?: Record<string, number> | null;
     }): AsyncGenerator<AgentEvent | AgenticSearchResult> {
-      const { query, datasetIds, history = [], initialQueries, priorContext } = params;
+      const {
+        query,
+        datasetIds,
+        history = [],
+        initialQueries,
+        priorContext,
+        initialLanguageStats
+      } = params;
       const startTime = Date.now();
 
       // Yield started 事件
@@ -362,83 +356,7 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         timestamp: startTime
       };
 
-      // ========== Step 1: LLM 分类（对齐 Python 问题分析逻辑）==========
-      let playbookName: string | undefined;
-      let analysis = '';
-      let reason = '';
-      let questionLang = detectLang(query);
-
-      try {
-        // 构建 playbook 描述
-        const playbookDescriptions = Object.entries(playbooks)
-          .map(([name, playbook]) => `- **${name}**: ${playbook.description}`)
-          .join('\n');
-
-        // 添加 classifier guidance
-        const classifierGuidance = `
-
-## Classifier Guidance (for your reference):
-- **simple_query**: Single fact, clear intent (e.g., "What is X?", "How to configure Y?")
-- **deep_research**: Needs comprehensive coverage, multiple aspects, or listing all items (e.g., "What versions exist?", "List all features", "Analyze pros and cons")
-- **troubleshooting**: Error fixing, debugging, problem solving
-- **comparative_analysis**: Comparing A vs B, advantages/disadvantages
-- **followup_query**: Continuation of previous conversation`;
-
-        const fullPlaybookDescriptions = playbookDescriptions + classifierGuidance;
-
-        // 压缩 chat_history
-        const summary = compressHistoryToString(history);
-
-        // 构建 classifier prompt
-        const classifierPrompt = buildClassifierPrompt({
-          playbookDescriptions: fullPlaybookDescriptions,
-          priorContext: priorContext || '',
-          summary,
-          question: query,
-          lang: questionLang
-        });
-
-        // 调用 LLM 进行分类
-        try {
-          const llm = analysisLLM;
-          const response = await llm.chat(
-            [
-              {
-                role: 'system',
-                content: `You are a question classifier. Respond in JSON format. Write the analysis field in ${questionLang}.`
-              },
-              { role: 'user', content: classifierPrompt }
-            ],
-            { temperature: 0, maxTokens: 200 }
-          );
-
-          // 使用 stripThinkBlocks 对齐 Python strip_think_blocks
-          const responseText = stripThinkBlocks(response.content).trim();
-          const parsed = parseLLMJson(responseText);
-
-          if (parsed && parsed.playbook) {
-            playbookName = parsed.playbook as string;
-            analysis = (parsed.analysis as string) || '';
-            reason = (parsed.reason as string) || '';
-
-            // Emit thinking 事件（包含语言信息，供下游格式化）
-            yield {
-              step: AGENT_EVENTS.THINKING,
-              detail: analysis,
-              reason: reason,
-              playbook: playbookName,
-              timestamp: Date.now(),
-              extra: { lang: questionLang }
-            };
-          }
-        } catch (llmErr) {
-          resolvedLogger?.warn(`LLM classification failed, will fallback to rules: ${llmErr}`);
-        }
-      } catch (e) {
-        resolvedLogger?.debug?.(`Question analysis skipped: ${e}`);
-      }
-
-      // ========== Step 2: 构建 initial_state（包含分类结果）==========
+      // 构建 initial_state
       const initialInput: Partial<AgenticRAGStateType> = {
         question: query,
         datasetIds,
@@ -446,13 +364,11 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         priorContext: priorContext || '',
         startTime: startTime,
         originalQuestion: query,
-        playbook: playbookName || '',
-        analysis: analysis,
-        reason: reason,
         // 软提示（soft hint）：若调用方提供了预计算的查询变体，预填 rewriteQueries。
         // Blackboard Brief 的 Plan 区将展示这些查询，引导 Agent 优先直接检索而非重新改写。
         // 注意：这是软约束，Agent 仍可在后续轮次（如 deep_research）中调用 query_rewrite 工具进行二次改写。
-        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {})
+        ...(initialQueries?.length ? { rewriteQueries: initialQueries } : {}),
+        ...(initialLanguageStats !== undefined ? { initialLanguageStats } : {})
       };
 
       // per-request graph（含 RequestContext Blackboard），并发安全
@@ -488,6 +404,8 @@ export function createAgenticSearch(options: CreateAgenticSearchOptions) {
         if (delta.ttftMs !== undefined) accState.ttftMs = delta.ttftMs;
         if (delta.citedIds !== undefined) accState.citedIds = delta.citedIds;
         if (delta.error !== undefined) accState.error = delta.error;
+        if (delta.languageTrackerConfig !== undefined)
+          accState.languageTrackerConfig = delta.languageTrackerConfig;
         // ── additive reducers ───────────────────────────────────
         if (delta.embeddingTokens !== undefined) {
           accState.embeddingTokens = (accState.embeddingTokens ?? 0) + delta.embeddingTokens;

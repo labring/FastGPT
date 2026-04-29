@@ -25,12 +25,12 @@ This question is focused and clear — a direct search should retrieve the answe
 **MUST follow these steps:**
 1. STOP. You MUST use @search to retrieve information before answering.
 2. Search the original query directly.
-3. **If your search returned a directly relevant result (you can see the answer clearly) → call @answer IMMEDIATELY. Do NOT call @assess.**
+3. **If your search returned a directly relevant result (you can see the answer clearly) → call @summary IMMEDIATELY. Do NOT call @assess.**
 4. If the first search returned poor or no results: use @query_rewrite ONCE to rephrase, then search again.
 5. Do NOT answer from memory or make up information.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response (do NOT write answer yourself).
+- You MUST use @summary tool to generate final response (do NOT write answer yourself).
 - Keep the answer focused — do not over-elaborate for simple facts.
 - Do NOT use @assess — it is not needed for direct queries.`;
 
@@ -57,8 +57,16 @@ separate information before a synthesis is possible.
 - Search each dimension separately. Use parallel search when possible.
 - Continue until all dimensions have been searched at least once
 
+**Optional — @assess for chunk annotation and progress tracking:**
+After each search round, you MAY call @assess to:
+- Record key findings from the current round
+- Update the list of missing information (lacks)
+- Annotate the most useful chunks (key_chunks) for preservation in the final answer
+- Mark when information is sufficient (sufficient: true)
+This is especially useful for tracking multi-dimensional comparison progress.
+
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
+- You MUST use @summary tool to generate final response.
 - Structure the answer with a comparison table or parallel bullet points.
 - Present both similarities and differences clearly.`;
 
@@ -73,7 +81,7 @@ This is a diagnostic scenario. Each search step may depend on results from the p
 1. STOP. Do NOT answer directly — you need troubleshooting information.
 2. Use @search to find the error message or symptom keywords.
 3. Evaluate results:
-   - Found troubleshooting docs → use @answer with structured diagnosis.
+   - Found troubleshooting docs → use @summary with structured diagnosis.
    - Insufficient → use @query_rewrite (try par or gqr strategy) and search again.
    - Multiple possible causes → search each cause's solution separately.
 4. Answer structure: Symptom → Possible causes → Diagnostic steps → Solutions.
@@ -81,11 +89,11 @@ This is a diagnostic scenario. Each search step may depend on results from the p
 
 **Optional — @assess for chunk annotation:**
 You MAY call @assess to annotate chunks containing key diagnostic steps or solutions (key_chunks).
-Answer when you have the main diagnostic information — you do not need exhaustive coverage.
+Call @summary when you have the main diagnostic information — you do not need exhaustive coverage.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
-- Structure: 问题描述 → 可能原因 → 排查步骤 → 解决方案`;
+- You MUST use @summary tool to generate final response.
+- Structure: Symptom → Possible causes → Diagnostic steps → Solutions`;
 
 /**
  * Deep Research - 深度研究查询
@@ -100,15 +108,15 @@ This question requires comprehensive, multi-angle analysis or complete listing.
 3. Search ONLY the sub-questions returned by @query_rewrite using parallel @search. Do NOT add extra ad-hoc queries beyond what @query_rewrite returned.
 4. Assess coverage: which sub-questions still lack information?
 5. For under-covered sub-questions, use @query_rewrite ONCE more to rephrase, then search again.
-6. When you have covered the main aspects, call @answer immediately with clear section structure.
+6. When you have covered the main aspects, call @summary immediately with clear section structure.
 
 **Optional — @assess for chunk annotation:**
 After searching, you MAY call @assess to annotate the most valuable chunks (key_chunks).
 This helps preserve critical information in the final answer.
-You do NOT need to fill every lack before answering — answer with what you have.
+You do NOT need to fill every lack before answering — call @summary with what you have.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
+- You MUST use @summary tool to generate final response.
 - Do NOT answer from memory — base everything on retrieved information.
 - Ensure complete coverage of all items/aspects requested.`;
 
@@ -126,7 +134,7 @@ This is a continuation of a previous conversation. The question references prior
 4. If asking for clarification or expansion, search for more details on the topic.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
+- You MUST use @summary tool to generate final response.
 - Keep answer connected to previous context.
 - If answering based on prior conversation, explicitly reference it.`;
 
@@ -144,7 +152,7 @@ This is a general query that doesn't fit specific categories.
 4. Synthesize information from multiple sources if available.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
+- You MUST use @summary tool to generate final response.
 - Follow standard answer quality guidelines.
 - Include relevant citations from retrieved chunks.`;
 
@@ -170,7 +178,7 @@ Review the Search Hints provided.
 
 **Stop Rule:**
 - When you have completed your searches, make no more tool calls. Simply stop.
-- Do NOT call @answer.`;
+- Do NOT call @summary.`;
 
 /**
  * Comparative Analysis - searchOnly 模式
@@ -193,7 +201,7 @@ Review the Search Hints provided.
 
 **Stop Rule:**
 - When main dimensions are covered, make no more tool calls. Simply stop.
-- Do NOT call @answer.`;
+- Do NOT call @summary.`;
 
 /**
  * Troubleshooting - searchOnly 模式
@@ -212,7 +220,7 @@ Review the Search Hints provided.
 
 **Stop Rule:**
 - When main diagnostic information is found, make no more tool calls. Simply stop.
-- Do NOT call @answer.`;
+- Do NOT call @summary.`;
 
 /**
  * Deep Research - searchOnly 模式
@@ -232,7 +240,7 @@ Review the Search Hints provided.
 
 **Stop Rule:**
 - When main aspects are covered, make no more tool calls. Simply stop.
-- Do NOT call @answer.`;
+- Do NOT call @summary.`;
 
 /**
  * Follow-up Query - searchOnly 模式
@@ -251,7 +259,7 @@ Review the Search Hints provided.
 
 **Stop Rule:**
 - When the target information is found, make no more tool calls. Simply stop.
-- Do NOT call @answer.`;
+- Do NOT call @summary.`;
 
 /**
  * General - searchOnly 模式
@@ -269,7 +277,7 @@ Review the Search Hints provided.
 
 **Stop Rule:**
 - When sufficient chunks are collected, make no more tool calls. Simply stop.
-- Do NOT call @answer.`;
+- Do NOT call @summary.`;
 
 // ============================================================
 // Playbook 注册表

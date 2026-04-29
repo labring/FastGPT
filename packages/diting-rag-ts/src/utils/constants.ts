@@ -35,7 +35,7 @@ export const TOOLS = {
   RETRIEVE: 'retrieve',
   RERANK: 'rerank',
   QUERY_REWRITE: 'query_rewrite',
-  ANSWER: 'answer',
+  SUMMARY: 'summary',
   CHUNK_SELECTOR: 'chunk_selector',
   SEARCH: 'search',
   ASSESS: 'assess'

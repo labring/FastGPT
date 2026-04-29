@@ -157,7 +157,7 @@ export function buildNativeGraph(
     .addNode('generate_answer', createGenerateAnswerNode(providers, skills, config))
     .addNode('plan_executor', createPlanExecutorNode(providers, skills, config, ctx))
     .addEdge(START, 'route_playbook')
-    .addEdge('route_playbook', 'agent')
+    .addEdge('route_playbook', 'sync_blackboard')
     .addConditionalEdges('agent', createShouldContinue(config, ctx), {
       tools: 'tools',
       select_chunks: 'select_chunks',
@@ -209,7 +209,7 @@ export function buildTextReActGraph(
     .addNode('generate_answer', createGenerateAnswerNode(providers, skills, config))
     .addNode('plan_executor', createPlanExecutorNode(providers, skills, config, ctx))
     .addEdge(START, 'route_playbook')
-    .addEdge('route_playbook', 'agent')
+    .addEdge('route_playbook', 'sync_blackboard')
     .addConditionalEdges('agent', createShouldContinue(config, ctx), {
       tools: 'tools',
       select_chunks: 'select_chunks',
@@ -250,7 +250,7 @@ export function buildAutoGraph(
   const ctx = new RequestContext(config, [], providers, providers.logger);
 
   // 获取 tool 名称列表
-  const toolNames = ['search', 'query_rewrite', 'answer'];
+  const toolNames = ['search', 'query_rewrite', 'summary'];
 
   return new StateGraph(AgenticRAGState)
     .addNode('route_playbook', createRoutePlaybookNode(providers, config))
@@ -261,7 +261,7 @@ export function buildAutoGraph(
     .addNode('generate_answer', createGenerateAnswerNode(providers, skills, config))
     .addNode('plan_executor', createPlanExecutorNode(providers, skills, config, ctx))
     .addEdge(START, 'route_playbook')
-    .addEdge('route_playbook', 'agent')
+    .addEdge('route_playbook', 'sync_blackboard')
     .addConditionalEdges('agent', createShouldContinue(config, ctx), {
       tools: 'tools',
       select_chunks: 'select_chunks',

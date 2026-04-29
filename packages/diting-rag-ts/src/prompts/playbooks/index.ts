@@ -32,12 +32,12 @@ This question is focused and clear — a direct search should retrieve the answe
 **MUST follow these steps:**
 1. STOP. You MUST use @search to retrieve information before answering.
 2. Search the original query directly.
-3. **If your search returned a directly relevant result (you can see the answer clearly) → call @answer IMMEDIATELY. Do NOT call @assess.**
+3. **If your search returned a directly relevant result (you can see the answer clearly) → call @summary IMMEDIATELY. Do NOT call @assess.**
 4. If the first search returned poor or no results: use @query_rewrite ONCE to rephrase, then search again.
 5. Do NOT answer from memory or make up information.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response (do NOT write answer yourself).
+- You MUST use @summary tool to generate final response (do NOT write answer yourself).
 - Keep the answer focused — do not over-elaborate for simple facts.
 - Do NOT use @assess — it is not needed for direct queries.`
   },
@@ -91,10 +91,10 @@ DO NOT stop just because you have "enough" chunks. Continue until:
 **Optionally, call @assess to annotate chunks with critical comparison data:**
 - key_chunks: chunks containing key comparison facts
 - findings/lacks: recorded in blackboard for context, but do NOT require exhaustive coverage
-- You do NOT need to fill every lack before calling @answer
+- You do NOT need to fill every lack before calling @summary
 
 ### Output Rule:
-- You MUST use @answer tool to generate final response
+- You MUST use @summary tool to generate final response
 - Structure the comparison as a table or organized sections by dimension
 - Clearly state if any object was not found in knowledge base
 - Do NOT answer from memory or make up comparison details`
@@ -112,7 +112,7 @@ This is a diagnostic scenario. Each search step may depend on results from the p
 1. STOP. Do NOT answer directly — you need troubleshooting information.
 2. Use @search to find the error message or symptom keywords.
 3. Evaluate results:
-   - Found troubleshooting docs → use @answer with structured diagnosis.
+   - Found troubleshooting docs → use @summary with structured diagnosis.
    - Insufficient → use @query_rewrite (try par or gqr strategy) and search again.
    - Multiple possible causes → search each cause's solution separately.
 4. Answer structure: Symptom → Possible causes → Diagnostic steps → Solutions.
@@ -120,10 +120,10 @@ This is a diagnostic scenario. Each search step may depend on results from the p
 
 **Optional — @assess for chunk annotation:**
 You MAY call @assess to annotate chunks containing key diagnostic steps or solutions (key_chunks).
-Answer when you have the main diagnostic information — you do not need exhaustive coverage.
+Call @summary when you have the main diagnostic information — you do not need exhaustive coverage.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
+- You MUST use @summary tool to generate final response.
 - Do NOT answer from memory or guess solutions.`
   },
 
@@ -141,15 +141,15 @@ This question requires comprehensive, multi-angle analysis or complete listing.
 3. Search ONLY the sub-questions returned by @query_rewrite using parallel @search. Do NOT add extra ad-hoc queries beyond what @query_rewrite returned.
 4. Assess coverage: which sub-questions still lack information?
 5. For under-covered sub-questions, use @query_rewrite ONCE more to rephrase, then search again.
-6. When you have covered the main aspects, call @answer immediately with clear section structure.
+6. When you have covered the main aspects, call @summary immediately with clear section structure.
 
 **Optional — @assess for chunk annotation:**
 After searching, you MAY call @assess to annotate the most valuable chunks (key_chunks).
 This helps preserve critical information in the final answer.
-You do NOT need to fill every lack before answering — answer with what you have.
+You do NOT need to fill every lack before answering — call @summary with what you have.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
+- You MUST use @summary tool to generate final response.
 - Do NOT answer from memory — base everything on retrieved information.
 - Ensure complete coverage of all items/aspects requested.`
   },
@@ -180,11 +180,11 @@ refine, reformat, clarify, or expand on the previous answer.
    - New information request → use @search (but avoid duplicate queries)
    - Clarification on existing content → use previous chunks or @query_rewrite
 4. If reusing previous chunks, cite them properly.
-5. Use @answer to generate the refined response.
+5. Use @summary to generate the refined response.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
-- If no new search needed, pass previous chunks to @answer for reformatting.
+- You MUST use @summary tool to generate final response.
+- If no new search needed, pass previous chunks to @summary for reformatting.
 - Always cite sources from current or previous turns.`
   },
 
@@ -202,11 +202,11 @@ Analyze the question structure to determine the query type \
 2. Use @search to get initial results.
 3. Based on result quality and question complexity, decide next steps.
 4. Use @query_rewrite flexibly to explore different search angles.
-5. When sufficient information is collected, use @answer to generate response.
+5. When sufficient information is collected, use @summary to generate response.
 
 **Output Rule:**
-- You MUST use @answer tool to generate final response.
-- Do NOT write answer yourself — always use @answer tool.`
+- You MUST use @summary tool to generate final response.
+- Do NOT write answer yourself — always use @summary tool.`
   }
 };
 

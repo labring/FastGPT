@@ -173,6 +173,7 @@ export type DispatchNodeResponseType = {
 
   // dataset search
   retrievalMode?: `${DatasetRetrievalModeEnum}`;
+  queryLanguage?: string; // 用户查询语言（ISO 639-1，eld 检测）
   embeddingModel?: string;
   embeddingTokens?: number;
   similarity?: number;

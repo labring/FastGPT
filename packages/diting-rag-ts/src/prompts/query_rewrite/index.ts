@@ -205,6 +205,27 @@ export const DEFAULT_STRATEGIES: RewriteStrategySpec[] = [
     exclusive_group: 'abstraction',
     enabled: true,
     parallel_search: true
+  },
+  {
+    name: 'translate_to',
+    display_name: 'Cross-Language Query Translation',
+    description:
+      "Translate the search intent from the user's language into the KB document language. Produces natural queries in the target language.",
+    applicable_when:
+      'KB document language differs from user question language (e.g., user asks in Arabic, KB is Chinese)',
+    prompt_template:
+      'The user asked in {sourceLang}. The KB documents are in {targetLang}.\nTranslate the SEARCH INTENT into natural {targetLang} queries that match how documents are written.\nDo NOT word-for-word translate — rephrase as a native {targetLang} speaker would search.\n\nOriginal ({sourceLang}): {query}\n\nReturn as JSON:\n{{"rewrites": [{{"strategy": "translate_to", "queries": ["{targetLang} query 1", "{targetLang} query 2"], "parallel": true}}]}}',
+    examples: [
+      {
+        input: 'ผู้เขียนหนังสือสามก๊ก',
+        output:
+          '{"rewrites": [{"strategy": "translate_to", "queries": ["三国演义 作者", "三国演义 谁写的"], "parallel": true}]}'
+      }
+    ],
+    priority: 20,
+    exclusive_group: 'translate',
+    enabled: true,
+    parallel_search: true
   }
 ];
 
@@ -217,7 +238,8 @@ export const rewriteStrategies: Record<string, RewriteStrategyDef> = {
   gqr: { name: 'gqr', description: 'General Query Refinement' },
   kwr: { name: 'kwr', description: 'Keyword Extraction' },
   par: { name: 'par', description: 'Pseudo-Answer Retrieval' },
-  step_back: { name: 'step_back', description: 'Step-Back Abstraction' }
+  step_back: { name: 'step_back', description: 'Step-Back Abstraction' },
+  translate_to: { name: 'translate_to', description: 'Cross-Language Query Translation' }
 };
 
 /**

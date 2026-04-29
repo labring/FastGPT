@@ -206,10 +206,10 @@ function extractCitedIds(text: string, validIndices?: Set<number>): (number | st
  * 3. Citation 验证和修复
  */
 export class AnswerSkill extends BaseSkill {
-  name = 'answer';
+  name = 'summary';
   description = 'Generate answer with reflection and citation validation (full version)';
 
-  private maxReflectRounds = 3;
+  private maxReflectRounds = 1;
   private maxCitationRetries = 2;
 
   async execute(input: SkillInput): Promise<SkillOutput> {
@@ -500,7 +500,7 @@ export class AnswerSkill extends BaseSkill {
     const chunksText = formatChunks(chunks);
     const analysisSection = analysis
       ? `## Analysis Context\n\n${analysis}`
-      : '## Analysis Context\n\n(无)';
+      : '## Analysis Context\n\n(None)';
     const validIndices = new Set(chunkIdMap.keys());
     let llmCalls = 0;
 

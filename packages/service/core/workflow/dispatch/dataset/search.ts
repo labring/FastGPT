@@ -58,6 +58,7 @@ import { getNodeErrResponse } from '../utils';
 import { getDuckDBStoreConfig } from '../../../dataset/database/dative/utils';
 import { MongoApp } from '../../../app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { detectLang } from 'diting-rag-ts';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -269,6 +270,9 @@ export async function dispatchDatasetSearch(
         }
       | undefined = undefined; // 新增：Reranker 错误信息（仅 reranker 报错时有值）
     let agenticSearchResult: SearchDatasetDataResponse['agenticSearchResult'] = undefined; // 新增：agentic 检索的过程信息（仅 agentic 路径有值）
+
+    // 查询语言检测（eld 60 种语言），所有检索路径（agentic/standard/deepRag）均可利用
+    const queryLanguage = detectLang(userChatInput);
 
     const convertSqlResultsToChunks = async (
       singleSQLResult: SqlGenerationResponse,
@@ -683,6 +687,7 @@ export async function dispatchDatasetSearch(
             agenticSearchRerankModel,
             agenticSearchReasoning,
             workflowStreamResponse,
+            queryLanguage,
             // 预计算结果：只在有值时传入，避免空值覆盖 diting-rag-ts 内部逻辑
             ...(preResolvedQuery ? { preResolvedQuery } : {}),
             ...(preComputedQueries?.length ? { preComputedQueries } : {}),
@@ -1116,7 +1121,9 @@ export async function dispatchDatasetSearch(
         // 新增：Reranker 错误信息（仅当 reranker 报错时存在）
         ...(rerankError && { rerankError }),
         // 新增：agentic 检索过程信息（仅 agentic 路径有值）
-        ...(agenticSearchResult && { agenticSearchResult })
+        ...(agenticSearchResult && { agenticSearchResult }),
+        // 查询语言检测结果（所有检索路径均可用）
+        queryLanguage
       },
       // 将 agentic 思考过程写入 assistantResponses，使其存入 AI 消息的 value，
       // 刷新页面后前端能从 value 中渲染"思考过程"块，与实时流式体验一致

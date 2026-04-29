@@ -2,6 +2,7 @@
 // 接口统一导出
 
 export type { LLMProvider } from './llm';
+export { wrapProviderWithDefaults, resolveLLMCallOptions } from './llm';
 export type { EmbeddingProvider, EmbedResult } from './embedding';
 export type { RerankProvider, RerankResult } from './reranker';
 export type {

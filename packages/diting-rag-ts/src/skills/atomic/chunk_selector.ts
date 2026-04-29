@@ -636,6 +636,11 @@ export async function subQueryFilter(
           });
           const raw = response.content.trim();
           const score = parseInt(raw, 10);
+          if (isNaN(score)) {
+            getLogger()?.debug(
+              `[subQueryFilter] LLM returned non-numeric: raw="${raw.substring(0, 100)}" chunkId=${chunk.id} → fallback to 5`
+            );
+          }
           return isNaN(score) ? 5 : Math.max(0, Math.min(10, score));
         } catch (e) {
           getLogger()?.warn('[subQueryFilter] LLM scoring failed for chunk:', {

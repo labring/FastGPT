@@ -20,6 +20,7 @@ import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { detectLang } from 'diting-rag-ts';
 
 const formatIndexes = async ({
   indexes = [],
@@ -237,6 +238,16 @@ export async function insertData2Dataset({
     dataId: insertIds[index]
   }));
 
+  addLog.debug('[insertData2Dataset] Step 3: MongoDatasetData.create...', {
+    teamId: String(teamId),
+    datasetId: String(datasetId),
+    collectionId: String(collectionId),
+    resultCount: results.length
+  });
+  
+  const detectedLanguage = detectLang(q);
+  const mergedMetadata = { ...(metadata || {}), detectedLanguage };
+
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
@@ -249,7 +260,8 @@ export async function insertData2Dataset({
         imageId,
         imageDescMap,
         chunkIndex,
-        indexes: results
+        indexes: results,
+        ...(Object.keys(mergedMetadata).length > 0 && { metadata: mergedMetadata })
       }
     ],
     { session, ordered: true }

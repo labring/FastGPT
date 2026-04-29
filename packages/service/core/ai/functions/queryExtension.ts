@@ -393,7 +393,6 @@ async function mergedQueryOptimization({
       body: {
         model,
         temperature: 0.1,
-        max_tokens: 500,
         messages: requestMessages,
         stream: true
       }

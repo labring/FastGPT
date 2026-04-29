@@ -323,7 +323,8 @@ const DatasetParamsModal = ({
                       desc: t('common:core.dataset.search.mode.embedding desc'),
                       value: DatasetSearchModeEnum.embedding,
                       children:
-                        searchModeWatch === DatasetSearchModeEnum.embedding && embeddingModelFormItem
+                        searchModeWatch === DatasetSearchModeEnum.embedding &&
+                        embeddingModelFormItem
                     },
                     {
                       title: t('common:core.dataset.search.mode.fullTextRecall'),
