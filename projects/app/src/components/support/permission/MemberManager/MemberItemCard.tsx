@@ -21,11 +21,10 @@ function MemberItemCard({
   orgs,
   rightSlot,
   onRoleChange,
-  roleSelectWidth = '300px',
   disabled = false
 }: {
   avatar: string;
-  key?: string;
+  key: string;
   onChange?: () => void;
   onRoleChange?: (role: RoleValueType) => void;
   isChecked?: boolean;
@@ -34,7 +33,6 @@ function MemberItemCard({
   role?: RoleValueType;
   orgs?: string[];
   rightSlot?: React.ReactNode;
-  roleSelectWidth?: string;
   disabled?: boolean;
 }) {
   const showRoleSelect = onRoleChange !== undefined;
@@ -91,7 +89,7 @@ function MemberItemCard({
               fontSize={'sm'}
               borderRadius={'md'}
               minH={'18px'}
-              w={roleSelectWidth}
+              w="300px"
               p="1"
               alignItems={'end'}
               justifyContent={'space-between'}
@@ -105,13 +103,7 @@ function MemberItemCard({
           onChange={onRoleChange}
         />
       )}
-      <Flex
-        flexDirection={'row'}
-        h={showRoleSelect ? '36px' : 'unset'}
-        alignItems={'center'}
-        justifyContent={'center'}
-        w="36px"
-      >
+      <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
         {onDelete !== undefined && !disabled ? (
           <MyIcon
             name="common/closeLight"

@@ -55,17 +55,6 @@ import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import TrainingStates from './TrainingStates';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
-import {
-  getCollectionCollaboratorList,
-  postUpdateCollectionCollaborators,
-  deleteCollectionCollaborators,
-  postResumeCollectionInheritPermission,
-  postChangeCollectionOwner
-} from '@/web/core/dataset/api/collaborator';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
-import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -82,8 +71,6 @@ const CollectionCard = () => {
   const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
     collectionId: string;
   }>();
-
-  const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionsListItemType>();
 
   // 格式化数据量的函数
   const formatDataAmount = (collection: any, isStructureDocument: boolean) => {
@@ -504,21 +491,7 @@ const CollectionCard = () => {
                                               })
                                           })
                                       }
-                                    ]),
-                                ...(collection.type === DatasetCollectionTypeEnum.folder &&
-                                collection.permission.hasManagePer
-                                  ? [
-                                      {
-                                        label: (
-                                          <Flex alignItems={'center'}>
-                                            <MyIcon name={'key'} w={'0.9rem'} mr={2} />
-                                            {t('common:permission.Permission config')}
-                                          </Flex>
-                                        ),
-                                        onClick: () => setEditPerCollection(collection)
-                                      }
-                                    ]
-                                  : [])
+                                    ])
                               ]
                             },
                             {
@@ -622,48 +595,6 @@ const CollectionCard = () => {
                 title: t('common:move_success')
               });
             }}
-          />
-        )}
-
-        {!!editPerCollection && (
-          <ConfigPerModal
-            name={editPerCollection.name}
-            showEffectScope
-            effectScope={editPerCollection.permissionEffectScope}
-            isInheritPermission={editPerCollection.inheritPermission}
-            resumeInheritPermission={() =>
-              postResumeCollectionInheritPermission(editPerCollection._id).then(() =>
-                getData(pageNum)
-              )
-            }
-            onChangeOwner={(tmbId: string) =>
-              postChangeCollectionOwner({
-                collectionId: editPerCollection._id,
-                ownerId: tmbId
-              }).then(() => getData(pageNum))
-            }
-            managePer={{
-              defaultRole: ReadRoleVal,
-              permission: editPerCollection.permission,
-              onGetCollaboratorList: () => getCollectionCollaboratorList(editPerCollection._id),
-              roleList: DatasetRoleList,
-              onUpdateCollaborators: (props) =>
-                postUpdateCollectionCollaborators({
-                  ...props,
-                  collectionId: editPerCollection._id
-                }),
-              onDelOneCollaborator: async (props) =>
-                deleteCollectionCollaborators({ ...props, collectionId: editPerCollection._id }),
-              refreshDeps: [editPerCollection._id, editPerCollection.inheritPermission]
-            }}
-            onConfirmPermission={({ collaborators, permissionEffectScope }) =>
-              postUpdateCollectionCollaborators({
-                collaborators,
-                collectionId: editPerCollection._id,
-                permissionEffectScope
-              }).then(() => getData(pageNum))
-            }
-            onClose={() => setEditPerCollection(undefined)}
           />
         )}
       </Flex>

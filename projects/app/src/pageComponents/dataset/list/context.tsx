@@ -190,19 +190,22 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       {!!pendingMoveData && (
         <MyModal
           isOpen
-          iconSrc="common/info"
-          w={'30rem'}
+          iconSrc="common/confirm/info"
+          maxW={['90vw', '400px']}
           title={t('common:Move')}
           onClose={() => setPendingMoveData(undefined)}
         >
-          <ModalBody>
+          <ModalBody pt={5} whiteSpace={'pre-wrap'} fontSize={'sm'}>
             <Box>{t('dataset:move.permission_choice_tip')}</Box>
           </ModalBody>
-          <ModalFooter gap={3}>
-            <Button variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
+          <ModalFooter gap={2}>
+            <Button size={'sm'} px={5} variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
               {t('common:Cancel')}
             </Button>
             <Button
+              size={'sm'}
+              px={5}
+              variant={'primaryOutline'}
               onClick={async () => {
                 await onUpdateDataset({
                   id: pendingMoveData.datasetId,
@@ -216,7 +219,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
               {t('dataset:move.inherit_folder_permission')}
             </Button>
             <Button
-              variant={'whiteBase'}
+              size={'sm'}
+              px={5}
+              variant={'primaryOutline'}
               onClick={async () => {
                 await onUpdateDataset({
                   id: pendingMoveData.datasetId,

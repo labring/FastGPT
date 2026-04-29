@@ -31,7 +31,6 @@ export type MemberManagerInputPropsType = {
   onGetCollaboratorList: () => Promise<CollaboratorListType>;
   roleList?: RoleListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
-  onUpdateCollaboratorsDetail?: (details: CollaboratorItemDetailType[]) => void;
   onDelOneCollaborator?: (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
   ) => Promise<any>;
@@ -51,6 +50,7 @@ export type CollaboratorContextType = MemberManagerInputPropsType & {
 export type ChildrenProps = {
   onOpenManageModal: () => void;
   MemberListCard: (props: MemberListCardProps) => JSX.Element;
+  collaboratorList: CollaboratorItemDetailType[];
 };
 
 export const CollaboratorContext = createContext<CollaboratorContextType>({
@@ -84,7 +84,6 @@ const CollaboratorContextProvider = ({
   onGetCollaboratorList,
   roleList,
   onUpdateCollaborators,
-  onUpdateCollaboratorsDetail,
   onDelOneCollaborator,
   children,
   refetchResource,
@@ -204,7 +203,6 @@ const CollaboratorContextProvider = ({
     isFetchingCollaborator,
     roleList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
-    onUpdateCollaboratorsDetail,
     onDelOneCollaborator: onDelOneCollaboratorThen,
     getRoleLabelList,
     defaultRole,
@@ -217,7 +215,8 @@ const CollaboratorContextProvider = ({
     <CollaboratorContext.Provider value={contextValue}>
       {children({
         onOpenManageModal,
-        MemberListCard
+        MemberListCard,
+        collaboratorList
       })}
       {isOpenManageModal && (
         <MemberModal

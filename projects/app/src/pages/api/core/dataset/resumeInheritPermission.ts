@@ -13,16 +13,16 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getDatasetEffectiveClbs } from '@fastgpt/service/support/permission/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-export type ResumeInheritPermissionQuery = {
+export type ResumeInheritPermissionQuery = {};
+export type ResumeInheritPermissionBody = {
   datasetId: string;
 };
-export type ResumeInheritPermissionBody = {};
 
 // resume the dataset's inherit permission.
 async function handler(
   req: ApiRequestProps<ResumeInheritPermissionBody, ResumeInheritPermissionQuery>
 ) {
-  const { datasetId } = req.query;
+  const { datasetId } = req.body;
   const { dataset } = await authDataset({
     datasetId,
     req,
