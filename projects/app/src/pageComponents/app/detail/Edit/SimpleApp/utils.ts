@@ -81,6 +81,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiChatReasoning
       );
+      defaultAppForm.aiSettings.aiChatReasoningEffort = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatReasoningEffort
+      );
       defaultAppForm.aiSettings.aiChatTopP = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.aiChatTopP
@@ -337,6 +341,13 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.aiSettings.aiChatReasoning
+        },
+        {
+          key: NodeInputKeyEnum.aiChatReasoningEffort,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.aiSettings.aiChatReasoningEffort
         },
         {
           key: NodeInputKeyEnum.aiChatTopP,
@@ -688,6 +699,13 @@ export function form2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: formData.aiSettings.aiChatReasoning
+            },
+            {
+              key: NodeInputKeyEnum.aiChatReasoningEffort,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: formData.aiSettings.aiChatReasoningEffort
             }
           ],
           outputs: ToolCallNode.outputs

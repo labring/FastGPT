@@ -70,7 +70,7 @@ const SettingRow = ({
   switchControl?: React.ReactNode;
   children?: React.ReactNode;
 }) => (
-  <Flex w="full" alignItems="center" justifyContent="space-between" minH="36px">
+  <Flex w="full" alignItems="center" justifyContent="space-between" minH="45px">
     <HStack spacing={0.5} fontSize="sm" color="myGray.900" fontWeight={500}>
       <Box>{label}</Box>
       {tip && <QuestionTip label={tip} />}
@@ -272,6 +272,7 @@ const AIChatSettingsModal = ({
                   max={30}
                   step={1}
                   value={getValues('maxHistories') ?? 6}
+                  inputVariant={'whiteOutline'}
                   onChange={(e) => {
                     setValue('maxHistories', e);
                     setRefresh(!refresh);
@@ -296,6 +297,7 @@ const AIChatSettingsModal = ({
                   min={0}
                   max={tokenLimit}
                   step={200}
+                  inputVariant={'whiteOutline'}
                   isDisabled={maxToken === undefined}
                   value={maxToken}
                   onChange={(val) => {
@@ -324,6 +326,7 @@ const AIChatSettingsModal = ({
                   max={10}
                   step={1}
                   value={temperature}
+                  inputVariant={'whiteOutline'}
                   isDisabled={temperature === undefined}
                   onChange={(e) => {
                     setValue(NodeInputKeyEnum.aiChatTemperature, e);
@@ -351,6 +354,7 @@ const AIChatSettingsModal = ({
                   max={1}
                   step={0.1}
                   value={topP}
+                  inputVariant={'whiteOutline'}
                   isDisabled={topP === undefined}
                   onChange={(e) => {
                     setValue(NodeInputKeyEnum.aiChatTopP, e);
