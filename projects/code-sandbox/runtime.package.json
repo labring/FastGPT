@@ -1,0 +1,16 @@
+{
+  "name": "@fastgpt/code-sandbox-runtime",
+  "version": "5.0.0",
+  "description": "Runtime-only deps for code-sandbox worker. Index/worker bundle are self-contained; this package.json exists solely to install whitelisted modules that the worker loads at runtime via safeRequire(name).",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "crypto-js": "4.2.0",
+    "dayjs": "1.11.19",
+    "lodash": "4.17.23",
+    "moment": "2.30.1",
+    "qs": "6.13.1",
+    "uuid": "9.0.1"
+  }
+}

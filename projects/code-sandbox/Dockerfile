@@ -41,13 +41,14 @@ RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /
 # 安装 pnpm（用于 runner 阶段安装 prod 依赖）
 RUN npm install -g pnpm@10.33.2
 
-# 复制编译产物
+# 复制编译产物（index/worker 已 bundle 自身静态依赖，自包含）
 COPY --from=builder /app/projects/code-sandbox/dist /app/code-sandbox
 
-# 复制 package.json + lockfile 以安装 prod 依赖
-# 注意：worker 通过 require(name) 动态加载用户白名单模块（lodash/dayjs/...），
-# 这些不能被打包，必须在 runner 中以 node_modules 形式存在。
-COPY projects/code-sandbox/package.json ./package.json
+# 安装 worker 运行时白名单模块
+# worker 通过 safeRequire(name) 按用户白名单动态加载（lodash/dayjs/moment/uuid/crypto-js/qs），
+# 这是变量调用，bundler 无法静态分析，必须在 runner 中以 node_modules 形式存在。
+# 单独的 runtime.package.json 与主 package.json 解耦，避免 catalog: 引用无法解析。
+COPY projects/code-sandbox/runtime.package.json ./package.json
 
 RUN if [ -z "$proxy" ]; then \
         pnpm install --prod --no-frozen-lockfile --ignore-scripts; \
