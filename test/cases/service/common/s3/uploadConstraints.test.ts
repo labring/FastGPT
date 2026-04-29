@@ -74,7 +74,7 @@ describe('getAllowedExtensionsFromFileSelectConfig', () => {
 
 describe('preset extension lists', () => {
   it('exposes avatar and dataset defaults', () => {
-    expect(avatarAllowedExtensions).toEqual(['.jpg', '.jpeg', '.png']);
+    expect(avatarAllowedExtensions).toEqual(['.jpg', '.jpeg', '.png', '.svg', '.ico']);
     expect(datasetAllowedExtensions).toEqual([
       '.txt',
       '.doc',

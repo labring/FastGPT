@@ -36,7 +36,13 @@ export const parseAllowedExtensions = (value: string) => {
   return normalizeAllowedExtensions(value.split(','));
 };
 
-export const avatarAllowedExtensions = normalizeAllowedExtensions(['.jpg', '.jpeg', '.png']);
+export const avatarAllowedExtensions = normalizeAllowedExtensions([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.svg',
+  '.ico'
+]);
 export const datasetAllowedExtensions = parseAllowedExtensions(documentFileType);
 
 export const getAllowedExtensionsFromFileSelectConfig = (config?: AppFileSelectConfigType) => {
