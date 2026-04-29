@@ -3,12 +3,25 @@ title: 'V4.15.0(进行中)'
 description: 'FastGPT V4.15.0 更新说明'
 ---
 
+## 升级指南
+
+### 环境变量变更
+
+```bash
+# fastgpt-app, fastgpt-pro 可增加文件解析并发线程数
+# 线程最大数量
+PARSE_FILE_WORKERS=10
+# 文件解析单任务超时时间（秒）
+PARSE_FILE_TIMEOUT_SECONDS=300
+```
+
 ## 🚀 新增内容
 
 1. 新增循环节点，弃用旧的批量执行。
 2. 全局变量输入框支持输入 object 类型数据。
 3. 工具调用模式下，如果开启了虚拟机功能，用户对话框上传的文件会直接注入到虚拟机中。
 4. 第三方知识库接入钉钉知识库。
+5. 增加文件解析 worker poll，避免并发太高导致资源耗尽。
 
 ## ⚙️ 优化
 
@@ -27,4 +40,4 @@ description: 'FastGPT V4.15.0 更新说明'
 
 1. 重新调整代码结构，升级 nextjs 最新版，切换至 turbopack 构建，提高构建速度；升级容器默认 node 至 24。
 2. 优化 Agent tool 声明和运行，统一所有 tool 的声明和运行方式。
-3. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率
+3. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率。

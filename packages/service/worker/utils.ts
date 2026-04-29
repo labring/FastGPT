@@ -70,6 +70,7 @@ type WorkerQueueItem = {
   worker: NodeWorker;
   status: 'running' | 'idle';
   taskTime: number;
+  tasksCompleted: number;
   timeoutId?: NodeJS.Timeout;
   resolve: (e: any) => void;
   reject: (e: any) => void;
@@ -86,16 +87,32 @@ type WorkerResponse<T = any> = {
   * 可以设置最大常驻线程（不会被销毁），线程满了后，后续任务会等待执行。
   * 每次执行，会把数据丢到一个空闲线程里运行。主线程需要监听子线程返回的数据，并执行对于的 callback，主要是通过 workerId 进行标记。
   * 务必保证，每个线程只会同时运行 1 个任务，否则 callback 会对应不上。
+  * taskTimeoutMs：单任务超时时间，超时会终止 worker 并从队列摘除（避免 hang 住占池）。
+  * maxTasksPerWorker：worker 完成多少任务后回收（应对依赖库的内存泄漏，例如 readFile 的 mammoth/xlsx/pdf-parse）。
 */
 export class WorkerPool<Props = Record<string, any>, Response = any> {
   name: WorkerNameEnum;
   maxReservedThreads: number;
+  taskTimeoutMs: number;
+  maxTasksPerWorker?: number;
   workerQueue: WorkerQueueItem[] = [];
   waitQueue: WorkerRunTaskType<Props>[] = [];
 
-  constructor({ name, maxReservedThreads }: { name: WorkerNameEnum; maxReservedThreads: number }) {
+  constructor({
+    name,
+    maxReservedThreads,
+    taskTimeoutMs = 60000,
+    maxTasksPerWorker
+  }: {
+    name: WorkerNameEnum;
+    maxReservedThreads: number;
+    taskTimeoutMs?: number;
+    maxTasksPerWorker?: number;
+  }) {
     this.name = name;
     this.maxReservedThreads = maxReservedThreads;
+    this.taskTimeoutMs = taskTimeoutMs;
+    this.maxTasksPerWorker = maxTasksPerWorker;
   }
 
   private runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
@@ -123,7 +140,9 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       runningWorker.reject = reject;
       runningWorker.timeoutId = setTimeout(() => {
         reject('Worker timeout');
-      }, 30000);
+        // 超时即销毁，避免占着 idle 槽位永远不释放
+        this.deleteWorker(runningWorker.id);
+      }, this.taskTimeoutMs);
 
       runningWorker.worker.postMessage({
         id: runningWorker.id,
@@ -165,6 +184,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       worker,
       status: 'running',
       taskTime: Date.now(),
+      tasksCompleted: 0,
       resolve: () => {},
       reject: () => {}
     };
@@ -180,7 +200,14 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
       // Clear timeout timer and update worker status
       clearTimeout(item.timeoutId);
-      item.status = 'idle';
+      item.tasksCompleted += 1;
+
+      // 达到任务上限则回收（应对 worker 进程内库的内存泄漏）
+      if (this.maxTasksPerWorker && item.tasksCompleted >= this.maxTasksPerWorker) {
+        this.deleteWorker(item.id);
+      } else {
+        item.status = 'idle';
+      }
     });
 
     // Worker error, terminate and delete it.（Un catch error)
@@ -212,6 +239,8 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 export const getWorkerController = <Props, Response>(props: {
   name: WorkerNameEnum;
   maxReservedThreads: number;
+  taskTimeoutMs?: number;
+  maxTasksPerWorker?: number;
 }) => {
   if (!global.workerPoll) {
     // @ts-ignore

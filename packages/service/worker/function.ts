@@ -3,9 +3,10 @@ import {
   type SplitProps,
   type SplitResponse
 } from '@fastgpt/global/common/string/textSplitter';
-import { runWorker, WorkerNameEnum } from './utils';
+import { getWorkerController, runWorker, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
+import { env } from '../env';
 
 export const text2Chunks = (props: SplitProps) => {
   // Test env, not run worker
@@ -14,6 +15,23 @@ export const text2Chunks = (props: SplitProps) => {
   }
   return runWorker<SplitResponse>(WorkerNameEnum.text2Chunks, props);
 };
+
+type ReadFileWorkerProps = {
+  extension: string;
+  encoding: string;
+  sharedBuffer: SharedArrayBuffer;
+  bufferSize: number;
+};
+
+const getReadFileWorker = () =>
+  getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
+    name: WorkerNameEnum.readFile,
+    maxReservedThreads: env.PARSE_FILE_WORKERS,
+    // 单任务超时：默认 300s（5min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
+    taskTimeoutMs: env.PARSE_FILE_TIMEOUT_SECONDS * 1000,
+    // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
+    maxTasksPerWorker: 100
+  });
 
 export const readRawContentFromBuffer = (props: {
   extension: string;
@@ -27,10 +45,10 @@ export const readRawContentFromBuffer = (props: {
   const sharedArray = new Uint8Array(sharedBuffer);
   sharedArray.set(props.buffer);
 
-  return runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+  return getReadFileWorker().run({
     extension: props.extension,
     encoding: props.encoding,
-    sharedBuffer: sharedBuffer,
-    bufferSize: bufferSize
+    sharedBuffer,
+    bufferSize
   });
 };
