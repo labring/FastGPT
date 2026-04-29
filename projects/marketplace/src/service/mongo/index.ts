@@ -1,6 +1,7 @@
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 import { getLogger, LogCategories } from '../logger';
+import { env } from '@fastgpt/service/env';
 
 export const MONGO_URL = process.env.MONGODB_URI ?? '';
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
@@ -29,7 +30,7 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.SYNC_INDEX !== '0' && process.env.NODE_ENV !== 'test') {
+  if (env.SYNC_INDEX && process.env.NODE_ENV !== 'test') {
     try {
       model.syncIndexes({ background: true });
     } catch (error: any) {

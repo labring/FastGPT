@@ -26,14 +26,8 @@ export const env = createEnv({
       .string()
       .min(6, 'TOKEN_KEY must be at least 6 characters')
       .default('fastgpt_token_key'),
-    FILE_TOKEN_KEY: z
-      .string()
-      .min(6, 'FILE_TOKEN_KEY must be at least 6 characters')
-      .default('fastgpt_file_token_key'),
-    AES256_SECRET_KEY: z
-      .string()
-      .min(6, 'AES256_SECRET_KEY must be at least 6 characters')
-      .default('fastgpt_aes256_secret_key'),
+    FILE_TOKEN_KEY: z.string().min(6, 'FILE_TOKEN_KEY must be at least 6 characters'),
+    AES256_SECRET_KEY: z.string().min(6, 'AES256_SECRET_KEY must be at least 6 characters'),
     ROOT_KEY: z
       .string()
       .min(6, 'ROOT_KEY must be at least 6 characters')
