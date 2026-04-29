@@ -327,7 +327,14 @@ const EditForm = ({
                 onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
-                    aiSettings: { ...state.aiSettings, ...data, maxHistories }
+                    aiSettings: { ...state.aiSettings, ...data, maxHistories },
+                    dataset: {
+                      ...state.dataset,
+                      ...(state.dataset.retrievalMode === DatasetRetrievalModeEnum.agentic &&
+                      data.model
+                        ? { agenticSearchLLMModel: data.model }
+                        : {})
+                    }
                   }));
                 }}
               />
@@ -567,7 +574,18 @@ const EditForm = ({
                   ...state,
                   dataset: {
                     ...state.dataset,
-                    retrievalMode: mode as DatasetRetrievalModeEnum
+                    retrievalMode: mode as DatasetRetrievalModeEnum,
+                    ...(mode === DatasetRetrievalModeEnum.agentic
+                      ? {
+                          agenticSearchReasoning: state.dataset.agenticSearchReasoning ?? true,
+                          agenticSearchLLMModel:
+                            state.dataset.agenticSearchLLMModel || state.aiSettings.model,
+                          agenticSearchRerankModel:
+                            state.dataset.agenticSearchRerankModel ||
+                            state.dataset.rerankModel ||
+                            defaultModels.rerank?.model
+                        }
+                      : {})
                   }
                 }))
               }
@@ -600,21 +618,41 @@ const EditForm = ({
           </FormItem>
 
           {/* 重排模型 */}
-          <FormItem label={t('app:smart_customer_service_rerank_model')}>
-            <Box flex={1}>
-              <AIModelSelector
-                h={'32px'}
-                value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
-                list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
-                onChange={(model) =>
-                  setAppForm((state) => ({
-                    ...state,
-                    dataset: { ...state.dataset, rerankModel: model }
-                  }))
-                }
-              />
-            </Box>
-          </FormItem>
+          {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic ? (
+            <FormItem label={t('app:smart_customer_service_rerank_model')}>
+              <Box flex={1}>
+                <AIModelSelector
+                  h={'32px'}
+                  value={
+                    appForm.dataset.agenticSearchRerankModel || defaultModels.rerank?.model
+                  }
+                  list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
+                  onChange={(model) =>
+                    setAppForm((state) => ({
+                      ...state,
+                      dataset: { ...state.dataset, agenticSearchRerankModel: model }
+                    }))
+                  }
+                />
+              </Box>
+            </FormItem>
+          ) : (
+            <FormItem label={t('app:smart_customer_service_rerank_model')}>
+              <Box flex={1}>
+                <AIModelSelector
+                  h={'32px'}
+                  value={appForm.dataset.rerankModel || defaultModels.rerank?.model}
+                  list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
+                  onChange={(model) =>
+                    setAppForm((state) => ({
+                      ...state,
+                      dataset: { ...state.dataset, rerankModel: model }
+                    }))
+                  }
+                />
+              </Box>
+            </FormItem>
+          )}
 
           {/* 输出思考过程（仅多轮智能检索时显示） */}
           {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic && (

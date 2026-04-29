@@ -708,6 +708,8 @@
   "retrieval_multiple_ai_model_tip": "用于分析、拆解问题，过滤及判断检索内容是否足够回答问题等。",
   "smart_customer_service_ai_config": "AI 配置",
   "smart_customer_service_ai_model": "AI 模型",
+  "smart_customer_service_ai_model_tip_agentic": "用于分析、拆解问题，过滤及判断检索内容是否足够回答问题等。",
+  "smart_customer_service_ai_model_tip_standard": "用于问题改写、数据库 SQL 语句生成（如有数据库）等。",
   "smart_customer_service_deep_thinking": "深度思考",
   "smart_customer_service_prompt_config": "提示词",
   "smart_customer_service_welcome_text_placeholder": "您好，请问有什么可以帮您？",
