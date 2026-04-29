@@ -136,8 +136,8 @@ const FolderPath = (props: {
                 fontWeight: 'bold'
               }
             : {
-                fontWeight: 'medium',
-                color: 'myGray.500',
+                fontWeight: '500',
+                color: 'myWhite.900',
                 ...clickStyles
               })}
         {...(isLast && !forbidLastClick && clickStyles)}

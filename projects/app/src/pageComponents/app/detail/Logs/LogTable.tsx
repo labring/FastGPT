@@ -3,7 +3,6 @@ import {
   Button,
   Flex,
   HStack,
-  Input,
   Table,
   TableContainer,
   Tbody,
@@ -13,24 +12,12 @@ import {
   Tr,
   Checkbox
 } from '@chakra-ui/react';
-import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import React, { useCallback, useMemo, useState } from 'react';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
-import { useLocalStorageState } from 'ahooks';
-import { getLogKeys } from '@/web/core/app/api/log';
-import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  AppLogKeysEnum,
-  AppLogKeysEnumMap,
-  DefaultAppLogKeys
-} from '@fastgpt/global/core/app/logs/constants';
-import { isEqual } from 'lodash';
-import SyncLogKeysPopover from './SyncLogKeysPopover';
-import LogKeysConfigPopover from './LogKeysConfigPopover';
+import { AppLogKeysEnum, AppLogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { downloadFetch } from '@/web/common/system/utils';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -42,12 +29,9 @@ import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import dynamic from 'next/dynamic';
-import type { HeaderControlProps } from './LogChart';
 import FeedbackTypeFilter from './FeedbackTypeFilter';
 import UserIpTypeFilter, { type UserIpTypeValue } from './UserIpTypeFilter';
 import ErrorCountFilter from './ErrorCountFilter';
-import UserFilter, { type SelectedUserType } from './UserFilter';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
@@ -56,75 +40,30 @@ import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { LogsContext } from './context';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
-const LogTable = ({
-  appId,
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
-  dateRange,
-  setDateRange,
-  showSourceSelector = true,
-  px = [4, 8]
-}: HeaderControlProps) => {
+const LogTable = () => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
-  const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
   const [feedbackType, setFeedbackType] = useState<'all' | 'has_feedback' | 'good' | 'bad'>('all');
   const [errorFilter, setErrorFilter] = useState<'all' | 'has_error'>('all');
 
-  // source
-  const sourceList = useMemo(
-    () =>
-      Object.entries(ChatSourceMap).map(([key, value]) => ({
-        label: t(value.name as any),
-        value: key as ChatSourceEnum
-      })),
-    [t]
-  );
-
-  // user filter
-  const [selectedUsers, setSelectedUsers] = useState<SelectedUserType[]>([]);
-  const [isSelectAllUser, setIsSelectAllUser] = useState(true);
-
-  // chat
-  const [chatSearch, setChatSearch] = useState('');
-
-  // log keys
-  const [logKeys = DefaultAppLogKeys, setLogKeys] = useLocalStorageState<AppLogKeysType[]>(
-    `app_log_keys_${appId}`
-  );
-  const { runAsync: fetchLogKeys, data: teamLogKeys } = useRequest(
-    async () => {
-      return getLogKeys({ appId });
-    },
-    {
-      manual: false,
-      refreshDeps: [appId],
-      onSuccess: (res) => {
-        if (logKeys.length > 0) return;
-        if (res.logKeys.length > 0) {
-          setLogKeys(res.logKeys);
-        } else if (res.logKeys.length === 0) {
-          setLogKeys(DefaultAppLogKeys);
-        }
-      }
-    }
-  );
-  const showSyncPopover = useMemo(() => {
-    const teamLogKeysList = (
-      teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys
-    ).filter((item) => item.enable);
-    const personalLogKeysList = logKeys.filter((item) => item.enable);
-    return !isEqual(teamLogKeysList, personalLogKeysList);
-  }, [teamLogKeys, logKeys]);
+  const dateRange = useContextSelector(LogsContext, (v) => v.dateRange);
+  const chatSources = useContextSelector(LogsContext, (v) => v.chatSources);
+  const isSelectAllSource = useContextSelector(LogsContext, (v) => v.isSelectAllSource);
+  const chatSearch = useContextSelector(LogsContext, (v) => v.chatSearch);
+  const selectedUsers = useContextSelector(LogsContext, (v) => v.selectedUsers);
+  const isSelectAllUser = useContextSelector(LogsContext, (v) => v.isSelectAllUser);
+  const logKeys = useContextSelector(LogsContext, (v) => v.logKeys);
+  const contextSetTotal = useContextSelector(LogsContext, (v) => v.setTotal);
+  const setOnExport = useContextSelector(LogsContext, (v) => v.setOnExport);
 
   const { tmbIds, outLinkUids } = useMemo(() => {
     if (isSelectAllUser || selectedUsers.length === 0) {
@@ -155,9 +94,7 @@ const LogTable = ({
         sourcesMap: Object.fromEntries(
           Object.entries(ChatSourceMap).map(([key, config]) => [
             key,
-            {
-              label: t(config.name as any)
-            }
+            { label: t(config.name as any) }
           ])
         ),
         feedbackType,
@@ -166,6 +103,12 @@ const LogTable = ({
       }
     });
   });
+
+  useEffect(() => {
+    setOnExport(exportLogs);
+    return () => setOnExport(undefined);
+  }, [exportLogs, setOnExport]);
+
   const params = useMemoEnhance(
     () => ({
       appId,
@@ -207,6 +150,10 @@ const LogTable = ({
     params,
     refreshDeps: [params]
   });
+
+  useEffect(() => {
+    contextSetTotal(total);
+  }, [total, contextSetTotal]);
 
   const {
     selectedItems,
@@ -439,126 +386,7 @@ const LogTable = ({
   );
 
   return (
-    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
-      <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
-        {showSourceSelector && (
-          <Flex>
-            <MultipleSelect<ChatSourceEnum>
-              list={sourceList}
-              value={chatSources}
-              onSelect={setChatSources}
-              isSelectAll={isSelectAllSource}
-              setIsSelectAll={setIsSelectAllSource}
-              h={10}
-              w={'200px'}
-              rounded={'8px'}
-              tagStyle={{
-                px: 1,
-                py: 1,
-                borderRadius: 'sm',
-                bg: 'myGray.100',
-                color: 'myGray.900'
-              }}
-              borderColor={'myGray.200'}
-              formLabel={t('app:logs_source')}
-              formLabelFontSize={'sm'}
-            />
-          </Flex>
-        )}
-        <Flex>
-          <DateRangePicker
-            defaultDate={dateRange}
-            onSuccess={(date) => {
-              setDateRange(date);
-            }}
-            bg={'white'}
-            h={10}
-            flex={'0 1 250px'}
-            rounded={'8px'}
-            borderColor={'myGray.200'}
-            formLabel={t('app:logs_date')}
-            _hover={{
-              borderColor: 'primary.300'
-            }}
-          />
-        </Flex>
-        {feConfigs?.isPlus && (
-          <Flex>
-            <UserFilter
-              appId={appId}
-              dateRange={dateRange}
-              sources={isSelectAllSource ? undefined : chatSources}
-              selectedUsers={selectedUsers}
-              setSelectedUsers={setSelectedUsers}
-              isSelectAll={isSelectAllUser}
-              setIsSelectAll={setIsSelectAllUser}
-            />
-          </Flex>
-        )}
-        <Flex
-          flex={'0 1 230px'}
-          h={10}
-          alignItems={'center'}
-          rounded={'8px'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _focusWithin={{
-            borderColor: 'primary.600',
-            boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
-          }}
-          pl={3}
-        >
-          <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
-            {t('common:Search')}
-          </Box>
-          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-          <Input
-            placeholder={t('app:logs_search_placeholder')}
-            value={chatSearch}
-            onChange={(e) => setChatSearch(e.target.value)}
-            fontSize={'sm'}
-            border={'none'}
-            pl={0}
-            _focus={{
-              boxShadow: 'none'
-            }}
-            _placeholder={{
-              fontSize: 'sm'
-            }}
-          />
-        </Flex>
-
-        <Box flex={'1'} />
-        {showSyncPopover && (
-          <SyncLogKeysPopover
-            appId={appId}
-            logKeys={logKeys}
-            setLogKeys={setLogKeys}
-            teamLogKeys={teamLogKeys?.logKeys?.length ? teamLogKeys?.logKeys : DefaultAppLogKeys}
-            fetchLogKeys={fetchLogKeys}
-          />
-        )}
-        <LogKeysConfigPopover
-          logKeysList={logKeys.filter((item) => {
-            if (
-              (item.key === AppLogKeysEnum.SOURCE && !showSourceSelector) ||
-              item.key === AppLogKeysEnum.OPTIMIZED_COUNT
-            ) {
-              return false;
-            }
-            return true;
-          })}
-          setLogKeysList={setLogKeys}
-        />
-
-        <PopoverConfirm
-          Trigger={<Button size={'md'}>{t('common:Export')}</Button>}
-          showCancel
-          content={t('app:logs_export_confirm_tip', { total })}
-          onConfirm={exportLogs}
-        />
-      </Flex>
-
+    <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={'16px'}>
       <TableContainer mt={[2, 4]} flex={'1 0 0'} overflowY={'auto'}>
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>

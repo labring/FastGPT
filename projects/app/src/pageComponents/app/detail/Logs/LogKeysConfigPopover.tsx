@@ -34,9 +34,11 @@ const LogKeysConfigPopover = ({
       trigger="click"
       Trigger={
         <Button
-          size={'md'}
+          h="36px"
           variant={'whiteBase'}
-          leftIcon={!isAssistant ? <MyIcon name={'common/setting'} w={'18px'} /> : undefined}
+          boxShadow={'none'}
+          color="myWhite.1000"
+          rounded={'4px'}
         >
           {t('app:logs_key_config')}
         </Button>

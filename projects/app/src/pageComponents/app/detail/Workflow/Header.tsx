@@ -26,6 +26,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import PublishHistories from '../PublishHistoriesSlider';
 import SaveButton from '../Workflow/components/SaveButton';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   WorkflowSnapshotContext,
   type WorkflowSnapshotsType
@@ -172,7 +173,7 @@ const Header = () => {
           </Box>
 
           {/* app info */}
-          <Box ml={1} className="xxx">
+          <Box ml={1}>
             <AppCard isSaved={isSaved} showSaveStatus={isV2Workflow} />
           </Box>
 
@@ -186,17 +187,19 @@ const Header = () => {
           {currentTab === TabEnum.appEdit && (
             <HStack flexDirection={['column', 'row']} spacing={[2, 3]}>
               {!showHistoryModal && (
-                <IconButton
-                  icon={<MyIcon name={'history'} w={'18px'} />}
-                  aria-label={''}
-                  size={'sm'}
-                  w={'34px'}
-                  h={'34px'}
-                  variant={'whitePrimary'}
-                  onClick={() => {
-                    setShowHistoryModal(true);
-                  }}
-                />
+                <MyTooltip label={t('app:version_history')}>
+                  <IconButton
+                    icon={<MyIcon name={'history'} w={'18px'} />}
+                    aria-label={t('app:version_history')}
+                    size={'sm'}
+                    w={'34px'}
+                    h={'34px'}
+                    variant={'whitePrimary'}
+                    onClick={() => {
+                      setShowHistoryModal(true);
+                    }}
+                  />
+                </MyTooltip>
               )}
               <Button
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}

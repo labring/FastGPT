@@ -552,6 +552,7 @@
   "variable_repeat": "該變量名已被佔用，無法使用",
   "version.Revert success": "復原成功",
   "version_back": "回到初始狀態",
+  "version_history": "歷史版本",
   "version_copy": "副本",
   "version_initial_copy": "副本 - 初始狀態",
   "vision_model_title": "圖片辨識功能",

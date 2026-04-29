@@ -17,6 +17,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
+import { LogsContext } from './context';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAppChartData, getAppTotalData } from '@/web/core/app/api/log';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -131,20 +132,14 @@ const generateCompleteTimeSeries = (
   return [...new Set(dates)];
 };
 
-const LogChart = ({
-  appId,
-  chatSources,
-  setChatSources,
-  isSelectAllSource,
-  setIsSelectAllSource,
-  dateRange,
-  setDateRange,
-  showSourceSelector = true,
-  px = [4, 8]
-}: HeaderControlProps) => {
+const LogChart = () => {
   const { t } = useTranslation();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const { feConfigs } = useSystemStore();
+  const dateRange = useContextSelector(LogsContext, (v) => v.dateRange);
+  const chatSources = useContextSelector(LogsContext, (v) => v.chatSources);
+  const isSelectAllSource = useContextSelector(LogsContext, (v) => v.isSelectAllSource);
 
   const [userTimespan, setUserTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
   const [chatTimespan, setChatTimespan] = useState<AppLogTimespanEnum>(AppLogTimespanEnum.day);
@@ -335,18 +330,7 @@ const LogChart = ({
 
   return (
     <MyBox isLoading={loading} display={'flex'} flexDir={'column'} h={'full'}>
-      <HeaderControl
-        px={px}
-        appId={appId}
-        chatSources={chatSources}
-        setChatSources={setChatSources}
-        isSelectAllSource={isSelectAllSource}
-        setIsSelectAllSource={setIsSelectAllSource}
-        dateRange={dateRange}
-        setDateRange={setDateRange}
-        showSourceSelector={showSourceSelector}
-      />
-      <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={px}>
+      <Flex flexDir={'column'} flex={'1 0 0'} h={0} overflowY={'auto'} px={'16px'}>
         <TotalData appId={appId} />
         <Accordion defaultIndex={[0, 1, 2]} allowMultiple reduceMotion>
           <AccordionItem border={'none'}>
@@ -903,12 +887,12 @@ const TotalData = ({ appId }: { appId: string }) => {
 
   return (
     <>
-      <Flex gap={4} mt={2} flexWrap={'wrap'}>
+      <Flex gap={4} mt={'16px'} flexWrap={'wrap'}>
         {totalDataArray.map((item, index) => (
           <Flex
             key={index}
             bg={'white'}
-            borderRadius={'12px'}
+            borderRadius={'6px'}
             px={8}
             py={6}
             flex={1}

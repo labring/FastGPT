@@ -653,6 +653,7 @@
   "variable_repeat": "该变量名已被占用，无法使用",
   "version.Revert success": "回滚成功",
   "version_back": "回到初始状态",
+  "version_history": "历史版本",
   "version_copy": "副本",
   "version_initial_copy": "副本-初始状态",
   "view_error": "查看错误",
