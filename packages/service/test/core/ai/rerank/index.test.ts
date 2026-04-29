@@ -13,9 +13,9 @@ vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
   countPromptTokens: mockCountPromptTokens
 }));
 
-// rerank 现在改用统一 axios(带 SSRF 拦截),mock axios.post 返回 axios 风格的 { data, ... }
+// rerank 走 axiosWithoutSSRF(管理员配置的 url 允许内网),mock 它的 .post 返回 axios 风格的 { data, ... }
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: {
+  axiosWithoutSSRF: {
     post: (...args: any[]) => Promise.resolve(mockAxiosPost(...args)).then((data) => ({ data }))
   }
 }));
