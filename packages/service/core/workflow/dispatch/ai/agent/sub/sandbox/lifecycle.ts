@@ -43,6 +43,7 @@ type CreateAgentSandboxParams = {
   entrypoint?: string; // override default entrypoint for this request
   image?: SandboxImageConfigType; // override default image for this request
   onProgress?: (status: SandboxStatusItemType) => void; // lifecycle progress callback
+  skillsMeta?: DeployedSkillInfo[]; // expected skill metadata from fetchSkillsMetaForPrompt
 };
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -178,7 +179,7 @@ async function deploySkillsToSandbox(
 export async function createAgentSandbox(
   params: CreateAgentSandboxParams
 ): Promise<AgentSandboxContext> {
-  const { skillIds, teamId, tmbId, sessionId, entrypoint, image, onProgress } = params;
+  const { skillIds, teamId, tmbId, sessionId, entrypoint, image, onProgress, skillsMeta } = params;
 
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
@@ -204,22 +205,114 @@ export async function createAgentSandbox(
     //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
     const client = await getSandboxClient({ sandboxId: existingInstance.sandboxId });
 
-    const reusedSkillIds = existingInstance.metadata?.skillIds
-      ? existingInstance.metadata.skillIds.map(String)
-      : skillIds;
-    const { skills, versionMap } = await fetchSkillsWithVersionMap(reusedSkillIds, teamId);
+    // Fetch skills for current skillIds and discover what's deployed
+    const { skills, versionMap } = await fetchSkillsWithVersionMap(skillIds, teamId);
+    const deployedSkills = await discoverSkillsInSandbox(client.provider, defaults.workDirectory);
+
+    // Sync: diff by SKILL.md paths (from ZIP-extracted metadata) vs sandbox reality
+    let needsRediscover = false;
+
+    if (skillsMeta && skillsMeta.length > 0) {
+      const expectedPathMap = new Map(
+        skillsMeta.filter((s) => s.skillMdPath).map((s) => [s.skillMdPath, s])
+      );
+      const deployedPathSet = new Set(deployedSkills.map((s) => s.skillMdPath));
+
+      // Skills to deploy: in expected but not deployed
+      const skillIdsToAdd: string[] = [];
+      for (const [path, meta] of expectedPathMap) {
+        if (!deployedPathSet.has(path)) {
+          skillIdsToAdd.push(meta.id);
+        }
+      }
+
+      if (skillIdsToAdd.length > 0) {
+        onProgress?.({ sandboxId: sessionId, phase: 'deployingSkills' });
+        const { skills: newSkills, versionMap: newVersionMap } = await fetchSkillsWithVersionMap(
+          skillIdsToAdd,
+          teamId
+        );
+        const deployable = newSkills.filter(
+          (s) => newVersionMap.get(String(s._id)) && s.currentStorage
+        );
+        if (deployable.length > 0) {
+          await deploySkillsToSandbox(
+            client.provider,
+            deployable,
+            newVersionMap,
+            defaults.workDirectory,
+            onProgress,
+            sessionId
+          );
+        }
+      }
+
+      // Skills to remove: deployed but not expected
+      const staleDeployed = deployedSkills.filter(
+        (s) => s.directory && !expectedPathMap.has(s.skillMdPath)
+      );
+      for (const deployed of staleDeployed) {
+        try {
+          await client.provider.execute(`rm -rf "${deployed.directory}"`);
+          logger.info('[Agent Sandbox] Removed stale skill directory', {
+            name: deployed.name,
+            directory: deployed.directory
+          });
+        } catch (err) {
+          logger.error('[Agent Sandbox] Failed to remove stale skill directory', {
+            name: deployed.name,
+            error: err
+          });
+        }
+      }
+
+      if (skillIdsToAdd.length > 0 || staleDeployed.length > 0) {
+        needsRediscover = true;
+        await MongoSandboxInstance.updateOne(
+          { sandboxId: existingInstance.sandboxId },
+          { $set: { 'metadata.skillIds': skillIds } }
+        );
+      }
+    } else if (deployedSkills.length > 0) {
+      // No skills configured but sandbox has stale deployed skills — clean up all
+      for (const deployed of deployedSkills) {
+        if (deployed.directory) {
+          try {
+            await client.provider.execute(`rm -rf "${deployed.directory}"`);
+            logger.info('[Agent Sandbox] Removed stale skill directory (empty config)', {
+              name: deployed.name,
+              directory: deployed.directory
+            });
+          } catch (err) {
+            logger.error('[Agent Sandbox] Failed to remove stale skill directory', {
+              name: deployed.name,
+              error: err
+            });
+          }
+        }
+      }
+      needsRediscover = true;
+      await MongoSandboxInstance.updateOne(
+        { sandboxId: existingInstance.sandboxId },
+        { $set: { 'metadata.skillIds': [] } }
+      );
+    }
+
+    // Re-discover after sync (or keep original when no changes)
+    const finalDeployedSkills = needsRediscover
+      ? await discoverSkillsInSandbox(client.provider, defaults.workDirectory)
+      : deployedSkills;
 
     onProgress?.({ sandboxId: sessionId, phase: 'ready', isWarmStart: true });
     const mergedSkills = skills.map((skill) =>
       mergeSkillWithVersion(skill.toJSON(), versionMap.get(String(skill._id)))
     );
-    const deployedSkills = await discoverSkillsInSandbox(client.provider, defaults.workDirectory);
     return {
       sandbox: client.provider,
       providerSandboxId: existingInstance.sandboxId,
       sessionId,
       skills: mergedSkills,
-      deployedSkills,
+      deployedSkills: finalDeployedSkills,
       workDirectory: defaults.workDirectory,
       isReady: true
     };
