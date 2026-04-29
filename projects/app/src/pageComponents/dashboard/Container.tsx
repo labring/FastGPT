@@ -75,8 +75,8 @@ const NavItem = ({
       {!indent && (
         <MyIcon
           name={icon as any}
-          w="16px"
-          h="16px"
+          w={isCollapsedMain ? '20px' : '16px'}
+          h={isCollapsedMain ? '20px' : '16px'}
           color={isActive ? '#156AD9' : '#505F73'}
           flexShrink={0}
         />
@@ -84,7 +84,7 @@ const NavItem = ({
       {isCollapsedMain ? (
         <Text
           mt="4px"
-          fontSize="12px"
+          fontSize="10px"
           fontWeight={isActive ? 600 : 500}
           color={isActive ? '#156AD9' : '#2D3540'}
           _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
@@ -158,14 +158,14 @@ const SubNavGroup = ({
         <>
           <MyIcon
             name={icon as any}
-            w="16px"
-            h="16px"
+            w="20px"
+            h="20px"
             color={isActive ? '#156AD9' : '#505F73'}
             flexShrink={0}
           />
           <Text
             mt="4px"
-            fontSize="12px"
+            fontSize="10px"
             fontWeight={isActive ? 600 : 500}
             color={isActive ? '#156AD9' : '#2D3540'}
             _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
@@ -284,14 +284,14 @@ const SubNavSettings = ({
         <>
           <MyIcon
             name={icon as any}
-            w="16px"
-            h="16px"
+            w="20px"
+            h="20px"
             color={isActive ? '#156AD9' : '#505F73'}
             flexShrink={0}
           />
           <Text
             mt="4px"
-            fontSize="12px"
+            fontSize="10px"
             fontWeight={isActive ? 600 : 500}
             color={isActive ? '#156AD9' : '#2D3540'}
             _groupHover={{ color: isActive ? '#156AD9' : '#2D3540' }}
