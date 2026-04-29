@@ -149,9 +149,8 @@ const ChatContent = (props: ChatPageProps) => {
 
   // show main chat interface
   return (
-    <ChatContextProvider key={appId} params={chatHistoryProviderParams}>
+    <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
-        key={appId}
         showRouteToDatasetDetail={isStandalone !== '1'}
         showRunningStatus={props.showRunningStatus}
         showSkillReferences={props.showSkillReferences}
@@ -160,7 +159,7 @@ const ChatContent = (props: ChatPageProps) => {
         isShowFullText={props.showFullText}
         showWholeResponse={props.showWholeResponse}
       >
-        <ChatRecordContextProvider key={`${appId}:${chatId}`} params={chatRecordProviderParams}>
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
           <Chat />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
