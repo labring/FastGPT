@@ -1111,17 +1111,22 @@ const CollectionCard = () => {
         {!!pendingMoveData && (
           <MyModal
             isOpen
-            iconSrc="common/info"
-            w={'30rem'}
+            iconSrc="common/confirm/info"
+            maxW={['90vw', '400px']}
             title={t('common:Move')}
             onClose={() => setPendingMoveData(undefined)}
           >
-            <ModalBody>{t('dataset:move.permission_choice_tip')}</ModalBody>
-            <ModalFooter gap={3}>
-              <Button variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
+            <ModalBody pt={5} whiteSpace={'pre-wrap'} fontSize={'sm'}>
+              {t('dataset:move.permission_choice_tip')}
+            </ModalBody>
+            <ModalFooter gap={2}>
+              <Button size={'sm'} px={5} variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
                 {t('common:Cancel')}
               </Button>
               <Button
+                size={'sm'}
+                px={5}
+                variant={'primaryOutline'}
                 onClick={async () => {
                   const { collectionId, collectionName, parentId } = pendingMoveData;
                   setPendingMoveData(undefined);
@@ -1151,7 +1156,9 @@ const CollectionCard = () => {
                 {t('dataset:move.inherit_folder_permission')}
               </Button>
               <Button
-                variant={'whiteBase'}
+                size={'sm'}
+                px={5}
+                variant={'primaryOutline'}
                 onClick={async () => {
                   const { collectionId, collectionName, parentId } = pendingMoveData;
                   setPendingMoveData(undefined);
@@ -1187,7 +1194,7 @@ const CollectionCard = () => {
         {!!editPerCollection && (
           <ConfigPerModal
             name={editPerCollection.name}
-            showEffectScope
+            showEffectScope={editPerCollection.type === DatasetCollectionTypeEnum.folder}
             effectScope={editPerCollection.permissionEffectScope}
             isInheritPermission={editPerCollection.inheritPermission}
             hasParent={true}
@@ -1216,13 +1223,16 @@ const CollectionCard = () => {
                 deleteCollectionCollaborators({ ...props, collectionId: editPerCollection._id }),
               refreshDeps: [editPerCollection._id, editPerCollection.inheritPermission]
             }}
-            onConfirmPermission={({ collaborators, permissionEffectScope }) =>
-              postUpdateCollectionCollaborators({
-                collaborators,
-                collectionId: editPerCollection._id,
-                permissionEffectScope
-              }).then(() => getData(pageNum))
-            }
+            {...(editPerCollection.type === DatasetCollectionTypeEnum.folder
+              ? {
+                  onConfirmPermission: ({ collaborators, permissionEffectScope }) =>
+                    postUpdateCollectionCollaborators({
+                      collaborators,
+                      collectionId: editPerCollection._id,
+                      permissionEffectScope
+                    }).then(() => getData(pageNum))
+                }
+              : {})}
             onClose={() => setEditPerCollection(undefined)}
           />
         )}

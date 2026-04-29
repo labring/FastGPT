@@ -100,18 +100,13 @@ function MemberModal({
     CollaboratorContext,
     (v) => v.onUpdateCollaborators
   );
-  const onUpdateCollaboratorsDetail = useContextSelector(
-    CollaboratorContext,
-    (v) => v.onUpdateCollaboratorsDetail
-  );
 
   const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
   const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
 
   const { runAsync: _onConfirm, loading: isUpdating } = useRequest(
-    () => {
-      onUpdateCollaboratorsDetail?.(editCollaborators);
-      return onUpdateCollaborators({
+    () =>
+      onUpdateCollaborators({
         collaborators: editCollaborators.map(
           (clb) =>
             ({
@@ -121,8 +116,7 @@ function MemberModal({
               permission: clb.permission.role
             }) as CollaboratorItemType
         )
-      });
-    },
+      }),
     {
       successToast: t('common:add_success'),
       onSuccess() {
