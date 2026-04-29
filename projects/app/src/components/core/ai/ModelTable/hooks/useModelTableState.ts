@@ -76,13 +76,13 @@ export const useModelTableState = ({
   const [trainModelData, setTrainModelData] = useState<BaseModelTrainDefaultBaseModel | undefined>(
     undefined
   );
-  const [trainDetailModel, setTrainDetailModel] = useState<TrainDetailModel | null>(null);
-  const [baseTrainTaskCountSortOrder, setBaseTrainTaskCountSortOrder] = useState<'asc' | 'desc'>(
-    'desc'
+  const [trainDetailDrawer, setTrainDetailDrawer] = useState<TrainDetailModel | null>(null);
+  const [baseTrainTaskCountSortOrder, setBaseTrainTaskCountSortOrder] = useState<'asc' | 'desc' | undefined>(
+    undefined
   );
   const [customTrainTaskCountSortOrder, setCustomTrainTaskCountSortOrder] = useState<
-    'asc' | 'desc'
-  >('desc');
+    'asc' | 'desc' | undefined
+  >(undefined);
 
   const providerList = useRef<ProviderOption[]>(
     getProviderOptions({ getModelProviders, language, t })
@@ -180,10 +180,16 @@ export const useModelTableState = ({
   });
 
   const toggleBaseTrainTaskCountSort = useCallback(() => {
-    setBaseTrainTaskCountSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setBaseTrainTaskCountSortOrder((prev) => {
+      if (!prev) return 'desc';
+      return prev === 'desc' ? 'asc' : 'desc';
+    });
   }, []);
   const toggleCustomTrainTaskCountSort = useCallback(() => {
-    setCustomTrainTaskCountSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setCustomTrainTaskCountSortOrder((prev) => {
+      if (!prev) return 'desc';
+      return prev === 'desc' ? 'asc' : 'desc';
+    });
   }, []);
 
   const sortedBaseModelList = useMemo(
@@ -195,7 +201,7 @@ export const useModelTableState = ({
     [customModelList, customTrainTaskCountSortOrder]
   );
 
-  const handleOpenTrainModel = useCallback(
+  const handleOpenTrainDrawer = useCallback(
     (type: ModelTypeEnum.embedding | ModelTypeEnum.rerank, model: string) => {
       setTrainModelData({ type, model });
       onOpenTrainModel();
@@ -224,8 +230,8 @@ export const useModelTableState = ({
     selectAllTrigger: baseSelectState.selectAllTrigger,
     trainTaskCountSortOrder: baseTrainTaskCountSortOrder,
     toggleTrainTaskCountSort: toggleBaseTrainTaskCountSort,
-    handleOpenTrainModel,
-    setTrainDetailModel
+    handleOpenTrainDrawer,
+    setTrainDetailDrawer
   };
 
   const customTableSharedProps = {
@@ -241,8 +247,8 @@ export const useModelTableState = ({
     selectAllTrigger: customSelectState.selectAllTrigger,
     trainTaskCountSortOrder: customTrainTaskCountSortOrder,
     toggleTrainTaskCountSort: toggleCustomTrainTaskCountSort,
-    handleOpenTrainModel,
-    setTrainDetailModel
+    handleOpenTrainDrawer,
+    setTrainDetailDrawer
   };
 
   return {
@@ -269,8 +275,8 @@ export const useModelTableState = ({
     onCloseTrainModel,
     trainModelData,
     setTrainModelData,
-    trainDetailModel,
-    setTrainDetailModel,
-    handleOpenTrainModel
+    trainDetailDrawer,
+    setTrainDetailDrawer,
+    handleOpenTrainDrawer
   };
 };

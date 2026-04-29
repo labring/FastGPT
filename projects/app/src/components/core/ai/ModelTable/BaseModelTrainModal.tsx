@@ -483,7 +483,6 @@ const BaseModelTrainModal = ({
               isModelNameManuallyEdited.current = true;
               setModelName(e.target.value);
             }}
-            bg={'myGray.50'}
           />
         </Box>
 

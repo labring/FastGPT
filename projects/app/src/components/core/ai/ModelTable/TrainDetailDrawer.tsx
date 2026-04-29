@@ -1,9 +1,15 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Box,
+  Button,
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerHeader,
+  DrawerOverlay,
   Flex,
   HStack,
-  ModalBody,
   Table,
   Tbody,
   Td,
@@ -12,9 +18,7 @@ import {
   Thead,
   Tr
 } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -23,6 +27,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { EmbeddingTrainTaskStatusEnum } from '@fastgpt/global/core/train/embedding/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type {
   RerankTrainTaskListItem,
@@ -35,6 +40,7 @@ import type {
 import type { EnhancedErrorMessage as RerankEnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import type { EnhancedErrorMessage as EmbeddingEnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
 import TrainExceptionModal from './TrainExceptionModal';
+import TrainStatusFilter, { type TrainStatusFilterOption } from './TrainStatusFilter';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
@@ -42,14 +48,40 @@ import { getEmbeddingTrainTaskList, getRerankTrainTaskList } from '@/web/core/ap
 import type { ModelTabType } from './types';
 import { modelTableTabValues } from './types';
 import {
-  getTrainTaskStatusConfig,
+  getTrainTaskStatusText,
   isFailedTrainTaskStatus,
-  isRunningTrainTaskStatus
+  isRunningTrainTaskStatus,
+  isPendingTrainTaskStatus,
+  isCompletedTrainTaskStatus
 } from './helpers/trainStatus';
 import { useTrainTask } from './hooks/useTrainTask';
 
 type TrainTaskItem = RerankTrainTaskListItem | EmbeddingTrainTaskListItem;
 type TrainTaskErrorMessage = RerankEnhancedErrorMessage | EmbeddingEnhancedErrorMessage;
+type TrainSortField = 'createTime';
+type TrainTaskStatusStyle = {
+  color: string;
+  bg: string;
+};
+const trainTaskStatusStyleMap: Record<string, TrainTaskStatusStyle> = {
+  [EmbeddingTrainTaskStatusEnum.pending]: {
+    color: '#667085',
+    bg: '#F2F4F7'
+  },
+  [EmbeddingTrainTaskStatusEnum.running]: {
+    color: '#3370FF',
+    bg: '#F0F4FF'
+  },
+  [EmbeddingTrainTaskStatusEnum.failed]: {
+    color: '#F04438',
+    bg: '#FEF3F2'
+  },
+  [EmbeddingTrainTaskStatusEnum.completed]: {
+    color: '#039855',
+    bg: '#EDFBF3'
+  }
+};
+
 type DatasetInfo = {
   datasetNameMap: Record<string, string>;
   allDatasetIds: string[];
@@ -68,7 +100,7 @@ type Props = {
   tabType: ModelTabType;
 };
 
-const TrainDetailModal = ({
+const TrainDetailDrawer = ({
   onClose,
   onSuccess,
   modelId,
@@ -77,7 +109,9 @@ const TrainDetailModal = ({
   tabType
 }: Props) => {
   const { t } = useTranslation();
+  const [sortBy, setSortBy] = useState<TrainSortField | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
   const [selectedError, setSelectedError] = useState<{
     taskId: string;
     errorMsg: TrainTaskErrorMessage;
@@ -97,9 +131,10 @@ const TrainDetailModal = ({
       pageSize: 20,
       baseModelId: modelId,
       sortField: 'createTime' as const,
-      sortOrder
+      sortOrder,
+      ...(selectedStatus ? { status: selectedStatus } : {})
     }),
-    [modelId, sortOrder]
+    [modelId, sortOrder, selectedStatus]
   );
 
   const {
@@ -114,7 +149,8 @@ const TrainDetailModal = ({
       >(getRerankTrainTaskList, {
         pageSize: 20,
         params: requestParams as Omit<ListRerankTrainTasksRequest, 'offset' | 'pageSize'>,
-        refreshDeps: [modelId, sortOrder, isRerank]
+        refreshDeps: [modelId, sortOrder, isRerank, selectedStatus],
+        showNoMore: false
       })
     : useScrollPagination<
         ListEmbeddingTrainTasksRequest,
@@ -122,7 +158,8 @@ const TrainDetailModal = ({
       >(getEmbeddingTrainTaskList, {
         pageSize: 20,
         params: requestParams as Omit<ListEmbeddingTrainTasksRequest, 'offset' | 'pageSize'>,
-        refreshDeps: [modelId, sortOrder, isRerank]
+        refreshDeps: [modelId, sortOrder, isRerank, selectedStatus],
+        showNoMore: false
       });
 
   const {
@@ -169,6 +206,15 @@ const TrainDetailModal = ({
   }, [hasRunningTasks, refreshList]);
 
   const actualIsLoading = isLoading && !isPollingRef.current;
+
+  const statusOptions = useMemo<TrainStatusFilterOption[]>(
+    () =>
+      (Object.keys(trainTaskStatusStyleMap)).map((status) => ({
+        key: status,
+        label: getTrainTaskStatusText(status, t)
+      })),
+    [t]
+  );
 
   const { runAsync: loadDatasets } = useRequest(
     async () => {
@@ -223,8 +269,41 @@ const TrainDetailModal = ({
   }, [modelId, loadDatasets]);
 
   const toggleSort = useCallback(() => {
-    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setSortBy((prev) => {
+      if (prev === 'createTime') {
+        setSortOrder((prevOrder) => (prevOrder === 'asc' ? 'desc' : 'asc'));
+        return 'createTime';
+      }
+      setSortOrder('asc');
+      return 'createTime';
+    });
   }, []);
+
+  const renderSortIcon = useCallback(
+    (field: TrainSortField) => {
+      if (sortBy !== field) {
+        return (
+          <MyIcon
+            name={'common/table/sort'}
+            w={'12px'}
+            cursor={'pointer'}
+            color={'myGray.400'}
+            _hover={{ color: 'primary.600' }}
+          />
+        );
+      }
+
+      return (
+        <MyIcon
+          name={sortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'}
+          w={'12px'}
+          cursor={'pointer'}
+          color={'primary.600'}
+        />
+      );
+    },
+    [sortBy, sortOrder]
+  );
 
   const handleCloseErrorModal = useCallback(() => {
     setSelectedError(null);
@@ -296,15 +375,23 @@ const TrainDetailModal = ({
 
   const renderStatus = useCallback(
     (item: TrainTaskItem) => {
-      const config = getTrainTaskStatusConfig(item.status, t);
+      const statusText = getTrainTaskStatusText(item.status, t);
+      const statusStyle = trainTaskStatusStyleMap[item.status];
+      const tagProps = {
+        type: 'fill' as const,
+        h: '22px',
+        fontSize: '10px',
+        lineHeight: '10px',
+        color: statusStyle.color,
+        bg: statusStyle.bg,
+        borderColor: 'transparent'
+      };
 
       if (isFailedTrainTaskStatus(item.status) && item.errorMsg) {
         return (
           <MyTooltip label={t('common:Click_to_expand')}>
             <MyTag
-              colorSchema={config.colorSchema}
-              type="fill"
-              h={'28px'}
+              {...tagProps}
               cursor={'pointer'}
               onClick={(e) => {
                 e.stopPropagation();
@@ -315,8 +402,8 @@ const TrainDetailModal = ({
               }}
             >
               <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
-                {config.label}
-                <MyIcon name={'common/maximize'} w={'11px'} />
+                {statusText}
+                <MyIcon name={'common/maximize'} w={'11px'} color={statusStyle.color} />
               </Flex>
             </MyTag>
           </MyTooltip>
@@ -324,8 +411,8 @@ const TrainDetailModal = ({
       }
 
       return (
-        <MyTag colorSchema={config.colorSchema} type="fill" h={'28px'}>
-          {config.label}
+        <MyTag {...tagProps}>
+          {statusText}
         </MyTag>
       );
     },
@@ -391,11 +478,32 @@ const TrainDetailModal = ({
 
   const renderOperations = useCallback(
     (item: TrainTaskItem) => {
+      const menuButton = (
+        <Button
+          variant={'outline'}
+          size={'xs'}
+          minW={'36px'}
+          h={'28px'}
+          px={0}
+          borderRadius={'8px'}
+          borderColor={'myGray.200'}
+          bg={'white'}
+          _hover={{ bg: 'myGray.50', borderColor: 'myGray.300' }}
+          _active={{ bg: 'myGray.100' }}
+        >
+          <MyIcon name={'more'} w={'16px'} color={'myGray.500'} />
+        </Button>
+      );
+
+      if (isPendingTrainTaskStatus(item.status)) {
+        return null;
+      }
+
       if (isRunningTrainTaskStatus(item.status)) {
         return (
           <MyMenu
             trigger={'click'}
-            Button={<MyIconButton icon={'more'} />}
+            Button={menuButton}
             menuList={[
               {
                 children: [
@@ -422,7 +530,7 @@ const TrainDetailModal = ({
         return (
           <MyMenu
             trigger={'click'}
-            Button={<MyIconButton icon={'more'} />}
+            Button={menuButton}
             menuList={[
               {
                 children: [
@@ -450,13 +558,13 @@ const TrainDetailModal = ({
         );
       }
 
-      if (getTrainTaskStatusConfig(item.status, t).colorSchema === 'green') {
+      if (isCompletedTrainTaskStatus(item.status)) {
         const isDownloading = downloadingTaskIds.has(item._id);
 
         return (
           <MyMenu
             trigger={'click'}
-            Button={<MyIconButton icon={'more'} />}
+            Button={menuButton}
             menuList={[
               {
                 children: [
@@ -501,109 +609,119 @@ const TrainDetailModal = ({
 
   return (
     <>
-      <MyModal
-        isOpen
-        onClose={onClose}
-        title={
-          tabType === modelTableTabValues.base ? (
-            <Text fontWeight={'semibold'}>{modelName}</Text>
-          ) : (
-            <HStack spacing={2}>
-              <Text fontWeight={'semibold'}>{modelName}</Text>
-              <Box
-                fontSize={'xs'}
-                color={'myGray.500'}
-                bg={'myGray.100'}
-                px={2}
-                py={0.5}
-                borderRadius={'sm'}
-                fontWeight={'normal'}
-              >
-                {t('account_model:train_detail_base')}: {baseModelType}
-              </Box>
-            </HStack>
-          )
-        }
-        w={'1000px'}
-        maxW={'1000px'}
-        h={'80vh'}
-        isCentered
-      >
-        <ModalBody flex={1} h={0} overflowY={'auto'} p={0}>
-          <ScrollData isLoading={actualIsLoading}>
-            <Table variant={'simple'}>
-              <Thead bg={'myGray.50'} position={'sticky'} top={0} zIndex={1}>
-                <Tr>
-                  <Th>
-                    <HStack spacing={1}>
-                      <Text>{t('account_model:train_detail_train_time')}</Text>
-                      <MyIcon
-                        name={'core/chat/chevronSelector'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'primary.600' }}
-                        onClick={toggleSort}
+      <Drawer isOpen placement="right" onClose={onClose} size="full">
+        <DrawerOverlay />
+        <DrawerContent maxW={'1000px'}>
+          <DrawerHeader
+            borderBottomWidth={'1px'}
+            borderColor={'myGray.200'}
+            bg={'myGray.50'}
+            py={3}
+            px={5}
+          >
+            <Flex alignItems={'center'} justifyContent={'space-between'}>
+              {tabType === modelTableTabValues.base ? (
+                <Text fontWeight={'semibold'} fontSize={'md'}>
+                  {modelName}
+                </Text>
+              ) : (
+                <HStack spacing={2}>
+                  <Text fontWeight={'semibold'} fontSize={'md'}>
+                    {modelName}
+                  </Text>
+                  <Box
+                    fontSize={'xs'}
+                    color={'myGray.500'}
+                    bg={'myGray.100'}
+                    px={2}
+                    py={0.5}
+                    borderRadius={'sm'}
+                    fontWeight={'normal'}
+                  >
+                    {t('account_model:train_detail_base')}: {baseModelType}
+                  </Box>
+                </HStack>
+              )}
+              <DrawerCloseButton position={'relative'} top={0} right={0} />
+            </Flex>
+          </DrawerHeader>
+          <DrawerBody p={0} overflowY={'auto'}>
+            <ScrollData isLoading={actualIsLoading}>
+              <Table variant={'simple'}>
+                <Thead bg={'myGray.50'} position={'sticky'} top={0} zIndex={1}>
+                  <Tr>
+                    <Th>
+                      <HStack spacing={1} cursor={'pointer'} userSelect={'none'} onClick={toggleSort}>
+                        <Text>{t('account_model:train_detail_train_time')}</Text>
+                        {renderSortIcon('createTime')}
+                      </HStack>
+                    </Th>
+                    <Th>{t('account_model:train_detail_new_model')}</Th>
+                    <Th>{t('account_model:train_detail_trainer')}</Th>
+                    <Th>
+                      <TrainStatusFilter
+                        label={t('account_model:train_detail_status')}
+                        value={selectedStatus}
+                        onChange={setSelectedStatus}
+                        options={statusOptions}
                       />
-                    </HStack>
-                  </Th>
-                  <Th>{t('account_model:train_detail_new_model')}</Th>
-                  <Th>{t('account_model:train_detail_trainer')}</Th>
-                  <Th>{t('account_model:train_detail_status')}</Th>
-                  <Th>{t('account_model:train_data')}</Th>
-                  <Th>
-                    <HStack spacing={1}>
-                      <Text>{t('account_model:train_detail_train_result')}</Text>
-                      <QuestionTip label={resultTipLabel} maxW={'320px'} />
-                    </HStack>
-                  </Th>
-                  <Th>{t('account_model:action')}</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {trainTasks.map((item) => (
-                  <Tr key={item._id} _hover={{ bg: 'myGray.50' }}>
-                    <Td fontSize={'sm'} whiteSpace={'nowrap'}>
-                      <Text color={'myGray.700'}>{formatTime2YMDHMS(item.createTime)}</Text>
-                    </Td>
-                    <Td fontSize={'sm'} maxW={'150px'} w={'150px'}>
-                      <MyTooltip label={item.newModelName}>
-                        <Text
-                          color={'myGray.700'}
-                          overflow={'hidden'}
-                          textOverflow={'ellipsis'}
-                          whiteSpace={'nowrap'}
-                          maxW={'130px'}
-                        >
-                          {item.newModelName || '-'}
-                        </Text>
-                      </MyTooltip>
-                    </Td>
-                    <Td fontSize={'sm'} color={'myGray.700'}>
-                      {item.creatorName || '-'}
-                    </Td>
-                    <Td>{renderStatus(item)}</Td>
-                    <Td fontSize={'sm'} maxW={'150px'} w={'150px'}>
-                      <MyTooltip label={getTrainDatasetDisplay(item)}>
-                        <Text
-                          color={'myGray.700'}
-                          overflow={'hidden'}
-                          textOverflow={'ellipsis'}
-                          whiteSpace={'nowrap'}
-                          maxW={'130px'}
-                        >
-                          {getTrainDatasetDisplay(item)}
-                        </Text>
-                      </MyTooltip>
-                    </Td>
-                    <Td>{renderResult(item)}</Td>
-                    <Td>{renderOperations(item)}</Td>
+                    </Th>
+                    <Th>{t('account_model:train_data')}</Th>
+                    <Th>
+                      <HStack spacing={1}>
+                        <Text>{t('account_model:train_detail_train_result')}</Text>
+                        <QuestionTip label={resultTipLabel} maxW={'320px'} />
+                      </HStack>
+                    </Th>
+                    <Th>{t('account_model:action')}</Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </ScrollData>
-        </ModalBody>
-      </MyModal>
+                </Thead>
+                <Tbody>
+                  {trainTasks.map((item) => (
+                    <Tr key={item._id} _hover={{ bg: 'myGray.50' }}>
+                      <Td fontSize={'sm'} whiteSpace={'nowrap'}>
+                        <Text color={'myGray.700'}>{formatTime2YMDHMS(item.createTime)}</Text>
+                      </Td>
+                      <Td fontSize={'sm'} maxW={'180px'} w={'180px'}>
+                        <MyTooltip label={item.newModelName}>
+                          <Text
+                            color={'myGray.700'}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                            whiteSpace={'nowrap'}
+                            maxW={'160px'}
+                          >
+                            {item.newModelName || '-'}
+                          </Text>
+                        </MyTooltip>
+                      </Td>
+                      <Td fontSize={'sm'} color={'myGray.700'}>
+                        {item.creatorName || '-'}
+                      </Td>
+                      <Td>{renderStatus(item)}</Td>
+                      <Td fontSize={'sm'} maxW={'150px'} w={'150px'}>
+                        <MyTooltip label={getTrainDatasetDisplay(item)}>
+                          <Text
+                            color={'myGray.700'}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                            whiteSpace={'nowrap'}
+                            maxW={'130px'}
+                          >
+                            {getTrainDatasetDisplay(item)}
+                          </Text>
+                        </MyTooltip>
+                      </Td>
+                      <Td>{renderResult(item)}</Td>
+                      <Td>{renderOperations(item)}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </ScrollData>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
 
       <TrainExceptionModal
         error={
@@ -624,4 +742,4 @@ const TrainDetailModal = ({
   );
 };
 
-export default TrainDetailModal;
+export default TrainDetailDrawer;

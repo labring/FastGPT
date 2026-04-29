@@ -3,10 +3,18 @@ import { RerankTrainTaskStatusEnum } from '@fastgpt/global/core/train/rerank/con
 import type { I18nT, TrainTaskItem } from '../types';
 
 export const runningTrainTaskStatusSet = new Set<string>([
-  EmbeddingTrainTaskStatusEnum.pending,
   EmbeddingTrainTaskStatusEnum.running,
-  RerankTrainTaskStatusEnum.pending,
   RerankTrainTaskStatusEnum.running
+]);
+
+export const pendingTrainTaskStatusSet = new Set<string>([
+  EmbeddingTrainTaskStatusEnum.pending,
+  RerankTrainTaskStatusEnum.pending
+]);
+
+export const completedTrainTaskStatus = new Set<string>([
+  RerankTrainTaskStatusEnum.completed,
+  EmbeddingTrainTaskStatusEnum.completed
 ]);
 
 export const errorTrainTaskStatusSet = new Set<string>([
@@ -22,44 +30,30 @@ export const hasErrorTrainTask = (trainTaskList?: TrainTaskItem[]) =>
 
 export const isRunningTrainTaskStatus = (status: string) => runningTrainTaskStatusSet.has(status);
 
+export const isPendingTrainTaskStatus = (status: string) => pendingTrainTaskStatusSet.has(status);
+
+export const isCompletedTrainTaskStatus = (status: string) => completedTrainTaskStatus.has(status);
+
 export const isFailedTrainTaskStatus = (status: string) => errorTrainTaskStatusSet.has(status);
 
-export const getTrainTaskStatusConfig = (status: string, t: I18nT) => {
+export const getTrainTaskStatusText = (status: string, t: I18nT) => {
   switch (status) {
     case RerankTrainTaskStatusEnum.pending:
     case EmbeddingTrainTaskStatusEnum.pending:
-      return {
-        label: t('app:learning_status_pending'),
-        colorSchema: 'gray' as const
-      };
+      return t('app:learning_status_pending');
     case RerankTrainTaskStatusEnum.running:
     case EmbeddingTrainTaskStatusEnum.running:
-      return {
-        label: t('account_model:train_status_training'),
-        colorSchema: 'blue' as const
-      };
+      return t('account_model:train_status_training');
     case RerankTrainTaskStatusEnum.completed:
     case EmbeddingTrainTaskStatusEnum.completed:
-      return {
-        label: t('account_model:train_status_completed'),
-        colorSchema: 'green' as const
-      };
+      return t('account_model:train_status_completed');
     case RerankTrainTaskStatusEnum.failed:
     case EmbeddingTrainTaskStatusEnum.failed:
-      return {
-        label: t('account_model:train_status_error'),
-        colorSchema: 'red' as const
-      };
+      return t('account_model:train_status_error');
     case RerankTrainTaskStatusEnum.cancelled:
     case EmbeddingTrainTaskStatusEnum.cancelled:
-      return {
-        label: t('app:learning_status_cancelled'),
-        colorSchema: 'gray' as const
-      };
+      return t('app:learning_status_cancelled');
     default:
-      return {
-        label: t('app:learning_status_pending'),
-        colorSchema: 'gray' as const
-      };
+      return t('app:learning_status_pending');
   }
 };

@@ -248,10 +248,15 @@ export const getFilteredModelList = ({
 
 export const getSortedModelList = (
   modelList: ModelRow[],
-  trainTaskCountSortOrder: 'asc' | 'desc'
-) =>
-  [...modelList].sort((a, b) => {
+  trainTaskCountSortOrder?: 'asc' | 'desc'
+) => {
+  if (!trainTaskCountSortOrder) {
+    return modelList;
+  }
+
+  return [...modelList].sort((a, b) => {
     const countA = a.trainTaskList?.length || 0;
     const countB = b.trainTaskList?.length || 0;
     return trainTaskCountSortOrder === 'asc' ? countA - countB : countB - countA;
   });
+};

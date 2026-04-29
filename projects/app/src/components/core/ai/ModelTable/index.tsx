@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic';
 import type { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import BaseModelTrainModal from './BaseModelTrainModal';
-import TrainDetailModal from './TrainDetailModal';
+import TrainDetailDrawer from './TrainDetailDrawer';
 import type { FilterState, ModelRow, ModelTabType, ProviderOption, TeamPermission } from './types';
 import { modelTableTabValues } from './types';
 import ModelFilterBar from './ModelFilterBar';
@@ -30,15 +30,15 @@ type TableSharedProps = {
   isSelected: (item: ModelRow) => boolean;
   isSelecteAll: boolean;
   selectAllTrigger: () => void;
-  trainTaskCountSortOrder: 'asc' | 'desc';
+  trainTaskCountSortOrder?: 'asc' | 'desc';
   toggleTrainTaskCountSort: () => void;
-  handleOpenTrainModel: (
+  handleOpenTrainDrawer: (
     type:
       | import('@fastgpt/global/core/ai/model').ModelTypeEnum.embedding
       | import('@fastgpt/global/core/ai/model').ModelTypeEnum.rerank,
     model: string
   ) => void;
-  setTrainDetailModel: React.Dispatch<
+  setTrainDetailDrawer: React.Dispatch<
     React.SetStateAction<import('./types').TrainDetailModel | null>
   >;
 };
@@ -103,11 +103,11 @@ const ModelTable = ({
     isOpenTrainModel,
     openTrainModel,
     onCloseTrainModel,
-    handleOpenTrainModel,
+    handleOpenTrainDrawer,
     trainModelData,
     setTrainModelData,
-    trainDetailModel,
-    setTrainDetailModel
+    trainDetailDrawer,
+    setTrainDetailDrawer
   } = useModelTableState({
     t,
     language: i18n.language,
@@ -191,13 +191,13 @@ const ModelTable = ({
           defaultBaseModel={trainModelData}
         />
       )}
-      {trainDetailModel && (
-        <TrainDetailModal
-          onClose={() => setTrainDetailModel(null)}
+      {trainDetailDrawer && (
+        <TrainDetailDrawer
+          onClose={() => setTrainDetailDrawer(null)}
           onSuccess={() => clientInitData()}
-          modelName={trainDetailModel.name}
-          modelId={trainDetailModel.model}
-          baseModelType={trainDetailModel.baseModelType}
+          modelName={trainDetailDrawer.name}
+          modelId={trainDetailDrawer.model}
+          baseModelType={trainDetailDrawer.baseModelType}
           tabType={activeTab}
         />
       )}

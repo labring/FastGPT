@@ -58,6 +58,7 @@ const OneRowSelector = ({
   onChange,
   disableTip,
   noOfLines,
+  placeholder,
   cacheModel = true,
   ...props
 }: Props) => {
@@ -178,7 +179,9 @@ const OneRowSelector = ({
               </Flex>
             ) : undefined
           }
-          placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
+          placeholder={
+            loading ? t('common:model_loading') : placeholder ?? t('common:not_model_config')
+          }
           h={'40px'}
           whiteSpace={'nowrap'}
           {...props}
@@ -303,10 +306,10 @@ const MultipleRowSelector = ({
 
   const SelectedLabel = useMemo(() => {
     if (loading) return <>{t('common:model_loading')}</>;
-    if (!props.value) return <>{t('common:not_model_config')}</>;
+    if (!props.value) return <>{placeholder ?? t('common:not_model_config')}</>;
     const modelData = modelList.find((model) => model?.model === props.value);
 
-    if (!modelData) return <>{t('common:not_model_config')}</>;
+    if (!modelData) return <>{placeholder ?? t('common:not_model_config')}</>;
 
     setValue([modelData.provider, props.value]);
 
