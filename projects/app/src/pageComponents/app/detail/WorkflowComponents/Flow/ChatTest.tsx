@@ -33,9 +33,10 @@ type Props = {
   edges?: StoreEdgeItemType[];
   onClose: () => void;
   chatId: string;
+  debuggerMode?: boolean;
 };
 
-const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) => {
+const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId, debuggerMode }: Props) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const isPlugin = appDetail.type === AppTypeEnum.workflowTool;
@@ -56,7 +57,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
     nodes,
     edges,
     chatConfig: chatConfigForDebug,
-    isReady: isOpen
+    isReady: isOpen,
+    debuggerMode
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);

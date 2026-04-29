@@ -25,7 +25,7 @@ export const delChatRecordById = (data: DeleteChatRecordBodyType) =>
   DELETE(`/core/chat/record/delete`, data);
 
 export const getQuoteDataList = (data: GetQuoteBodyType) =>
-  POST<GetQuoteResponseType>(`/core/chat/record/getQuote`, data);
+  POST<GetQuoteResponseType>(`core/chat/quote/getQuote`, data);
 
 export const getCollectionQuote = (data: GetCollectionQuoteBodyType) =>
   POST<GetCollectionQuoteResType>(`/core/chat/record/getCollectionQuote`, data);

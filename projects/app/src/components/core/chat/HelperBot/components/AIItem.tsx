@@ -189,8 +189,7 @@ const AIItem = ({
           borderRadius={'sm'}
           display="inline-block"
           maxW={['calc(80% - 25px)', 'calc(80% - 40px)']}
-          color={'myGray.900'}
-          bg={'myGray.100'}
+          color={'myWhite.1000'}
         >
           {chat.value.length === 1 &&
           (!('text' in chat.value[0]) || !chat.value[0].text?.content) ? (
