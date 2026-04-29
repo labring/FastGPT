@@ -1,6 +1,6 @@
 # FastGPT Code Sandbox
 
-基于 Bun + Hono 的代码执行沙盒，支持 JS 和 Python。采用进程池架构，预热长驻 worker 进程，通过 stdin/stdout JSON 协议通信，消除每次请求的进程启动开销。
+基于 Node + Hono 的代码执行沙盒，支持 JS 和 Python。采用进程池架构，预热长驻 worker 进程，通过 stdin/stdout JSON 协议通信，消除每次请求的进程启动开销。
 
 ## 架构
 
@@ -8,14 +8,14 @@
 HTTP Request → Hono Server → Process Pool → Worker (long-lived) → Result
                                 ↓
                          ┌──────────────┐
-                         │  JS Workers   │  bun run worker.ts (×N)
+                         │  JS Workers   │  node worker.js (×N)
                          │  Py Workers   │  python3 worker.py (×N)
                          └──────────────┘
                          stdin: JSON task → stdout: JSON result
 ```
 
 - **进程池**：启动时预热 N 个 worker 进程（默认 20），请求到达时直接分配空闲 worker，执行完归还池中
-- **JS 执行**：Bun worker 进程 + 安全 shim（禁用 Bun API、冻结 Function 构造器、require 白名单）
+- **JS 执行**：Node worker 进程 + 安全 shim（冻结 Function 构造器、危险全局对象遮蔽、require 白名单）
 - **Python 执行**：python3 worker 进程 + `__import__` 拦截 + resource 资源限制
 - **网络请求**：统一通过 `SystemHelper.httpRequest()` / `system_helper.http_request()` 收口，内置 SSRF 防护
 - **并发控制**：请求数超过池大小时自动排队，worker 崩溃自动重启补充
@@ -40,14 +40,17 @@ HTTP Request → Hono Server → Process Pool → Worker (long-lived) → Result
 ## 快速开始
 
 ```bash
-# 安装依赖
-bun install
+# 安装依赖（在 monorepo 根目录执行）
+pnpm install
 
-# 开发运行
-bun run src/index.ts
+# 开发运行（带 watch）
+cd projects/code-sandbox && pnpm dev
 
 # 运行测试
-bun run test
+cd projects/code-sandbox && pnpm test
+
+# 构建
+cd projects/code-sandbox && pnpm build && pnpm start
 ```
 
 ## Docker
@@ -194,7 +197,7 @@ test/
 
 ```bash
 cd projects/code-sandbox
-bun add <package-name>
+pnpm add <package-name>
 ```
 
 2. **加入白名单**（环境变量 `SANDBOX_JS_ALLOWED_MODULES`）：
@@ -246,7 +249,7 @@ your-new-package
 ### JS
 
 - `require()` 白名单，非白名单模块直接拒绝
-- `Bun.spawn`、`Bun.write`、`Bun.serve` 等 API 禁用
+- 危险全局对象（`process`、`globalThis`、`global`、`Bun` 等）通过函数参数遮蔽，用户代码无法访问
 - `Function` 构造器冻结，阻止 `constructor.constructor` 逃逸
 - `process.env` 清理，仅保留必要变量
 - `fetch`、`XMLHttpRequest`、`WebSocket` 禁用
@@ -283,13 +286,13 @@ your-new-package
 
 ```bash
 # 全部测试（332 cases）
-bun run test
+pnpm test
 
 # 单个文件
-bunx vitest run test/security/security.test.ts
+pnpm exec vitest run test/unit/security.test.ts
 
 # 带详细输出
-bunx vitest run --reporter=verbose
+pnpm exec vitest run --reporter=verbose
 
 # 压测（需先启动服务）
 bash test/benchmark/bench-sandbox.sh

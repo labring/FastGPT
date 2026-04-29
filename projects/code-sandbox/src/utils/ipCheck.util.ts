@@ -107,6 +107,23 @@ const isInternalIPAddress = (addr: ipaddr.IPv4 | ipaddr.IPv6): boolean => {
 };
 
 /**
+ * 对已解析出的 IP 复检（防 DNS rebinding TOCTOU）。
+ * 调用方先用 isInternalAddress(url) 通过预检，再用 dns.lookup 拿到将要连接的 IP，
+ * 在真正建连前用此函数二次校验，确保两次解析的 IP 都在策略允许范围内。
+ */
+export const isInternalResolvedIP = (rawIP: string): boolean => {
+  if (isDevEnv) return false;
+  if (!ipaddr.isValid(rawIP)) return false;
+  const addr = ipaddr.process(rawIP);
+  if (isMetadataIPAddress(addr)) return true;
+  const range = addr.range();
+  if (range === 'loopback' || range === 'unspecified') return true;
+  const checkFullInternal = process.env.CHECK_INTERNAL_IP === 'true';
+  if (checkFullInternal && isInternalIPAddress(addr)) return true;
+  return false;
+};
+
+/**
  * 元数据端点：
  *  - 169.254.0.0/16 link-local 段全部视为元数据
  *  - 显式列表里的 IP（阿里云 100.100.100.200、AWS IPv6 fd00:ec2::254）

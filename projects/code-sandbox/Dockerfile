@@ -1,11 +1,11 @@
 # --------- Build Stage -----------
-FROM oven/bun:1-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 ARG proxy
 
 # 安装 pnpm
-RUN apk add --no-cache nodejs npm && npm install -g pnpm@10.33.2
+RUN npm install -g pnpm@10.33.2
 
 # 复制 workspace 配置和依赖包
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -24,22 +24,37 @@ RUN if [ -z "$proxy" ]; then \
         pnpm install --frozen-lockfile --ignore-scripts --registry=https://registry.npmmirror.com; \
     fi
 
-# 先构建 SDK workspace 包，确保 dist 入口可被 bun build 解析
+# 先构建 SDK workspace 包，确保 dist 入口可被打包工具解析
 RUN pnpm --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage build
 
 # 编译主入口文件
 RUN cd /app/projects/code-sandbox && pnpm build
 
 # ===== Runner Stage =====
-FROM oven/bun:1-alpine AS runner
-WORKDIR /app
+FROM node:24-alpine AS runner
+WORKDIR /app/code-sandbox
 
 ARG proxy
 
-# 复制编译产物（包含 worker 文件，不需要 node_modules）
+RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
+
+# 安装 pnpm（用于 runner 阶段安装 prod 依赖）
+RUN npm install -g pnpm@10.33.2
+
+# 复制编译产物
 COPY --from=builder /app/projects/code-sandbox/dist /app/code-sandbox
 
-RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
+# 复制 package.json + lockfile 以安装 prod 依赖
+# 注意：worker 通过 require(name) 动态加载用户白名单模块（lodash/dayjs/...），
+# 这些不能被打包，必须在 runner 中以 node_modules 形式存在。
+COPY projects/code-sandbox/package.json ./package.json
+
+RUN if [ -z "$proxy" ]; then \
+        pnpm install --prod --no-frozen-lockfile --ignore-scripts; \
+    else \
+        pnpm install --prod --no-frozen-lockfile --ignore-scripts --registry=https://registry.npmmirror.com; \
+    fi && \
+    pnpm store prune || true
 
 # 安装 Python、依赖包及工具
 RUN apk add --no-cache python3 py3-pip libffi util-linux && \
@@ -60,4 +75,4 @@ ENV SANDBOX_PORT=3000
 
 EXPOSE 3000
 
-CMD ["bun", "/app/code-sandbox/index.js"]
+CMD ["node", "/app/code-sandbox/index.js"]

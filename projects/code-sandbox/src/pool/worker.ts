@@ -10,13 +10,17 @@
  *   每行输出：{"success":true,"data":{...}} 或 {"success":false,"message":"..."}
  */
 import { createInterface } from 'readline';
+import { createRequire } from 'module';
+import { isIP } from 'net';
 import * as crypto from 'crypto';
 import * as http from 'http';
 import * as https from 'https';
 import * as dns from 'dns';
 import { parse } from 'acorn';
 import { simple as walk } from 'acorn-walk';
-import { isInternalAddress } from '../utils/ipCheck.util';
+import { isInternalAddress, isInternalResolvedIP } from '../utils/ipCheck.util';
+
+const require = createRequire(import.meta.url);
 const _OriginalFunction = Function;
 const _JSONParse = JSON.parse.bind(JSON);
 const _JSONStringify = JSON.stringify.bind(JSON);
@@ -343,33 +347,33 @@ lockGlobal('WebSocket', undefined);
 const _workerStdout = process.stdout;
 const _workerStdin = process.stdin;
 
-if (typeof process !== 'undefined') {
-  // 删除危险方法
-  const dangerousMethods = [
-    'binding',
-    'dlopen',
-    '_linkedBinding',
-    'kill',
-    'chdir',
-    'exit',
-    'emitWarning',
-    'send',
-    'disconnect',
-    '_debugProcess',
-    '_debugEnd',
-    '_startProfilerIdleNotifier',
-    '_stopProfilerIdleNotifier',
-    'reallyExit',
-    'abort',
-    'umask',
-    'setuid',
-    'setgid',
-    'seteuid',
-    'setegid',
-    'setgroups',
-    'initgroups'
-  ];
-  for (const method of dangerousMethods) {
+// 启动期立即删除：与 worker 自身/白名单模块无依赖关系
+const earlyDangerousMethods = [
+  'binding',
+  'dlopen',
+  '_linkedBinding',
+  'chdir',
+  'send',
+  'disconnect',
+  '_debugProcess',
+  '_debugEnd',
+  '_startProfilerIdleNotifier',
+  '_stopProfilerIdleNotifier',
+  'reallyExit',
+  'umask',
+  'setuid',
+  'setgid',
+  'seteuid',
+  'setegid',
+  'setgroups',
+  'initgroups'
+];
+
+// 延迟删除：会被 https/dns/tsx 等内部使用，要等 hardenRuntime 预加载完白名单后再删
+const lateDangerousMethods = ['kill', 'exit', 'emitWarning', 'abort'];
+
+function deleteProcessMethods(methods: readonly string[]): void {
+  for (const method of methods) {
     try {
       Object.defineProperty(process, method, {
         value: undefined,
@@ -378,6 +382,10 @@ if (typeof process !== 'undefined') {
       });
     } catch {}
   }
+}
+
+if (typeof process !== 'undefined') {
+  deleteProcessMethods(earlyDangerousMethods);
 
   // 清理 env 敏感变量并冻结
   const sensitivePatterns = [
@@ -397,7 +405,14 @@ if (typeof process !== 'undefined') {
       delete process.env[key];
     }
   }
-  _ObjectFreeze(process.env);
+  // Node 的 process.env 是 host-protected 的 Proxy，不能直接 freeze。
+  // 用 try/catch 兜底：Bun 下能 freeze（保留原行为），Node 下静默跳过
+  // （后续 process.env 已通过函数参数遮蔽，用户代码本就拿不到）
+  try {
+    _ObjectFreeze(process.env);
+  } catch {
+    /* ignore: Node process.env not freezable */
+  }
 }
 
 // ===== 网络安全 =====
@@ -459,6 +474,10 @@ const SystemHelper = {
       throw new Error('Request to private network not allowed');
     }
     const ips = await dnsResolve(parsed.hostname);
+    // 防 DNS rebinding TOCTOU：对真正用于建连的 IP 再次校验
+    if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
+      throw new Error('Request to private network not allowed');
+    }
     const method = (opts.method || 'GET').toUpperCase();
     const headers = opts.headers || {};
     const body =
@@ -492,7 +511,8 @@ const SystemHelper = {
           hostname: resolvedIP,
           port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
           path: parsed.pathname + parsed.search,
-          servername: parsed.hostname
+          // RFC 6066 禁止把 IP 当作 SNI；hostname 是 IP 时省略 servername
+          ...(isIP(parsed.hostname) ? {} : { servername: parsed.hostname })
         },
         (res: any) => {
           const chunks: Buffer[] = [];
@@ -541,6 +561,10 @@ function hardenRuntime(): void {
       origRequire(moduleName);
     } catch {}
   }
+
+  // 白名单模块已加载完毕，此时再删除 kill/exit/emitWarning/abort：
+  // 这些方法仅在模块初始化时被 https/dns/tsx 等使用，预加载后不再需要。
+  deleteProcessMethods(lateDangerousMethods);
 
   for (const intrinsic of hardenedIntrinsics) {
     if (intrinsic) _ObjectFreeze(intrinsic);

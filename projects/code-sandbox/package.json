@@ -1,13 +1,14 @@
 {
   "name": "@fastgpt/code-sandbox",
   "version": "5.0.0",
-  "description": "FastGPT Code Sandbox - Bun + Hono + 统一子进程模型",
+  "description": "FastGPT Code Sandbox - Node + Hono + 统一子进程模型",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
     "build": "sh build.sh",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -17,8 +18,8 @@
     "pnpm": "10.x"
   },
   "dependencies": {
-    "@fastgpt-sdk/logger": "workspace:*",
-    "@fastgpt/service": "workspace:*",
+    "@fastgpt-sdk/logger": "^0.1.2",
+    "@hono/node-server": "^1.13.7",
     "ipaddr.js": "^2.3.0",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
@@ -35,10 +36,11 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.4",
     "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
     "vitest": "catalog:",
-    "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:"
+    "@vitest/coverage-v8": "catalog:"
   }
 }

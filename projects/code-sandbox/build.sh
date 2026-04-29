@@ -6,23 +6,30 @@ echo "Building sandbox..."
 # 清理旧的构建产物
 rm -rf dist
 
-# 编译主入口文件，打包所有依赖
-echo "Building main entry..."
-bun build src/index.ts --outdir dist --target bun --minify --packages=bundle
+# 一次性编译所有入口（独立 bundle，子进程会单独 spawn worker）
+echo "Building entries..."
+pnpm exec tsdown src/index.ts src/pool/worker.ts \
+  --format esm \
+  --platform node \
+  --target node20 \
+  --minify \
+  --out-dir dist
 
-# 编译 JS worker，打包所有依赖
-echo "Building JS worker..."
-bun build src/pool/worker.ts --outdir dist --target bun --minify --packages=bundle
-mv dist/worker.js dist/worker.ts
+# tsdown 保留源码目录结构：worker.ts 在 src/pool/ 下，输出在 dist/pool/
+# 扁平化到 dist/，并改后缀为 .js（package.json 已声明 type:module）
+mv dist/index.mjs dist/index.js
+mv dist/pool/worker.mjs dist/worker.js
+rmdir dist/pool
 
-# 复制 Python worker（Python 不需要编译）
+# 复制 Python worker（不需要编译）
 echo "Copying Python worker..."
 cp src/pool/worker.py dist/worker.py
 
 echo ""
 echo "Build complete!"
 echo "  - index.js: $(du -h dist/index.js | cut -f1)"
-echo "  - worker.ts: $(du -h dist/worker.ts | cut -f1)"
+echo "  - worker.js: $(du -h dist/worker.js | cut -f1)"
 echo "  - worker.py: $(du -h dist/worker.py | cut -f1)"
 echo ""
-echo "✅ dist 目录现在是完全独立的，不需要 node_modules"
+echo "ℹ️  注意：worker 通过 require(name) 动态加载用户白名单模块（lodash/dayjs/...），"
+echo "   这些依赖不会被打包，运行时仍需要 node_modules 存在。"
