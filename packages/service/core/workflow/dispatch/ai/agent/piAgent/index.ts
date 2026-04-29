@@ -10,7 +10,7 @@ import type {
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getHistories, getNodeErrResponse } from '../../../utils';
-import { parseUserSystemPrompt } from '../sub/plan/prompt';
+import { parsePiAgentSystemPrompt } from '../sub/plan/prompt';
 import { formatFileInput } from '../sub/file/utils';
 import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -54,7 +54,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       skills: skillIds = [],
       useEditDebugSandbox,
       agent_datasetParams: datasetParams,
-      useAgentSandbox = false,
       aiChatVision
     }
   } = props;
@@ -126,7 +125,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+        useAgentSandbox: false, // pi-agent-core does not need sandbox tools
         extraTools: capabilityTools
       }
     );
@@ -154,11 +153,12 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
-    const formatedSystemPrompt = parseUserSystemPrompt({
+    const formatedSystemPrompt = parsePiAgentSystemPrompt({
       userSystemPrompt: capabilitySystemPrompt
         ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`.trim()
         : systemPrompt,
-      selectedDataset: datasetParams?.datasets
+      selectedDataset: datasetParams?.datasets,
+      lang
     });
 
     /* ===== Build pi-agent-core model & tools ===== */

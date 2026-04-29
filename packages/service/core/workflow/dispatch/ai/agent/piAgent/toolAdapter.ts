@@ -1,17 +1,10 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import {
-  SANDBOX_TOOL_NAME,
-  SANDBOX_GET_FILE_URL_TOOL_NAME,
-  SandboxShellToolSchema,
-  SandboxGetFileUrlToolSchema
-} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ReadFileToolSchema } from '../sub/file/utils';
 import { DatasetSearchToolSchema } from '../sub/dataset/utils';
 import { dispatchFileRead } from '../sub/file';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
-import { dispatchSandboxShell, dispatchSandboxGetFileUrl } from '../sub/sandbox';
 import { dispatchTool } from '../sub/tool';
 import { dispatchApp, dispatchPlugin } from '../sub/app';
 import { parseJsonArgs } from '../../../../../ai/utils';
@@ -158,35 +151,6 @@ export async function buildAgentTools({
               llmModel: model
             });
             if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
-            return { response: result.response, usages: result.usages };
-          }
-
-          if (toolId === SANDBOX_TOOL_NAME) {
-            const toolParams = SandboxShellToolSchema.safeParse(args);
-            if (!toolParams.success) return { response: toolParams.error.message };
-            const result = await dispatchSandboxShell({
-              command: toolParams.data.command,
-              timeout: toolParams.data.timeout,
-              appId: runningAppInfo.id,
-              userId: uid,
-              chatId,
-              lang
-            });
-            nodeResponses.push(result.nodeResponse);
-            return { response: result.response, usages: result.usages };
-          }
-
-          if (toolId === SANDBOX_GET_FILE_URL_TOOL_NAME) {
-            const toolParams = SandboxGetFileUrlToolSchema.safeParse(args);
-            if (!toolParams.success) return { response: toolParams.error.message };
-            const result = await dispatchSandboxGetFileUrl({
-              paths: toolParams.data.paths,
-              appId: runningAppInfo.id,
-              userId: uid,
-              chatId,
-              lang
-            });
-            nodeResponses.push(result.nodeResponse);
             return { response: result.response, usages: result.usages };
           }
 
