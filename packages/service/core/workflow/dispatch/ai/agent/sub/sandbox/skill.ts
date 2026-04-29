@@ -15,8 +15,7 @@ import type {
   SandboxSearchSchema,
   SandboxFetchUserFileSchema
 } from '@fastgpt/global/core/workflow/node/agent/skillTools';
-import axios from 'axios';
-import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
+import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 import path from 'path';
 
 type DispatchResult = {
@@ -200,9 +199,16 @@ export async function dispatchSandboxFetchUserFile(
     };
   }
 
+  // 拒绝 ws/wss 协议进入文件下载链路
+  if (/^wss?:/i.test(fileEntry.url)) {
+    return {
+      response: `Failed: ws/wss protocol is not allowed for file URL`,
+      usages: []
+    };
+  }
+
   try {
-    const response = await axios.get(fileEntry.url, {
-      baseURL: serverRequestBaseUrl,
+    const response = await pickOutboundAxios(fileEntry.url).get(fileEntry.url, {
       responseType: 'arraybuffer'
     });
     const buffer: ArrayBuffer = response.data;

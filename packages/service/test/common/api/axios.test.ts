@@ -163,4 +163,33 @@ describe('axios.ts', () => {
       expect(axios.defaults.httpsAgent).toBeDefined();
     });
   });
+
+  describe('pickOutboundAxios', () => {
+    it.each([
+      'http://example.com',
+      'https://example.com/path',
+      'http://169.254.169.254/latest/meta-data/',
+      '//attacker.example/probe' // protocol-relative 也按绝对处理
+    ])('绝对 URL %j 返回 safe axios 实例', async (url) => {
+      const { axios, pickOutboundAxios } = await import('@fastgpt/service/common/api/axios');
+      expect(pickOutboundAxios(url)).toBe(axios);
+    });
+
+    it.each(['/api/foo', 'api/foo', '/support/outLink/feishu/abc'])(
+      '相对路径 %j 返回内部 axios(baseURL 固定到本机)',
+      async (url) => {
+        const { axios, pickOutboundAxios } = await import('@fastgpt/service/common/api/axios');
+        const client = pickOutboundAxios(url);
+        expect(client).not.toBe(axios);
+        expect(client.defaults.baseURL).toMatch(/^http:\/\//);
+      }
+    );
+
+    it('多次调用同一类型的 URL,内部 client 应被复用(避免每次新建实例)', async () => {
+      const { pickOutboundAxios } = await import('@fastgpt/service/common/api/axios');
+      const a = pickOutboundAxios('/api/a');
+      const b = pickOutboundAxios('/api/b');
+      expect(a).toBe(b);
+    });
+  });
 });

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -23,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('MARKETPLACE_URL is not configured');
     }
 
-    const targetUrl = new URL(requestPath, marketplaceUrl);
+    // 防御 protocol-relative URL 覆盖主机(如 path 含空段 → `//169.254...`)
+    const targetUrl = buildSameOriginUrl(requestPath, marketplaceUrl);
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {

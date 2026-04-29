@@ -6,8 +6,7 @@ import { toolMap as getFileUrlToolMap } from './getFileUrl.tool';
 import { toolMap as shellToolMap } from './shell.tool';
 import { getSandboxClient } from '../controller';
 import { parseJsonArgs } from '../../utils';
-import { axios } from '../../../../common/api/axios';
-import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
+import { pickOutboundAxios } from '../../../../common/api/axios';
 import type { FileWriteEntry } from '@fastgpt-sdk/sandbox-adapter';
 
 const ToolMap = {
@@ -95,8 +94,7 @@ export const injectSandboxFiles = async ({
     files
       .filter((file) => file.path)
       .map(async ({ path, url }): Promise<FileWriteEntry> => {
-        const response = await axios.get<ArrayBuffer>(url, {
-          baseURL: serverRequestBaseUrl,
+        const response = await pickOutboundAxios(url).get<ArrayBuffer>(url, {
           responseType: 'arraybuffer'
         });
 

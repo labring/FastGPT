@@ -1,4 +1,4 @@
-import { POST } from '../../../common/api/serverRequest';
+import { axios } from '../../../common/api/axios';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
 import { type RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -93,21 +93,24 @@ export async function reRankRecall({
   const { baseUrl, authorization } = getAxiosConfig();
   const start = Date.now();
 
-  const apiResult = await POST<PostReRankResponse>(
-    model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`,
-    {
-      model: model.model,
-      query,
-      documents: documentsTextArray
-    },
-    {
-      headers: {
-        Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
-        ...headers
+  const requestUrl = model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`;
+  const apiResult = await axios
+    .post<PostReRankResponse>(
+      requestUrl,
+      {
+        model: model.model,
+        query,
+        documents: documentsTextArray
       },
-      timeout: 30000
-    }
-  )
+      {
+        headers: {
+          Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
+          ...headers
+        },
+        timeout: 30000
+      }
+    )
+    .then((res) => res.data)
     .then(async (data) => {
       if (!data?.results || data?.results?.length === 0) {
         logger.error('Rerank returned empty results', { data });

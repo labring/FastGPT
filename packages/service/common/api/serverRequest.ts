@@ -2,6 +2,7 @@ import { SERVICE_LOCAL_HOST } from '../system/tools';
 import { type Method, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
 import { createProxyAxios } from './axios';
 import { getLogger, LogCategories } from '../logger';
+import { assertRelativePath } from '../security/network';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -78,6 +79,14 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
+  // serverRequest 仅用于访问本机 NextJS API,SSRF 拦截已被显式关闭。
+  // 强制要求相对路径,防止调用方传入绝对 URL 覆盖 baseURL 形成 SSRF。
+  try {
+    assertRelativePath(url, 'serverRequest');
+  } catch (err) {
+    return Promise.reject(err);
+  }
+
   /* 去空 */
   for (const key in data) {
     if (data[key] === null || data[key] === undefined) {

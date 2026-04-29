@@ -3,17 +3,21 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 // hoisted：让 mock 实例可在 beforeEach 中重设
-const { mockCountPromptTokens, mockPOST } = vi.hoisted(() => ({
+const { mockCountPromptTokens, mockAxiosPost } = vi.hoisted(() => ({
   mockCountPromptTokens: vi.fn(),
-  mockPOST: vi.fn()
+  // mockAxiosPost 接收原始 payload(即 axios response 的 .data),包装成 { data }
+  mockAxiosPost: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
   countPromptTokens: mockCountPromptTokens
 }));
 
-vi.mock('@fastgpt/service/common/api/serverRequest', () => ({
-  POST: (...args: any[]) => mockPOST(...args)
+// rerank 现在改用统一 axios(带 SSRF 拦截),mock axios.post 返回 axios 风格的 { data, ... }
+vi.mock('@fastgpt/service/common/api/axios', () => ({
+  axios: {
+    post: (...args: any[]) => Promise.resolve(mockAxiosPost(...args)).then((data) => ({ data }))
+  }
 }));
 
 // Mock text2Chunks：按 chunkSize 字符切分，保证测试确定性
@@ -40,7 +44,7 @@ const mockModel: RerankModelItemType = {
 
 describe('reRankRecall', () => {
   beforeEach(() => {
-    mockPOST.mockReset();
+    mockAxiosPost.mockReset();
     mockCountPromptTokens.mockReset();
     mockCountPromptTokens.mockImplementation(async (text: string) => text.length);
   });
@@ -48,7 +52,7 @@ describe('reRankRecall', () => {
   // ── 基础场景 ──────────────────────────────────────────────────────────────
 
   it('正常场景：多文档返回正确 id 和 score', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [
         { index: 1, relevance_score: 0.9 },
@@ -73,7 +77,7 @@ describe('reRankRecall', () => {
   });
 
   it('单文档正常召回', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.75 }],
       meta: { tokens: { input_tokens: 10, output_tokens: 0 } }
@@ -99,7 +103,7 @@ describe('reRankRecall', () => {
     });
 
     expect(result).toEqual({ results: [], inputTokens: 0 });
-    expect(mockPOST).not.toHaveBeenCalled();
+    expect(mockAxiosPost).not.toHaveBeenCalled();
   });
 
   it('所有文档 text 为空或空白时，返回空结果，不发请求', async () => {
@@ -113,7 +117,7 @@ describe('reRankRecall', () => {
     });
 
     expect(result).toEqual({ results: [], inputTokens: 0 });
-    expect(mockPOST).not.toHaveBeenCalled();
+    expect(mockAxiosPost).not.toHaveBeenCalled();
   });
 
   // ── 复杂场景：文档切分 ────────────────────────────────────────────────────
@@ -125,7 +129,7 @@ describe('reRankRecall', () => {
     // doc2 'short' length=5 <= 599 → 不切分 (index 3)
     const longText = 'a'.repeat(1100);
 
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       // API 按 score 降序返回
       results: [
@@ -158,7 +162,7 @@ describe('reRankRecall', () => {
     // maxToken=600, query='q'(1), docBudget=599, chunkSize=539
     const longText = 'b'.repeat(1100);
 
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [
         { index: 1, relevance_score: 0.95 }, // chunk_1 最高
@@ -181,7 +185,7 @@ describe('reRankRecall', () => {
   // ── inputTokens 计算 ──────────────────────────────────────────────────────
 
   it('API 未返回 meta tokens 时，通过 countPromptTokens 估算', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.5 }]
       // 无 meta
@@ -198,7 +202,7 @@ describe('reRankRecall', () => {
   });
 
   it('API 返回 meta tokens 时直接使用', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.5 }],
       meta: { tokens: { input_tokens: 42, output_tokens: 0 } }
@@ -216,7 +220,7 @@ describe('reRankRecall', () => {
   // ── requestUrl / requestAuth ──────────────────────────────────────────────
 
   it('有 requestUrl 和 requestAuth 时，使用自定义地址和认证头', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.5 }],
       meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
@@ -232,7 +236,7 @@ describe('reRankRecall', () => {
       documents: [{ id: 'doc1', text: 'hello' }]
     });
 
-    expect(mockPOST).toHaveBeenCalledWith(
+    expect(mockAxiosPost).toHaveBeenCalledWith(
       'https://custom.rerank.io/rerank',
       expect.any(Object),
       expect.objectContaining({
@@ -244,7 +248,7 @@ describe('reRankRecall', () => {
   });
 
   it('未设置 requestUrl 时，使用 baseUrl/rerank', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.5 }],
       meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
@@ -256,7 +260,7 @@ describe('reRankRecall', () => {
       documents: [{ id: 'doc1', text: 'hello' }]
     });
 
-    const url: string = mockPOST.mock.calls[0][0];
+    const url: string = mockAxiosPost.mock.calls[0][0];
     expect(url.endsWith('/rerank')).toBe(true);
   });
 
@@ -297,7 +301,7 @@ describe('reRankRecall', () => {
 
   it('docBudget === 501 时不因 query 过长 reject', async () => {
     // maxToken=502, query='q'(length=1) → docBudget = 502-1 = 501 > 500 → 正常发请求
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: [{ index: 0, relevance_score: 0.5 }],
       meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
@@ -310,11 +314,11 @@ describe('reRankRecall', () => {
     });
 
     expect(result.results).toHaveLength(1);
-    expect(mockPOST).toHaveBeenCalledOnce();
+    expect(mockAxiosPost).toHaveBeenCalledOnce();
   });
 
   it('API 请求失败时，reject 并传递原始错误', async () => {
-    mockPOST.mockRejectedValueOnce(new Error('Network error'));
+    mockAxiosPost.mockRejectedValueOnce(new Error('Network error'));
 
     await expect(
       reRankRecall({
@@ -326,7 +330,7 @@ describe('reRankRecall', () => {
   });
 
   it('API 返回空 results 时，返回空 results', async () => {
-    mockPOST.mockResolvedValueOnce({
+    mockAxiosPost.mockResolvedValueOnce({
       id: 'r1',
       results: []
     });
@@ -338,7 +342,7 @@ describe('reRankRecall', () => {
     });
 
     expect(result.results).toHaveLength(0);
-    expect(mockPOST).toHaveBeenCalledOnce();
+    expect(mockAxiosPost).toHaveBeenCalledOnce();
     // 空 results 时提前返回，inputTokens 固定为 0
     expect(result.inputTokens).toBe(0);
   });

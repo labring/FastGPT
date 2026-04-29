@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
 
 const baseUrl = process.env.AIPROXY_API_ENDPOINT;
@@ -30,7 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const basePath = `/${path?.join('/')}${endPathMap[path?.join('/')] ? '/' : ''}`;
     const requestPath = queryStr ? `${basePath}?${queryStr}` : basePath;
 
-    const targetUrl = new URL(requestPath, baseUrl);
+    // 防御 protocol-relative URL 覆盖主机(如 path 含空段 → `//169.254...`)
+    const targetUrl = buildSameOriginUrl(requestPath, baseUrl);
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {

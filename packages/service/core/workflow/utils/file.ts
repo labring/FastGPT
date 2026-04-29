@@ -3,8 +3,7 @@ import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseUrlToFileType } from './context';
 import { getS3RawTextSource } from '../../../common/s3/sources/rawText';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../common/system/utils';
-import { axios } from '../../../common/api/axios';
-import { serverRequestBaseUrl } from '../../../common/api/serverRequest';
+import { pickOutboundAxios } from '../../../common/api/axios';
 import { S3Buckets } from '../../../common/s3/config/constants';
 import { S3Sources } from '../../../common/s3/contracts/type';
 import {
@@ -112,9 +111,7 @@ export const normalizeReadableFileUrl = ({
 };
 
 export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
-  // Get file buffer data
-  const response = await axios.get(url, {
-    baseURL: serverRequestBaseUrl,
+  const response = await pickOutboundAxios(url).get(url, {
     responseType: 'arraybuffer'
   });
 

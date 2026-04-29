@@ -1,6 +1,5 @@
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../../../../common/system/utils';
-import axios from 'axios';
-import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
+import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import {
   detectFileEncoding,
@@ -62,9 +61,7 @@ export const dispatchFileRead = async ({
               content: Promise.reject(PRIVATE_URL_TEXT)
             };
           }
-          // Get file buffer data
-          const response = await axios.get(url, {
-            baseURL: serverRequestBaseUrl,
+          const response = await pickOutboundAxios(url).get(url, {
             responseType: 'arraybuffer'
           });
 

@@ -26,10 +26,32 @@ vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => {
 
 vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  // 把 axios 和 pickOutboundAxios 一起 mock:
+  //   - axios: 直接换成 mock(供绝对 URL 路径)
+  //   - pickOutboundAxios: 不论 URL 类型都返回同一个 mock client(供测试统一断言 .get 调用)
+  const mockClient = {
+    get: mockAxiosGet,
+    defaults: { baseURL: 'http://localhost:3000' }
+  };
   return {
     ...mod,
-    axios: {
-      get: mockAxiosGet
+    axios: mockClient,
+    pickOutboundAxios: () => mockClient
+  };
+});
+
+// 文件下载链路对相对路径走 raw axios + serverRequestBaseUrl,这里也 mock 住,
+// 保证测试不会真发网络请求,且保留对 mockAxiosGet 调用次数的断言能力。
+// outbound.ts 用 axios.create() 创建内部 client,所以 mock 必须提供 create 方法。
+vi.mock('axios', () => {
+  const internalClient = {
+    get: mockAxiosGet,
+    defaults: { baseURL: 'http://localhost:3000' }
+  };
+  return {
+    default: {
+      get: mockAxiosGet,
+      create: vi.fn(() => internalClient)
     }
   };
 });
@@ -409,8 +431,9 @@ describe('parseFileInfoFromUrls', () => {
     });
 
     expect(mockAxiosGet).toHaveBeenCalledTimes(1);
+    // 注:相对路径走 axios.create({ baseURL }) 创建的内部 client,
+    //    baseURL 在 client 上而不在 .get() 调用参数里。
     expect(mockAxiosGet).toHaveBeenCalledWith('/report.pdf', {
-      baseURL: expect.any(String),
       responseType: 'arraybuffer'
     });
     expect(mockReadFileContentByBuffer).not.toHaveBeenCalled();
