@@ -1,6 +1,7 @@
 import crypto from 'crypto';
-import { AES256_SECRET_KEY } from './constants';
+import { env } from '../../env';
 
+const AES256_SECRET_KEY = env.AES256_SECRET_KEY;
 export const encryptSecret = (text: string) => {
   const iv = crypto.randomBytes(16);
   const key = crypto.scryptSync(AES256_SECRET_KEY, 'salt', 32);

@@ -1,5 +1,6 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
+import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 
 const truthyBoolStrs = ['true', '1', 'yes', 'y'];
 const BoolSchema = z
@@ -16,6 +17,7 @@ const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
 const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
 
 export const env = createEnv({
+  skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
     DB_MAX_LINK: IntSchema.min(1).default(5),
