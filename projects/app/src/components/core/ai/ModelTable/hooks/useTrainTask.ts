@@ -109,8 +109,16 @@ export const useTrainTask = ({ t, baseModelType, onSuccess, refreshList }: UseTr
           question: t('app:eval_detail_question_column'),
           bestMatchContext: t('app:eval_detail_best_match_context_column'),
           collectionName: t('app:eval_detail_collection_name_column'),
-          rankBefore: t('app:eval_detail_rank_before_column'),
-          rankAfter: t('app:eval_detail_rank_after_column'),
+          rankBefore: t(
+            isRerank
+              ? 'app:eval_detail_rank_before_rerank_column'
+              : 'app:eval_detail_rank_before_column'
+          ),
+          rankAfter: t(
+            isRerank
+              ? 'app:eval_detail_rank_after_rerank_column'
+              : 'app:eval_detail_rank_after_column'
+          ),
           improvement: t('app:eval_detail_improvement_column')
         };
 
@@ -150,14 +158,8 @@ export const useTrainTask = ({ t, baseModelType, onSuccess, refreshList }: UseTr
           throw new Error('download error.');
         }
 
-        let filename = `eval-results-${taskId}.xlsx`;
-        const contentDisposition = response.headers.get('Content-Disposition');
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-          if (filenameMatch && filenameMatch[1]) {
-            filename = filenameMatch[1].replace(/['"]/g, '');
-          }
-        }
+        const shortCode = taskId.slice(-6);
+        const filename = `${t('app:eval_detail_filename')}_${shortCode}.xlsx`;
 
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
