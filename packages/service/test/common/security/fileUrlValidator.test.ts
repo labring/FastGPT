@@ -54,13 +54,13 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://fe.example.com/page')).toBe(true);
     });
 
-    it('should handle invalid FE_DOMAIN gracefully', async () => {
+    it('should reject invalid FE_DOMAIN at env validation stage', async () => {
       process.env.FE_DOMAIN = 'invalid-url';
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
-      const { validateFileUrlDomain } = await import(
-        '@fastgpt/service/common/security/fileUrlValidator'
+
+      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
+        'Invalid environment variables. Please check: FE_DOMAIN'
       );
-      expect(validateFileUrlDomain('http://other.com/file.png')).toBe(true);
     });
 
     it('should extract hostname from PRO_URL', async () => {
