@@ -829,6 +829,8 @@ export async function searchDatasetDataForAssistant(
         // rerankStrategy 使用默认值 RerankStrategyEnum.maxScore
       });
     } catch (error) {
+      addLog.error('Reranker raw error caught', { error, model: rerankModel?.model });
+
       // 构建结构化的错误对象
       let errorMessage: Record<string, any> = {};
       let errorTextForI18n = '';
