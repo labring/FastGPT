@@ -154,7 +154,7 @@ const ChatBox = ({
   const questionGuideController = useRef(new AbortController());
   const pluginController = useRef(new AbortController());
   const resumeController = useRef<AbortController>();
-  const resumedChatIdRef = useRef<string>();
+  const resumedChatTargetRef = useRef<string>();
 
   const [isLoading, setIsLoading] = useState(false);
   const [feedbackId, setFeedbackId] = useState<string>();
@@ -180,6 +180,8 @@ const ChatBox = ({
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const activeAppIdRef = useRef<string | undefined>(appId);
+  activeAppIdRef.current = appId;
   const activeChatIdRef = useRef<string | undefined>(chatId);
   activeChatIdRef.current = chatId;
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -198,18 +200,21 @@ const ChatBox = ({
   const syncSidebarChatGenerateStatus = useMemoizedFn(
     (
       status: ChatGenerateStatusEnum,
-      options?: { hasBeenRead?: boolean; targetChatId?: string }
+      options?: { hasBeenRead?: boolean; targetAppId?: string; targetChatId?: string }
     ) => {
+      const targetAppId = options?.targetAppId ?? appId;
+      if (targetAppId !== appId) return;
+
       const targetChatId = options?.targetChatId ?? chatId;
       if (!targetChatId) return;
       setHistories((prev) => {
-        const idx = prev.findIndex((h) => h.chatId === targetChatId);
+        const idx = prev.findIndex((h) => h.chatId === targetChatId && h.appId === targetAppId);
         if (idx === -1) {
           queueMicrotask(loadHistories);
           return [
             {
               chatId: targetChatId,
-              appId,
+              appId: targetAppId,
               title: chatBoxData.title || t('common:core.chat.New Chat'),
               customTitle: '',
               top: false,
@@ -221,7 +226,7 @@ const ChatBox = ({
           ];
         }
         return prev.map((h) =>
-          h.chatId === targetChatId
+          h.chatId === targetChatId && h.appId === targetAppId
             ? {
                 ...h,
                 chatGenerateStatus: status,
@@ -649,6 +654,12 @@ const ChatBox = ({
     resumeController.current?.abort(new Error(reason));
   });
 
+  useEffect(() => {
+    return () => {
+      abortRequest('leave');
+    };
+  }, [abortRequest]);
+
   const hasMeaningfulAiOutput = useMemoizedFn((chat?: ChatSiteItemType) => {
     if (!chat || chat.obj !== ChatRoleEnum.AI) return false;
     if (chat.responseData?.length) return true;
@@ -662,16 +673,26 @@ const ChatBox = ({
     });
   });
 
+  const isActiveResumeTarget = useMemoizedFn(
+    ({ appId, chatId }: { appId: string; chatId: string }) =>
+      activeAppIdRef.current === appId && activeChatIdRef.current === chatId
+  );
+
   const getResumeUnavailablePlaceholderText = useMemoizedFn(() =>
     t('chat:resume_placeholder_generating')
   );
 
   const upsertResumeAiPlaceholder = useMemoizedFn(
-    (responseChatId: string, text = '', status: `${ChatStatusEnum}` = ChatStatusEnum.loading) => {
+    (
+      responseChatId: string,
+      text = '',
+      status: `${ChatStatusEnum}` = ChatStatusEnum.loading,
+      options?: { resetExistingValue?: boolean }
+    ) => {
       setChatRecords((state) => {
         const lastItem = state[state.length - 1];
         if (lastItem?.dataId === responseChatId && lastItem.obj === ChatRoleEnum.AI) {
-          if (!text) {
+          if (!text && !options?.resetExistingValue) {
             return state;
           }
 
@@ -687,6 +708,7 @@ const ChatBox = ({
                       }
                     }
                   ],
+                  responseData: options?.resetExistingValue ? [] : item.responseData,
                   status,
                   ...(status === ChatStatusEnum.finish ? { time: new Date() } : {})
                 }
@@ -833,7 +855,7 @@ const ChatBox = ({
             }
           ];
 
-          resumedChatIdRef.current = chatId;
+          resumedChatTargetRef.current = `${appId}:${chatId}`;
 
           setChatBoxData((state) =>
             state.chatId === chatId
@@ -1255,7 +1277,7 @@ const ChatBox = ({
   useEffect(() => {
     setQuestionGuide([]);
     setValue('chatStarted', false);
-    resumedChatIdRef.current = undefined;
+    resumedChatTargetRef.current = undefined;
     abortRequest('leave');
   }, [chatId, appId, abortRequest, setValue]);
 
@@ -1267,20 +1289,24 @@ const ChatBox = ({
       !appId ||
       !chatId ||
       isChatting ||
+      chatBoxData.appId !== appId ||
+      chatBoxData.chatId !== chatId ||
       chatBoxData.chatGenerateStatus !== ChatGenerateStatusEnum.generating ||
-      resumedChatIdRef.current === chatId
+      resumedChatTargetRef.current === `${appId}:${chatId}`
     ) {
       return;
     }
 
-    resumedChatIdRef.current = chatId;
+    resumedChatTargetRef.current = `${appId}:${chatId}`;
 
+    const resumeForAppId = appId;
     const resumeForChatId = chatId;
     const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
     const controller = new AbortController();
     resumeController.current = controller;
     scrollToBottom('auto');
     let resumeFinalStatus = ChatGenerateStatusEnum.done;
+    let hasPreparedResumeAiRecord = false;
 
     (async () => {
       try {
@@ -1290,7 +1316,7 @@ const ChatBox = ({
           outLinkAuthData,
           controller,
           onResumeUnavailable: () => {
-            if (resumeForChatId !== activeChatIdRef.current) return;
+            if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
             resumeFinalStatus = ChatGenerateStatusEnum.generating;
             upsertResumeAiPlaceholder(
               responseChatId,
@@ -1299,15 +1325,18 @@ const ChatBox = ({
             );
           },
           onmessage: (message) => {
-            if (resumeForChatId !== activeChatIdRef.current) return;
+            if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
-              upsertResumeAiPlaceholder(responseChatId);
+              upsertResumeAiPlaceholder(responseChatId, '', ChatStatusEnum.loading, {
+                resetExistingValue: !hasPreparedResumeAiRecord
+              });
+              hasPreparedResumeAiRecord = true;
             }
             generatingMessage(message);
           }
         });
 
-        if (resumeForChatId !== activeChatIdRef.current) return;
+        if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
 
         if (completedChat) {
           resumeFinalStatus = completedChat.chatGenerateStatus;
@@ -1362,7 +1391,7 @@ const ChatBox = ({
         });
       } catch (error) {
         if (controller.signal.aborted) return;
-        if (resumeForChatId !== activeChatIdRef.current) return;
+        if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
 
         const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
         resumeFinalStatus = isStreamError
@@ -1408,7 +1437,10 @@ const ChatBox = ({
         }
       } finally {
         resumeController.current = undefined;
-        const finishedInActiveChat = activeChatIdRef.current === resumeForChatId;
+        const finishedInActiveChat = isActiveResumeTarget({
+          appId: resumeForAppId,
+          chatId: resumeForChatId
+        });
         const leftWhileResuming =
           controller.signal.aborted && isAbortByLeave(controller.signal.reason);
 
@@ -1417,7 +1449,7 @@ const ChatBox = ({
         }
 
         setChatBoxData((state) =>
-          state.chatId === resumeForChatId
+          state.appId === resumeForAppId && state.chatId === resumeForChatId
             ? {
                 ...state,
                 chatGenerateStatus: resumeFinalStatus,
@@ -1428,19 +1460,21 @@ const ChatBox = ({
 
         if (finishedInActiveChat) {
           void postMarkChatRead({
-            appId,
+            appId: resumeForAppId,
             chatId: resumeForChatId,
             ...outLinkAuthData
           })
             .catch(() => {})
             .finally(() => {
               syncSidebarChatGenerateStatus(resumeFinalStatus, {
+                targetAppId: resumeForAppId,
                 hasBeenRead: true,
                 targetChatId: resumeForChatId
               });
             });
         } else {
           syncSidebarChatGenerateStatus(resumeFinalStatus, {
+            targetAppId: resumeForAppId,
             hasBeenRead: false,
             targetChatId: resumeForChatId
           });
@@ -1454,9 +1488,12 @@ const ChatBox = ({
     appId,
     chatId,
     isChatting,
+    chatBoxData.appId,
+    chatBoxData.chatId,
     chatBoxData.chatGenerateStatus,
     generatingMessage,
     hasMeaningfulAiOutput,
+    isActiveResumeTarget,
     getResumeUnavailablePlaceholderText,
     outLinkAuthData,
     resumeTargetAiDataId,
