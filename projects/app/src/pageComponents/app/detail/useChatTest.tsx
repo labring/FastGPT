@@ -158,7 +158,6 @@ export const useChatTest = ({
           chatId={chatId}
           onNewChat={restartChat}
           onStartChat={startChat}
-          runtimeFileSelectConfig={chatConfig.fileSelectConfig}
         />
       </Box>
     ) : (

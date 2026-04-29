@@ -28,8 +28,7 @@ export const PresignChatFilePostUrlSchema = z
     filename: z.string().min(1).describe('文件名'),
     appId: ObjectIdSchema.describe('应用ID'),
     chatId: z.string().min(1).describe('对话ID'),
-    fileSelectConfig:
-      AppFileSelectConfigTypeSchema.optional().describe('调试态前端当前文件选择配置'),
+    fileSelectConfig: AppFileSelectConfigTypeSchema.describe('本次上传控件的文件选择配置'),
     outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
   })
   .meta({

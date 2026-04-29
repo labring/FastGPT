@@ -62,10 +62,6 @@ const FileSelector = ({
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const runtimeFileSelectConfig = useContextSelector(
-    WorkflowRuntimeContext,
-    (v) => v.runtimeFileSelectConfig
-  );
   const setFileUploadingCount = useContextSelector(
     WorkflowRuntimeContext,
     (v) => v.setFileUploadingCount
@@ -95,6 +91,26 @@ const FileSelector = ({
     canSelectCustomFileExtension,
     customFileExtensionList
   ]);
+  const fileSelectConfig = useMemo<AppFileSelectConfigType>(
+    () => ({
+      maxFiles,
+      canSelectFile,
+      canSelectImg,
+      canSelectVideo,
+      canSelectAudio,
+      canSelectCustomFileExtension,
+      customFileExtensionList
+    }),
+    [
+      maxFiles,
+      canSelectFile,
+      canSelectImg,
+      canSelectVideo,
+      canSelectAudio,
+      canSelectCustomFileExtension,
+      customFileExtensionList
+    ]
+  );
   // 文件数量限制：组件参数 || 团队套餐 || 系统配置 || 默认值
   const maxSelectFiles =
     maxFiles ||
@@ -131,7 +147,7 @@ const FileSelector = ({
               filename: file.rawFile.name,
               appId,
               chatId,
-              fileSelectConfig: runtimeFileSelectConfig,
+              fileSelectConfig,
               outLinkAuthData
             });
 
@@ -181,14 +197,7 @@ const FileSelector = ({
         })
       );
     },
-    [
-      handleChangeFiles,
-      setFileUploadingCount,
-      appId,
-      chatId,
-      runtimeFileSelectConfig,
-      outLinkAuthData
-    ]
+    [handleChangeFiles, setFileUploadingCount, appId, chatId, fileSelectConfig, outLinkAuthData]
   );
 
   // Selector props
