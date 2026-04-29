@@ -3,9 +3,10 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
+import { appEnv } from '@/env';
 
-const baseUrl = process.env.AIPROXY_API_ENDPOINT;
-const token = process.env.AIPROXY_API_TOKEN;
+const baseUrl = appEnv.AIPROXY_API_ENDPOINT;
+const token = appEnv.AIPROXY_API_TOKEN;
 
 // 特殊路径映射，标记需要在末尾保留斜杠的路径
 const endPathMap: Record<string, boolean> = {

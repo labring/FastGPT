@@ -14,7 +14,7 @@ import {
 import { cloneDeep } from 'lodash';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
-import { env } from '../../../../env';
+import { serviceEnv } from '../../../../env';
 import { getNestedEndOutputValue } from '../loop/service';
 import { collectResponseFeedbacks, injectNestedStartInputs, pushSubWorkflowUsage } from '../utils';
 
@@ -42,7 +42,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   }
 
   // Max loop times
-  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
+  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }

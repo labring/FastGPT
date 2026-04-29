@@ -1,4 +1,4 @@
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 import { WorkerNameEnum, getWorkerController } from '../../worker/utils';
 import { type ImageType } from '../../worker/readFile/type';
 
@@ -11,7 +11,7 @@ export const htmlToMarkdown = async (html?: string | null) => {
     }
   >({
     name: WorkerNameEnum.htmlStr2Md,
-    maxReservedThreads: env.HTML_TO_MARKDOWN_WORKERS,
+    maxReservedThreads: serviceEnv.HTML_TO_MARKDOWN_WORKERS,
     taskTimeoutMs: 300000,
     maxTasksPerWorker: 100
   });

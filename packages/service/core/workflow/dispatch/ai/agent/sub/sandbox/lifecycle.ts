@@ -25,7 +25,7 @@ import {
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
-import { env } from '../../../../../../../env';
+import { serviceEnv } from '../../../../../../../env';
 import type {
   AgentSkillSchemaType,
   AgentSkillsVersionSchemaType,
@@ -256,7 +256,8 @@ export async function createAgentSandbox(
 
   // Check active session-runtime sandbox count limit
   const maxSessionRuntime =
-    global.feConfigs?.limit?.agentSandboxMaxSessionRuntime ?? env.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
+    global.feConfigs?.limit?.agentSandboxMaxSessionRuntime ??
+    serviceEnv.AGENT_SANDBOX_MAX_SESSION_RUNTIME;
   if (maxSessionRuntime !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
       status: SandboxStatusEnum.running,

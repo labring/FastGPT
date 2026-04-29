@@ -4,7 +4,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 import type { UploadConstraints } from '../contracts/type';
 import path from 'path';
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 
 /* ==================== 路由与类型 ==================== */
 const FileApiPath = {
@@ -49,7 +49,7 @@ type SignS3UploadTokenParams = {
 };
 
 /* ==================== 通用工具函数 ==================== */
-const getTokenSecret = () => env.FILE_TOKEN_KEY;
+const getTokenSecret = () => serviceEnv.FILE_TOKEN_KEY;
 
 const getExpiresIn = (expiredTime: Date) => {
   return Math.max(1, differenceInSeconds(expiredTime, new Date()));

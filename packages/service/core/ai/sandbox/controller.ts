@@ -3,7 +3,7 @@ import {
   SandboxStatusEnum,
   SANDBOX_SUSPEND_MINUTES
 } from '@fastgpt/global/core/ai/sandbox/constants';
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 import { MongoSandboxInstance } from './schema';
 import {
   createSandbox,
@@ -58,7 +58,7 @@ export class SandboxClient {
     this.userId = props.userId;
     this.chatId = props.chatId;
 
-    const providerName = env.AGENT_SANDBOX_PROVIDER;
+    const providerName = serviceEnv.AGENT_SANDBOX_PROVIDER;
 
     if (providerName === 'sealosdevbox') {
       const config = getSealosConnectionConfig(this.sandboxId);
@@ -76,11 +76,11 @@ export class SandboxClient {
         })
       );
     } else if (providerName === 'e2b') {
-      if (!env.AGENT_SANDBOX_E2B_API_KEY) {
+      if (!serviceEnv.AGENT_SANDBOX_E2B_API_KEY) {
         throw new Error('AGENT_SANDBOX_E2B_API_KEY required');
       }
       this.provider = createSandbox('e2b', {
-        apiKey: env.AGENT_SANDBOX_E2B_API_KEY,
+        apiKey: serviceEnv.AGENT_SANDBOX_E2B_API_KEY,
         sandboxId: this.sandboxId
       });
     } else if (!providerName) {
@@ -88,7 +88,7 @@ export class SandboxClient {
         'AGENT_SANDBOX_PROVIDER is not configured. Please set it in your environment variables.'
       );
     } else {
-      throw new Error(`Unsupported sandbox provider: ${env.AGENT_SANDBOX_PROVIDER}`);
+      throw new Error(`Unsupported sandbox provider: ${serviceEnv.AGENT_SANDBOX_PROVIDER}`);
     }
   }
 

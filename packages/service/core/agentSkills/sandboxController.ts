@@ -31,7 +31,7 @@ import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxClient, type SandboxClient } from '../ai/sandbox/controller';
 import { getLogger, LogCategories } from '../../common/logger';
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -212,7 +212,7 @@ export async function createEditDebugSandbox(
 
   // Check active edit-debug sandbox count limit
   const maxEditDebug =
-    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? env.AGENT_SANDBOX_MAX_EDIT_DEBUG;
+    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
   if (maxEditDebug !== undefined) {
     const activeCount = await MongoSandboxInstance.countDocuments({
       status: SandboxStatusEnum.running,

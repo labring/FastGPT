@@ -34,7 +34,7 @@ vi.mock('@fastgpt/service/worker/utils', async (importOriginal) => {
 
 // 拦截 env，避免每个用例通过修改 process.env 失效（env 在模块加载时已固化）
 vi.mock('@fastgpt/service/env', () => ({
-  env: mockEnv
+  serviceEnv: mockEnv
 }));
 
 // 必须在 vi.mock 之后再 import 被测模块

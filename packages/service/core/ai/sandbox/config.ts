@@ -1,4 +1,4 @@
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 import type {
   OpenSandboxConfigType,
   OpenSandboxConnectionConfig
@@ -13,12 +13,12 @@ export type SealosConnectionConfig = {
 };
 
 export const getSealosConnectionConfig = (sandboxId: string): SealosConnectionConfig => {
-  if (!env.AGENT_SANDBOX_SEALOS_BASEURL || !env.AGENT_SANDBOX_SEALOS_TOKEN) {
+  if (!serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL || !serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN) {
     throw new Error('AGENT_SANDBOX_SEALOS_BASEURL / AGENT_SANDBOX_SEALOS_TOKEN required');
   }
   return {
-    baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL,
-    token: env.AGENT_SANDBOX_SEALOS_TOKEN,
+    baseUrl: serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL,
+    token: serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN,
     sandboxId
   };
 };
@@ -29,15 +29,15 @@ export const getOpenSandboxConnectionConfig = ({
 }: {
   sessionId: string;
 }): OpenSandboxConnectionConfig => {
-  if (!env.AGENT_SANDBOX_OPENSANDBOX_BASEURL) {
+  if (!serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL) {
     throw new Error('AGENT_SANDBOX_OPENSANDBOX_BASEURL is required');
   }
   return {
     sessionId,
-    useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
-    baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
-    apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
-    runtime: env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME
+    useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
+    baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+    apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
+    runtime: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME
   };
 };
 
@@ -48,13 +48,13 @@ export const buildOpenSandboxCreateConfig = (
     createConfig?: OpenSandboxConfigType;
   } = {}
 ): OpenSandboxConfigType => {
-  if (!env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO && !opts.createConfig?.image) {
+  if (!serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO && !opts.createConfig?.image) {
     throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required for opensandbox provider');
   }
   return {
     image: {
-      repository: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-      tag: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
+      repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
+      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     },
     ...(opts.resourceLimits ? { resourceLimits: opts.resourceLimits } : {}),
     ...opts.createConfig,
@@ -73,10 +73,10 @@ export type VolumeManagerResult = {
   storage: SandboxStorageType;
 };
 const vmConfig = {
-  enable: env.AGENT_SANDBOX_ENABLE_VOLUME,
-  url: env.AGENT_SANDBOX_VOLUME_MANAGER_URL!,
-  token: env.AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
-  mountPath: env.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
+  enable: serviceEnv.AGENT_SANDBOX_ENABLE_VOLUME,
+  url: serviceEnv.AGENT_SANDBOX_VOLUME_MANAGER_URL!,
+  token: serviceEnv.AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
+  mountPath: serviceEnv.AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
 };
 export const buildVolumeConfig = (claimName: string, mountPath: string): VolumeManagerResult => {
   return {

@@ -2,9 +2,10 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { axiosWithoutSSRF } from '@fastgpt/service/common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { appEnv } from '@/env';
 
-const baseUrl = process.env.AIPROXY_API_ENDPOINT;
-const token = process.env.AIPROXY_API_TOKEN;
+const baseUrl = appEnv.AIPROXY_API_ENDPOINT;
+const token = appEnv.AIPROXY_API_TOKEN;
 
 async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
   try {

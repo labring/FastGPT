@@ -35,7 +35,11 @@ describe('checkPswExpired API', () => {
   });
 
   afterEach(() => {
-    process.env.PASSWORD_EXPIRED_MONTH = originalEnv;
+    if (originalEnv === undefined) {
+      delete process.env.PASSWORD_EXPIRED_MONTH;
+    } else {
+      process.env.PASSWORD_EXPIRED_MONTH = originalEnv;
+    }
   });
 
   it('should return false when PASSWORD_EXPIRED_MONTH is not set', async () => {

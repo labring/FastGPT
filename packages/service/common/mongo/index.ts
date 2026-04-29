@@ -8,7 +8,7 @@ import type {
   PipelineStage
 } from 'mongoose';
 import mongoose, { Mongoose } from 'mongoose';
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
@@ -22,8 +22,8 @@ export type {
   PipelineStage
 };
 
-export const MONGO_URL = env.MONGODB_URI;
-export const MONGO_LOG_URL = env.MONGODB_LOG_URI ?? env.MONGODB_URI;
+export const MONGO_URL = serviceEnv.MONGODB_URI;
+export const MONGO_LOG_URL = serviceEnv.MONGODB_LOG_URI ?? serviceEnv.MONGODB_URI;
 
 export const connectionMongo = (() => {
   if (!global.mongodb) {
@@ -158,7 +158,7 @@ const syncMongoIndex = async (model: Model<any>) => {
   if (
     process.env.NODE_ENV === 'test' ||
     process.env.NEXT_PHASE === 'phase-production-build' ||
-    !env.SYNC_INDEX ||
+    !serviceEnv.SYNC_INDEX ||
     !MONGO_URL
   ) {
     return;

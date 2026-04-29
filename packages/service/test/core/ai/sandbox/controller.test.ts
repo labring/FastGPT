@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 
 // Mock the env module BEFORE any imports that use it
 vi.mock('@fastgpt/service/env', () => ({
-  env: {
+  serviceEnv: {
     AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sandbox.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-token-12345'

@@ -22,7 +22,8 @@ import type {
 import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { env } from '@fastgpt/service/env';
+import { serviceEnv } from '@fastgpt/service/env';
+import { appEnv } from '@/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -40,7 +41,7 @@ export const readConfigData = async (name: string) => {
       return `data/${name}`;
     }
     // Fallback to default production path
-    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
+    const envPath = appEnv.CONFIG_JSON_PATH || '/app/data';
     return `${envPath}/${name}`;
   })();
 
@@ -123,13 +124,13 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    workflowParallelRunMaxConcurrency: env.WORKFLOW_PARALLEL_MAX_CONCURRENCY
+    workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY
   },
   scripts: [],
   favicon: '/favicon.ico',
-  chineseRedirectUrl: process.env.CHINESE_IP_REDIRECT_URL || '',
-  uploadFileMaxSize: Number(process.env.UPLOAD_FILE_MAX_SIZE || 1000),
-  uploadFileMaxAmount: Number(process.env.UPLOAD_FILE_MAX_AMOUNT || 1000)
+  chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
+  uploadFileMaxSize: appEnv.UPLOAD_FILE_MAX_SIZE,
+  uploadFileMaxAmount: appEnv.UPLOAD_FILE_MAX_AMOUNT
 };
 
 export async function initSystemConfig() {
@@ -154,17 +155,17 @@ export async function initSystemConfig() {
         ...(fastgptConfig.feConfigs?.limit || {})
       },
       isPlus: !!licenseData,
-      hideChatCopyrightSetting: process.env.HIDE_CHAT_COPYRIGHT_SETTING === 'true',
-      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
-      show_coupon: process.env.SHOW_COUPON === 'true',
-      show_discount_coupon: process.env.SHOW_DISCOUNT_COUPON === 'true',
+      hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
+      show_aiproxy: !!appEnv.AIPROXY_API_ENDPOINT,
+      show_coupon: appEnv.SHOW_COUPON,
+      show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
-      show_agent_sandbox: !!env.AGENT_SANDBOX_PROVIDER,
-      show_skill: env.SHOW_SKILL,
-      payFormUrl: process.env.PAY_FORM_URL || '',
+      show_agent_sandbox: !!serviceEnv.AGENT_SANDBOX_PROVIDER,
+      show_skill: serviceEnv.SHOW_SKILL,
+      payFormUrl: appEnv.PAY_FORM_URL,
 
-      agentSandboxFree: process.env.AGENT_SANDBOX_FREE_TIP === 'true'
+      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP
     },
     systemEnv: {
       ...fileRes.systemEnv,

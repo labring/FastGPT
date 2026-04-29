@@ -44,7 +44,7 @@ import { getContinuePlanQuery, parseUserSystemPrompt } from './sub/plan/prompt';
 import type { PlanAgentParamsType } from './sub/plan/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { env } from '../../../../../env';
+import { serviceEnv } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
@@ -80,7 +80,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
   // pi-agent-core engine: bypass Plan+Step orchestration
-  if (env.AGENT_ENGINE === 'pi') {
+  if (serviceEnv.AGENT_ENGINE === 'pi') {
     return dispatchPiAgent(props);
   }
 
@@ -218,7 +218,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // Initialize capabilities — always create sandbox capability (lazy-init, no container yet)
     // Skill capability is gated by SHOW_SKILL env: when disabled, we skip skill loading entirely
     // (no MongoDB query, no sandbox init), even if existing apps still have skills configured.
-    if (env.SHOW_SKILL) {
+    if (serviceEnv.SHOW_SKILL) {
       const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
       const useEditDebugSandbox_flag = !!useEditDebugSandbox;
       const sandboxMode = useEditDebugSandbox_flag ? 'editDebug' : 'sessionRuntime';

@@ -7,7 +7,7 @@ import {
   getTracer
 } from '@fastgpt-sdk/otel/tracing';
 import { withContext } from '../logger';
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 
 type SpanAttributeValue = string | number | boolean;
 type SpanStatusLike = {
@@ -33,8 +33,8 @@ const DEFAULT_PRODUCTION_TRACING_SAMPLE_RATIO = 0.01;
 const DEFAULT_NON_PRODUCTION_TRACING_SAMPLE_RATIO = 1;
 
 function getDefaultTracingSampleRatio() {
-  if (typeof env.TRACING_OTEL_SAMPLE_RATIO === 'number') {
-    return env.TRACING_OTEL_SAMPLE_RATIO;
+  if (typeof serviceEnv.TRACING_OTEL_SAMPLE_RATIO === 'number') {
+    return serviceEnv.TRACING_OTEL_SAMPLE_RATIO;
   }
 
   return process.env.NODE_ENV === 'production'
@@ -61,7 +61,7 @@ function normalizeAttributes(attributes?: Record<string, unknown>) {
 
 export async function configureTracing() {
   await configureTracingFromEnv({
-    env,
+    env: serviceEnv,
     defaultServiceName: 'fastgpt-client',
     defaultTracerName: 'fastgpt-client',
     defaultSampleRatio: getDefaultTracingSampleRatio()

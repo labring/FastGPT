@@ -749,10 +749,12 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 };
 
 export async function getServerSideProps(content: any) {
+  const { appEnv } = await import('@/env');
+
   return {
     props: {
       ...(await serviceSideProps(content, ['app'])),
-      marketplaceUrl: process.env.MARKETPLACE_URL || 'https://marketplace.fastgpt.cn'
+      marketplaceUrl: appEnv.MARKETPLACE_URL
     }
   };
 }

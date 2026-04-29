@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { UploadConstraints } from '../contracts/type';
 import { DEFAULT_CONTENT_TYPE, resolveMimeType } from '../utils/mime';
 import { normalizeAllowedExtensions, normalizeFileExtension } from '../utils/uploadConstraints';
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 
 const defaultInspectBytes = 8192;
 const officeZipInspectBytes = 64 * 1024;
@@ -173,7 +173,7 @@ export async function validateUploadFile({
     uploadConstraints
   });
 
-  if (env.SKIP_FILE_TYPE_CHECK) {
+  if (serviceEnv.SKIP_FILE_TYPE_CHECK) {
     return {
       filename: normalizedFileName,
       contentType: expectedMime

@@ -6,7 +6,7 @@ import {
 import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
-import { env } from '../env';
+import { serviceEnv } from '../env';
 
 export const text2Chunks = (props: SplitProps) => {
   // Test env, not run worker
@@ -15,7 +15,7 @@ export const text2Chunks = (props: SplitProps) => {
   }
   return getWorkerController<SplitProps, SplitResponse>({
     name: WorkerNameEnum.text2Chunks,
-    maxReservedThreads: env.TEXT_TO_CHUNKS_WORKERS,
+    maxReservedThreads: serviceEnv.TEXT_TO_CHUNKS_WORKERS,
     taskTimeoutMs: 300000,
     maxTasksPerWorker: 100
   }).run(props);
@@ -31,9 +31,9 @@ type ReadFileWorkerProps = {
 const getReadFileWorker = () =>
   getWorkerController<ReadFileWorkerProps, ReadFileResponse>({
     name: WorkerNameEnum.readFile,
-    maxReservedThreads: env.PARSE_FILE_WORKERS,
+    maxReservedThreads: serviceEnv.PARSE_FILE_WORKERS,
     // 单任务超时：默认 300s（5min），由 PARSE_FILE_TIMEOUT_SECONDS（秒）配置
-    taskTimeoutMs: env.PARSE_FILE_TIMEOUT_SECONDS * 1000,
+    taskTimeoutMs: serviceEnv.PARSE_FILE_TIMEOUT_SECONDS * 1000,
     // mammoth/xlsx/pdf-parse 历史上有 module 级缓存与潜在内存泄漏，定期回收 worker
     maxTasksPerWorker: 100
   });

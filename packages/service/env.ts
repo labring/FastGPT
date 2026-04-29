@@ -16,7 +16,7 @@ const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fa
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
 const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
 
-export const env = createEnv({
+export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
     // ==================== 基础配置 ====================
@@ -269,8 +269,8 @@ export const env = createEnv({
   }
 });
 
-if (env.WORKFLOW_PARALLEL_MAX_CONCURRENCY > env.WORKFLOW_MAX_LOOP_TIMES) {
+if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_TIMES) {
   throw new Error(
-    `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${env.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${env.WORKFLOW_MAX_LOOP_TIMES})`
+    `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${serviceEnv.WORKFLOW_MAX_LOOP_TIMES})`
   );
 }

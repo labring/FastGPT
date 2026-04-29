@@ -1,10 +1,10 @@
 import { configureLoggerFromEnv, disposeLogger, getLogger } from '@fastgpt-sdk/otel/logger';
 
 export async function configureLogger() {
-  const { env } = await import('../../env');
+  const { serviceEnv } = await import('../../env');
 
   await configureLoggerFromEnv({
-    env,
+    env: serviceEnv,
     defaultCategory: ['system'],
     defaultServiceName: 'fastgpt-client',
     sensitiveProperties: ['fastgpt']

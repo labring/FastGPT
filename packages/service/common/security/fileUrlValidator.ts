@@ -1,4 +1,4 @@
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 
 const appendHost = ({
   list,
@@ -22,8 +22,8 @@ const appendHost = ({
 
 const systemWhiteList = (() => {
   const list: string[] = [];
-  appendHost({ list, value: env.STORAGE_S3_ENDPOINT, allowRawHost: true });
-  appendHost({ list, value: env.STORAGE_EXTERNAL_ENDPOINT });
+  appendHost({ list, value: serviceEnv.STORAGE_S3_ENDPOINT, allowRawHost: true });
+  appendHost({ list, value: serviceEnv.STORAGE_EXTERNAL_ENDPOINT });
   if (process.env.FE_DOMAIN) {
     try {
       const urlData = new URL(process.env.FE_DOMAIN);

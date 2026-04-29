@@ -7,7 +7,7 @@ import { MongoOutLink } from '../../../support/outLink/schema';
 import { outlinkInvokeChat } from '../../../support/outLink/runtime/utils';
 import { delRedisCache, getRedisCache, setRedisCache } from '../../../common/redis/cache';
 import { groupMessagesByUser } from './messageParser';
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
@@ -231,7 +231,7 @@ async function shouldContinuePolling(shareId: string): Promise<boolean> {
 export const initWechatPollWorker = async () => {
   const pollWorker = getWorker<WechatPollJobData>(QueueNames.wechatPoll, processWechatPollJob, {
     // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
-    concurrency: env.WECHAT_CHANNEL_CONCURRENCY,
+    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
     lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
     stalledInterval: 30_000, // 30s 检查下是否活跃
     removeOnComplete: { count: 0 },
@@ -264,7 +264,7 @@ export const initWechatPollWorker = async () => {
   });
 
   getWorker<WechatReplyJobData>(QueueNames.wechatReply, processWechatReplyJob, {
-    concurrency: env.WECHAT_CHANNEL_CONCURRENCY,
+    concurrency: serviceEnv.WECHAT_CHANNEL_CONCURRENCY,
     lockDuration: REPLY_LOCK_MS,
     stalledInterval: 60_000,
     removeOnComplete: { count: 0 },

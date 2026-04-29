@@ -10,17 +10,18 @@ import { existsSync } from 'fs';
  * 测试运行在 packages/service 下，因此本文件临时把 process.cwd() 指向
  * projects/app，让测试路径和真实运行时保持一致。
  *
- * 若构建产物不存在则跳过整套用例（提示用户先 build）。
+ * 默认跳过；设置 RUN_READ_FILE_WORKER_INTEGRATION=true 且构建产物存在时才运行。
  */
 const APP_PROJECT_DIR = path.resolve(__dirname, '../../../../../projects/app');
 const REAL_WORKER_PATH = path.join(APP_PROJECT_DIR, 'worker/readFile.js');
 
-const hasBuiltWorker = existsSync(REAL_WORKER_PATH);
+const shouldRunIntegration =
+  process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && existsSync(REAL_WORKER_PATH);
 
 const { WorkerNameEnum } = await import('@fastgpt/service/worker/utils');
 const { readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
 
-const describeIfBuilt = hasBuiltWorker ? describe : describe.skip;
+const describeIfEnabled = shouldRunIntegration ? describe : describe.skip;
 
 const getReadFilePool = () => {
   const pool = (global as any).workerPoll?.[WorkerNameEnum.readFile];
@@ -58,13 +59,13 @@ const destroyReadFilePool = async () => {
   delete workerPoll[WorkerNameEnum.readFile];
 };
 
-describeIfBuilt('readFile worker (real spawn integration)', () => {
+describeIfEnabled('readFile worker (real spawn integration)', () => {
   let cwdSpy: ReturnType<typeof vi.spyOn>;
 
-  if (!hasBuiltWorker) {
+  if (process.env.RUN_READ_FILE_WORKER_INTEGRATION === 'true' && !existsSync(REAL_WORKER_PATH)) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[skipped] worker bundle not found at ${REAL_WORKER_PATH}. Run "cd projects/app && pnpm build" first.`
+      `[skipped] readFile worker integration requires RUN_READ_FILE_WORKER_INTEGRATION=true and worker bundle at ${REAL_WORKER_PATH}.`
     );
   }
 

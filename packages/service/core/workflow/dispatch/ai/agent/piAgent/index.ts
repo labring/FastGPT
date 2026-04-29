@@ -23,7 +23,7 @@ import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/util
 import { buildPiModel, getModelApiKey } from './modelBridge';
 import { buildAgentTools } from './toolAdapter';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
-import { env } from '../../../../../../env';
+import { serviceEnv } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 
 type Response = DispatchNodeResultType<{
@@ -92,7 +92,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       : userChatInput;
 
     // Initialize capabilities — sandbox skills (lazy-init, gated by SHOW_SKILL)
-    if (env.SHOW_SKILL) {
+    if (serviceEnv.SHOW_SKILL) {
       const sandboxSessionId = mode === 'chat' ? chatId : `debug-${runningAppInfo.id}-${nodeId}`;
       const sandboxMode = useEditDebugSandbox ? 'editDebug' : 'sessionRuntime';
 
