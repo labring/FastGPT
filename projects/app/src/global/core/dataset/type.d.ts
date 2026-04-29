@@ -27,6 +27,7 @@ export type DatasetCollectionsListItemType = {
   tags?: (string | CollectionTagValueType)[];
 
   externalFileId?: string;
+  autoSync?: boolean;
 
   fileId?: string;
   rawLink?: string;

@@ -392,7 +392,7 @@ const CreateModal = ({
           )}
 
           {/* 编辑模式告警 */}
-          {isEditMode && (
+          {isEditMode && !isStructureDocument && (
             <HStack
               mt={4}
               px={3}

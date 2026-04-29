@@ -55,11 +55,11 @@ import { CollectionPageContext } from '../CollectionCard/Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM, formatTime2YMDHMUtc } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ExceptionInfoModal from './ExceptionInfoModal';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DatabaseExceptionModal from './DatabaseExceptionModal';
 import MoveCollectionDuplicateModal from './MoveCollectionDuplicateModal';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
@@ -102,6 +102,10 @@ const CollectionCard = () => {
   const [setTagsCollectionId, setSetTagsCollectionId] = useState<string | undefined>();
   const [showBatchSetTags, setShowBatchSetTags] = useState(false);
   const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionsListItemType>();
+  const [syncSettingsCollection, setSyncSettingsCollection] = useState<
+    DatasetCollectionsListItemType | undefined
+  >();
+  const [syncAutoSync, setSyncAutoSync] = useState(false);
 
   // Track if current getData call is from polling (to suppress loading state)
   const isPollingRef = useRef(false);
@@ -797,160 +801,181 @@ const CollectionCard = () => {
                               />
                             </MenuButton>
                           }
-                          menuList={[
-                            {
-                              children: [
-                                ...(collection.type === DatasetCollectionTypeEnum.folder
-                                  ? []
-                                  : [
-                                      {
-                                        label: (
-                                          <Flex alignItems={'center'}>
-                                            <MyIcon
-                                              name={
-                                                collection.type === DatasetCollectionTypeEnum.link
-                                                  ? 'common/routePushLight'
-                                                  : 'common/download'
-                                              }
-                                              w={'0.9rem'}
-                                              mr={2}
-                                            />
-                                            {collection.type === DatasetCollectionTypeEnum.link ||
-                                            collection.name.toLowerCase().endsWith('.txt')
-                                              ? t('dataset:view_original')
-                                              : collection.type === DatasetCollectionTypeEnum.images
-                                                ? t('dataset:view_image')
-                                                : t('dataset:download_file')}
-                                          </Flex>
-                                        ),
-                                        onClick: () => handleReadSource(collection._id)
-                                      }
-                                    ]),
-                                ...(isStructureDocument
-                                  ? []
-                                  : collectionCanSync(collection.type)
-                                    ? [
-                                        {
-                                          label: (
-                                            <Flex alignItems={'center'}>
-                                              <MyIcon
-                                                name={'common/refreshLight'}
-                                                w={'0.9rem'}
-                                                mr={2}
-                                              />
-                                              {t('dataset:collection_sync')}
-                                            </Flex>
-                                          ),
-                                          onClick: () =>
-                                            openSyncConfirm({
-                                              onConfirm: () => {
-                                                onclickStartSync(collection._id);
-                                              }
-                                            })()
-                                        }
-                                      ]
-                                    : []),
-                                ...(isStructureDocument
-                                  ? []
-                                  : [
-                                      {
-                                        label: (
-                                          <Flex alignItems={'center'}>
-                                            <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
-                                            {t('common:Move')}
-                                          </Flex>
-                                        ),
-                                        onClick: () =>
-                                          setMoveCollectionData({
-                                            collectionId: collection._id,
-                                            collectionName: collection.name
-                                          })
-                                      }
-                                    ]),
-                                ...(isStructureDocument
-                                  ? []
-                                  : [
-                                      {
-                                        label: (
-                                          <Flex alignItems={'center'}>
-                                            <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
-                                            {t('common:Rename')}
-                                          </Flex>
-                                        ),
-                                        onClick: () =>
-                                          onOpenEditTitleModal({
-                                            defaultVal: collection.name,
-                                            onSuccess: (newName) =>
-                                              onUpdateCollection({
-                                                id: collection._id,
-                                                name: newName
-                                              })
-                                          })
-                                      }
-                                    ]),
-                                ...(feConfigs?.isPlus
-                                  ? [
-                                      {
-                                        label: (
-                                          <Flex alignItems={'center'}>
-                                            <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
-                                            {t('dataset:tag.set_tags')}
-                                          </Flex>
-                                        ),
-                                        onClick: () => setSetTagsCollectionId(collection._id)
-                                      }
-                                    ]
-                                  : []),
-                                ...[
-                                  {
-                                    label: (
-                                      <Flex
-                                        alignItems={'center'}
-                                        opacity={collection.permission.hasManagePer ? 1 : 0.4}
-                                      >
-                                        <MyIcon name={'key'} w={'0.9rem'} mr={2} />
-                                        {t('common:permission.Permission config')}
-                                      </Flex>
-                                    ),
-                                    onClick: collection.permission.hasManagePer
-                                      ? () => setEditPerCollection(collection)
-                                      : undefined,
-                                    menuItemStyles: collection.permission.hasManagePer
-                                      ? undefined
-                                      : { cursor: 'not-allowed' }
-                                  }
-                                ]
-                              ]
-                            },
-                            {
-                              children: [
-                                {
+                          menuList={(() => {
+                            const isFolder =
+                              collection.type === DatasetCollectionTypeEnum.folder;
+                            const isLink =
+                              collection.type === DatasetCollectionTypeEnum.link;
+
+                            const permissionItem = {
+                              label: (
+                                <Flex
+                                  alignItems={'center'}
+                                  opacity={collection.permission.hasManagePer ? 1 : 0.4}
+                                >
+                                  <MyIcon name={'key'} w={'0.9rem'} mr={2} />
+                                  {t('common:Permission')}
+                                </Flex>
+                              ),
+                              onClick: collection.permission.hasManagePer
+                                ? () => setEditPerCollection(collection)
+                                : undefined,
+                              menuItemStyles: collection.permission.hasManagePer
+                                ? undefined
+                                : { cursor: 'not-allowed' }
+                            };
+
+                            const tagItem = feConfigs?.isPlus
+                              ? {
                                   label: (
                                     <Flex alignItems={'center'}>
                                       <MyIcon
-                                        mr={2}
-                                        name={'delete'}
+                                        name={'core/dataset/tag'}
                                         w={'0.9rem'}
-                                        _hover={{ color: 'red.600' }}
+                                        mr={2}
                                       />
-                                      <Box>{t('common:Delete')}</Box>
+                                      {t('dataset:tag.tags')}
                                     </Flex>
                                   ),
-                                  type: 'danger',
-                                  onClick: () =>
-                                    openDeleteConfirm({
-                                      onConfirm: () => onDelCollection([collection._id]),
-                                      customContent:
-                                        collection.type === DatasetCollectionTypeEnum.folder
-                                          ? t(
-                                              'common:dataset.collections.Confirm to delete the folder'
-                                            )
-                                          : t('common:dataset.Confirm to delete the file')
-                                    })()
+                                  onClick: () => setSetTagsCollectionId(collection._id)
                                 }
-                              ]
+                              : null;
+
+                            const moveItem = {
+                              label: (
+                                <Flex alignItems={'center'}>
+                                  <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
+                                  {t('common:Move')}
+                                </Flex>
+                              ),
+                              onClick: () =>
+                                setMoveCollectionData({
+                                  collectionId: collection._id,
+                                  collectionName: collection.name
+                                })
+                            };
+
+                            const renameItem = {
+                              label: (
+                                <Flex alignItems={'center'}>
+                                  <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
+                                  {t('common:Rename')}
+                                </Flex>
+                              ),
+                              onClick: () =>
+                                onOpenEditTitleModal({
+                                  defaultVal: collection.name,
+                                  onSuccess: (newName) =>
+                                    onUpdateCollection({
+                                      id: collection._id,
+                                      name: newName
+                                    })
+                                })
+                            };
+
+                            const deleteItem = {
+                              label: (
+                                <Flex alignItems={'center'}>
+                                  <MyIcon
+                                    mr={2}
+                                    name={'delete'}
+                                    w={'0.9rem'}
+                                    _hover={{ color: 'red.600' }}
+                                  />
+                                  <Box>{t('common:Delete')}</Box>
+                                </Flex>
+                              ),
+                              type: 'danger' as const,
+                              onClick: () =>
+                                openDeleteConfirm({
+                                  onConfirm: () => onDelCollection([collection._id]),
+                                  customContent: isFolder
+                                    ? t(
+                                        'common:dataset.collections.Confirm to delete the folder'
+                                      )
+                                    : t('common:dataset.Confirm to delete the file')
+                                })()
+                            };
+
+                            const sourceItem = {
+                              label: (
+                                <Flex alignItems={'center'}>
+                                  <MyIcon
+                                    name={isLink ? 'common/routePushLight' : 'common/download'}
+                                    w={'0.9rem'}
+                                    mr={2}
+                                  />
+                                  {isLink ||
+                                  collection.name.toLowerCase().endsWith('.txt')
+                                    ? t('dataset:view_original')
+                                    : collection.type === DatasetCollectionTypeEnum.images
+                                      ? t('dataset:view_image')
+                                      : t('dataset:download_file')}
+                                </Flex>
+                              ),
+                              onClick: () => handleReadSource(collection._id)
+                            };
+
+                            if (isFolder) {
+                              return [
+                                { children: [permissionItem] },
+                                { children: [moveItem, renameItem, deleteItem] }
+                              ];
                             }
-                          ]}
+
+                            if (isLink) {
+                              const syncNowItem = {
+                                label: (
+                                  <Flex alignItems={'center'}>
+                                    <MyIcon name={'common/refreshLight'} w={'0.9rem'} mr={2} />
+                                    {t('dataset:collection_sync')}
+                                  </Flex>
+                                ),
+                                onClick: () =>
+                                  openSyncConfirm({
+                                    onConfirm: () => onclickStartSync(collection._id)
+                                  })()
+                              };
+                              const syncSettingsItem = {
+                                label: (
+                                  <Flex alignItems={'center'}>
+                                    <MyIcon
+                                      name={'common/settingLight'}
+                                      w={'0.9rem'}
+                                      mr={2}
+                                    />
+                                    {t('dataset:sync_settings')}
+                                  </Flex>
+                                ),
+                                onClick: () => {
+                                  setSyncAutoSync(!!collection.autoSync);
+                                  setSyncSettingsCollection(collection);
+                                }
+                              };
+                              return [
+                                {
+                                  children: [
+                                    syncNowItem,
+                                    syncSettingsItem,
+                                    ...(tagItem ? [tagItem] : []),
+                                    permissionItem
+                                  ]
+                                },
+                                { children: [sourceItem, moveItem, renameItem, deleteItem] }
+                              ];
+                            }
+
+                            // 普通文件
+                            return [
+                              {
+                                children: [
+                                  ...(tagItem ? [tagItem] : []),
+                                  permissionItem
+                                ]
+                              },
+                              { children: [sourceItem, moveItem, renameItem, deleteItem] }
+                            ];
+                          })()}
                         />
                       )}
                     </Td>
@@ -1235,6 +1260,52 @@ const CollectionCard = () => {
               : {})}
             onClose={() => setEditPerCollection(undefined)}
           />
+        )}
+
+        {!!syncSettingsCollection && (
+          <MyModal
+            isOpen
+            iconSrc="common/confirm/info"
+            maxW={['90vw', '400px']}
+            title={t('dataset:sync_settings')}
+            onClose={() => setSyncSettingsCollection(undefined)}
+          >
+            <ModalBody p={8}>
+              <Flex alignItems="center">
+                <HStack flex="1" spacing={1}>
+                  <Box fontSize="sm">{t('dataset:sync_schedule')}</Box>
+                  <QuestionTip label={t('dataset:sync_schedule_tip')} />
+                </HStack>
+                <Switch
+                  isChecked={syncAutoSync}
+                  onChange={(e) => setSyncAutoSync(e.target.checked)}
+                />
+              </Flex>
+            </ModalBody>
+            <ModalFooter gap={2}>
+              <Button
+                size={'sm'}
+                px={5}
+                variant={'whiteBase'}
+                onClick={() => setSyncSettingsCollection(undefined)}
+              >
+                {t('common:Cancel')}
+              </Button>
+              <Button
+                size={'sm'}
+                px={5}
+                onClick={async () => {
+                  await onUpdateCollection({
+                    id: syncSettingsCollection._id,
+                    autoSync: syncAutoSync
+                  });
+                  setSyncSettingsCollection(undefined);
+                }}
+              >
+                {t('common:Confirm')}
+              </Button>
+            </ModalFooter>
+          </MyModal>
         )}
       </Flex>
     </MyBox>

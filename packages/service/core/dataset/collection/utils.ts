@@ -184,8 +184,10 @@ export const collectionTagsToTagLabel = async ({
     .map((tag) => tagsMap.get(tag) || '')
     .filter(Boolean);
 
-  // 新格式：过滤掉已被删除的 tagId
-  const validNewFormatItems = newFormatItems.filter((item) => validTagIdSet.has(item.tagId));
+  // 新格式：过滤掉已被删除的 tagId，并附加 label（标签名）
+  const validNewFormatItems = newFormatItems
+    .filter((item) => validTagIdSet.has(item.tagId))
+    .map((item) => ({ ...item, label: tagsMap.get(item.tagId) }));
 
   const result: (string | CollectionTagValueType)[] = [...oldFormatLabels, ...validNewFormatItems];
   return result.length > 0 ? result : undefined;

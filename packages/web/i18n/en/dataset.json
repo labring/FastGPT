@@ -196,6 +196,7 @@
   "status_error": "Running error occurred.",
   "sync_collection_failed": "Error occurred while syncing the collection. Please check whether the source file is accessible.",
   "sync_schedule": "Auto sync",
+  "sync_settings": "Sync settings",
   "sync_schedule_tip": "Once enabled, the first automatic synchronization of the selected content will take place within 1 to 5 hours, with subsequent automatic synchronizations occurring every 24 hours thereafter.",
   "tag.Add_new_tag": "Add tag",
   "tag.tag_name": "Tag name",

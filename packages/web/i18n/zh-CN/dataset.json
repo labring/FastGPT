@@ -196,6 +196,7 @@
   "status_error": "运行异常",
   "sync_collection_failed": "同步集合错误，请检查是否能正常访问源文件",
   "sync_schedule": "自动同步",
+  "sync_settings": "同步设置",
   "sync_schedule_tip": "开启后，将在 1~5 小时后首次自动同步已选择的内容，之后每 24 小时自动同步一次。",
   "tag.Add_new_tag": "新建标签",
   "tag.tag_name": "标签名称",

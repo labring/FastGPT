@@ -196,6 +196,7 @@
   "status_error": "執行異常",
   "sync_collection_failed": "同步集合錯誤，請檢查是否能正常存取來原始檔",
   "sync_schedule": "自動同步",
+  "sync_settings": "同步設定",
   "sync_schedule_tip": "開啟後，將在 1~5 小時後首次自動同步已選擇的內容，之後每 24 小時自動同步一次。",
   "tag.Add_new_tag": "新增標籤",
   "tag.tag_name": "標籤名稱",
