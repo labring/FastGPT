@@ -61,11 +61,9 @@ export function buildSkillsContextPrompt(
   // Sandbox environment section: always present
   lines.push('<sandbox_environment>');
   lines.push(`Workspace root: ${workDirectory}`);
+  lines.push('You have access to sandbox_* tools: read, write, edit, execute, fetch_user_file.');
   lines.push(
-    'You have access to sandbox_* tools: read, write, edit, execute, search files, and fetch user-uploaded files.'
-  );
-  lines.push(
-    'If the conversation includes <available_files>, use sandbox_fetch_user_file to copy files into the workspace.'
+    'If the conversation includes <available_files> and files are being processed in the sandbox, use sandbox_fetch_user_file to copy files into the workspace.'
   );
   lines.push(
     'Always use RELATIVE paths for target_path (e.g. "uploads/file.pdf"), never absolute paths or "..".'

@@ -274,7 +274,7 @@ export async function createSandboxSkillsCapability(
 
   async function initializeSandbox(): Promise<AgentSandboxContext> {
     onProgress?.({ sandboxId: sessionId, phase: 'lazyInit' });
-    return createAgentSandbox({ skillIds, teamId, tmbId, sessionId, onProgress });
+    return createAgentSandbox({ skillIds, teamId, tmbId, sessionId, onProgress, skillsMeta });
   }
 
   async function ensureSandbox(): Promise<AgentSandboxContext> {
