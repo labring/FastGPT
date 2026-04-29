@@ -13,6 +13,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
+import { env } from '@fastgpt/service/env';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
   const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } =
@@ -47,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
     : app?.chatConfig?.fileSelectConfig;
   const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(effectiveFileSelectConfig);
 
-  if (allowedExtensions.length === 0) {
+  if (!env.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
     return Promise.reject(S3ErrEnum.fileUploadDisabled);
   }
 
