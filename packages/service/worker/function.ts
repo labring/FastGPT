@@ -3,7 +3,7 @@ import {
   type SplitProps,
   type SplitResponse
 } from '@fastgpt/global/common/string/textSplitter';
-import { getWorkerController, runWorker, WorkerNameEnum } from './utils';
+import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { env } from '../env';
@@ -13,7 +13,12 @@ export const text2Chunks = (props: SplitProps) => {
   if (isTestEnv) {
     return splitText2Chunks(props);
   }
-  return runWorker<SplitResponse>(WorkerNameEnum.text2Chunks, props);
+  return getWorkerController<SplitProps, SplitResponse>({
+    name: WorkerNameEnum.text2Chunks,
+    maxReservedThreads: env.TEXT_TO_CHUNKS_WORKERS,
+    taskTimeoutMs: 300000,
+    maxTasksPerWorker: 100
+  }).run(props);
 };
 
 type ReadFileWorkerProps = {

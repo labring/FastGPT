@@ -8,8 +8,15 @@ const { mockRun, mockGetWorkerController, mockRunWorker, mockEnv } = vi.hoisted(
     mockRun,
     mockGetWorkerController: vi.fn(() => ({ run: mockRun })),
     mockRunWorker: vi.fn(),
-    mockEnv: { PARSE_FILE_WORKERS: 10, PARSE_FILE_TIMEOUT_SECONDS: 300 } as {
+    mockEnv: {
+      PARSE_FILE_WORKERS: 10,
+      HTML_TO_MARKDOWN_WORKERS: 10,
+      TEXT_TO_CHUNKS_WORKERS: 10,
+      PARSE_FILE_TIMEOUT_SECONDS: 300
+    } as {
       PARSE_FILE_WORKERS: number;
+      HTML_TO_MARKDOWN_WORKERS: number;
+      TEXT_TO_CHUNKS_WORKERS: number;
       PARSE_FILE_TIMEOUT_SECONDS: number;
     }
   };
@@ -32,6 +39,7 @@ vi.mock('@fastgpt/service/env', () => ({
 
 // 必须在 vi.mock 之后再 import 被测模块
 const { text2Chunks, readRawContentFromBuffer } = await import('@fastgpt/service/worker/function');
+const { htmlToMarkdown } = await import('@fastgpt/service/common/string/utils');
 
 describe('worker/function', () => {
   beforeEach(() => {
@@ -91,7 +99,7 @@ describe('worker/function', () => {
       expect(poolCfg.name).toBe(WorkerNameEnum.readFile);
       expect(poolCfg.maxReservedThreads).toBe(10); // 默认值
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
-      expect(poolCfg.maxTasksPerWorker).toBe(200);
+      expect(poolCfg.maxTasksPerWorker).toBe(100);
 
       // run 入参
       expect(mockRun).toHaveBeenCalledTimes(1);
@@ -221,6 +229,50 @@ describe('worker/function', () => {
       expect(sab1).not.toBe(sab2);
       expect(new Uint8Array(sab1)[0]).toBe('a'.charCodeAt(0));
       expect(new Uint8Array(sab2)[0]).toBe('b'.charCodeAt(0));
+    });
+  });
+
+  describe('htmlToMarkdown', () => {
+    afterEach(() => {
+      mockEnv.HTML_TO_MARKDOWN_WORKERS = 10;
+      mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
+    });
+
+    it('通过 htmlStr2Md worker pool 派发并返回 rawText', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: '# Title', imageList: [] });
+
+      const result = await htmlToMarkdown('<h1>Title</h1>');
+
+      expect(result).toBe('# Title');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
+
+      const poolCfg = mockGetWorkerController.mock.calls[0][0];
+      expect(poolCfg.name).toBe(WorkerNameEnum.htmlStr2Md);
+      expect(poolCfg.maxReservedThreads).toBe(10);
+      expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
+      expect(poolCfg.maxTasksPerWorker).toBe(100);
+
+      expect(mockRun).toHaveBeenCalledWith({ html: '<h1>Title</h1>' });
+    });
+
+    it('空 html 统一传空字符串', async () => {
+      mockRun.mockResolvedValueOnce({ rawText: '', imageList: [] });
+
+      const result = await htmlToMarkdown(null);
+
+      expect(result).toBe('');
+      expect(mockRun).toHaveBeenCalledWith({ html: '' });
+    });
+
+    it('HTML_TO_MARKDOWN_WORKERS 自定义值生效', async () => {
+      mockEnv.HTML_TO_MARKDOWN_WORKERS = 6;
+      mockRun.mockResolvedValueOnce({ rawText: 'ok', imageList: [] });
+
+      await htmlToMarkdown('<p>ok</p>');
+
+      const poolCfg = mockGetWorkerController.mock.calls[0][0];
+      expect(poolCfg.maxReservedThreads).toBe(6);
     });
   });
 });

@@ -94,7 +94,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   name: WorkerNameEnum;
   maxReservedThreads: number;
   taskTimeoutMs: number;
-  maxTasksPerWorker?: number;
+  maxTasksPerWorker: number;
   workerQueue: WorkerQueueItem[] = [];
   waitQueue: WorkerRunTaskType<Props>[] = [];
 
@@ -102,7 +102,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     name,
     maxReservedThreads,
     taskTimeoutMs = 60000,
-    maxTasksPerWorker
+    maxTasksPerWorker = 1000
   }: {
     name: WorkerNameEnum;
     maxReservedThreads: number;
@@ -203,7 +203,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
       item.tasksCompleted += 1;
 
       // 达到任务上限则回收（应对 worker 进程内库的内存泄漏）
-      if (this.maxTasksPerWorker && item.tasksCompleted >= this.maxTasksPerWorker) {
+      if (item.tasksCompleted >= this.maxTasksPerWorker) {
         this.deleteWorker(item.id);
       } else {
         item.status = 'idle';

@@ -220,6 +220,12 @@ export const env = createEnv({
     PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
       description: '文件解析 worker 常驻线程数'
     }),
+    HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
+      description: 'HTML 转 Markdown worker 常驻线程数'
+    }),
+    TEXT_TO_CHUNKS_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
+      description: '文本切块 worker 常驻线程数'
+    }),
     PARSE_FILE_TIMEOUT_SECONDS: IntSchema.min(60).max(6000).default(600).meta({
       description: '文件解析单任务超时时间（秒）'
     }),
