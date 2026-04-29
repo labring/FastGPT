@@ -266,7 +266,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    logger.warn('HTTP tool request failed', { error });
+    logger.warn('HTTP tool request failed', { error, httpReqUrl });
 
     // @adapt
     if (node.catchError === undefined) {
