@@ -43,10 +43,10 @@ export type ModelListTableProps = {
   isSelected: (item: ModelRow) => boolean;
   isSelecteAll: boolean;
   selectAllTrigger: () => void;
-  trainTaskCountSortOrder: 'asc' | 'desc';
+  trainTaskCountSortOrder?: 'asc' | 'desc';
   toggleTrainTaskCountSort: () => void;
-  handleOpenTrainModel: OpenTrainModelHandler;
-  setTrainDetailModel: Dispatch<SetStateAction<TrainDetailModel | null>>;
+  handleOpenTrainDrawer: OpenTrainModelHandler;
+  setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
 };
 
 type ModelTableRowProps = {
@@ -58,8 +58,8 @@ type ModelTableRowProps = {
   userPermission: TeamPermission;
   toggleSelect: (item: ModelRow) => void;
   isSelected: (item: ModelRow) => boolean;
-  handleOpenTrainModel: OpenTrainModelHandler;
-  setTrainDetailModel: Dispatch<SetStateAction<TrainDetailModel | null>>;
+  handleOpenTrainDrawer: OpenTrainModelHandler;
+  setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
 };
 
 type TableActionCellProps = {
@@ -69,7 +69,7 @@ type TableActionCellProps = {
   permissionConfig: boolean;
   hasManagePer: boolean;
   userPermission: TeamPermission;
-  handleOpenTrainModel: OpenTrainModelHandler;
+  handleOpenTrainDrawer: OpenTrainModelHandler;
 };
 
 const ModelListTable = ({
@@ -85,8 +85,8 @@ const ModelListTable = ({
   selectAllTrigger,
   trainTaskCountSortOrder,
   toggleTrainTaskCountSort,
-  handleOpenTrainModel,
-  setTrainDetailModel
+  handleOpenTrainDrawer,
+  setTrainDetailDrawer
 }: ModelListTableProps) => {
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
 
@@ -114,12 +114,24 @@ const ModelListTable = ({
               >
                 <HStack spacing={1}>
                   <Box>{t('account_model:train_task_count')}</Box>
-                  <MyIcon
-                    name={'core/chat/chevronSelector'}
-                    w={'16px'}
-                    color={trainTaskCountSortOrder ? 'primary.600' : undefined}
-                    _hover={{ color: 'primary.600' }}
-                  />
+                  {trainTaskCountSortOrder ? (
+                    <MyIcon
+                      name={
+                        trainTaskCountSortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'
+                      }
+                      w={'12px'}
+                      cursor={'pointer'}
+                      color={'primary.600'}
+                    />
+                  ) : (
+                    <MyIcon
+                      name={'common/table/sort'}
+                      w={'12px'}
+                      cursor={'pointer'}
+                      color={'myGray.400'}
+                      _hover={{ color: 'primary.600' }}
+                    />
+                  )}
                 </HStack>
               </Th>
             )}
@@ -138,8 +150,8 @@ const ModelListTable = ({
               userPermission={userPermission}
               toggleSelect={toggleSelect}
               isSelected={isSelected}
-              handleOpenTrainModel={handleOpenTrainModel}
-              setTrainDetailModel={setTrainDetailModel}
+              handleOpenTrainDrawer={handleOpenTrainDrawer}
+              setTrainDetailDrawer={setTrainDetailDrawer}
             />
           ))}
         </Tbody>
@@ -157,13 +169,22 @@ const ModelTableRow = ({
   userPermission,
   toggleSelect,
   isSelected,
-  handleOpenTrainModel,
-  setTrainDetailModel
+  handleOpenTrainDrawer,
+  setTrainDetailDrawer
 }: ModelTableRowProps) => {
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
   const trainTaskCount = item.trainTaskList?.length || 0;
   const showRunningTask = hasRunningTrainTask(item.trainTaskList);
   const showErrorTask = hasErrorTrainTask(item.trainTaskList);
+
+  const onClickTrainTaskCell = () => {
+    if (trainTaskCount === 0 || !item.trainableModelType) return;
+    setTrainDetailDrawer({
+      model: item.model,
+      name: item.name,
+      baseModelType: item.trainableModelType
+    });
+  };
 
   return (
     <Tr _hover={{ bg: 'myGray.50' }}>
@@ -187,21 +208,16 @@ const ModelTableRow = ({
       </Td>
       <Td fontSize={'sm'}>{item.priceLabel}</Td>
       {showTrainTaskColumn && (
-        <Td fontSize={'sm'}>
+        <Td
+          fontSize={'sm'}
+          cursor={trainTaskCount > 0 && item.trainableModelType ? 'pointer' : 'default'}
+          onClick={onClickTrainTaskCell}
+        >
           {trainTaskCount > 0 ? (
             <HStack spacing={1}>
               <Box
                 color={'blue.500'}
-                cursor={item.trainableModelType ? 'pointer' : 'default'}
                 _hover={item.trainableModelType ? { textDecoration: 'underline' } : undefined}
-                onClick={() => {
-                  if (!item.trainableModelType) return;
-                  setTrainDetailModel({
-                    model: item.model,
-                    name: item.name,
-                    baseModelType: item.trainableModelType
-                  });
-                }}
               >
                 {trainTaskCount}
               </Box>
@@ -223,6 +239,17 @@ const ModelTableRow = ({
                     display={'flex'}
                     alignItems={'center'}
                     justifyContent={'center'}
+                    sx={{
+                      '@keyframes modelTrainTaskSpin': {
+                        from: {
+                          transform: 'rotate(0deg)'
+                        },
+                        to: {
+                          transform: 'rotate(360deg)'
+                        }
+                      },
+                      animation: 'modelTrainTaskSpin 1s linear infinite'
+                    }}
                   >
                     <MyIcon name={'common/running'} w={'16px'} h={'16px'} />
                   </Box>
@@ -242,7 +269,7 @@ const ModelTableRow = ({
           permissionConfig={permissionConfig}
           hasManagePer={hasManagePer}
           userPermission={userPermission}
-          handleOpenTrainModel={handleOpenTrainModel}
+          handleOpenTrainDrawer={handleOpenTrainDrawer}
         />
       </Td>
     </Tr>
@@ -256,7 +283,7 @@ const ModelTableActionCell = ({
   permissionConfig,
   hasManagePer,
   userPermission,
-  handleOpenTrainModel
+  handleOpenTrainDrawer
 }: TableActionCellProps) => {
   const showPermissionButton = permissionConfig && hasManagePer;
   const showTrainButton = tabType === modelTableTabValues.base && !!item.trainableModelType;
@@ -269,7 +296,7 @@ const ModelTableActionCell = ({
     <Button
       size={'sm'}
       variant={'whiteBase'}
-      onClick={() => handleOpenTrainModel(item.trainableModelType!, item.model)}
+      onClick={() => handleOpenTrainDrawer(item.trainableModelType!, item.model)}
     >
       {t('account_model:train')}
     </Button>

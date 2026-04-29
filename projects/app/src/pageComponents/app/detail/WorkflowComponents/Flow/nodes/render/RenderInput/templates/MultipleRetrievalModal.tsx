@@ -111,13 +111,18 @@ const MultipleRetrievalModal = ({
         <HStack mt={hideAiModel ? 0 : 4} justifyContent={'space-between'}>
           <FormLabel>
             {t('common:core.ai.model.Vector Model')}
-            <QuestionTip ml={0.5} label={t('common:core.dataset.embedding model tip')} />
+            <QuestionTip ml={0.5} label={t('app:smart_customer_service_embedding_model_tip')} />
           </FormLabel>
           <Box flex={'0 0 340px'}>
             <SelectAiModel
               width="100%"
               value={embeddingModel}
               list={embeddingModelSelectList}
+              placeholder={
+                !datasetVectorModel
+                  ? t('app:smart_customer_service_embedding_model_placeholder')
+                  : undefined
+              }
               onChange={(val: string) => setValue('embeddingModel', val)}
             />
           </Box>

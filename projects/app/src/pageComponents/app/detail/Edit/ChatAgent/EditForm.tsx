@@ -584,6 +584,11 @@ const EditForm = ({
                 h={'32px'}
                 value={appForm.dataset.embeddingModel}
                 list={embeddingModelSelectList}
+                placeholder={
+                  !datasetVectorModel
+                    ? t('app:smart_customer_service_embedding_model_placeholder')
+                    : undefined
+                }
                 onChange={(model) =>
                   setAppForm((state) => ({
                     ...state,

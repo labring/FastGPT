@@ -250,7 +250,7 @@ const DatasetParamsModal = ({
       <HStack mb={3}>
         <HStack spacing={1} flex={'0 0 100px'} color={'myGray.700'}>
           <Box fontSize={'sm'}>{t('common:core.ai.model.Vector Model')}</Box>
-          <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+          <QuestionTip label={t('app:smart_customer_service_embedding_model_tip')} />
         </HStack>
         <Box flex={'1 0 0'}>
           <SelectAiModel
@@ -258,6 +258,11 @@ const DatasetParamsModal = ({
             h={'36px'}
             value={embeddingModelWatch}
             list={embeddingModelSelectList}
+            placeholder={
+              !datasetVectorModel
+                ? t('app:smart_customer_service_embedding_model_placeholder')
+                : undefined
+            }
             onChange={(val) => {
               setValue(NodeInputKeyEnum.datasetSearchEmbeddingModel, val);
             }}
@@ -265,7 +270,7 @@ const DatasetParamsModal = ({
         </Box>
       </HStack>
     ),
-    [embeddingModelWatch, embeddingModelSelectList, setValue, t]
+    [datasetVectorModel, embeddingModelWatch, embeddingModelSelectList, setValue, t]
   );
 
   return (
