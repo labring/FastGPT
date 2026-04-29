@@ -569,23 +569,21 @@ export const checkWorkflowNodeAndConnection = ({
           if (!isValidReferenceValue(item.variable, nodeIds) || !isLiveReference(item.variable))
             return true;
 
-          const isArrayVar =
-            typeof item.valueType === 'string' && item.valueType.startsWith('array');
-
           if (item.renderType === FlowNodeInputTypeEnum.reference) {
-            if (isArrayVar) {
-              return (
-                !Array.isArray(item.value) ||
-                item.value.length === 0 ||
-                (item.value as ReferenceItemValueType[]).some((v) => !isLiveReference(v))
-              );
+            // 接受单引用 [ref] 与引用数组 [[ref], ...]，与 dispatcher 对齐
+            if (isValidReferenceValueFormat(item.value)) {
+              return !isLiveReference(item.value as ReferenceItemValueType);
             }
-            return !isLiveReference(item.value as ReferenceItemValueType);
+            return (
+              !Array.isArray(item.value) ||
+              item.value.length === 0 ||
+              (item.value as ReferenceItemValueType[]).some((v) => !isLiveReference(v))
+            );
           }
 
-          // input mode: clear 不需要 value；boolean 由 booleanMode 决定
-          if (isArrayVar && item.arrayMode === 'clear') return false;
-          if (item.valueType === WorkflowIOValueTypeEnum.boolean) return false;
+          // input 模式：clear / boolean 由模式字段决定，不读 value
+          if (item.arrayMode === 'clear') return false;
+          if (item.booleanMode) return false;
           const inputVal = item.value?.[1];
           return inputVal === undefined || inputVal === null || inputVal === '';
         })

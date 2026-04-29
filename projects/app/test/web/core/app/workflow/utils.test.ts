@@ -528,6 +528,34 @@ describe('checkWorkflowNodeAndConnection', () => {
       ).toEqual(['u1']);
     });
 
+    // item.valueType 是写入快照，不与目标变量同步——校验只看 value 形态
+    it('passes reference array form regardless of stale valueType', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: [[VARIABLE_NODE_ID, 'bar']],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.reference
+          }
+        ])
+      ).toBeUndefined();
+    });
+
+    // 历史数据：array reference 旧版本存为单引用 [refNode, refOutputId]
+    it('passes legacy single-reference form for array valueType', () => {
+      expect(
+        run([
+          {
+            variable: [VARIABLE_NODE_ID, 'foo'],
+            value: [VARIABLE_NODE_ID, 'bar'],
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            renderType: FlowNodeInputTypeEnum.reference
+          }
+        ])
+      ).toBeUndefined();
+    });
+
     it('passes a fully filled input row', () => {
       expect(
         run([
