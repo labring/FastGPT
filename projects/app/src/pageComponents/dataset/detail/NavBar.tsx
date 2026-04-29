@@ -89,15 +89,18 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   return (
     <>
       {isPc ? (
-        <Flex
-          h={'16'}
-          justify={'space-between'}
-          alignItems={'center'}
-          position={'relative'}
-          flexShrink={0}
-        >
+        <Flex h={'16'} alignItems={'center'} flexShrink={0}>
           {/* 左侧：面包屑路径 */}
-          <Flex py={'0.38rem'} px={2} h={10} ml={0.5} flex={1} minW={0}>
+          <Flex
+            alignItems={'center'}
+            py={'0.38rem'}
+            px={2}
+            h={10}
+            ml={0.5}
+            flex={'0 1 auto'}
+            minW={0}
+            overflow={'hidden'}
+          >
             {currentTab === TabEnum.dataCard ? (
               <Flex
                 alignItems={'center'}
@@ -159,9 +162,9 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             )}
           </Flex>
 
-          {/* 中间：TabList 绝对居中 */}
+          {/* 中间：TabList，mx auto 自动均分两侧剩余空间 */}
           {showNavTab && (
-            <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+            <Box mx={'auto'} flexShrink={0}>
               <MyTabs
                 tabs={tabList}
                 value={currentTab}
@@ -170,12 +173,15 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
             </Box>
           )}
 
-          {/* 右侧：collectionCard tab 显示操作按钮 */}
-          {currentTab === TabEnum.collectionCard && (
-            <Flex flexShrink={0} alignItems={'center'}>
-              <CollectionNavActions />
-            </Flex>
-          )}
+          {/* 右侧：始终占位，不在 collectionCard tab 时隐藏；无 Tab 时自动推到最右 */}
+          <Flex
+            ml={!showNavTab ? 'auto' : undefined}
+            flexShrink={0}
+            alignItems={'center'}
+            visibility={currentTab === TabEnum.collectionCard ? 'visible' : 'hidden'}
+          >
+            <CollectionNavActions />
+          </Flex>
         </Flex>
       ) : (
         <Box mb={2}>
