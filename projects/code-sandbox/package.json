@@ -19,6 +19,9 @@
   "dependencies": {
     "@fastgpt-sdk/logger": "workspace:*",
     "@fastgpt/service": "workspace:*",
+    "ipaddr.js": "^2.3.0",
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4",
     "axios": "catalog:",
     "crypto-js": "^4.2.0",
     "dayjs": "catalog:",

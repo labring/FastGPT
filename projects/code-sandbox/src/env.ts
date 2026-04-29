@@ -6,7 +6,9 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config();
+// quiet:true 抑制 dotenv 17.x 默认向 stdout 打印的注入横幅,
+// 避免被 worker 子进程透传到 IPC 首行导致 base-process-pool 解析 init 响应失败。
+dotenv.config({ quiet: true });
 
 /** coerce 数字，带默认值 */
 const int = (defaultValue: number) => z.coerce.number().int().default(defaultValue);

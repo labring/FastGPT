@@ -442,28 +442,23 @@ describe('逃逸攻击', () => {
       }
     });
 
-    it('AsyncFunction 构造器绕过 _SafeFunction（env 已清理）', async () => {
+    it('AsyncFunction constructor 被锁定', async () => {
       const result = await runner.execute({
         code: `async function main() {
           try {
             const AsyncFn = (async function(){}).constructor;
             const fn = new AsyncFn('return process.env');
-            const env = await fn();
-            const keys = Object.keys(env);
-            return { escaped: true, keys };
+            await fn();
+            return { escaped: true };
           } catch(e) { return { escaped: false }; }
         }`,
         variables: {}
       });
       expect(result.success).toBe(true);
-      if (result.data?.codeReturn.escaped) {
-        const keys: string[] = result.data.codeReturn.keys || [];
-        expect(keys).not.toContain('SECRET_KEY');
-        expect(keys).not.toContain('API_KEY');
-      }
+      expect(result.data?.codeReturn.escaped).toBe(false);
     });
 
-    it('GeneratorFunction 构造器绕过 _SafeFunction', async () => {
+    it('GeneratorFunction constructor 被锁定', async () => {
       const result = await runner.execute({
         code: `async function main() {
           try { const GenFn = (function*(){}).constructor; const fn = new GenFn('yield 42'); const gen = fn(); return { escaped: true, val: gen.next().value }; }
@@ -472,9 +467,7 @@ describe('逃逸攻击', () => {
         variables: {}
       });
       expect(result.success).toBe(true);
-      if (result.data?.codeReturn.escaped) {
-        expect(result.data.codeReturn.val).toBe(42);
-      }
+      expect(result.data?.codeReturn.escaped).toBe(false);
     });
   });
 
@@ -877,7 +870,7 @@ describe('网络请求安全', () => {
 
     it('httpRequest GET 公网地址正常', async () => {
       const result = await runner.execute({
-        code: `async function main() { const res = await SystemHelper.httpRequest('https://www.baidu.com'); return { status: res.status, hasData: res.data.length > 0 }; }`,
+        code: `async function main() { const res = await SystemHelper.httpRequest('https://1.1.1.1/cdn-cgi/trace'); return { status: res.status, hasData: res.data.length > 0 }; }`,
         variables: {}
       });
       expect(result.success).toBe(true);
@@ -888,7 +881,7 @@ describe('网络请求安全', () => {
     it('httpRequest POST 带 body', async () => {
       const result = await runner.execute({
         code: `async function main() {
-          const res = await SystemHelper.httpRequest('https://www.baidu.com', { method: 'POST', body: { key: 'value' } });
+          const res = await SystemHelper.httpRequest('https://1.1.1.1/cdn-cgi/trace', { method: 'POST', body: { key: 'value' } });
           return { hasStatus: typeof res.status === 'number' };
         }`,
         variables: {}
@@ -899,7 +892,7 @@ describe('网络请求安全', () => {
 
     it('全局函数 httpRequest 可用', async () => {
       const result = await runner.execute({
-        code: `async function main() { const res = await httpRequest('https://www.baidu.com'); return { status: res.status }; }`,
+        code: `async function main() { const res = await httpRequest('https://1.1.1.1/cdn-cgi/trace'); return { status: res.status }; }`,
         variables: {}
       });
       expect(result.success).toBe(true);
@@ -944,7 +937,7 @@ describe('网络请求安全', () => {
 
     it('http_request GET 公网地址正常', async () => {
       const result = await runner.execute({
-        code: `def main():\n    res = system_helper.http_request('https://www.baidu.com')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
+        code: `def main():\n    res = system_helper.http_request('https://1.1.1.1/cdn-cgi/trace')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
         variables: {}
       });
       expect(result.success).toBe(true);
@@ -954,7 +947,7 @@ describe('网络请求安全', () => {
 
     it('http_request POST 带 body', async () => {
       const result = await runner.execute({
-        code: `import json\ndef main():\n    res = system_helper.http_request('https://www.baidu.com', method='POST', body={'key': 'value'})\n    return {'hasStatus': type(res['status']) == int}`,
+        code: `import json\ndef main():\n    res = system_helper.http_request('https://1.1.1.1/cdn-cgi/trace', method='POST', body={'key': 'value'})\n    return {'hasStatus': type(res['status']) == int}`,
         variables: {}
       });
       expect(result.success).toBe(true);
@@ -963,7 +956,7 @@ describe('网络请求安全', () => {
 
     it('全局函数 http_request 可用', async () => {
       const result = await runner.execute({
-        code: `def main():\n    res = http_request('https://www.baidu.com')\n    return {'status': res['status']}`,
+        code: `def main():\n    res = http_request('https://1.1.1.1/cdn-cgi/trace')\n    return {'status': res['status']}`,
         variables: {}
       });
       expect(result.success).toBe(true);
@@ -1328,7 +1321,7 @@ describe('worker 状态隔离', () => {
       } catch {}
     });
 
-    it('上一次执行设置的全局变量，下一次读不到（已知限制：隐式全局变量会泄露）', async () => {
+    it('上一次执行设置的全局变量，下一次读不到', async () => {
       pool = new ProcessPool(1);
       await pool.init();
 
@@ -1343,8 +1336,6 @@ describe('worker 状态隔离', () => {
       expect(r1.success).toBe(true);
 
       // 第二次：尝试读取上一次写入的数据
-      // 注意：JS worker 复用进程，隐式全局变量（未用 var/let/const 声明）会泄露
-      // 这是已知限制，因为 JS 使用 Function constructor 而非 VM 隔离
       const r2 = await pool.execute({
         code: `async function main() {
           let found = [];
@@ -1354,11 +1345,10 @@ describe('worker 状态隔离', () => {
         variables: {}
       });
       expect(r2.success).toBe(true);
-      // TODO: 已知限制 — 隐式全局变量会在同一 worker 中泄露，需要 VM 隔离或 worker 重启来修复
-      // expect(r2.data?.codeReturn.leaked).toBe(false);
+      expect(r2.data?.codeReturn.leaked).toBe(false);
     });
 
-    it('上一次修改的 prototype 不影响下一次（已知限制：prototype 修改会泄露）', async () => {
+    it('上一次修改的 prototype 不影响下一次', async () => {
       pool = new ProcessPool(1);
       await pool.init();
 
@@ -1372,8 +1362,6 @@ describe('worker 状态隔离', () => {
       });
 
       // 第二次：检查 Array.prototype 是否干净
-      // 注意：JS worker 复用进程，prototype 修改会持久化
-      // 这是已知限制，Object.setPrototypeOf 已被禁用，但直接赋值无法阻止
       const r2 = await pool.execute({
         code: `async function main() {
           return { hasHacked: typeof [].hacked === 'function' };
@@ -1381,8 +1369,118 @@ describe('worker 状态隔离', () => {
         variables: {}
       });
       expect(r2.success).toBe(true);
-      // TODO: 已知限制 — prototype 修改在同一 worker 中持久化
-      // expect(r2.data?.codeReturn.hasHacked).toBe(false);
+      expect(r2.data?.codeReturn.hasHacked).toBe(false);
+    });
+
+    it('上一次修改的 JS 允许模块不影响下一次', async () => {
+      pool = new ProcessPool(1);
+      await pool.init();
+
+      await pool.execute({
+        code: `async function main() {
+          try { require('lodash').chunk = () => ['polluted']; } catch(e) {}
+          try { Object.getOwnPropertyDescriptor(require('lodash'), 'chunk').value.polluted = true; } catch(e) {}
+          return {};
+        }`,
+        variables: {}
+      });
+
+      const r2 = await pool.execute({
+        code: `async function main() {
+          const _ = require('lodash');
+          return { chunk: _.chunk([1, 2], 1), polluted: _.chunk.polluted === true };
+        }`,
+        variables: {}
+      });
+      expect(r2.success).toBe(true);
+      expect(r2.data?.codeReturn.chunk).toEqual([[1], [2]]);
+      expect(r2.data?.codeReturn.polluted).toBe(false);
+    });
+
+    it('上一次污染 Object.prototype 不影响 SystemHelper', async () => {
+      pool = new ProcessPool(1);
+      await pool.init();
+
+      await pool.execute({
+        code: `async function main() {
+          try { Object.getPrototypeOf(SystemHelper).pwned = () => 'pwned'; } catch(e) {}
+          return {};
+        }`,
+        variables: {}
+      });
+
+      const r2 = await pool.execute({
+        code: `async function main() {
+          return { pwnedType: typeof SystemHelper.pwned };
+        }`,
+        variables: {}
+      });
+      expect(r2.success).toBe(true);
+      expect(r2.data?.codeReturn.pwnedType).toBe('undefined');
+    });
+
+    it('上一次篡改 JSON 不影响 worker 协议解析和后续任务', async () => {
+      pool = new ProcessPool(1);
+      await pool.init();
+
+      const r1 = await pool.execute({
+        code: `async function main() {
+          try {
+            JSON.parse = () => ({ polluted: true });
+          } catch(e) {}
+          try {
+            JSON = { parse: () => ({ rebound: true }) };
+          } catch(e) {}
+          return { ok: true };
+        }`,
+        variables: {}
+      });
+      expect(r1.success).toBe(true);
+
+      const r2 = await pool.execute({
+        code: `async function main() {
+          return { value: JSON.parse('{"a":1}').a };
+        }`,
+        variables: {}
+      });
+      expect(r2.success).toBe(true);
+      expect(r2.data?.codeReturn.value).toBe(1);
+    });
+
+    it('上一次篡改 timer 和 Promise 不影响 worker 超时保护', async () => {
+      pool = new ProcessPool(1);
+      await pool.init();
+
+      const r1 = await pool.execute({
+        code: `async function main() {
+          try {
+            setTimeout = () => 0;
+            clearTimeout = () => {};
+            Promise = { race: () => ({ bypass: true }) };
+            Buffer = { from: () => 'polluted' };
+            Reflect = { getPrototypeOf: () => ({ polluted: true }) };
+          } catch(e) {}
+          return { ok: true };
+        }`,
+        variables: {}
+      });
+      expect(r1.success).toBe(true);
+
+      const r2 = await pool.execute({
+        code: `async function main() {
+          await delay(20);
+          return {
+            ok: true,
+            bufferFromType: typeof Buffer.from,
+            reflectType: typeof Reflect.getPrototypeOf
+          };
+        }`,
+        variables: {}
+      });
+      expect(r2.success).toBe(true);
+      expect(r2.data?.codeReturn.ok).toBe(true);
+      expect(r2.data?.codeReturn.bufferFromType).toBe('function');
+      expect(r2.data?.codeReturn.reflectType).toBe('function');
     });
 
     it('上一次的 console.log 不泄露到下一次', async () => {
