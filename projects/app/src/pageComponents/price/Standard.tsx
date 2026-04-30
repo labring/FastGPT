@@ -396,7 +396,7 @@ const Standard = ({
                             fontWeight={'500'}
                             whiteSpace={'nowrap'}
                           >
-                            {`${(matchedCoupon.discount * 10).toFixed(0)} 折`}
+                            {t('common:discount_fold', { rate: (matchedCoupon.discount * 10).toFixed(0) })}
                           </Box>
                         )}
                       </Flex>

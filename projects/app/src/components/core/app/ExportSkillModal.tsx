@@ -108,9 +108,7 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
                     required: t('skill:field_required'),
                     maxLength: {
                       value: 64,
-                      message: t('skill:export_skill_name_length_error', {
-                        defaultValue: '名称长度不能超过 64 个字符'
-                      })
+                      message: t('skill:export_skill_name_length_error')
                     },
                     pattern: {
                       value: /^[a-z0-9-]+$/,
@@ -143,9 +141,7 @@ const ExportSkillModal = ({ appId, appIntro, onClose }: ExportSkillModalProps) =
                     required: t('skill:field_required'),
                     maxLength: {
                       value: 1024,
-                      message: t('skill:export_skill_description_length_error', {
-                        defaultValue: '描述长度不能超过 1024 个字符'
-                      })
+                      message: t('skill:export_skill_description_length_error')
                     }
                   })}
                   bg={'myGray.50'}
