@@ -332,7 +332,13 @@ const Button = defineStyleConfig({
 const Input: ComponentStyleConfig = {
   baseStyle: {
     field: {
-      color: 'myGray.700'
+      width: '100%',
+      color: 'myGray.700',
+      fontSize: 'sm',
+      _placeholder: {
+        color: 'myGray.500',
+        fontSize: 'sm'
+      }
     }
   },
   sizes: {
@@ -383,19 +389,26 @@ const Input: ComponentStyleConfig = {
 };
 
 const NumberInput = numInputMultiStyle({
+  baseStyle: numInputPart({
+    field: {
+      width: '100%',
+      color: 'myGray.700',
+      fontSize: 'sm'
+    }
+  }),
   sizes: {
     sm: defineStyle({
       field: {
         h: '32px',
         borderRadius: 'sm',
-        fontsize: 'sm'
+        fontSize: 'sm'
       }
     }),
     lg: defineStyle({
       field: {
         h: '40px',
         borderRadius: 'sm',
-        fontsize: 'sm'
+        fontSize: 'sm'
       }
     })
   },
@@ -407,6 +420,10 @@ const NumberInput = numInputMultiStyle({
         borderColor: 'myGray.200',
         borderRadius: 'sm',
         transition: 'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out',
+        _placeholder: {
+          color: 'myGray.500',
+          fontSize: 'sm'
+        },
         _hover: {
           borderColor: 'primary.300'
         },
@@ -450,6 +467,10 @@ const NumberInput = numInputMultiStyle({
         borderColor: 'myGray.200',
         borderRadius: 'sm',
         transition: 'border-color 0.1s ease-in-out, box-shadow 0.1s ease-in-out',
+        _placeholder: {
+          color: 'myGray.500',
+          fontSize: 'sm'
+        },
         _hover: {
           borderColor: 'primary.300'
         },
@@ -500,6 +521,10 @@ const Textarea: ComponentStyleConfig = {
       borderRadius: 'md',
       borderColor: 'myGray.200',
       fontSize: 'sm',
+      _placeholder: {
+        color: 'myGray.500',
+        fontSize: 'sm'
+      },
       _hover: {
         borderColor: 'primary.300'
       },

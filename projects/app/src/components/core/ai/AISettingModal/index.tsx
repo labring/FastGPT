@@ -194,7 +194,7 @@ const AIChatSettingsModal = ({
             <SettingRow label={t('common:core.ai.Model')}>
               <AIModelSelector
                 width={'100%'}
-                h={'38px'}
+                h={'36px'}
                 value={model}
                 list={llmModels.map((item) => ({
                   value: item.model,
@@ -267,17 +267,19 @@ const AIChatSettingsModal = ({
                 label={t('app:max_histories_number')}
                 tip={t('app:max_histories_number_tip')}
               >
-                <InputSlider
-                  min={0}
-                  max={30}
-                  step={1}
-                  value={getValues('maxHistories') ?? 6}
-                  inputVariant={'whiteOutline'}
-                  onChange={(e) => {
-                    setValue('maxHistories', e);
-                    setRefresh(!refresh);
-                  }}
-                />
+                <Box ml={'52px'}>
+                  <InputSlider
+                    min={0}
+                    max={30}
+                    step={1}
+                    value={getValues('maxHistories') ?? 6}
+                    inputVariant={'whiteOutline'}
+                    onChange={(e) => {
+                      setValue('maxHistories', e);
+                      setRefresh(!refresh);
+                    }}
+                  />
+                </Box>
               </SettingRow>
             )}
             {showMaxToken && (
@@ -286,7 +288,6 @@ const AIChatSettingsModal = ({
                 switchControl={
                   <Switch
                     isChecked={maxToken !== undefined}
-                    size={'sm'}
                     onChange={(e) => {
                       setValue('maxToken', e.target.checked ? tokenLimit / 2 : undefined);
                     }}
@@ -314,7 +315,6 @@ const AIChatSettingsModal = ({
                 switchControl={
                   <Switch
                     isChecked={temperature !== undefined}
-                    size={'sm'}
                     onChange={(e) => {
                       setValue('temperature', e.target.checked ? 0 : undefined);
                     }}
@@ -342,7 +342,6 @@ const AIChatSettingsModal = ({
                 switchControl={
                   <Switch
                     isChecked={topP !== undefined}
-                    size={'sm'}
                     onChange={(e) => {
                       setValue(NodeInputKeyEnum.aiChatTopP, e.target.checked ? 1 : undefined);
                     }}
@@ -369,7 +368,6 @@ const AIChatSettingsModal = ({
                 switchControl={
                   <Switch
                     isChecked={stopSign !== undefined}
-                    size={'sm'}
                     onChange={(e) => {
                       setValue(NodeInputKeyEnum.aiChatStopSign, e.target.checked ? '' : undefined);
                     }}
@@ -378,7 +376,7 @@ const AIChatSettingsModal = ({
               >
                 <Input
                   isDisabled={stopSign === undefined}
-                  h={'38px'}
+                  h={'36px'}
                   {...register(NodeInputKeyEnum.aiChatStopSign)}
                   placeholder={t('app:stop_sign_placeholder')}
                 />
@@ -390,7 +388,6 @@ const AIChatSettingsModal = ({
                 switchControl={
                   <Switch
                     isChecked={responseFormat !== undefined}
-                    size={'sm'}
                     onChange={(e) => {
                       setValue(
                         NodeInputKeyEnum.aiChatResponseFormat,
@@ -402,7 +399,8 @@ const AIChatSettingsModal = ({
               >
                 <MySelect<string>
                   isDisabled={responseFormat === undefined}
-                  h={'38px'}
+                  placeholder={t('app:response_format_placeholder')}
+                  h={'36px'}
                   list={selectedModel.responseFormatList!.map((item) => ({
                     value: item,
                     label: item
@@ -437,7 +435,6 @@ const AIChatSettingsModal = ({
                   supportParams.vision ? (
                     <Switch
                       isChecked={useVision}
-                      size={'sm'}
                       onChange={(e) => {
                         setValue(NodeInputKeyEnum.aiChatVision, e.target.checked);
                       }}
@@ -457,7 +454,6 @@ const AIChatSettingsModal = ({
                 switchControl={
                   <Switch
                     isChecked={!getValues(NodeInputKeyEnum.aiChatIsResponseText)}
-                    size={'sm'}
                     onChange={(e) => {
                       setValue(NodeInputKeyEnum.aiChatIsResponseText, !e.target.checked);
                       setRefresh((state) => !state);
@@ -477,7 +473,7 @@ const AIChatSettingsModal = ({
               >
                 {supportParams.reasoningEffort ? (
                   <MySelect<ReasoningEffort>
-                    h={'38px'}
+                    h={'36px'}
                     list={reasoningEffortList.map((item) => ({
                       label: t(item.label),
                       value: item.value
@@ -499,7 +495,6 @@ const AIChatSettingsModal = ({
                   switchControl={
                     <Switch
                       isChecked={!reasoning}
-                      size={'sm'}
                       onChange={(e) => {
                         setValue(NodeInputKeyEnum.aiChatReasoning, !e.target.checked);
                       }}

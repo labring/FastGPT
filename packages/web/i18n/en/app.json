@@ -302,6 +302,7 @@
   "refresh_templates": "Refresh",
   "request_headers": "Request header",
   "response_format": "Response format",
+  "response_format_placeholder": "Please select response format",
   "sandbox_free_not_support": "The plan does not support this function",
   "sandbox_free_not_support_tip": "Click to upgrade package",
   "sandbox_free_tip": "Free for a limited time",

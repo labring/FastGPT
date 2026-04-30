@@ -54,7 +54,7 @@ const SummaryLine = ({
   const { t } = useTranslation();
   return (
     <Flex fontSize={fontSize} lineHeight={1.5} gap={0.5}>
-      <Box>{priceKey === 'input' ? t('common:Input') : t('common:Output')}:</Box>
+      <Box>{priceKey === 'input' ? t('common:Input') : t('common:Output')}:&nbsp;</Box>
       {formatPriceSummary({
         tiers,
         priceKey: priceKey === 'input' ? 'inputPrice' : 'outputPrice',

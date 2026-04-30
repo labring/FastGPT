@@ -228,8 +228,9 @@ const MySelect = <T = any,>(
           _active={{
             transform: 'none'
           }}
-          bg={bg ? (isOpen ? '#fff' : bg) : '#fff'}
-          color={isOpen ? 'primary.700' : 'myGray.700'}
+          bg={isDisabled ? 'myWhite.300' : bg ? (isOpen ? '#fff' : bg) : '#fff'}
+          color={isDisabled ? 'myGray.400' : isOpen ? 'primary.700' : 'myGray.700'}
+          fontWeight={'normal'}
           borderColor={isInvalid ? 'red.500' : isOpen ? 'primary.300' : 'myGray.200'}
           boxShadow={
             isOpen
@@ -238,6 +239,7 @@ const MySelect = <T = any,>(
                 : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
               : 'none'
           }
+          opacity={isDisabled ? 0.4 : 1}
           _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
         >
@@ -259,6 +261,9 @@ const MySelect = <T = any,>(
                         (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
                         (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
                       }
+                      _placeholder={{
+                        color: 'myGray.500'
+                      }}
                       size={'sm'}
                       w={'100%'}
                       color={'myGray.700'}
@@ -278,7 +283,14 @@ const MySelect = <T = any,>(
                         />
                       )}
                       {
-                        <Box noOfLines={1}>
+                        <Box
+                          noOfLines={1}
+                          {...(!selectItem
+                            ? {
+                                color: 'myGray.500'
+                              }
+                            : {})}
+                        >
                           {selectItem?.alias || selectItem?.label || placeholder}
                         </Box>
                       }

@@ -32,7 +32,7 @@ const InputSlider = ({
   }, [max, min]);
 
   return (
-    <HStack zIndex={10} spacing={3}>
+    <HStack zIndex={10} spacing={4}>
       <Slider
         max={max}
         min={min}
