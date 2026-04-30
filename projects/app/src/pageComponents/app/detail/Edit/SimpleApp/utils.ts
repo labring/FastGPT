@@ -515,7 +515,7 @@ export function form2AppWorkflow(
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
-          value: formData.dataset.rerankModel
+          value: formData.dataset.agenticSearchRerankModel
         },
         {
           key: NodeInputKeyEnum.datasetAgenticSearchLLMModel,

@@ -250,7 +250,12 @@ export function agentForm2AppWorkflow(
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
                 datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
-                collectionFilterMatch: data.dataset.collectionFilterMatch
+                collectionFilterMatch: data.dataset.collectionFilterMatch,
+                retrievalMode: data.dataset.retrievalMode,
+                agenticSearchLLMModel: data.dataset.agenticSearchLLMModel,
+                agenticSearchReasoning: data.dataset.agenticSearchReasoning,
+                agenticSearchRerankModel: data.dataset.agenticSearchRerankModel,
+                rerankMethod: data.dataset.rerankMethod
               })
             },
             // agent sandbox
