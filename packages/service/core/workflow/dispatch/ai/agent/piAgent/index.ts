@@ -26,6 +26,7 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { env } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { resolveDatasetParams } from '../resolveDatasetParams';
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -55,6 +56,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
       useEditDebugSandbox,
+      useAgentSandbox = false,
       aiChatVision
     }
   } = props;
@@ -128,7 +130,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         getPlanTool: false,
         hasDataset: datasetParams && datasetParams.datasets.length > 0,
         hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: false, // pi-agent-core does not need sandbox tools
+        useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
         extraTools: capabilityTools
       }
     );
@@ -156,13 +158,19 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
 
-    const formatedSystemPrompt = parsePiAgentSystemPrompt({
+    let formatedSystemPrompt = parsePiAgentSystemPrompt({
       userSystemPrompt: capabilitySystemPrompt
         ? `${systemPrompt || ''}\n\n${capabilitySystemPrompt}`.trim()
         : systemPrompt,
       selectedDataset: datasetParams?.datasets,
       lang
     });
+
+    // Append sandbox system prompt when sandbox is enabled
+    if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
+      formatedSystemPrompt =
+        `${formatedSystemPrompt}\n\n${SANDBOX_SYSTEM_PROMPT}\n\n<ToolPriority>\nWhen both sandbox_shell / sandbox_get_file_url and sandbox_execute_* tools can fulfill the same task, prefer sandbox_shell and sandbox_get_file_url — they have higher priority.\n</ToolPriority>`.trim();
+    }
 
     /* ===== Build pi-agent-core model & tools ===== */
     const piModel = buildPiModel(model, aiChatVision);
