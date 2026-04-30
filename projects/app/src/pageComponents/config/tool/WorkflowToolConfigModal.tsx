@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   Box,
@@ -81,6 +81,9 @@ const WorkflowToolConfigModal = ({
     setValue('tagIds', selectedTags);
   }, [selectedTags, setValue]);
 
+  const rawTagsRef = useRef<string[]>([]);
+  const hasFilteredTagsRef = useRef(false);
+
   useRequest(
     async () => {
       if (toolId) {
@@ -102,6 +105,7 @@ const WorkflowToolConfigModal = ({
           userGuide: res.userGuide || '',
           author: res.author
         };
+        rawTagsRef.current = res.tags || [];
         setSelectedTags(res.tags || []);
         return form;
       }
@@ -131,6 +135,22 @@ const WorkflowToolConfigModal = ({
   const { data: tags = [], loading: loadingTags } = useRequest(getPluginToolTags, {
     manual: false
   });
+
+  useEffect(() => {
+    hasFilteredTagsRef.current = false;
+  }, [toolId]);
+
+  useEffect(() => {
+    if (!hasFilteredTagsRef.current && rawTagsRef.current.length > 0 && tags.length > 0) {
+      hasFilteredTagsRef.current = true;
+      const validTagIds = rawTagsRef.current.filter((tagId) =>
+        tags.some((tag) => tag.tagId === tagId)
+      );
+      if (validTagIds.length !== rawTagsRef.current.length) {
+        setSelectedTags(validTagIds);
+      }
+    }
+  }, [tags]);
   const pluginTypeSelectList = useMemo(
     () =>
       tags?.map((tag) => ({
