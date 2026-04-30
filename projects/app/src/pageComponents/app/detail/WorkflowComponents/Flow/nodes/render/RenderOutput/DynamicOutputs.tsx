@@ -3,7 +3,7 @@ import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/
 import { Box, Flex, Input, HStack } from '@chakra-ui/react';
 import {
   FlowNodeOutputTypeEnum,
-  FlowValueTypeMap
+  getFlowValueTypeMeta
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
@@ -90,7 +90,7 @@ const DynamicOutputs = ({ nodeId, outputs, addOutput }: DynamicOutputsProps) => 
             {outputs.length > 0 && <Box w={6} />}
           </Flex>
           {[...outputs, defaultOutput].map((output, index) => (
-            <Box key={output.key} _notLast={{ mb: 1.5 }}>
+            <Box key={output.key || index} _notLast={{ mb: 1.5 }}>
               <DynamicOutputItem
                 output={output}
                 outputs={outputs}
@@ -135,7 +135,7 @@ const DynamicOutputItem = ({
           type !== WorkflowIOValueTypeEnum.selectApp && type !== WorkflowIOValueTypeEnum.dynamic
       )
       .map((item) => ({
-        label: t(FlowValueTypeMap[item].label),
+        label: t(getFlowValueTypeMeta(item).label),
         value: item
       }));
   }, [t]);
@@ -178,6 +178,8 @@ const DynamicOutputItem = ({
     [output, onUpdate, onAdd, isEmptyItem, outputs]
   );
 
+  const selectValueType = getFlowValueTypeMeta(output?.valueType).value;
+
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
       <Flex flex={'1'} bg={'white'} rounded={'md'}>
@@ -198,7 +200,7 @@ const DynamicOutputItem = ({
           h={10}
           borderLeftRadius={'none'}
           borderColor={'myGray.200'}
-          value={output?.valueType}
+          value={selectValueType}
           list={valueTypeList}
           onChange={onChangeValueType}
           isDisabled={isEmptyItem}

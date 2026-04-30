@@ -217,6 +217,23 @@ export const sliceStrStartEnd = (str: string | null = '', start: number, end: nu
     => pdf
 */
 export const parseFileExtensionFromUrl = (url = '') => {
+  // Prefer explicit filename in query params for proxy links:
+  // e.g. /api/system/file/download/<token>?filename=image.jpg
+  try {
+    const parsedUrl = new URL(url, 'http://localhost');
+    const queryFilename =
+      parsedUrl.searchParams.get('filename') || parsedUrl.searchParams.get('name');
+    if (queryFilename) {
+      const extFromQuery = path.extname(decodeURIComponent(queryFilename));
+      if (extFromQuery.startsWith('.')) {
+        return extFromQuery.slice(1).toLowerCase();
+      }
+    }
+  } catch {
+    // noop
+    // fallback to legacy parser below
+  }
+
   // Remove query params and hash first
   const urlWithoutQuery = url.split('?')[0].split('#')[0];
   const extension = path.extname(urlWithoutQuery);

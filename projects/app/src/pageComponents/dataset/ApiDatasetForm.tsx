@@ -3,14 +3,14 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Flex, Input, Button, ModalBody, ModalFooter, Box } from '@chakra-ui/react';
 import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
+import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api/apiDataset';
 import type {
   GetResourceFolderListItemResponse,
   GetResourceFolderListProps,
   ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { GetApiDatasetCataLogProps } from '@/pages/api/core/dataset/apiDataset/getCatalog';
+import type { GetApiDatasetCatalogBody } from '@fastgpt/global/openapi/core/dataset/apiDataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useBoolean, useMemoizedFn, useMount } from 'ahooks';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -140,7 +140,7 @@ const ApiDatasetForm = ({
       <BaseUrlSelector
         selectId={yuqueServer?.basePath || apiServer?.basePath || 'root'}
         server={async (e: GetResourceFolderListProps) => {
-          const params: GetApiDatasetCataLogProps = {
+          const params: GetApiDatasetCatalogBody = {
             parentId: e.parentId,
             apiDatasetServer
           };
@@ -265,6 +265,43 @@ const ApiDatasetForm = ({
           </Flex>
           {renderBaseUrlSelector()}
           {renderDirectoryModal()}
+        </>
+      )}
+      {type === DatasetTypeEnum.dingtalk && (
+        <>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              App Key
+            </FormLabel>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'App Key'}
+              maxLength={200}
+              {...register('apiDatasetServer.dingtalkServer.appKey', { required: true })}
+            />
+          </Flex>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              App Secret
+            </FormLabel>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'App Secret'}
+              maxLength={200}
+              {...register('apiDatasetServer.dingtalkServer.appSecret', { required: true })}
+            />
+          </Flex>
+          <Flex mt={6} alignItems={'center'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+              User ID
+            </FormLabel>
+            <Input
+              bg={'myWhite.600'}
+              placeholder={'User ID'}
+              maxLength={200}
+              {...register('apiDatasetServer.dingtalkServer.userId', { required: true })}
+            />
+          </Flex>
         </>
       )}
     </>

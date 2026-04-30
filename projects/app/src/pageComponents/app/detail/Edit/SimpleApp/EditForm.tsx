@@ -74,7 +74,7 @@ const EditForm = ({
   const { defaultModels, feConfigs } = useSystemStore();
   const showSandbox = feConfigs.show_agent_sandbox;
   const { teamPlanStatus } = useUserStore();
-  const enableSandbox = teamPlanStatus?.standard?.enableSandbox;
+  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
@@ -198,6 +198,7 @@ const EditForm = ({
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,
                   aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                  aiChatReasoningEffort: appForm.aiSettings.aiChatReasoningEffort,
                   aiChatTopP: appForm.aiSettings.aiChatTopP,
                   aiChatStopSign: appForm.aiSettings.aiChatStopSign,
                   aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,

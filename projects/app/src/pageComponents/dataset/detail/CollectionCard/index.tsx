@@ -19,7 +19,7 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postLinkCollectionSync
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';

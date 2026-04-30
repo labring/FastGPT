@@ -1,0 +1,21 @@
+---
+title: 'V4.14.14'
+description: 'FastGPT V4.14.14 Release Notes'
+---
+
+## Upgrade Guide
+
+### 1. Update image tags
+
+- Update fastgpt-app (FastGPT main service) image tag to: v4.14.14
+- Update fastgpt-pro (FastGPT commercial) image tag to: v4.14.14
+
+## 🐛 Bug Fixes
+
+
+## ⚙️ Optimizations
+
+1. Personal WeChat publishing channel: optimized polling strategy by decoupling pull from reply, preventing blocking under high message volume.
+2. Added environment variable `WECHAT_CHANNEL_CONCURRENCY` (default 1000) to control the WeChat channel poll worker concurrency. Recommended to set ≥ peak online channel count.
+3. Improved internal network address detection.
+4. Added compatibility for DeepSeek tool calling combined with thinking mode to avoid 400 errors from the API.

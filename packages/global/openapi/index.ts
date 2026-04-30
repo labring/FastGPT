@@ -6,6 +6,7 @@ import { AppPath } from './core/app';
 import { SupportPath } from './support';
 import { DatasetPath } from './core/dataset';
 import { AIPath } from './core/ai';
+import { AgentSkillsPath } from './core/agentSkills';
 
 export const openAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -20,33 +21,48 @@ export const openAPIDocument = createDocument({
     ...DatasetPath,
     ...PluginPath,
     ...SupportPath,
-    ...AIPath
+    ...AIPath,
+    ...AgentSkillsPath
   },
   servers: [{ url: '/api' }],
   'x-tagGroups': [
     {
       name: '我的应用/工具管理',
-      tags: [TagsMap.appCommon, TagsMap.mcpTools, TagsMap.appPer]
+      tags: [TagsMap.appCommon, TagsMap.mcpTools, TagsMap.httpTools, TagsMap.appPer]
     },
     {
       name: 'Agent 应用',
-      tags: [TagsMap.appLog, TagsMap.publishChannel]
+      tags: [TagsMap.appLog, TagsMap.publishChannel, TagsMap.mcpServer]
     },
     {
       name: 'AI 相关',
       tags: [TagsMap.aiSkill, TagsMap.sandbox]
     },
     {
-      name: '对话',
-      tags: [TagsMap.chatSetting, TagsMap.chatPage]
+      name: '对话模块配置',
+      tags: [TagsMap.chatSetting, TagsMap.chatPage, TagsMap.chatInputGuide]
     },
     {
-      name: '对话管理',
-      tags: [TagsMap.chatHistory, TagsMap.chatController, TagsMap.chatFeedback]
+      name: '对话模块使用',
+      tags: [
+        TagsMap.chatHistory,
+        TagsMap.chatFeedback,
+        TagsMap.chatFile,
+        TagsMap.chatRecord,
+        TagsMap.chatController
+      ]
     },
     {
       name: '知识库',
-      tags: [TagsMap.datasetCollection]
+      tags: [
+        TagsMap.datasetCommon,
+        TagsMap.datasetCollection,
+        TagsMap.datasetCollectionCrteate,
+        TagsMap.datasetData,
+        TagsMap.datasetFile,
+        TagsMap.datasetTraining,
+        TagsMap.datasetApiDataset
+      ]
     },
     {
       name: '插件系统',

@@ -3,6 +3,7 @@ import {
   type Processor,
   Queue,
   type QueueOptions,
+  UnrecoverableError,
   Worker,
   type WorkerOptions
 } from 'bullmq';
@@ -36,6 +37,7 @@ export enum QueueNames {
 
   // Publish
   wechatPoll = 'wechatPoll',
+  wechatReply = 'wechatReply',
 
   /** @deprecated */
   websiteSync = 'websiteSync'
@@ -149,4 +151,5 @@ export function getWorker<DataType, ReturnType = void>(
   return newWorker;
 }
 
-export * from 'bullmq';
+export { Queue, UnrecoverableError, Worker, delay };
+export type { ConnectionOptions, Job, Processor, QueueOptions, WorkerOptions } from 'bullmq';

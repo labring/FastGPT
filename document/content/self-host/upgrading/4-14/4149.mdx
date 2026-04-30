@@ -1,0 +1,75 @@
+---
+title: 'V4.14.9'
+description: 'FastGPT V4.14.9 更新说明'
+---
+
+## 升级指南
+
+###  1. 环境变量更新
+
+1. 修改 FastGPT 环境变量：SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN：
+
+```bash
+# 旧的
+SANDBOX_URL=代码运行沙盒的地址
+SANDBOX_TOKEN=代码运行沙盒的凭证（可以为空，4.14.8 新增加了鉴权）
+# 新的
+CODE_SANDBOX_URL=代码运行沙盒的地址
+CODE_SANDBOX_TOKEN=代码运行沙盒的凭证
+```
+
+2. 默认关闭内网安全检查，如需开启，需设置环境变量`CHECK_INTERNAL_IP=true`（fastgpt,fastgpt-pro,fastgpt-sandbox 通用变量）
+
+### 2. 更新镜像
+
+- 更新 FastGPT 镜像 tag: v4.14.9.5
+- 更新 FastGPT 商业版镜像 tag: v4.14.9.5
+- 更新 fastgpt-plugin 镜像 tag: v0.5.5
+- mcp_server 无需更新
+- 更新 sandbox 镜像 tag: v4.14.9.1
+- AIProxy 无需更新
+
+## 接口变更
+
+`/api/core/chat/getPaginationRecords` 接口，增加返回`useAgentSandbox:boolean`字段，代表本轮对话，是否使用了虚拟机工具。即将移除`llmModuleAccount`和`historyPreviewLength`字段，如使用该字段，请尽快适配。
+
+## 🚀 新增内容
+
+1. 新增 AI 虚拟机功能，可以给 AI 挂载一个虚拟机工具进行更丰富的操作。（目前仅云服务开放使用,下个版本会推出轻量部署方案）
+2. 发布渠道支持微信个人号。
+3. AgentV2 上下文适配暂停态。
+4. 封装 logger sdk。增加 Metrics 追踪。
+5. 更新知识库单个数据时，同步更新 collection 更新时间。
+6. 表单输入文件时，支持打开文件进行预览。
+
+## ⚙️ 优化
+
+1. api 知识库同步时，增加更多 fallback 获取文件名方式。
+2. HTTP 工具，增加 SSRF 防御。
+3. 兼容更多 MCP JsonSchema 字段，旧版无法适配混合类型字段。
+4. 优化部分工作流运行池逻辑，减少计算复杂度
+5. 调整工作流 runtime，用 Tarjan SCC 算法替代 DSC 进行 edges 分组，解决工作流复杂循环无法运行问题。
+6. 系统工具集不显示版本（因为其无版本可选）。
+
+## 🐛 修复
+
+1. 工作流嵌套插件时，未成功保留插件运行详情。同时整理所有 tool 类型前缀。
+2. 更新并保存 MCP toolset 后可能无法正常调用（由于 toolId 获取错误）。
+3. API 知识库，文件列表搜索框丢失。
+4. 工作流变量值，包含特殊值($.)的时候，导致值替换异常。
+5. 工作流引用 agent 工具时，获取版本异常。
+6. 不支持某些属性的参数的模型，从支持该参数的模型切换过来时，该模型未被去掉，导致模型调用失败。
+7. 分享链接关闭状态显示后，会导致历史记录里的 AI 回复内容无法正常展示。
+8. 修复工作流预览模式下，重新打开预览弹窗，会丢失表单输入内容。
+9. 修复订阅套餐自定义字段未生效
+10. login接口，存在异步 session 问题，会出现报错日志。
+12. 修复判断器 arrayAny 类型无判断条件可选
+13. 修复视频音频自定义文件类型流程开始无文件链接变量
+14. 用户输入框消息不转义成 markdown 格式
+15. 修复 AgentV2 部分上下文拼接错误。
+16. login 接口安全风险。
+17. 工作流工具未按预期连接到结束节点时，嵌套调用工作流工具会导致父工作流无法停止。
+
+## 代码优化
+
+1. 商业版开发时，monorepo 指向不同 react 导致需重装包。

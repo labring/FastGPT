@@ -1,25 +1,20 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-
-export type createChatInputGuideQuery = {};
-
-export type createInputGuideBody = {
-  appId: string;
-  textList: string[];
-};
-
-export type createInputGuideResponse = {
-  insertLength: number;
-};
+import {
+  CreateChatInputGuideBodySchema,
+  CreateChatInputGuideResponseSchema,
+  type CreateChatInputGuideResponseType
+} from '@fastgpt/global/openapi/core/chat/inputGuide/api';
 
 async function handler(
-  req: ApiRequestProps<createInputGuideBody, createChatInputGuideQuery>,
-  res: ApiResponseType<any>
-): Promise<createInputGuideResponse> {
-  const { appId, textList } = req.body;
+  req: ApiRequestProps,
+  _res: NextApiResponse
+): Promise<CreateChatInputGuideResponseType> {
+  const { appId, textList } = CreateChatInputGuideBodySchema.parse(req.body);
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   try {
@@ -32,14 +27,12 @@ async function handler(
         ordered: false
       }
     );
-    return {
-      insertLength: result.length
-    };
+    return CreateChatInputGuideResponseSchema.parse({ insertLength: result.length });
   } catch (error: any) {
     const errLength = error.writeErrors?.length ?? textList.length;
-    return {
+    return CreateChatInputGuideResponseSchema.parse({
       insertLength: textList.length - errLength
-    };
+    });
   }
 }
 

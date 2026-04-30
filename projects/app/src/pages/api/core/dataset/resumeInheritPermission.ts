@@ -8,15 +8,13 @@ import {
 import { resumeInheritPermission } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-export type ResumeInheritPermissionQuery = {
-  datasetId: string;
-};
-export type ResumeInheritPermissionBody = {};
-// resume the dataset's inherit permission.
-async function handler(
-  req: ApiRequestProps<ResumeInheritPermissionBody, ResumeInheritPermissionQuery>
-) {
-  const { datasetId } = req.query;
+import {
+  ResumeDatasetInheritPermissionBodySchema,
+  type ResumeDatasetInheritPermissionBody
+} from '@fastgpt/global/openapi/core/dataset/api';
+
+async function handler(req: ApiRequestProps<ResumeDatasetInheritPermissionBody>) {
+  const { datasetId } = ResumeDatasetInheritPermissionBodySchema.parse(req.body);
   const { dataset } = await authDataset({
     datasetId,
     req,

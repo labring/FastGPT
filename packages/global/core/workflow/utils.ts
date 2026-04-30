@@ -10,7 +10,8 @@ import {
   VariableInputEnum,
   variableMap,
   VARIABLE_NODE_ID,
-  NodeOutputKeyEnum
+  NodeOutputKeyEnum,
+  textInputVariableValueTypes
 } from './constants';
 import {
   type FlowNodeInputItemType,
@@ -18,7 +19,7 @@ import {
   type ReferenceArrayValueType,
   type ReferenceItemValueType
 } from './type/io';
-import { type StoreNodeItemType } from './type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
 import type {
   VariableItemType,
   AppTTSConfigType,
@@ -234,6 +235,14 @@ export const pluginData2FlowNodeIO = ({
   };
 };
 
+const jsonRenderValueTypes = new Set<WorkflowIOValueTypeEnum>([
+  WorkflowIOValueTypeEnum.object,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayNumber,
+  WorkflowIOValueTypeEnum.arrayBoolean,
+  WorkflowIOValueTypeEnum.arrayObject
+]);
+
 export const appData2FlowNodeIO = ({
   chatConfig
 }: {
@@ -245,8 +254,19 @@ export const appData2FlowNodeIO = ({
   const variableInput = !chatConfig?.variables
     ? []
     : chatConfig.variables.map((item) => {
+        // Legacy input+非法 valueType（如 number/boolean）视同 string，避免画布控件与 valueType 错配
+        const normalizedValueType =
+          item.type === VariableInputEnum.input &&
+          item.valueType !== undefined &&
+          !textInputVariableValueTypes.includes(item.valueType)
+            ? WorkflowIOValueTypeEnum.string
+            : item.valueType;
+        const isJsonValueType =
+          !!normalizedValueType && jsonRenderValueTypes.has(normalizedValueType);
         const renderTypeMap: Record<VariableInputEnum, FlowNodeInputTypeEnum[]> = {
-          [VariableInputEnum.input]: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          [VariableInputEnum.input]: isJsonValueType
+            ? [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+            : [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
           [VariableInputEnum.textarea]: [
             FlowNodeInputTypeEnum.textarea,
             FlowNodeInputTypeEnum.reference
@@ -271,8 +291,10 @@ export const appData2FlowNodeIO = ({
           label: item.label,
           debugLabel: item.label,
           description: '',
-          valueType: item.valueType || WorkflowIOValueTypeEnum.any,
+          valueType: normalizedValueType || WorkflowIOValueTypeEnum.any,
           required: item.required,
+          defaultValue: item.defaultValue,
+          value: item.defaultValue,
           list: (item.list || item.enums)?.map((enumItem) => ({
             label: enumItem.value,
             value: enumItem.value
@@ -331,10 +353,43 @@ export const toolData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) =
 export const toolSetData2FlowNodeIO = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
 
+  // 加工 toolConfig, 移除一些无需返回客户端以及无需单独存储到 node 的数据。
+  const toolConfig: NodeToolConfigType | undefined = (() => {
+    if (!toolSetNode?.toolConfig) return undefined;
+
+    if (toolSetNode.toolConfig.httpToolSet) {
+      const toolList = toolSetNode.toolConfig.httpToolSet.toolList.map((tool) => {
+        const { requestSchema, inputSchema, outputSchema, ...restTool } = tool;
+        return restTool;
+      });
+      return {
+        ...toolSetNode.toolConfig,
+        httpToolSet: {
+          toolList
+        }
+      };
+    }
+    if (toolSetNode.toolConfig.mcpToolSet) {
+      const formatToolList = toolSetNode.toolConfig.mcpToolSet.toolList.map((tool) => {
+        const { inputSchema, ...restTool } = tool;
+        return restTool;
+      });
+      return {
+        ...toolSetNode.toolConfig,
+        mcpToolSet: {
+          url: '',
+          toolList: formatToolList
+        }
+      };
+    }
+
+    return toolSetNode.toolConfig;
+  })();
+
   return {
     inputs: toolSetNode?.inputs || [],
     outputs: toolSetNode?.outputs || [],
-    toolConfig: toolSetNode?.toolConfig,
+    toolConfig,
     showSourceHandle: false,
     showTargetHandle: false
   };

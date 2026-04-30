@@ -43,8 +43,7 @@ export function setTmpData<T extends TmpDataEnum>({
       expireAt: addMilliseconds(Date.now(), TmpDataExpireTime[type])
     },
     {
-      upsert: true,
-      new: true
+      upsert: true
     }
   );
 }

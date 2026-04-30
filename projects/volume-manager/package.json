@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "hono": "^4.6.0",
-    "zod": "^4"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "vitest": "^2.0.0"
+    "vitest": "catalog:"
   }
 }

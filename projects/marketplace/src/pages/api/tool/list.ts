@@ -1,5 +1,5 @@
 import { getToolList } from '@/service/tool/data';
-import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import { ToolSimpleSchema, type ToolSimpleType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';

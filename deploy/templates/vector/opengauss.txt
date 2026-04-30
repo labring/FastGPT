@@ -1,0 +1,20 @@
+  fastgpt-vector:
+    image: opengauss/opengauss:7.0.0-RC1
+    container_name: fastgpt-opengauss
+    restart: always
+    privileged: true
+    networks:
+      - data
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - GS_USERNAME=gaussdb       # 默认会创建 gaussdb 用户
+      - GS_PASSWORD=FastGPT@123   # 密码必须包含大写、小写、数字和特殊字符，且长度不少于8位
+      - GS_DB=fastgpt             # 默认会创建 postgres 数据库，这里以 fastgpt 为例
+    volumes:
+      - ./opengauss/data:/var/lib/opengauss
+    healthcheck:
+      test: ['CMD-SHELL', 'su - omm -c "gsql -d postgres -p 5432 -c \"SELECT 1\""']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s

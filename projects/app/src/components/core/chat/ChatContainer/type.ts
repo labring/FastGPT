@@ -1,9 +1,11 @@
 import type { StreamResponseType } from '@/web/common/api/fetch';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import type {
   ChatHistoryItemResType,
   StepTitleItemType,
-  ToolModuleResponseItemType
+  ToolModuleResponseItemType,
+  SandboxStatusItemType,
+  SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
@@ -31,6 +33,10 @@ export type generatingMessageProps = {
   // Agent
   plan?: AgentPlanType;
   stepTitle?: StepTitleItemType;
+
+  // Sandbox
+  sandboxStatus?: SandboxStatusItemType;
+  skill?: SkillModuleResponseItemType;
 
   // HelperBot
   collectionForm?: UserInputInteractive;

@@ -67,6 +67,7 @@ export type FastGPTFeConfigsType = {
 
   show_dataset_feishu?: boolean;
   show_dataset_yuque?: boolean;
+  show_dataset_dingtalk?: boolean;
   show_publish_feishu?: boolean;
   show_publish_dingtalk?: boolean;
   show_publish_wecom?: boolean;
@@ -109,6 +110,9 @@ export type FastGPTFeConfigsType = {
   limit?: {
     exportDatasetLimitMinutes?: number;
     websiteSyncLimitMinuted?: number;
+    agentSandboxMaxEditDebug?: number;
+    agentSandboxMaxSessionRuntime?: number;
+    workflowParallelRunMaxConcurrency?: number;
   };
 
   uploadFileMaxAmount: number;
@@ -143,6 +147,8 @@ export type FastGPTFeConfigsType = {
 
   // tmp
   agentSandboxFree?: boolean;
+  // Beta features
+  show_skill?: boolean;
 };
 
 export type SystemEnvType = {

@@ -14,7 +14,14 @@ export function filterSensitiveFormData(appForm: AppFormEditFormType) {
   const defaultAppForm = getDefaultAppForm();
   return {
     ...appForm,
-    dataset: defaultAppForm.dataset
+    dataset: defaultAppForm.dataset,
+    selectedTools: appForm.selectedTools.map((tool) => ({
+      ...tool,
+      inputs: tool.inputs.map((input) => ({
+        ...input,
+        value: input.key === NodeInputKeyEnum.systemInputConfig ? undefined : input.value
+      }))
+    }))
   };
 }
 

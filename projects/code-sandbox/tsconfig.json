@@ -11,7 +11,7 @@
     "rootDir": "./src",
     "declaration": true,
     "resolveJsonModule": true,
-    "types": ["@types/bun"]
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

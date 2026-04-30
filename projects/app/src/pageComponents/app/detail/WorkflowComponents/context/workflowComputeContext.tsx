@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import type { Node } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowActionsContext } from './workflowActionsContext';
 import { useMemoizedFn } from 'ahooks';
 
 // 创建 Context
@@ -79,6 +78,10 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
       );
 
       if (!loopNode) return;
+      if (childNodes.length === 0) return;
+      // 任一子节点尚未被 ReactFlow 测量(width/height 未定义),直接放弃本次计算,
+      // 由上游的 dimensionsSignal 监听在尺寸到齐后再触发一次。
+      if (childNodes.some((n) => !n.width || !n.height)) return;
       const loopChilWidth =
         loopNode.data.inputs.find((node) => node.key === NodeInputKeyEnum.nodeWidth)?.value ?? 0;
       const loopChilHeight =
@@ -101,8 +104,8 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
         maxY = Math.max(maxY, node.position.y + nodeHeight);
       });
 
-      const childWidth = Math.max(maxX - minX + 80, 840);
-      const childHeight = Math.max(maxY - minY + 80, 600);
+      const childWidth = Math.max(maxX - minX + 80, 0);
+      const childHeight = Math.max(maxY - minY + 80, 0);
 
       const diffWidth = childWidth - loopChilWidth;
       const diffHeight = childHeight - loopChilHeight;
@@ -110,7 +113,7 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
       const targetNodeHeight = (loopNode.height ?? 0) + diffHeight;
 
       const offsetHeight =
-        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight)
           ?.value ?? 83;
 
       return {

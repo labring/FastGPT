@@ -109,7 +109,9 @@ const AIContentCard = React.memo(function AIContentCard({
   questionGuides: string[];
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 }) {
-  const lastIsText = chatValue[chatValue.length - 1]?.text;
+  const lastValue = chatValue[chatValue.length - 1];
+  const lastIsText = lastValue?.text;
+  const lastIsReasoning = lastValue?.reasoning;
   return (
     <Flex flexDirection={'column'}>
       {chatValue.map((value, i) => {
@@ -150,8 +152,10 @@ const AIContentCard = React.memo(function AIContentCard({
         );
       })}
 
-      {/* Requesting animation */}
-      {isLastChild && !lastIsText && isChatting && <Box className={markdownStyles.animation}></Box>}
+      {/* 生成中占位动画（含断线续传拉流期间最后一条非文本时的 shimmer） */}
+      {isLastChild && !lastIsText && !lastIsReasoning && isChatting && (
+        <Box className={markdownStyles.animation}></Box>
+      )}
 
       {isLastChild && questionGuides.length > 0 && (
         <RenderQuestionGuide questionGuides={questionGuides} />
@@ -201,6 +205,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRunningStatus = useContextSelector(ChatItemContext, (v) => v.showRunningStatus);
+  const showAvatar = useContextSelector(ChatItemContext, (v) => v.showAvatar);
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -371,7 +376,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
             />
           </Flex>
         )}
-        <ChatAvatar src={avatar} type={chat.obj} />
+        {showAvatar !== false && <ChatAvatar src={avatar} type={chat.obj} />}
 
         {/* Workflow status */}
         {!!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (

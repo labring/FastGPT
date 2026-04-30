@@ -12,6 +12,7 @@
   "privacy_policy": "Privacy Policy",
   "redirect": "Jump",
   "register": "Register",
+  "reset_password_tip": "The new password must be at least 8 characters long and contain at least two combinations: numbers, letters, or special characters",
   "root_password_placeholder": "The root user password is the value of the environment variable DEFAULT_ROOT_PSW",
   "use_root_login": "Log in as root user"
 }

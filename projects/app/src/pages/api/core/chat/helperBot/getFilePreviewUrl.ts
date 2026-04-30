@@ -6,7 +6,7 @@ import { getS3HelperBotSource } from '@fastgpt/service/common/s3/sources/helperb
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>): Promise<string> {
-  const { key } = req.body;
+  const { key, mode } = req.body;
   const { userId } = await authCert({
     req,
     authToken: true
@@ -18,7 +18,7 @@ async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>):
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  return (await getS3HelperBotSource().createGetFileURL({ key, external: true })).url;
+  return (await getS3HelperBotSource().createGetFileURL({ key, external: true, mode })).url;
 }
 
 export default NextAPI(handler);

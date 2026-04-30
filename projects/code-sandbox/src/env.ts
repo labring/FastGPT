@@ -6,7 +6,18 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config();
+// 匹配 Bun 的 .env 加载顺序：.env.{NODE_ENV}.local > .env.local > .env.{NODE_ENV} > .env
+// dotenv 数组优先级：先出现者优先（不被后续覆盖），与 Bun 的 override 语义一致。
+// quiet:true 抑制 dotenv 17.x 默认向 stdout 打印的注入横幅，
+// 避免被 worker 子进程透传到 IPC 首行导致 base-process-pool 解析 init 响应失败。
+const nodeEnv = process.env.NODE_ENV;
+const envFiles = [
+  nodeEnv ? `.env.${nodeEnv}.local` : null,
+  '.env.local',
+  nodeEnv ? `.env.${nodeEnv}` : null,
+  '.env'
+].filter((f): f is string => Boolean(f));
+dotenv.config({ path: envFiles, quiet: true });
 
 /** coerce 数字，带默认值 */
 const int = (defaultValue: number) => z.coerce.number().int().default(defaultValue);

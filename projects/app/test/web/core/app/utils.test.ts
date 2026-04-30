@@ -96,6 +96,15 @@ describe('form2AppWorkflow', () => {
 
 describe('filterSensitiveFormData', () => {
   it('should filter sensitive data from app form', () => {
+    const toolSecretValue = {
+      type: 'manual',
+      value: {
+        apiKey: {
+          secret: '',
+          value: 'secret-key'
+        }
+      }
+    };
     const appForm: AppFormEditFormType = {
       aiSettings: {
         [NodeInputKeyEnum.aiModel]: 'gpt-4',
@@ -123,15 +132,49 @@ describe('filterSensitiveFormData', () => {
         datasetSearchExtensionModel: '',
         datasetSearchExtensionBg: ''
       },
-      selectedTools: [],
+      selectedTools: [
+        {
+          id: 'tool-1',
+          pluginId: 'plugin-1',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          templateType: 'other',
+          name: 'Weather Tool',
+          avatar: '',
+          intro: '',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              value: toolSecretValue,
+              renderTypeList: [],
+              valueType: 'any'
+            },
+            {
+              key: NodeInputKeyEnum.history,
+              value: 5,
+              renderTypeList: [],
+              valueType: 'number'
+            }
+          ],
+          outputs: []
+        } as any
+      ],
       chatConfig: {}
     };
 
     const result = filterSensitiveFormData(appForm);
     const defaultForm = getDefaultAppForm();
+    const resultSecretInput = result.selectedTools[0].inputs.find(
+      (input) => input.key === NodeInputKeyEnum.systemInputConfig
+    );
+    const resultHistoryInput = result.selectedTools[0].inputs.find(
+      (input) => input.key === NodeInputKeyEnum.history
+    );
 
     expect(result.dataset).toEqual(defaultForm.dataset);
     expect(result.aiSettings).toEqual(appForm.aiSettings);
+    expect(resultSecretInput?.value).toBeUndefined();
+    expect(resultHistoryInput?.value).toBe(5);
+    expect(appForm.selectedTools[0].inputs[0].value).toEqual(toolSecretValue);
   });
 });
 

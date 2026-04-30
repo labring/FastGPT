@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { UsageSourceEnum } from '../../../../support/wallet/usage/constants';
 
 // Common query schema

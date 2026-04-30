@@ -20,7 +20,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -60,6 +60,7 @@ type Props = {
   isShowCite: boolean;
   isShowFullText: boolean;
   showRunningStatus: boolean;
+  showSkillReferences: boolean;
 };
 
 const OutLink = (props: Props) => {
@@ -180,7 +181,8 @@ const OutLink = (props: Props) => {
           responseChatItemId,
           chatId: completionChatId,
           ...outLinkAuthData,
-          retainDatasetCite: isShowCite
+          retainDatasetCite: isShowCite,
+          showSkillReferences: props.showSkillReferences
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -219,6 +221,7 @@ const OutLink = (props: Props) => {
       customVariables,
       outLinkAuthData,
       isShowCite,
+      props.showSkillReferences,
       onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChat,
@@ -303,6 +306,7 @@ const OutLink = (props: Props) => {
                       appId={appId}
                       chatId={chatId}
                       outLinkAuthData={outLinkAuthData}
+                      enableAutoResume
                       feedbackType={'user'}
                       onStartChat={startChat}
                       chatType={ChatTypeEnum.share}
@@ -399,6 +403,7 @@ const Render = (props: Props) => {
         isShowCite={props.isShowCite}
         isShowFullText={props.isShowFullText}
         showRunningStatus={props.showRunningStatus}
+        showSkillReferences={props.showSkillReferences}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <OutLink {...props} />
@@ -423,7 +428,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId canDownloadSource showCite showFullText showRunningStatus'
+        'appId canDownloadSource showCite showFullText showRunningStatus showSkillReferences'
       )
         .populate<{ associatedApp: AppSchemaType }>('associatedApp', 'name avatar intro')
         .lean();
@@ -446,6 +451,7 @@ export async function getServerSideProps(context: any) {
       isShowCite: app?.showCite ?? false,
       isShowFullText: app?.showFullText ?? false,
       showRunningStatus: app?.showRunningStatus ?? false,
+      showSkillReferences: app?.showSkillReferences ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,

@@ -40,6 +40,7 @@ export const iconPaths = {
   'common/downArrowFill': () => import('./icons/common/downArrowFill.svg'),
   'common/download': () => import('./icons/common/download.svg'),
   'common/downloadLine': () => import('./icons/common/downloadLine.svg'),
+  'common/htmlPreview': () => import('./icons/common/htmlPreview.svg'),
   'common/edit': () => import('./icons/common/edit.svg'),
   'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
   'common/ellipsis': () => import('./icons/common/ellipsis.svg'),
@@ -95,6 +96,7 @@ export const iconPaths = {
   'common/selectLight': () => import('./icons/common/selectLight.svg'),
   'common/setting': () => import('./icons/common/setting.svg'),
   'common/settingLight': () => import('./icons/common/settingLight.svg'),
+  'common/skill': () => import('./icons/common/skill.svg'),
   'common/solidChevronDown': () => import('./icons/common/solidChevronDown.svg'),
   'common/solidChevronUp': () => import('./icons/common/solidChevronUp.svg'),
   'common/templateMarket': () => import('./icons/common/templateMarket.svg'),
@@ -103,6 +105,8 @@ export const iconPaths = {
   'common/toolkit': () => import('./icons/common/toolkit.svg'),
   'common/trash': () => import('./icons/common/trash.svg'),
   'common/uploadFileFill': () => import('./icons/common/uploadFileFill.svg'),
+  'common/upperRight': () => import('./icons/common/upperRight.svg'),
+  'common/user': () => import('./icons/common/user.svg'),
   'common/userInfo': () => import('./icons/common/userInfo.svg'),
   'common/variable': () => import('./icons/common/variable.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),
@@ -214,6 +218,10 @@ export const iconPaths = {
     import('./icons/core/dataset/externalDatasetColor.svg'),
   'core/dataset/externalDatasetOutline': () =>
     import('./icons/core/dataset/externalDatasetOutline.svg'),
+  'core/dataset/dingtalkDatasetColor': () =>
+    import('./icons/core/dataset/dingtalkDatasetColor.svg'),
+  'core/dataset/dingtalkDatasetOutline': () =>
+    import('./icons/core/dataset/dingtalkDatasetOutline.svg'),
   'core/dataset/feishuDatasetColor': () => import('./icons/core/dataset/feishuDatasetColor.svg'),
   'core/dataset/feishuDatasetOutline': () =>
     import('./icons/core/dataset/feishuDatasetOutline.svg'),
@@ -236,6 +244,9 @@ export const iconPaths = {
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fitView': () => import('./icons/core/modules/fitView.svg'),
   'core/modules/variable': () => import('./icons/core/modules/variable.svg'),
+  'core/modules/welcomeText': () => import('./icons/core/modules/welcomeText.svg'),
+  'core/skill/default': () => import('./icons/core/skill/default.svg'),
+  'core/skill/help': () => import('./icons/core/skill/help.svg'),
   'core/workflow/closeEdge': () => import('./icons/core/workflow/closeEdge.svg'),
   'core/workflow/debug': () => import('./icons/core/workflow/debug.svg'),
   'core/workflow/debugBlue': () => import('./icons/core/workflow/debugBlue.svg'),
@@ -244,6 +255,8 @@ export const iconPaths = {
   'core/workflow/edgeArrow': () => import('./icons/core/workflow/edgeArrow.svg'),
   'core/workflow/edgeArrowBold': () => import('./icons/core/workflow/edgeArrowBold.svg'),
   'core/workflow/inputType/array': () => import('./icons/core/workflow/inputType/array.svg'),
+  'core/workflow/inputType/conditional': () =>
+    import('./icons/core/workflow/inputType/conditional.svg'),
   'core/workflow/inputType/customVariable': () =>
     import('./icons/core/workflow/inputType/customVariable.svg'),
   'core/workflow/inputType/dynamic': () => import('./icons/core/workflow/inputType/dynamic.svg'),
@@ -282,6 +295,11 @@ export const iconPaths = {
   'core/workflow/runSkip': () => import('./icons/core/workflow/runSkip.svg'),
   'core/workflow/runSuccess': () => import('./icons/core/workflow/runSuccess.svg'),
   'core/workflow/running': () => import('./icons/core/workflow/running.svg'),
+  'core/workflow/template/BI': () => import('./icons/core/workflow/template/BI.svg'),
+  'core/workflow/template/FileRead': () => import('./icons/core/workflow/template/FileRead.svg'),
+  'core/workflow/template/agent': () => import('./icons/core/workflow/template/agent.svg'),
+  'core/workflow/template/agentLinear': () =>
+    import('./icons/core/workflow/template/agentLinear.tsx'),
   'core/workflow/template/aiChat': () => import('./icons/core/workflow/template/aiChat.svg'),
   'core/workflow/template/aiChatLinear': () =>
     import('./icons/core/workflow/template/aiChatLinear.tsx'),
@@ -325,6 +343,22 @@ export const iconPaths = {
   'core/workflow/template/loopStart': () => import('./icons/core/workflow/template/loopStart.svg'),
   'core/workflow/template/loopStartLinear': () =>
     import('./icons/core/workflow/template/loopStartLinear.tsx'),
+  'core/workflow/template/parallelRun': () =>
+    import('./icons/core/workflow/template/parallelRun.svg'),
+  'core/workflow/template/parallelRunLinear': () =>
+    import('./icons/core/workflow/template/parallelRunLinear.tsx'),
+  'core/workflow/template/loopRun': () => import('./icons/core/workflow/template/loopRun.svg'),
+  'core/workflow/template/loopRunLinear': () =>
+    import('./icons/core/workflow/template/loopRunLinear.tsx'),
+  'core/workflow/template/loopRunStart': () =>
+    import('./icons/core/workflow/template/loopRunStart.svg'),
+  'core/workflow/template/loopRunStartLinear': () =>
+    import('./icons/core/workflow/template/loopRunStartLinear.tsx'),
+  'core/workflow/template/loopRunBreak': () =>
+    import('./icons/core/workflow/template/loopRunBreak.svg'),
+  'core/workflow/template/loopRunBreakLinear': () =>
+    import('./icons/core/workflow/template/loopRunBreakLinear.tsx'),
+  'core/workflow/template/mathCall': () => import('./icons/core/workflow/template/mathCall.svg'),
   'core/workflow/template/pluginOutput': () =>
     import('./icons/core/workflow/template/pluginOutput.svg'),
   'core/workflow/template/pluginOutputLinear': () =>
@@ -416,6 +450,11 @@ export const iconPaths = {
   key: () => import('./icons/key.svg'),
   keyPrimary: () => import('./icons/keyPrimary.svg'),
   loading: () => import('./icons/loading.svg'),
+  'math/divide': () => import('./icons/math/divide.svg'),
+  'math/equal': () => import('./icons/math/equal.svg'),
+  'math/minus': () => import('./icons/math/minus.svg'),
+  'math/plus': () => import('./icons/math/plus.svg'),
+  'math/times': () => import('./icons/math/times.svg'),
   mcp: () => import('./icons/mcp.svg'),
   menu: () => import('./icons/menu.svg'),
   minus: () => import('./icons/minus.svg'),

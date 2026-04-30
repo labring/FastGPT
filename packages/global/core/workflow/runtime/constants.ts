@@ -21,9 +21,27 @@ export enum SseResponseEventEnum {
   plan = 'plan', // plan response
   stepTitle = 'stepTitle', // step title response
 
+  // Sandbox lifecycle
+  sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
+  skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
+
   // Helperbot
   collectionForm = 'collectionForm', // collection form for HelperBot
   topAgentConfig = 'topAgentConfig' // form data for TopAgent
+}
+
+export const StreamResumePhaseEvent = 'resumePhase';
+export const StreamResumeCompletedEvent = 'resumeCompleted';
+export const StreamResumeUnavailableEvent = 'resumeUnavailable';
+
+export enum StreamResumePhaseEnum {
+  catchup = 'catchup',
+  live = 'live'
+}
+
+export enum StreamResumeUnavailableReasonEnum {
+  memoryPressure = 'memoryPressure',
+  mirrorUnavailable = 'mirrorUnavailable'
 }
 
 export enum DispatchNodeResponseKeyEnum {

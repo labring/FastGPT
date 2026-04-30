@@ -1,5 +1,5 @@
 import { PluginToolTagSchema } from '../../../../../../core/plugin/type';
-import { z } from 'zod';
+import z from 'zod';
 
 export const CreatePluginToolTagBodySchema = z.object({
   tagName: z.string()

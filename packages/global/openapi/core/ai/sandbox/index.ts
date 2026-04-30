@@ -1,31 +1,88 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
-  SandboxFileOperationBodySchema,
-  SandboxFileOperationResponseSchema,
+  SandboxListBodySchema,
+  SandboxListResponseSchema,
+  SandboxWriteBodySchema,
+  SandboxWriteResponseSchema,
+  SandboxReadBodySchema,
+  SandboxReadResponseSchema,
+  SandboxDownloadBodySchema,
+  SandboxDownloadResponseSchema,
   SandboxCheckExistBodySchema,
-  SandboxCheckExistResponseSchema
+  SandboxCheckExistResponseSchema,
+  SandboxGetHtmlPreviewLinkBodySchema,
+  SandboxGetHtmlPreviewLinkResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
-  '/core/ai/sandbox/file': {
+  '/core/ai/sandbox/list': {
     post: {
-      summary: '沙盒文件操作',
-      description: '统一文件操作接口，支持列出目录（list）、读取文件（read）、写入文件（write）',
+      summary: '列出沙盒目录',
+      description: '列出指定目录下的文件和子目录',
       tags: [TagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxFileOperationBodySchema
+            schema: SandboxListBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '操作成功',
+          description: '目录内容',
           content: {
             'application/json': {
-              schema: SandboxFileOperationResponseSchema
+              schema: SandboxListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/write': {
+    post: {
+      summary: '写入沙盒文件',
+      description: '将内容写入指定路径的文件',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxWriteBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '写入成功',
+          content: {
+            'application/json': {
+              schema: SandboxWriteResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/read': {
+    post: {
+      summary: '读取沙盒文件内容',
+      description: '读取文件内容并以对应 MIME 类型内联返回，适用于预览场景',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxReadBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          content: {
+            '*/*': {
+              schema: SandboxReadResponseSchema
             }
           }
         }
@@ -36,26 +93,45 @@ export const SandboxPath: OpenAPIPath = {
   '/core/ai/sandbox/download': {
     post: {
       summary: '下载沙盒文件或目录',
-      description: '将指定路径的文件或目录打包为 zip 并下载',
+      description: '下载指定路径的文件，或将目录打包为 ZIP 下载',
       tags: [TagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxCheckExistBodySchema.extend({
-              path: SandboxFileOperationBodySchema.options[0].shape.path
-            })
+            schema: SandboxDownloadBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '返回 zip 文件流',
           content: {
             'application/octet-stream': {
-              schema: {
-                type: 'string',
-                format: 'binary'
-              }
+              schema: SandboxDownloadResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/getHtmlPreviewLink': {
+    post: {
+      summary: '获取 HTML 文件预览链接',
+      description: '返回用于在浏览器中预览 HTML 文件的链接（S3 托管）',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxGetHtmlPreviewLinkBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'HTML 预览链接',
+          content: {
+            'application/json': {
+              schema: SandboxGetHtmlPreviewLinkResponseSchema
             }
           }
         }

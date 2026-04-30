@@ -3,7 +3,7 @@ import { Flex, Box, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ToolMenu from './ToolMenu';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { useTranslation } from 'next-i18next';
 
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -46,7 +46,7 @@ const ChatHeader = ({
   pane: ChatSidebarPaneEnum;
   chatSettings?: ChatSettingType;
 
-  history: ChatItemType[];
+  history: ChatItemMiniType[];
   showHistory?: boolean;
   totalRecordsCount: number;
   reserveSpace?: boolean;

@@ -1,0 +1,86 @@
+name: Preview Admin Image - Build
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: ['*']
+    paths:
+      - "pro"
+      - "pro/**"
+      - "packages/**"
+      - "sdk/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".gitmodules"
+      - ".github/workflows/preview-admin-build.yml"
+      - ".github/workflows/preview-admin-push.yml"
+
+concurrency:
+  group: 'preview-admin-build-${{ github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: ${{ contains(fromJSON('["COLLABORATOR", "OWNER"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 1
+
+      - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
+        run: |
+          if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro submodule. Add it to this repository's Actions secrets, or run this workflow from a repository that has the secret configured."
+              exit 1
+            fi
+            if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            fi
+            git submodule update --init --recursive
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: pro/admin/Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: fastgpt-pro-pr:${{ github.event.pull_request.head.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=fastgpt-pro admin image
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+          outputs: type=docker,dest=/tmp/fastgpt-pro-image.tar
+          cache-from: type=gha,scope=fastgpt-pro
+          cache-to: type=gha,mode=max,scope=fastgpt-pro
+
+      - name: Save PR metadata
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-admin-image
+          path: |
+            /tmp/fastgpt-pro-image.tar
+            /tmp/pr-number.txt
+            /tmp/pr-sha.txt
+          retention-days: 1

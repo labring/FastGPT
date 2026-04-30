@@ -1,6 +1,6 @@
 import type fs from 'fs';
 import { getAxiosConfig } from '../config';
-import { axios } from '../../../common/api/axios';
+import { axiosWithoutSSRF } from '../../../common/api/axios';
 import FormData from 'form-data';
 import { type STTModelType } from '@fastgpt/global/core/ai/model.schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -24,22 +24,19 @@ export const aiTranscriptions = async ({
 
   const aiAxiosConfig = getAxiosConfig();
 
-  const { data: result } = await axios<{ text: string; usage?: { total_tokens: number } }>({
-    method: 'post',
-    ...(modelData.requestUrl
-      ? { url: modelData.requestUrl }
-      : {
-          baseURL: aiAxiosConfig.baseUrl,
-          url: '/audio/transcriptions'
-        }),
+  // 管理员配置的 url，允许是内网
+  const { data: result } = await axiosWithoutSSRF.post<{
+    text: string;
+    usage?: { total_tokens: number };
+  }>(modelData.requestUrl ? modelData.requestUrl : '/audio/transcriptions', data, {
+    ...(modelData.requestUrl ? {} : { baseURL: aiAxiosConfig.baseUrl }),
     headers: {
       Authorization: modelData.requestAuth
         ? `Bearer ${modelData.requestAuth}`
         : aiAxiosConfig.authorization,
       ...data.getHeaders(),
       ...headers
-    },
-    data: data
+    }
   });
 
   return result;

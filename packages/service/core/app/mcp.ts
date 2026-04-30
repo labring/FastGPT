@@ -10,8 +10,15 @@ import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type
 import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
+
+export const assertMCPUrlNotInternal = async (url: string) => {
+  if (await isInternalAddress(url)) {
+    return Promise.reject(PRIVATE_URL_TEXT);
+  }
+};
 
 export class MCPClient {
   private client: Client;
@@ -39,18 +46,16 @@ export class MCPClient {
       throw error;
     });
 
-    this.client.onerror = (error) => {
-      logger.error('MCP client connection error', { url: this.url, error });
-      this.connectionPromise = null;
-    };
-    this.client.onclose = () => {
-      this.connectionPromise = null;
-    };
-
     return this.connectionPromise;
   }
 
   private async doConnect(): Promise<Client> {
+    await assertMCPUrlNotInternal(this.url);
+
+    // 避免连接重复，强制关闭一次
+    await this.client.close().catch(() => {});
+
+    logger.debug('Start connect mcp client', { url: this.url });
     try {
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
         requestInit: {
@@ -58,9 +63,7 @@ export class MCPClient {
         }
       });
       await this.client.connect(transport);
-      return this.client;
     } catch (error) {
-      logger.debug('StreamableHTTP connect failed, falling back to SSE', { url: this.url, error });
       await this.client.connect(
         new SSEClientTransport(new URL(this.url), {
           requestInit: {
@@ -90,8 +93,19 @@ export class MCPClient {
           }
         })
       );
-      return this.client;
     }
+
+    this.client.onerror = (error) => {
+      // 忽略掉不支持 streamable 的错误
+      if (error?.message?.includes('SSE stream: Not Found')) return;
+      logger.warn('MCP client connection error', { url: this.url, error });
+      this.connectionPromise = null;
+    };
+    this.client.onclose = () => {
+      this.connectionPromise = null;
+    };
+
+    return this.client;
   }
 
   // 内部方法：关闭连接

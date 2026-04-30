@@ -1,0 +1,89 @@
+name: Build fastgpt-sso-service images
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+  attestations: write
+  id-token: write
+
+jobs:
+  build-fastgpt-sso-service-images:
+    runs-on: buildjet-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
+        run: |
+          if [ -f .gitmodules ]; then
+            if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
+              git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            fi
+            git submodule update --init --recursive
+          fi
+      - name: Install Dependencies
+        run: |
+          sudo apt update && sudo apt install -y nodejs npm
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: labring
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+      - name: Set image tags
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "Git_Latest=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
+          else
+            echo "Git_Tag=ghcr.io/labring/fastgpt-sso-service:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/labring/fastgpt-sso-service:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-sso-service:latest" >> $GITHUB_ENV
+          fi
+
+      - name: Build and publish image
+        run: |
+          docker buildx build \
+          -f pro/sso/Dockerfile \
+          --build-arg name=sso \
+          --platform linux/amd64,linux/arm64 \
+          --label "org.opencontainers.image.source=https://github.com/labring/FastGPT" \
+          --label "org.opencontainers.image.description=fastgpt-sso-service image" \
+          --push \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache \
+          -t ${Git_Tag} \
+          -t ${Git_Latest} \
+          -t ${Ali_Tag} \
+          -t ${Ali_Latest} \
+          .

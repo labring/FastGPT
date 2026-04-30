@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, HStack, ModalBody, ModalFooter, VStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { postBackupDatasetCollection } from '@/web/core/dataset/api';
+import { postBackupDatasetCollection } from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';

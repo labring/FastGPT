@@ -1,12 +1,15 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { getSystemToolByIdAndVersionId } from '@fastgpt/service/core/app/tool/controller';
+import {
+  getSystemToolById,
+  getSystemToolByIdAndVersionId
+} from '@fastgpt/service/core/app/tool/controller';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -35,7 +38,7 @@ async function handler(
     };
   }
 
-  const { source, pluginId: formatPluginId, authAppId } = splitCombineToolId(pluginId);
+  const { source, authAppId } = splitCombineToolId(pluginId);
 
   // System tool plugin
   if (source === AppToolSourceEnum.systemTool) {
@@ -62,7 +65,13 @@ async function handler(
       });
       return app._id;
     } else {
-      return formatPluginId;
+      // Get appId from pluginId
+      const tool = await getSystemToolById(pluginId);
+
+      if (!tool.associatedPluginId) {
+        return Promise.reject(PluginErrEnum.unExist);
+      }
+      return tool.associatedPluginId;
     }
   })();
 

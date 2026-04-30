@@ -7,6 +7,7 @@ const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
 const openaiBaseUrl = aiProxyBaseUrl || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 const openaiBaseKey = process.env.AIPROXY_API_TOKEN || process.env.CHAT_API_KEY || '';
 
+// 代理走 packages/service/common/proxy/index.ts 里的 EnvHttpProxyAgent + setGlobalDispatcher
 export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number }) => {
   const { userKey, timeout } = props || {};
 
@@ -15,7 +16,6 @@ export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number
   return new OpenAI({
     baseURL: baseUrl,
     apiKey,
-    httpAgent: global.httpsAgent,
     timeout,
     maxRetries: 2
   });

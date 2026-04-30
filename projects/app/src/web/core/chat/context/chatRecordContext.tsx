@@ -1,13 +1,14 @@
 import { type ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
-import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/web/common/fetch/type';
+import type { LinkedPaginationProps, LinkedListResponse } from '@fastgpt/global/openapi/api';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import React, { type ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { getChatRecords } from '../api';
+import { getChatRecords } from '../record/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import type { GetChatRecordsProps } from '@/global/core/chat/api';
+import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
+import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -46,22 +47,27 @@ export const ChatRecordContext = createContext<ChatRecordContextType>({
   itemRefs: { current: new Map() }
 });
 
-/* 
+/*
   具体对话记录的上下文
 */
 const ChatRecordContextProvider = ({
   children,
   params,
-  feedbackRecordId
+  feedbackRecordId,
+  fetchFn
 }: {
   children: ReactNode;
-  params: GetChatRecordsProps;
+  params: GetPaginationRecordsBodyType;
   feedbackRecordId?: string;
+  fetchFn?: (
+    data: LinkedPaginationProps<GetPaginationRecordsBodyType>
+  ) => Promise<GetRecordsV2ResponseType>;
 }) => {
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
 
   const currentData = useMemoEnhance(() => ({ id: feedbackRecordId || '' }), [feedbackRecordId]);
+  const callApi = fetchFn ?? getChatRecords;
   const {
     dataList: chatRecords,
     setDataList: setChatRecords,
@@ -70,11 +76,19 @@ const ChatRecordContextProvider = ({
     itemRefs
   } = useLinkedScroll(
     async (
-      data: LinkedPaginationProps<GetChatRecordsProps>
+      data: LinkedPaginationProps<GetPaginationRecordsBodyType>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
+      if (!data.appId) {
+        return {
+          list: [],
+          hasMorePrev: false,
+          hasMoreNext: false
+        };
+      }
+
       setIsChatRecordsLoaded(false);
 
-      const res = await getChatRecords(data).finally(() => {
+      const res = await callApi(data).finally(() => {
         setIsChatRecordsLoaded(true);
       });
       setTotalRecordsCount(res.total);

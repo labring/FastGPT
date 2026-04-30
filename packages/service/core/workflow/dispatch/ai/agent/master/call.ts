@@ -1,40 +1,34 @@
-import type { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
-import { runAgentCall } from '../../../../../ai/llm/agentCall';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
+import { runAgentLoop } from '../../../../../ai/llm/agentLoop';
 import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { addFilePrompt2Input, ReadFileToolSchema } from '../sub/file/utils';
+import { addFilePrompt2Input } from '../sub/file/utils';
 import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
 import type { GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { parseJsonArgs } from '../../../../../ai/utils';
-import { dispatchFileRead } from '../sub/file';
-import { dispatchTool } from '../sub/tool';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { DatasetSearchToolSchema } from '../sub/dataset/utils';
-import { dispatchAgentDatasetSearch } from '../sub/dataset';
-import { dispatchSandboxShell } from '../sub/sandbox';
 import type { DispatchAgentModuleProps } from '..';
 import { getLLMModel } from '../../../../../ai/model';
 import { getStepCallQuery, getStepDependon } from './dependon';
 import { getOneStepResponseSummary } from './responseSummary';
 import type { DispatchPlanAgentResponse } from '../sub/plan';
-import { dispatchPlanAgent } from '../sub/plan';
 import type { WorkflowResponseItemType } from '../../../type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../web/i18n/utils';
 import { getMasterSystemPrompt } from './prompt';
-import { PlanAgentParamsSchema } from '../sub/plan/constants';
 import { filterMemoryMessages } from '../../utils';
-import { dispatchApp, dispatchPlugin } from '../sub/app';
-import { getLogger, LogCategories } from '../../../../../../common/logger';
-import {
-  SandboxShellToolSchema,
-  SANDBOX_TOOL_NAME
-} from '@fastgpt/global/core/ai/sandbox/constants';
+import type { CapabilityToolCallHandlerType } from '../capability/type';
+import { getExecuteTool } from '../utils';
 
 type Response = {
   stepResponse?: {
@@ -45,6 +39,7 @@ type Response = {
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   masterMessages: ChatCompletionMessageParam[];
+  capabilityAssistantResponses?: AIChatItemValueItemType[];
 
   nodeResponse: ChatHistoryItemResType;
 };
@@ -59,6 +54,7 @@ export const masterCall = async ({
   filesMap,
   steps,
   step,
+  capabilityToolCallHandler,
   ...props
 }: DispatchAgentModuleProps & {
   masterMessages: ChatCompletionMessageParam[];
@@ -73,6 +69,9 @@ export const masterCall = async ({
   // Step call
   steps?: AgentStepItemType[];
   step?: AgentStepItemType;
+
+  // Capability tool call handler
+  capabilityToolCallHandler?: CapabilityToolCallHandlerType;
 }): Promise<Response> => {
   const {
     checkIsStopping,
@@ -98,6 +97,7 @@ export const masterCall = async ({
 
   const startTime = Date.now();
   const childrenResponses: ChatHistoryItemResType[] = [];
+  const capabilityAssistantResponses: AIChatItemValueItemType[] = [];
   const isStepCall = steps && step;
   const stepId = step?.id;
   const stepStreamResponse = (args: WorkflowResponseItemType) => {
@@ -187,7 +187,8 @@ export const masterCall = async ({
         content: getMasterSystemPrompt({
           systemPrompt,
           hasUserTools,
-          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox
+          useAgentSandbox: useAgentSandbox && !!global.feConfigs?.show_agent_sandbox,
+          hasSandboxSkills: !!capabilityToolCallHandler
         })
       },
       ...masterMessages
@@ -198,6 +199,16 @@ export const masterCall = async ({
   })();
 
   let planResult: DispatchPlanAgentResponse | undefined;
+
+  const executeTool = getExecuteTool({
+    ...props,
+    streamResponseFn: stepStreamResponse,
+    getSubAppInfo,
+    getSubApp,
+    completionTools,
+    filesMap,
+    capabilityToolCallHandler
+  });
 
   const {
     model: agentModel,
@@ -210,7 +221,7 @@ export const masterCall = async ({
     finish_reason,
     requestIds,
     error: agentError
-  } = await runAgentCall({
+  } = await runAgentLoop({
     maxRunAgentTimes: 100,
     body: {
       messages: requestMessages,
@@ -264,18 +275,18 @@ export const masterCall = async ({
         }
       });
     },
-    onToolParam({ tool, params }) {
+    onToolParam({ call, argsDelta }) {
       stepStreamResponse?.({
-        id: tool.id,
+        id: call.id,
         event: SseResponseEventEnum.toolParams,
         data: {
           tool: {
-            params
+            params: argsDelta
           }
         }
       });
     },
-    onCompressContext: ({ modelName, inputTokens, outputTokens, totalPoints, seconds }) => {
+    onAfterCompressContext: ({ modelName, inputTokens, outputTokens, totalPoints, seconds }) => {
       childrenResponses.push({
         nodeId: getNanoid(6),
         id: getNanoid(6),
@@ -289,329 +300,50 @@ export const masterCall = async ({
         runningTime: seconds
       });
     },
-    handleToolResponse: async ({ call, messages }) => {
+    onRunTool: async ({ call }) => {
       const toolId = call.function.name;
       const callId = call.id;
 
       const {
         response,
         usages = [],
-        stop = false
-      } = await (async () => {
-        try {
-          if (toolId === SubAppIds.fileRead) {
-            const toolParams = ReadFileToolSchema.safeParse(parseJsonArgs(call.function.arguments));
-            if (!toolParams.success) {
-              return {
-                response: toolParams.error.message,
-                usages: []
-              };
-            }
-            const params = toolParams.data;
+        stop = false,
+        nodeResponse,
+        planResult: execPlanResult,
+        capabilityAssistantResponses: execCapabilityAssistantResponses
+      } = await executeTool({ callId, toolId, args: call.function.arguments });
 
-            const files = params.file_indexes.map((index) => ({
-              index,
-              url: filesMap[index]
-            }));
-            const result = await dispatchFileRead({
-              files,
-              teamId: runningUserInfo.teamId,
-              tmbId: runningUserInfo.tmbId,
-              customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-              model,
-              userKey: externalProvider.openaiAccount
-            });
-
-            if (result.nodeResponse) {
-              childrenResponses.push(result.nodeResponse);
-            }
-            return {
-              response: result.response,
-              usages: result.usages
-            };
-          }
-          if (toolId === SubAppIds.datasetSearch) {
-            const toolParams = DatasetSearchToolSchema.safeParse(
-              parseJsonArgs(call.function.arguments)
-            );
-            if (!toolParams.success) {
-              return {
-                response: toolParams.error.message,
-                usages: []
-              };
-            }
-
-            if (!datasetParams || datasetParams.datasets.length === 0) {
-              return {
-                response: 'No dataset selected',
-                usages: []
-              };
-            }
-
-            const params = toolParams.data;
-
-            const result = await dispatchAgentDatasetSearch({
-              query: params.query,
-              config: {
-                datasets: datasetParams.datasets,
-                similarity: datasetParams.similarity || 0.4,
-                maxTokens: datasetParams.limit || 5000,
-                searchMode: datasetParams.searchMode,
-                embeddingWeight: datasetParams.embeddingWeight,
-                usingReRank: datasetParams.usingReRank ?? false,
-                rerankModel: datasetParams.rerankModel,
-                rerankWeight: datasetParams.rerankWeight || 0.5,
-                usingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
-                extensionModel: datasetParams.datasetSearchExtensionModel,
-                extensionBg: datasetParams.datasetSearchExtensionBg
-              },
-              teamId: runningUserInfo.teamId,
-              tmbId: runningUserInfo.tmbId,
-              llmModel: model
-            });
-
-            if (result.nodeResponse) {
-              childrenResponses.push(result.nodeResponse);
-            }
-
-            return {
-              response: result.response,
-              usages: result.usages
-            };
-          }
-          if (toolId === SANDBOX_TOOL_NAME) {
-            const toolParams = SandboxShellToolSchema.safeParse(
-              parseJsonArgs(call.function.arguments)
-            );
-            if (!toolParams.success) {
-              return {
-                response: toolParams.error.message,
-                usages: []
-              };
-            }
-
-            const result = await dispatchSandboxShell({
-              command: toolParams.data.command,
-              timeout: toolParams.data.timeout,
-              appId: runningAppInfo.id,
-              userId: props.uid,
-              chatId,
-              lang: props.lang
-            });
-
-            childrenResponses.push(result.nodeResponse);
-
-            return {
-              response: result.response,
-              usages: result.usages
-            };
-          }
-          if (toolId === SubAppIds.plan) {
-            try {
-              const toolArgs = await PlanAgentParamsSchema.safeParseAsync(
-                parseJsonArgs(call.function.arguments)
-              );
-
-              if (!toolArgs.success) {
-                return {
-                  response: 'Tool arguments is not valid',
-                  usages: []
-                };
-              }
-
-              // plan: 1,3 场景
-              planResult = await dispatchPlanAgent({
-                checkIsStopping,
-                completionTools,
-                getSubAppInfo,
-                systemPrompt,
-                model,
-                stream,
-                mode: 'initial',
-                ...toolArgs.data,
-                planId: call.id
-              });
-
-              return {
-                response: '',
-                stop: true,
-                usages: [] // 外部会单独对 plan 计费
-              };
-            } catch (error) {
-              getLogger(LogCategories.MODULE.AI.AGENT).error('dispatchPlanAgent error', { error });
-              return {
-                response: `Plan error: ${getErrText(error)}`,
-                stop: false
-              };
-            }
-          }
-
-          // User Sub App
-          else {
-            const tool = getSubApp(toolId);
-            if (!tool) {
-              return {
-                response: `Can't find the tool ${toolId}`,
-                usages: []
-              };
-            }
-            const toolCallParams = parseJsonArgs(call.function.arguments);
-
-            if (call.function.arguments && !toolCallParams) {
-              return {
-                response: 'Params is not object',
-                usages: []
-              };
-            }
-
-            // Get params
-            const requestParams = {
-              ...tool.params,
-              ...toolCallParams
-            };
-            // Remove sensitive data
-
-            if (tool.type === 'tool') {
-              const { response, usages, runningTime, toolParams, result } = await dispatchTool({
-                tool: {
-                  name: tool.name,
-                  version: tool.version,
-                  toolConfig: tool.toolConfig
-                },
-                params: requestParams,
-                runningUserInfo,
-                runningAppInfo,
-                chatId,
-                uid,
-                variables,
-                workflowStreamResponse: stepStreamResponse
-              });
-
-              childrenResponses.push({
-                nodeId: callId,
-                id: callId,
-                runningTime,
-                moduleType: FlowNodeTypeEnum.tool,
-                moduleName: tool.name,
-                moduleLogo: tool.avatar,
-                toolInput: toolParams,
-                toolRes: result || response,
-                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-              });
-              return {
-                response,
-                usages
-              };
-            } else if (tool.type === 'workflow') {
-              const { userChatInput, ...params } = requestParams;
-
-              const { response, runningTime, usages } = await dispatchApp({
-                appId: tool.id,
-                userChatInput: userChatInput,
-                customAppVariables: params,
-                checkIsStopping,
-                lang: props.lang,
-                requestOrigin: props.requestOrigin,
-                mode: props.mode,
-                timezone: props.timezone,
-                externalProvider: props.externalProvider,
-                runningAppInfo: props.runningAppInfo,
-                runningUserInfo: props.runningUserInfo,
-                retainDatasetCite: props.retainDatasetCite,
-                maxRunTimes: props.maxRunTimes,
-                workflowDispatchDeep: props.workflowDispatchDeep,
-                variables: props.variables
-              });
-
-              childrenResponses.push({
-                nodeId: callId,
-                id: callId,
-                runningTime,
-                moduleType: FlowNodeTypeEnum.appModule,
-                moduleName: tool.name,
-                moduleLogo: tool.avatar,
-                toolInput: requestParams,
-                toolRes: response,
-                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-              });
-
-              return {
-                response,
-                usages,
-                runningTime
-              };
-            } else if (tool.type === 'toolWorkflow') {
-              const { response, result, runningTime, usages } = await dispatchPlugin({
-                appId: tool.id,
-                userChatInput: '',
-                customAppVariables: requestParams,
-                checkIsStopping,
-                lang: props.lang,
-                requestOrigin: props.requestOrigin,
-                mode: props.mode,
-                timezone: props.timezone,
-                externalProvider: props.externalProvider,
-                runningAppInfo: props.runningAppInfo,
-                runningUserInfo: props.runningUserInfo,
-                retainDatasetCite: props.retainDatasetCite,
-                maxRunTimes: props.maxRunTimes,
-                workflowDispatchDeep: props.workflowDispatchDeep,
-                variables: props.variables
-              });
-
-              childrenResponses.push({
-                nodeId: callId,
-                id: callId,
-                runningTime,
-                moduleType: FlowNodeTypeEnum.pluginModule,
-                moduleName: tool.name,
-                moduleLogo: tool.avatar,
-                toolInput: requestParams,
-                toolRes: result,
-                totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-              });
-
-              return {
-                response,
-                usages,
-                runningTime
-              };
-            } else {
-              return {
-                response: 'Invalid tool type',
-                usages: []
-              };
-            }
-          }
-        } catch (error) {
-          return {
-            response: `Tool error: ${getErrText(error)}`,
-            usages: []
-          };
+      // 赋值操作
+      {
+        if (execPlanResult) {
+          planResult = execPlanResult;
         }
-      })();
-
-      // Push stream response
-      stepStreamResponse?.({
-        id: call.id,
-        event: SseResponseEventEnum.toolResponse,
-        data: {
-          tool: {
-            response
-          }
+        if (execCapabilityAssistantResponses) {
+          capabilityAssistantResponses.push(...execCapabilityAssistantResponses);
         }
-      });
-
-      // TODO: 推送账单
+        if (nodeResponse) {
+          childrenResponses.push(nodeResponse);
+        }
+        // Push stream response
+        stepStreamResponse?.({
+          id: call.id,
+          event: SseResponseEventEnum.toolResponse,
+          data: {
+            tool: {
+              response
+            }
+          }
+        });
+      }
 
       return {
         response,
-        assistantMessages: [], // TODO
+        assistantMessages: [],
         usages,
         stop
       };
     },
-    onToolCompress: ({ call, response, usage }) => {
+    onAfterToolResponseCompress: ({ call, response, usage }) => {
       const callId = call.id;
       const nodeResponse = childrenResponses.findLast((item) => item.id === callId);
       if (nodeResponse) {
@@ -622,7 +354,7 @@ export const masterCall = async ({
         nodeResponse.toolRes = response;
       }
     },
-    handleInteractiveTool: async ({ toolParams }) => {
+    onRunInteractiveTool: async ({}) => {
       return {
         response: 'Interactive tool not supported',
         assistantMessages: [], // TODO
@@ -631,7 +363,7 @@ export const masterCall = async ({
     }
   });
 
-  // llmTotalPoints 是 runAgentCall 内每次 LLM 调用单独计价后的累计值，保证梯度计费正确
+  // llmTotalPoints 是 runAgentLoop 内每次 LLM 调用单独计价后的累计值，保证梯度计费正确
   const llmUsage = {
     modelName: getLLMModel(agentModel).name,
     totalPoints: llmTotalPoints
@@ -696,7 +428,8 @@ export const masterCall = async ({
       completeMessages,
       assistantMessages,
       nodeResponse,
-      masterMessages: masterMessages.concat(assistantMessages)
+      masterMessages: masterMessages.concat(assistantMessages),
+      capabilityAssistantResponses
     };
   }
 
@@ -707,6 +440,7 @@ export const masterCall = async ({
     completeMessages,
     assistantMessages,
     nodeResponse,
-    masterMessages: filterMemoryMessages(completeMessages)
+    masterMessages: filterMemoryMessages(completeMessages),
+    capabilityAssistantResponses
   };
 };

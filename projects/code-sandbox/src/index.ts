@@ -1,6 +1,7 @@
-import './env'; // dotenv 最先加载
+import { env } from './env';
 import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
+import { serve } from '@hono/node-server';
 import { z } from 'zod';
 import { config } from './config';
 import { ProcessPool } from './pool/process-pool';
@@ -164,11 +165,17 @@ app.get('/sandbox/modules', (c) => {
 });
 
 /** 启动服务 */
-serverLogger.info(`Sandbox server starting on port ${config.port}...`);
+serverLogger.info(`Sandbox server starting on port ${env.port}...`);
+
+if (process.env.NODE_ENV !== 'test') {
+  serve({ fetch: app.fetch, port: env.port }, (info) => {
+    serverLogger.info(`Sandbox server listening on port ${info.port}`);
+  });
+}
 
 /** 导出 app 和 poolReady 供测试使用 */
 export { app, poolReady };
 export default {
-  port: config.port,
+  port: env.port,
   fetch: app.fetch
 };

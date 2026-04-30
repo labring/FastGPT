@@ -1,8 +1,8 @@
 import type {
-  ApiFileReadContentResponse,
-  APIFileReadResponse,
+  ApiFileReadContentResponseType,
+  APIFileReadResponseType,
   ApiDatasetDetailResponse,
-  APIFileServer
+  APIFileServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
@@ -29,7 +29,7 @@ type APIFileListResponse = {
   hasChild?: boolean;
 };
 
-export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }) => {
+export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
     baseURL: apiServer.baseUrl,
@@ -177,7 +177,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     apiFileId: string;
     customPdfParse?: boolean;
     datasetId: string;
-  }): Promise<ApiFileReadContentResponse> => {
+  }): Promise<ApiFileReadContentResponseType> => {
     const data = await request<
       {
         title?: string;
@@ -239,7 +239,11 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   };
 
   const getFilePreviewUrl = async ({ apiFileId }: { apiFileId: string }) => {
-    const { url } = await request<APIFileReadResponse>(`/v1/file/read`, { id: apiFileId }, 'GET');
+    const { url } = await request<APIFileReadResponseType>(
+      `/v1/file/read`,
+      { id: apiFileId },
+      'GET'
+    );
 
     if (!url || typeof url !== 'string') {
       return Promise.reject('Invalid response url');

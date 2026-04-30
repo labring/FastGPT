@@ -3,14 +3,13 @@
  *
  * 继承 BaseProcessPool，提供 Python worker 的 spawn 配置。
  */
-import { join } from 'path';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { config } from '../config';
 import { BaseProcessPool } from './base-process-pool';
 
-const WORKER_SCRIPT = join(
-  typeof import.meta.dir === 'string' ? import.meta.dir : new URL('.', import.meta.url).pathname,
-  'worker.py'
-);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const WORKER_SCRIPT = join(__dirname, 'worker.py');
 
 export class PythonProcessPool extends BaseProcessPool {
   constructor(poolSize?: number) {

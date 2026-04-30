@@ -7,7 +7,7 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { OutlinkAppType, OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
@@ -23,7 +23,10 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { appendRedisCache } from '../../../common/redis/cache';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 import { getUsageSourceByPublishChannel } from '@fastgpt/global/support/wallet/usage/tools';
-import { getChatSourceByPublishChannel } from '@fastgpt/global/core/chat/utils';
+import {
+  getChatSourceByPublishChannel,
+  removeAIResponseCite
+} from '@fastgpt/global/core/chat/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoChat } from '../../../core/chat/chatSchema';
@@ -69,7 +72,7 @@ export const resetChat = ({ appId, chatId }: { appId: string; chatId: string }) 
 };
 
 export type outLinkInvokeChatProps<T extends OutlinkAppType> = {
-  outLinkConfig: OutLinkSchema<T>;
+  outLinkConfig: OutLinkSchemaType<T>;
   chatId: string; // specific chat
   query: UserChatItemValueItemType[];
   res?: NextApiResponse;
@@ -157,9 +160,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
           data
         }: {
           write?: (text: string) => void;
-          event: SseResponseEventEnum;
-          data: Record<string, any>;
+          event?: SseResponseEventEnum;
+          data: string | Record<string, any>;
         }) => {
+          if (!event || typeof data === 'string') return;
+
           if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
             try {
               const text = data.choices?.[0]?.delta?.content;
@@ -224,7 +229,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     });
 
     // Format results
-    let responseContent = assistantResponses
+    const formatAssistantResponses = removeAIResponseCite(assistantResponses, false);
+    let responseContent = formatAssistantResponses
       .map((response) => {
         return response.text?.content;
       })

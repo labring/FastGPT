@@ -6,7 +6,10 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getApiDatasetFileList, getApiDatasetFileListExistId } from '@/web/core/dataset/api';
+import {
+  getApiDatasetFileList,
+  getApiDatasetFileListExistId
+} from '@/web/core/dataset/api/apiDataset';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
@@ -66,12 +69,7 @@ const CustomAPIFileInput = () => {
       });
     },
     {
-      refreshDeps: [
-        datasetDetail._id,
-        datasetDetail.apiDatasetServer?.apiServer,
-        parent,
-        searchKey
-      ],
+      refreshDeps: [datasetDetail._id, datasetDetail.apiDatasetServer, parent, searchKey],
       throttleWait: 500,
       manual: false
     }

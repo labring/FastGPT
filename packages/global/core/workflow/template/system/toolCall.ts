@@ -34,7 +34,7 @@ export const ToolCallNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:template.agent_intro'),
   showStatus: true,
   catchError: false,
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/tool/',
+  courseUrl: '/introduction/guide/dashboard/workflow/tool/',
   version: '4.9.2',
   inputs: [
     Input_Template_SettingAiModel,
@@ -70,6 +70,12 @@ export const ToolCallNode: FlowNodeTemplateType = {
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: true
+    },
+    {
+      key: NodeInputKeyEnum.aiChatReasoningEffort,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: NodeInputKeyEnum.aiChatTopP,

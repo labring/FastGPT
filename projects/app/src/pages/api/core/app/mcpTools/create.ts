@@ -17,6 +17,7 @@ import {
   type CreateMcpToolsBodyType,
   type CreateMcpToolsResponseType
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
+import { assertMCPUrlNotInternal } from '@fastgpt/service/core/app/mcp';
 
 export type createMCPToolsQuery = {};
 
@@ -36,6 +37,8 @@ async function handler(
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
+
+  await assertMCPUrlNotInternal(url);
 
   await checkTeamAppTypeLimit({ teamId, appCheckType: 'tool' });
 

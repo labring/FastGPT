@@ -12,7 +12,7 @@ export default function NotFound() {
 
   useEffect(() => {
     // Redirect to introduction page
-    window.location.replace(getLocalizedPath('/docs/introduction', lang));
+    window.location.replace(getLocalizedPath('/introduction', lang));
   }, [lang]);
 
   return null;

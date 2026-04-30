@@ -4,24 +4,16 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  UpdateTrainingDataBodySchema,
+  UpdateTrainingDataResponseSchema,
+  type UpdateTrainingDataResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
 
-export type updateTrainingDataBody = {
-  datasetId: string;
-  collectionId: string;
-  dataId?: string; // Change it to optional. If it is not passed, all error data will be retried.
-  q?: string;
-  a?: string;
-  chunkIndex?: number;
-};
-
-export type updateTrainingDataQuery = {};
-
-export type updateTrainingDataResponse = {};
-
-async function handler(
-  req: ApiRequestProps<updateTrainingDataBody, updateTrainingDataQuery>
-): Promise<updateTrainingDataResponse> {
-  const { datasetId, collectionId, dataId, q, a, chunkIndex } = req.body;
+async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
+  const { datasetId, collectionId, dataId, q, a, chunkIndex } = UpdateTrainingDataBodySchema.parse(
+    req.body
+  );
 
   const { teamId } = await authDatasetCollection({
     req,
@@ -46,7 +38,7 @@ async function handler(
         lockTime: new Date('2000')
       }
     );
-    return {};
+    return UpdateTrainingDataResponseSchema.parse({});
   }
 
   // Single data retry logic
@@ -92,7 +84,7 @@ async function handler(
     );
   }
 
-  return {};
+  return UpdateTrainingDataResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

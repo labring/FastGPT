@@ -10,10 +10,11 @@ import {
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
+import { ExportDatasetQuerySchema } from '@fastgpt/global/openapi/core/dataset/api';
+
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 type DataItemType = {
@@ -24,13 +25,7 @@ type DataItemType = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  let { datasetId } = req.query as {
-    datasetId: string;
-  };
-
-  if (!datasetId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+  const { datasetId } = ExportDatasetQuerySchema.parse(req.query);
 
   // 凭证校验
   const { teamId, dataset } = await authDataset({

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import type { PublishChannelEnum } from './constant';
 
 // Feishu Config interface
@@ -58,7 +58,7 @@ export type OutlinkAppType =
   | WechatAppType
   | undefined;
 
-export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
+export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = {
   _id: string;
   shareId: string;
   teamId: string;
@@ -73,6 +73,8 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   showCite: boolean;
   // whether to show the running status
   showRunningStatus: boolean;
+  // whether to show skill reference logs
+  showSkillReferences: boolean;
   // whether to show the full text reader
   showFullText: boolean;
   // whether can download source
@@ -106,26 +108,30 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
 export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
   _id?: string;
   name: string;
-  showCite?: OutLinkSchema<T>['showCite'];
-  showRunningStatus?: OutLinkSchema<T>['showRunningStatus'];
-  showFullText?: OutLinkSchema<T>['showFullText'];
-  canDownloadSource?: OutLinkSchema<T>['canDownloadSource'];
+  showCite?: OutLinkSchemaType<T>['showCite'];
+  showRunningStatus?: OutLinkSchemaType<T>['showRunningStatus'];
+  showSkillReferences?: OutLinkSchemaType<T>['showSkillReferences'];
+  showFullText?: OutLinkSchemaType<T>['showFullText'];
+  canDownloadSource?: OutLinkSchemaType<T>['canDownloadSource'];
   // response when request
   immediateResponse?: string;
   // response when error or other situation
   defaultResponse?: string;
-  limit?: OutLinkSchema<T>['limit'];
+  limit?: OutLinkSchemaType<T>['limit'];
 
   // config for specific platform
   app?: T;
 };
 
+export type OutLinkSchema<T extends OutlinkAppType = undefined> = OutLinkSchemaType<T>;
+
 export const PlaygroundVisibilityConfigSchema = z.object({
   showRunningStatus: z.boolean(),
-  showCite: z.boolean(),
-  showFullText: z.boolean(),
-  canDownloadSource: z.boolean(),
-  showWholeResponse: z.boolean()
+  showSkillReferences: z.boolean().optional().default(true),
+  showCite: z.boolean().optional().default(true),
+  showFullText: z.boolean().optional().default(true),
+  canDownloadSource: z.boolean().optional().default(true),
+  showWholeResponse: z.boolean().optional().default(true)
 });
 
 export type PlaygroundVisibilityConfigType = z.infer<typeof PlaygroundVisibilityConfigSchema>;

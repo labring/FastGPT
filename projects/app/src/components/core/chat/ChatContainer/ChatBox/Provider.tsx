@@ -18,12 +18,12 @@ import {
   defaultWhisperConfig
 } from '@fastgpt/global/core/app/constants';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { getChatResData } from '@/web/core/chat/api';
+import { getChatResData } from '@/web/core/chat/record/api';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
+import { ChatTypeEnum as ChatTypeEnumValue } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
@@ -254,12 +254,22 @@ const Provider = ({
     getHistoryResponseData,
     chatType
   };
+  const runtimeFileSelectConfig = useMemo(() => {
+    if (chatType === ChatTypeEnumValue.test) {
+      return fileSelectConfig;
+    }
+    if (chatType === ChatTypeEnumValue.home && !props.currentQuickAppId) {
+      return fileSelectConfig;
+    }
+    return undefined;
+  }, [chatType, fileSelectConfig, props.currentQuickAppId]);
 
   return (
     <WorkflowRuntimeContextProvider
       appId={appId}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
+      runtimeFileSelectConfig={runtimeFileSelectConfig}
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>

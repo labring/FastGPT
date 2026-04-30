@@ -76,7 +76,7 @@ async function handler(
         return 0;
       })();
 
-      await MongoAppChatLog.updateOne(
+      await MongoAppChatLog.findOneAndUpdate(
         {
           teamId,
           appId,

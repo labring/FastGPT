@@ -14,7 +14,8 @@ import {
 } from '@chakra-ui/react';
 import {
   VariableInputEnum,
-  WorkflowIOValueTypeEnum
+  WorkflowIOValueTypeEnum,
+  textInputVariableValueTypes
 } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -165,6 +166,32 @@ const InputTypeConfig = ({
     ...listValue[index]
   }));
 
+  const handleRemoveEnum = useCallback(
+    (index: number) => {
+      const removedValue = mergedSelectEnums[index]?.value;
+      removeEnums(index);
+
+      if (!removedValue) return;
+
+      if (inputType === FlowNodeInputTypeEnum.multipleSelect) {
+        const cur = getValues('defaultValue');
+        if (Array.isArray(cur) && cur.includes(removedValue)) {
+          setValue(
+            'defaultValue',
+            cur.filter((v: string) => v !== removedValue)
+          );
+        }
+      } else if (inputType === FlowNodeInputTypeEnum.select) {
+        if (getValues('defaultValue') === removedValue) {
+          setValue('defaultValue', '');
+        }
+      }
+    },
+    [mergedSelectEnums, removeEnums, inputType, getValues, setValue]
+  );
+
+  const isLastEnumEmpty = !mergedSelectEnums[mergedSelectEnums.length - 1]?.label;
+
   const valueTypeSelectList = Object.values(FlowValueTypeMap)
     .filter((item) => !item.abandon)
     .map((item) => ({
@@ -172,12 +199,21 @@ const InputTypeConfig = ({
       value: item.value
     }));
 
-  const showValueTypeSelect =
-    inputType === FlowNodeInputTypeEnum.reference ||
+  const isVariableTextInput = type === 'variable' && inputType === VariableInputEnum.input;
+
+  const isDynamicValueTypeInput =
     inputType === FlowNodeInputTypeEnum.customVariable ||
     inputType === FlowNodeInputTypeEnum.hidden ||
     inputType === VariableInputEnum.custom ||
-    inputType === VariableInputEnum.internal;
+    inputType === VariableInputEnum.internal ||
+    isVariableTextInput;
+
+  const showValueTypeSelect =
+    inputType === FlowNodeInputTypeEnum.reference || isDynamicValueTypeInput;
+
+  const valueTypeOptionList = isVariableTextInput
+    ? valueTypeSelectList.filter((item) => textInputVariableValueTypes.includes(item.value))
+    : valueTypeSelectList.filter((item) => item.value !== WorkflowIOValueTypeEnum.arrayAny);
 
   const showRequired = useMemo(() => {
     const list = [
@@ -263,9 +299,21 @@ const InputTypeConfig = ({
           commonData.min = data.min;
           break;
         case FlowNodeInputTypeEnum.select:
-        case FlowNodeInputTypeEnum.multipleSelect:
-          commonData.list = data.list;
+        case FlowNodeInputTypeEnum.multipleSelect: {
+          const cleanList = (data.list ?? []).filter(
+            (item: { label?: string; value?: string }) => !!item?.label
+          );
+          commonData.list = cleanList;
+          const validValues = new Set(cleanList.map((item: { value: string }) => item.value));
+          if (inputType === FlowNodeInputTypeEnum.multipleSelect) {
+            commonData.defaultValue = Array.isArray(commonData.defaultValue)
+              ? commonData.defaultValue.filter((v: string) => validValues.has(v))
+              : commonData.defaultValue;
+          } else if (commonData.defaultValue && !validValues.has(commonData.defaultValue)) {
+            commonData.defaultValue = '';
+          }
           break;
+        }
         case FlowNodeInputTypeEnum.addInputParam:
           commonData.customInputConfig = data.customInputConfig;
           break;
@@ -369,12 +417,13 @@ const InputTypeConfig = ({
             {showValueTypeSelect ? (
               <Box flex={1}>
                 <MySelect<WorkflowIOValueTypeEnum>
-                  list={valueTypeSelectList.filter(
-                    (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
-                  )}
+                  list={valueTypeOptionList}
                   value={valueType}
                   onChange={(e) => {
                     setValue('valueType', e);
+                    if (isVariableTextInput) {
+                      setValue('defaultValue', '');
+                    }
                   }}
                 />
               </Box>
@@ -519,11 +568,7 @@ const InputTypeConfig = ({
             </FormLabel>
             <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
-                  valueType === WorkflowIOValueTypeEnum.number)) && (
+                (isDynamicValueTypeInput && valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
                   min={min ? min : undefined}
@@ -534,12 +579,10 @@ const InputTypeConfig = ({
                   }}
                 />
               )}
-              {(inputType === FlowNodeInputTypeEnum.input ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
-                  valueType === WorkflowIOValueTypeEnum.string)) && (
+              {((inputType === FlowNodeInputTypeEnum.input && !isVariableTextInput) ||
+                (isDynamicValueTypeInput &&
+                  (valueType === WorkflowIOValueTypeEnum.string ||
+                    valueType === WorkflowIOValueTypeEnum.any))) && (
                 <MyTextarea
                   value={defaultValue}
                   onChange={(e) => setValue('defaultValue', e.target.value)}
@@ -551,14 +594,12 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
+                (isDynamicValueTypeInput &&
                   ![
                     WorkflowIOValueTypeEnum.number,
                     WorkflowIOValueTypeEnum.string,
-                    WorkflowIOValueTypeEnum.boolean
+                    WorkflowIOValueTypeEnum.boolean,
+                    WorkflowIOValueTypeEnum.any
                   ].includes(valueType))) && (
                 <JsonEditor
                   bg={'myGray.50'}
@@ -571,11 +612,7 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.switch ||
-                ((inputType === VariableInputEnum.custom ||
-                  inputType === VariableInputEnum.internal ||
-                  inputType === FlowNodeInputTypeEnum.customVariable ||
-                  inputType === FlowNodeInputTypeEnum.hidden) &&
-                  valueType === WorkflowIOValueTypeEnum.boolean)) && (
+                (isDynamicValueTypeInput && valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Flex h={10} alignItems={'center'}>
                   <Switch {...register('defaultValue')} />
                 </Flex>
@@ -853,7 +890,7 @@ const InputTypeConfig = ({
                                   p={2}
                                   borderRadius={'md'}
                                   _hover={{ bg: 'red.100' }}
-                                  onClick={() => removeEnums(i)}
+                                  onClick={() => handleRemoveEnum(i)}
                                 />
                                 <Box {...provided.dragHandleProps}>
                                   <MyIcon
@@ -878,7 +915,11 @@ const InputTypeConfig = ({
             <Button
               variant={'whiteBase'}
               leftIcon={<MyIcon name={'common/addLight'} w={'16px'} />}
-              onClick={() => appendEnums({ label: '', value: '' })}
+              onClick={() => {
+                if (isLastEnumEmpty) return;
+                appendEnums({ label: '', value: '' });
+              }}
+              isDisabled={isLastEnumEmpty}
               fontWeight={'medium'}
               fontSize={'12px'}
               w={'24'}

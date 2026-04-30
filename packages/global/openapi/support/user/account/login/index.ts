@@ -8,9 +8,9 @@ import {
   FastLoginBodySchema,
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
-  LoginSuccessResponseSchema
+  LoginSuccessResponseSchema,
+  OpenAPIUserSchema
 } from './api';
-import { UserSchema } from '../../../../../support/user/type';
 
 export const LoginPath: OpenAPIPath = {
   '/support/user/account/tokenLogin': {
@@ -23,7 +23,7 @@ export const LoginPath: OpenAPIPath = {
           description: '成功获取用户信息',
           content: {
             'application/json': {
-              schema: UserSchema
+              schema: OpenAPIUserSchema
             }
           }
         }

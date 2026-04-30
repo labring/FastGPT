@@ -145,7 +145,7 @@ const InputGuideConfig = ({
                   <FormLabel>{t('chat:custom_input_guide_url')}</FormLabel>
                   <Flex
                     onClick={() =>
-                      window.open(getDocPath('/docs/introduction/guide/course/chat_input_guide/'))
+                      window.open(getDocPath('/introduction/guide/course/chat_input_guide/'))
                     }
                     color={'primary.700'}
                     alignItems={'center'}

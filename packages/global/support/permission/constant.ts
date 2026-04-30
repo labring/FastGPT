@@ -50,7 +50,8 @@ export enum PerResourceTypeEnum {
   team = 'team',
   app = 'app',
   dataset = 'dataset',
-  model = 'model'
+  model = 'model',
+  agentSkill = 'agentSkill'
 }
 
 /* new permission */

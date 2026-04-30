@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:pro": {
+      "with": ["@fastgpt/admin#dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "dev:pro": {
+      "with": ["@fastgpt/admin#dev"],
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**", "worker/**"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "outputs": ["coverage/**", "test-results.json"]
+    },
+    "test:integration": {
+      "cache": false,
+      "outputs": ["test-results.integration.json"]
+    },
+    "typecheck": {
+      "outputs": []
+    },
+    "build:workers": {
+      "cache": false,
+      "outputs": ["worker/**"]
+    }
+  }
+}

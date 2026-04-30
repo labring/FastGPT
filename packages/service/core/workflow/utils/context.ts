@@ -1,6 +1,7 @@
 import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+
 import { AsyncLocalStorage } from 'async_hooks';
 import path from 'path';
 import type { MCPClient } from '../../app/mcp';

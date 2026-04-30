@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum, NodeColorSchemaEnum, NodeGradients } from '../node/constant';
+import { FlowNodeTypeEnum, NodeColorSchemaEnum } from '../node/constant';
 import { FlowNodeInputItemTypeSchema, FlowNodeOutputItemTypeSchema } from './io';
 import { HttpToolConfigTypeSchema } from '../../app/tool/httpTool/type';
 import { McpToolConfigSchema } from '../../app/tool/mcpTool/type';
@@ -13,7 +13,7 @@ export const NodeToolConfigTypeSchema = z.object({
   mcpToolSet: z
     .object({
       url: z.string(),
-      headerSecret: StoreSecretValueTypeSchema.optional(),
+      headerSecret: StoreSecretValueTypeSchema.nullish(),
       toolList: z.array(McpToolConfigSchema)
     })
     .optional(),
@@ -45,7 +45,7 @@ export const NodeToolConfigTypeSchema = z.object({
       baseUrl: z.string().optional(),
       apiSchemaStr: z.string().optional(),
       customHeaders: z.string().optional(),
-      headerSecret: StoreSecretValueTypeSchema.optional()
+      headerSecret: StoreSecretValueTypeSchema.nullish()
     })
     .optional(),
   httpTool: z

@@ -11,7 +11,10 @@ import {
   SelectOptionsComponent
 } from '@/components/core/chat/components/Interactive/InteractiveComponents';
 import { type UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import {
+  type ChatItemMiniType,
+  type UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
@@ -106,7 +109,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
         }
       ];
 
-      const mockHistory: ChatItemType[] = [
+      const mockHistory: ChatItemMiniType[] = [
         {
           obj: ChatRoleEnum.AI,
           value: [

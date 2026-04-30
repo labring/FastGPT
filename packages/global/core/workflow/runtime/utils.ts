@@ -1,7 +1,7 @@
 import json5 from 'json5';
 import { checkStrOversize, replaceVariable, valToStr } from '../../../common/string/tools';
 import { ChatRoleEnum } from '../../../core/chat/constants';
-import type { ChatItemType } from '../../../core/chat/type';
+import type { ChatItemMiniType } from '../../../core/chat/type';
 import type { NodeOutputItemType } from './type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import {
@@ -161,7 +161,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
   2. Check that the workflow starts at the interaction node
 */
 export const getLastInteractiveValue = (
-  histories: ChatItemType[]
+  histories: ChatItemMiniType[]
 ): WorkflowInteractiveResponseType | undefined => {
   const lastAIMessage = [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI);
 

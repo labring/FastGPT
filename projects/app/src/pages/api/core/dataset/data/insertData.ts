@@ -2,34 +2,28 @@
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import type { NextApiRequest } from 'next';
-import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
-import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import type { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  InsertDataBodySchema,
+  InsertDataResponseSchema,
+  type InsertDataResponse
+} from '@fastgpt/global/openapi/core/dataset/data/api';
 
-async function handler(req: NextApiRequest) {
-  const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
-
-  if (!q) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
-
-  if (!collectionId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
+  const { collectionId, q, a, indexes } = InsertDataBodySchema.parse(req.body);
 
   // 凭证校验
   const { teamId, tmbId, collection } = await authDatasetCollection({
@@ -102,7 +96,8 @@ async function handler(req: NextApiRequest) {
       }
     });
   })();
-  return insertId;
+
+  return InsertDataResponseSchema.parse(insertId);
 }
 
 export default NextAPI(handler);

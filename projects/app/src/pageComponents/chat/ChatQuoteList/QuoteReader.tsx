@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import { type GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
-import { getQuoteDataList } from '@/web/core/chat/api';
+import { getQuoteDataList } from '@/web/core/chat/record/api';
 
 const QuoteReader = ({
   rawSearch,

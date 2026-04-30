@@ -7,26 +7,36 @@ export const TagsMap = {
   // Ai -skill
   aiSkill: 'AI技能管理',
   // AI
-  aiCommon: 'AI 通用 接口',
+  aiCommon: 'AI 通用接口',
   // Sandbox
   sandbox: 'AI 沙盒',
 
   // App 管理
   // Agent - common
-  appCommon: '通用应用管理',
+  appCommon: '应用管理',
   appPer: '应用权限',
   mcpTools: 'MCP 工具管理',
+  httpTools: 'HTTP 工具管理',
 
-  // Chat - home
+  /* ===== Chat ===== */
   chatPage: '对话页面通用',
   chatHistory: '历史记录管理',
-  chatController: '对话操作',
   chatFeedback: '对话反馈',
+  chatFile: '文件操作',
+  chatRecord: '对话记录管理',
+  chatController: '对话操作',
   chatSetting: '门户页配置',
+  // 辅助功能
+  chatInputGuide: '对话输入引导',
 
   // Dataset
-  datasetCollection: '集合',
-  datasetData: '数据',
+  datasetCommon: '知识库管理',
+  datasetCollection: '集合管理',
+  datasetCollectionCrteate: '知识库集合创建',
+  datasetData: '数据管理',
+  datasetTraining: '训练管理',
+  datasetApiDataset: 'API 数据集管理',
+  datasetFile: '文件管理',
 
   // Plugin
   pluginToolTag: '工具标签',
@@ -34,8 +44,11 @@ export const TagsMap = {
 
   // Publish Channel
   publishChannel: '发布渠道',
+  mcpServer: 'MCP 发布管理',
 
   /* Support */
+  // Team
+  teamManage: '团队管理',
   // Wallet
   walletBill: '订单',
   walletDiscountCoupon: '优惠券',

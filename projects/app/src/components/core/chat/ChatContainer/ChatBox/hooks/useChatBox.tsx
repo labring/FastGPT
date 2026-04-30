@@ -1,5 +1,5 @@
 import { type ExportChatType } from '@/types/chat';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { useCallback } from 'react';
 import { htmlTemplate } from '@/web/core/chat/constants';
 import { fileDownload } from '@/web/common/file/utils';
@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 export const useChatBox = () => {
   const { t } = useTranslation();
   const onExportChat = useCallback(
-    ({ type, history }: { type: ExportChatType; history: ChatItemType[] }) => {
+    ({ type, history }: { type: ExportChatType; history: ChatItemMiniType[] }) => {
       const getHistoryHtml = () => {
         const historyDom = document.getElementById('history');
         if (!historyDom) return;

@@ -12,7 +12,7 @@ vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any
     ...mod,
     connectMongo: async (props: { db: Mongoose; url: string; connectedCb?: () => void }) => {
       const { db, url } = props;
-      await db.connect(url, { dbName: randomUUID() });
+      await db.connect(url, { dbName: randomUUID(), retryWrites: false });
       await db.connection.db?.dropDatabase();
     }
   };

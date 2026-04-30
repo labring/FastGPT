@@ -6,23 +6,27 @@ echo "Building sandbox..."
 # 清理旧的构建产物
 rm -rf dist
 
-# 编译主入口文件，打包所有依赖
-echo "Building main entry..."
-bun build src/index.ts --outdir dist --target bun --minify --packages=bundle
+# 编译入口（配置见 tsdown.config.ts）：
+#   - 同时打包 index 和 worker 两个独立 bundle
+#   - 所有 npm 依赖均打入 bundle（noExternal），仅保留 Node 内置模块外部化
+#   - 扁平输出到 dist 根目录
+echo "Building entries..."
+pnpm exec tsdown
 
-# 编译 JS worker，打包所有依赖
-echo "Building JS worker..."
-bun build src/pool/worker.ts --outdir dist --target bun --minify --packages=bundle
-mv dist/worker.js dist/worker.ts
+# package.json 已声明 type:module，直接改后缀为 .js
+mv dist/index.mjs dist/index.js
+mv dist/worker.mjs dist/worker.js
 
-# 复制 Python worker（Python 不需要编译）
+# Python worker 不需要编译，直接复制
 echo "Copying Python worker..."
 cp src/pool/worker.py dist/worker.py
 
 echo ""
 echo "Build complete!"
-echo "  - index.js: $(du -h dist/index.js | cut -f1)"
-echo "  - worker.ts: $(du -h dist/worker.ts | cut -f1)"
+echo "  - index.js:  $(du -h dist/index.js | cut -f1)"
+echo "  - worker.js: $(du -h dist/worker.js | cut -f1)"
 echo "  - worker.py: $(du -h dist/worker.py | cut -f1)"
 echo ""
-echo "✅ dist 目录现在是完全独立的，不需要 node_modules"
+echo "ℹ️  worker 通过 safeRequire(name) 在运行时动态加载白名单模块"
+echo "   （lodash/dayjs/moment/uuid/crypto-js/qs），这些依赖必须以 node_modules"
+echo "   形式存在于运行时，由 runtime.package.json 在 runner 阶段安装。"

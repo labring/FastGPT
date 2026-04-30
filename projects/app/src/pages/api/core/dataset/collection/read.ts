@@ -3,34 +3,21 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import {
+  ReadCollectionSourceBodySchema,
+  ReadCollectionSourceResponseSchema,
+  type ReadCollectionSourceResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/api';
 
-export type readCollectionSourceQuery = {};
-
-export type readCollectionSourceBody = {
-  collectionId: string;
-
-  appId?: string;
-  chatId?: string;
-  chatItemDataId?: string;
-} & OutLinkChatAuthProps;
-
-export type readCollectionSourceResponse = {
-  type: 'url';
-  value: string;
-};
-
-async function handler(
-  req: ApiRequestProps<readCollectionSourceBody, readCollectionSourceQuery>
-): Promise<readCollectionSourceResponse> {
+async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceResponseType> {
   const { collectionId, appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken } =
-    req.body;
+    ReadCollectionSourceBodySchema.parse(req.body);
 
   const { collection } = await (async () => {
     if (!appId || !chatId || !chatItemDataId) {
@@ -107,10 +94,7 @@ async function handler(
     return '';
   })();
 
-  return {
-    type: 'url',
-    value: sourceUrl
-  };
+  return ReadCollectionSourceResponseSchema.parse({ type: 'url', value: sourceUrl });
 }
 
 export default NextAPI(handler);

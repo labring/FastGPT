@@ -8,7 +8,7 @@ import {
 } from '../../../../core/chat/helperBot/type';
 import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
 import { z } from 'zod';
-import type { PaginationResponse } from '../../../../../web/common/fetch/type';
+import type { PaginationResponse } from '../../../api';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 
 // 分页获取记录
@@ -42,7 +42,8 @@ export type GetHelperBotFilePresignParamsType = z.infer<typeof GetHelperBotFileP
 
 // 获取文件预览链接
 export const GetHelperBotFilePreviewParamsSchema = z.object({
-  key: z.string().min(1)
+  key: z.string().min(1),
+  mode: z.enum(['proxy', 'presigned']).optional()
 });
 export type GetHelperBotFilePreviewParamsType = z.infer<typeof GetHelperBotFilePreviewParamsSchema>;
 export const GetHelperBotFilePreviewResponseSchema = z.string();
@@ -59,11 +60,9 @@ export const HelperBotCompletionsParamsSchema = z.object({
       name: z.string()
     })
   ),
-  metadata: z.discriminatedUnion('type', [
-    z.object({
-      type: z.literal(HelperBotTypeEnum.topAgent),
-      data: topAgentParamsSchema
-    })
-  ])
+  metadata: z.object({
+    type: z.literal(HelperBotTypeEnum.topAgent),
+    data: topAgentParamsSchema
+  })
 });
 export type HelperBotCompletionsParamsType = z.infer<typeof HelperBotCompletionsParamsSchema>;

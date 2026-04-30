@@ -119,6 +119,10 @@ const createMockBucketClass = (defaultName: string) => {
       this.externalClient = getMockStorage(this.name);
     }
 
+    get bucketName(): string {
+      return this.name;
+    }
+
     async exist() {
       return true;
     }
@@ -234,7 +238,7 @@ vi.mock('@fastgpt/service/common/s3', () => ({
 }));
 
 // Mock S3 MQ (Message Queue) operations
-vi.mock('@fastgpt/service/common/s3/mq', () => ({
+vi.mock('@fastgpt/service/common/s3/queue/delete', () => ({
   prefixDel: vi.fn().mockResolvedValue(undefined),
   addDeleteJob: vi.fn().mockResolvedValue(undefined)
 }));

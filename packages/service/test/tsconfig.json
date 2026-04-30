@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["../../projects/app/src/*"],
+      "@fastgpt-sdk/logger": ["../../sdk/logger/src/index.ts"],
+      "@fastgpt-sdk/storage": ["../../sdk/storage/src/index.ts"],
+      "@fastgpt-sdk/otel": ["../../sdk/otel/src/index.ts"],
+      "@fastgpt-sdk/otel/logger": ["../../sdk/otel/src/logger-entry.ts"],
+      "@fastgpt-sdk/otel/metrics": ["../../sdk/otel/src/metrics-entry.ts"],
+      "@fastgpt-sdk/otel/tracing": ["../../sdk/otel/src/tracing-entry.ts"],
+      "@fastgpt/*": ["../../packages/*"],
+      "@test/*": ["../../test/*"]
+    }
+  },
+  "include": ["**/*.test.ts", "../**/*.ts", "../**/*.tsx", "../../test/**/*.ts"],
+  "exclude": ["node_modules"]
+}

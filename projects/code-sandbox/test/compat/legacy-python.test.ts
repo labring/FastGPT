@@ -99,6 +99,16 @@ def main(name, age):
     expect(result.data?.codeReturn.msg).toBe('Hello, World!');
   });
 
+  it('main 前置命名参数缺失但有默认值，后置参数仍按 kwargs 注入', async () => {
+    const result = await pool.execute({
+      code: `def main(a=None, b=None):
+    return {"a": a if a else "无", "b": b if b else "无"}`,
+      variables: { b: 'd2' }
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toEqual({ a: '无', b: 'd2' });
+  });
+
   // ===== 返回值类型兼容 =====
 
   it('返回列表（旧版常见）', async () => {

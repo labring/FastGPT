@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { postRebuildEmbedding } from '@/web/core/dataset/api';
+import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -370,6 +370,37 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               </Flex>
               <Box fontSize={'mini'}>
                 {datasetDetail.apiDatasetServer?.feishuServer?.folderToken}
+              </Box>
+            </Box>
+          </>
+        )}
+
+        {datasetDetail.type === DatasetTypeEnum.dingtalk && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:dingtalk_dataset_config')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      apiDatasetServer: datasetDetail.apiDatasetServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>
+                {datasetDetail.apiDatasetServer?.dingtalkServer?.workspaceName ||
+                  datasetDetail.apiDatasetServer?.dingtalkServer?.workspaceId}
+              </Box>
+              <Box fontSize={'mini'} color={'myGray.500'} mt={1}>
+                {datasetDetail.apiDatasetServer?.dingtalkServer?.userId}
               </Box>
             </Box>
           </>

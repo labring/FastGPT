@@ -1,25 +1,19 @@
-import type { NextApiRequest } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DeleteDatasetQuerySchema } from '@fastgpt/global/openapi/core/dataset/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 
-async function handler(req: NextApiRequest) {
-  const { id: datasetId } = req.query as {
-    id: string;
-  };
-
-  if (!datasetId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+async function handler(req: ApiRequestProps) {
+  const { id: datasetId } = DeleteDatasetQuerySchema.parse(req.query);
 
   // auth owner
   const { teamId, tmbId, dataset } = await authDataset({
@@ -36,12 +30,16 @@ async function handler(req: NextApiRequest) {
     fields: '_id'
   });
   const datasetIds = deleteDatasets.map((d) => d._id);
+  await deleteDatasetsImmediate({
+    teamId,
+    datasetIds
+  });
 
   await mongoSessionRun(async (session) => {
     // 1. Mark as deleted
     await MongoDataset.updateMany(
       {
-        _id: datasetIds,
+        _id: { $in: datasetIds },
         teamId
       },
       {
@@ -51,11 +49,6 @@ async function handler(req: NextApiRequest) {
         session
       }
     );
-
-    await deleteDatasetsImmediate({
-      teamId,
-      datasetIds
-    });
 
     // 2. Add to delete queue
     await addDatasetDeleteJob({

@@ -1,12 +1,17 @@
 {
-  "name": "fast",
+  "name": "@fastgpt/document",
   "version": "0.0.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbo",
     "start": "next start",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "fumadocs-mdx",
+    "format-doc": "zhlint --dir ./ *.mdx --fix",
+    "initDocTime": "node ./script/initDocTime.js",
+    "initDocToc": "node ./script/generateToc.js",
+    "checkDocRefs": "node ./script/checkDocRefs.js",
+    "removeInvalidImg": "node ./script/removeInvalidImg.js"
   },
   "dependencies": {
     "@orama/orama": "^3.1.11",
@@ -20,7 +25,7 @@
     "fumadocs-ui": "15.6.3",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.525.0",
-    "next": "15.5.9",
+    "next": "^15.5.15",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-responsive": "^10.0.1",
@@ -32,16 +37,17 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
-    "@content-collections/core": "^0.10.0",
+    "@content-collections/core": "^0.15.0",
     "@content-collections/next": "^0.2.6",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/mdx": "^2.0.13",
     "@types/node": "24.0.13",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.10",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
+    "zhlint": "^0.8.2",
     "zod": "^4.0.5"
   }
 }

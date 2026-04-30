@@ -12,7 +12,7 @@ export function GET() {
 
   const urlEntries = pages
     .map((page) => {
-      const filePath = `document/content/docs/${page.file.path}`;
+      const filePath = `document/content/${page.file.path}`;
       // @ts-ignore
       const lastModified = docLastModifiedData[filePath] || page.data.lastModified;
 

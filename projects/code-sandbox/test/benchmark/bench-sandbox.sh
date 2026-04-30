@@ -9,10 +9,10 @@ BASE="${CODE_SANDBOX_URL:-http://localhost:3000}"
 TOKEN="${SANDBOX_TOKEN:-}"
 DURATION="${BENCH_DURATION:-10}"
 
-# 构建 npx autocannon 认证参数
-AUTH_ARGS=""
+# 构建 npx autocannon 认证参数（autocannon 的 -H 不会 URL-decode，必须传字面空格）
+AUTH_ARGS=()
 if [ -n "$TOKEN" ]; then
-  AUTH_ARGS="-H Authorization=Bearer%20${TOKEN}"
+  AUTH_ARGS=(-H "Authorization=Bearer ${TOKEN}")
 fi
 
 echo "========================================"
@@ -35,7 +35,7 @@ echo "  并发: 50  持续: ${DURATION}s"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx autocannon -c 50 -d "$DURATION" -m POST \
   -H "Content-Type=application/json" \
-  $AUTH_ARGS \
+  "${AUTH_ARGS[@]}" \
   -b '{"code":"function main() { return 1 + 1; }","variables":{}}' \
   "${BASE}/sandbox/js"
 
@@ -46,7 +46,7 @@ echo "  并发: 50  持续: ${DURATION}s"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx autocannon -c 50 -d "$DURATION" -m POST \
   -H "Content-Type=application/json" \
-  $AUTH_ARGS \
+  "${AUTH_ARGS[@]}" \
   -b '{"code":"async function main() { await delay(500); return \"done\"; }","variables":{}}' \
   "${BASE}/sandbox/js"
 
@@ -57,7 +57,7 @@ echo "  并发: 10  持续: ${DURATION}s"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx autocannon -c 10 -d "$DURATION" -m POST \
   -H "Content-Type=application/json" \
-  $AUTH_ARGS \
+  "${AUTH_ARGS[@]}" \
   -b '{"code":"function main() { let s=0; for(let i=0;i<50000000;i++) s+=Math.sqrt(i); return s; }","variables":{}}' \
   "${BASE}/sandbox/js"
 
@@ -68,7 +68,7 @@ echo "  并发: 10  持续: ${DURATION}s"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 npx autocannon -c 10 -d "$DURATION" -m POST \
   -H "Content-Type=application/json" \
-  $AUTH_ARGS \
+  "${AUTH_ARGS[@]}" \
   -b '{"code":"function main() { const arr = new Array(5000000).fill(0).map((_,i)=>i*i); return arr.length; }","variables":{}}' \
   "${BASE}/sandbox/js"
 

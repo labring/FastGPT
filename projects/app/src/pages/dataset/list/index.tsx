@@ -196,6 +196,16 @@ const Dataset = () => {
                                         onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
                                       }
                                     ]
+                                  : []),
+                                ...(feConfigs?.show_dataset_dingtalk !== false
+                                  ? [
+                                      {
+                                        icon: 'core/dataset/dingtalkDatasetColor',
+                                        label: t('dataset:dingtalk_dataset'),
+                                        description: t('dataset:dingtalk_dataset_desc'),
+                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.dingtalk)
+                                      }
+                                    ]
                                   : [])
                               ]
                             }

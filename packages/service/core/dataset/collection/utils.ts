@@ -218,7 +218,7 @@ export const getTrainingModeByCollection = ({
   autoIndexes,
   imageIndex
 }: {
-  trainingType: DatasetCollectionDataProcessModeEnum;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
   imageIndex?: boolean;
 }) => {
