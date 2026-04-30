@@ -915,7 +915,7 @@
   "permission.Manage": "管理",
   "permission.No InheritPermission": "已独立授权，不再继承父级权限，",
   "permission.Effect scope": "生效范围",
-  "permission.All children scope": "对所有子集资源生效",
+  "permission.All children scope": "对所有子级资源生效",
   "permission.All children scope desc": "（新增的资源自动继承对应权限，已独立授权的资源仍保持独立权限）",
   "permission.Current only scope": "仅对当前资源生效",
   "permission.Current only scope desc": "（已独立授权的资源仍保持独立权限）",

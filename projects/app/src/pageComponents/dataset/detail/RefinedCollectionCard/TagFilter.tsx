@@ -1,13 +1,4 @@
-import {
-  Box,
-  Checkbox,
-  Flex,
-  Popover,
-  PopoverBody,
-  PopoverContent,
-  PopoverTrigger,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Popover, PopoverArrow, PopoverBody, PopoverContent, PopoverTrigger, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -23,59 +14,39 @@ const TagFilter = () => {
 
   const { allDatasetTags } = useContextSelector(DatasetPageContext, (v) => v);
 
-  const { filterTags, setFilterTags, filterTagValues, setFilterTagValues, collections } =
+  const { setFilterTags, filterTagValues, setFilterTagValues, collections } =
     useContextSelector(CollectionPageContext, (v) => v);
 
-  const [hoveredTagId, setHoveredTagId] = useState<string | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
 
-  const isActive =
-    filterTags.length > 0 || Object.values(filterTagValues).some((v) => v.length > 0);
+  const isActive = Object.values(filterTagValues).some((v) => v.length > 0);
 
-  // 从当前 collections 中提取悬停 tag 的可用 value 列表
+  const currentTagId = selectedTagId ?? allDatasetTags[0]?._id ?? null;
+
   const availableValues = useMemo(() => {
-    if (!hoveredTagId) return [];
+    if (!currentTagId) return [];
     const valSet = new Set<string>();
     collections.forEach((col) => {
-      (col.tags || []).forEach((t) => {
-        if (
-          typeof t === 'object' &&
-          t !== null &&
-          (t as CollectionTagValueType).tagId === hoveredTagId
-        ) {
-          valSet.add(String((t as CollectionTagValueType).value));
-        }
-      });
+      (col.tags || [])
+        .filter((t): t is CollectionTagValueType => typeof t === 'object' && t !== null)
+        .forEach((t) => {
+          if (t.tagId === currentTagId) valSet.add(String(t.value));
+        });
     });
     return [...valSet].sort();
-  }, [hoveredTagId, collections]);
+  }, [currentTagId, collections]);
 
-  const hoveredTagType = useMemo(
-    () => allDatasetTags.find((t) => t._id === hoveredTagId)?.tagType,
-    [allDatasetTags, hoveredTagId]
+  const currentTagType = useMemo(
+    () => allDatasetTags.find((t) => t._id === currentTagId)?.tagType,
+    [allDatasetTags, currentTagId]
   );
 
   const formatValue = (val: string) => {
-    if (hoveredTagType === 'datetime') {
+    if (currentTagType === 'datetime') {
       const ts = Number(val);
       return isNaN(ts) ? val : formatTime2YMDHMUtc(ts);
     }
     return val;
-  };
-
-  const toggleTag = (tagId: string) => {
-    const next = filterTags.includes(tagId)
-      ? filterTags.filter((id) => id !== tagId)
-      : [...filterTags, tagId];
-    setFilterTags(next);
-    // 取消一级时清除对应二级
-    if (filterTags.includes(tagId)) {
-      setFilterTagValues((prev) => {
-        const updated = { ...prev };
-        delete updated[tagId];
-        return updated;
-      });
-      if (hoveredTagId === tagId) setHoveredTagId(null);
-    }
   };
 
   const toggleValue = (tagId: string, value: string) => {
@@ -84,8 +55,20 @@ const TagFilter = () => {
       const next = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value];
-      return { ...prev, [tagId]: next };
+      const updated = { ...prev, [tagId]: next };
+      setFilterTags(
+        Object.entries(updated)
+          .filter(([, vals]) => vals.length > 0)
+          .map(([id]) => id)
+      );
+      return updated;
     });
+  };
+
+  const clearAll = () => {
+    setFilterTags([]);
+    setFilterTagValues({});
+    onClose();
   };
 
   return (
@@ -107,11 +90,11 @@ const TagFilter = () => {
         boxShadow="lg"
         onClick={(e) => e.stopPropagation()}
       >
+        <PopoverArrow />
         <PopoverBody p={0}>
           <Flex maxH={'260px'}>
-            {/* 左栏：一级 tag */}
             <Box
-              flex={'0 0 160px'}
+              flex={'0 0 140px'}
               borderRight={'1px solid'}
               borderColor={'myGray.100'}
               overflowY={'auto'}
@@ -130,34 +113,28 @@ const TagFilter = () => {
                 </Flex>
               ) : (
                 allDatasetTags.map((tag) => {
-                  const checked = filterTags.includes(tag._id);
-                  const isHovered = hoveredTagId === tag._id;
+                  const selectedCount = filterTagValues[tag._id]?.length ?? 0;
+                  const isSelected = currentTagId === tag._id;
+                  const hasValue = selectedCount > 0;
                   return (
                     <Flex
                       key={tag._id}
                       alignItems={'center'}
                       fontSize={'sm'}
-                      px={1}
-                      py={1}
+                      px={2}
+                      py={1.5}
                       my={0.5}
                       cursor={'pointer'}
-                      color={checked ? 'primary.700' : 'myGray.600'}
-                      bg={isHovered ? '#1118240D' : undefined}
-                      _hover={{ bg: '#1118240D', color: 'primary.700' }}
-                      borderRadius={'xs'}
-                      onMouseEnter={() => setHoveredTagId(tag._id)}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        toggleTag(tag._id);
+                      color={isSelected || hasValue ? '#1770E6' : '#333'}
+                      bg={isSelected ? 'rgba(50, 136, 250, 0.06)' : undefined}
+                      _hover={{
+                        bg: isSelected ? 'rgba(50, 136, 250, 0.06)' : 'myGray.50',
+                        color: isSelected || hasValue ? '#1770E6' : '#333'
                       }}
+                      borderRadius={'xs'}
+                      onClick={() => setSelectedTagId(tag._id)}
                     >
-                      <Checkbox
-                        isChecked={checked}
-                        onChange={() => toggleTag(tag._id)}
-                        size={'md'}
-                      />
                       <Box
-                        ml={2}
                         flex={1}
                         overflow={'hidden'}
                         textOverflow={'ellipsis'}
@@ -165,21 +142,32 @@ const TagFilter = () => {
                       >
                         {tag.tag}
                       </Box>
-                      {filterTagValues[tag._id]?.length > 0 && (
-                        <Box fontSize={'xs'} color={'primary.500'} ml={1} flexShrink={0}>
-                          {filterTagValues[tag._id].length}
+                      {hasValue && (
+                        <Box
+                          fontSize={'xs'}
+                          color={'primary.500'}
+                          ml={1}
+                          flexShrink={0}
+                          fontWeight={'medium'}
+                        >
+                          {selectedCount}
                         </Box>
                       )}
-                      <MyIcon name={'core/chat/chevronRight'} w={'12px'} flexShrink={0} />
+                      <MyIcon
+                        name={'core/chat/chevronRight'}
+                        w={'12px'}
+                        flexShrink={0}
+                        ml={1}
+                        color={isSelected || hasValue ? '#1770E6' : 'myGray.300'}
+                      />
                     </Flex>
                   );
                 })
               )}
             </Box>
 
-            {/* 右栏：二级 value */}
             <Box flex={1} overflowY={'auto'} py={1} px={1.5}>
-              {!hoveredTagId ? (
+              {availableValues.length === 0 ? (
                 <Flex
                   h={'full'}
                   minH={'60px'}
@@ -188,42 +176,34 @@ const TagFilter = () => {
                   color={'myGray.400'}
                   fontSize={'sm'}
                 >
-                  {t('dataset:tag.hoverTagToFilter')}
+                  {t('common:no_data')}
                 </Flex>
-              ) : availableValues.length === 0 ? null : (
+              ) : (
                 availableValues.map((val) => {
-                  const tagSelected = filterTags.includes(hoveredTagId);
-                  const checked = (filterTagValues[hoveredTagId] || []).includes(val);
+                  const checked = (filterTagValues[currentTagId] || []).includes(val);
                   return (
                     <Flex
                       key={val}
                       alignItems={'center'}
                       fontSize={'sm'}
                       px={1}
-                      py={1}
+                      py={1.5}
                       my={0.5}
-                      cursor={tagSelected ? 'pointer' : 'not-allowed'}
-                      color={checked ? 'primary.700' : tagSelected ? 'myGray.600' : 'myGray.300'}
-                      opacity={tagSelected ? 1 : 0.5}
-                      _hover={tagSelected ? { bg: '#1118240D', color: 'primary.700' } : undefined}
+                      cursor={'pointer'}
+                      color={checked ? 'primary.700' : 'myGray.600'}
+                      _hover={{ bg: '#1118240D', color: 'primary.700' }}
                       borderRadius={'xs'}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (!tagSelected) return;
-                        toggleValue(hoveredTagId, val);
-                      }}
+                      onClick={() => toggleValue(currentTagId, val)}
                     >
                       <Checkbox
                         isChecked={checked}
-                        isDisabled={!tagSelected}
-                        onChange={() => {
-                          if (!tagSelected) return;
-                          toggleValue(hoveredTagId, val);
-                        }}
+                        onChange={() => toggleValue(currentTagId, val)}
                         size={'md'}
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <Box
                         ml={2}
+                        flex={1}
                         overflow={'hidden'}
                         textOverflow={'ellipsis'}
                         whiteSpace={'nowrap'}
@@ -237,7 +217,6 @@ const TagFilter = () => {
             </Box>
           </Flex>
 
-          {/* 清除按钮 */}
           {isActive && (
             <Flex borderTop={'1px solid #E8EBF0'} px={3} py={1.5} justifyContent={'flex-end'}>
               <Box
@@ -245,11 +224,7 @@ const TagFilter = () => {
                 color={'myGray.500'}
                 cursor={'pointer'}
                 _hover={{ color: 'primary.600' }}
-                onClick={() => {
-                  setFilterTags([]);
-                  setFilterTagValues({});
-                  onClose();
-                }}
+                onClick={clearAll}
               >
                 {t('dataset:tag.cancel')}
               </Box>
