@@ -46,6 +46,7 @@ import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { env } from '../../../../../env';
 import { dispatchPiAgent } from './piAgent';
+import { resolveDatasetParams } from './resolveDatasetParams';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -110,12 +111,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
       useEditDebugSandbox,
-      // Dataset search configuration
-      agent_datasetParams: datasetParams,
       // Sandbox (Computer Use)
       useAgentSandbox = false
     }
   } = props;
+  // Dataset search: resolve from composite or individual fields
+  const datasetParams = resolveDatasetParams(props.params);
   const chatHistories = getHistories(history, histories);
   const aiHistoryValues = chatHistories
     .filter((item) => item.obj === ChatRoleEnum.AI)

@@ -118,7 +118,10 @@ export const env = createEnv({
     SHOW_SKILL: BoolSchema.default(false),
 
     // Agent engine selection: 'default' uses the built-in Plan+Step engine, 'pi' uses pi-agent-core
-    AGENT_ENGINE: z.enum(['default', 'pi']).default('default')
+    AGENT_ENGINE: z.enum(['default', 'pi']).default('default'),
+
+    // piAgent context compaction (summarizes old messages when context window is near limit)
+    PI_AGENT_COMPACTION_ENABLED: BoolSchema.default(false)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

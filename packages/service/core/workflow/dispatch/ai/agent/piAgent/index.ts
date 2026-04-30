@@ -21,9 +21,11 @@ import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { buildPiModel, getModelApiKey } from './modelBridge';
 import { buildAgentTools, type ToolDispatchContext } from './toolAdapter';
+import { createCompactionTransform } from './compaction';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { env } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
+import { resolveDatasetParams } from '../resolveDatasetParams';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -53,10 +55,11 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       agent_selectedTools: selectedTools = [],
       skills: skillIds = [],
       useEditDebugSandbox,
-      agent_datasetParams: datasetParams,
       aiChatVision
     }
   } = props;
+  // Dataset search: resolve from composite or individual fields
+  const datasetParams = resolveDatasetParams(props.params);
 
   const chatHistories = getHistories(history, histories);
   const normalizedSkillIds = normalizeSkillIds(skillIds);
@@ -209,14 +212,20 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const { Agent } = await import('@mariozechner/pi-agent-core');
     type AgentEvent = import('@mariozechner/pi-agent-core').AgentEvent;
 
-    const agent = new Agent({
+    const agent: import('@mariozechner/pi-agent-core').Agent = new Agent({
       initialState: {
         systemPrompt: formatedSystemPrompt,
         model: piModel,
         tools: piTools,
         messages: restoredMessages
       },
-      getApiKey: () => apiKey
+      getApiKey: () => apiKey,
+      transformContext: createCompactionTransform({
+        model: piModel,
+        apiKey,
+        getAgentState: () => agent.state,
+        settings: { enabled: env.PI_AGENT_COMPACTION_ENABLED }
+      })
     });
 
     // Collect text deltas to build answerText
