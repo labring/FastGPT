@@ -948,6 +948,7 @@ export const ModelEditModal = ({
               >
                 <MyNumberInput
                   register={register}
+                  isRequired
                   name="maxResponse"
                   min={2000}
                   {...NumberInputStyles}
