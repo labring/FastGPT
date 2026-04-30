@@ -6,12 +6,13 @@
 
 ```
 reference/
-├── core-concepts.md      ── 核心概念：权限值、角色、协作者
-├── permission-class.md   ── Permission 类设计与使用
-├── auth-function.md      ── 鉴权函数实现模式
-├── inheritance.md        ── 继承机制详解
-├── pro-collaborator.md   ── fastgpt-pro 协作者管理
-└── pro-owner-transfer.md ── Owner 转移机制
+├── core-concepts.md        ── 核心概念：权限值、角色、协作者
+├── permission-class.md     ── Permission 类设计与使用
+├── auth-function.md        ── 鉴权函数实现模式
+├── inheritance.md          ── 继承机制详解
+├── dataset-collection.md   ── Dataset Collection 权限管理
+├── pro-collaborator.md     ── fastgpt-pro 协作者管理
+└── pro-owner-transfer.md   ── Owner 转移机制
 ```
 
 ## 按场景查阅
@@ -22,6 +23,7 @@ reference/
 | 如何扩展 Permission 类 | [Permission 类设计](./permission-class.md) |
 | 鉴权函数的标准实现 | [鉴权函数实现](./auth-function.md) |
 | 父子资源权限如何合并 | [继承机制](./inheritance.md) |
+| Dataset Collection 的独立权限管理 | [Collection 权限](./dataset-collection.md) |
 | 协作者更新如何处理冲突 | [协作者管理](./pro-collaborator.md) |
 | Owner 转移的完整流程 | [Owner 转移](./pro-owner-transfer.md) |
 
