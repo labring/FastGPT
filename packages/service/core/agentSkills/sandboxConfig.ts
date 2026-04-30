@@ -74,14 +74,14 @@ function toOpenSandboxCreateConfig(
  * Get sandbox provider configuration from environment variables
  */
 export function getSandboxProviderConfig(): SandboxProviderConfig {
-  const provider = (serviceEnv.AGENT_SANDBOX_PROVIDER ?? 'opensandbox') as SandboxProviderType;
-  const runtime = (serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME ?? 'kubernetes') as SandboxRuntime;
+  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+  const runtime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME;
 
   switch (provider) {
     case 'opensandbox':
       return {
         provider,
-        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? 'http://127.0.0.1:8080',
+        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
         apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
         runtime,
         useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
@@ -115,8 +115,8 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
 export function getSandboxDefaults(): SandboxDefaults {
   return {
     defaultImage: {
-      repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO ?? 'fastgpt-agent-sandbox',
-      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG ?? 'latest'
+      repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
+      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     },
     workDirectory: '/home/sandbox/workspace',
     // workDirectory: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
@@ -131,10 +131,10 @@ export function getSandboxDefaults(): SandboxDefaults {
  */
 export function getSkillSizeLimits(): SkillSizeLimits {
   return {
-    maxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE ?? 50 * 1024 * 1024,
-    maxUncompressedBytes: serviceEnv.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE ?? 200 * 1024 * 1024,
-    maxDownloadBytes: serviceEnv.AGENT_SKILL_MAX_DOWNLOAD_SIZE ?? 200 * 1024 * 1024,
-    maxSandboxPackageBytes: serviceEnv.AGENT_SKILL_MAX_SANDBOX_SIZE ?? 200 * 1024 * 1024
+    maxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE,
+    maxUncompressedBytes: serviceEnv.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE,
+    maxDownloadBytes: serviceEnv.AGENT_SKILL_MAX_DOWNLOAD_SIZE,
+    maxSandboxPackageBytes: serviceEnv.AGENT_SKILL_MAX_SANDBOX_SIZE
   };
 }
 

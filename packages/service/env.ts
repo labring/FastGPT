@@ -52,17 +52,17 @@ export const serviceEnv = createEnv({
     MARKETPLACE_URL: z.string().url().default('https://marketplace.fastgpt.cn'),
 
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
+    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).default('opensandbox'),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: z.string().url().optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
     // OpenSandbox配置
-    AGENT_SANDBOX_OPENSANDBOX_BASEURL: z.string().url().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_BASEURL: z.string().url().default('http://127.0.0.1:8080'),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: z.enum(['docker', 'kubernetes']).default('docker'),
-    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().default('fastgpt-agent-sandbox'),
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
@@ -71,15 +71,15 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH: z.string().default('/workspace'),
 
     // Skill 配置
-    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.optional(),
-    AGENT_SKILL_MAX_UNCOMPRESSED_SIZE: NumSchema.optional(),
-    AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.optional(),
-    AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.optional(),
-    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.optional(),
-    AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.optional(),
+    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50 * 1024 * 1024),
+    AGENT_SKILL_MAX_UNCOMPRESSED_SIZE: NumSchema.default(200 * 1024 * 1024),
+    AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.default(200 * 1024 * 1024),
+    AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.default(200 * 1024 * 1024),
+    AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
+    AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.default(300),
 
     // ==================== 数据库与缓存 ====================
-    // Redis
+    // Redisg
     REDIS_URL: z.string().default('redis://default:mypassword@localhost:6379'),
     STREAM_RESUME_TTL_SECONDS: IntSchema.default(5 * 60).meta({
       description: 'Redis 流式镜像续期：生成中（秒）'
