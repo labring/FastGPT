@@ -39,7 +39,11 @@ type FileParseContext = {
 };
 
 const isPdfBufferEncrypted = (buffer: Buffer): boolean => {
-  return buffer.includes(Buffer.from('/Encrypt'));
+  // Only search in the last 2KB where the PDF trailer dictionary resides.
+  // A full-buffer search causes false positives when /Encrypt appears inside
+  // content streams or metadata but is NOT the actual trailer /Encrypt entry.
+  const trailerWindow = buffer.slice(Math.max(0, buffer.length - 2048));
+  return trailerWindow.includes(Buffer.from('/Encrypt'));
 };
 
 const parseByCustomService = async ({
@@ -384,3 +388,4 @@ export const readS3FileContentByBuffer = async ({
 
   return { rawText: getFormatText ? formatText || rawText : rawText };
 };
+
