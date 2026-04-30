@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Button, ModalBody, Input, Grid, Card, ModalFooter } from '@chakra-ui/react';
+import MyCard from '@/components/MyCard';
 import { useForm } from 'react-hook-form';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
@@ -237,7 +238,6 @@ const CreateModal = ({
                 flex={1}
                 ml={3}
                 autoFocus
-                bg={'myWhite.600'}
                 {...register('name', {
                   required: t('common:core.app.error.App name can not be empty')
                 })}
@@ -267,7 +267,6 @@ const CreateModal = ({
                 flex={1}
                 ml={3}
                 autoFocus
-                bg={'myWhite.600'}
                 {...register('name', {
                   required: t('common:core.app.error.App name can not be empty')
                 })}
@@ -308,21 +307,21 @@ const CreateModal = ({
               gridGap={[2, 4]}
             >
               <Card
-                borderWidth={'1px'}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                boxShadow={'3'}
+                h="152px"
+                boxShadow={'none'}
                 display={'flex'}
                 flexDirection={'column'}
                 alignItems={'center'}
                 justifyContent={'center'}
-                color={'myGray.500'}
-                borderColor={'myGray.200'}
-                h={'8.25rem'}
-                _hover={{
-                  color: 'primary.700',
-                  borderColor: 'primary.300'
-                }}
+                bg="#FFFFFF"
+                border="1px solid"
+                borderColor="#DCE0E6"
+                borderRadius="8px"
+                position="relative"
+                overflow="hidden"
+                cursor="pointer"
+                transition="border-color 0.15s"
+                _hover={{ borderColor: '#91BBF2', color: 'primary.700' }}
                 onClick={handleSubmit((data) => onclickCreate(data))}
               >
                 <MyIcon name={'common/addLight'} w={'1.5rem'} />
@@ -331,62 +330,34 @@ const CreateModal = ({
                 </Box>
               </Card>
               {templateList.map((item) => (
-                <Card
+                <MyCard
                   key={item.templateId}
-                  p={4}
-                  borderRadius={'md'}
-                  borderWidth={'1px'}
-                  borderColor={'myGray.200'}
-                  boxShadow={'3'}
-                  h={'8.25rem'}
-                  _hover={{
-                    borderColor: 'primary.300',
-                    '& .buttons': {
-                      display: 'flex'
-                    }
+                  avatar={item.avatar}
+                  name={t(item.name as any)}
+                  intro={t(item.intro as any)}
+                  author={item.author || feConfigs.systemTitle}
+                  onClick={() => {
+                    handleSubmit((data) => onclickCreate(data, item.templateId))();
                   }}
-                  display={'flex'}
-                  flexDirection={'column'}
-                >
-                  <Flex alignItems={'center'}>
-                    <Avatar src={item.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                    <Box ml={3} color={'myGray.900'} fontWeight={500}>
-                      {t(item.name as any)}
-                    </Box>
-                  </Flex>
-                  <Box fontSize={'xs'} mt={2} color={'myGray.600'} flex={1}>
-                    {t(item.intro as any)}
-                  </Box>
-                  <Box w={'full'} fontSize={'mini'}>
-                    <Box color={'myGray.500'}>{`By ${item.author || feConfigs.systemTitle}`}</Box>
-                    <Box
-                      className="buttons"
-                      display={'none'}
-                      justifyContent={'center'}
-                      alignItems={'center'}
-                      position={'absolute'}
-                      borderRadius={'lg'}
-                      w={'full'}
-                      h={'full'}
-                      left={0}
-                      right={0}
-                      bottom={1}
-                      height={'40px'}
-                      bg={'white'}
-                      zIndex={1}
+                  hoverAction={
+                    <Button
+                      height="24px"
+                      variant="primaryOutline"
+                      borderRadius="4px"
+                      fontSize="12px"
+                      size="xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSubmit((data) => onclickCreate(data, item.templateId))();
+                      }}
                     >
-                      <Button
-                        variant={'whiteBase'}
-                        h={6}
-                        borderRadius={'sm'}
-                        w={'40%'}
-                        onClick={handleSubmit((data) => onclickCreate(data, item.templateId))}
-                      >
+                      <Flex align="center" color="blue.650">
+                        <MyIcon name="common/addLight" w="12px" h="12px" mr="4px" display="block" />
                         {t('app:templateMarket.Use')}
-                      </Button>
-                    </Box>
-                  </Box>
-                </Card>
+                      </Flex>
+                    </Button>
+                  }
+                />
               ))}
             </Grid>
           </>
