@@ -1,11 +1,11 @@
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getSystemToolByIdAndVersionIdNode, getSystemTools } from '../../app/tool/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -31,11 +31,14 @@ export const filterSearchResultsByMaxChars = async (
   return results.length === 0 ? list.slice(0, 1) : results;
 };
 
+/**
+ * 把 SystemTool Toolset 替换为 Tool 节点
+ */
 export async function getSystemToolRunTimeNodeFromSystemToolset({
   toolSetNode,
   lang = 'en'
 }: {
-  toolSetNode: Pick<RuntimeNodeItemType, 'toolConfig' | 'inputs' | 'nodeId'>;
+  toolSetNode: Pick<RuntimeNodeItemType, 'toolConfig' | 'inputs' | 'nodeId' | 'version'>;
   lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
@@ -43,42 +46,36 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   const toolsetInputConfig = toolSetNode.inputs.find(
     (item) => item.key === NodeInputKeyEnum.systemInputConfig
   );
-  const tools = await getSystemTools();
-  const children = tools.filter(
-    (item) => item.parentId === systemToolId && (item.status === 1 || item.status === undefined)
-  );
-  const nodes = await Promise.all(
-    children.map(async (child, index) => {
-      const toolListItem = toolSetNode.toolConfig?.systemToolSet?.toolList.find(
-        (item) => item.toolId === child.id
-      );
+  const systemToolRepo = SystemToolRepo.getInstance();
+  const tool = await systemToolRepo.getSystemToolDetail({
+    pluginId: systemToolId,
+    lang,
+    // source: toolSetNode.toolConfig?.systemToolSet?.source,
+    source: 'system',
+    version: toolSetNode.version
+  });
 
-      const tool = await getSystemToolByIdAndVersionIdNode({ toolId: child.id });
+  if (!tool.children) return [];
 
-      const inputs = tool.inputs ?? [];
-      if (toolsetInputConfig?.value) {
-        const configInput = inputs.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
-        if (configInput) {
-          configInput.value = toolsetInputConfig.value;
+  const nodes = tool.children?.map((child) => {
+    return {
+      flowNodeType: FlowNodeTypeEnum.tool,
+      inputs: toolsetInputConfig ? [toolsetInputConfig, ...(tool.inputs ?? [])] : tool.inputs ?? [],
+      outputs: tool.outputs ?? [],
+      name: child.name,
+      nodeId: `${toolSetNode.nodeId}${child.id}`,
+      version: toolSetNode.version,
+      toolDescription: child.toolDescription,
+      toolConfig: {
+        systemTool: {
+          toolId: child.id
         }
-      }
-
-      return {
-        ...tool,
-        inputs,
-        outputs: tool.outputs ?? [],
-        name: toolListItem?.name || parseI18nString(tool.name, lang),
-        intro: toolListItem?.description || parseI18nString(tool.intro, lang),
-        flowNodeType: FlowNodeTypeEnum.tool,
-        nodeId: `${toolSetNode.nodeId}${index}`,
-        toolConfig: {
-          systemTool: {
-            toolId: child.id
-          }
-        }
-      };
-    })
-  );
+      },
+      pluginId: `${systemToolId}/${child.id}`
+      // BUG: 不知道 catchError 从哪里拿，后续需要优化实现
+      // catchError: toolSetNode.
+    } satisfies RuntimeNodeItemType;
+  });
 
   return nodes;
 }

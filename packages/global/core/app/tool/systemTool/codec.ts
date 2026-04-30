@@ -1,13 +1,9 @@
-import { LangEnum } from '../../../../common/i18n/type';
+import type { LangEnum } from '../../../../common/i18n/type';
 import { parseI18nString } from '../../../../common/i18n/utils';
-import { getNanoid } from '../../../../common/string/tools';
-import { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
-import { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
+import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
+import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
-import { FlowNodeTypeEnum, FlowNodeOutputTypeEnum } from '../../../workflow/node/constant';
-import { Output_Template_Error_Message } from '../../../workflow/template/output';
-import { FlowNodeTemplateType } from '../../../workflow/type/node';
-import { SystemToolListItemType, SystemToolDetailType } from '../type';
+import type { SystemToolListItemType } from './type';
 
 export const SystemToolCodec = {
   getDBPluginId: (pluginId: string) => `systemTool-${pluginId}`,
@@ -85,50 +81,6 @@ export const SystemToolCodec = {
       readmeUrl: tool.readmeUrl,
       source: tool.source,
       userGuide: config?.customConfig?.userGuide
-    };
-  },
-
-  fromToolDetailToFlowNodeTemplateType(item: SystemToolDetailType): FlowNodeTemplateType {
-    // return {
-    //   id: getNanoid(),
-    //   name: item.name,
-    //   avatar: item.avatar,
-    //   courseUrl: item.courseUrl,
-    //   inputs: item.inputs,
-    //   outputs: item.outputs
-    // };
-    return {
-      id: getNanoid(),
-      pluginId: item.id,
-      flowNodeType: item.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
-      avatar: item.avatar,
-      name: item.name,
-      intro: item.intro,
-      toolDescription: item.toolDescription,
-      courseUrl: item.courseUrl,
-      userGuide: item.userGuide,
-      showStatus: true,
-      isTool: true,
-      catchError: false,
-
-      version: item.version,
-      versionLabel: item.version,
-      isLatestVersion: item.isLatestVersion,
-      showSourceHandle: true,
-      showTargetHandle: true,
-
-      currentCost: item.currentCost,
-      systemKeyCost: item.systemKeyCost,
-      hasTokenFee: item.hasTokenFee,
-      hasSystemSecret: item.hasSystemSecret,
-      isFolder: item.isToolSet,
-      status: item.status,
-      inputs: item.inputs,
-
-      // ...nodeIOConfig,
-      outputs: item.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
-        ? item.outputs
-        : [...item.outputs, Output_Template_Error_Message]
     };
   }
 };

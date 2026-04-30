@@ -56,7 +56,7 @@ export async function getChildAppPreviewNode({
   const { source, pluginId } = splitCombineToolId(appId);
 
   if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
-    return getToolPreviewNode({ pluginId, versionId, lang, source: toolSource });
+    return getToolPreviewNode({ pluginId: appId, versionId, lang, source: toolSource });
   }
 
   // 存在 app 里面的插件的情况

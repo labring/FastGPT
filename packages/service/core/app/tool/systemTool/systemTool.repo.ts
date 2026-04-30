@@ -31,6 +31,8 @@ import type {
 } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoAppVersion } from '../../version/schema';
+import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
+import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 
 /**
  * SystemTool Repo
@@ -47,6 +49,20 @@ export class SystemToolRepo {
       SystemToolRepo._instance = new SystemToolRepo();
     }
     return SystemToolRepo._instance;
+  }
+
+  // TODO: 缓存
+  private async getSystemToolRecord(pluginId: string): Promise<SystemPluginToolCollectionType> {
+    const rec = await MongoSystemTool.findOne({ pluginId });
+    if (!rec) {
+      return Promise.reject(new Error(`System tool not found: ${pluginId}`));
+    }
+    return rec;
+  }
+
+  // TODO: 缓存
+  private async getAllSystemToolRecords(): Promise<SystemPluginToolCollectionType[]> {
+    return MongoSystemTool.find({});
   }
 
   /** 获取系统工具列表，归一化为一个相同的列表类型，业务层做 pick */
@@ -69,7 +85,7 @@ export class SystemToolRepo {
     });
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
-    const DBPlugins = await MongoSystemTool.find({});
+    const DBPlugins = await this.getAllSystemToolRecords();
     const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
 
     const formattedTools = tools.map((tool) =>
@@ -266,14 +282,7 @@ export class SystemToolRepo {
   }): Promise<SystemToolVersionType[]> => {
     const { pluginId: rawPluginId, source: pluginSource } = splitCombineToolId(pluginId);
     if (pluginSource === AppToolSourceEnum.commercial) {
-      const tool = await MongoSystemTool.findOne(
-        {
-          pluginId: pluginId
-        },
-        {
-          customConfig: 1
-        }
-      );
+      const tool = await this.getSystemToolRecord(pluginId);
 
       if (!tool || !tool.customConfig?.associatedPluginId) {
         return Promise.reject('Plugin is not associated with a app');
@@ -304,4 +313,45 @@ export class SystemToolRepo {
       versionDescription: parseI18nString(item.versionDescription, lang)
     }));
   };
+
+  getSystemToolRuntime() {}
+
+  async getSystemToolWorkflowRuntime({
+    pluginId,
+    version
+  }: {
+    pluginId: string;
+    version?: string;
+  }): Promise<AppToolRuntimeType> {
+    // 1. pluginId 必须 commercial- 开头
+    if (!pluginId.startsWith('commercial-')) {
+      return Promise.reject('Invalid pluginId');
+    }
+
+    const tool = await this.getSystemToolRecord(pluginId);
+
+    if (!tool || !tool.customConfig?.associatedPluginId) {
+      return Promise.reject('Plugin is not associated with a app');
+    }
+
+    const { associatedPluginId } = tool.customConfig;
+
+    const appVersion = await getAppVersionById({
+      appId: associatedPluginId,
+      versionId: version
+    });
+
+    if (!appVersion) {
+      return Promise.reject('Invalid version');
+    }
+
+    return {
+      avatar: tool.customConfig.avatar ?? '',
+      edges: appVersion.edges,
+      id: pluginId,
+      name: tool.customConfig.name,
+      nodes: appVersion.nodes,
+      currentCost: tool.currentCost
+    };
+  }
 }

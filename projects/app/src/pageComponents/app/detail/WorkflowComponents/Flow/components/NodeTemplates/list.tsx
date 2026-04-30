@@ -26,11 +26,9 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/tool/CostTooltip';
 import {
   FlowNodeTypeEnum,
-  AppNodeFlowNodeTypeMap,
   isNestedParentNodeType,
   isInteractiveNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getColorSchemaByFlowNodeType } from '@fastgpt/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
@@ -253,10 +251,7 @@ const NodeTemplateList = ({
                   template.flowNodeType === FlowNodeTypeEnum.toolSet
                     ? FlowNodeTypeEnum.toolSet
                     : node.flowNodeType,
-                isFolder:
-                  template.flowNodeType === FlowNodeTypeEnum.toolSet
-                    ? true
-                    : node.isFolder,
+                isFolder: template.flowNodeType === FlowNodeTypeEnum.toolSet ? true : node.isFolder,
                 colorSchema: node.colorSchema ?? getColorSchemaByFlowNodeType(node.flowNodeType)
               };
             }

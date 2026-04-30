@@ -382,6 +382,9 @@ importers:
       '@bany/curl-to-json':
         specifier: ^1.2.8
         version: 1.2.8
+      '@fastgpt-plugin/sdk-client':
+        specifier: file:/Volumes/Code/fastgpt-plugin/sdk/client
+        version: file:../fastgpt-plugin/sdk/client
       '@fastgpt-sdk/plugin':
         specifier: 0.6.1
         version: 0.6.1
@@ -3589,6 +3592,9 @@ packages:
 
   '@fastgpt-sdk/plugin@0.6.1':
     resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
+  '@fastgpt-plugin/sdk-client@file:../fastgpt-plugin/sdk/client':
+    resolution: {directory: ../fastgpt-plugin/sdk/client, type: directory}
+
 
   '@fidm/asn1@1.0.4':
     resolution: {integrity: sha512-esd1jyNvRb2HVaQGq2Gg8Z0kbQPXzV9Tq5Z14KNIov6KfFD6PTaRIO8UpcsYiTNzOqJpmyzWgVTrUwFV3UF4TQ==}
@@ -17502,6 +17508,7 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
+  '@fastgpt-plugin/sdk-client@file:../fastgpt-plugin/sdk/client': {}
   '@fastgpt-sdk/plugin@0.6.1':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
@@ -23608,6 +23615,11 @@ snapshots:
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.4(jiti@2.7.0))
       globals: 16.4.0
       typescript-eslint: 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
+      eslint-plugin-react: 7.37.4(eslint@8.57.1)
+      eslint-plugin-react-hooks: 5.2.0(eslint@8.57.1)
     optionalDependencies:
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -23681,7 +23693,7 @@ snapshots:
       '@typescript-eslint/parser': 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23706,7 +23718,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3

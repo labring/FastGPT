@@ -30,8 +30,8 @@ import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { getSystemToolByIdAndVersionId } from '../../../app/tool/controller';
 import { WorkflowVariableState } from '../utils/variables';
+import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -46,6 +46,12 @@ type RunPluginResponse = DispatchNodeResultType<
   }
 >;
 
+/**
+ * 工作流插件处理函数
+ * 1. 系统工具 systemTool- 转发到 dispatchRunTool （为了兼容旧的数据）
+ * 2. personal （自己的插件）
+ * 3. commercial （系统级别的工作流插件）
+ */
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
     node: { pluginId, version },
@@ -80,7 +86,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       return getNodeErrResponse({ error: 'pluginId can not find' });
     }
 
-    /*
+    /**
       1. Team app (personal): 走 team 权限校验
       2. Admin selected system tool (commercial): 系统级工具，不做用户态权限校验
     */
@@ -117,11 +123,15 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         hasTokenFee: false
       };
     } else {
+      const systemToolRepo = SystemToolRepo.getInstance();
       // commercial: 通过系统工具加载（内部会解析 associatedPluginId 对应的 app 版本）
-      const systemTool = await getSystemToolByIdAndVersionId(pluginId, version);
+      const systemTool = await systemToolRepo.getSystemToolWorkflowRuntime({
+        pluginId,
+        version
+      });
 
       workflowTool = {
-        id: systemTool.id,
+        id: pluginId,
         teamId: systemTool.teamId,
         tmbId: systemTool.tmbId,
         name: parseI18nString(systemTool.name, props.lang),
@@ -129,8 +139,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         showStatus: true,
         currentCost: systemTool.currentCost ?? 0,
         systemKeyCost: systemTool.systemKeyCost ?? 0,
-        nodes: systemTool.workflow.nodes,
-        edges: systemTool.workflow.edges,
+        nodes: systemTool.nodes,
+        edges: systemTool.edges,
         hasTokenFee: !!systemTool.hasTokenFee
       };
     }
