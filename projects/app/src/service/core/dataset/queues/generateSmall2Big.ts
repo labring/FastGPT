@@ -1,7 +1,7 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { addMinutes } from 'date-fns';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
@@ -13,6 +13,8 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.SMALL2BIG);
 
 const reduceQueue = () => {
   global.small2bigQueueLen = global.small2bigQueueLen > 0 ? global.small2bigQueueLen - 1 : 0;
@@ -75,12 +77,15 @@ const chunkAnswerText = async ({
     const limitedChunks = chunks.slice(0, maxChildChunks);
 
     if (limitedChunks.length < chunks.length) {
-      addLog.warn(`[Small2Big] Truncated chunks from ${chunks.length} to ${maxChildChunks}`);
+      logger.warn('Small2Big truncated chunks', {
+        originalCount: chunks.length,
+        maxChildChunks
+      });
     }
 
     return limitedChunks.length > 1 ? limitedChunks : [];
   } catch (error) {
-    addLog.error(`[Small2Big] Error chunking answer:`, error);
+    logger.error('Small2Big chunking answer failed', { error });
     return [];
   }
 };
@@ -96,15 +101,12 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
       small2bigConfig: data.collection?.small2bigConfig
     });
 
-    addLog.debug(
-      `[Small2Big Queue] Generated ${childChunks.length} child chunks for chunk ${data.chunkIndex} (answer length: ${answerText.length})`,
-      {
-        chunkIndex: data.chunkIndex,
-        answerLength: answerText.length,
-        childChunksCount: childChunks.length,
-        'chunkingTime(ms)': Date.now() - startTime
-      }
-    );
+    logger.debug('Small2Big generated child chunks', {
+      chunkIndex: data.chunkIndex,
+      answerLength: answerText.length,
+      childChunksCount: childChunks.length,
+      chunkingTimeMs: Date.now() - startTime
+    });
 
     const originalIndexes = data.indexes || [];
     const small2bigIndexes = childChunks.map((text) => ({
@@ -135,20 +137,17 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
         { session }
       );
 
-      addLog.debug(
-        `[Small2Big Queue] Successfully processed chunk ${data.chunkIndex} with ${small2bigIndexes.length} small2big indexes, next mode: ${nextMode}`,
-        {
-          'totalTime(ms)': Date.now() - startTime,
-          chunkIndex: data.chunkIndex,
-          small2bigIndexesCount: small2bigIndexes.length,
-          nextMode
-        }
-      );
+      logger.debug('Small2Big processed chunk', {
+        totalTimeMs: Date.now() - startTime,
+        chunkIndex: data.chunkIndex,
+        small2bigIndexesCount: small2bigIndexes.length,
+        nextMode
+      });
     });
   } catch (error) {
-    addLog.error(`[Small2Big Queue] Error processing task`, {
+    logger.error('Small2Big processing task failed', {
       error,
-      'time(ms)': Date.now() - startTime
+      timeMs: Date.now() - startTime
     });
 
     await MongoDatasetTraining.updateOne(
@@ -162,7 +161,7 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
 };
 
 export async function generateSmall2Big(): Promise<any> {
-  addLog.debug(`[Small2Big Training Queue] Size: ${global.small2bigQueueLen}`);
+  logger.debug('Small2Big queue size check', { queueSize: global.small2bigQueueLen });
 
   const max = global.systemEnv?.qaMaxProcess || 10;
   if (global.small2bigQueueLen >= max) return;
@@ -213,27 +212,31 @@ export async function generateSmall2Big(): Promise<any> {
         break;
       }
       if (error) {
-        addLog.error(`[Small2Big Queue] Error`, error);
+        logger.error('Small2Big queue fetch task failed', { error });
         await delay(500);
         continue;
       }
 
       if (!data.dataset || !data.collection) {
-        addLog.warn(`[Small2Big Queue] Dataset or collection not found`, data);
+        logger.warn('Small2Big queue task skipped: dataset or collection missing', {
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          trainingId: data._id
+        });
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
-      addLog.debug(`[Small2Big Queue] Processing chunk: ${data.chunkIndex}`);
+      logger.debug('Small2Big processing chunk', { chunkIndex: data.chunkIndex });
       await processSmall2BigTask(data);
       await delay(100);
     }
   } catch (error) {
-    addLog.error(`[Small2Big Queue] Error`, error);
+    logger.error('Small2Big queue loop failed', { error });
   }
 
   if (reduceQueue()) {
-    addLog.info(`[Small2Big Queue] Done`);
+    logger.info('Small2Big queue drained', { queueSize: global.small2bigQueueLen });
   }
-  addLog.debug(`[Small2Big Queue] break loop, current queue size: ${global.small2bigQueueLen}`);
+  logger.debug('Small2Big queue loop exit', { queueSize: global.small2bigQueueLen });
 }

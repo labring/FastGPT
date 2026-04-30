@@ -66,13 +66,15 @@ export const LogCategories = {
       QUEUES: ['dataset', 'queues'],
       TRAINING: ['dataset', 'training'],
 
-      FILE_PARSE: ['dataset', 'training', 'file-parse'],
-      EMBEDDING: ['dataset', 'training', 'embedding'],
-      QA: ['dataset', 'training', 'qa'],
-      IMAGE_PARSE: ['dataset', 'training', 'image-parse'],
-      IMAGE_INDEX: ['dataset', 'training', 'image-index'],
-      INDEX_EXTEND: ['dataset', 'training', 'index-extend'],
-      LLM_PARGRAPH: ['dataset', 'training', 'llm-pargraph']
+      FILE_PARSE: ['training', 'file-parse'],
+      EMBEDDING: ['training', 'embedding'],
+      QA: ['training', 'qa'],
+      IMAGE_PARSE: ['training', 'image-parse'],
+      IMAGE_INDEX: ['training', 'image-index'],
+      INDEX_EXTEND: ['training', 'index-extend'],
+      LLM_PARGRAPH: ['training', 'llm-pargraph'],
+      SMALL2BIG: ['training', 'small2big'],
+      DATABASE_SCHEMA: ['training', 'database']
     }),
     AI: Object.assign(['ai'], {
       AGENT: ['ai', 'agent'],

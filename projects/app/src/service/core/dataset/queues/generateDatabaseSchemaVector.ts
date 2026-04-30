@@ -4,7 +4,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
-import { addLog } from '@fastgpt/service/common/system/log';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   insertCoulmnDescriptionVector,
@@ -29,6 +29,8 @@ import { truncateText } from '@fastgpt/service/core/dataset/database/model/utils
 // Database schema specific constants
 const MAX_EMBEDDING_STRING_LENGTH = 1024;
 
+const logger = getLogger(LogCategories.MODULE.DATASET.DATABASE_SCHEMA);
+
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
 
@@ -45,7 +47,7 @@ type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 /* 数据库结构索引生成队列 */
 export async function generateDatabaseSchemaEmbedding(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
-  addLog.debug(`[DB Schema Queue] Queue size: ${global.vectorQueueLen}`);
+  logger.debug('DB Schema queue size check', { queueSize: global.vectorQueueLen });
 
   if (global.vectorQueueLen >= max) return;
   global.vectorQueueLen++;
@@ -105,13 +107,17 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
         break;
       }
       if (error) {
-        addLog.error(`[DB Schema Queue] Error`, error);
+        logger.error('DB Schema queue fetch task failed', { error });
         await delay(500);
         continue;
       }
 
       if (!data.dataset || !data.collection) {
-        addLog.info(`[DB Schema Queue] Dataset or collection not found`, data);
+        logger.info('DB Schema queue task skipped: dataset or collection missing', {
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          trainingId: data._id
+        });
         // Delete data
         await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
@@ -122,7 +128,13 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
         continue;
       }
 
-      addLog.info(`[DB Schema Queue] Start`);
+      logger.info('DB Schema queue task started', {
+        trainingId: data._id,
+        datasetId: data.datasetId,
+        collectionId: data.collectionId,
+        teamId: data.teamId,
+        tmbId: data.tmbId
+      });
 
       try {
         const { tokens } = await (async () => {
@@ -142,11 +154,16 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
           usageId: data.billId
         });
 
-        addLog.info(`[DB Schema Queue] Finish`, {
-          time: Date.now() - start
+        logger.info('DB Schema queue task finished', {
+          durationMs: Date.now() - start
         });
       } catch (err: any) {
-        addLog.error(`[DB Schema Queue] Error`, err);
+        logger.error('DB Schema queue task failed', {
+          error: err,
+          trainingId: data._id,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId
+        });
         await MongoDatasetTraining.updateOne(
           {
             _id: data._id
@@ -159,12 +176,12 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
       }
     }
   } catch (error) {
-    addLog.error(`[Vector Queue] Error`, error);
+    logger.error('DB Schema queue loop failed', { error });
   }
   if (reduceQueue()) {
-    addLog.info(`[DB Schema Queue] Done`);
+    logger.info('DB Schema queue drained', { queueSize: global.vectorQueueLen });
   }
-  addLog.debug(`[DB Schema Queue] break loop, current queue size: ${global.vectorQueueLen}`);
+  logger.debug('DB Schema queue loop exit', { queueSize: global.vectorQueueLen });
 }
 
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
@@ -284,10 +301,10 @@ const processDatabaseSchema = async ({
         tableName: DBDatasetValueVectorTableName
       });
     } catch (error: any) {
-      addLog.warn(
-        `[DB Schema] Failed to delete existing indexes for collection ${collectionId}`,
+      logger.warn('DB Schema failed to delete existing indexes', {
+        collectionId,
         error
-      );
+      });
     }
   }
 
@@ -302,12 +319,12 @@ const processDatabaseSchema = async ({
   )) {
     // Validate column data
     if (!columnName || typeof columnName !== 'string') {
-      addLog.warn(`[DB Schema] Invalid column name: ${columnName}, skipping`);
+      logger.warn('DB Schema invalid column name, skipping', { columnName });
       continue;
     }
 
     if (!columnInfo || typeof columnInfo !== 'object') {
-      addLog.warn(`[DB Schema] Invalid column info for ${columnName}, skipping`);
+      logger.warn('DB Schema invalid column info, skipping', { columnName });
       continue;
     }
 
@@ -404,7 +421,11 @@ const processDatabaseSchema = async ({
       );
     } catch (error: any) {
       const originalMsg = error?.message || 'Unknown error';
-      addLog.error(`[DB Schema]Table ${tableName}, Column ${columnName} ${originalMsg}`, error);
+      logger.error('DB Schema column processing failed', {
+        tableName,
+        columnName,
+        error
+      });
       throw new Error(originalMsg);
     }
   }
@@ -454,14 +475,16 @@ const processDatabaseSchema = async ({
         { session }
       );
     } catch (error) {
-      addLog.error(`[DB Schema] Failed to create MongoDB dataset data`, error);
+      logger.error('DB Schema failed to create MongoDB dataset data', { error });
       throw error;
     }
   }
 
-  addLog.info(
-    `[DB Schema] Processed table ${tableName} with ${columnDesResults.length} columns and ${valueIndexResults.length} value examples`
-  );
+  logger.info('DB Schema table processed', {
+    tableName,
+    columnCount: columnDesResults.length,
+    valueExampleCount: valueIndexResults.length
+  });
 
   return { tokens: totalTokens };
 };
