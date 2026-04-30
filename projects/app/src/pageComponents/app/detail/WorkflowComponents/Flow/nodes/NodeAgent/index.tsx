@@ -292,9 +292,9 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       hasDatabaseKnowledge: selectedDatasets.some(
         (item) => item.datasetType && isDatabaseDataset(item.datasetType)
       ),
-      hasOtherKnowledge: selectedDatasets.some(
-        (item) => item.datasetType && !isDatabaseDataset(item.datasetType)
-      ) || selectedDatasets.length === 0
+      hasOtherKnowledge:
+        selectedDatasets.some((item) => item.datasetType && !isDatabaseDataset(item.datasetType)) ||
+        selectedDatasets.length === 0
     }),
     [selectedDatasets]
   );

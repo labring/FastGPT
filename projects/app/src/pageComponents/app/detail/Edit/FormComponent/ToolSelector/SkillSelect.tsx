@@ -33,7 +33,9 @@ const SkillSelect = ({
     <>
       <Flex h={'32px'} alignItems={'center'}>
         <Flex alignItems={'center'} flex={1}>
-          <FormLabel color={'myWhite.1000'} fontWeight="600">{title || t('skill:associated_skills')}</FormLabel>
+          <FormLabel color={'myWhite.1000'} fontWeight="600">
+            {title || t('skill:associated_skills')}
+          </FormLabel>
         </Flex>
         <Button
           variant={'transparentBase'}

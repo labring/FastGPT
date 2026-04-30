@@ -17,6 +17,7 @@ export interface SearchOptions {
   tokenBudget: number;
   enableRerank?: boolean;
   topK?: number;
+  retrieveLimit?: number;
   originalQuery?: string; // 用户原始问题，rerank 时优先使用（比改写后的子查询更准确）
 }
 
@@ -54,6 +55,7 @@ export class SearchSkill extends BaseSkill {
       tokenBudget,
       enableRerank = true,
       topK = DEFAULT_SEARCH_CONFIG.RERANK_TOP_K,
+      retrieveLimit = DEFAULT_SEARCH_CONFIG.RETRIEVE_LIMIT,
       originalQuery
     } = input as unknown as SearchOptions;
 
@@ -69,7 +71,7 @@ export class SearchSkill extends BaseSkill {
             context: input.context,
             queries: [query],
             datasetIds,
-            limit: topK,
+            limit: retrieveLimit,
             searchMode: 'mixedRecall'
           })
         )
@@ -95,10 +97,9 @@ export class SearchSkill extends BaseSkill {
       // 去重
       const deduped = this.deduplicateChunks(allChunks);
 
-      // Layer 1: Per-dataset topK cap — 防止单一 dataset 洪水
-      // 每个 dataset 最多贡献 max(3, ceil(topK / datasetIdCount)) 个 chunk
+      // Layer 1: Per-dataset cap — 基于检索召回量（RETRIEVE_LIMIT）而非最终保留量（topK）
       const activeDsCount = new Set(deduped.map((c) => c.datasetId)).size;
-      const perDatasetCap = Math.max(3, Math.ceil(topK / Math.max(activeDsCount, 1)));
+      const perDatasetCap = Math.max(3, Math.ceil(retrieveLimit / Math.max(activeDsCount, 1)));
       const cappedByDs = new Map<string, ChunkItem[]>();
       for (const c of deduped) {
         const list = cappedByDs.get(c.datasetId) || [];

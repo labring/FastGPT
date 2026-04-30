@@ -802,10 +802,8 @@ const CollectionCard = () => {
                             </MenuButton>
                           }
                           menuList={(() => {
-                            const isFolder =
-                              collection.type === DatasetCollectionTypeEnum.folder;
-                            const isLink =
-                              collection.type === DatasetCollectionTypeEnum.link;
+                            const isFolder = collection.type === DatasetCollectionTypeEnum.folder;
+                            const isLink = collection.type === DatasetCollectionTypeEnum.link;
 
                             const permissionItem = {
                               label: (
@@ -829,11 +827,7 @@ const CollectionCard = () => {
                               ? {
                                   label: (
                                     <Flex alignItems={'center'}>
-                                      <MyIcon
-                                        name={'core/dataset/tag'}
-                                        w={'0.9rem'}
-                                        mr={2}
-                                      />
+                                      <MyIcon name={'core/dataset/tag'} w={'0.9rem'} mr={2} />
                                       {t('dataset:tag.tags')}
                                     </Flex>
                                   ),
@@ -890,9 +884,7 @@ const CollectionCard = () => {
                                 openDeleteConfirm({
                                   onConfirm: () => onDelCollection([collection._id]),
                                   customContent: isFolder
-                                    ? t(
-                                        'common:dataset.collections.Confirm to delete the folder'
-                                      )
+                                    ? t('common:dataset.collections.Confirm to delete the folder')
                                     : t('common:dataset.Confirm to delete the file')
                                 })()
                             };
@@ -905,8 +897,7 @@ const CollectionCard = () => {
                                     w={'0.9rem'}
                                     mr={2}
                                   />
-                                  {isLink ||
-                                  collection.name.toLowerCase().endsWith('.txt')
+                                  {isLink || collection.name.toLowerCase().endsWith('.txt')
                                     ? t('dataset:view_original')
                                     : collection.type === DatasetCollectionTypeEnum.images
                                       ? t('dataset:view_image')
@@ -939,11 +930,7 @@ const CollectionCard = () => {
                               const syncSettingsItem = {
                                 label: (
                                   <Flex alignItems={'center'}>
-                                    <MyIcon
-                                      name={'common/settingLight'}
-                                      w={'0.9rem'}
-                                      mr={2}
-                                    />
+                                    <MyIcon name={'common/settingLight'} w={'0.9rem'} mr={2} />
                                     {t('dataset:sync_settings')}
                                   </Flex>
                                 ),
@@ -968,10 +955,7 @@ const CollectionCard = () => {
                             // 普通文件
                             return [
                               {
-                                children: [
-                                  ...(tagItem ? [tagItem] : []),
-                                  permissionItem
-                                ]
+                                children: [...(tagItem ? [tagItem] : []), permissionItem]
                               },
                               { children: [sourceItem, moveItem, renameItem, deleteItem] }
                             ];
@@ -1145,7 +1129,12 @@ const CollectionCard = () => {
               {t('dataset:move.permission_choice_tip')}
             </ModalBody>
             <ModalFooter gap={2}>
-              <Button size={'sm'} px={5} variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
+              <Button
+                size={'sm'}
+                px={5}
+                variant={'whiteBase'}
+                onClick={() => setPendingMoveData(undefined)}
+              >
                 {t('common:Cancel')}
               </Button>
               <Button

@@ -37,20 +37,14 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const { datasetDetail, paths } = useContextSelector(DatasetPageContext, (v) => v);
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { data: collectionPaths = [] } = useRequest(
-    () => getDatasetCollectionPathById(parentId),
-    {
-      refreshDeps: [parentId],
-      manual: false,
-      ready: currentTab === TabEnum.collectionCard
-    }
-  );
+  const { data: collectionPaths = [] } = useRequest(() => getDatasetCollectionPathById(parentId), {
+    refreshDeps: [parentId],
+    manual: false,
+    ready: currentTab === TabEnum.collectionCard
+  });
 
   const combinedCollectionPaths = useMemo(
-    () => [
-      { parentId: datasetDetail._id, parentName: datasetDetail.name },
-      ...collectionPaths
-    ],
+    () => [{ parentId: datasetDetail._id, parentName: datasetDetail.name }, ...collectionPaths],
     [datasetDetail._id, datasetDetail.name, collectionPaths]
   );
 

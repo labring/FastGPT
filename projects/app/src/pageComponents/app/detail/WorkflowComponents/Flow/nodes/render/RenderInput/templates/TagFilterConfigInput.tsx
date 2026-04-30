@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, Input, HStack, IconButton, NumberInput, NumberInputField, Button } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Input,
+  HStack,
+  IconButton,
+  NumberInput,
+  NumberInputField,
+  Button
+} from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import type { RenderInputProps } from '../type';
 import { useContextSelector } from 'use-context-selector';

@@ -10,7 +10,8 @@ export const DEFAULT_SEARCH_CONFIG = {
   MAX_TOOL_CALLS: 10,
   EMBEDDING_WEIGHT: 0.5,
   SIMILARITY_THRESHOLD: 0.0,
-  RERANK_TOP_K: 20,
+  RERANK_TOP_K: parseInt(process.env['AGENTIC_RERANK_TOP_K'] ?? '20', 10) || 20,
+  RETRIEVE_LIMIT: parseInt(process.env['AGENTIC_RETRIEVE_LIMIT'] ?? '50', 10) || 50,
   DEFAULT_TOKEN_BUDGET_RATIO: 0.8,
   ANSWER_MAX_CHUNKS: 15,
   ANSWER_MAX_TOKENS: 4096
@@ -459,17 +460,15 @@ export function getStopWords(): Set<string> {
  * BGE/reranker score 低于此值视为不相关（无 LLM score 时使用）
  * 覆盖：AGENTIC_IRRELEVANT_BGE_THRESHOLD=0.15
  */
-export const IRRELEVANT_BGE_THRESHOLD = parseFloat(
-  process.env['AGENTIC_IRRELEVANT_BGE_THRESHOLD'] ?? '0.2'
-);
+const bgeThreshold = parseFloat(process.env['AGENTIC_IRRELEVANT_BGE_THRESHOLD'] ?? '0.2');
+export const IRRELEVANT_BGE_THRESHOLD = Number.isNaN(bgeThreshold) ? 0.2 : bgeThreshold;
 
 /**
  * LLM sub_query_score（0–10）低于此值视为不相关（优先使用）
  * 覆盖：AGENTIC_IRRELEVANT_LLM_THRESHOLD=2
  */
-export const IRRELEVANT_LLM_THRESHOLD = parseFloat(
-  process.env['AGENTIC_IRRELEVANT_LLM_THRESHOLD'] ?? '3'
-);
+const llmThreshold = parseFloat(process.env['AGENTIC_IRRELEVANT_LLM_THRESHOLD'] ?? '3');
+export const IRRELEVANT_LLM_THRESHOLD = Number.isNaN(llmThreshold) ? 3 : llmThreshold;
 
 export function isFollowupQuery(text: string): boolean {
   for (const pattern of FOLLOWUP_PATTERNS) {

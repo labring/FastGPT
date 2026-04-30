@@ -199,7 +199,12 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
             <Box>{t('dataset:move.permission_choice_tip')}</Box>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button size={'sm'} px={5} variant={'whiteBase'} onClick={() => setPendingMoveData(undefined)}>
+            <Button
+              size={'sm'}
+              px={5}
+              variant={'whiteBase'}
+              onClick={() => setPendingMoveData(undefined)}
+            >
               {t('common:Cancel')}
             </Button>
             <Button

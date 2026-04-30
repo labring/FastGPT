@@ -136,7 +136,13 @@ const TagFilterSection = ({ datasetIds, value, onChange }: Props) => {
     <Accordion allowToggle defaultIndex={[]}>
       <AccordionItem border="none">
         <AccordionButton _hover={{}} px={0}>
-          <Flex flex="1" color={'myWhite.1000'} fontSize={'sm'} fontWeight="600" alignItems={'center'}>
+          <Flex
+            flex="1"
+            color={'myWhite.1000'}
+            fontSize={'sm'}
+            fontWeight="600"
+            alignItems={'center'}
+          >
             {t('workflow:retrieval_filter')}
           </Flex>
           <AccordionIcon />

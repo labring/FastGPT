@@ -1,5 +1,13 @@
 import React from 'react';
-import { Box, Button, HStack, Input, NumberInput, NumberInputField, VStack } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  HStack,
+  Input,
+  NumberInput,
+  NumberInputField,
+  VStack
+} from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';

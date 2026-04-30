@@ -147,7 +147,8 @@ function loadAgentFromEnv(): AgentConfig {
     max_tool_calls: defaults.MAX_TOOL_CALLS,
     embedding_weight: defaults.EMBEDDING_WEIGHT,
     similarity: defaults.SIMILARITY,
-    rerank_top_k: defaults.RERANK_TOP_K
+    rerank_top_k: defaults.RERANK_TOP_K,
+    retrieve_limit: defaults.RETRIEVE_LIMIT
   };
 }
 
@@ -286,7 +287,8 @@ export function createProviderConfig(config: Config) {
       maxToolCalls: config.agent.max_tool_calls,
       embeddingWeight: config.agent.embedding_weight,
       similarity: config.agent.similarity,
-      rerankTopK: config.agent.rerank_top_k
+      rerankTopK: config.agent.rerank_top_k,
+      retrieveLimit: config.agent.retrieve_limit
     }
   };
 }

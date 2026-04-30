@@ -20,7 +20,9 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
 import TagRowsEditor, { type TagEditorRow } from './TagRowsEditor';
-import FileSelector, { type SelectFileItemType as ImportSelectFileItemType } from '../Import/components/FileSelector';
+import FileSelector, {
+  type SelectFileItemType as ImportSelectFileItemType
+} from '../Import/components/FileSelector';
 import { documentAndImageFileType } from '@fastgpt/global/common/file/constants';
 import { getUploadDatasetFilePresignedUrl } from '@/web/core/dataset/api';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
@@ -32,10 +34,17 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { ImportSourceItemType } from '@/web/core/dataset/type';
-import { postCreateCustomFileIdCollection, postCheckDuplicateCollection, postCreateCustomWebsiteCollection, getAllTags } from '@/web/core/dataset/api';
+import {
+  postCreateCustomFileIdCollection,
+  postCheckDuplicateCollection,
+  postCreateCustomWebsiteCollection,
+  getAllTags
+} from '@/web/core/dataset/api';
 import { createImageDatasetCollection } from '@/web/core/dataset/image/api';
 import DuplicateConfirmModal from './DuplicateConfirmModal';
-import FileSelectorBox, { type SelectFileItemType as FaqSelectFileItemType } from '@/components/Select/FileSelectorBox';
+import FileSelectorBox, {
+  type SelectFileItemType as FaqSelectFileItemType
+} from '@/components/Select/FileSelectorBox';
 import { postImportFaqByTemplate } from '@/web/core/dataset/api';
 import ExcelJS from 'exceljs';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -100,12 +109,16 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   // ── 顶层状态 ─────────────────────────────
   const [addMode, setAddMode] = useState<AddMode>('file');
   const [tagRows, setTagRows] = useState<TagEditorRow[]>([]);
-  const [tagOptions, setTagOptions] = useState<{ label: string; value: string; tagType?: string }[]>([]);
+  const [tagOptions, setTagOptions] = useState<
+    { label: string; value: string; tagType?: string }[]
+  >([]);
   const [showTagManageModal, setShowTagManageModal] = useState(false);
 
   const loadTagOptions = useCallback(() => {
     getAllTags(datasetId).then((result) => {
-      setTagOptions(result.list.map((tag) => ({ label: tag.tag, value: tag._id, tagType: tag.tagType })));
+      setTagOptions(
+        result.list.map((tag) => ({ label: tag.tag, value: tag._id, tagType: tag.tagType }))
+      );
     });
   }, [datasetId]);
 
@@ -121,7 +134,10 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
 
   // ── FAQ 专有状态 ──────────────────────────────
   const [faqSelectFiles, setFaqSelectFiles] = useState<FaqSelectFileItemType[]>([]);
-  const [faqUploadProgress, setFaqUploadProgress] = useState({ totalPercent: 0, currentFileIndex: 0 });
+  const [faqUploadProgress, setFaqUploadProgress] = useState({
+    totalPercent: 0,
+    currentFileIndex: 0
+  });
   const [isImportingFaq, setIsImportingFaq] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -138,8 +154,12 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
     return imageExtensions.has(ext);
   };
 
-  const docSuccessFiles = selectFiles.filter((f) => !f.errorMsg && !f.isUploading && !isImageFile(f.sourceName));
-  const imageSuccessFiles = selectFiles.filter((f) => !f.errorMsg && !f.isUploading && isImageFile(f.sourceName));
+  const docSuccessFiles = selectFiles.filter(
+    (f) => !f.errorMsg && !f.isUploading && !isImageFile(f.sourceName)
+  );
+  const imageSuccessFiles = selectFiles.filter(
+    (f) => !f.errorMsg && !f.isUploading && isImageFile(f.sourceName)
+  );
 
   const { runAsync: onSelectFiles, loading: uploading } = useRequest(
     async (files: ImportSelectFileItemType[]) => {
@@ -147,7 +167,10 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
       await Promise.all(
         docFiles.map(async ({ fileId, file }) => {
           try {
-            const { url, key, headers } = await getUploadDatasetFilePresignedUrl({ filename: file.name, datasetId });
+            const { url, key, headers } = await getUploadDatasetFilePresignedUrl({
+              filename: file.name,
+              datasetId
+            });
             await putFileToS3({
               url,
               file,
@@ -159,20 +182,33 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
                 setSelectFiles((s) =>
                   s.map((item) =>
                     item.id === fileId
-                      ? { ...item, uploadedFileRate: item.uploadedFileRate ? Math.max(percent, item.uploadedFileRate) : percent }
+                      ? {
+                          ...item,
+                          uploadedFileRate: item.uploadedFileRate
+                            ? Math.max(percent, item.uploadedFileRate)
+                            : percent
+                        }
                       : item
                   )
                 );
               },
               onSuccess: () => {
                 setSelectFiles((s) =>
-                  s.map((item) => item.id === fileId ? { ...item, dbFileId: key, isUploading: false, uploadedFileRate: 100 } : item)
+                  s.map((item) =>
+                    item.id === fileId
+                      ? { ...item, dbFileId: key, isUploading: false, uploadedFileRate: 100 }
+                      : item
+                  )
                 );
               }
             });
           } catch (error) {
             setSelectFiles((s) =>
-              s.map((item) => item.id === fileId ? { ...item, isUploading: false, errorMsg: getErrText(error) } : item)
+              s.map((item) =>
+                item.id === fileId
+                  ? { ...item, isUploading: false, errorMsg: getErrText(error) }
+                  : item
+              )
             );
           }
         })
@@ -210,10 +246,20 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
       ]);
       headerRow.font = { bold: true };
       headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-      worksheet.addRow([t('dataset:faq_example_q1'), t('dataset:faq_example_a1'), t('dataset:faq_example_i1')]);
-      worksheet.addRow([t('dataset:faq_example_q2'), t('dataset:faq_example_a2'), t('dataset:faq_example_i2')]);
+      worksheet.addRow([
+        t('dataset:faq_example_q1'),
+        t('dataset:faq_example_a1'),
+        t('dataset:faq_example_i1')
+      ]);
+      worksheet.addRow([
+        t('dataset:faq_example_q2'),
+        t('dataset:faq_example_a2'),
+        t('dataset:faq_example_i2')
+      ]);
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -299,7 +345,9 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
             tags,
             percentListen: (p) =>
               setFaqUploadProgress({
-                totalPercent: Math.floor((i / faqSelectFiles.length) * 100 + p / faqSelectFiles.length),
+                totalPercent: Math.floor(
+                  (i / faqSelectFiles.length) * 100 + p / faqSelectFiles.length
+                ),
                 currentFileIndex: i
               })
           });
@@ -340,10 +388,20 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
       setIsSubmitting(false);
     }
   }, [
-    addMode, tagRows, datasetId, parentId,
-    docSuccessFiles, imageSuccessFiles, faqSelectFiles,
-    crawlMode, webUrl, webSelector, webAutoSync,
-    onFinish, onClose, toast
+    addMode,
+    tagRows,
+    datasetId,
+    parentId,
+    docSuccessFiles,
+    imageSuccessFiles,
+    faqSelectFiles,
+    crawlMode,
+    webUrl,
+    webSelector,
+    webAutoSync,
+    onFinish,
+    onClose,
+    toast
   ]);
 
   const handleSkipDuplicates = useCallback(async () => {
@@ -358,11 +416,28 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
       }
       await Promise.all([
         ...toUploadDoc.map((f) =>
-          postCreateCustomFileIdCollection({ datasetId, parentId, fileId: f.dbFileId!, name: f.sourceName, overwriteDuplicate: false, enableEnhance: true, tags })
+          postCreateCustomFileIdCollection({
+            datasetId,
+            parentId,
+            fileId: f.dbFileId!,
+            name: f.sourceName,
+            overwriteDuplicate: false,
+            enableEnhance: true,
+            tags
+          })
         ),
-        ...toUploadImg.filter((f) => !!f.file).map((f) =>
-          createImageDatasetCollection({ datasetId, parentId, collectionName: f.sourceName, files: [f.file!], overwriteDuplicate: false, tags })
-        )
+        ...toUploadImg
+          .filter((f) => !!f.file)
+          .map((f) =>
+            createImageDatasetCollection({
+              datasetId,
+              parentId,
+              collectionName: f.sourceName,
+              files: [f.file!],
+              overwriteDuplicate: false,
+              tags
+            })
+          )
       ]);
     } else {
       const toUpload = faqSelectFiles.filter((f) => !duplicateFiles.includes(f.file.name));
@@ -372,34 +447,90 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
         return;
       }
       for (const file of toUpload) {
-        await postImportFaqByTemplate({ datasetId, parentId, file: file.file, overwriteDuplicate: false, enableEnhance: true, tags, percentListen: () => {} });
+        await postImportFaqByTemplate({
+          datasetId,
+          parentId,
+          file: file.file,
+          overwriteDuplicate: false,
+          enableEnhance: true,
+          tags,
+          percentListen: () => {}
+        });
       }
     }
     setShowDuplicateModal(false);
     onFinish();
     onClose();
-  }, [addMode, tagRows, datasetId, parentId, docSuccessFiles, imageSuccessFiles, faqSelectFiles, duplicateFiles, onFinish, onClose, t, toast]);
+  }, [
+    addMode,
+    tagRows,
+    datasetId,
+    parentId,
+    docSuccessFiles,
+    imageSuccessFiles,
+    faqSelectFiles,
+    duplicateFiles,
+    onFinish,
+    onClose,
+    t,
+    toast
+  ]);
 
   const handleReplaceFiles = useCallback(async () => {
     const tags = tagsToCollectionTags(tagRows);
     if (addMode === 'file') {
       await Promise.all([
         ...docSuccessFiles.map((f) =>
-          postCreateCustomFileIdCollection({ datasetId, parentId, fileId: f.dbFileId!, name: f.sourceName, overwriteDuplicate: true, enableEnhance: true, tags })
+          postCreateCustomFileIdCollection({
+            datasetId,
+            parentId,
+            fileId: f.dbFileId!,
+            name: f.sourceName,
+            overwriteDuplicate: true,
+            enableEnhance: true,
+            tags
+          })
         ),
-        ...imageSuccessFiles.filter((f) => !!f.file).map((f) =>
-          createImageDatasetCollection({ datasetId, parentId, collectionName: f.sourceName, files: [f.file!], overwriteDuplicate: true, tags })
-        )
+        ...imageSuccessFiles
+          .filter((f) => !!f.file)
+          .map((f) =>
+            createImageDatasetCollection({
+              datasetId,
+              parentId,
+              collectionName: f.sourceName,
+              files: [f.file!],
+              overwriteDuplicate: true,
+              tags
+            })
+          )
       ]);
     } else {
       for (const file of faqSelectFiles) {
-        await postImportFaqByTemplate({ datasetId, parentId, file: file.file, overwriteDuplicate: true, enableEnhance: true, tags, percentListen: () => {} });
+        await postImportFaqByTemplate({
+          datasetId,
+          parentId,
+          file: file.file,
+          overwriteDuplicate: true,
+          enableEnhance: true,
+          tags,
+          percentListen: () => {}
+        });
       }
     }
     setShowDuplicateModal(false);
     onFinish();
     onClose();
-  }, [addMode, tagRows, datasetId, parentId, docSuccessFiles, imageSuccessFiles, faqSelectFiles, onFinish, onClose]);
+  }, [
+    addMode,
+    tagRows,
+    datasetId,
+    parentId,
+    docSuccessFiles,
+    imageSuccessFiles,
+    faqSelectFiles,
+    onFinish,
+    onClose
+  ]);
 
   const handleContinueUpload = useCallback(async () => {
     await handleReplaceFiles();
@@ -422,7 +553,9 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
   const TagSection = useMemo(
     () => (
       <Flex alignItems="flex-start" mt={4}>
-        <FormLabel flex="0 0 95px" h="32px">{t('dataset:tag.tags')}</FormLabel>
+        <FormLabel flex="0 0 95px" h="32px">
+          {t('dataset:tag.tags')}
+        </FormLabel>
         <Box flex={1}>
           <TagRowsEditor
             rows={tagRows}
@@ -434,7 +567,9 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
               <Button
                 variant={'whiteBase'}
                 w="100%"
-                leftIcon={<MyIcon name={'core/dataset/tag' as any} w="12px" h="12px" color="#3E4A59" />}
+                leftIcon={
+                  <MyIcon name={'core/dataset/tag' as any} w="12px" h="12px" color="#3E4A59" />
+                }
                 onClick={() => {
                   closeMenu();
                   setShowTagManageModal(true);
@@ -460,93 +595,94 @@ const AddFileModal: React.FC<AddFileModalProps> = ({
         maxW="750px"
         closeOnOverlayClick={false}
       >
-      <ModalBody p={8}>
-        {/* ── 添加方式 ── */}
-        <Flex alignItems="flex-start">
-          <FormLabel flex="0 0 95px" h="32px" required>
-            {t('dataset:add_type_label')}
-          </FormLabel>
-          <Grid flex={1} gridTemplateColumns="repeat(3, 1fr)" gap={2}>
-            {ADD_MODE_CARDS.map((card) => {
-              const isSelected = addMode === card.mode;
-              return (
-                <Box
-                  key={card.mode}
-                  border={isSelected ? '1px solid #1770E6' : '1px solid #E8EBF0'}
-                  borderRadius="4px"
-                  p={4}
-                  cursor="pointer"
-                  boxShadow={isSelected ? '0px 0px 0px 2px rgba(23, 112, 230, 0.15)' : 'none'}
-                  onClick={() => setAddMode(card.mode)}
-                >
-                  <HStack spacing="8px">
-                    <MyIcon name={card.icon as any} w="20px" h="20px" flexShrink={0} />
-                    <Text fontSize="14px" fontWeight="600" color="#333">
-                      {t(card.nameKey as any)}
+        <ModalBody p={8}>
+          {/* ── 添加方式 ── */}
+          <Flex alignItems="flex-start">
+            <FormLabel flex="0 0 95px" h="32px" required>
+              {t('dataset:add_type_label')}
+            </FormLabel>
+            <Grid flex={1} gridTemplateColumns="repeat(3, 1fr)" gap={2}>
+              {ADD_MODE_CARDS.map((card) => {
+                const isSelected = addMode === card.mode;
+                return (
+                  <Box
+                    key={card.mode}
+                    border={isSelected ? '1px solid #1770E6' : '1px solid #E8EBF0'}
+                    borderRadius="4px"
+                    p={4}
+                    cursor="pointer"
+                    boxShadow={isSelected ? '0px 0px 0px 2px rgba(23, 112, 230, 0.15)' : 'none'}
+                    onClick={() => setAddMode(card.mode)}
+                  >
+                    <HStack spacing="8px">
+                      <MyIcon name={card.icon as any} w="20px" h="20px" flexShrink={0} />
+                      <Text fontSize="14px" fontWeight="600" color="#333">
+                        {t(card.nameKey as any)}
+                      </Text>
+                    </HStack>
+                    <Text fontSize="12px" color="#666" mt="4px">
+                      {t(card.descKey as any)}
                     </Text>
-                  </HStack>
-                  <Text fontSize="12px" color="#666" mt="4px">
-                    {t(card.descKey as any)}
-                  </Text>
-                </Box>
-              );
-            })}
-          </Grid>
-        </Flex>
+                  </Box>
+                );
+              })}
+            </Grid>
+          </Flex>
 
-        {/* ── 动态字段区 ── */}
-        {addMode === 'file' && (
-          <FileFields
-            datasetId={datasetId}
-            parentId={parentId}
-            tagSection={TagSection}
-            selectFiles={selectFiles}
-            onSelectFiles={onSelectFiles}
-            setSelectFiles={setSelectFiles}
-          />
-        )}
-        {addMode === 'faq' && (
-          <FaqFields
-            datasetId={datasetId}
-            parentId={parentId}
-            tagSection={TagSection}
-            faqSelectFiles={faqSelectFiles}
-            setFaqSelectFiles={setFaqSelectFiles}
-            handleDownloadTemplate={handleDownloadTemplate}
-          />
-        )}
-        {addMode === 'web' && (
-          <WebFields
-            crawlMode={crawlMode}
-            setCrawlMode={setCrawlMode}
-            webUrl={webUrl}
-            setWebUrl={setWebUrl}
-            webSelector={webSelector}
-            setWebSelector={setWebSelector}
-            webAutoSync={webAutoSync}
-            setWebAutoSync={setWebAutoSync}
-            tagSection={TagSection}
-            t={t}
-          />
-        )}
-      </ModalBody>
+          {/* ── 动态字段区 ── */}
+          {addMode === 'file' && (
+            <FileFields
+              datasetId={datasetId}
+              parentId={parentId}
+              tagSection={TagSection}
+              selectFiles={selectFiles}
+              onSelectFiles={onSelectFiles}
+              setSelectFiles={setSelectFiles}
+            />
+          )}
+          {addMode === 'faq' && (
+            <FaqFields
+              datasetId={datasetId}
+              parentId={parentId}
+              tagSection={TagSection}
+              faqSelectFiles={faqSelectFiles}
+              setFaqSelectFiles={setFaqSelectFiles}
+              handleDownloadTemplate={handleDownloadTemplate}
+            />
+          )}
+          {addMode === 'web' && (
+            <WebFields
+              crawlMode={crawlMode}
+              setCrawlMode={setCrawlMode}
+              webUrl={webUrl}
+              setWebUrl={setWebUrl}
+              webSelector={webSelector}
+              setWebSelector={setWebSelector}
+              webAutoSync={webAutoSync}
+              setWebAutoSync={setWebAutoSync}
+              tagSection={TagSection}
+              t={t}
+            />
+          )}
+        </ModalBody>
 
-      <ModalFooter>
-        <Button variant="whiteBase" mr={3} onClick={onClose}>
-          {t('common:Cancel')}
-        </Button>
-        <Button
-          onClick={handleConfirm}
-          isLoading={isSubmitting || uploading || isImportingFaq}
-          isDisabled={
-            (addMode === 'file' && selectFiles.filter((f) => !f.errorMsg && !f.isUploading).length === 0) ||
-            (addMode === 'faq' && faqSelectFiles.length === 0) ||
-            (addMode === 'web' && !webUrl.trim())
-          }
-        >
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+        <ModalFooter>
+          <Button variant="whiteBase" mr={3} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            isLoading={isSubmitting || uploading || isImportingFaq}
+            isDisabled={
+              (addMode === 'file' &&
+                selectFiles.filter((f) => !f.errorMsg && !f.isUploading).length === 0) ||
+              (addMode === 'faq' && faqSelectFiles.length === 0) ||
+              (addMode === 'web' && !webUrl.trim())
+            }
+          >
+            {t('common:Confirm')}
+          </Button>
+        </ModalFooter>
       </MyModal>
       <DuplicateConfirmModal
         isOpen={showDuplicateModal}
@@ -598,15 +734,29 @@ const FileFields: React.FC<{
                   <HStack spacing={2} flex={1} overflow="hidden">
                     <MyIcon name={item.icon as any} w="1rem" flexShrink={0} />
                     <MyTooltip label={item.sourceName}>
-                      <Box fontSize="sm" color="myGray.900" flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" maxW="380px">
+                      <Box
+                        fontSize="sm"
+                        color="myGray.900"
+                        flex={1}
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                        maxW="380px"
+                      >
                         {item.sourceName}
                       </Box>
                     </MyTooltip>
-                    <Box fontSize="xs" color="myGray.500" flexShrink={0}>{item.sourceSize}</Box>
+                    <Box fontSize="xs" color="myGray.500" flexShrink={0}>
+                      {item.sourceSize}
+                    </Box>
                     {item.errorMsg ? (
-                      <Box fontSize="xs" color="red.500" flexShrink={0}>{item.errorMsg}</Box>
+                      <Box fontSize="xs" color="red.500" flexShrink={0}>
+                        {item.errorMsg}
+                      </Box>
                     ) : item.isUploading ? (
-                      <Box fontSize="xs" color="myGray.500" flexShrink={0}>{item.uploadedFileRate}%</Box>
+                      <Box fontSize="xs" color="myGray.500" flexShrink={0}>
+                        {item.uploadedFileRate}%
+                      </Box>
                     ) : null}
                   </HStack>
                   {!item.errorMsg && !item.isUploading && (
@@ -669,11 +819,21 @@ const FaqFields: React.FC<{
                   <HStack spacing={2} flex={1} overflow="hidden">
                     <MyIcon name={item.icon as any} w="1rem" flexShrink={0} />
                     <MyTooltip label={item.name}>
-                      <Box fontSize="sm" color="myGray.900" flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" maxW="380px">
+                      <Box
+                        fontSize="sm"
+                        color="myGray.900"
+                        flex={1}
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                        maxW="380px"
+                      >
                         {item.name}
                       </Box>
                     </MyTooltip>
-                    <Box fontSize="xs" color="myGray.500" flexShrink={0}>{item.size}</Box>
+                    <Box fontSize="xs" color="myGray.500" flexShrink={0}>
+                      {item.size}
+                    </Box>
                   </HStack>
                   <MyIconButton
                     icon="delete"
@@ -686,7 +846,13 @@ const FaqFields: React.FC<{
             </VStack>
           )}
           <HStack mt={1} spacing={1}>
-            <Button variant="link" fontSize="12px" fontWeight="normal" color="#156AD9" onClick={handleDownloadTemplate}>
+            <Button
+              variant="link"
+              fontSize="12px"
+              fontWeight="normal"
+              color="#156AD9"
+              onClick={handleDownloadTemplate}
+            >
               {t('dataset:add_file_download_template')}
             </Button>
             <QuestionTip label={t('dataset:template_csv_format_tip')} maxW="400px" />
@@ -802,10 +968,7 @@ const WebFields: React.FC<{
             <QuestionTip label={t('dataset:sync_schedule_tip')} />
           </HStack>
         </FormLabel>
-        <Switch
-          isChecked={webAutoSync}
-          onChange={(e) => setWebAutoSync(e.target.checked)}
-        />
+        <Switch isChecked={webAutoSync} onChange={(e) => setWebAutoSync(e.target.checked)} />
       </Flex>
 
       {tagSection}

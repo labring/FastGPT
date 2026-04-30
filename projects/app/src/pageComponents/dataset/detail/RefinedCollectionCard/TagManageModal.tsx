@@ -130,8 +130,7 @@ const TagManageModal = ({ onClose }: { onClose: (refresh?: boolean) => void }) =
                       tagTypeOptions={tagTypeOptions}
                       onDelete={() =>
                         openDeleteConfirm({
-                          onConfirm: () =>
-                            setDeletedTagIds((prev) => new Set([...prev, item._id]))
+                          onConfirm: () => setDeletedTagIds((prev) => new Set([...prev, item._id]))
                         })()
                       }
                     />

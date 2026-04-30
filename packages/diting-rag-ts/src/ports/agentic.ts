@@ -33,6 +33,7 @@ export interface AgenticSearchConfig {
   embeddingWeight?: number;
   similarity?: number;
   rerankTopK?: number;
+  retrieveLimit?: number;
   answerMaxChunks?: number;
   answerMaxTokens?: number;
   enableShowReferences?: boolean;

@@ -77,9 +77,9 @@ export const useModelTableState = ({
     undefined
   );
   const [trainDetailDrawer, setTrainDetailDrawer] = useState<TrainDetailModel | null>(null);
-  const [baseTrainTaskCountSortOrder, setBaseTrainTaskCountSortOrder] = useState<'asc' | 'desc' | undefined>(
-    undefined
-  );
+  const [baseTrainTaskCountSortOrder, setBaseTrainTaskCountSortOrder] = useState<
+    'asc' | 'desc' | undefined
+  >(undefined);
   const [customTrainTaskCountSortOrder, setCustomTrainTaskCountSortOrder] = useState<
     'asc' | 'desc' | undefined
   >(undefined);

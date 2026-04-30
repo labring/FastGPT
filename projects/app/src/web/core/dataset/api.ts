@@ -319,11 +319,9 @@ export const postCreateCustomLinkCollection = (
  * 读取根地址下所有静态网页 - 批量爬取并创建知识库集合
  */
 export const postCreateCustomWebsiteCollection = (data: CustomWebsiteImportBody) =>
-  POST<CustomWebsiteImportResponse>(
-    `/core/dataset/collection/create/custom/website`,
-    data,
-    { timeout: 360000 }
-  );
+  POST<CustomWebsiteImportResponse>(`/core/dataset/collection/create/custom/website`, data, {
+    timeout: 360000
+  });
 
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);

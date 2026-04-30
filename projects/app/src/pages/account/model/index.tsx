@@ -60,7 +60,14 @@ const ModelProvider = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_model', 'user', 'app', 'train', 'chat']))
+      ...(await serviceSideProps(content, [
+        'account',
+        'account_model',
+        'user',
+        'app',
+        'train',
+        'chat'
+      ]))
     }
   };
 }

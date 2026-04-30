@@ -253,8 +253,25 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
 
       const response = result.response;
 
+      // 缓冲所有 chunk（不立即 yield），截断检测后再决定输出
+      type StreamChunk = {
+        content: string;
+        reasoning?: string;
+        toolCalls?: Array<{
+          id: string;
+          type: 'function';
+          function: { name: any; arguments: any };
+        }>;
+      };
+      const chunkBuffer: StreamChunk[] = [];
+      let accumulatedContent = '';
+      let accumulatedReasoning = '';
+      let streamFinishReason: string | undefined;
+
       for await (const chunk of response) {
         const delta = chunk.choices[0]?.delta;
+        const choice = chunk.choices[0];
+        if (choice?.finish_reason) streamFinishReason = choice.finish_reason;
         if (!delta) continue;
 
         const rawContent = delta.content || '';
@@ -268,8 +285,11 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
           reasoning = think || undefined;
         }
 
-        if (content || reasoning) {
-          yield {
+        if (content) accumulatedContent += content;
+        if (reasoning) accumulatedReasoning += reasoning;
+
+        if (content || reasoning || delta.tool_calls?.length) {
+          chunkBuffer.push({
             content,
             reasoning,
             toolCalls: (delta.tool_calls ?? []).map((tc: any) => ({
@@ -277,7 +297,68 @@ export function createFastGPTLLMProvider(config: FastGPTProvidersConfig): LLMPro
               type: 'function' as const,
               function: { name: tc.function?.name, arguments: tc.function?.arguments }
             }))
+          });
+        }
+      }
+
+      // 截断检测
+      const truncated =
+        streamFinishReason === 'length' ||
+        (streamFinishReason !== 'stop' && detectTruncation(accumulatedContent));
+
+      if (truncated && options?.maxTokens) {
+        addLog.warn('[FastGPTLLMProvider] stream truncated, retrying with 2x maxTokens', {
+          model: config.llmModel,
+          maxTokens: options.maxTokens,
+          finishReason: streamFinishReason,
+          contentPreview: accumulatedContent.slice(0, 200)
+        });
+
+        // 丢弃缓冲（截断内容），用 2x maxTokens 重试
+        const retryBody = {
+          ...filteredBody,
+          max_tokens: options.maxTokens * 2,
+          stream: false
+        };
+        const retryResult = await createChatCompletion({
+          modelData: modelData ?? undefined,
+          body: retryBody as unknown as ChatCompletionCreateParamsNonStreaming,
+          options: options?.requestOptions as any
+        });
+
+        if (!retryResult.isStreamResponse) {
+          const retryResponse = retryResult.response;
+          const retryChoice = retryResponse.choices[0];
+          const retryMsg = retryChoice?.message;
+          const retryRawContent = retryMsg?.content || '';
+          const retryReasoningContent = (retryMsg as any)?.reasoning_content;
+
+          let retryContent = retryRawContent;
+          let retryReasoning: string | undefined = retryReasoningContent || undefined;
+          if (modelData?.reasoning && !retryReasoningContent && retryRawContent) {
+            const [think, answer] = parseReasoningContent(retryRawContent);
+            retryContent = answer;
+            retryReasoning = think || undefined;
+          }
+
+          yield {
+            content: retryContent,
+            reasoning: retryReasoning,
+            toolCalls: (retryMsg?.tool_calls ?? []).map((tc: any) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: { name: tc.function?.name, arguments: tc.function?.arguments }
+            })),
+            usage: {
+              inputTokens: retryResponse.usage?.prompt_tokens,
+              outputTokens: retryResponse.usage?.completion_tokens
+            }
           };
+        }
+      } else {
+        // 未截断：yield 缓冲的 chunk
+        for (const c of chunkBuffer) {
+          yield c;
         }
       }
     },

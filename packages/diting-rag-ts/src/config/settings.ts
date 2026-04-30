@@ -107,12 +107,14 @@ export function getDefaultMongoDB() {
 export function getDefaultAgent() {
   return {
     SEARCH_MODE:
-      (process.env.SEARCH_MODE as 'embedding' | 'fullTextRecall' | 'mixedRecall') || 'mixedRecall',
-    MAX_SEARCH_ROUNDS: parseInt(process.env.MAX_SEARCH_ROUNDS || '', 10) || 50,
-    MAX_TOOL_CALLS: parseInt(process.env.MAX_TOOL_CALLS || '', 10) || 100,
-    EMBEDDING_WEIGHT: parseFloat(process.env.EMBEDDING_WEIGHT || '') || 0.6,
-    SIMILARITY: parseFloat(process.env.SIMILARITY || '') || 0.0,
-    RERANK_TOP_K: parseInt(process.env.RERANK_TOP_K || '', 10) || 20
+      (process.env.AGENTIC_SEARCH_MODE as 'embedding' | 'fullTextRecall' | 'mixedRecall') ||
+      'mixedRecall',
+    MAX_SEARCH_ROUNDS: parseInt(process.env.AGENTIC_MAX_SEARCH_ROUNDS || '', 10) || 50,
+    MAX_TOOL_CALLS: parseInt(process.env.AGENTIC_MAX_TOOL_CALLS || '', 10) || 100,
+    EMBEDDING_WEIGHT: parseFloat(process.env.AGENTIC_EMBEDDING_WEIGHT || '') || 0.6,
+    SIMILARITY: parseFloat(process.env.AGENTIC_SIMILARITY || '') || 0.0,
+    RERANK_TOP_K: parseInt(process.env.AGENTIC_RERANK_TOP_K || '', 10) || 20,
+    RETRIEVE_LIMIT: parseInt(process.env.AGENTIC_RETRIEVE_LIMIT || '', 10) || 50
   };
 }
 
