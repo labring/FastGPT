@@ -673,6 +673,8 @@
   "retrieval_multiple_ai_model_tip": "Used to analyze and decompose questions, filter and evaluate whether retrieved content is sufficient to answer the question.",
   "smart_customer_service_ai_config": "AI configuration",
   "smart_customer_service_ai_model": "AI model",
+  "smart_customer_service_ai_model_tip_agentic": "Used for analyzing and decomposing questions, filtering and determining if retrieved content is sufficient to answer questions.",
+  "smart_customer_service_ai_model_tip_standard": "Used for question rewriting, database SQL statement generation (if a database exists), etc.",
   "smart_customer_service_deep_thinking": "Deep thinking",
   "smart_customer_service_prompt_config": "Prompt",
   "smart_customer_service_welcome_text_placeholder": "Hello, how can I help you?",

@@ -79,7 +79,7 @@ export const appWorkflow2AgentForm = ({
         defaultAppForm.dataset = {
           ...defaultAppForm.dataset,
           ...parsedDatasetParams,
-          searchMode: parsedDatasetParams.searchMode || DatasetSearchModeEnum.embedding,
+          searchMode: parsedDatasetParams.searchMode || DatasetSearchModeEnum.mixedRecall,
           usingReRank: !!parsedDatasetParams.usingReRank
         };
       }
@@ -315,7 +315,7 @@ export const getEmptyAgentConfig = (t: any) => {
       dataset: {
         ...defaultAppForm.dataset,
         datasets: [],
-        searchMode: DatasetSearchModeEnum.embedding
+        searchMode: DatasetSearchModeEnum.mixedRecall
       },
       selectedTools: [],
       chatConfig: {}

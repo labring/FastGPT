@@ -21,12 +21,13 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
     dataset: {
       datasets: [],
       similarity: 0.4,
-      limit: 3000,
-      searchMode: DatasetSearchModeEnum.embedding,
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.mixedRecall,
+      embeddingWeight: 0.65,
       usingReRank: true,
       rerankModel: '',
-      rerankMethod: RerankMethodEnum.content,
-      rerankWeight: 0.5,
+      rerankMethod: RerankMethodEnum.question,
+      rerankWeight: 0.4,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: ''
     },
@@ -106,7 +107,7 @@ export const appWorkflow2Form = ({
       );
       defaultAppForm.dataset.searchMode =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchMode) ||
-        DatasetSearchModeEnum.embedding;
+        DatasetSearchModeEnum.mixedRecall;
       defaultAppForm.dataset.embeddingWeight = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchEmbeddingWeight
@@ -125,7 +126,7 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.rerankModel = rerankModel1 || rerankModel2;
       defaultAppForm.dataset.rerankMethod =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchRerankMethod) ||
-        RerankMethodEnum.content;
+        RerankMethodEnum.question;
       defaultAppForm.dataset.rerankWeight = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchRerankWeight

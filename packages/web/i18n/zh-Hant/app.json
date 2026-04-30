@@ -646,6 +646,8 @@
   "retrieval_multiple_ai_model_tip": "用于分析、拆解问题，过滤及判断检索内容是否足够回答问题等。",
   "smart_customer_service_ai_config": "AI 配置",
   "smart_customer_service_ai_model": "AI 模型",
+  "smart_customer_service_ai_model_tip_agentic": "用於分析、拆解問題，過濾及判斷檢索內容是否足夠回答問題等。",
+  "smart_customer_service_ai_model_tip_standard": "用於問題改寫、數據庫 SQL 語句生成（如有數據庫）等。",
   "smart_customer_service_deep_thinking": "深度思考",
   "smart_customer_service_prompt_config": "提示詞",
   "smart_customer_service_welcome_text_placeholder": "您好，請問有什麼可以幫您？",
