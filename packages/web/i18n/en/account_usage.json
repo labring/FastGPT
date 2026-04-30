@@ -12,6 +12,8 @@
   "current_filter_conditions": "Current filters:",
   "answer_accuracy": "Evaluation - Answer Accuracy",
   "check_left_points": "Check remaining credits",
+  "chart_library_load_failed": "Failed to load chart library",
+  "chart_load_failed": "Failed to load chart",
   "llm_compress_text": "File content compression",
   "context_pick": "Context pick",
   "dashboard": "Dashboard",

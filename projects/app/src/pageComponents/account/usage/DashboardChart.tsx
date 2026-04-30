@@ -80,7 +80,7 @@ const DashboardChart = ({
       })
       .catch((error) => {
         console.error('Failed to load recharts:', error);
-        setError('加载图表库失败');
+        setError(t('account_usage:chart_library_load_failed'));
         setIsLoading(false);
       });
 
@@ -119,7 +119,7 @@ const DashboardChart = ({
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
           <Box color={'red.600'} fontSize={'sm'}>
-            {error || '图表加载失败'}
+            {error || t('account_usage:chart_load_failed')}
           </Box>
         </Box>
       </Box>

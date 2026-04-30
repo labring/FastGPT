@@ -3,6 +3,7 @@
   "error.no_permission": "Please contact the administrator.",
   "get_usage_failed": "Failed to obtain usage.",
   "laf_account": "LAF account",
+  "modal_title": "{{name}} Configuration",
   "no_intro": "No data available.",
   "not_configured": "Not configured",
   "open_api_notice": "Enter an OpenAI/OneAPI key. The key will be used for AI chats, question classification, and content extraction without charges. Make sure the key can be used to access the corresponding models. You can choose FastAI as the GPT model.",
