@@ -254,7 +254,13 @@ const UsageTable = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account_usage', 'account', 'user', 'account_model']))
+      ...(await serviceSideProps(content, [
+        'account_usage',
+        'account',
+        'user',
+        'account_model',
+        'chat'
+      ]))
     }
   };
 }

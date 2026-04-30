@@ -1,6 +1,13 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+echo "Running i18n check..."
+node scripts/i18n/check-all.js
+if [ $? -ne 0 ]; then
+  echo "i18n check failed. Please fix the issues before committing."
+  exit 1
+fi
+
 echo "Running TypeScript type check..."
 if command -v pnpm >/dev/null 2>&1; then
   pnpm typecheck

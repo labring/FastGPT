@@ -115,7 +115,8 @@ export async function getServerSideProps(content: any) {
         'account_info',
         'user',
         'account_model',
-        'login'
+        'login',
+        'chat'
       ]))
     }
   };

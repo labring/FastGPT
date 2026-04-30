@@ -364,7 +364,7 @@ export default EvaluationCreating;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file']))
+      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file', 'dataset']))
     }
   };
 }
