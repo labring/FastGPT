@@ -32,6 +32,8 @@ export async function createQuestionGuide({
 
   const {
     answerText: answer,
+    finish_reason,
+    error: llmError,
     usage: { inputTokens, outputTokens }
   } = await createLLMResponse({
     body: {
@@ -43,11 +45,19 @@ export async function createQuestionGuide({
     }
   });
 
-  const start = answer.indexOf('[');
-  const end = answer.lastIndexOf(']');
+  if (finish_reason !== 'stop') {
+    logger.warn('Question guide response abnormal finish_reason', {
+      finish_reason,
+      llmError,
+      answer
+    });
+  }
+
+  const start = answer.indexOf('{');
+  const end = answer.lastIndexOf('}');
 
   if (start === -1 || end === -1) {
-    logger.warn('Question guide response missing JSON array', { answer });
+    logger.warn('Question guide response missing JSON object', { answer });
     return {
       result: [],
       inputTokens,
@@ -61,8 +71,9 @@ export async function createQuestionGuide({
     .replace(/  /g, '');
 
   try {
+    const parsed = json5.parse(jsonStr) as { language?: string; questions?: string[] };
     return {
-      result: json5.parse(jsonStr),
+      result: Array.isArray(parsed.questions) ? parsed.questions : [],
       inputTokens,
       outputTokens
     };

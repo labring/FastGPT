@@ -5,7 +5,7 @@ import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/
 import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { isEnLocale, isRefreshTemplateData } from '@fastgpt/service/common/middle/i18n';
+import { getLocale, isRefreshTemplateData } from '@fastgpt/service/common/middle/i18n';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 const logger = getLogger(LogCategories.MODULE.APP.TEMPLATE);
@@ -42,7 +42,10 @@ async function handler(
       return [];
     }
   })();
-  const templateMarketItems = await getAppTemplatesAndLoadThem(isRefreshTemplateData(req));
+  const templateMarketItems = await getAppTemplatesAndLoadThem(
+    isRefreshTemplateData(req),
+    getLocale(req)
+  );
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
