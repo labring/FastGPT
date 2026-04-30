@@ -1,16 +1,17 @@
 # --------- Install -----------
-FROM node:20.14.0-alpine AS install
+FROM node:24-alpine AS install
 WORKDIR /app
 
 ARG proxy
 
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@10.33.2
 
 # 复制package.json
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/global ./packages/global
 COPY packages/service ./packages/service
 COPY packages/web ./packages/web
+COPY sdk ./sdk
 COPY projects/mcp_server/package.json ./projects/mcp_server/package.json
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
@@ -28,7 +29,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:20.14.0-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -36,20 +37,22 @@ ARG proxy
 COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json ./
 COPY ./projects/mcp_server /app/projects/mcp_server
 COPY --from=install /app/packages /app/packages
+COPY --from=install /app/sdk /app/sdk
 COPY --from=install /app/node_modules /app/node_modules
 COPY --from=install /app/projects/mcp_server/node_modules /app/projects/mcp_server/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache libc6-compat curl bash && npm install -g pnpm@9
+RUN apk add --no-cache libc6-compat curl bash && npm install -g pnpm@10.33.2
 
 # Install curl and bash, then install bun
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:$PATH"
 
-RUN pnpm --filter=mcp_server build
+RUN pnpm --filter @fastgpt-sdk/logger build
+RUN pnpm --filter=@fastgpt/mcp_server build
 
 # runner
-FROM node:20.14.0-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ARG proxy

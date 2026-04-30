@@ -31,7 +31,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
-import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -56,7 +56,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
-  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
+  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchemaType>();
   const { toast } = useToast();
   const { ConfirmModal, openConfirm } = useConfirm({
     content: t('common:support.outlink.Delete link tip'),
@@ -155,7 +155,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
-                    onClick={() => setSelectedLinkData(item as OutLinkSchema)}
+                    onClick={() => setSelectedLinkData(item as OutLinkSchemaType)}
                     size={'sm'}
                     mr={3}
                     variant={'whitePrimary'}
@@ -186,6 +186,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 canDownloadSource: item.canDownloadSource,
                                 showFullText: item.showFullText,
                                 showRunningStatus: item.showRunningStatus,
+                                showSkillReferences: item.showSkillReferences,
                                 limit: item.limit
                               })
                           },
@@ -281,6 +282,8 @@ function EditLinkModal({
     defaultValues: defaultData
   });
 
+  const showRunningStatus = watch('showRunningStatus');
+  const showSkillReferences = watch('showSkillReferences');
   const showCite = watch('showCite');
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
@@ -397,7 +400,7 @@ function EditLinkModal({
                 />
               </Flex>
               <Link
-                href={getDocPath('/docs/openapi/share')}
+                href={getDocPath('/openapi/share')}
                 target={'_blank'}
                 fontSize={'xs'}
                 color={'myGray.500'}
@@ -476,6 +479,24 @@ function EditLinkModal({
               isChecked={canDownloadSource}
             />
           </Flex>
+          {feConfigs?.show_skill && (
+            <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+              <Flex alignItems={'center'}>
+                <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
+                <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
+              </Flex>
+              <Switch
+                {...register('showSkillReferences', {
+                  onChange(e) {
+                    if (e.target.checked) {
+                      setValue('showRunningStatus', true);
+                    }
+                  }
+                })}
+                isChecked={showSkillReferences}
+              />
+            </Flex>
+          )}
         </Box>
       </ModalBody>
 

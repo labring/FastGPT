@@ -1,0 +1,5 @@
+{
+  "title": "Deployment",
+  "description": "FastGPT self-hosting deployment",
+  "pages": ["docker", "sealos"]
+}

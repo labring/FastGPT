@@ -1,9 +1,9 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getCollectionSource } from '@/web/core/dataset/api';
+import { getCollectionSource } from '@/web/core/dataset/api/collection';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import type { ReadCollectionSourceBodyType as readCollectionSourceBody } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 export function getCollectionSourceAndOpen(
   props: { collectionId: string } & readCollectionSourceBody

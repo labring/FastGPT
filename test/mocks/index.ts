@@ -1,5 +1,4 @@
 import './request';
-import './common/geo';
 import './common/mongo';
 import './common/redis';
 import './common/bullmq';

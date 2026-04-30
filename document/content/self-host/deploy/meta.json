@@ -1,0 +1,5 @@
+{
+  "title": "部署方案",
+  "description": "FastGPT 自部署方案",
+  "pages": ["docker", "sealos"]
+}

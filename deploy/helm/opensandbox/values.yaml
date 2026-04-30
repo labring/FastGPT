@@ -106,7 +106,7 @@ server:
   # Server image configuration
   image:
     repository: opensandbox/server
-    tag: "v0.1.0"
+    tag: "v0.1.9"
     pullPolicy: Never
 
   # Number of replicas

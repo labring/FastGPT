@@ -2,9 +2,8 @@ import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wall
 import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
+import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
 
 export const pushHelperBotUsage = ({
   teamId,
@@ -246,7 +245,7 @@ export const pushWhisperUsage = ({
   tmbId: string;
   duration: number;
 }) => {
-  const whisperModel = getDefaultTTSModel();
+  const whisperModel = getDefaultSTTModel();
 
   if (!whisperModel) return;
 

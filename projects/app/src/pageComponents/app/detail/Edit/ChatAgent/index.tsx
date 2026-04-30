@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { agentForm2AppWorkflow, appWorkflow2AgentForm } from './utils';
 
 import Header from '../FormComponent/Header';
@@ -24,14 +24,9 @@ const AgentEdit = () => {
     appDetail._id
   );
 
-  const [appForm, setAppForm] = useState(getDefaultAppForm());
-
-  // Init app form
-  useMount(async () => {
-    let initialAppForm;
-
+  const [appForm, setAppForm] = useState<AppFormEditFormType>(() => {
     if (past.length === 0) {
-      initialAppForm = appWorkflow2AgentForm({
+      return appWorkflow2AgentForm({
         nodes: appDetail.modules,
         chatConfig: {
           ...appDetail.chatConfig,
@@ -41,17 +36,20 @@ const AgentEdit = () => {
           }
         }
       });
+    }
+
+    return past[0].appForm;
+  });
+
+  // Init snapshot
+  useMount(() => {
+    if (past.length === 0) {
       saveSnapshot({
-        appForm: initialAppForm,
+        appForm,
         title: t('app:initial_form'),
         isSaved: true
       });
-    } else {
-      initialAppForm = past[0].appForm;
     }
-
-    // Set initial app form
-    setAppForm(initialAppForm);
   });
 
   // Save snapshot to local

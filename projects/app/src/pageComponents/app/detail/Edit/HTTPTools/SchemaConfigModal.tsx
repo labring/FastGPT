@@ -19,7 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getApiSchemaByUrl, putUpdateHttpPlugin } from '@/web/core/app/api/tool';
+import { getApiSchemaByUrl, putUpdateHttpTool } from '@/web/core/app/api/httpTools';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
@@ -110,7 +110,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
       const apiData = await str2OpenApiSchema(data.apiSchemaStr || '');
       const toolList = await pathData2ToolList(apiData.pathData);
 
-      return putUpdateHttpPlugin({
+      return putUpdateHttpTool({
         appId: appDetail._id,
         baseUrl: apiData.serverPath,
         toolList,

@@ -1,5 +1,5 @@
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
-import type { ChatItemType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -15,11 +15,7 @@ import {
   GPTMessages2Chats,
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
-import {
-  getQuoteTemplate,
-  getQuotePrompt,
-  getDocumentQuotePrompt
-} from '@fastgpt/global/core/ai/prompt/AIChat';
+import { getQuoteTemplate, getQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
@@ -34,8 +30,9 @@ import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken } from '../../../ai/utils';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
-import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
+import { parseFileContentFromUrls } from '../../utils/file';
 import { parseUrlToFileType } from '../../utils/context';
+import { formatUserQueryWithFiles } from '../../utils/file';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
@@ -44,7 +41,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
     [NodeInputKeyEnum.userChatInput]?: string;
-    [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+    [NodeInputKeyEnum.history]?: ChatItemMiniType[] | number;
     [NodeInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
@@ -52,7 +49,7 @@ export type ChatResponse = DispatchNodeResultType<
   {
     [NodeOutputKeyEnum.answerText]: string;
     [NodeOutputKeyEnum.reasoningText]?: string;
-    [NodeOutputKeyEnum.history]: ChatItemType[];
+    [NodeOutputKeyEnum.history]: ChatItemMiniType[];
   },
   {
     [NodeOutputKeyEnum.errorText]: string;
@@ -89,17 +86,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt,
       aiChatVision,
       aiChatReasoning = true,
+      aiChatReasoningEffort,
       aiChatTopP,
       aiChatStopSign,
       aiChatResponseFormat,
       aiChatJsonSchema,
 
-      fileUrlList: fileLinks, // node quote file links
-      stringQuoteText //abandon
+      fileUrlList: fileLinks // node quote file links
     }
   } = props;
-
-  const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
@@ -119,26 +114,25 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const chatHistories = getHistories(history, histories);
     quoteQA = checkQuoteQAValue(quoteQA);
 
-    const [{ datasetQuoteText }, { documentQuoteText, userFiles }] = await Promise.all([
-      filterDatasetQuote({
+    const [datasetCiteData, userFiles] = await Promise.all([
+      getDatasetCiteData({
         quoteQA,
         model: modelConstantsData,
-        quoteTemplate: quoteTemplate || getQuoteTemplate(version)
+        quoteTemplate: quoteTemplate || getQuoteTemplate(version),
+        aiChatQuoteRole,
+        datasetQuotePrompt: quotePrompt,
+        userChatInput,
+        version,
+        useDatasetQuote: quoteQA !== undefined
       }),
-      getMultiInput({
-        histories: chatHistories,
-        inputFiles,
-        fileLinks,
-        stringQuoteText,
-        requestOrigin,
-        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
-        usageId,
-        runningUserInfo
+      getInputFiles({
+        fileLinks
       })
     ]);
+    // 赋值给 userChatInput
+    userChatInput = datasetCiteData.userInput;
 
-    if (!userChatInput && !documentQuoteText && userFiles.length === 0) {
+    if (!userChatInput && userFiles.length === 0) {
       return getNodeErrResponse({ error: i18nT('chat:AI_input_is_empty') });
     }
 
@@ -147,20 +141,20 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       maxToken
     });
 
-    const [{ filterMessages }] = await Promise.all([
+    const [filterMessages] = await Promise.all([
       getChatMessages({
         model: modelConstantsData,
         maxTokens: max_tokens,
         histories: chatHistories,
-        useDatasetQuote: quoteQA !== undefined,
-        datasetQuoteText,
-        aiChatQuoteRole,
-        datasetQuotePrompt: quotePrompt,
-        version,
-        userChatInput,
+        datasetCiteSystemPrompt: datasetCiteData.systemPrompt,
         systemPrompt,
+        userChatInput,
         userFiles,
-        documentQuoteText
+        requestOrigin,
+        maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+        customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+        usageId,
+        runningUserInfo
       }),
       // Censor = true and system key, will check content
       (() => {
@@ -193,6 +187,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         max_tokens,
         top_p: aiChatTopP,
         stop: aiChatStopSign,
+        reasoning_effort: aiChatReasoningEffort,
         response_format: {
           type: aiChatResponseFormat,
           json_schema: aiChatJsonSchema
@@ -294,15 +289,26 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   }
 };
 
-async function filterDatasetQuote({
+const getDatasetCiteData = async ({
   quoteQA = [],
   model,
-  quoteTemplate
+  quoteTemplate,
+  aiChatQuoteRole,
+  datasetQuotePrompt = '',
+  userChatInput,
+  version,
+  useDatasetQuote
 }: {
   quoteQA: ChatProps['params']['quoteQA'];
   model: LLMModelItemType;
   quoteTemplate: string;
-}) {
+
+  userChatInput: string;
+  aiChatQuoteRole: AiChatQuoteRoleType;
+  datasetQuotePrompt?: string;
+  version?: string;
+  useDatasetQuote: boolean;
+}) => {
   function getValue({ item, index }: { item: SearchDataResponseItemType; index: number }) {
     return replaceVariable(quoteTemplate, {
       id: item.id,
@@ -323,112 +329,6 @@ async function filterDatasetQuote({
       ? `${filterQuoteQA.map((item, index) => getValue({ item, index }).trim()).join('\n------\n')}`
       : '';
 
-  return {
-    datasetQuoteText
-  };
-}
-
-async function getMultiInput({
-  histories,
-  inputFiles,
-  fileLinks,
-  stringQuoteText,
-  requestOrigin,
-  maxFiles,
-  customPdfParse,
-  usageId,
-  runningUserInfo
-}: {
-  histories: ChatItemType[];
-  inputFiles: UserChatItemFileItemType[];
-  fileLinks?: string[];
-  stringQuoteText?: string; // file quote
-  requestOrigin?: string;
-  maxFiles: number;
-  customPdfParse?: boolean;
-  usageId?: string;
-  runningUserInfo: ChatDispatchProps['runningUserInfo'];
-}) {
-  // 旧版本适配====>
-  if (stringQuoteText) {
-    return {
-      documentQuoteText: stringQuoteText,
-      userFiles: inputFiles
-    };
-  }
-
-  // 没有引用文件参考，但是可能用了图片识别
-  if (!fileLinks) {
-    return {
-      documentQuoteText: '',
-      userFiles: inputFiles
-    };
-  }
-  // 旧版本适配<====
-
-  // If fileLinks params is not empty, it means it is a new version, not get the global file.
-
-  // Get files from histories
-  const filesFromHistories = getHistoryFileLinks(histories);
-  const urls = [...fileLinks, ...filesFromHistories];
-
-  if (urls.length === 0) {
-    return {
-      documentQuoteText: '',
-      userFiles: []
-    };
-  }
-
-  const { text } = await getFileContentFromLinks({
-    // Concat fileUrlList and filesFromHistories; remove not supported files
-    urls,
-    requestOrigin,
-    maxFiles,
-    teamId: runningUserInfo.teamId,
-    tmbId: runningUserInfo.tmbId,
-    customPdfParse,
-    usageId
-  });
-
-  return {
-    documentQuoteText: text,
-    userFiles: fileLinks
-      .map((url) => parseUrlToFileType(url))
-      .filter(Boolean) as UserChatItemFileItemType[]
-  };
-}
-
-async function getChatMessages({
-  model,
-  maxTokens = 0,
-  aiChatQuoteRole,
-  datasetQuotePrompt = '',
-  datasetQuoteText,
-  useDatasetQuote,
-  version,
-  histories = [],
-  systemPrompt,
-  userChatInput,
-  userFiles,
-  documentQuoteText
-}: {
-  model: LLMModelItemType;
-  maxTokens?: number;
-  // dataset quote
-  aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
-  datasetQuotePrompt?: string;
-  datasetQuoteText: string;
-  version?: string;
-
-  useDatasetQuote: boolean;
-  histories: ChatItemType[];
-  systemPrompt: string;
-  userChatInput: string;
-
-  userFiles: UserChatItemFileItemType[];
-  documentQuoteText?: string; // document quote
-}) {
-  // Dataset prompt ====>
   // User role or prompt include question
   const quoteRole =
     aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
@@ -445,49 +345,116 @@ async function getChatMessages({
           question: userChatInput
         })
       : userChatInput;
-  // Dataset prompt <====
 
-  // Concat system prompt
-  const concatenateSystemPrompt = [
-    model.defaultSystemChatPrompt,
-    systemPrompt,
+  const systemPrompt =
     useDatasetQuote && quoteRole === 'system'
       ? replaceVariable(datasetQuotePromptTemplate, {
           quote: datasetQuoteText
         })
-      : '',
-    documentQuoteText
-      ? replaceVariable(getDocumentQuotePrompt(version), {
-          quote: documentQuoteText
-        })
-      : ''
+      : '';
+
+  return {
+    userInput: replaceInputValue,
+    systemPrompt
+  };
+};
+
+const getInputFiles = ({ fileLinks = [] }: { fileLinks?: string[] }) => {
+  return fileLinks
+    .map((url) => parseUrlToFileType(url))
+    .filter(Boolean) as UserChatItemFileItemType[];
+};
+
+const getChatMessages = async ({
+  model,
+  maxTokens = 0,
+  histories = [],
+  datasetCiteSystemPrompt,
+  systemPrompt,
+  userChatInput,
+  userFiles,
+  requestOrigin,
+  maxFiles,
+  customPdfParse,
+  usageId,
+  runningUserInfo
+}: {
+  model: LLMModelItemType;
+  maxTokens?: number;
+  histories: ChatItemMiniType[];
+
+  datasetCiteSystemPrompt?: string;
+  systemPrompt: string;
+
+  userChatInput: string;
+  userFiles: UserChatItemFileItemType[];
+
+  requestOrigin?: string;
+  maxFiles: number;
+  customPdfParse?: boolean;
+  usageId?: string;
+  runningUserInfo: ChatDispatchProps['runningUserInfo'];
+}) => {
+  const concatenateSystemPrompt = [
+    model.defaultSystemChatPrompt,
+    systemPrompt,
+    datasetCiteSystemPrompt
   ]
     .filter(Boolean)
     .join('\n\n===---===---===\n\n');
 
-  const messages: ChatItemType[] = [
+  const rawUserMessages: ChatItemMiniType[] = [
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: runtimePrompt2ChatsValue({
         files: userFiles,
-        text: replaceInputValue
+        text: userChatInput
       })
     }
   ];
+
+  const messages = await Promise.all(
+    rawUserMessages.map(async (message, index): Promise<ChatItemMiniType> => {
+      if (message.obj !== ChatRoleEnum.Human) {
+        return message;
+      }
+
+      const query = await formatUserQueryWithFiles({
+        userQuery: message.value,
+        parseFileFn: async (urls) => {
+          const files = await parseFileContentFromUrls({
+            urls,
+            requestOrigin,
+            maxFiles,
+            teamId: runningUserInfo.teamId,
+            tmbId: runningUserInfo.tmbId,
+            customPdfParse,
+            usageId
+          });
+
+          return files.map((file) => ({
+            name: file.name,
+            content: file.content
+          }));
+        }
+      });
+
+      return {
+        ...message,
+        value: query
+      };
+    })
+  );
 
   const adaptMessages = chats2GPTMessages({
     messages,
     reserveId: false
   });
 
-  const filterMessages = await filterGPTMessageByMaxContext({
+  return await filterGPTMessageByMaxContext({
     messages: adaptMessages,
     maxContext: model.maxContext - maxTokens // filter token. not response maxToken
   });
-
-  return {
-    filterMessages
-  };
-}
+};

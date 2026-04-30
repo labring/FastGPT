@@ -1,15 +1,16 @@
 import type {
-  ChatCompletion,
+  ChatCompletionCreateParams,
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
+  ChatCompletionTool,
   CompletionFinishReason,
   CompletionUsage,
   OpenAI,
-  StreamChatType,
-  UnStreamChatType
-} from '@fastgpt/global/core/ai/type';
+  StreamResponseType,
+  UnStreamResponseType
+} from '@fastgpt/global/core/ai/llm/type';
 import {
   computedMaxToken,
   computedTemperature,
@@ -31,6 +32,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { saveLLMRequestRecord } from '../record/controller';
+import type { ToolCallEventType } from './toolCall/type';
 
 const getRequestId = () => {
   return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
@@ -38,14 +40,14 @@ const getRequestId = () => {
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
-export type ResponseEvents = {
+export type ResponseEvents = ToolCallEventType & {
   onStreaming?: (e: { text: string }) => void;
   onReasoning?: (e: { text: string }) => void;
-  onToolCall?: (e: { call: ChatCompletionMessageToolCall }) => void;
-  onToolParam?: (e: { tool: ChatCompletionMessageToolCall; params: string }) => void;
 };
 
-export type CreateLLMResponseProps<T extends CompletionsBodyType = CompletionsBodyType> = {
+export type CreateLLMResponseProps<
+  T extends ChatCompletionCreateParams = ChatCompletionCreateParams
+> = {
   throwError?: boolean;
   userKey?: OpenaiAccountType;
   body: LLMRequestBodyType<T>;
@@ -77,7 +79,7 @@ type LLMResponse = {
   底层封装 LLM 调用 帮助上层屏蔽 stream 和非 stream，以及 toolChoice 和 promptTool 模式。
   工具调用无论哪种模式，都存 toolChoice 的格式，promptTool 通过修改 toolChoice 的结构，形成特定的 messages 进行调用。
 */
-export const createLLMResponse = async <T extends CompletionsBodyType>(
+export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
   // 生成唯一的请求追踪 ID
@@ -257,15 +259,19 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
       ...(toolCalls?.length && { tool_calls: toolCalls })
     };
 
-    // Usage count
+    // requestBody 运行时是经 LLMRequestBodyType narrow 进来的 FastGPT 数据，
+    // 但类型层 InferCompletionsBody 落到了 SDK 形态（messages/tools 是 v6 后的 union）
     const inputTokens =
       usage?.prompt_tokens ||
-      (await countGptMessagesTokens(requestBody.messages, requestBody.tools));
+      (await countGptMessagesTokens(
+        requestBody.messages as ChatCompletionMessageParam[],
+        requestBody.tools as ChatCompletionTool[] | undefined
+      ));
     const outputTokens =
       usage?.completion_tokens || (await countGptMessagesTokens([assistantMessage]));
 
-    // 异步保存 LLM 请求追踪记录
-    saveLLMRequestRecord({
+    // 异步保存 LLM 请求追踪记录（fire-and-forget）
+    void saveLLMRequestRecord({
       requestId,
       body: requestBody,
       response: {
@@ -333,8 +339,8 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
       completeMessages: [...requestMessages, assistantMessage]
     };
   } catch (error) {
-    // 异步保存 LLM 请求追踪记录
-    saveLLMRequestRecord({
+    // 异步保存 LLM 请求追踪记录（fire-and-forget）
+    void saveLLMRequestRecord({
       requestId,
       body: requestBody,
       response: {
@@ -357,13 +363,15 @@ export const createLLMResponse = async <T extends CompletionsBodyType>(
         inputTokens: 0,
         outputTokens: 0
       },
-      requestMessages: requestBody.messages,
-      completeMessages: [...requestBody.messages]
+      // requestBody.messages 在类型层是 SDK v6 的联合（含 custom tool），运行时 FastGPT 仅产 function 形态
+      requestMessages: requestBody.messages as ChatCompletionMessageParam[],
+      completeMessages: [...requestBody.messages] as ChatCompletionMessageParam[]
     };
   }
 };
 
-type CompleteParams = Pick<CreateLLMResponseProps<CompletionsBodyType>, 'body'> & ResponseEvents;
+type CompleteParams = Pick<CreateLLMResponseProps<ChatCompletionCreateParams>, 'body'> &
+  ResponseEvents;
 
 type CompleteResponse = Pick<
   LLMResponse,
@@ -382,7 +390,7 @@ export const createStreamResponse = async ({
   onToolCall,
   onToolParam
 }: CompleteParams & {
-  response: StreamChatType;
+  response: StreamResponseType;
   isAborted?: CreateLLMResponseProps['isAborted'];
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', model } = body;
@@ -456,7 +464,7 @@ export const createStreamResponse = async ({
                 if (currentTool && arg) {
                   currentTool.function.arguments += arg;
 
-                  onToolParam?.({ tool: currentTool, params: arg });
+                  onToolParam?.({ call: currentTool, argsDelta: arg });
                 }
               }
             });
@@ -598,7 +606,7 @@ export const createCompleteResponse = async ({
   onStreaming,
   onReasoning,
   onToolCall
-}: CompleteParams & { response: ChatCompletion }): Promise<CompleteResponse> => {
+}: CompleteParams & { response: UnStreamResponseType }): Promise<CompleteResponse> => {
   const { tools, toolCallMode = 'toolChoice', retainDatasetCite = true } = body;
   const modelData = getLLMModel(body.model);
 
@@ -632,8 +640,12 @@ export const createCompleteResponse = async ({
   const { toolCalls } = (() => {
     if (tools?.length) {
       if (toolCallMode === 'toolChoice') {
+        // openai v6 的 tool_calls 是 function | custom 联合，FastGPT 仅消费 function 形态。
         return {
-          toolCalls: response.choices?.[0]?.message?.tool_calls || []
+          toolCalls:
+            response.choices?.[0]?.message?.tool_calls?.filter(
+              (call): call is ChatCompletionMessageToolCall => call.type === 'function'
+            ) || []
         };
       }
 
@@ -674,16 +686,18 @@ export const createCompleteResponse = async ({
   };
 };
 
-type CompletionsBodyType =
-  | ChatCompletionCreateParamsNonStreaming
-  | ChatCompletionCreateParamsStreaming;
 type InferCompletionsBody<T> = T extends { stream: true }
   ? ChatCompletionCreateParamsStreaming
   : T extends { stream: false }
     ? ChatCompletionCreateParamsNonStreaming
-    : ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
+    : ChatCompletionCreateParams;
 
-type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'messages'> & {
+// tools 同步用 FastGPT narrow 后的 ChatCompletionTool（function-only），
+// 避免 SDK 联合类型透过 T['tools'] 漏到下游。
+type LLMRequestBodyType<T> = Omit<
+  T,
+  'model' | 'stop' | 'response_format' | 'messages' | 'tools'
+> & {
   model: string | LLMModelItemType;
   stop?: string;
   response_format?: {
@@ -691,6 +705,7 @@ type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'mes
     json_schema?: string;
   };
   messages: ChatCompletionMessageParam[];
+  tools?: ChatCompletionTool[];
 
   // Custom field
   retainDatasetCite?: boolean;
@@ -698,7 +713,7 @@ type LLMRequestBodyType<T> = Omit<T, 'model' | 'stop' | 'response_format' | 'mes
   useVision?: boolean;
   requestOrigin?: string;
 };
-const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
+const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
   retainDatasetCite,
   useVision,
   requestOrigin,
@@ -787,6 +802,9 @@ const llmCompletionsBodyFormat = async <T extends CompletionsBodyType>({
   if (!supportParams.responseFormat) {
     delete requestBody.response_format;
   }
+  if (!supportParams.reasoningEffort) {
+    delete requestBody.reasoning_effort;
+  }
 
   // field map
   if (modelData.fieldMap) {
@@ -822,11 +840,11 @@ const createChatCompletion = async ({
   options?: OpenAI.RequestOptions;
 }): Promise<
   | {
-      response: StreamChatType;
+      response: StreamResponseType;
       isStreamResponse: true;
     }
   | {
-      response: UnStreamChatType;
+      response: UnStreamResponseType;
       isStreamResponse: false;
     }
 > => {

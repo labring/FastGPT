@@ -3,7 +3,7 @@ import type { RenderInputProps } from '../type';
 import { Box, type BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { type PromptTemplateItem } from '@fastgpt/global/core/ai/type';
+import { type PromptTemplateItem } from '@fastgpt/global/core/ai/llm/type';
 import { useTranslation } from 'next-i18next';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

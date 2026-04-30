@@ -2,13 +2,14 @@ import React, { useMemo } from 'react';
 import { Box, Flex, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { useRouter } from 'next/router';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
+  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeMap,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -44,6 +45,8 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     if (!collection) return [];
 
     const webSelector = collection?.metadata?.webPageSelector;
+    const trainingType = collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk;
+    const trainingTypeConfig = DatasetCollectionDataProcessModeMap[trainingType];
 
     return [
       {
@@ -92,11 +95,11 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             }
           ]
         : []),
-      ...(DatasetCollectionDataProcessModeMap[collection.trainingType]
+      ...(collection.trainingType && DatasetCollectionDataProcessModeMap[collection.trainingType]
         ? [
             {
               label: t('dataset:collection.training_type'),
-              value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
+              value: t(trainingTypeConfig.label as any)
             }
           ]
         : []),

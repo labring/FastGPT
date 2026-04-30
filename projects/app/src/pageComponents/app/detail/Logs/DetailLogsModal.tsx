@@ -11,7 +11,7 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { PcHeader } from '@/pageComponents/chat/ChatHeader';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
   ChatRecordContext
@@ -21,7 +21,7 @@ import { useContextSelector } from 'use-context-selector';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
@@ -87,11 +87,9 @@ const DetailLogsModal = ({
   const chatModels = chat?.app?.chatModels;
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
-  // Sandbox state
-  const { SandboxEditorModal, SandboxEntryIcon } = useSandboxEditor({
-    appId,
-    chatId
-  });
+  // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
+  const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({ appId, chatId });
 
   return (
     <>
@@ -176,7 +174,7 @@ const DetailLogsModal = ({
               </>
             )}
 
-            <SandboxEntryIcon size={'smSquare'} mr={2} />
+            <SandboxEntryIcon size={'smSquare'} mr={2} onOpen={onOpenSandboxModal} />
             <IconButton
               variant={'whiteBase'}
               size={'smSquare'}
@@ -282,6 +280,7 @@ const Render = (props: Props) => {
       isShowCite={true}
       isShowFullText={true}
       showRunningStatus={true}
+      showSkillReferences={true}
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>

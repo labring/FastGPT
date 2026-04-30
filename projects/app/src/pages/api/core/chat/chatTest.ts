@@ -1,16 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sseErrRes } from '@fastgpt/service/common/response';
+import { getSseErrorResponse, sseErrRes } from '@fastgpt/service/common/response';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { responseWrite } from '@fastgpt/service/common/response';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { clearCookie } from '@fastgpt/service/support/permission/auth/common';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
   getChatTitleFromChatMessage,
@@ -24,8 +23,6 @@ import {
 } from '@fastgpt/service/core/app/tool/workflowTool/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   getLastInteractiveValue,
   getMaxHistoryLimitFromNodes,
@@ -35,7 +32,6 @@ import {
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
@@ -43,46 +39,48 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import {
+  failChatRound,
+  finalizeChatRound,
+  prepareChatRound,
+  updateInteractiveChat
+} from '@fastgpt/service/core/chat/saveChat';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
-
-export type Props = {
-  messages: ChatCompletionMessageParam[];
-  responseChatItemId: string;
-  nodes: StoreNodeItemType[];
-  edges: StoreEdgeItemType[];
-  variables: Record<string, any>;
-  appId: string;
-  appName: string;
-  chatId: string;
-  chatConfig: AppChatConfigType;
-};
+import { ChatTestPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
+import {
+  ensureGenerateChat,
+  updateChatGenerateStatus
+} from '@fastgpt/service/core/chat/chatGenerateStatus';
+import {
+  ChatGenerateStatusEnum,
+  STREAM_RESUME_REQUEST_HEADER
+} from '@fastgpt/global/core/chat/constants';
+import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  let streamResumeMirror: Awaited<ReturnType<typeof getStreamResumeMirror>>;
+  let workflowResponseWrite: ReturnType<typeof getWorkflowResponseWrite> | undefined;
+  let usePreparedRound = false;
   let {
     nodes = [],
     edges = [],
     messages = [],
-    responseChatItemId,
+    responseChatItemId: responseChatItemIdFromBody,
     variables = {},
     appName,
     appId,
     chatConfig,
     chatId
-  } = req.body as Props;
+  } = ChatTestPropsSchema.parse(req.body);
+  const responseChatItemId = responseChatItemIdFromBody ?? getNanoid(24);
+  const source = ChatSourceEnum.test;
   try {
-    if (!Array.isArray(nodes)) {
-      throw new Error('Nodes is not array');
-    }
-    if (!Array.isArray(edges)) {
-      throw new Error('Edges is not array');
-    }
-
     const originIp = getIpFromRequest(req);
 
     const chatMessages = GPTMessages2Chats({ messages });
@@ -159,6 +157,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
+    usePreparedRound = !interactive;
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
@@ -167,12 +166,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
-    const workflowResponseWrite = getWorkflowResponseWrite({
+    if (usePreparedRound) {
+      await prepareChatRound({
+        appId: String(app._id),
+        chatId,
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        source,
+        sourceName: appName || '',
+        userContent: userQuestion,
+        responseChatItemId
+      });
+    } else {
+      await ensureGenerateChat({
+        appId: String(app._id),
+        chatId,
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        source,
+        sourceName: appName || ''
+      });
+    }
+
+    streamResumeMirror = await getStreamResumeMirror({
+      resumeRequestHeaderValue: req.headers[STREAM_RESUME_REQUEST_HEADER],
+      teamId: String(teamId),
+      appId: String(app._id),
+      chatId
+    });
+
+    workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail: true,
       streamResponse: true,
       id: chatId,
-      showNodeStatus: true
+      showNodeStatus: true,
+      streamResumeMirror: streamResumeMirror
     });
 
     /* start process */
@@ -213,7 +242,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: workflowResponseWrite,
-      responseDetail: true
+      responseDetail: true,
+      showSkillReferences: true
     });
 
     workflowResponseWrite({
@@ -223,8 +253,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         finish_reason: 'stop'
       })
     });
-    responseWrite({
-      res,
+    workflowResponseWrite({
       event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });
@@ -251,7 +280,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appChatConfig: chatConfig,
       variables: newVariables,
       newTitle,
-      source: ChatSourceEnum.test,
+      source,
+      sourceName: appName || '',
       userContent: userQuestion,
       aiContent: aiResponse,
       durationSeconds,
@@ -266,11 +296,52 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...params
       });
     } else {
-      await pushChatRecords(params);
+      await finalizeChatRound(params);
     }
+
+    if (interactive) {
+      // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/core/chat/resume
+      await updateChatGenerateStatus({
+        appId: String(app._id),
+        chatId,
+        status: ChatGenerateStatusEnum.done
+      });
+    }
+
+    await streamResumeMirror?.flush();
+    await streamResumeMirror?.shrinkTTLAfterComplete();
   } catch (err: any) {
+    if (appId && chatId) {
+      if (usePreparedRound) {
+        await failChatRound({
+          appId,
+          chatId,
+          responseChatItemId,
+          error: err
+        });
+      } else {
+        await updateChatGenerateStatus({
+          appId,
+          chatId,
+          status: ChatGenerateStatusEnum.error
+        });
+      }
+    }
     res.status(500);
-    sseErrRes(res, err);
+    if (workflowResponseWrite) {
+      const { event, data, shouldClearCookie } = getSseErrorResponse(err);
+      if (shouldClearCookie) {
+        clearCookie(res);
+      }
+      workflowResponseWrite({
+        event,
+        data
+      });
+    } else {
+      sseErrRes(res, err);
+    }
+    await streamResumeMirror?.flush();
+    await streamResumeMirror?.shrinkTTLAfterComplete();
   }
   res.end();
 }

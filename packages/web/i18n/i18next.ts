@@ -21,6 +21,7 @@ import type login from './zh-CN/login.json';
 import type account_model from './zh-CN/account_model.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
 import type dashboard_evaluation from './zh-CN/dashboard_evaluation.json';
+import type skill from './zh-CN/skill.json';
 import type { I18N_NAMESPACES } from './constants';
 
 export interface I18nNamespaces {
@@ -46,6 +47,7 @@ export interface I18nNamespaces {
   account_model: typeof account_model;
   dashboard_mcp: typeof dashboard_mcp;
   dashboard_evaluation: typeof dashboard_evaluation;
+  skill: typeof skill;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];

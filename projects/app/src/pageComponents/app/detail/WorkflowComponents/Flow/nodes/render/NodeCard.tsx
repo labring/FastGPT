@@ -9,7 +9,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant';
 import {
   AppNodeFlowNodeTypeMap,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getGradientByColorSchema,
@@ -218,7 +219,7 @@ const NodeCard = (props: Props) => {
   }, [foldedNodesMap, getNodeById, nodeId]);
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
-  const isLoopNode = node?.flowNodeType === FlowNodeTypeEnum.loop;
+  const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
     // 1. MCP tool, HTTP tool set and system tool set do not have version
     if (
@@ -326,7 +327,7 @@ const NodeCard = (props: Props) => {
         {foldedOverlay}
 
         {!isFolded && (
-          <Box bg={'white'} borderRadius={'lg'}>
+          <Box bg={'white'} borderRadius={'lg'} flex={1} display={'flex'} flexDirection={'column'}>
             {/* Header */}
             <Box position={'relative'}>
               {gradient && (
@@ -343,7 +344,7 @@ const NodeCard = (props: Props) => {
                 />
               )}
               {showHeader && (
-                <Box px={3} pt={4} position={'relative'}>
+                <Box px={4} pt={4} position={'relative'}>
                   <Flex alignItems={'center'} mb={1}>
                     <NodeTitleSection
                       nodeId={nodeId}
@@ -374,7 +375,7 @@ const NodeCard = (props: Props) => {
             <Flex
               flexDirection={'column'}
               flex={1}
-              py={showHeader ? 3 : 0}
+              pb={showHeader ? 4 : 0}
               gap={2}
               position={'relative'}
             >
@@ -654,6 +655,15 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     );
   }, [node.isLatestVersion, node?.version, node?.versionLabel, t]);
 
+  const ScrollDataWrapper = useCallback(
+    (props: { children: React.ReactNode }) => (
+      <ScrollData minH={'100px'} maxH={'40vh'}>
+        {props.children}
+      </ScrollData>
+    ),
+    [ScrollData]
+  );
+
   return (
     <MySelect
       className="nowheel"
@@ -666,11 +676,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       variant={'whitePrimaryOutline'}
       size={'sm'}
       list={renderVersionList}
-      ScrollData={(props) => (
-        <ScrollData minH={'100px'} maxH={'40vh'}>
-          {props.children}
-        </ScrollData>
-      )}
+      ScrollData={ScrollDataWrapper}
       valueLabel={valueLabel}
     />
   );
@@ -685,11 +691,9 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { setNodes, setEdges, getNodeList, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const { deleteElements } = useReactFlow();
 
   const { computedNewNodeName } = useWorkflowUtils();
 
@@ -771,30 +775,6 @@ const MenuRender = React.memo(function MenuRender({
     },
     [computedNewNodeName, setNodes, t]
   );
-  const onDelNode = useCallback(
-    (nodeId: string) => {
-      // Remove node and its child nodes
-      setNodes((state) =>
-        state.filter((item) => item.data.nodeId !== nodeId && item.data.parentNodeId !== nodeId)
-      );
-
-      // Remove edges connected to the node and its child nodes
-      const childNodeIds = getNodeList()
-        .filter((node) => node.parentNodeId === nodeId)
-        .map((node) => node.nodeId);
-      setEdges((state) =>
-        state.filter(
-          (edge) =>
-            edge.source !== nodeId &&
-            edge.target !== nodeId &&
-            !childNodeIds.includes(edge.target) &&
-            !childNodeIds.includes(edge.source)
-        )
-      );
-    },
-    [getNodeList, setEdges, setNodes]
-  );
-
   const Render = useMemo(() => {
     const menuList = [
       ...(menuForbid?.fold
@@ -841,7 +821,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'delete',
               label: t('common:Delete'),
               variant: 'whiteDanger',
-              onClick: () => onDelNode(nodeId)
+              onClick: () => deleteElements({ nodes: [{ id: nodeId }] })
             }
           ])
     ];
@@ -890,7 +870,7 @@ const MenuRender = React.memo(function MenuRender({
     openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode,
+    deleteElements,
     isFolded,
     onChangeNode
   ]);

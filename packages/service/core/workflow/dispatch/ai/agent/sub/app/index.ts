@@ -37,7 +37,11 @@ type Props = Pick<
   | 'responseDetail'
   | 'variables'
 > & {
-  appId: string;
+  app: {
+    name: string;
+    avatar?: string;
+    id: string;
+  };
   userChatInput: string;
   customAppVariables: Record<string, any>;
 };
@@ -46,25 +50,21 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   const {
     runningAppInfo,
     runningUserInfo,
-    appId,
+    app,
     variables,
     customAppVariables,
     userChatInput,
     ...data
   } = props;
 
-  if (!appId) {
-    return Promise.reject(new Error('AppId is empty'));
-  }
-
   // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
-    appId,
+    appId: app.id,
     tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
   const { nodes, edges, chatConfig } = await getAppVersionById({
-    appId,
+    appId: app.id,
     app: appData
   });
 
@@ -86,7 +86,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   );
   const runtimeEdges = storeEdges2RuntimeEdges(edges);
 
-  const { assistantResponses, flowUsages, runTimes } = await runWorkflow({
+  const { assistantResponses, flowUsages } = await runWorkflow({
     ...data,
     uid: variables.userId,
     chatId: variables.chatId,
@@ -119,9 +119,17 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   return {
     response: text,
-    result: {},
-    runningTime: runTimes || 0,
-    usages: flowUsages
+    usages: flowUsages,
+    nodeResponse: {
+      moduleType: FlowNodeTypeEnum.appModule,
+      moduleName: app.name,
+      moduleLogo: app.avatar,
+      toolInput: {
+        userChatInput,
+        ...customAppVariables
+      },
+      toolRes: text
+    }
   };
 };
 
@@ -129,25 +137,21 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   const {
     runningAppInfo,
     runningUserInfo,
-    appId,
+    app,
     variables,
     customAppVariables,
     userChatInput,
     ...data
   } = props;
 
-  if (!appId) {
-    return Promise.reject(new Error('AppId is empty'));
-  }
-
   // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
-    appId,
+    appId: app.id,
     tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
   const { nodes, edges, chatConfig } = await getAppVersionById({
-    appId,
+    appId: app.id,
     app: appData
   });
 
@@ -248,8 +252,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
 
   return {
     response,
-    result: output?.pluginOutput || {},
-    runningTime: runTimes || 0,
-    usages: flowUsages
+    usages: flowUsages,
+    nodeResponse: {
+      moduleType: FlowNodeTypeEnum.pluginModule,
+      moduleName: app.name,
+      moduleLogo: app.avatar,
+      toolInput: customAppVariables,
+      toolRes: output?.pluginOutput || {}
+    }
   };
 };

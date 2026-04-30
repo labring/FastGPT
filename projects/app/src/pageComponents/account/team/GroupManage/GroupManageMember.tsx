@@ -16,7 +16,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import _ from 'lodash';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';

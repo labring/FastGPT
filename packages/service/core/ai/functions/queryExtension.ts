@@ -1,5 +1,5 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
@@ -130,7 +130,7 @@ export const queryExtension = async ({
 }: {
   chatBg?: string;
   query: string;
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   llmModel: string;
   embeddingModel: string;
   generateCount?: number;

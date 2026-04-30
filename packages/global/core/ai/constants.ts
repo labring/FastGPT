@@ -1,5 +1,5 @@
 import { i18nT } from '../../../web/i18n/utils';
-import type { CompletionUsage } from './type';
+import type { CompletionUsage, ReasoningEffort } from './llm/type';
 import type { LLMModelItemType, EmbeddingModelItemType, STTModelType } from './model.schema';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {
@@ -87,6 +87,16 @@ export enum EmbeddingTypeEnm {
   query = 'query',
   db = 'db'
 }
+
+export const reasoningEffortList: { label: string; value: ReasoningEffort }[] = [
+  { label: i18nT('common:reasoning_effort.default'), value: null },
+  { label: i18nT('common:reasoning_effort.none'), value: 'none' },
+  { label: i18nT('common:reasoning_effort.minimal'), value: 'minimal' },
+  { label: i18nT('common:reasoning_effort.low'), value: 'low' },
+  { label: i18nT('common:reasoning_effort.medium'), value: 'medium' },
+  { label: i18nT('common:reasoning_effort.high'), value: 'high' },
+  { label: i18nT('common:reasoning_effort.xhigh'), value: 'xhigh' }
+];
 
 export const completionFinishReasonMap = {
   error: i18nT('chat:completion_finish_error'),

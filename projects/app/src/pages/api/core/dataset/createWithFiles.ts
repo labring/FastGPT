@@ -9,6 +9,11 @@ import {
   DataChunkSplitModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
+  CreateDatasetWithFilesBodySchema,
+  CreateDatasetWithFilesResponseSchema,
+  type CreateDatasetWithFilesResponse
+} from '@fastgpt/global/openapi/core/dataset/api';
+import {
   OwnerRoleVal,
   PerResourceTypeEnum,
   WritePermissionVal
@@ -33,37 +38,11 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
-export type DatasetCreateWithFilesQuery = {};
-export type DatasetCreateWithFilesBody = {
-  datasetParams: {
-    name: string;
-    avatar: string;
-    parentId?: ParentIdType;
-    vectorModel?: string;
-    agentModel?: string;
-    vlmModel?: string;
-  };
-  files: {
-    fileId: string;
-    name: string;
-  }[];
-};
-export type DatasetCreateWithFilesResponse = {
-  datasetId: string;
-  name: string;
-  avatar: string;
-  vectorModel: EmbeddingModelItemType;
-};
-
-async function handler(
-  req: ApiRequestProps<DatasetCreateWithFilesBody, DatasetCreateWithFilesQuery>
-): Promise<DatasetCreateWithFilesResponse> {
-  const { datasetParams, files } = req.body;
+async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
+  const { datasetParams, files } = CreateDatasetWithFilesBodySchema.parse(req.body);
   const {
     parentId,
     name,
@@ -195,7 +174,7 @@ async function handler(
       });
     })();
 
-    return result;
+    return CreateDatasetWithFilesResponseSchema.parse(result);
   } catch (error) {
     return Promise.reject(error);
   }

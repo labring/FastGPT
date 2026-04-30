@@ -2,10 +2,17 @@
 import { PgVectorCtrl } from './pg';
 import { ObVectorCtrl } from './oceanbase';
 import { SeekVectorCtrl } from './seekdb';
+import { OpenGaussVectorCtrl } from './opengauss';
 import { getVectorsByText } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS, SEEKDB_ADDRESS } from './constants';
+import {
+  MILVUS_ADDRESS,
+  PG_ADDRESS,
+  OPENGAUSS_ADDRESS,
+  OCEANBASE_ADDRESS,
+  SEEKDB_ADDRESS
+} from './constants';
 import { MilvusCtrl } from './milvus';
 import {
   setRedisCache,
@@ -23,6 +30,7 @@ const getVectorObj = (): VectorControllerType => {
   if (OCEANBASE_ADDRESS) return new ObVectorCtrl({ type: 'oceanbase' });
   if (PG_ADDRESS) return new PgVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
+  if (OPENGAUSS_ADDRESS) return new OpenGaussVectorCtrl();
 
   return new PgVectorCtrl();
 };

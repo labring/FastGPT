@@ -27,12 +27,12 @@ import {
   postCreateDatasetLinkCollection,
   postCreateDatasetTextCollection,
   postReTrainingDatasetFileCollection
-} from '@/web/core/dataset/api';
+} from '@/web/core/dataset/api/collection';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
-import { type ApiCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import { type ApiCreateDatasetCollectionParams } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 
 const Upload = () => {
   const { t } = useTranslation();

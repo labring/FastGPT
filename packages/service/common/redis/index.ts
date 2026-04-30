@@ -1,5 +1,6 @@
 import { getLogger, LogCategories } from '../logger';
 import Redis from 'ioredis';
+import type { RedisOptions } from 'ioredis';
 
 const logger = getLogger(LogCategories.INFRA.REDIS);
 
@@ -41,9 +42,60 @@ const REDIS_BASE_OPTION = {
   enableOfflineQueue: true
 };
 
+const getRedisConnectionOptions = (): RedisOptions => {
+  if (REDIS_URL.startsWith('/')) {
+    return {
+      ...REDIS_BASE_OPTION,
+      path: REDIS_URL
+    };
+  }
+
+  const normalizedRedisUrl = REDIS_URL.includes('://') ? REDIS_URL : `redis://${REDIS_URL}`;
+
+  try {
+    const redisUrl = new URL(normalizedRedisUrl);
+    const protocol = redisUrl.protocol.toLowerCase();
+
+    if (protocol !== 'redis:' && protocol !== 'rediss:') {
+      logger.warn('Unsupported Redis URL protocol, fallback to defaults', {
+        protocol,
+        redisUrl: REDIS_URL
+      });
+      return {
+        ...REDIS_BASE_OPTION
+      };
+    }
+
+    const dbFromPath = redisUrl.pathname.replace(/^\//, '');
+    const parsedDb = dbFromPath ? Number(dbFromPath) : undefined;
+    const db = Number.isFinite(parsedDb) ? parsedDb : undefined;
+
+    const options: RedisOptions = {
+      ...REDIS_BASE_OPTION,
+      host: redisUrl.hostname || 'localhost',
+      port: redisUrl.port ? Number(redisUrl.port) : 6379
+    };
+
+    if (redisUrl.username) options.username = decodeURIComponent(redisUrl.username);
+    if (redisUrl.password) options.password = decodeURIComponent(redisUrl.password);
+    if (db !== undefined) options.db = db;
+    if (protocol === 'rediss:') options.tls = {};
+
+    return options;
+  } catch (error) {
+    logger.warn('Failed to parse REDIS_URL with WHATWG URL API, fallback to defaults', {
+      redisUrl: REDIS_URL,
+      error: String(error)
+    });
+    return {
+      ...REDIS_BASE_OPTION
+    };
+  }
+};
+
 export const newQueueRedisConnection = () => {
-  const redis = new Redis(REDIS_URL, {
-    ...REDIS_BASE_OPTION,
+  const redis = new Redis({
+    ...getRedisConnectionOptions(),
     // Limit retries for queue operations
     maxRetriesPerRequest: 3
   });
@@ -51,8 +103,8 @@ export const newQueueRedisConnection = () => {
 };
 
 export const newWorkerRedisConnection = () => {
-  const redis = new Redis(REDIS_URL, {
-    ...REDIS_BASE_OPTION,
+  const redis = new Redis({
+    ...getRedisConnectionOptions(),
     // BullMQ requires maxRetriesPerRequest: null for blocking operations
     maxRetriesPerRequest: null
   });
@@ -63,8 +115,8 @@ export const FASTGPT_REDIS_PREFIX = 'fastgpt:';
 export const getGlobalRedisConnection = () => {
   if (global.redisClient) return global.redisClient;
 
-  global.redisClient = new Redis(REDIS_URL, {
-    ...REDIS_BASE_OPTION,
+  global.redisClient = new Redis({
+    ...getRedisConnectionOptions(),
     keyPrefix: FASTGPT_REDIS_PREFIX,
     maxRetriesPerRequest: 3
   });

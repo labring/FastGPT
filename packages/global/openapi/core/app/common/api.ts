@@ -3,9 +3,9 @@ import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
 import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { StoreNodeItemTypeSchema } from '../../../../core/workflow/type/node';
 import { ShortUrlSchema } from '../../../../support/marketing/type';
-import { z } from 'zod';
+import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import z from 'zod';
 
 /* Get App Permission */
 export const GetAppPermissionQuerySchema = z.object({
@@ -14,6 +14,7 @@ export const GetAppPermissionQuerySchema = z.object({
     description: '应用 ID'
   })
 });
+
 export type GetAppPermissionQueryType = z.infer<typeof GetAppPermissionQuerySchema>;
 
 export const GetAppPermissionResponseSchema = z.object({
@@ -58,7 +59,7 @@ export const CreateAppBodySchema = z
       example: AppTypeEnum.workflow,
       description: '应用类型'
     }),
-    modules: z.array(StoreNodeItemTypeSchema).meta({
+    modules: z.array(OpenAPIStoreNodeItemTypeSchema).meta({
       example: [],
       description: '应用节点配置'
     }),

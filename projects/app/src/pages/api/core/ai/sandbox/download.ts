@@ -2,23 +2,18 @@ import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { getSandboxClient, type SandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import archiver from 'archiver';
-import { z } from 'zod';
-import { OutLinkChatAuthSchema } from '@fastgpt/global/support/permission/chat';
-
-const DownloadBodySchema = z.object({
-  appId: z.string(),
-  chatId: z.string(),
-  path: z.string().default('.').describe('要下载的路径(文件或目录)'),
-  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-});
+import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import {
+  isSandboxPathDirectory,
+  getSandboxFileContent,
+  addDirectoryToArchive
+} from '@/service/core/sandbox/fileService';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const body = DownloadBodySchema.parse(req.body);
-  const { appId, chatId, path, outLinkAuthData } = body;
+  const { appId, chatId, path, outLinkAuthData } = SandboxDownloadBodySchema.parse(req.body);
 
-  // 鉴权
   const { uid } = await authChatCrud({
     req,
     authToken: true,
@@ -28,80 +23,39 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     ...outLinkAuthData
   });
 
-  // 创建沙盒实例
-  const sandbox = await getSandboxClient({
-    appId,
-    userId: uid,
-    chatId
-  });
-
+  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
   await sandbox.ensureAvailable();
 
-  // 通过 getFileInfo 准确判断路径是文件还是目录
-  const fileInfoMap = await sandbox.provider.getFileInfo([path]);
-  const fileInfo = fileInfoMap.get(path);
-  const isDirectory = fileInfo?.isDirectory ?? path.endsWith('/');
+  const isDirectory = await isSandboxPathDirectory(sandbox, path);
 
   if (isDirectory) {
-    // 下载目录为 ZIP
-    const fileName = path.split('/').filter(Boolean).pop() || 'workspace';
+    const isRoot = path === '.' || path === '' || path === '/';
+    const rawFileName = isRoot ? 'workspace' : path.split('/').filter(Boolean).pop() || 'workspace';
+    const fileName = encodeURIComponent(`${rawFileName}-${Date.now()}.zip`);
+
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}-${Date.now()}.zip"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"; filename*=UTF-8''${fileName}`
+    );
 
-    const archive = archiver('zip', {
-      zlib: { level: 9 }
-    });
-
+    const archive = archiver('zip', { zlib: { level: 9 } });
     archive.on('error', (err) => {
       throw err;
     });
-
     archive.pipe(res);
-
-    // 递归添加文件到 ZIP
     await addDirectoryToArchive(sandbox, archive, path, '');
-
     await archive.finalize();
   } else {
-    // 下载单个文件
-    const results = await sandbox.provider.readFiles([path]);
-    const result = results[0];
+    const { content, fileName } = await getSandboxFileContent(sandbox, path, false);
+    const encodedFileName = encodeURIComponent(fileName);
 
-    if (result.error) {
-      return Promise.reject('Failed to read file');
-    }
-
-    const fileName = path.split('/').pop() || 'file';
     res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(Buffer.from(result.content));
-  }
-}
-
-// 递归添加目录到 archive
-async function addDirectoryToArchive(
-  sandbox: SandboxClient,
-  archive: archiver.Archiver,
-  dirPath: string,
-  archivePath: string
-): Promise<void> {
-  const entries = await sandbox.provider.listDirectory(dirPath);
-
-  for (const entry of entries) {
-    const entryArchivePath = archivePath ? `${archivePath}/${entry.name}` : entry.name;
-
-    if (entry.isDirectory) {
-      // 递归处理子目录
-      await addDirectoryToArchive(sandbox, archive, entry.path, entryArchivePath);
-    } else {
-      // 添加文件
-      const results = await sandbox.provider.readFiles([entry.path]);
-      const result = results[0];
-
-      if (!result.error) {
-        archive.append(Buffer.from(result.content), { name: entryArchivePath });
-      }
-    }
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
+    );
+    res.send(content);
   }
 }
 

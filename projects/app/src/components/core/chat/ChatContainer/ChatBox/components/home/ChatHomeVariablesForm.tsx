@@ -64,7 +64,7 @@ const ChatHomeVariablesForm = ({ chatForm }: Props) => {
                 key={item.key}
                 fieldName={`variables.${item.key}`}
                 description={item.description}
-                inputType={variableInputTypeToInputType(item.type)}
+                inputType={variableInputTypeToInputType(item.type, item.valueType)}
                 form={variablesForm}
                 bg={'myGray.50'}
               />

@@ -682,15 +682,17 @@ export class WorkflowQueue {
 
   private usagePush(usages: ChatNodeUsageType[]) {
     // 暂时只有 root runtime 需要 push usage，child 的统一给到 root 去推送
-    if (this.isRootRuntime && this.data.usageId) {
-      pushChatItemUsage({
-        teamId: this.data.runningUserInfo.teamId,
-        usageId: this.data.usageId,
-        nodeUsages: usages
-      });
-    }
-    if (this.data.concatUsage) {
-      this.data.concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+    if (this.isRootRuntime) {
+      if (this.data.usageId) {
+        pushChatItemUsage({
+          teamId: this.data.runningUserInfo.teamId,
+          usageId: this.data.usageId,
+          nodeUsages: usages
+        });
+      }
+      if (this.data.concatUsage) {
+        this.data.concatUsage(usages.reduce((sum, item) => sum + (item.totalPoints || 0), 0));
+      }
     }
 
     this.chatNodeUsages = this.chatNodeUsages.concat(usages);
@@ -918,8 +920,18 @@ export class WorkflowQueue {
             if (result.error) {
               // Run error and not catch error, skip all edges
               if (!node.catchError) {
+                // Callback returned with `result.error` set instead of throwing;
+                // mirror the catch-branch convention and copy it onto nodeResponse
+                // so runLoopRun / parallelRun failure detection and OTel span
+                // status see `.error` uniformly across both failure paths.
+                const nodeResponseBase = result[DispatchNodeResponseKeyEnum.nodeResponse];
+                const errText = nodeResponseBase?.errorText ?? getErrText(result.error as any);
                 return {
                   ...result,
+                  [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                    ...nodeResponseBase,
+                    error: errText
+                  },
                   [DispatchNodeResponseKeyEnum.skipHandleId]: targetEdges.map(
                     (item) => item.sourceHandle
                   )
@@ -1546,6 +1558,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           const startTime = Date.now();
 
           await rewriteRuntimeWorkFlow({
+            teamId: data.runningAppInfo.teamId,
             nodes: data.runtimeNodes,
             edges: data.runtimeEdges,
             lang: data.lang

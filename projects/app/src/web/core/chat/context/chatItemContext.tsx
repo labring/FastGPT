@@ -10,6 +10,7 @@ import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/c
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -17,19 +18,26 @@ type ContextProps = {
   isShowCite: boolean;
   isShowFullText: boolean;
   showRunningStatus: boolean;
+  showSkillReferences: boolean;
   showWholeResponse: boolean;
+  showAvatar?: boolean;
 };
 type ChatBoxDataType = {
   chatId?: string;
   appId: string;
   title?: string;
   userAvatar?: string;
+  /** 与 init 接口对齐；侧栏轮询、ChatBox `enableAutoResume` 依赖其是否为 generating */
+  chatGenerateStatus?: ChatGenerateStatusEnum;
+  hasBeenRead?: boolean;
 
   app: {
     chatConfig?: AppChatConfigType;
     name: string;
     avatar: string;
-    type: `${AppTypeEnum}`;
+    intro?: string;
+    canUse?: boolean;
+    type: AppTypeEnum;
     pluginInputs: FlowNodeInputItemType[];
     chatModels?: string[];
   };
@@ -88,6 +96,13 @@ type ChatItemContextType = {
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
+  showRouteToDatasetDetail: true,
+  canDownloadSource: true,
+  isShowCite: true,
+  isShowFullText: true,
+  showRunningStatus: true,
+  showSkillReferences: true,
+  showWholeResponse: true,
   ChatBoxRef: null,
   // @ts-ignore
   variablesForm: undefined,
@@ -125,7 +140,9 @@ const ChatItemContextProvider = ({
   isShowCite,
   isShowFullText,
   showRunningStatus,
-  showWholeResponse
+  showSkillReferences,
+  showWholeResponse,
+  showAvatar = true
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -202,7 +219,9 @@ const ChatItemContextProvider = ({
       isShowCite,
       isShowFullText,
       showRunningStatus,
+      showSkillReferences,
       showWholeResponse,
+      showAvatar,
 
       datasetCiteData,
       setCiteModalData,
@@ -220,8 +239,10 @@ const ChatItemContextProvider = ({
     canDownloadSource,
     isShowCite,
     showRunningStatus,
+    showSkillReferences,
     isShowFullText,
     showWholeResponse,
+    showAvatar,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

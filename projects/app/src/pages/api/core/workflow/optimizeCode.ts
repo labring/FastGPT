@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { responseWrite } from '@fastgpt/service/common/response';

@@ -2,6 +2,11 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// 始终基于脚本位置定位 document 根目录，避免对 CWD 的依赖。
+const DOCUMENT_ROOT = path.resolve(__dirname, '..');
+const DEFAULT_CONTENT_DIR = path.join(DOCUMENT_ROOT, 'content');
+const DEFAULT_OUTPUT_PATH = path.join(DOCUMENT_ROOT, 'data', 'doc-last-modified.json');
+
 /**
  * 获取文件的 git 最后修改时间
  * @param {string} filePath - 文件路径
@@ -14,7 +19,7 @@ function getFileLastModifiedTime(filePath) {
     const command = `git log -1 --format="%aI" -- "${filePath}"`;
     const result = execSync(command, {
       encoding: 'utf8',
-      cwd: process.cwd(),
+      cwd: DOCUMENT_ROOT,
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
@@ -64,14 +69,14 @@ function getAllDocFiles(dirPath, extensions = ['.md', '.mdx']) {
  * @param {string} contentDir - 文档内容目录
  * @returns {Object} - 文件路径到修改时间的映射
  */
-function getAllDocLastModifiedTimes(contentDir = './document/content/docs') {
+function getAllDocLastModifiedTimes(contentDir = DEFAULT_CONTENT_DIR) {
   const docFiles = getAllDocFiles(contentDir);
   const result = {};
 
   console.log(`正在处理 ${docFiles.length} 个文档文件...`);
 
   for (const filePath of docFiles) {
-    const relativePath = path.relative(process.cwd(), filePath);
+    const relativePath = path.relative(DOCUMENT_ROOT, filePath);
     const lastModified = getFileLastModifiedTime(relativePath);
 
     if (lastModified) {
@@ -91,7 +96,7 @@ function getAllDocLastModifiedTimes(contentDir = './document/content/docs') {
  * @param {Object} data - 要保存的数据
  * @param {string} outputPath - 输出文件路径
  */
-function saveToJsonFile(data, outputPath = './document/data/doc-last-modified.json') {
+function saveToJsonFile(data, outputPath = DEFAULT_OUTPUT_PATH) {
   try {
     // 确保目录存在
     const dir = path.dirname(outputPath);
@@ -112,7 +117,7 @@ function saveToJsonFile(data, outputPath = './document/data/doc-last-modified.js
  * @returns {Object} - 文件信息对象
  */
 function getFileInfo(filePath) {
-  const relativePath = path.relative(process.cwd(), filePath);
+  const relativePath = path.relative(DOCUMENT_ROOT, filePath);
   const lastModified = getFileLastModifiedTime(relativePath);
   const stat = fs.statSync(filePath);
 
@@ -131,11 +136,12 @@ function getFileInfo(filePath) {
 function main() {
   console.log('开始获取文档的最新修改时间...');
 
-  let contentDir = process.argv[2];
-
-  // 如果没有传参数，或者传入的是文件而非目录，就使用默认目录
-  if (!contentDir || !fs.existsSync(contentDir) || !fs.statSync(contentDir).isDirectory()) {
-    contentDir = './document/content/docs';
+  // lint-staged 会传入暂存的 mdx 文件列表（不是目录），这里统一忽略，
+  // 始终对 content/ 全量扫描以保证 doc-last-modified.json 的完整性。
+  const argDir = process.argv[2];
+  let contentDir = DEFAULT_CONTENT_DIR;
+  if (argDir && fs.existsSync(argDir) && fs.statSync(argDir).isDirectory()) {
+    contentDir = argDir;
   }
 
   if (!fs.existsSync(contentDir)) {
@@ -146,7 +152,7 @@ function main() {
   const result = getAllDocLastModifiedTimes(contentDir);
 
   // 保存简单的文件路径到修改时间的映射
-  saveToJsonFile(result, './document/data/doc-last-modified.json');
+  saveToJsonFile(result, DEFAULT_OUTPUT_PATH);
 
   // 显示统计信息
   console.log('\n统计信息:');

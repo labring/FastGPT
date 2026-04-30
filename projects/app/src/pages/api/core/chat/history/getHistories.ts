@@ -1,5 +1,5 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
@@ -13,6 +13,7 @@ import {
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 /* get chat histories list */
 export async function handler(
@@ -46,7 +47,19 @@ export async function handler(
       };
     }
     if (appId && teamId && teamToken) {
-      const { uid } = await authTeamSpaceToken({ teamId, teamToken });
+      const { uid, tags } = await authTeamSpaceToken({ teamId, teamToken });
+
+      const app = await MongoApp.findOne({
+        _id: appId,
+        teamId,
+        $or: [
+          { teamTags: { $size: 0 } },
+          { teamTags: { $exists: false } },
+          { teamTags: { $in: tags } }
+        ]
+      }).lean();
+      if (!app) return undefined;
+
       return {
         appId,
         outLinkUid: uid,
@@ -94,7 +107,10 @@ export async function handler(
   const mergeMatch = { ...match, ...timeMatch, deleteTime: null };
 
   const [data, total] = await Promise.all([
-    await MongoChat.find(mergeMatch, 'chatId title top customTitle appId updateTime')
+    await MongoChat.find(
+      mergeMatch,
+      'chatId title top customTitle appId updateTime chatGenerateStatus hasBeenRead'
+    )
       .sort({ top: -1, updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
@@ -109,7 +125,9 @@ export async function handler(
       appId: item.appId,
       customTitle: item.customTitle,
       title: item.title,
-      top: item.top
+      top: item.top,
+      chatGenerateStatus: item.chatGenerateStatus ?? ChatGenerateStatusEnum.done,
+      hasBeenRead: item.hasBeenRead
     })),
     total
   });

@@ -15,27 +15,24 @@ import fs from 'node:fs';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import {
+  InsertImagesBodySchema,
+  type InsertImagesResponse
+} from '@fastgpt/global/openapi/core/dataset/data/api';
+import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
+import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 
-export type insertImagesQuery = {};
-
-export type insertImagesBody = {
-  collectionId: string;
-};
-
-export type insertImagesResponse = {};
-
-async function handler(
-  req: ApiRequestProps<insertImagesBody, insertImagesQuery>
-): Promise<insertImagesResponse> {
+async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   const filepaths: string[] = [];
 
   try {
     const result = await multer.resolveMultipleFormData({
       request: req,
-      maxFileSize: global.feConfigs.uploadFileMaxSize
+      maxFileSize: global.feConfigs.uploadFileMaxSize,
+      allowedExtensions: parseAllowedExtensions(datasetImageCollectionFileType)
     });
     filepaths.push(...result.fileMetadata.map((item) => item.path));
-    const { collectionId } = result.data;
+    const { collectionId } = InsertImagesBodySchema.parse(result.data);
 
     const { collection, teamId, tmbId } = await authDatasetCollection({
       collectionId,

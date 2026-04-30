@@ -8,6 +8,7 @@ import { type StoreSecretValueType } from '../../../../common/secret/type';
 import { type JsonSchemaPropertiesItemType } from '../../jsonschema';
 import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../../workflow/constants';
 import { i18nT } from '../../../../../web/i18n/utils';
+import type { NodeToolConfigType } from '../../../workflow/type/node';
 
 export const getHTTPToolSetRuntimeNode = ({
   name,
@@ -70,6 +71,7 @@ export const getHTTPToolRuntimeNode = ({
         toolId: `${AppToolSourceEnum.http}-${toolSetId}/${tool.name}`
       }
     },
+    jsonSchema: tool.requestSchema,
     inputs: jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'http' }),
     outputs: [
       ...jsonSchema2NodeOutput(tool.outputSchema),
@@ -88,6 +90,25 @@ export const getHTTPToolRuntimeNode = ({
   };
 };
 
+export const parseHttpToolConfig = (
+  config: NonNullable<NodeToolConfigType['httpTool']>
+):
+  | {
+      toolsetId: string;
+      toolName: string;
+    }
+  | undefined => {
+  const prefix = `${AppToolSourceEnum.http}-`;
+  if (!config.toolId.startsWith(prefix)) return undefined;
+  const [toolsetId, ...rest] = config.toolId.slice(prefix.length).split('/');
+  const toolName = rest.join('/');
+  if (!toolsetId || !toolName) return undefined;
+  return {
+    toolsetId,
+    toolName
+  };
+};
+
 export const pathData2ToolList = async (
   pathData: PathDataType[]
 ): Promise<HttpToolConfigType[]> => {
@@ -97,13 +118,16 @@ export const pathData2ToolList = async (
       const inputRequired: string[] = [];
       const outputProperties: Record<string, JsonSchemaPropertiesItemType> = {};
       const outputRequired: string[] = [];
+      let requestSchema = undefined;
 
       if (pathItem.params && Array.isArray(pathItem.params)) {
         pathItem.params.forEach((param) => {
           if (param.name && param.schema) {
+            requestSchema = param.schema;
             inputProperties[param.name] = {
               type: param.schema.type || 'any',
-              description: param.description || ''
+              description: param.description || '',
+              'x-tool-description': param.description || param.name
             };
 
             if (param.required) {
@@ -113,13 +137,14 @@ export const pathData2ToolList = async (
         });
       }
       if (pathItem.request?.content?.['application/json']?.schema) {
-        const requestSchema = pathItem.request.content['application/json'].schema;
+        requestSchema = pathItem.request.content['application/json'].schema;
 
         if (requestSchema.properties) {
           Object.entries(requestSchema.properties).forEach(([key, value]: [string, any]) => {
             inputProperties[key] = {
               type: value.type || 'any',
-              description: value.description || ''
+              description: value.description || '',
+              'x-tool-description': value.description || key
             };
           });
         }
@@ -155,6 +180,7 @@ export const pathData2ToolList = async (
         description: pathItem.description || pathItem.name,
         path: pathItem.path,
         method: pathItem.method?.toLowerCase(),
+        requestSchema,
         inputSchema: {
           type: 'object',
           properties: inputProperties,

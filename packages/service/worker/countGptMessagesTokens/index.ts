@@ -6,7 +6,7 @@ import {
   type ChatCompletionContentPart,
   type ChatCompletionCreateParams,
   type ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { parentPort } from 'worker_threads';
 import { getLogger, LogCategories } from '../../common/logger';

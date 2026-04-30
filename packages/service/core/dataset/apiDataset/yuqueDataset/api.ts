@@ -1,7 +1,7 @@
 import type {
   APIFileItemType,
-  ApiFileReadContentResponse,
-  YuqueServer,
+  ApiFileReadContentResponseType,
+  YuqueServerType,
   ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { type Method } from 'axios';
@@ -42,7 +42,7 @@ type YuqueTocListResponse = {
 
 const yuqueBaseUrl = process.env.YUQUE_DATASET_BASE_URL || 'https://www.yuque.com';
 
-export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServer }) => {
+export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
     baseURL: yuqueBaseUrl,
@@ -202,7 +202,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiFileReadContentResponse> => {
+  }): Promise<ApiFileReadContentResponseType> => {
     if (typeof apiFileId !== 'string') return Promise.reject('Invalid file id');
     const [parentId, fileId] = apiFileId.split(/-(.*?)-(.*)/);
 

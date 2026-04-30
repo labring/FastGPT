@@ -28,7 +28,7 @@ export const CodeNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:code_sandbox_intro'),
   showStatus: true,
   catchError: false,
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/sandbox-v2',
+  courseUrl: '/introduction/guide/dashboard/workflow/sandbox-v2',
   inputs: [
     {
       ...Input_Template_DynamicInput,

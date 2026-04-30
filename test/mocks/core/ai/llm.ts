@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { ChatCompletion } from '@fastgpt/global/core/ai/type';
+import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 
 /**
  * Mock LLM response utilities for testing
@@ -15,7 +15,7 @@ export const createMockCompleteResponseWithReason = (options?: {
   finishReason?: 'stop' | 'length' | 'content_filter';
   promptTokens?: number;
   completionTokens?: number;
-}): ChatCompletion => {
+}): UnStreamResponseType => {
   const {
     content = 'This is the answer to your question.',
     reasoningContent = 'First, I need to analyze the question...',
@@ -48,7 +48,7 @@ export const createMockCompleteResponseWithReason = (options?: {
       total_tokens: promptTokens + completionTokens
     },
     system_fingerprint: 'fp_test'
-  } as ChatCompletion;
+  } as UnStreamResponseType;
 };
 
 /**
@@ -64,7 +64,7 @@ export const createMockCompleteResponseWithTool = (options?: {
   finishReason?: 'tool_calls' | 'stop';
   promptTokens?: number;
   completionTokens?: number;
-}): ChatCompletion => {
+}): UnStreamResponseType => {
   const {
     toolCalls = [
       {
@@ -110,7 +110,7 @@ export const createMockCompleteResponseWithTool = (options?: {
       total_tokens: promptTokens + completionTokens
     },
     system_fingerprint: 'fp_test'
-  } as ChatCompletion;
+  } as UnStreamResponseType;
 };
 
 /**
@@ -118,7 +118,7 @@ export const createMockCompleteResponseWithTool = (options?: {
  * Can be configured to return different types of responses based on test needs
  */
 export const mockCreateChatCompletion = vi.fn(
-  async (body: any, options?: any): Promise<ChatCompletion> => {
+  async (body: any, options?: any): Promise<UnStreamResponseType> => {
     // Default: return response with text
     if (body.tools && body.tools.length > 0) {
       return createMockCompleteResponseWithTool();

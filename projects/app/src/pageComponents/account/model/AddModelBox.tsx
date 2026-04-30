@@ -769,6 +769,14 @@ export const ModelEditModal = ({
       }
     });
 
+  const reasoningEnabled = useWatch({ control, name: 'reasoning' });
+  useEffect(() => {
+    // 仅在 reasoning 关闭且 reasoningEffort 实际为 true 时才清，避免挂载即把表单标 dirty
+    if (!reasoningEnabled && getValues('reasoningEffort')) {
+      setValue('reasoningEffort', false, { shouldDirty: false });
+    }
+  }, [reasoningEnabled, getValues, setValue]);
+
   const isCustom = !!modelData.isCustom;
   const isLLMModel = modelData?.type === ModelTypeEnum.llm;
   const isEmbeddingModel = modelData?.type === ModelTypeEnum.embedding;
@@ -1074,6 +1082,13 @@ export const ModelEditModal = ({
                 field={'reasoning'}
                 register={register}
               />
+              {reasoningEnabled && (
+                <SwitchField
+                  label={t('account:model.reasoning_effort')}
+                  field={'reasoningEffort'}
+                  register={register}
+                />
+              )}
               {feConfigs?.isPlus && (
                 <SwitchField
                   label={t('account:model.censor')}
@@ -1150,14 +1165,12 @@ export const ModelEditModal = ({
             )}
             {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
             {CustomApi}
-            {isLLMModel && (
-              <SwitchField
-                label={t('account:model.test_mode')}
-                tip={t('account:model.test_mode_tip')}
-                field={'testMode'}
-                register={register}
-              />
-            )}
+            <SwitchField
+              label={t('account:model.test_mode')}
+              tip={t('account:model.test_mode_tip')}
+              field={'testMode'}
+              register={register}
+            />
           </Grid>
         </Section>
       </ModalBody>

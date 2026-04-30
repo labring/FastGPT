@@ -8,7 +8,7 @@ import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
 
 export function authOutLinkChatLimit(data: AuthOutLinkLimitProps): Promise<AuthOutLinkResponse> {
@@ -22,7 +22,7 @@ export const authOutLink = async ({
 }: ShareChatAuthProps): Promise<{
   uid: string;
   appId: string;
-  outLinkConfig: OutLinkSchema;
+  outLinkConfig: OutLinkSchemaType;
 }> => {
   if (!outLinkUid) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
@@ -61,6 +61,7 @@ export async function authOutLinkChatStart({
     authType: AuthUserTypeEnum.token,
     showCite: outLinkConfig.showCite,
     showRunningStatus: outLinkConfig.showRunningStatus,
+    showSkillReferences: outLinkConfig.showSkillReferences,
     showFullText: outLinkConfig.showFullText,
     canDownloadSource: outLinkConfig.canDownloadSource,
     appId,

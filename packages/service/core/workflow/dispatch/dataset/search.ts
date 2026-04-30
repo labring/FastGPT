@@ -23,7 +23,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.userChatInput]?: string;
-  [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchMode]: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;

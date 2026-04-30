@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import z from 'zod';
 import { CustomDomainType, ProviderEnum } from '../../../support/customDomain/type';
 
 // Create custom domain

@@ -613,15 +613,12 @@ def main_loop():
                 else:
                     result = user_main(variables)
             else:
-                call_args = []
+                # 用 kwargs 调用：缺席参数走函数默认值，不影响后面的参数
                 for p in params:
-                    if p in variables:
-                        call_args.append(variables[p])
-                    elif sig.parameters[p].default is not _inspect_mod.Parameter.empty:
-                        break
-                    else:
+                    if p not in variables and sig.parameters[p].default is _inspect_mod.Parameter.empty:
                         raise TypeError(f"Missing required argument: '{p}'")
-                result = user_main(*call_args)
+                call_kwargs = {p: variables[p] for p in params if p in variables}
+                result = user_main(**call_kwargs)
 
             signal.alarm(0)
             write_line({

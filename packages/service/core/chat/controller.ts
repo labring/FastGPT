@@ -1,4 +1,4 @@
-import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -35,7 +35,7 @@ export async function getChatItems({
   prevId?: string;
   nextId?: string;
 }): Promise<{
-  histories: ChatItemType[];
+  histories: ChatItemMiniType[];
   total: number;
   hasMorePrev: boolean;
   hasMoreNext: boolean;

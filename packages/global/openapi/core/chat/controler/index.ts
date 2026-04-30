@@ -3,13 +3,31 @@ import { TagsMap } from '../../../tag';
 import {
   StopV2ChatSchema,
   StopV2ChatResponseSchema,
-  PresignChatFilePostUrlSchema,
-  PresignChatFileGetUrlSchema
+  InitChatQuerySchema,
+  InitChatResponseSchema
 } from './api';
-import { CreatePostPresignedUrlResultSchema } from '../../../../../service/common/s3/type';
-import { z } from 'zod';
 
 export const ChatControllerPath: OpenAPIPath = {
+  '/core/chat/init': {
+    get: {
+      summary: '初始化聊天',
+      description: '初始化聊天',
+      tags: [TagsMap.chatController],
+      requestParams: {
+        query: InitChatQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回聊天初始化信息',
+          content: {
+            'application/json': {
+              schema: InitChatResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/v2/chat/stop': {
     post: {
       summary: '停止 Agent 运行',
@@ -29,54 +47,6 @@ export const ChatControllerPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: StopV2ChatResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/file/presignChatFilePostUrl': {
-    post: {
-      summary: '获取文件上传 URL',
-      description: '获取文件上传 URL',
-      tags: [TagsMap.chatController],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: PresignChatFilePostUrlSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功上传对话文件预签名 URL',
-          content: {
-            'application/json': {
-              schema: CreatePostPresignedUrlResultSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/file/presignChatFileGetUrl': {
-    post: {
-      summary: '获取文件预览地址',
-      description: '获取文件预览地址',
-      tags: [TagsMap.chatController],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: PresignChatFileGetUrlSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功获取对话文件预签名 URL',
-          content: {
-            'application/json': {
-              schema: z.string()
             }
           }
         }

@@ -18,7 +18,7 @@ export const CustomFeedbackNode: FlowNodeTemplateType = {
   colorSchema: 'yellowGreen',
   name: i18nT('workflow:custom_feedback'),
   intro: i18nT('workflow:intro_custom_feedback'),
-  courseUrl: '/docs/introduction/guide/dashboard/workflow/custom_feedback/',
+  courseUrl: '/introduction/guide/dashboard/workflow/custom_feedback/',
   inputs: [
     {
       key: NodeInputKeyEnum.textareaInput,

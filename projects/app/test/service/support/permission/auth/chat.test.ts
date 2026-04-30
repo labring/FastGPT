@@ -9,12 +9,13 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -35,6 +36,16 @@ vi.mock('@fastgpt/service/core/chat/chatItemResponseSchema', () => ({
   }
 }));
 
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/schema')>();
+  return {
+    ...actual,
+    MongoApp: {
+      findOne: vi.fn()
+    }
+  };
+});
+
 vi.mock('@fastgpt/service/support/permission/app/auth');
 vi.mock('@/service/support/permission/auth/outLink');
 vi.mock('@/service/support/permission/auth/team');
@@ -43,10 +54,10 @@ vi.mock('@fastgpt/global/core/chat/utils', () => ({
 }));
 
 const buildOutLinkConfig = (
-  overrides: Partial<OutLinkSchema> = {},
-  omitKeys: (keyof OutLinkSchema)[] = []
-): OutLinkSchema => {
-  const config: OutLinkSchema = {
+  overrides: Partial<OutLinkSchemaType> = {},
+  omitKeys: (keyof OutLinkSchemaType)[] = []
+): OutLinkSchemaType => {
+  const config: OutLinkSchemaType = {
     _id: 'outLink1',
     shareId: 'share1',
     teamId: 'team1',
@@ -58,6 +69,7 @@ const buildOutLinkConfig = (
     type: PublishChannelEnum.share,
     showCite: true,
     showRunningStatus: true,
+    showSkillReferences: false,
     showFullText: false,
     canDownloadSource: false,
     showWholeResponse: false,
@@ -66,7 +78,7 @@ const buildOutLinkConfig = (
   };
 
   omitKeys.forEach((key) => {
-    delete (config as Partial<OutLinkSchema>)[key];
+    delete (config as Partial<OutLinkSchemaType>)[key];
   });
 
   return config;
@@ -117,8 +129,12 @@ describe('authChatCrud', () => {
     it('should auth with teamId and teamToken without chatId', async () => {
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
 
       const result = await authChatCrud({
         appId: 'app1',
@@ -134,10 +150,32 @@ describe('authChatCrud', () => {
         uid: 'user1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
       });
+    });
+
+    it('should reject if app does not belong to team or tags mismatch', async () => {
+      vi.mocked(authTeamSpaceToken).mockResolvedValue({
+        uid: 'user1',
+        tmbId: 'tmb1',
+        tags: ['tag1']
+      });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve(null)
+      } as any);
+
+      await expect(
+        authChatCrud({
+          appId: 'app1',
+          teamId: 'team1',
+          teamToken: 'token1',
+          req: {} as any,
+          authToken: true
+        })
+      ).rejects.toBe(ChatErrEnum.unAuthChat);
     });
 
     it('should auth with teamId and teamToken with valid chatId', async () => {
@@ -149,8 +187,12 @@ describe('authChatCrud', () => {
 
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(mockChat)
       } as any);
@@ -171,6 +213,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -180,8 +223,12 @@ describe('authChatCrud', () => {
     it('should handle missing chat for teamDomain auth', async () => {
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(null)
       } as any);
@@ -201,6 +248,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -216,8 +264,12 @@ describe('authChatCrud', () => {
 
       vi.mocked(authTeamSpaceToken).mockResolvedValue({
         uid: 'user1',
-        tmbId: 'tmb1'
+        tmbId: 'tmb1',
+        tags: ['tag1']
       });
+      vi.mocked(MongoApp.findOne).mockReturnValue({
+        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
+      } as any);
       vi.mocked(MongoChat.findOne).mockReturnValue({
         lean: () => Promise.resolve(mockChat)
       } as any);
@@ -365,6 +417,7 @@ describe('authChatCrud', () => {
         uid: 'user1',
         showCite: true,
         showRunningStatus: false,
+        showSkillReferences: false,
         showFullText: false,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.outLink
@@ -472,6 +525,7 @@ describe('authChatCrud', () => {
         uid: 'tmb1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -512,6 +566,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -553,6 +608,7 @@ describe('authChatCrud', () => {
         chat: mockChat,
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain
@@ -586,6 +642,7 @@ describe('authChatCrud', () => {
         uid: 'tmb1',
         showCite: true,
         showRunningStatus: true,
+        showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
         authType: AuthUserTypeEnum.teamDomain

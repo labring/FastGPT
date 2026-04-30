@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { InitOutLinkChatProps } from '@/global/core/chat/api';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -11,9 +10,11 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
+import { InitOutLinkChatQuerySchema } from '@fastgpt/global/openapi/core/chat/outLink/api';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
+  const { chatId, shareId, outLinkUid } = InitOutLinkChatQuerySchema.parse(req.query);
 
   // auth link permission
   const { uid, appId } = await authOutLink({ shareId, outLinkUid });
@@ -33,6 +34,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
+  const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+  if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+    await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+    chat.hasBeenRead = true;
+  }
+
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
   const pluginInputs =
     chat?.pluginInputs ??
@@ -47,9 +54,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return {
     chatId,
     appId: app._id,
-    title: chat?.title,
+    title: chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
+    chatGenerateStatus: chat?.chatGenerateStatus,
+    hasBeenRead: chat?.hasBeenRead,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig,

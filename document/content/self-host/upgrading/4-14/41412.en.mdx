@@ -1,0 +1,25 @@
+---
+title: 'V4.14.12'
+description: 'FastGPT V4.14.12 Release Notes'
+---
+
+## Upgrade Guide
+### 1. Update image tags
+
+- Update fastgpt-app (FastGPT main service) image tag to: v4.14.12
+- Update fastgpt-pro (commercial edition) image tag to: v4.14.12
+
+## 🐛 Bug Fixes
+
+1. Fixed a zod validation error on the third-level knowledge base directory `path` API.
+2. Fixed a `dataId` issue in the `v1/completions` API that prevented run details from showing up in chat logs during API calls.
+3. Fixed the sensitive information filter checkbox in chat Agent apps that could not be unchecked.
+
+## 🚀 Features
+
+1. Response values can now set a custom HTTP status code.
+2. Agent scheduler supports PI Agent mode (beta).
+
+## ⚙️ Optimizations
+
+1. Improved error handling in the skill API.

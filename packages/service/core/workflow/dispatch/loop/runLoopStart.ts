@@ -1,5 +1,4 @@
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   type DispatchNodeResultType,
@@ -7,23 +6,23 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 
 type Props = ModuleDispatchProps<{
-  [NodeInputKeyEnum.loopStartInput]: any;
-  [NodeInputKeyEnum.loopStartIndex]: number;
+  [NodeInputKeyEnum.nestedStartInput]: any;
+  [NodeInputKeyEnum.nestedStartIndex]: number;
 }>;
 type Response = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.loopStartInput]: any;
-  [NodeOutputKeyEnum.loopStartIndex]: number;
+  [NodeOutputKeyEnum.nestedStartInput]: any;
+  [NodeOutputKeyEnum.nestedStartIndex]: number;
 }>;
 
 export const dispatchLoopStart = async (props: Props): Promise<Response> => {
   const { params } = props;
   return {
     data: {
-      [NodeOutputKeyEnum.loopStartInput]: params.loopStartInput,
-      [NodeOutputKeyEnum.loopStartIndex]: params.loopStartIndex
+      [NodeOutputKeyEnum.nestedStartInput]: params[NodeInputKeyEnum.nestedStartInput],
+      [NodeOutputKeyEnum.nestedStartIndex]: params[NodeInputKeyEnum.nestedStartIndex]
     },
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      loopInputValue: params.loopStartInput
+      loopInputValue: params[NodeInputKeyEnum.nestedStartInput]
     }
   };
 };

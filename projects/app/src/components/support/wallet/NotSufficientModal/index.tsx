@@ -12,10 +12,18 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMount } from 'ahooks';
 import { useRouter } from 'next/router';
+import { subRoute } from '@fastgpt/web/common/system/utils';
 
 const NotSufficientModal = () => {
   const { t } = useTranslation();
+  const router = useRouter();
   const { notSufficientModalType: type, setNotSufficientModalType } = useSystemStore();
+  const { isTeamAdmin, userInfo } = useUserStore();
+
+  // Visitor view: share page is open without authentication; recharge controls
+  // belong to the team owner, not the visitor.
+  const isShareChat = router.pathname === `${subRoute}/chat/share`;
+  const isVisitorView = isShareChat || !userInfo;
 
   const onClose = () => setNotSufficientModalType(undefined);
 
@@ -25,8 +33,13 @@ const NotSufficientModal = () => {
     onClose: onRechargeModalClose
   } = useDisclosure();
 
+  const aiPointsText =
+    isVisitorView || !isTeamAdmin
+      ? t('common:support.wallet.Not_sufficient_contact_admin')
+      : t('common:support.wallet.Not sufficient');
+
   const textMap = {
-    [TeamErrEnum.aiPointsNotEnough]: t('common:support.wallet.Not sufficient'),
+    [TeamErrEnum.aiPointsNotEnough]: aiPointsText,
     [TeamErrEnum.datasetSizeNotEnough]: t('common:support.wallet.Dataset_not_sufficient'),
     [TeamErrEnum.datasetAmountNotEnough]: t('common:support.wallet.Dataset_amount_not_sufficient'),
     [TeamErrEnum.teamMemberOverSize]: t('common:support.wallet.Team_member_over_size'),
@@ -45,13 +58,15 @@ const NotSufficientModal = () => {
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
             {t('common:Close')}
           </Button>
-          <Button
-            onClick={() => {
-              onRechargeModalOpen();
-            }}
-          >
-            {t('common:support.wallet.To read plan')}
-          </Button>
+          {!isVisitorView && isTeamAdmin && (
+            <Button
+              onClick={() => {
+                onRechargeModalOpen();
+              }}
+            >
+              {t('common:support.wallet.To read plan')}
+            </Button>
+          )}
         </ModalFooter>
       </MyModal>
 

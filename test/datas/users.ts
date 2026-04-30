@@ -12,7 +12,7 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
-import type { parseHeaderCertRet } from 'test/mocks/request';
+import type { parseHeaderCertRet } from '@test/mocks/request';
 
 export async function getRootUser(): Promise<parseHeaderCertRet> {
   const rootUser = await MongoUser.create({

@@ -9,7 +9,7 @@ import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { readRawContentFromBuffer } from '../../../worker/function';
 import { uploadImage2S3Bucket } from '../../s3/utils';
-import { Mimes } from '../../s3/constants';
+import { normalizeMimeType, resolveMimeExtension, resolveMimeType } from '../../s3/utils/mime';
 import { getLogger, LogCategories } from '../../logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
@@ -209,13 +209,15 @@ export const readFileContentByBuffer = async ({
         if (!imageKeyOptions) return '';
         try {
           const { prefix, expiredTime } = imageKeyOptions;
-          const ext = `.${item.mime.split('/')[1].replace('x-', '')}`;
+          const mimetype = normalizeMimeType(item.mime);
+          const ext = resolveMimeExtension(mimetype);
+          const filename = `${item.uuid}${ext}`;
 
           return await uploadImage2S3Bucket('private', {
-            base64Img: `data:${item.mime};base64,${item.base64}`,
-            uploadKey: `${prefix}/${item.uuid}${ext}`,
-            mimetype: Mimes[ext as keyof typeof Mimes],
-            filename: `${item.uuid}${ext}`,
+            base64Img: `data:${mimetype};base64,${item.base64}`,
+            uploadKey: `${prefix}/${filename}`,
+            mimetype: resolveMimeType([filename], mimetype),
+            filename,
             expiredTime
           });
         } catch (error) {
@@ -228,7 +230,6 @@ export const readFileContentByBuffer = async ({
         }
       })();
       rawText = rawText.replace(item.uuid, src);
-      // rawText = rawText.replace(item.uuid, jwtSignS3ObjectKey(src, addDays(new Date(), 90)));
       if (formatText) {
         formatText = formatText.replace(item.uuid, src);
       }

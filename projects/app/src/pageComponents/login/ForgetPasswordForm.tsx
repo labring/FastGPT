@@ -141,7 +141,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               required: true,
               validate: (val) => {
                 if (!checkPasswordRule(val)) {
-                  return t('login:password_tip');
+                  return t('login:reset_password_tip');
                 }
                 return true;
               }

@@ -1,6 +1,6 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type GetChatRecordsProps } from '@/global/core/chat/api';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -13,23 +13,26 @@ import {
   filterPublicNodeResponseData,
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
-
-export type getPaginationRecordsQuery = {};
-
-export type getPaginationRecordsBody = PaginationProps & GetChatRecordsProps;
-
-export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
+import {
+  GetPaginationRecordsBodySchema,
+  GetPaginationRecordsResponseSchema,
+  type GetPaginationRecordsResponseType
+} from '@fastgpt/global/openapi/core/chat/record/api';
 
 export async function handler(
-  req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
-  _res: ApiResponseType<any>
-): Promise<getPaginationRecordsResponse> {
-  const { appId, chatId, loadCustomFeedbacks, type = GetChatTypeEnum.normal } = req.body;
+  req: ApiRequestProps,
+  _res: NextApiResponse
+): Promise<GetPaginationRecordsResponseType> {
+  const {
+    appId,
+    chatId,
+    loadCustomFeedbacks = false,
+    type = GetChatTypeEnum.normal,
+    ...authProps
+  } = GetPaginationRecordsBodySchema.parse(req.body);
 
   const { offset, pageSize } = parsePaginationRequest(req);
 
@@ -40,13 +43,15 @@ export async function handler(
     };
   }
 
-  const [app, { showCite, showRunningStatus, authType }] = await Promise.all([
+  const [app, { showCite, showRunningStatus, showSkillReferences, authType }] = await Promise.all([
     MongoApp.findById(appId, 'type').lean(),
     authChatCrud({
       req,
       authToken: true,
       authApiKey: true,
-      ...req.body
+      appId,
+      chatId,
+      ...authProps
     })
   ]);
 
@@ -85,7 +90,9 @@ export async function handler(
         });
 
         if (showRunningStatus === false) {
-          item.value = item.value.filter((v) => !('tool' in v));
+          item.value = item.value.filter((v) => !('tool' in v) && !v.tools && !v.skills);
+        } else if (showSkillReferences === false) {
+          item.value = item.value.filter((v) => !v.skills);
         }
       }
     }
@@ -120,10 +127,10 @@ export async function handler(
     });
   });
 
-  return {
+  return GetPaginationRecordsResponseSchema.parse({
     list: isPlugin ? histories : transformPreviewHistories(histories, showCite),
     total
-  };
+  });
 }
 
 export default NextAPI(handler);

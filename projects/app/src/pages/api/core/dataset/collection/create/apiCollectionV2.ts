@@ -1,4 +1,7 @@
-import type { ApiDatasetCreateDatasetCollectionV2Params } from '@fastgpt/global/core/dataset/api';
+import {
+  CreateApiCollectionV2BodySchema,
+  type CreateApiCollectionV2BodyType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,
@@ -16,18 +19,27 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 
-async function handler(req: ApiRequestProps<ApiDatasetCreateDatasetCollectionV2Params>) {
+async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
+  const body = CreateApiCollectionV2BodySchema.parse(req.body);
+
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
-    datasetId: req.body.datasetId,
+    datasetId: body.datasetId,
     per: WritePermissionVal
   });
 
+  // Check dataset limit
+  await checkDatasetIndexLimit({
+    teamId,
+    insertLen: 1
+  });
+
   return createApiDatasetCollection({
-    ...req.body,
+    ...body,
     teamId,
     tmbId,
     dataset
@@ -43,7 +55,7 @@ export const createApiDatasetCollection = async ({
   tmbId,
   dataset,
   ...body
-}: ApiDatasetCreateDatasetCollectionV2Params & {
+}: CreateApiCollectionV2BodyType & {
   teamId: string;
   tmbId: string;
   dataset: DatasetSchemaType & {
@@ -63,7 +75,8 @@ export const createApiDatasetCollection = async ({
   const startId =
     dataset.apiDatasetServer?.apiServer?.basePath ||
     dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken;
+    dataset.apiDatasetServer?.feishuServer?.folderToken ||
+    dataset.apiDatasetServer?.dingtalkServer?.rootNodeId;
 
   // check if the directory is selected
   const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === RootCollectionId;

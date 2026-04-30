@@ -23,10 +23,11 @@ export type OpenApiJsonSchema = z.infer<typeof OpenApiJsonSchemaSchema>;
 export const HttpToolConfigTypeSchema = z.object({
   name: z.string(),
   description: z.string(),
-  inputSchema: JSONSchemaInputTypeSchema,
-  outputSchema: JSONSchemaOutputTypeSchema,
+  inputSchema: JSONSchemaInputTypeSchema.optional(),
+  outputSchema: JSONSchemaOutputTypeSchema.optional(),
   path: z.string(),
   method: z.string(),
+  requestSchema: JSONSchemaInputTypeSchema.optional(),
 
   // manual
   staticParams: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
@@ -38,6 +39,6 @@ export const HttpToolConfigTypeSchema = z.object({
       formData: z.array(z.object({ key: z.string(), value: z.string() })).optional()
     })
     .optional(),
-  headerSecret: StoreSecretValueTypeSchema.optional()
+  headerSecret: StoreSecretValueTypeSchema.nullish()
 });
 export type HttpToolConfigType = z.infer<typeof HttpToolConfigTypeSchema>;

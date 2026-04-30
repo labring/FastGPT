@@ -13,9 +13,11 @@ import type { PlaygroundVisibilityConfigType } from '@fastgpt/global/support/out
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
   showRunningStatus: true,
+  showSkillReferences: false,
   showCite: true,
   showFullText: true,
   canDownloadSource: true,
@@ -25,6 +27,7 @@ const defaultPlaygroundVisibilityForm: PlaygroundVisibilityConfigType = {
 const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const { feConfigs } = useSystemStore();
 
   const { register, watch, setValue, reset } = useForm({
     defaultValues: defaultPlaygroundVisibilityForm
@@ -34,6 +37,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const showFullText = watch('showFullText');
   const canDownloadSource = watch('canDownloadSource');
   const showRunningStatus = watch('showRunningStatus');
+  const showSkillReferences = watch('showSkillReferences');
   const showWholeResponse = watch('showWholeResponse');
 
   const playgroundLink = useMemo(() => {
@@ -47,6 +51,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
     onSuccess: (data) => {
       reset({
         showRunningStatus: data.showRunningStatus,
+        showSkillReferences: data.showSkillReferences,
         showCite: data.showCite,
         showFullText: data.showFullText,
         canDownloadSource: data.canDownloadSource,
@@ -201,6 +206,27 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
             />
           </Flex>
         </Flex>
+        {feConfigs?.show_skill && (
+          <Flex gap={4} flexWrap={'wrap'}>
+            <Flex alignItems={'center'}>
+              <Flex alignItems={'center'} flex={'0 0 127px'}>
+                <FormLabel fontSize={'12px'}>{t('publish:show_skill_reference')}</FormLabel>
+                <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')} />
+              </Flex>
+              <Switch
+                {...register('showSkillReferences', {
+                  onChange(e) {
+                    if (e.target.checked) {
+                      setValue('showRunningStatus', true);
+                    }
+                    autoSave();
+                  }
+                })}
+                isChecked={showSkillReferences}
+              />
+            </Flex>
+          </Flex>
+        )}
       </Flex>
     </Flex>
   );

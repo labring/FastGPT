@@ -3,6 +3,9 @@ import { TagsMap } from '../../../tag';
 import {
   GetHistoriesBodySchema,
   GetHistoriesResponseSchema,
+  GetHistoryStatusBodySchema,
+  GetHistoryStatusResponseSchema,
+  MarkChatReadBodySchema,
   UpdateHistoryBodySchema,
   ChatBatchDeleteBodySchema,
   DelChatHistorySchema,
@@ -30,6 +33,50 @@ export const ChatHistoryPath: OpenAPIPath = {
               schema: GetHistoriesResponseSchema
             }
           }
+        }
+      }
+    }
+  },
+  '/core/chat/history/getHistoryStatus': {
+    post: {
+      summary: '批量获取对话状态（生成中/已读）',
+      description:
+        '按 chatId 列表返回 chatGenerateStatus、hasBeenRead、updateTime，用于侧栏轻量轮询同步',
+      tags: [TagsMap.chatHistory],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetHistoryStatusBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功',
+          content: {
+            'application/json': {
+              schema: GetHistoryStatusResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/history/markRead': {
+    post: {
+      summary: '标记对话已读',
+      description: '用户在本页看完回复后调用，同步 Mongo hasBeenRead',
+      tags: [TagsMap.chatHistory],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: MarkChatReadBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功'
         }
       }
     }

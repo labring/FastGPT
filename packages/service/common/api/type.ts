@@ -1,9 +1,4 @@
 import type {
-  ApiDatasetDetailResponse,
-  FeishuServer,
-  YuqueServer
-} from '@fastgpt/global/core/dataset/apiDataset/type';
-import type {
   DeepRagSearchProps,
   SearchDatasetDataResponse
 } from '../../core/dataset/search/controller';

@@ -1,4 +1,4 @@
-import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
+import { getFlowValueTypeMeta } from '@fastgpt/global/core/workflow/node/constant';
 import type { BoxProps } from '@chakra-ui/react';
 import { Box } from '@chakra-ui/react';
 import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -14,9 +14,8 @@ const ValueTypeLabel = ({
   valueType?: WorkflowIOValueTypeEnum;
   valueDesc?: string;
 } & BoxProps) => {
-  const valueTypeData = valueType ? FlowValueTypeMap[valueType] : undefined;
   const { t } = useTranslation();
-  const label = valueTypeData?.label || '';
+  const label = valueType ? getFlowValueTypeMeta(valueType).label : '';
 
   return !!label ? (
     <MyTooltip label={valueDesc}>

@@ -16,6 +16,7 @@ import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
+import MyTooltip from '../MyTooltip';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
 export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
@@ -30,6 +31,8 @@ export type MenuItemData = {
     description?: string;
     onClick?: () => any;
     menuItemStyles?: MenuItemProps;
+    disabled?: boolean;
+    disabledTip?: string;
   }>;
 };
 export type Props = {
@@ -286,59 +289,74 @@ const MyMenu = ({
               <Box key={i}>
                 {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
                 {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
-                {item.children.map((child, index) => (
-                  <MenuItem
-                    key={index}
-                    borderRadius={'sm'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (child.onClick) {
-                        setIsOpen(false);
-                        child.onClick();
-                      }
-                    }}
-                    alignItems={'center'}
-                    fontSize={'sm'}
-                    color={child.isActive ? 'primary.700' : 'myGray.600'}
-                    whiteSpace={'pre-wrap'}
-                    {...typeMapStyle[child.type || 'primary'].styles}
-                    {...sizeMapStyle[size].menuItemStyle}
-                    {...child.menuItemStyles}
-                  >
-                    {!!child.icon && (
-                      <Avatar
-                        src={child.icon as any}
-                        mr={2}
-                        {...sizeMapStyle[size].iconStyle}
-                        color={
-                          child.isActive
-                            ? 'inherit'
-                            : typeMapStyle[child.type || 'primary'].iconColor
+                {item.children.map((child, index) => {
+                  const menuItem = (
+                    <MenuItem
+                      key={index}
+                      borderRadius={'sm'}
+                      isDisabled={child.disabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (child.disabled) {
+                          return;
                         }
-                        sx={{
-                          '[role="menuitem"]:hover &': {
-                            color: 'inherit'
+                        if (child.onClick) {
+                          setIsOpen(false);
+                          child.onClick();
+                        }
+                      }}
+                      alignItems={'center'}
+                      fontSize={'sm'}
+                      color={child.isActive ? 'primary.700' : 'myGray.600'}
+                      whiteSpace={'pre-wrap'}
+                      {...typeMapStyle[child.type || 'primary'].styles}
+                      {...sizeMapStyle[size].menuItemStyle}
+                      {...child.menuItemStyles}
+                    >
+                      {!!child.icon && (
+                        <Avatar
+                          src={child.icon as any}
+                          mr={2}
+                          {...sizeMapStyle[size].iconStyle}
+                          color={
+                            child.isActive
+                              ? 'inherit'
+                              : typeMapStyle[child.type || 'primary'].iconColor
                           }
-                        }}
-                      />
-                    )}
-                    <Box w={'100%'}>
-                      <Box
-                        w={'100%'}
-                        color={child.description ? 'myGray.900' : 'inherit'}
-                        pr={child.icon ? 4 : 0}
-                        {...sizeMapStyle[size].labelStyle}
-                      >
-                        {child.label}
-                      </Box>
-                      {child.description && (
-                        <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
-                          {child.description}
-                        </Box>
+                          sx={{
+                            '[role="menuitem"]:hover &': {
+                              color: 'inherit'
+                            }
+                          }}
+                        />
                       )}
-                    </Box>
-                  </MenuItem>
-                ))}
+                      <Box w={'100%'}>
+                        <Box
+                          w={'100%'}
+                          color={child.description ? 'myGray.900' : 'inherit'}
+                          pr={child.icon ? 4 : 0}
+                          {...sizeMapStyle[size].labelStyle}
+                        >
+                          {child.label}
+                        </Box>
+                        {child.description && !child.disabled && (
+                          <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
+                            {child.description}
+                          </Box>
+                        )}
+                      </Box>
+                    </MenuItem>
+                  );
+
+                  if (child.disabled && child.disabledTip) {
+                    return (
+                      <MyTooltip shouldWrapChildren={false} key={index} label={child.disabledTip}>
+                        {menuItem}
+                      </MyTooltip>
+                    );
+                  }
+                  return menuItem;
+                })}
               </Box>
             );
           })}

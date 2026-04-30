@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';

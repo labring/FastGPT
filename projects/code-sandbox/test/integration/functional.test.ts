@@ -398,6 +398,208 @@ async function main() { return recurse(); }`,
     );
   });
 
+  // --- 静态 import() AST 检测的负样本 ---
+  // 验证新版 AST 检测不会把"看起来像 import()"的合法代码误判
+  describe('动态 import 检测负样本(正常代码)', () => {
+    runMatrix(
+      () => pool,
+      [
+        {
+          name: '行内注释包含 import(',
+          code: `async function main() {
+            // import('fs') is forbidden in sandbox
+            return { ok: 1 };
+          }`,
+          expect: { success: true, codeReturn: { ok: 1 } }
+        },
+        {
+          name: '块注释包含 import(',
+          code: `async function main() {
+            /* note: never call import('child_process') here */
+            return { ok: 2 };
+          }`,
+          expect: { success: true, codeReturn: { ok: 2 } }
+        },
+        {
+          name: 'JSDoc 包含 import(',
+          code: `/** @example const x = await import('fs'); */
+          async function main() { return { ok: 3 }; }`,
+          expect: { success: true, codeReturn: { ok: 3 } }
+        },
+        {
+          name: '字符串字面量包含 import(',
+          code: `async function main() {
+            const tip = "use require not import('xx')";
+            return { tip };
+          }`,
+          expect: { success: true, codeReturn: { tip: "use require not import('xx')" } }
+        },
+        {
+          name: '模板字符串包含 import(',
+          code: `async function main() {
+            const name = 'fs';
+            const tpl = \`forbidden: import('\${name}')\`;
+            return { tpl };
+          }`,
+          expect: { success: true, codeReturn: { tpl: "forbidden: import('fs')" } }
+        },
+        {
+          name: '正则字面量包含 import(',
+          code: `async function main() {
+            const re = /\\bimport\\s*\\(/;
+            return { match: re.test("import('x')") };
+          }`,
+          expect: { success: true, codeReturn: { match: true } }
+        },
+        {
+          name: '变量名以 import 开头',
+          code: `async function main() {
+            const importPath = '/etc/hosts';
+            const importedAt = Date.now();
+            return { len: importPath.length, type: typeof importedAt };
+          }`,
+          expect: { success: true, codeReturnMatch: { len: 10, type: 'number' } }
+        },
+        {
+          name: '对象属性名为 import',
+          code: `async function main() {
+            const conf = { import: 'allowed', export: 'ok' };
+            return { keys: Object.keys(conf).sort() };
+          }`,
+          expect: { success: true, codeReturn: { keys: ['export', 'import'] } }
+        },
+        {
+          name: 'lodash 多函数组合',
+          code: `async function main() {
+            const _ = require('lodash');
+            const grouped = _.groupBy([6.1, 4.2, 6.3], Math.floor);
+            const chunked = _.chunk(['a','b','c','d','e'], 2);
+            return { grouped, chunked };
+          }`,
+          expect: {
+            success: true,
+            codeReturn: {
+              grouped: { 4: [4.2], 6: [6.1, 6.3] },
+              chunked: [['a', 'b'], ['c', 'd'], ['e']]
+            }
+          }
+        },
+        {
+          name: 'dayjs 时间格式化',
+          code: `async function main() {
+            const dayjs = require('dayjs');
+            const d = dayjs('2026-04-29T08:00:00Z');
+            return { year: d.year(), iso: d.toISOString() };
+          }`,
+          expect: {
+            success: true,
+            codeReturnMatch: { year: 2026, iso: '2026-04-29T08:00:00.000Z' }
+          }
+        },
+        {
+          name: 'crypto-js HMAC SHA256',
+          code: `async function main() {
+            const CryptoJS = require('crypto-js');
+            const hex = CryptoJS.HmacSHA256('msg', 'key').toString();
+            return { len: hex.length };
+          }`,
+          expect: { success: true, codeReturn: { len: 64 } }
+        },
+        {
+          name: 'qs 序列化嵌套对象',
+          code: `async function main() {
+            const qs = require('qs');
+            const s = qs.stringify({ a: { b: 1, c: [2, 3] } });
+            return { s };
+          }`,
+          expect: {
+            success: true,
+            codeReturn: { s: 'a%5Bb%5D=1&a%5Bc%5D%5B0%5D=2&a%5Bc%5D%5B1%5D=3' }
+          }
+        },
+        {
+          name: 'uuid v4 生成',
+          code: `async function main() {
+            const { v4 } = require('uuid');
+            const id = v4();
+            return { len: id.length, isString: typeof id === 'string' };
+          }`,
+          expect: { success: true, codeReturn: { len: 36, isString: true } }
+        },
+        {
+          name: 'async/await 串行 + Promise.all 并行',
+          code: `async function main() {
+            const seq = [];
+            for (const x of [1, 2, 3]) { await delay(1); seq.push(x); }
+            const par = await Promise.all([Promise.resolve('a'), Promise.resolve('b')]);
+            return { seq, par };
+          }`,
+          expect: { success: true, codeReturn: { seq: [1, 2, 3], par: ['a', 'b'] } }
+        },
+        {
+          name: '解构 / 默认参数 / 扩展运算符',
+          code: `async function main() {
+            const fn = ({ a = 1, b = 2 } = {}, ...rest) => ({ a, b, rest });
+            return fn({ b: 9 }, 'x', 'y');
+          }`,
+          expect: { success: true, codeReturn: { a: 1, b: 9, rest: ['x', 'y'] } }
+        },
+        {
+          name: 'class + 私有字段 + getter',
+          code: `async function main() {
+            class Counter {
+              #n = 0;
+              inc() { this.#n++; return this; }
+              get value() { return this.#n; }
+            }
+            const c = new Counter().inc().inc().inc();
+            return { value: c.value };
+          }`,
+          expect: { success: true, codeReturn: { value: 3 } }
+        },
+        {
+          name: 'Map / Set 操作',
+          code: `async function main() {
+            const m = new Map([['a', 1], ['b', 2]]);
+            const s = new Set([1, 2, 2, 3]);
+            return { mapSize: m.size, setArr: [...s] };
+          }`,
+          expect: { success: true, codeReturn: { mapSize: 2, setArr: [1, 2, 3] } }
+        },
+        {
+          name: 'try/catch + 自定义错误类',
+          code: `async function main() {
+            class AppError extends Error {
+              constructor(msg, code) { super(msg); this.code = code; }
+            }
+            try { throw new AppError('boom', 42); }
+            catch (e) { return { msg: e.message, code: e.code, isErr: e instanceof Error }; }
+          }`,
+          expect: { success: true, codeReturn: { msg: 'boom', code: 42, isErr: true } }
+        },
+        {
+          name: '生成器函数 + iterator 协议',
+          code: `async function main() {
+            function* gen(n) { for (let i = 0; i < n; i++) yield i * i; }
+            return { squares: [...gen(4)] };
+          }`,
+          expect: { success: true, codeReturn: { squares: [0, 1, 4, 9] } }
+        },
+        {
+          name: 'BigInt + Number 互操作',
+          code: `async function main() {
+            const big = 9007199254740991n;
+            return { str: big.toString(), num: Number(big - 1n), kind: typeof big };
+          }`,
+          expect: {
+            success: true,
+            codeReturn: { str: '9007199254740991', num: 9007199254740990, kind: 'bigint' }
+          }
+        }
+      ]
+    );
+  });
+
   // --- 网络请求 ---
   describe('网络请求', () => {
     runMatrix(
@@ -406,7 +608,7 @@ async function main() { return recurse(); }`,
         {
           name: 'httpRequest GET',
           code: `async function main() {
-          const res = await httpRequest('https://www.baidu.com');
+          const res = await httpRequest('https://1.1.1.1/cdn-cgi/trace');
           return { status: res.status, hasData: res.data.length > 0 };
         }`,
           expect: { success: true, codeReturnMatch: { status: 200, hasData: true } }
@@ -414,7 +616,7 @@ async function main() { return recurse(); }`,
         {
           name: 'httpRequest POST JSON',
           code: `async function main() {
-          const res = await httpRequest('https://www.baidu.com', {
+          const res = await httpRequest('https://1.1.1.1/cdn-cgi/trace', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: { message: 'hello' }
@@ -701,12 +903,12 @@ describe('Python 功能测试', () => {
       [
         {
           name: 'http_request GET',
-          code: `import json\ndef main():\n    res = http_request('https://www.baidu.com')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
+          code: `import json\ndef main():\n    res = http_request('https://1.1.1.1/cdn-cgi/trace')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
           expect: { success: true, codeReturnMatch: { status: 200, hasData: true } }
         },
         {
           name: 'http_request POST JSON',
-          code: `import json\ndef main():\n    res = http_request('https://www.baidu.com', method='POST', body={'message': 'hello'})\n    return {'hasStatus': type(res['status']) == int}`,
+          code: `import json\ndef main():\n    res = http_request('https://1.1.1.1/cdn-cgi/trace', method='POST', body={'message': 'hello'})\n    return {'hasStatus': type(res['status']) == int}`,
           expect: { success: true, codeReturnMatch: { hasStatus: true } }
         }
       ]

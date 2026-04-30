@@ -9,47 +9,44 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useLatest } from 'ahooks';
 
 type Props = {
-  defaultModel?: string;
   defaultData: SettingAIDataType;
   onChange: (e: SettingAIDataType) => void;
   bg?: string;
 };
 
-const SettingLLMModel = ({
-  defaultModel,
-  defaultData,
-  onChange,
-  ...props
-}: AIChatSettingsModalProps & Props) => {
+const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
   const model = defaultData.model;
 
-  const { modelSet, modelList } = useMemoEnhance(() => {
+  const { modelSet, modelList, defaultLLMModel } = useMemoEnhance(() => {
     const modelSet = new Set<string>(llmModelList.map((item) => item.model));
     return {
       modelList: llmModelList,
-      modelSet
+      modelSet,
+      defaultLLMModel: getWebDefaultLLMModel(llmModelList)?.model
     };
   }, [llmModelList]);
 
-  // Set default model
-  const lastDefaultModel = useLatest(defaultModel);
+  // Reset undefined model
   useEffect(() => {
-    if (!modelSet.has(model)) {
-      const defaultLLM = lastDefaultModel.current || getWebDefaultLLMModel(modelList).model;
-      if (defaultLLM) {
+    if (model) {
+      if (modelSet.size > 0 && !modelSet.has(model) && defaultLLMModel) {
         onChange({
           ...defaultData,
-          model: defaultLLM
+          model: defaultLLMModel
         });
       }
+    } else if (defaultLLMModel) {
+      onChange({
+        ...defaultData,
+        model: defaultLLMModel
+      });
     }
-  }, [modelList, model, defaultData]);
+  }, [model, defaultData, modelSet, defaultLLMModel]);
 
   const {
     isOpen: isOpenAIChatSetting,

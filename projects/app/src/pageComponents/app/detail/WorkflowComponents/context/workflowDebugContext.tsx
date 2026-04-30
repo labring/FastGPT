@@ -10,7 +10,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { defaultRunningStatus } from '../constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { WorkflowActionsContext } from './workflowActionsContext';
@@ -23,7 +23,7 @@ export type DebugDataType = {
   skipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
 
   variables: Record<string, any>;
-  history?: ChatItemType[];
+  history?: ChatItemMiniType[];
   query?: UserChatItemValueItemType[];
   workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   usageId?: string;
@@ -44,7 +44,7 @@ type WorkflowDebugContextValue = {
     runtimeEdges: RuntimeEdgeItemType[];
     variables: Record<string, any>;
     query?: UserChatItemValueItemType[];
-    history?: ChatItemType[];
+    history?: ChatItemMiniType[];
   }) => Promise<void>;
 
   /** 停止节点调试 */
@@ -66,7 +66,7 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
     runtimeEdges: RuntimeEdgeItemType[];
     variables: Record<string, any>;
     query?: UserChatItemValueItemType[];
-    history?: ChatItemType[];
+    history?: ChatItemMiniType[];
   }): Promise<void> {
     throw new Error('Function not implemented.');
   },

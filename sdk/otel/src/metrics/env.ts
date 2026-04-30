@@ -40,7 +40,7 @@ export function createMetricsOptionsFromEnv(
             options.defaultMetricsUrl,
           exportIntervalMillis: parsePositiveNumberEnv(
             env.METRICS_EXPORT_INTERVAL ?? env.OTEL_METRIC_EXPORT_INTERVAL,
-            options.defaultExportIntervalMillis ?? 15000
+            options.defaultExportIntervalMillis ?? 30000
           )
         }
       : false

@@ -2,7 +2,11 @@ import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api';
+import {
+  InitTeamChatQuerySchema,
+  type InitChatResponseType,
+  type InitTeamChatQueryType
+} from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -14,32 +18,44 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
-async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResponse) {
-  let { teamId, appId, chatId, teamToken } = req.query;
+async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApiResponse) {
+  const { teamId, appId, chatId, teamToken } = InitTeamChatQuerySchema.parse(req.query);
 
-  if (!teamId || !appId || !teamToken) {
-    return Promise.reject('teamId, appId, teamToken are required');
-  }
-
-  const { uid } = await authTeamSpaceToken({
+  const { uid, tags } = await authTeamSpaceToken({
     teamId,
     teamToken
   });
 
-  const [team, chat, app] = await Promise.all([
+  const [team, app] = await Promise.all([
     MongoTeam.findById(teamId, 'name avatar').lean(),
-    MongoChat.findOne({ appId, chatId }).lean(),
-    MongoApp.findById(appId).lean()
+    MongoApp.findOne({
+      _id: appId,
+      teamId,
+      $or: [
+        { teamTags: { $size: 0 } },
+        { teamTags: { $exists: false } },
+        { teamTags: { $in: tags } }
+      ]
+    }).lean()
   ]);
 
   if (!app) {
     return Promise.reject(AppErrEnum.unExist);
   }
 
+  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
+
   // auth chat permission
-  if (chat && chat.outLinkUid !== uid) {
+  if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+  if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+    await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+    chat.hasBeenRead = true;
   }
 
   // get app and history
@@ -54,13 +70,15 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
     variableConfig: chat?.variableList
   });
 
-  jsonRes<InitChatResponse>(res, {
+  jsonRes<InitChatResponseType>(res, {
     data: {
       chatId,
       appId,
-      title: chat?.title,
+      title: chat?.title || '',
       userAvatar: team?.avatar,
       variables,
+      chatGenerateStatus: chat?.chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

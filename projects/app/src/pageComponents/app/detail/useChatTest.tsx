@@ -82,9 +82,10 @@ export const useChatTest = ({
     return nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs || [];
   }, [nodes]);
 
-  // Set chat box data
+  // Set chat box data（函数式更新，避免覆盖 getInitChatInfo 同步的 chatGenerateStatus 等）
   useEffect(() => {
-    setChatBoxData({
+    setChatBoxData((prev) => ({
+      ...prev,
       userAvatar: userInfo?.avatar,
       appId: appId,
       app: {
@@ -94,13 +95,15 @@ export const useChatTest = ({
         type: appDetail.type,
         pluginInputs
       }
-    });
+    }));
   }, [
     appDetail.avatar,
     appDetail.name,
     appDetail.type,
     appId,
     chatConfig,
+    // 避免仅深层变更时 chatConfig 引用未换导致预览区仍用旧的 fileSelectConfig
+    JSON.stringify(chatConfig?.fileSelectConfig ?? null),
     pluginInputs,
     setChatBoxData,
     userInfo?.avatar
@@ -115,6 +118,13 @@ export const useChatTest = ({
         variables: res.variables,
         variableList: variableList ?? res.app?.chatConfig?.variables
       });
+      // 与线上一致：同步会话生成状态，供 ChatBox enableAutoResume + streamResumeFetch 恢复未结束的流
+      setChatBoxData((prev) => ({
+        ...prev,
+        title: res.title,
+        chatGenerateStatus: res.chatGenerateStatus,
+        hasBeenRead: res.hasBeenRead
+      }));
     },
     {
       manual: false,
@@ -140,28 +150,28 @@ export const useChatTest = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variableList]);
 
-  const CustomChatContainer = useCallback(
-    () =>
-      appDetail.type === AppTypeEnum.workflowTool ? (
-        <Box p={5} pb={16}>
-          <PluginRunBox
-            appId={appId}
-            chatId={chatId}
-            onNewChat={restartChat}
-            onStartChat={startChat}
-          />
-        </Box>
-      ) : (
-        <ChatBox
-          isReady={isReady}
+  const CustomChatContainer = useMemoizedFn(() =>
+    appDetail.type === AppTypeEnum.workflowTool ? (
+      <Box p={5} pb={16}>
+        <PluginRunBox
           appId={appId}
           chatId={chatId}
-          showMarkIcon
-          chatType={ChatTypeEnum.test}
+          onNewChat={restartChat}
           onStartChat={startChat}
+          runtimeFileSelectConfig={chatConfig.fileSelectConfig}
         />
-      ),
-    [appDetail.type, appId, chatId, isReady, restartChat, startChat]
+      </Box>
+    ) : (
+      <ChatBox
+        isReady={isReady}
+        appId={appId}
+        chatId={chatId}
+        showMarkIcon
+        chatType={ChatTypeEnum.test}
+        enableAutoResume
+        onStartChat={startChat}
+      />
+    )
   );
 
   return {

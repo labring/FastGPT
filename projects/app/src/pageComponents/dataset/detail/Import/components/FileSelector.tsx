@@ -5,7 +5,7 @@ import { Box, type FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
+import React, { type DragEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -31,16 +31,39 @@ const FileSelector = ({
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const teamPlanStatus = useUserStore((s) => s.teamPlanStatus);
+
+  const [teamPlanReady, setTeamPlanReady] = useState(
+    () => !!useUserStore.getState().teamPlanStatus
+  );
+
+  useEffect(() => {
+    if (teamPlanStatus) {
+      setTeamPlanReady(true);
+      return;
+    }
+    let cancelled = false;
+    useUserStore
+      .getState()
+      .initTeamPlanStatus()
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTeamPlanReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamPlanStatus]);
 
   // 文件数量限制：团队套餐 || 系统配置 || 默认值
   const maxCount =
     teamPlanStatus?.standard?.maxUploadFileCount || feConfigs?.uploadFileMaxAmount || 1000;
-  // 文件大小限制（bytes）：优先级为 套餐限制 > 系统配置 > 默认值(500MB)
-  const maxSize =
-    (teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
-    1024 *
-    1024;
+  // 文件大小限制（bytes）：与 presignDatasetFilePostUrl / 代理上传 JWT 一致 — 须等套餐拉取后再算，避免未加载时用 feConfigs 显示 1000M、实际套餐为 5M
+  const maxSize = useMemo(() => {
+    if (!teamPlanReady) return null;
+    const mb = teamPlanStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500;
+    return mb * 1024 * 1024;
+  }, [teamPlanReady, teamPlanStatus?.standard?.maxUploadFileSize, feConfigs?.uploadFileMaxSize]);
 
   const { File, onOpen } = useSelectFile({
     fileType,
@@ -71,7 +94,7 @@ const FileSelector = ({
         });
       }
       // size check
-      if (!maxSize) {
+      if (maxSize == null) {
         return onSelectFiles(files);
       }
       const filterFiles = files.filter((item) => item.file.size <= maxSize);
@@ -192,7 +215,7 @@ const FileSelector = ({
       borderWidth={'1.5px'}
       borderStyle={'dashed'}
       borderRadius={'md'}
-      {...(isMaxSelected
+      {...(isMaxSelected || maxSize == null
         ? {}
         : {
             cursor: 'pointer',
@@ -214,6 +237,13 @@ const FileSelector = ({
         <>
           <Box color={'myGray.500'} fontSize={'xs'}>
             {t('file:reached_max_file_count')}
+          </Box>
+        </>
+      ) : maxSize == null ? (
+        <>
+          <Box fontWeight={'bold'}>{t('common:Loading')}</Box>
+          <Box color={'myGray.500'} fontSize={'xs'}>
+            {t('file:support_file_type', { fileType })}
           </Box>
         </>
       ) : (

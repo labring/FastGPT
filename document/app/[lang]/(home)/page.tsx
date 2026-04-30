@@ -7,5 +7,5 @@ export default async function HomePage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  redirect(getLocalizedPath('/docs/introduction', lang));
+  redirect(getLocalizedPath('/introduction', lang));
 }

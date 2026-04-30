@@ -18,7 +18,7 @@ import {
   Flex,
   Input
 } from '@chakra-ui/react';
-import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
+import type { ButtonProps, MenuItemProps, MenuProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
@@ -35,7 +35,7 @@ import EmptyTip from '../EmptyTip';
  * customOnOpen: 自定义打开回调
  * customOnClose: 自定义关闭回调
  * */
-export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
+export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   value?: T;
   valueLabel?: string | React.ReactNode;
   placeholder?: string;
@@ -54,6 +54,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   customOnOpen?: () => void;
   customOnClose?: () => void;
+  menuPlacement?: MenuProps['placement'];
 
   isInvalid?: boolean;
   isDisabled?: boolean;
@@ -86,6 +87,7 @@ const MySelect = <T = any,>(
     ScrollData,
     customOnOpen,
     customOnClose,
+    menuPlacement,
     isInvalid,
     isDisabled,
     ...props
@@ -205,6 +207,7 @@ const MySelect = <T = any,>(
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
+        placement={menuPlacement}
         // matchWidth
       >
         <MenuButton
@@ -225,8 +228,9 @@ const MySelect = <T = any,>(
           _active={{
             transform: 'none'
           }}
-          bg={bg ? (isOpen ? '#fff' : bg) : '#fff'}
-          color={isOpen ? 'primary.700' : 'myGray.700'}
+          bg={isDisabled ? 'myWhite.300' : bg ? (isOpen ? '#fff' : bg) : '#fff'}
+          color={isDisabled ? 'myGray.400' : isOpen ? 'primary.700' : 'myGray.700'}
+          fontWeight={'normal'}
           borderColor={isInvalid ? 'red.500' : isOpen ? 'primary.300' : 'myGray.200'}
           boxShadow={
             isOpen
@@ -235,6 +239,7 @@ const MySelect = <T = any,>(
                 : '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
               : 'none'
           }
+          opacity={isDisabled ? 0.4 : 1}
           _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
         >
@@ -256,6 +261,9 @@ const MySelect = <T = any,>(
                         (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
                         (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
                       }
+                      _placeholder={{
+                        color: 'myGray.500'
+                      }}
                       size={'sm'}
                       w={'100%'}
                       color={'myGray.700'}
@@ -275,7 +283,14 @@ const MySelect = <T = any,>(
                         />
                       )}
                       {
-                        <Box noOfLines={1}>
+                        <Box
+                          noOfLines={1}
+                          {...(!selectItem
+                            ? {
+                                color: 'myGray.500'
+                              }
+                            : {})}
+                        >
                           {selectItem?.alias || selectItem?.label || placeholder}
                         </Box>
                       }
@@ -290,7 +305,7 @@ const MySelect = <T = any,>(
         <MenuList
           ref={MenuListRef}
           className={props.className}
-          w={(() => {
+          minW={(() => {
             const w = ButtonRef.current?.clientWidth;
             if (w) {
               return `${w}px !important`;
@@ -299,6 +314,7 @@ const MySelect = <T = any,>(
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;
           })()}
+          w={'max-content'}
           px={'6px'}
           py={'6px'}
           border={'1px solid #fff'}

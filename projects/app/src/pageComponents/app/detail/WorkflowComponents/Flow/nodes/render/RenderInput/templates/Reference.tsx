@@ -17,7 +17,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import {
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import {
@@ -61,15 +61,21 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 
 export const useReference = ({
   nodeId,
-  valueType = WorkflowIOValueTypeEnum.any
+  valueType = WorkflowIOValueTypeEnum.any,
+  includeChildren
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
+  // Include the container's own children as reference sources.
+  includeChildren?: boolean;
 }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById, systemConfigNode } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById, systemConfigNode, childrenNodeIdListMap } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
 
   // 获取可选的变量列表
   const referenceList = useMemoEnhance(() => {
@@ -79,7 +85,9 @@ export const useReference = ({
       getNodeById,
       edges: edges,
       chatConfig: appDetail.chatConfig,
-      t
+      t,
+      includeChildren,
+      childrenNodeIdListMap
     });
 
     const isArray = valueType?.includes('array');
@@ -114,7 +122,17 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [nodeId, systemConfigNode, getNodeById, edges, appDetail.chatConfig, t, valueType]);
+  }, [
+    nodeId,
+    systemConfigNode,
+    getNodeById,
+    edges,
+    appDetail.chatConfig,
+    t,
+    valueType,
+    includeChildren,
+    childrenNodeIdListMap
+  ]);
 
   return {
     referenceList
@@ -152,7 +170,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const popDirection = useMemo(() => {
     const node = getNodeById(nodeId);
     if (!node) return 'bottom';
-    return node.flowNodeType === FlowNodeTypeEnum.loop ? 'top' : 'bottom';
+    return isNestedParentNodeType(node.flowNodeType) ? 'top' : 'bottom';
   }, [nodeId, getNodeById]);
 
   return (

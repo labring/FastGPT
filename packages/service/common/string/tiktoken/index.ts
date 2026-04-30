@@ -3,9 +3,9 @@ import {
   type ChatCompletionCreateParams,
   type ChatCompletionMessageParam,
   type ChatCompletionTool
-} from '@fastgpt/global/core/ai/type';
+} from '@fastgpt/global/core/ai/llm/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { WorkerNameEnum, getWorkerController } from '../../../worker/utils';
 import type { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getLogger, LogCategories } from '../../logger';
@@ -45,7 +45,7 @@ export const countGptMessagesTokens = async (
   }
 };
 
-export const countMessagesTokens = (messages: ChatItemType[]) => {
+export const countMessagesTokens = (messages: ChatItemMiniType[]) => {
   const adaptMessages = chats2GPTMessages({ messages, reserveId: true });
 
   return countGptMessagesTokens(adaptMessages);

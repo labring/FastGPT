@@ -27,15 +27,11 @@ export const ChannelStautsMap = {
   }
 };
 
-const firstProviderId = useSystemStore.getState().getModelProviders('en')[0]?.id;
-const firstChannelType =
-  Object.entries(useSystemStore.getState().aiproxyIdMap).find(
-    ([id, item]) => item.provider === firstProviderId
-  )?.[0] || 1;
+const aiproxyChannels = useSystemStore.getState().aiproxyChannels;
 export const defaultChannel: ChannelInfoType = {
   id: 0,
   status: ChannelStatusEnum.ChannelStatusEnabled,
-  type: Number(firstChannelType),
+  type: aiproxyChannels[0]?.channelId || 1,
   created_at: 0,
   models: [],
   model_mapping: {},

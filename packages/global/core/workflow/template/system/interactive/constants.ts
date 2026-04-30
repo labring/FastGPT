@@ -4,7 +4,8 @@ export const isChildInteractive = (type: InteractiveNodeResponseType['type']) =>
   if (
     type === 'childrenInteractive' ||
     type === 'toolChildrenInteractive' ||
-    type === 'loopInteractive'
+    type === 'loopInteractive' ||
+    type === 'loopRunInteractive'
   ) {
     return true;
   }

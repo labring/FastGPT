@@ -7,14 +7,14 @@ import { GET, POST, DELETE } from '@/web/common/api/request';
 import type {
   OutlinkAppType,
   OutLinkEditType,
-  OutLinkSchema
+  OutLinkSchemaType
 } from '@fastgpt/global/support/outLink/type';
 
 // create a shareChat
 export function createShareChat<T extends OutlinkAppType>(
   data: OutLinkEditType<T> & {
     appId: string;
-    type: OutLinkSchema['type'];
+    type: OutLinkSchemaType['type'];
   }
 ) {
   return POST<string>(`/support/outLink/create`, data);
@@ -26,9 +26,9 @@ export const putShareChat = (data: OutLinkEditType) =>
 // get shareChat
 export function getShareChatList<T extends OutlinkAppType>(data: {
   appId: string;
-  type: OutLinkSchema<T>['type'];
+  type: OutLinkSchemaType<T>['type'];
 }) {
-  return GET<OutLinkSchema<T>[]>(`/support/outLink/list`, data);
+  return GET<OutLinkSchemaType<T>[]>(`/support/outLink/list`, data);
 }
 
 // delete a  shareChat
@@ -55,6 +55,6 @@ export function updatePlaygroundVisibilityConfig(data: UpdatePlaygroundVisibilit
 // export const createWecomLinkChat = (
 //   data: OutLinkConfigEditType & {
 //     appId: string;
-//     type: OutLinkSchema['type'];
+//     type: OutLinkSchemaType['type'];
 //   }
 // ) => POST<string>(`/support/outLink/create`, data);

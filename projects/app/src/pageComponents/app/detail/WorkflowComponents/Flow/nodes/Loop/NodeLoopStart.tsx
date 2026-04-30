@@ -38,7 +38,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const loopItemInputType = useMemo(() => {
     const parentNode = getNodeById(loopStartNode?.parentNodeId);
     const parentArrayInput = parentNode?.inputs.find(
-      (input) => input.key === NodeInputKeyEnum.loopInputArray
+      (input) => input.key === NodeInputKeyEnum.nestedInputArray
     );
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
   }, [getNodeById, loopStartNode?.parentNodeId]);
@@ -46,7 +46,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   // Auth update loopStartInput output
   useEffect(() => {
     const loopArrayOutput = loopStartNode?.outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.loopStartInput
+      (output) => output.key === NodeOutputKeyEnum.nestedStartInput
     );
 
     // if loopItemInputType is undefined, delete loopStartInput output
@@ -54,7 +54,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       onChangeNode({
         nodeId,
         type: 'delOutput',
-        key: NodeOutputKeyEnum.loopStartInput
+        key: NodeOutputKeyEnum.nestedStartInput
       });
     }
     // if loopItemInputType is not undefined, and has no loopArrayOutput, add loopStartInput output
@@ -63,8 +63,8 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         nodeId,
         type: 'addOutput',
         value: {
-          id: NodeOutputKeyEnum.loopStartInput,
-          key: NodeOutputKeyEnum.loopStartInput,
+          id: NodeOutputKeyEnum.nestedStartInput,
+          key: NodeOutputKeyEnum.nestedStartInput,
           label: t('workflow:Array_element'),
           type: FlowNodeOutputTypeEnum.static,
           valueType: loopItemInputType
@@ -76,7 +76,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       onChangeNode({
         nodeId,
         type: 'updateOutput',
-        key: NodeOutputKeyEnum.loopStartInput,
+        key: NodeOutputKeyEnum.nestedStartInput,
         value: {
           ...loopArrayOutput,
           valueType: loopItemInputType
@@ -99,12 +99,10 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <Box px={4} pt={2} w={'420px'}>
           <Box bg={'white'} borderRadius={'md'} overflow={'hidden'} border={'base'}>
             <TableContainer>
-              <Table bg={'white'}>
+              <Table bg={'white'} variant={'workflow'}>
                 <Thead>
                   <Tr>
-                    <Th borderBottomLeftRadius={'none !important'}>
-                      {t('workflow:Variable_name')}
-                    </Th>
+                    <Th>{t('workflow:Variable_name')}</Th>
                     <Th>{t('common:core.workflow.Value type')}</Th>
                   </Tr>
                 </Thead>

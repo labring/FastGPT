@@ -1,12 +1,12 @@
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
-import axios from 'axios';
+import { createProxyAxios } from '../../common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
 export const useTextinServer = ({ appId, secretCode }: { appId: string; secretCode: string }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
   // Init request
-  const instance = axios.create({
+  const instance = createProxyAxios({
     baseURL: 'https://api.textin.com/ai/service/v1',
     timeout: 300000,
     headers: {

@@ -8,7 +8,8 @@ const InputSlider = ({
   max = 100,
   min = 0,
   step = 1,
-  isDisabled
+  isDisabled,
+  inputVariant
 }: {
   value?: number;
   onChange: (index: number) => void;
@@ -16,6 +17,7 @@ const InputSlider = ({
   min: number;
   step?: number;
   isDisabled?: boolean;
+  inputVariant?: string;
 }) => {
   const markList = useMemo(() => {
     const valLen = max - min;
@@ -30,7 +32,7 @@ const InputSlider = ({
   }, [max, min]);
 
   return (
-    <HStack zIndex={10} spacing={3}>
+    <HStack zIndex={10} spacing={4}>
       <Slider
         max={max}
         min={min}
@@ -65,6 +67,7 @@ const InputSlider = ({
       </Slider>
       <MyNumberInput
         size={'sm'}
+        variant={inputVariant}
         width={'150px'}
         min={min}
         max={max}

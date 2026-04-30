@@ -6,6 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { stopWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
 
 export type OutLinkDeleteQuery = {
   id: string;
@@ -25,7 +26,15 @@ async function handler(
     per: OwnerPermissionVal
   });
 
-  await MongoOutLink.findByIdAndDelete(id);
+  const outlink = await MongoOutLink.findById(id);
+
+  if (outlink && outlink.type === 'wechat') {
+    await stopWechatPolling(outlink.shareId).catch((error) => {
+      console.warn('Stop wechat polling failed', error);
+    });
+  }
+
+  await outlink?.deleteOne();
 
   (async () => {
     addAuditLog({

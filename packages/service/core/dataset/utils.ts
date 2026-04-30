@@ -1,10 +1,11 @@
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { S3Sources } from '../../common/s3/type';
+import { S3Sources } from '../../common/s3/contracts/type';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { jwtSignS3ObjectKey, isS3ObjectKey } from '../../common/s3/utils';
+import { jwtSignS3DownloadToken, isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
+import { S3Buckets } from '../../common/s3/config/constants';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -49,7 +50,7 @@ export const filterDatasetsByTmbId = async ({
  * const datasetQuoteText = '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
  * const replacedText = await replaceS3KeyToPreviewUrl(datasetQuoteText, addDays(new Date(), 90))
  * console.log(replacedText)
- * // '![image.png](http://localhost:3000/api/system/file/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvYmplY3RLZXkiOiJjaGF0LzY5MWFlMjlkNDA0ZDA0Njg3MTdkZDc0Ny82OGFkODVhNzQ2MzAwNmM5NjM3OTlhMDcvalhmWHk4eWZHQUZzOVdKcGNXUmJBaFYyL3BhcnNlZC85YTBmNGZlZC00ZWRmLTQ2MTMtYThkNi01MzNhZjVhZTUxZGMucG5nIiwiaWF0IjoxNzYzMzcwOTYwLCJleHAiOjk1MzkzNzA5NjB9.tMDWg0-ZWRnWPNp9Hakd0w1hhaO8jj2oD98SU0wAQYQ)'
+ * // '![image.png](http://localhost:3000/api/system/file/download/xxx?filename=image.png)'
  * ```
  */
 export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
@@ -67,7 +68,11 @@ export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime:
     const [full, bang, alt, objectKey] = match;
 
     if (isS3ObjectKey(objectKey, 'dataset') || isS3ObjectKey(objectKey, 'chat')) {
-      const url = jwtSignS3ObjectKey(objectKey, expiredTime);
+      const url = jwtSignS3DownloadToken({
+        objectKey,
+        bucketName: S3Buckets.private,
+        expiredTime
+      });
       const replacement = `${bang}[${alt}](${url})`;
       content =
         content.slice(0, match.index) + replacement + content.slice(match.index + full.length);

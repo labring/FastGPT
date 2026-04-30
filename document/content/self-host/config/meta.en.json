@@ -1,0 +1,5 @@
+{
+  "title": "Configuration",
+  "description": "FastGPT self-hosting configuration",
+  "pages": ["model", "object-storage", "json", "signoz"]
+}

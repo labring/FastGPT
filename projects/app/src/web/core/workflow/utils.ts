@@ -19,7 +19,9 @@ import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Te
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getHandleId
+  getHandleId,
+  isValidReferenceValue,
+  isValidReferenceValueFormat
 } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'next-i18next';
 import {
@@ -28,7 +30,9 @@ import {
   type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { workflowSystemVariables } from '../app/utils';
@@ -355,7 +359,9 @@ export const getNodeAllSource = ({
   getNodeById,
   edges,
   chatConfig,
-  t
+  t,
+  includeChildren,
+  childrenNodeIdListMap
 }: {
   nodeId: string;
   systemConfigNode?: StoreNodeItemType;
@@ -363,6 +369,8 @@ export const getNodeAllSource = ({
   edges: Edge[];
   chatConfig: AppChatConfigType;
   t: TFunction;
+  includeChildren?: boolean;
+  childrenNodeIdListMap?: Record<string, string[]>;
 }): FlowNodeItemType[] => {
   // get current node
   const node = getNodeById(nodeId);
@@ -388,6 +396,37 @@ export const getNodeAllSource = ({
     });
   };
   findSourceNode(nodeId);
+
+  // 对于嵌套在容器（Loop/ParallelRun）内的节点，容器的 reference 类型输入
+  // 是通过引用选择器设置的（存在 input.value = [nodeId, outputId]），不产生 ReactFlow edge。
+  // 因此需要额外扫描父容器的 reference 输入，将被引用的外部节点补充到可选来源中。
+  if (parentId) {
+    const parentNode = getNodeById(parentId);
+    if (parentNode) {
+      parentNode.inputs.forEach((input) => {
+        if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.reference)) return;
+        const val = input.value as ReferenceItemValueType | undefined;
+        if (!Array.isArray(val) || val.length < 2) return;
+        const [refNodeId] = val;
+        if (!refNodeId || refNodeId === VARIABLE_NODE_ID) return;
+        const refNode = getNodeById(refNodeId);
+        if (!refNode || sourceNodes.has(refNode.nodeId)) return;
+        sourceNodes.set(refNode.nodeId, refNode);
+        findSourceNode(refNode.nodeId);
+      });
+    }
+  }
+
+  // Edge traversal only reaches upstream; children must be added explicitly.
+  if (includeChildren && childrenNodeIdListMap) {
+    const childIds = childrenNodeIdListMap[nodeId] ?? [];
+    childIds.forEach((childId) => {
+      if (sourceNodes.has(childId)) return;
+      const childNode = getNodeById(childId);
+      if (!childNode) return;
+      sourceNodes.set(childId, childNode);
+    });
+  }
 
   sourceNodes.set(
     'system_global_variable',
@@ -479,6 +518,24 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.loopRun) {
+      const mode = inputs.find((input) => input.key === NodeInputKeyEnum.loopRunMode)?.value as
+        | LoopRunModeEnum
+        | undefined;
+      if (mode === LoopRunModeEnum.conditional) {
+        const children =
+          (inputs.find((input) => input.key === NodeInputKeyEnum.childrenNodeIdList)
+            ?.value as string[]) ?? [];
+        const childSet = new Set(children);
+        const hasBreak = nodes.some(
+          (n) =>
+            childSet.has(n.data.nodeId) && n.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
+        );
+        if (!hasBreak) {
+          return [data.nodeId];
+        }
+      }
+    }
     if (data.flowNodeType === FlowNodeTypeEnum.toolCall) {
       const toolConnections = edges.filter(
         (edge) =>
@@ -491,10 +548,67 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.variableUpdate) {
+      const updateList: TUpdateListItem[] = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.updateList
+      )?.value;
+      const nodeIds = nodes.map((n) => n.data.nodeId);
+      const isLiveReference = (value: ReferenceItemValueType | undefined) => {
+        if (!isValidReferenceValueFormat(value)) return false;
+        const [refNodeId, refOutputId] = value;
+        if (!refNodeId || !refOutputId) return false;
+        if (refNodeId === VARIABLE_NODE_ID) return true;
+        return !!nodes
+          .find((node) => node.data.nodeId === refNodeId)
+          ?.data.outputs.find((output) => output.id === refOutputId);
+      };
+      if (
+        !updateList ||
+        updateList.length === 0 ||
+        updateList.some((item) => {
+          if (!isValidReferenceValue(item.variable, nodeIds) || !isLiveReference(item.variable))
+            return true;
 
-    // check node input
+          if (item.renderType === FlowNodeInputTypeEnum.reference) {
+            // 接受单引用 [ref] 与引用数组 [[ref], ...]，与 dispatcher 对齐
+            if (isValidReferenceValueFormat(item.value)) {
+              return !isLiveReference(item.value as ReferenceItemValueType);
+            }
+            return (
+              !Array.isArray(item.value) ||
+              item.value.length === 0 ||
+              (item.value as ReferenceItemValueType[]).some((v) => !isLiveReference(v))
+            );
+          }
+
+          // input 模式：clear / boolean 由模式字段决定，不读 value
+          if (item.arrayMode === 'clear') return false;
+          if (item.booleanMode) return false;
+          const inputVal = item.value?.[1];
+          return inputVal === undefined || inputVal === null || inputVal === '';
+        })
+      ) {
+        return [data.nodeId];
+      } else {
+        continue;
+      }
+    }
+
     if (
       inputs.some((input) => {
+        // Conditional loopRun hides loopRunInputArray in the UI; its required flag is
+        // only meaningful in array mode, so skip it here to avoid spurious failures.
+        if (input.key === NodeInputKeyEnum.loopRunInputArray) {
+          const loopRunMode =
+            data.flowNodeType === FlowNodeTypeEnum.loopRun
+              ? (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
+                  | LoopRunModeEnum
+                  | undefined)
+              : undefined;
+          if (loopRunMode === LoopRunModeEnum.conditional) {
+            return false;
+          }
+        }
         if (
           !input.valueType ||
           [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
@@ -620,7 +734,10 @@ export const checkWorkflowNodeAndConnection = ({
     };
     dfsFromStart(startNode.data.nodeId);
     nodes.forEach((node) => {
-      if (node.data.flowNodeType === FlowNodeTypeEnum.loopStart) {
+      if (
+        node.data.flowNodeType === FlowNodeTypeEnum.nestedStart ||
+        node.data.flowNodeType === FlowNodeTypeEnum.loopRunStart
+      ) {
         dfsFromStart(node.data.nodeId);
       }
     });
@@ -646,7 +763,8 @@ export const checkWorkflowNodeAndConnection = ({
       const isStartNode = [
         FlowNodeTypeEnum.workflowStart,
         FlowNodeTypeEnum.pluginInput,
-        FlowNodeTypeEnum.loopStart
+        FlowNodeTypeEnum.nestedStart,
+        FlowNodeTypeEnum.loopRunStart
       ].includes(nodeType);
 
       // Check if node is reachable from start
@@ -775,8 +893,8 @@ export const compareSnapshot = (
             key: input.key,
             selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
-            // set to arrayAny for loopInputArray to skip valueType comparison
-            // valueType: input.key === NodeInputKeyEnum.loopInputArray ? 'arrayAny' : input.valueType,
+            // set to arrayAny for nestedInputArray to skip valueType comparison
+            // valueType: input.key === NodeInputKeyEnum.nestedInputArray ? 'arrayAny' : input.valueType,
             value: input.value ?? undefined
           })),
           outputs: node.data.outputs.map((item: FlowNodeOutputItemType) => ({

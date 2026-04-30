@@ -29,7 +29,7 @@ export type ActiveSpanOptions = {
   attributes?: Record<string, unknown>;
 };
 
-const DEFAULT_PRODUCTION_TRACING_SAMPLE_RATIO = 0.05;
+const DEFAULT_PRODUCTION_TRACING_SAMPLE_RATIO = 0.01;
 const DEFAULT_NON_PRODUCTION_TRACING_SAMPLE_RATIO = 1;
 
 function getDefaultTracingSampleRatio() {

@@ -23,7 +23,7 @@ import {
   useThrottleEffect
 } from 'ahooks';
 
-import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/global/openapi/api';
 import MyMenu from '../components/common/MyMenu';
 import { useSystem } from './useSystem';
 import { useRouter } from 'next/router';
