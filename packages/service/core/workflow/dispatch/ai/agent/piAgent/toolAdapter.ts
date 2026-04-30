@@ -16,6 +16,13 @@ import type { CapabilityToolCallHandlerType } from '../capability/type';
 import type { DispatchAgentModuleProps } from '..';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import {
+  SANDBOX_TOOL_NAME,
+  SANDBOX_GET_FILE_URL_TOOL_NAME,
+  SandboxShellToolSchema,
+  SandboxGetFileUrlToolSchema
+} from '@fastgpt/global/core/ai/sandbox/constants';
+import { dispatchSandboxShell, dispatchSandboxGetFileUrl } from '../sub/sandbox';
 
 type AgentTool = import('@mariozechner/pi-agent-core').AgentTool<any>;
 
@@ -149,6 +156,37 @@ export async function buildAgentTools({
               teamId: runningUserInfo.teamId,
               tmbId: runningUserInfo.tmbId,
               llmModel: model
+            });
+            if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
+            return { response: result.response, usages: result.usages };
+          }
+
+          // Sandbox shell
+          if (toolId === SANDBOX_TOOL_NAME) {
+            const toolParams = SandboxShellToolSchema.safeParse(args);
+            if (!toolParams.success) return { response: toolParams.error.message };
+            const result = await dispatchSandboxShell({
+              command: toolParams.data.command,
+              timeout: toolParams.data.timeout,
+              appId: runningAppInfo.id,
+              userId: uid,
+              chatId,
+              lang
+            });
+            if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
+            return { response: result.response, usages: result.usages };
+          }
+
+          // Sandbox get file url
+          if (toolId === SANDBOX_GET_FILE_URL_TOOL_NAME) {
+            const toolParams = SandboxGetFileUrlToolSchema.safeParse(args);
+            if (!toolParams.success) return { response: toolParams.error.message };
+            const result = await dispatchSandboxGetFileUrl({
+              paths: toolParams.data.paths,
+              appId: runningAppInfo.id,
+              userId: uid,
+              chatId,
+              lang
             });
             if (result.nodeResponse) nodeResponses.push(result.nodeResponse);
             return { response: result.response, usages: result.usages };
