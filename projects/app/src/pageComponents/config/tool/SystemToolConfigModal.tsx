@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Button,
@@ -121,6 +121,21 @@ const SystemToolConfigModal = ({
       })) || [],
     [i18n.language, toolTags]
   );
+
+  const hasFilteredOrphanTags = useRef(false);
+  useEffect(() => {
+    hasFilteredOrphanTags.current = false;
+  }, [toolId]);
+
+  useEffect(() => {
+    if (!hasFilteredOrphanTags.current && tool?.tags?.length && toolTags.length > 0) {
+      hasFilteredOrphanTags.current = true;
+      const validTagIds = tool.tags.filter((tagId) => toolTags.some((tag) => tag.tagId === tagId));
+      if (validTagIds.length !== tool.tags.length) {
+        setSelectedTags(validTagIds);
+      }
+    }
+  }, [tool?.tags, toolTags]);
 
   const { runAsync: onSubmit, loading: submitting } = useRequest(
     (formData: UpdateToolBodyType) =>
