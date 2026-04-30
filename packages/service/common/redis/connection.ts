@@ -1,7 +1,9 @@
 import type { RedisOptions } from 'ioredis';
 import Redis, { Cluster } from 'ioredis';
 import { parseRedisConfig } from './config';
-import { addLog } from '../system/log';
+import { getLogger, LogCategories } from '../logger';
+
+const addLog = getLogger(LogCategories.INFRA.REDIS);
 
 // Use hash tag {fastgpt} to ensure all keys go to the same slot in cluster mode
 // In standalone mode, the braces are just regular characters with no special meaning
@@ -85,7 +87,7 @@ export const getGlobalRedisConnection = (): RedisConnection => {
       addLog.info('[Global Redis] connected');
     });
     global.redisClient.on('error', (error) => {
-      addLog.error('[Global Redis] connection error', error);
+      addLog.error('[Global Redis] connection error', { error });
       if (config.mode === 'cluster') {
         console.error(
           '\n⚠️  Redis Cluster connection failed. Please check:\n' +
