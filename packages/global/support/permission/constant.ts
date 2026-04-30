@@ -57,7 +57,7 @@ export enum PerResourceTypeEnum {
 }
 
 export enum PermissionEffectScopeEnum {
-  allChildren = 'allChildren', // 对所有子集资源生效（默认）
+  allChildren = 'allChildren', // 对所有子级资源生效（默认）
   currentOnly = 'currentOnly' // 仅对当前资源生效
 }
 

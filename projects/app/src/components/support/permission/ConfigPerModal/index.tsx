@@ -55,7 +55,7 @@ const ConfigPerModal = ({
   refetchResource,
   onChangeOwner,
   showEffectScope,
-  effectScope,
+  effectScope = PermissionEffectScopeEnum.allChildren,
   onConfirmPermission
 }: ConfigPerModalProps & {
   onClose: () => void;
