@@ -348,7 +348,11 @@ export class BuiltInLLMAdapter implements LLMProvider {
     const model = merged.model || this.modelName;
     const enableThinking = merged.enableThinking ?? this.defaultEnableThinking;
     const temperature = resolveTemperature(merged.temperature, this.fixedTemperature);
-    const maxTokens = resolveMaxTokens(merged.maxTokens, enableThinking, this.defaultEnableThinking);
+    const maxTokens = resolveMaxTokens(
+      merged.maxTokens,
+      enableThinking,
+      this.defaultEnableThinking
+    );
 
     const body: Record<string, unknown> = {
       model,

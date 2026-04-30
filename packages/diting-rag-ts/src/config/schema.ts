@@ -96,7 +96,8 @@ export const AgentConfigSchema = z.object({
   max_tool_calls: z.number().positive().default(10),
   embedding_weight: z.number().min(0).max(1).default(0.5),
   similarity: z.number().min(0).max(1).default(0.0),
-  rerank_top_k: z.number().positive().default(20)
+  rerank_top_k: z.number().positive().default(20),
+  retrieve_limit: z.number().positive().default(50)
 });
 
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;

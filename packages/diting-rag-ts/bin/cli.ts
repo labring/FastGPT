@@ -302,7 +302,7 @@ program.addCommand(configCmd);
 program
   .command('serve')
   .description('Start HTTP server for agentic search')
-  .option('-p, --port <port>', 'Server port', process.env.PORT || '3000')
+  .option('-p, --port <port>', 'Server port', process.env.AGENTIC_PORT || '3000')
   .option('-h, --host <host>', 'Server host', '0.0.0.0')
   .option('-c, --config <file>', 'Config file path')
   .option('--mock', 'Use mock providers (for testing)', false)

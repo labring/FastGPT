@@ -202,6 +202,7 @@ export class RequestContext {
       embeddingWeight: config.embeddingWeight ?? DEFAULT_SEARCH_CONFIG.EMBEDDING_WEIGHT,
       similarity: config.similarity ?? DEFAULT_SEARCH_CONFIG.SIMILARITY_THRESHOLD,
       rerankTopK: config.rerankTopK ?? DEFAULT_SEARCH_CONFIG.RERANK_TOP_K,
+      retrieveLimit: config.retrieveLimit ?? DEFAULT_SEARCH_CONFIG.RETRIEVE_LIMIT,
       answerMaxChunks: config.answerMaxChunks ?? DEFAULT_SEARCH_CONFIG.ANSWER_MAX_CHUNKS,
       answerMaxTokens: config.answerMaxTokens ?? DEFAULT_SEARCH_CONFIG.ANSWER_MAX_TOKENS,
       enableShowReferences: config.enableShowReferences ?? true,
@@ -457,7 +458,8 @@ export class RequestContext {
     for (const c of survivedChunks) {
       const cur = perDataset.get(c.datasetId) || { count: 0, totalScore: 0 };
       cur.count++;
-      cur.totalScore += (c as any).llm_sub_query_score ?? 0;
+      const chunkScore = (c as any).llm_sub_query_score ?? (c.rerankScore ?? c.score ?? 0) * 10;
+      cur.totalScore += chunkScore;
       perDataset.set(c.datasetId, cur);
     }
     for (const [dsId, { count, totalScore }] of perDataset) {

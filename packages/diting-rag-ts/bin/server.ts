@@ -9,8 +9,8 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-const port = parseInt(process.env.PORT || '3123', 10);
-const host = process.env.HOST || '0.0.0.0';
+const port = parseInt(process.env.AGENTIC_PORT || '3123', 10);
+const host = process.env.AGENTIC_HOST || '0.0.0.0';
 
 async function main() {
   const { app, info } = await startServer({

@@ -209,7 +209,7 @@ const TrainDetailDrawer = ({
 
   const statusOptions = useMemo<TrainStatusFilterOption[]>(
     () =>
-      (Object.keys(trainTaskStatusStyleMap)).map((status) => ({
+      Object.keys(trainTaskStatusStyleMap).map((status) => ({
         key: status,
         label: getTrainTaskStatusText(status, t)
       })),
@@ -410,11 +410,7 @@ const TrainDetailDrawer = ({
         );
       }
 
-      return (
-        <MyTag {...tagProps}>
-          {statusText}
-        </MyTag>
-      );
+      return <MyTag {...tagProps}>{statusText}</MyTag>;
     },
     [t]
   );
@@ -651,7 +647,12 @@ const TrainDetailDrawer = ({
                 <Thead bg={'myGray.50'} position={'sticky'} top={0} zIndex={1}>
                   <Tr>
                     <Th>
-                      <HStack spacing={1} cursor={'pointer'} userSelect={'none'} onClick={toggleSort}>
+                      <HStack
+                        spacing={1}
+                        cursor={'pointer'}
+                        userSelect={'none'}
+                        onClick={toggleSort}
+                      >
                         <Text>{t('account_model:train_detail_train_time')}</Text>
                         {renderSortIcon('createTime')}
                       </HStack>

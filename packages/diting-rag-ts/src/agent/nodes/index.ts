@@ -23,7 +23,8 @@ export async function createSearchNode(
     queries: searchQueries || [],
     datasetIds: datasetIds || [],
     tokenBudget: tokenBudget || 8000,
-    enableRerank: enableRerank ?? true
+    enableRerank: enableRerank ?? true,
+    retrieveLimit: context.config.retrieveLimit
   });
 
   if (!result.success) {

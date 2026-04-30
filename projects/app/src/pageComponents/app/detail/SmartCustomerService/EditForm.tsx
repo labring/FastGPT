@@ -347,7 +347,9 @@ const EditForm = ({
       <Box {...BOX_STYLES}>
         <Flex h={'32px'} mb={4} alignItems={'center'}>
           <Flex alignItems={'center'} flex={1}>
-            <FormLabel color={'myWhite.1000'} fontWeight="600">{t('common:core.dataset.Choose Dataset')}</FormLabel>
+            <FormLabel color={'myWhite.1000'} fontWeight="600">
+              {t('common:core.dataset.Choose Dataset')}
+            </FormLabel>
           </Flex>
           <Button
             variant={'transparentBase'}

@@ -20,7 +20,15 @@ const ResumeInherit = ({
 
   return onResume ? (
     <>
-      <HStack px={3} py={2} bg={'#F5F9FF'} borderRadius={'md'} spacing={2} align={'center'} {...props}>
+      <HStack
+        px={3}
+        py={2}
+        bg={'#F5F9FF'}
+        borderRadius={'md'}
+        spacing={2}
+        align={'center'}
+        {...props}
+      >
         <MyIcon name={'common/info'} w={'16px'} flexShrink={0} color={'#1464CC'} mt={'1px'} />
         <Box fontSize={'12px'} color={'#1464CC'}>
           {t('common:permission.No InheritPermission')}

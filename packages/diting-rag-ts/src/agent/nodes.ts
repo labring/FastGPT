@@ -880,6 +880,7 @@ export function createToolsNode(
               tokenBudget: config.tokenBudget,
               enableRerank: !!providers.reranker,
               topK: config.rerankTopK,
+              retrieveLimit: config.retrieveLimit,
               originalQuery: state.question
             });
 
@@ -933,11 +934,12 @@ export function createToolsNode(
                   );
                 }
                 logger?.info(`[ToolsNode] after subQueryFilter: newChunks=${newChunks.length}`);
-                // ===== 记录 sub_query filter 后各 dataset 存活 chunk =====
-                ctx.recordDatasetSurvival(newChunks);
-                // 聚合本轮信号，更新跨轮状态（决策矩阵）
-                ctx.consolidateSignals(searchQueries);
               }
+
+              // ===== 记录 sub_query filter 后各 dataset 存活 chunk / 聚合信号 =====
+              // 移到 subQueryFilter 条件块外：即使 LLM 评分关闭，BGE 分数仍可用于信号追踪
+              ctx.recordDatasetSurvival(newChunks);
+              ctx.consolidateSignals(searchQueries);
 
               // ===== 对比查询：更新维度覆盖状态（对齐 Python tools.py 第 164-197 行）=====
               if (
@@ -1780,6 +1782,7 @@ export function createPlanExecutorNode(
           tokenBudget: config.tokenBudget,
           enableRerank: !!providers.reranker,
           topK: config.rerankTopK,
+          retrieveLimit: config.retrieveLimit,
           originalQuery: state.question
         });
 
@@ -1806,9 +1809,10 @@ export function createPlanExecutorNode(
                 selectorCfg.maxDocLength
               );
             }
-            _ctx.recordDatasetSurvival(newChunks);
-            _ctx.consolidateSignals(newQueries);
           }
+          // 信号追踪移出 useLLMSubQuery 条件块：BGE 分数仍可用于信号
+          _ctx.recordDatasetSurvival(newChunks);
+          _ctx.consolidateSignals(newQueries);
         }
 
         accNewChunks.push(...newChunks);
@@ -1940,7 +1944,7 @@ export function createSyncBlackboardNode(
       updates.refuse = ans.reflectionLabel === 'refuse';
       updates.nodeHist = [
         {
-          node: 'answer',
+          node: 'summary',
           toolCalls: [],
           reflectionLabel: ans.reflectionLabel || '',
           reflectionReason: ans.reflectionReason || '',

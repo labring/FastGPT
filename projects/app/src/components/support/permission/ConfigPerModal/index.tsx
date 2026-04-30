@@ -146,19 +146,11 @@ const ConfigPerModal = ({
                     <Box fontSize={'xs'}>{t('common:permission.Collaborator')}</Box>
                     <HStack spacing={2}>
                       {onChangeOwner && (
-                        <Button
-                          size="xs"
-                          variant="whitePrimary"
-                          onClick={onOpenChangeOwnerModal}
-                        >
+                        <Button size="xs" variant="whitePrimary" onClick={onOpenChangeOwnerModal}>
                           {t('common:permission.change_owner')}
                         </Button>
                       )}
-                      <Button
-                        size="xs"
-                        variant="whitePrimary"
-                        onClick={onOpenManageModal}
-                      >
+                      <Button size="xs" variant="whitePrimary" onClick={onOpenManageModal}>
                         {t('common:permission.Manage')}
                       </Button>
                     </HStack>
@@ -189,7 +181,9 @@ const ConfigPerModal = ({
                     </Button>
                   </HStack>
                 ) : (
-                  <Button variant="whiteBase" onClick={onClose}>{t('common:Close')}</Button>
+                  <Button variant="whiteBase" onClick={onClose}>
+                    {t('common:Close')}
+                  </Button>
                 )}
               </ModalFooter>
             </>

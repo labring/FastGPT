@@ -392,7 +392,7 @@ export function buildProgressGuidance(
     query_rewrite: 'rewrite or decompose the query from a new angle, then search the variants'
   };
   for (const name of toolNames) {
-    if (name === 'answer') continue;
+    if (name === 'summary') continue;
     const hint = toolHints[name] || `use @${name}`;
     lines.push(`  • @${name} — ${hint}`);
   }

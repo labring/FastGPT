@@ -157,12 +157,7 @@ const CollectionNavActions = () => {
         position: 'bottom-right',
         duration: null,
         render: () => (
-          <Alert
-            status="success"
-            bgColor={'green.50'}
-            alignItems={'start'}
-            variant="subtle"
-          >
+          <Alert status="success" bgColor={'green.50'} alignItems={'start'} variant="subtle">
             <AlertIcon w={6} h={6} />
             <Box flex={1} color={'myGray.900'}>
               <AlertTitle fontWeight={'md'}>{t('dataset:refresh_success')}</AlertTitle>
@@ -202,12 +197,7 @@ const CollectionNavActions = () => {
         position: 'bottom-right',
         duration: null,
         render: () => (
-          <Alert
-            status="error"
-            bgColor={'red.50'}
-            alignItems={'start'}
-            variant="subtle"
-          >
+          <Alert status="error" bgColor={'red.50'} alignItems={'start'} variant="subtle">
             <Box mr={3}>
               <MyIcon name="core/workflow/runError" w={6} h={6} />
             </Box>
@@ -263,12 +253,7 @@ const CollectionNavActions = () => {
         }
         value={searchText}
         leftIcon={
-          <MyIcon
-            name="common/searchLight"
-            position={'absolute'}
-            w={'16px'}
-            color={'myGray.500'}
-          />
+          <MyIcon name="common/searchLight" position={'absolute'} w={'16px'} color={'myGray.500'} />
         }
         onChange={(e) => setSearchText(e.target.value)}
       />
@@ -366,20 +351,14 @@ const CollectionNavActions = () => {
 
       {/* 权限按钮 */}
       {datasetDetail.permission.hasManagePer && (
-        <Button
-          variant={'whiteBase'}
-          onClick={() => setEditPerOpen(true)}
-        >
+        <Button variant={'whiteBase'} onClick={() => setEditPerOpen(true)}>
           {t('common:permission.Permission')}
         </Button>
       )}
 
       {/* 编辑按钮 */}
       {datasetDetail.permission.hasWritePer && (
-        <Button
-          variant={'whiteBase'}
-          onClick={() => setShowCreateModal(true)}
-        >
+        <Button variant={'whiteBase'} onClick={() => setShowCreateModal(true)}>
           {t('common:Edit')}
         </Button>
       )}
@@ -388,11 +367,7 @@ const CollectionNavActions = () => {
       {datasetDetail.type === DatasetTypeEnum.dataset && datasetDetail.permission.hasWritePer && (
         <MyMenu
           offset={[0, 5]}
-          Button={
-            <Button>
-              {t('dataset:add')}
-            </Button>
-          }
+          Button={<Button>{t('dataset:add')}</Button>}
           menuList={[
             {
               children: [

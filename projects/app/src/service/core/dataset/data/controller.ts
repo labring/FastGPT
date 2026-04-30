@@ -244,7 +244,7 @@ export async function insertData2Dataset({
     collectionId: String(collectionId),
     resultCount: results.length
   });
-  
+
   const detectedLanguage = detectLang(q);
   const mergedMetadata = { ...(metadata || {}), detectedLanguage };
 

@@ -177,9 +177,7 @@ const BatchSetTagsModal = ({
         })
       ];
 
-      const deleteTagIds = existingRows
-        .filter((row) => row.deleteFlag)
-        .map((row) => row.tagId);
+      const deleteTagIds = existingRows.filter((row) => row.deleteFlag).map((row) => row.tagId);
 
       return batchSetCollectionTags({
         collectionIds: selectedCollections.map((c) => c._id),
@@ -252,9 +250,7 @@ const BatchSetTagsModal = ({
                         disabled={!row.checked || isDeleted}
                       />
                     </Box>
-                    <MyTooltip
-                      label={isDeleted ? t('dataset:tag.cancel_delete') : undefined}
-                    >
+                    <MyTooltip label={isDeleted ? t('dataset:tag.cancel_delete') : undefined}>
                       <Flex
                         ml={1}
                         w="32px"

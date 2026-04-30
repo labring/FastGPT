@@ -52,7 +52,9 @@ const ToolSelect = ({
     <>
       <Flex h={'32px'} alignItems={'center'}>
         <Flex alignItems={'center'} flex={1}>
-          <FormLabel color={'myWhite.1000'} fontWeight="600">{t('app:tools')}</FormLabel>
+          <FormLabel color={'myWhite.1000'} fontWeight="600">
+            {t('app:tools')}
+          </FormLabel>
           <QuestionTip ml={1} label={t('app:tools_tip')} />
         </Flex>
         <Button

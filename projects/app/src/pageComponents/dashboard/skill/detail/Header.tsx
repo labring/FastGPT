@@ -41,13 +41,7 @@ const RouteTab = () => {
     { label: t('skill:detail_tab_preview'), value: TabEnum.preview }
   ];
 
-  return (
-    <MyTabs
-      tabs={tabList}
-      value={currentTab}
-      onChange={(v) => setCurrentTab(v as TabEnum)}
-    />
-  );
+  return <MyTabs tabs={tabList} value={currentTab} onChange={(v) => setCurrentTab(v as TabEnum)} />;
 };
 
 const Header = () => {

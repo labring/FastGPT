@@ -102,6 +102,7 @@ export function buildRequiredConfig(config?: AgenticSearchConfig): Required<Agen
     embeddingWeight: config?.embeddingWeight ?? DEFAULT_SEARCH_CONFIG.EMBEDDING_WEIGHT,
     similarity: config?.similarity ?? DEFAULT_SEARCH_CONFIG.SIMILARITY_THRESHOLD,
     rerankTopK: config?.rerankTopK ?? DEFAULT_SEARCH_CONFIG.RERANK_TOP_K,
+    retrieveLimit: config?.retrieveLimit ?? DEFAULT_SEARCH_CONFIG.RETRIEVE_LIMIT,
     answerMaxChunks: config?.answerMaxChunks ?? DEFAULT_SEARCH_CONFIG.ANSWER_MAX_CHUNKS,
     answerMaxTokens: config?.answerMaxTokens ?? DEFAULT_SEARCH_CONFIG.ANSWER_MAX_TOKENS,
     enableShowReferences: config?.enableShowReferences ?? true,
@@ -146,7 +147,7 @@ export function buildNativeGraph(
   const ctx = new RequestContext(config, [], providers, providers.logger);
 
   // 获取 tool 名称列表（用于 progress guidance）
-  const toolNames = ['search', 'query_rewrite', 'answer'];
+  const toolNames = ['search', 'query_rewrite', 'summary'];
 
   return new StateGraph(AgenticRAGState)
     .addNode('route_playbook', createRoutePlaybookNode(providers, config))
@@ -198,7 +199,7 @@ export function buildTextReActGraph(
   const ctx = new RequestContext(config, [], providers, providers.logger);
 
   // 获取 tool 名称列表
-  const toolNames = ['search', 'query_rewrite', 'answer'];
+  const toolNames = ['search', 'query_rewrite', 'summary'];
 
   return new StateGraph(AgenticRAGState)
     .addNode('route_playbook', createRoutePlaybookNode(providers, config))

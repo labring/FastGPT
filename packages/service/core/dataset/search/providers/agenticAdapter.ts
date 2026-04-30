@@ -34,14 +34,24 @@ export function chunkItemsToSearchResults(chunks: ChunkItem[]): SearchDataRespon
   return chunks.map((chunk, index) => {
     const meta = (chunk.providerMetadata ?? {}) as FastGPTChunkMeta;
 
-    // 使用原始 score 数组；rrf value 按 agentic 最终位置重算，避免与原始排名冲突
+    // 使用原始 score 数组；rrf value 按 agentic 最终位置重算
     const score = meta.originalScoreArray
       ? meta.originalScoreArray.map((s) => ({
           ...s,
           index,
           value: s.type === 'rrf' ? 1 / (60 + index + 1) : s.value
         }))
-      : [{ type: 'rrf' as const, value: 1 / (60 + index + 1), index }];
+      : [];
+    // 追加 chunk 实际的相关性分数（reranker 优先，否则向量分），前端展示用
+    if (chunk.rerankScore !== undefined) {
+      score.push({ type: 'reRank' as const, value: chunk.rerankScore, index });
+    }
+    if (chunk.score !== undefined) {
+      score.push({ type: 'embedding' as const, value: chunk.score, index });
+    }
+    if (score.length === 0) {
+      score.push({ type: 'rrf' as const, value: 1 / (60 + index + 1), index });
+    }
 
     return {
       id: chunk.id,

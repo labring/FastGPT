@@ -19,7 +19,12 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { postCreateDataset, putDatasetById, getDatasetById, getDatasetTrainingQueue } from '@/web/core/dataset/api';
+import {
+  postCreateDataset,
+  putDatasetById,
+  getDatasetById,
+  getDatasetTrainingQueue
+} from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -80,8 +85,7 @@ const CreateModal = ({
       intro: '',
       vectorModel:
         defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
-      agentModel:
-        defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
+      agentModel: defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(llmModelList)?.model,
       vlmModel: defaultModels.datasetImageLLM?.model,
       websiteConfig: {
         url: '',
@@ -126,16 +130,13 @@ const CreateModal = ({
     }
   );
 
-  useRequest(
-    () => (editId ? getDatasetTrainingQueue(editId) : Promise.resolve(null)),
-    {
-      manual: false,
-      onSuccess: (data) => {
-        if (!data) return;
-        setIsTraining(data.rebuildingCount > 0 || data.trainingCount > 0);
-      }
+  useRequest(() => (editId ? getDatasetTrainingQueue(editId) : Promise.resolve(null)), {
+    manual: false,
+    onSuccess: (data) => {
+      if (!data) return;
+      setIsTraining(data.rebuildingCount > 0 || data.trainingCount > 0);
     }
-  );
+  });
 
   const {
     agentModel: agentModelShowConfig,

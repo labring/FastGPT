@@ -132,11 +132,7 @@ const Dataset = () => {
               )}
 
               {folderDetail && folderDetail.permission.hasManagePer && (
-                <Button
-                  variant={'whiteBase'}
-                  px={5}
-                  onClick={() => setFolderPerOpen(true)}
-                >
+                <Button variant={'whiteBase'} px={5} onClick={() => setFolderPerOpen(true)}>
                   {t('common:permission.Permission')}
                 </Button>
               )}

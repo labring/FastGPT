@@ -534,7 +534,11 @@ export const DashboardNavbar = ({
               collapsedLabel={t('common:navbar.app_build')}
               isActive={
                 isCollapsed &&
-                isActivePrefix([...appBuildItems.map((item) => item.path), '/app/detail', '/skill/detail'])
+                isActivePrefix([
+                  ...appBuildItems.map((item) => item.path),
+                  '/app/detail',
+                  '/skill/detail'
+                ])
               }
               isCollapsed={isCollapsed}
               isExpanded={expandedKeys.includes('app-build')}

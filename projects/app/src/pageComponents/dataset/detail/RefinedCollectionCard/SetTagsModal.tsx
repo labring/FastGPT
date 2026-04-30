@@ -135,7 +135,11 @@ const SetTagsModal = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isLoading={loading} isDisabled={rows.some((r) => !r.tagId || r.value === '')} onClick={onSave}>
+          <Button
+            isLoading={loading}
+            isDisabled={rows.some((r) => !r.tagId || r.value === '')}
+            onClick={onSave}
+          >
             {t('common:Confirm')}
           </Button>
         </ModalFooter>

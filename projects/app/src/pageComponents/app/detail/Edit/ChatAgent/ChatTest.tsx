@@ -33,7 +33,13 @@ type Props = {
   form2WorkflowFn: Form2WorkflowFnType;
   debuggerMode?: boolean;
 };
-const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn, debuggerMode = false }: Props) => {
+const ChatTest = ({
+  appForm,
+  setAppForm,
+  setRenderEdit,
+  form2WorkflowFn,
+  debuggerMode = false
+}: Props) => {
   const { t } = useTranslation();
   const { chatId } = useChatStore();
 
@@ -231,7 +237,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn, debugge
   );
 };
 
-const Render = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn, debuggerMode = false }: Props) => {
+const Render = ({
+  appForm,
+  setAppForm,
+  setRenderEdit,
+  form2WorkflowFn,
+  debuggerMode = false
+}: Props) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
