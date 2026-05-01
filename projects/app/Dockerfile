@@ -103,6 +103,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/app/worker /app/worker
 COPY --from=maindeps /app/node_modules/tiktoken ./node_modules/tiktoken
 RUN rm -rf ./node_modules/tiktoken/encoders
 COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@zilliz/milvus2-sdk-node
+# Pi Agent runtime deps (listed in serverExternalPackages but not traced by standalone output)
+# Docker COPY resolves symlinks, so this copies actual files from pnpm's symlinked structure.
+COPY --from=maindeps /app/node_modules/@mariozechner ./node_modules/@mariozechner
 
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
