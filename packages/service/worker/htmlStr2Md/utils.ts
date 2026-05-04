@@ -3,10 +3,11 @@ import { type ImageType } from '../readFile/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 import { getLogger, LogCategories } from '../../common/logger';
+import { workerEnv } from '../env';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
-const MAX_HTML_SIZE = Number(process.env.MAX_HTML_TRANSFORM_CHARS || 1000000);
+const MAX_HTML_SIZE = workerEnv.MAX_HTML_TRANSFORM_CHARS;
 const logger = getLogger(LogCategories.INFRA.WORKER);
 
 const processBase64Images = (htmlContent: string) => {

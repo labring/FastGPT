@@ -3,7 +3,6 @@ import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { serve } from '@hono/node-server';
 import { z } from 'zod';
-import { config } from './config';
 import { ProcessPool } from './pool/process-pool';
 import { PythonProcessPool } from './pool/python-process-pool';
 import type { ExecuteOptions } from './types';
@@ -27,14 +26,12 @@ const executeSchema = z.object({
 const app = new Hono();
 
 /** 进程池 */
-const jsPool = new ProcessPool(config.poolSize);
-const pythonPool = new PythonProcessPool(config.poolSize);
+const jsPool = new ProcessPool(env.poolSize);
+const pythonPool = new PythonProcessPool(env.poolSize);
 
 const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
   .then(() => {
-    serverLogger.info(
-      `Process pools ready: JS=${config.poolSize}, Python=${config.poolSize} workers`
-    );
+    serverLogger.info(`Process pools ready: JS=${env.poolSize}, Python=${env.poolSize} workers`);
   })
   .catch((err) => {
     serverLogger.error('Failed to init process pool:', err.message);
@@ -96,8 +93,8 @@ app.use('/sandbox/*', async (c, next) => {
   }
 });
 /** 认证中间件：仅当配置了 token 时启用 */
-if (config.token) {
-  app.use('/sandbox/*', bearerAuth({ token: config.token }));
+if (env.token) {
+  app.use('/sandbox/*', bearerAuth({ token: env.token }));
 } else {
   apiLogger.warn(
     '⚠️  WARNING: SANDBOX_TOKEN is not set. API endpoints are unauthenticated. Set SANDBOX_TOKEN in production!'
@@ -157,8 +154,8 @@ app.get('/sandbox/modules', (c) => {
   return c.json({
     success: true,
     data: {
-      js: config.jsAllowedModules,
-      python: config.pythonAllowedModules,
+      js: env.jsAllowedModules,
+      python: env.pythonAllowedModules,
       builtinGlobals: ['SystemHelper.httpRequest']
     }
   });

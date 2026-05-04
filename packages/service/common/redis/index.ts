@@ -1,10 +1,11 @@
 import { getLogger, LogCategories } from '../logger';
 import Redis from 'ioredis';
 import type { RedisOptions } from 'ioredis';
+import { serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.INFRA.REDIS);
 
-const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+const REDIS_URL = serviceEnv.REDIS_URL;
 
 // Base Redis options for connection reliability
 const REDIS_BASE_OPTION = {

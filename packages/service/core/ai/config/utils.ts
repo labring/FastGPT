@@ -23,6 +23,7 @@ import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+import { serviceEnv } from '../../../env';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -76,7 +77,7 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         if (model.isDefaultDatasetImageModel) {
           _systemDefaultModel.datasetImageLLM = model;
         }
-        if (model.model === process.env.HELPER_BOT_MODEL) {
+        if (model.model === serviceEnv.HELPER_BOT_MODEL) {
           _systemDefaultModel.helperBotLLM = model;
         }
       } else if (model.type === ModelTypeEnum.embedding) {

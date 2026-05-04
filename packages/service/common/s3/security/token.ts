@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { differenceInSeconds } from 'date-fns';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 import type { UploadConstraints } from '../contracts/type';
 import path from 'path';
 import { serviceEnv } from '../../../env';
@@ -62,8 +61,11 @@ const isNonEmptyString = (val: unknown): val is string => typeof val === 'string
 const isStringArray = (val: unknown): val is string[] =>
   Array.isArray(val) && val.every(isNonEmptyString);
 
+const getEndpointUrl = () =>
+  `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
+
 const buildFileApiUrl = (apiPath: string, token: string, query = '') => {
-  return `${EndpointUrl}${apiPath}/${token}${query}`;
+  return `${getEndpointUrl()}${apiPath}/${token}${query}`;
 };
 
 const parsePayload = <T>(payload: unknown, checker: (value: unknown) => value is T): T => {

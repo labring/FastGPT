@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { getDownloadCounts } from '../downloadCount';
 import { axios } from '@fastgpt/service/common/api/axios';
+import { marketplaceEnv } from '@/env';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -11,7 +12,7 @@ declare global {
   var expire: Date;
 }
 
-const dataFileURL = process.env.S3_PREFIX + '/data.json';
+const dataFileURL = marketplaceEnv.S3_PREFIX + '/data.json';
 const localDataFilePath = join(tmpdir(), 'data.json');
 
 export const getToolList = async () => {

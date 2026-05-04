@@ -13,6 +13,7 @@ import { getS3AvatarSource } from '../../s3/sources/avatar';
 import { isS3ObjectKey } from '../../s3/utils';
 import path from 'path';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { serviceEnv } from '../../../env';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -59,7 +60,7 @@ export async function uploadMongoImg({
     })
   );
 
-  return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
+  return `${serviceEnv.NEXT_PUBLIC_BASE_URL}${imageBaseUrl}${String(_id)}.${extension}`;
 }
 
 export const copyAvatarImage = async ({
@@ -121,7 +122,7 @@ export const copyAvatarImage = async ({
         ordered: true
       }
     );
-    return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
+    return `${serviceEnv.NEXT_PUBLIC_BASE_URL}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
   }
 
   return imageUrl;

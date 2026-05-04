@@ -8,6 +8,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { authUserSession } from '../../../support/user/session';
 import { authOpenApiKey } from '../../../support/openapi/auth';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { serviceEnv } from '../../../env';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
@@ -87,7 +88,7 @@ export async function parseHeaderCert({
   }
   // root user
   async function parseRootKey(rootKey?: string) {
-    if (!rootKey || !process.env.ROOT_KEY || rootKey !== process.env.ROOT_KEY) {
+    if (!rootKey || rootKey !== serviceEnv.ROOT_KEY) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
   }

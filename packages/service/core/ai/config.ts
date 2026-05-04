@@ -1,11 +1,12 @@
 import OpenAI from '@fastgpt/global/core/ai';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import { serviceEnv } from '../../env';
 
-const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
-  ? `${process.env.AIPROXY_API_ENDPOINT}/v1`
+const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
+  ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`
   : undefined;
-const openaiBaseUrl = aiProxyBaseUrl || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-const openaiBaseKey = process.env.AIPROXY_API_TOKEN || process.env.CHAT_API_KEY || '';
+export const openaiBaseUrl = aiProxyBaseUrl || serviceEnv.OPENAI_BASE_URL;
+export const openaiBaseKey = serviceEnv.AIPROXY_API_TOKEN || serviceEnv.CHAT_API_KEY;
 
 // 代理走 packages/service/common/proxy/index.ts 里的 EnvHttpProxyAgent + setGlobalDispatcher
 export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number }) => {

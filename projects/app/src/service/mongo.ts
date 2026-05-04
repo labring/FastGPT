@@ -41,7 +41,7 @@ export async function initRootUser(retry = 3): Promise<any> {
 
     logger.info('Root user initialized', {
       username: 'root',
-      fromEnvPassword: !!process.env.DEFAULT_ROOT_PSW
+      fromEnvPassword: appEnv.DEFAULT_ROOT_PSW !== '123456'
     });
   } catch (error) {
     if (retry > 0) {

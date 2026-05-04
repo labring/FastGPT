@@ -10,7 +10,7 @@ import { exec } from 'child_process';
 import { readFile } from 'fs/promises';
 import { promisify } from 'util';
 import { platform } from 'os';
-import { config } from '../config';
+import { env } from '../env';
 import type { ExecuteOptions, ExecuteResult } from '../types';
 import { getLogger, LogCategories } from '../utils/logger';
 
@@ -57,7 +57,7 @@ export abstract class BaseProcessPool {
     poolSize: number | undefined,
     protected readonly options: ProcessPoolOptions
   ) {
-    this.poolSize = poolSize ?? config.poolSize;
+    this.poolSize = poolSize ?? env.poolSize;
   }
 
   /** 日志前缀 */
@@ -119,7 +119,7 @@ export abstract class BaseProcessPool {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
-          CHECK_INTERNAL_IP: process.env.CHECK_INTERNAL_IP
+          CHECK_INTERNAL_IP: String(env.checkInternalIp)
         }
       });
 
@@ -199,10 +199,10 @@ export abstract class BaseProcessPool {
           type: 'init',
           allowedModules: this.options.allowedModules,
           requestLimits: {
-            maxRequests: config.maxRequests,
-            timeoutMs: config.requestTimeoutMs,
-            maxResponseSize: config.maxResponseSize * 1024 * 1024,
-            maxRequestBodySize: config.maxRequestBodySize * 1024 * 1024
+            maxRequests: env.maxRequests,
+            timeoutMs: env.requestTimeoutMs,
+            maxResponseSize: env.maxResponseSize * 1024 * 1024,
+            maxRequestBodySize: env.maxRequestBodySize * 1024 * 1024
           }
         }) + '\n'
       );
@@ -267,7 +267,7 @@ export abstract class BaseProcessPool {
       return { success: false, message: 'Code cannot be empty' };
     }
 
-    const timeoutMs = config.maxTimeoutMs;
+    const timeoutMs = env.maxTimeoutMs;
     const worker = await this.acquire();
 
     try {
@@ -324,8 +324,8 @@ export abstract class BaseProcessPool {
       }, timeoutMs + 2000);
 
       // RSS 内存监控（任务执行期间轮询子进程物理内存）
-      if (config.maxMemoryMB > 0 && worker.proc.pid) {
-        const limitMB = config.maxMemoryMB + config.RUNTIME_MEMORY_OVERHEAD_MB;
+      if (env.maxMemoryMB > 0 && worker.proc.pid) {
+        const limitMB = env.maxMemoryMB + env.RUNTIME_MEMORY_OVERHEAD_MB;
         rssTimer = setInterval(async () => {
           if (settled) return;
           const rss = await this.getWorkerRSSMB(worker.proc.pid!);

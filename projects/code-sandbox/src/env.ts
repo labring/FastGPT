@@ -25,6 +25,15 @@ const int = (defaultValue: number) => z.coerce.number().int().default(defaultVal
 /** 字符串，带默认值 */
 const str = (defaultValue: string) => z.string().default(defaultValue);
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
+const truthyBoolStrs = ['true', '1', 'yes', 'y'];
+const bool = (defaultValue = false) =>
+  z.preprocess(
+    (value) => (value === '' || value === undefined ? String(defaultValue) : value),
+    z
+      .string()
+      .transform((val) => truthyBoolStrs.includes(val.toLowerCase()))
+      .pipe(z.boolean())
+  );
 
 const envSchema = z.object({
   // ===== 服务 =====
@@ -47,7 +56,7 @@ const envSchema = z.object({
   SANDBOX_MAX_MEMORY_MB: int(256).pipe(z.number().min(32).max(4096)),
 
   // ===== 网络请求限制 =====
-  CHECK_INTERNAL_IP: z.coerce.boolean().default(false),
+  CHECK_INTERNAL_IP: bool(false),
   SANDBOX_REQUEST_MAX_COUNT: int(30).pipe(z.number().min(1).max(1000)),
   SANDBOX_REQUEST_TIMEOUT: int(60000).pipe(z.number().min(1000).max(300000)),
   SANDBOX_REQUEST_MAX_RESPONSE_MB: int(10).pipe(z.number().min(1).max(100)),

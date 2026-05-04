@@ -1,15 +1,12 @@
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 import { getLogger, LogCategories } from '../logger';
+import { marketplaceEnv } from '../../env';
 
-export const MONGO_URL = process.env.MONGODB_URI ?? '';
-const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
+export const MONGO_URL = marketplaceEnv.MONGODB_URI;
+const maxConnecting = Math.max(30, marketplaceEnv.DB_MAX_LINK);
 const logger = getLogger(LogCategories.INFRA.MONGO);
-const truthyBoolStrs = ['true', '1', 'yes', 'y'];
-const syncIndex =
-  process.env.SYNC_INDEX === undefined
-    ? true
-    : truthyBoolStrs.includes(process.env.SYNC_INDEX.toLowerCase());
+const syncIndex = marketplaceEnv.SYNC_INDEX;
 
 declare global {
   var mongodb: Mongoose | undefined;

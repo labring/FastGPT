@@ -1,6 +1,7 @@
 import ipaddr from 'ipaddr.js';
 import { isIPv6 } from 'net';
 import dns from 'dns/promises';
+import { env } from '../env';
 
 const isDevEnv = process.env.NODE_ENV === 'development';
 const SERVICE_LOCAL_PORT = `${process.env.PORT || 3000}`;
@@ -118,7 +119,7 @@ export const isInternalResolvedIP = (rawIP: string): boolean => {
   if (isMetadataIPAddress(addr)) return true;
   const range = addr.range();
   if (range === 'loopback' || range === 'unspecified') return true;
-  const checkFullInternal = process.env.CHECK_INTERNAL_IP === 'true';
+  const checkFullInternal = env.checkInternalIp;
   if (checkFullInternal && isInternalIPAddress(addr)) return true;
   return false;
 };
@@ -158,7 +159,7 @@ export const isInternalAddress = async (url: string): Promise<boolean> => {
 
   // 3. IP 字面量（含各种编码变体）
   const ip = parseHostAsIP(parsedUrl.hostname);
-  const checkFullInternal = process.env.CHECK_INTERNAL_IP === 'true';
+  const checkFullInternal = env.checkInternalIp;
 
   if (ip) {
     if (isMetadataIPAddress(ip)) return true;

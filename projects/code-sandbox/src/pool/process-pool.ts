@@ -7,7 +7,7 @@
  */
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { config } from '../config';
+import { env } from '../env';
 import { BaseProcessPool } from './base-process-pool';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -22,7 +22,7 @@ export class ProcessPool extends BaseProcessPool {
       name: 'JS',
       workerScript: WORKER_SCRIPT,
       spawnCommand: (script) => `exec ${SPAWN_RUNTIME} ${script}`,
-      allowedModules: config.jsAllowedModules
+      allowedModules: env.jsAllowedModules
     });
   }
 }

@@ -34,6 +34,7 @@ vi.mock('axios', () => ({
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
+import { serviceEnv } from '@fastgpt/service/env';
 
 // @ts-ignore
 import axios from 'axios';
@@ -566,8 +567,8 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle invalid remote images gracefully', async () => {
-      const originalEnv = process.env.MULTIPLE_DATA_TO_BASE64;
-      process.env.MULTIPLE_DATA_TO_BASE64 = 'false'; // Disable base64 conversion
+      const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
 
       const messages: ChatCompletionMessageParam[] = [
         {
@@ -581,19 +582,13 @@ describe('loadRequestMessages function tests', () => {
 
       mockAxiosHead.mockRejectedValue(new Error('Network error'));
 
-      const result = await loadRequestMessages({ messages, useVision: true });
+      try {
+        const result = await loadRequestMessages({ messages, useVision: true });
 
-      expect(result).toHaveLength(1);
-      // When image is filtered out and only one text item remains, it becomes string
-      expect(typeof result[0].content).toBe('string');
-      expect(result[0].content).toBe('Text');
-
-      // Restore original environment
-      if (originalEnv !== undefined) {
-        process.env.MULTIPLE_DATA_TO_BASE64 = originalEnv;
-      } else {
-        // @ts-ignore
-        delete process.env.MULTIPLE_DATA_TO_BASE64;
+        expect(result).toHaveLength(1);
+        expect(result[0].content).toBe('Text');
+      } finally {
+        serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
       }
     });
 
@@ -868,9 +863,6 @@ describe('loadRequestMessages function tests', () => {
     });
 
     it('should handle environment variable MULTIPLE_DATA_TO_BASE64', async () => {
-      const originalEnv = process.env.MULTIPLE_DATA_TO_BASE64;
-      process.env.MULTIPLE_DATA_TO_BASE64 = 'true';
-
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
@@ -890,13 +882,6 @@ describe('loadRequestMessages function tests', () => {
       expect(result).toHaveLength(1);
       const content = result[0].content as any[];
       expect(content[0].image_url.url).toBe('data:image/png;base64,converted');
-
-      // Restore original environment
-      if (originalEnv !== undefined) {
-        process.env.MULTIPLE_DATA_TO_BASE64 = originalEnv;
-      } else {
-        process.env.MULTIPLE_DATA_TO_BASE64 = '';
-      }
     });
   });
 });

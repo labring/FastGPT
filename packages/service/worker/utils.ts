@@ -1,6 +1,7 @@
 import type { Worker as NodeWorker } from 'worker_threads';
 import path from 'path';
 import { getLogger, LogCategories } from '../common/logger';
+import { serviceEnv } from '../env';
 
 export enum WorkerNameEnum {
   readFile = 'readFile',
@@ -12,7 +13,7 @@ export enum WorkerNameEnum {
 
 export const getSafeEnv = () => {
   return {
-    MAX_HTML_TRANSFORM_CHARS: process.env.MAX_HTML_TRANSFORM_CHARS,
+    MAX_HTML_TRANSFORM_CHARS: String(serviceEnv.MAX_HTML_TRANSFORM_CHARS),
     NODE_ENV: process.env.NODE_ENV,
     HTTP_PROXY: process.env.HTTP_PROXY,
     HTTPS_PROXY: process.env.HTTPS_PROXY,

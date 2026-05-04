@@ -4,6 +4,7 @@ import type { SystemCacheKeyEnum } from './type';
 import { randomUUID } from 'node:crypto';
 import { initCache } from './init';
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { serviceEnv } from '../../env';
 
 const cachePrefix = `VERSION_KEY:`;
 
@@ -50,7 +51,7 @@ export const getCachedData = async <T extends SystemCacheKeyEnum>(key: T, id?: s
   if (!global.systemCache) initCache();
 
   const versionKey = await getVersionKey(key, id);
-  const isDisableCache = process.env.DISABLE_CACHE === 'true';
+  const isDisableCache = serviceEnv.DISABLE_CACHE;
 
   const item = global.systemCache[key];
 

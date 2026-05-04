@@ -7,6 +7,7 @@ import mysql, {
 import { getLogger, LogCategories } from '../../logger';
 import { OCEANBASE_ADDRESS, SEEKDB_ADDRESS } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -50,7 +51,7 @@ export class ObClass {
     global.obClient = mysql.createPool({
       uri: address,
       waitForConnections: true,
-      connectionLimit: Number(process.env.DB_MAX_LINK || 20),
+      connectionLimit: serviceEnv.DB_MAX_LINK,
       connectTimeout: 20000,
       idleTimeout: 60000,
       queueLimit: 0,

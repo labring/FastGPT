@@ -3,6 +3,7 @@ import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getContentTypeFromHeader } from '../utils';
 import { getLogger, LogCategories } from '../../logger';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -140,8 +141,8 @@ export const getImageBase64 = async (url: string) => {
 };
 
 export const addEndpointToImageUrl = (text: string) => {
-  const baseURL = process.env.FE_DOMAIN;
-  const subRoute = process.env.NEXT_PUBLIC_BASE_URL || '';
+  const baseURL = serviceEnv.FE_DOMAIN;
+  const subRoute = serviceEnv.NEXT_PUBLIC_BASE_URL;
   if (!baseURL) return text;
   const regex = new RegExp(
     `(?<!https?:\\/\\/[^\\s]*)(?:${subRoute}\\/api\\/system\\/img\\/[^\\s.]*\\.[^\\s]*)`,

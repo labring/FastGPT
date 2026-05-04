@@ -1,4 +1,5 @@
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import { webEnv } from '../../env';
 
 export const getUserFingerprint = async () => {
   const fp = await FingerprintJS.load();
@@ -6,7 +7,7 @@ export const getUserFingerprint = async () => {
   console.log(result.visitorId);
 };
 
-export const subRoute = process.env.NEXT_PUBLIC_BASE_URL || '';
+export const subRoute = webEnv.NEXT_PUBLIC_BASE_URL;
 
 export const getWebReqUrl = (url: string = '') => {
   if (!url) return '/';

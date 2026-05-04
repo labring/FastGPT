@@ -10,6 +10,11 @@ const BoolSchema = z
 
 const NumSchema = z.coerce.number<number>();
 const IntSchema = NumSchema.int().nonnegative();
+const defaultableIntSchema = (defaultValue: number) =>
+  z.preprocess(
+    (value) => (value === '' || value === undefined ? defaultValue : value),
+    z.coerce.number<number>().int().nonnegative()
+  );
 
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
@@ -39,17 +44,22 @@ export const serviceEnv = createEnv({
     // 插件
     PLUGIN_BASE_URL: z.string().url().default('http://localhost:3004'),
     PLUGIN_TOKEN: z.string().optional().default('token'),
+    PLUGIN_ACCESS_TOKEN_SECRET: z.string().default('plugin_access_token_secret'),
+    PLUGIN_ACCESS_TOKEN_EXPIRES_IN: IntSchema.default(3600),
 
     // 代码沙箱
-    CODE_SANDBOX_URL: z.string().url().default('http://localhost:3002'),
+    CODE_SANDBOX_URL: z.string().url().optional(),
     CODE_SANDBOX_TOKEN: z.string().optional().default('codesandbox'),
 
     // AI Proxy
-    AIPROXY_API_ENDPOINT: z.string().url().default('http://localhost:3010'),
-    AIPROXY_API_TOKEN: z.string().optional().default('token'),
+    AIPROXY_API_ENDPOINT: z.string().url().optional(),
+    AIPROXY_API_TOKEN: z.string().optional(),
+    OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+    CHAT_API_KEY: z.string().optional().default(''),
 
     // 插件市场
     MARKETPLACE_URL: z.string().url().default('https://marketplace.fastgpt.cn'),
+    PRO_URL: z.string().url().optional(),
 
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).default('opensandbox'),
@@ -163,6 +173,7 @@ export const serviceEnv = createEnv({
       description:
         '前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。'
     }),
+    NEXT_PUBLIC_BASE_URL: z.string().optional().default(''),
     FILE_DOMAIN: z.string().url().optional().meta({
       description:
         '文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容'
@@ -171,7 +182,7 @@ export const serviceEnv = createEnv({
     //==================== 安全配置 ====================
     USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
-    PASSWORD_LOGIN_LOCK_SECONDS: IntSchema.optional().meta({
+    PASSWORD_LOGIN_LOCK_SECONDS: defaultableIntSchema(120).meta({
       description: '密码错误锁定时长（秒）'
     }),
     PASSWORD_EXPIRED_MONTH: IntSchema.optional().meta({
@@ -208,6 +219,9 @@ export const serviceEnv = createEnv({
     SKIP_FILE_TYPE_CHECK: BoolSchema.default(false).meta({
       description: '是否跳过文件类型检查'
     }),
+    DISABLE_CACHE: BoolSchema.default(false).meta({
+      description: '是否禁用系统内存缓存'
+    }),
 
     // ==================== 并发控制与限制 ====================
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
@@ -237,6 +251,19 @@ export const serviceEnv = createEnv({
     CHAT_MAX_QPM: IntSchema.default(5000).meta({
       description: '聊天 QPM（若用户套餐有限制，这里不生效）'
     }),
+    CHAT_LOG_URL: z.string().url().optional().meta({
+      description: '聊天日志推送地址'
+    }),
+    CHAT_LOG_INTERVAL: IntSchema.optional().meta({
+      description: '聊天日志推送延迟时间（毫秒）'
+    }),
+    CHAT_LOG_SOURCE_ID_PREFIX: z.string().default('fastgpt-'),
+    TRACK_BATCH_UPDATE_TIME: IntSchema.default(10000).meta({
+      description: '埋点批量写入间隔（毫秒）'
+    }),
+    EVAL_CONCURRENCY: IntSchema.default(3).meta({
+      description: '评估任务 worker 并发数'
+    }),
 
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
@@ -259,7 +286,13 @@ export const serviceEnv = createEnv({
     }),
     MAX_HTML_TRANSFORM_CHARS: IntSchema.default(1000000).meta({
       description: 'HTML 转 Markdown 最大字符数（超过后不执行转换）'
-    })
+    }),
+
+    // ==================== 第三方数据源 ====================
+    FEISHU_BASE_URL: z.string().url().default('https://open.feishu.cn'),
+    DINGTALK_BASE_URL: z.string().url().default('https://api.dingtalk.com'),
+    DINGTALK_OAPI_BASE_URL: z.string().url().default('https://oapi.dingtalk.com'),
+    YUQUE_DATASET_BASE_URL: z.string().url().default('https://www.yuque.com')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

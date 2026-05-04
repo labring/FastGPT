@@ -4,9 +4,6 @@ export enum BucketNameEnum {
   chat = 'chat'
 }
 
-export const EndpointUrl = `${process.env.FILE_DOMAIN || process.env.FE_DOMAIN || ''}${process.env.NEXT_PUBLIC_BASE_URL || ''}`;
-export const ReadFileBaseUrl = `${EndpointUrl}/api/common/file/read`;
-
 export const documentFileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
 
 /** 图片数据集创建/追加图片（multer 直传）与 ImageDataset、InsertImageModal 的 fileType 一致 */

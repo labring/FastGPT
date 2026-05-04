@@ -23,6 +23,7 @@ import { getSystemToolTags } from '@fastgpt/service/core/app/tool/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { serviceEnv } from '@fastgpt/service/env';
+import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
@@ -129,8 +130,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   scripts: [],
   favicon: '/favicon.ico',
   chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
-  uploadFileMaxSize: appEnv.UPLOAD_FILE_MAX_SIZE,
-  uploadFileMaxAmount: appEnv.UPLOAD_FILE_MAX_AMOUNT
+  uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
+  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
 };
 
 export async function initSystemConfig() {
@@ -156,7 +157,7 @@ export async function initSystemConfig() {
       },
       isPlus: !!licenseData,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
-      show_aiproxy: !!appEnv.AIPROXY_API_ENDPOINT,
+      show_aiproxy: hasAIProxyApiEndpoint(),
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,

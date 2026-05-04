@@ -3,6 +3,7 @@ import { MongoChat } from './chatSchema';
 import { axios } from '../../common/api/axios';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { getLogger, LogCategories } from '../../common/logger';
+import { serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RECORD);
 
@@ -26,9 +27,9 @@ export const pushChatLog = ({
   appId: string;
   metadata?: Metadata;
 }) => {
-  const interval = Number(process.env.CHAT_LOG_INTERVAL);
-  const url = process.env.CHAT_LOG_URL;
-  if (!isNaN(interval) && interval > 0 && url) {
+  const interval = serviceEnv.CHAT_LOG_INTERVAL;
+  const url = serviceEnv.CHAT_LOG_URL;
+  if (interval && interval > 0 && url) {
     logger.debug('Chat log push scheduled', {
       intervalMs: interval,
       appId,
@@ -151,7 +152,7 @@ ${JSON.stringify(item.interactive, null, 2)}
     const responseTime =
       responseData?.reduce((acc, item) => acc + (item?.runningTime ?? 0), 0) || 0;
 
-    const sourceIdPrefix = process.env.CHAT_LOG_SOURCE_ID_PREFIX ?? 'fastgpt-';
+    const sourceIdPrefix = serviceEnv.CHAT_LOG_SOURCE_ID_PREFIX;
 
     const chatLog: ChatLog = {
       title: chat.title,

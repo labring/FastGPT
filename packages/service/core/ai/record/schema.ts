@@ -1,11 +1,10 @@
 import { getMongoLogModel, Schema } from '../../../common/mongo';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
+import { serviceEnv } from '../../../env';
 
 export const LLMRequestRecordCollectionName = 'llm_request_records';
 
-const expiredHours = process.env.LLM_REQUEST_TRACKING_RETENTION_HOURS
-  ? Number(process.env.LLM_REQUEST_TRACKING_RETENTION_HOURS)
-  : 6;
+const expiredHours = serviceEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS;
 
 const LLMRequestRecordSchema = new Schema({
   requestId: {

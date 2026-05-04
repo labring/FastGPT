@@ -10,6 +10,7 @@ import type { Method } from 'axios';
 import { axios, createProxyAxios } from '../../../../common/api/axios';
 import { delRedisCache, getRedisCache, setRedisCache } from '../../../../common/redis/cache';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { serviceEnv } from '../../../../env';
 
 type DingtalkAccessTokenResponse = {
   accessToken: string;
@@ -86,8 +87,8 @@ type ListAllByNextTokenProps<T> = {
   maxResults?: number;
 };
 
-const dingtalkBaseUrl = process.env.DINGTALK_BASE_URL || 'https://api.dingtalk.com';
-const dingtalkOapiBaseUrl = process.env.DINGTALK_OAPI_BASE_URL || 'https://oapi.dingtalk.com';
+const dingtalkBaseUrl = serviceEnv.DINGTALK_BASE_URL;
+const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
 const tokenSafeWindowSeconds = 5 * 60;
 const dingtalkListPageSize = 100;
 const refreshingTokenMap = new Map<string, Promise<string>>();

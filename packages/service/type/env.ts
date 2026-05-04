@@ -33,8 +33,8 @@ declare global {
       ROOT_KEY: string;
       OPENAI_BASE_URL: string;
       CHAT_API_KEY: string;
-      AIPROXY_API_ENDPOINT: string;
-      AIPROXY_API_TOKEN: string;
+      AIPROXY_API_ENDPOINT?: string;
+      AIPROXY_API_TOKEN?: string;
       MULTIPLE_DATA_TO_BASE64: string;
       MONGODB_URI: string;
       MONGODB_LOG_URI?: string;
@@ -48,9 +48,9 @@ declare global {
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
 
-      CODE_SANDBOX_URL: string;
-      FE_DOMAIN: string;
-      FILE_DOMAIN: string;
+      CODE_SANDBOX_URL?: string;
+      FE_DOMAIN?: string;
+      FILE_DOMAIN?: string;
       USE_IP_LIMIT?: string;
       WORKFLOW_MAX_RUN_TIMES?: string;
       WORKFLOW_MAX_LOOP_TIMES?: string;

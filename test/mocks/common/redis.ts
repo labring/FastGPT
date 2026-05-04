@@ -134,6 +134,11 @@ const createMockRedisClient = () => {
       unlink: vi.fn().mockReturnThis(),
       exec: vi.fn().mockResolvedValue([])
     })),
+    multi: vi.fn(() => ({
+      incr: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([[null, 1]])
+    })),
 
     // Internal storage for testing purposes
     _storage: redisStorage
@@ -222,6 +227,11 @@ const createSharedMockRedisClient = () => {
       del: vi.fn().mockReturnThis(),
       unlink: vi.fn().mockReturnThis(),
       exec: vi.fn().mockResolvedValue([])
+    })),
+    multi: vi.fn(() => ({
+      incr: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: vi.fn().mockResolvedValue([[null, 1]])
     })),
 
     // Internal storage for testing purposes

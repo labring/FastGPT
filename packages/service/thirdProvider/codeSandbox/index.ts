@@ -2,6 +2,7 @@ import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/syst
 import type { AxiosInstance } from 'axios';
 import { createProxyAxios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
+import { serviceEnv } from '../../env';
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.CODE_SANDBOX);
 
 export type SanndboxPackagesResponse = {
@@ -14,12 +15,12 @@ export class CodeSandbox {
   private readonly client: AxiosInstance;
 
   constructor() {
-    const baseUrl = process.env.CODE_SANDBOX_URL || '';
-    const token = process.env.CODE_SANDBOX_TOKEN || '';
+    const baseUrl = serviceEnv.CODE_SANDBOX_URL;
+    const token = serviceEnv.CODE_SANDBOX_TOKEN;
 
     this.client = createProxyAxios(
       {
-        baseURL: `${baseUrl.replace(/\/$/, '')}/sandbox`,
+        baseURL: baseUrl ? `${baseUrl.replace(/\/$/, '')}/sandbox` : undefined,
         timeout: 180000,
         headers: {
           'Content-Type': 'application/json',
