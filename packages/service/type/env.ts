@@ -56,11 +56,7 @@ declare global {
       WORKFLOW_MAX_LOOP_TIMES?: string;
       CHECK_INTERNAL_IP?: string;
       ALLOWED_ORIGINS?: string;
-      SHOW_COUPON?: string;
-      SHOW_DISCOUNT_COUPON?: string;
-      CONFIG_JSON_PATH?: string;
       PASSWORD_LOGIN_LOCK_SECONDS?: string; // 密码登录锁定时间
-      PASSWORD_EXPIRED_MONTH?: string;
       MAX_LOGIN_SESSION?: string;
       CHAT_MAX_QPM?: string;
 

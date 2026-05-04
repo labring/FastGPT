@@ -57,8 +57,6 @@ export const serviceEnv = createEnv({
     OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
     CHAT_API_KEY: z.string().optional().default(''),
 
-    // 插件市场
-    MARKETPLACE_URL: z.string().url().default('https://marketplace.fastgpt.cn'),
     PRO_URL: z.string().url().optional(),
 
     // Agent sandbox
@@ -185,9 +183,6 @@ export const serviceEnv = createEnv({
     PASSWORD_LOGIN_LOCK_SECONDS: defaultableIntSchema(120).meta({
       description: '密码错误锁定时长（秒）'
     }),
-    PASSWORD_EXPIRED_MONTH: IntSchema.optional().meta({
-      description: '密码过期月份（不设置则不过期）'
-    }),
     MAX_LOGIN_SESSION: IntSchema.optional().meta({ description: '最大登录客户端数量（默认 10）' }),
     ALLOWED_ORIGINS: z
       .string()
@@ -198,14 +193,6 @@ export const serviceEnv = createEnv({
     }),
 
     // ==================== 功能开关与特殊配置 ====================
-    SHOW_COUPON: BoolSchema.default(false).meta({ description: '是否展示兑换码功能' }),
-    SHOW_DISCOUNT_COUPON: BoolSchema.default(false).meta({ description: '是否展示优惠券功能' }),
-    CONFIG_JSON_PATH: z.string().optional().meta({ description: '自定义 config.json 路径' }),
-    APP_REGISTRATION_URL: z.string().optional().meta({ description: '申请应用备案地址' }),
-    HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false).meta({
-      description: '是否隐藏版权信息配置，只有值为 true 时隐藏'
-    }),
-
     //==================== Beta features ====================
     SHOW_SKILL: BoolSchema.default(false).meta({ description: '是否展示 Skill 功能入口' }),
     AGENT_ENGINE: z

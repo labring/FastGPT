@@ -1468,6 +1468,9 @@ importers:
       express:
         specifier: 'catalog:'
         version: 4.22.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
     devDependencies:
       '@types/express':
         specifier: ^5.0.1

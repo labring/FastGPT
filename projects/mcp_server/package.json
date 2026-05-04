@@ -24,7 +24,8 @@
     "chalk": "catalog:",
     "dayjs": "catalog:",
     "dotenv": "^16.5.0",
-    "express": "catalog:"
+    "express": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/express": "^5.0.1"

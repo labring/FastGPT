@@ -33,4 +33,16 @@ describe('AI config defaults', () => {
     expect(openaiBaseUrl).toBe('http://aiproxy:3000/v1');
     expect(openaiBaseKey).toBe('aiproxy-token');
   });
+
+  it('ignores AI Proxy token when endpoint is not configured', async () => {
+    vi.stubEnv('AIPROXY_API_ENDPOINT', '');
+    vi.stubEnv('AIPROXY_API_TOKEN', 'aiproxy-token');
+    vi.stubEnv('OPENAI_BASE_URL', 'https://example.com/v1');
+    vi.stubEnv('CHAT_API_KEY', 'sk-chat');
+
+    const { openaiBaseUrl, openaiBaseKey } = await importConfig();
+
+    expect(openaiBaseUrl).toBe('https://example.com/v1');
+    expect(openaiBaseKey).toBe('sk-chat');
+  });
 });

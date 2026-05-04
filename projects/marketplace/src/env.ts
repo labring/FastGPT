@@ -4,7 +4,7 @@ const truthyBoolStrs = ['true', '1', 'yes', 'y'];
 const emptyStringToUndefined = (value: unknown) => (value === '' ? undefined : value);
 
 const BoolSchema = z.preprocess(
-  (value) => (value === '' || value === undefined ? true : value),
+  (value) => (value === '' || value === undefined ? String(true) : value),
   z
     .string()
     .transform((val) => truthyBoolStrs.includes(val.toLowerCase()))
