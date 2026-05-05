@@ -1,11 +1,6 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
-import {
-  BoolSchema,
-  IntSchema,
-  TrimTrailingSlashStringSchema,
-  UrlSchema
-} from '@fastgpt/global/common/zod';
+import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
 
 export const appEnv = createEnv({
   server: {
@@ -14,8 +9,8 @@ export const appEnv = createEnv({
     SYSTEM_NAME: z.string().default('AI'),
     SYSTEM_DESCRIPTION: z.string().default(''),
     SYSTEM_FAVICON: z.string().default(''),
-    CHINESE_IP_REDIRECT_URL: TrimTrailingSlashStringSchema.default(''),
-    PAY_FORM_URL: TrimTrailingSlashStringSchema.default(''),
+    CHINESE_IP_REDIRECT_URL: UrlSchema.default(''),
+    PAY_FORM_URL: UrlSchema.default(''),
 
     SHOW_COUPON: BoolSchema.default(false),
     SHOW_DISCOUNT_COUPON: BoolSchema.default(false),

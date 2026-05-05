@@ -61,11 +61,10 @@ const isNonEmptyString = (val: unknown): val is string => typeof val === 'string
 const isStringArray = (val: unknown): val is string[] =>
   Array.isArray(val) && val.every(isNonEmptyString);
 
-const getEndpointUrl = () =>
-  `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
+const endpointUrl = `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
 
 const buildFileApiUrl = (apiPath: string, token: string, query = '') => {
-  return `${getEndpointUrl()}${apiPath}/${token}${query}`;
+  return `${endpointUrl}${apiPath}/${token}${query}`;
 };
 
 const parsePayload = <T>(payload: unknown, checker: (value: unknown) => value is T): T => {

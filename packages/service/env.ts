@@ -1,13 +1,7 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
-import {
-  BoolSchema,
-  IntSchema,
-  NumSchema,
-  TrimTrailingSlashStringSchema,
-  UrlSchema
-} from '@fastgpt/global/common/zod';
+import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess(
@@ -141,7 +135,7 @@ export const serviceEnv = createEnv({
     STORAGE_S3_MAX_RETRIES: IntSchema.default(3),
     STORAGE_COS_PROTOCOL: StorageCosProtocolSchema.default('https:'),
     STORAGE_COS_USE_ACCELERATE: BoolSchema.default(false),
-    STORAGE_COS_CNAME_DOMAIN: TrimTrailingSlashStringSchema.optional(),
+    STORAGE_COS_CNAME_DOMAIN: z.string().optional(),
     STORAGE_COS_PROXY: z.string().optional(),
     STORAGE_OSS_ENDPOINT: UrlSchema.optional(),
     STORAGE_OSS_CNAME: BoolSchema.default(false),

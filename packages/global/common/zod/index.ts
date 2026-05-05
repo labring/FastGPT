@@ -9,5 +9,4 @@ export const BoolSchema = z
 
 export const NumSchema = z.coerce.number<number>();
 export const IntSchema = NumSchema.int().nonnegative();
-export const TrimTrailingSlashStringSchema = z.string().transform(stripUrlTrailingSlash);
 export const UrlSchema = z.string().url().transform(stripUrlTrailingSlash);
