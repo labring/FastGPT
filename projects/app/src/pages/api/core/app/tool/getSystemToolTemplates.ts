@@ -22,7 +22,7 @@ async function handler(
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
-  const { tags } = req.body;
+  const { tags, parentId } = req.body;
   const lang = getLocale(req);
 
   // Get user tags for auto-install logic
@@ -31,6 +31,29 @@ async function handler(
 
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
+  if (parentId) {
+    const parent = await systemToolRepo.getSystemToolDetail({
+      pluginId: parentId,
+      lang,
+      source: 'system'
+    });
+
+    return (
+      parent.children?.map((child) => ({
+        ...parent,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        // templateType: tool.isToolSet
+        //   ? FlowNodeTemplateTypeEnum.tools
+        //   : FlowNodeTemplateTypeEnum.other,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        name: child.name,
+        intro: child.description,
+        toolDescription: child.toolDescription,
+        id: `${parentId}/${child.id}`
+      })) ?? []
+    );
+  }
+  // no parentId, get all tools
   const tools = await systemToolRepo.getSystemToolList({
     lang,
     sources: ['system', teamId],

@@ -26,11 +26,12 @@ export async function getToolPreviewNode({
 }): Promise<FlowNodeTemplateType> {
   const systemToolRepo = SystemToolRepo.getInstance();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
-    pluginId: getToolRawId(pluginId),
+    pluginId,
     version: versionId,
     lang,
     source: toolSource
   });
+  console.log(toolDetail);
 
   return {
     id: getNanoid(),

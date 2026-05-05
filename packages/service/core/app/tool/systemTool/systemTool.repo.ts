@@ -220,8 +220,11 @@ export class SystemToolRepo {
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
             icon: item.icon,
-            inputs: jsonSchema2NodeInput(item.inputSchema),
-            outputs: jsonSchema2NodeOutput(item.outputSchema)
+            inputs: jsonSchema2NodeInput({
+              jsonSchema: item.inputSchema,
+              schemaType: 'systemTool'
+            }),
+            outputs: jsonSchema2NodeOutput({ jsonSchema: item.outputSchema })
           } satisfies ToolChildDetailType;
         })
       : undefined;
@@ -260,13 +263,21 @@ export class SystemToolRepo {
       isLatestVersion: tool.isLatestVersion,
       ...(childPluginId
         ? {
-            inputs: jsonSchema2NodeInput(child!.inputSchema),
-            outputs: jsonSchema2NodeOutput(child!.outputSchema)
+            inputs: jsonSchema2NodeInput({
+              jsonSchema: child!.inputSchema,
+              schemaType: 'systemTool'
+            }),
+            outputs: jsonSchema2NodeOutput({ jsonSchema: child!.outputSchema })
           }
         : {
-            inputs: tool.inputSchema ? jsonSchema2NodeInput(tool.inputSchema) : [],
-            outputs: tool.outputSchema ? jsonSchema2NodeOutput(tool.outputSchema) : []
-          })
+            inputs: tool.inputSchema
+              ? jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'systemTool' })
+              : [],
+            outputs: tool.outputSchema
+              ? jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema })
+              : []
+          }),
+      permissions: tool.permission
     };
     return toolDetail;
   };

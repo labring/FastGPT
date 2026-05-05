@@ -21,7 +21,7 @@ import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
 import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
-import { pluginClient, runPluginToolStream } from '../../../../thirdProvider/fastgptPlugin';
+import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 
@@ -101,17 +101,21 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         chatId,
         uId,
         teamId: String(runningUserInfo.teamId),
-        tmbId: String(runningUserInfo.tmbId)
+        tmbId: String(runningUserInfo.tmbId),
+        permissions: tool.permissions ?? []
       }).generateToken();
+
       const formatToolId = getToolRawId(toolConfig.systemTool!.toolId);
+      const childId = toolConfig.systemTool.toolId.split('/')[1];
       let answerText = '';
 
-      const res = await runPluginToolStream({
+      const res = await pluginClient.runToolStream({
         pluginId: formatToolId,
         version: version ?? '',
         source: 'system', // TODO: 后续用户调用时传 teamId
         input: toolInput,
         secrets: inputConfigParams,
+        ...(childId ? { childId } : {}),
         systemVar: {
           app: {
             id: runningAppInfo.id,
@@ -122,26 +126,6 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             uid: uId
           },
           invokeToken,
-          // NOTE: 用户信息不能从这里传出去，应该走反向调用逻辑
-          // user: {
-          //   // id: variables.userId,
-          //   // username: runningUserInfo.username,
-          //   // contact: runningUserInfo.contact,
-          //   // membername: runningUserInfo.memberName,
-          //   // teamName: runningUserInfo.teamName,
-          //   // teamId: runningUserInfo.teamId,
-          //   // name: runningUserInfo.tmbId
-          // },
-          // app: {
-          //   id: runningAppInfo.id,
-          //   name: runningAppInfo.id
-          // },
-          // tool: {
-          // id: formatToolId,
-          // version: version || '',
-          // // TODO: 移除这个 prefix, 没什么用
-          // prefix: getS3ChatSource().getToolFilePrefix({ appId, chatId, uId })
-          // },
           time: cTime
         },
         onMessage: ({ type, content }) => {
@@ -156,6 +140,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           }
         }
       });
+
+      console.log('tool run', res);
 
       let result = res.output || {};
 

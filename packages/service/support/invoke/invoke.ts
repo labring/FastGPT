@@ -1,5 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import {
+  PluginPermissionEnum,
+  type PluginPermissionEnumType
+} from '@fastgpt/global/sdk/fastgpt-plugin';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import type { InvokeUserInfoResponseType } from '@fastgpt/global/openapi/plugin/invoke';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
@@ -42,7 +46,17 @@ export class InvokeProcessor {
     }
   }
 
+  private assertPermission(permission: PluginPermissionEnumType) {
+    const { permissions } = InvokeSessionSchema.parse(this.session);
+
+    if (!permissions.includes(permission)) {
+      throw ERROR_ENUM.unAuthorization;
+    }
+  }
+
   async handleFileUpload(params?: InvokeFileUploadType) {
+    this.assertPermission(PluginPermissionEnum['file-upload:allow']);
+
     const { appId, chatId, uId } = InvokeSessionSchema.parse(this.session);
     const prefix = getS3ChatSource().getToolFilePrefix({ appId, chatId, uId });
 
@@ -87,6 +101,8 @@ export class InvokeProcessor {
   }
 
   async handleGetUserInfo(): Promise<InvokeUserInfoResponseType> {
+    this.assertPermission(PluginPermissionEnum['userInfo:read']);
+
     const { tmbId, teamId } = InvokeSessionSchema.parse(this.session);
 
     const [user, orgs, groups, team] = await Promise.all([

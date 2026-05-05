@@ -378,7 +378,7 @@ describe('jsonSchema2NodeOutput', () => {
     const jsonSchema: JSONSchemaOutputType = {
       type: 'object'
     };
-    const result = jsonSchema2NodeOutput(jsonSchema);
+    const result = jsonSchema2NodeOutput({ jsonSchema });
     expect(result).toEqual([]);
   });
 
@@ -391,7 +391,7 @@ describe('jsonSchema2NodeOutput', () => {
       },
       required: ['result']
     };
-    const result = jsonSchema2NodeOutput(jsonSchema);
+    const result = jsonSchema2NodeOutput({ jsonSchema });
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
@@ -423,7 +423,7 @@ describe('jsonSchema2NodeOutput', () => {
         }
       }
     };
-    const result = jsonSchema2NodeOutput(jsonSchema);
+    const result = jsonSchema2NodeOutput({ jsonSchema });
 
     expect(result[0].description).toBe('Data object');
   });
@@ -435,7 +435,7 @@ describe('jsonSchema2NodeOutput', () => {
         items: { type: 'array', items: { type: 'string' } }
       }
     };
-    const result = jsonSchema2NodeOutput(jsonSchema);
+    const result = jsonSchema2NodeOutput({ jsonSchema });
 
     expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
   });

@@ -6,6 +6,7 @@ import {
   FlowNodeOutputItemTypeSchema,
   InputConfigTypeSchema
 } from '../../../../workflow/type/io';
+import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
 
 // 系统工具最基础最通用的类型
 export const SystemToolBaseSchema = z.object({
@@ -87,7 +88,8 @@ export const SystemToolDetailSchema = z.object({
   secretsVal: z.record(z.string(), z.any()).optional(),
   isLatestVersion: z.boolean().optional(),
   runtimeConfig: SystemToolRuntimeSchema.optional(),
-  associatedPluginId: z.string().optional()
+  associatedPluginId: z.string().optional(),
+  permissions: z.array(PluginPermissionEnumSchema).optional()
 });
 
 export type SystemToolDetailType = z.infer<typeof SystemToolDetailSchema>;

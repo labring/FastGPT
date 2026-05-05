@@ -157,9 +157,9 @@ export const jsonSchema2NodeInput = ({
   }));
 };
 
-export const jsonSchema2NodeOutput = (
-  jsonSchema?: JSONSchemaOutputType
-): FlowNodeOutputItemType[] => {
+export const jsonSchema2NodeOutput = ({
+  jsonSchema
+}: { jsonSchema?: JSONSchemaOutputType } = {}): FlowNodeOutputItemType[] => {
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     id: key,
