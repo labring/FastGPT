@@ -43,3 +43,4 @@ SYNC_INDEX=true
 1. 重新调整代码结构，升级 nextjs 最新版，切换至 turbopack 构建，提高构建速度；升级容器默认 node 至 24。
 2. 优化 Agent tool 声明和运行，统一所有 tool 的声明和运行方式。
 3. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率。
+4. 服务端 env 加载全部使用`@t3-oss/env-core`，增加更多类型检查。其余服务，也采用集中导出 env 的方式进行环境变量使用。
