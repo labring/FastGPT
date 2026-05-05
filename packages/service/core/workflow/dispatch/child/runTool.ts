@@ -19,11 +19,11 @@ import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
-import { getS3ChatSource } from '../../../../common/s3/sources/chat';
 import { getWorkflowContext } from '../../utils/context';
 import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
-import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
+import { pluginClient, runPluginToolStream } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
+import { InvokeProcessor } from '../../../../support/invoke/invoke';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -96,34 +96,52 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
 
+      const invokeToken = new InvokeProcessor({
+        appId,
+        chatId,
+        uId,
+        teamId: String(runningUserInfo.teamId),
+        tmbId: String(runningUserInfo.tmbId)
+      }).generateToken();
       const formatToolId = getToolRawId(toolConfig.systemTool!.toolId);
       let answerText = '';
 
-      const res = await pluginClient.runToolStream({
+      const res = await runPluginToolStream({
         pluginId: formatToolId,
         version: version ?? '',
         source: 'system', // TODO: 后续用户调用时传 teamId
         input: toolInput,
         secrets: inputConfigParams,
         systemVar: {
-          user: {
-            id: props.uid,
-            username: runningUserInfo.username,
-            contact: runningUserInfo.contact,
-            membername: runningUserInfo.memberName,
-            teamName: runningUserInfo.teamName,
-            teamId: runningUserInfo.teamId,
-            name: runningUserInfo.tmbId
-          },
           app: {
             id: runningAppInfo.id,
-            name: runningAppInfo.id
+            name: runningAppInfo.name
           },
-          tool: {
-            id: formatToolId,
-            version: version || '',
-            prefix: getS3ChatSource().getToolFilePrefix({ appId, chatId, uId })
+          chat: {
+            chatId,
+            uid: uId
           },
+          invokeToken,
+          // NOTE: 用户信息不能从这里传出去，应该走反向调用逻辑
+          // user: {
+          //   // id: variables.userId,
+          //   // username: runningUserInfo.username,
+          //   // contact: runningUserInfo.contact,
+          //   // membername: runningUserInfo.memberName,
+          //   // teamName: runningUserInfo.teamName,
+          //   // teamId: runningUserInfo.teamId,
+          //   // name: runningUserInfo.tmbId
+          // },
+          // app: {
+          //   id: runningAppInfo.id,
+          //   name: runningAppInfo.id
+          // },
+          // tool: {
+          // id: formatToolId,
+          // version: version || '',
+          // // TODO: 移除这个 prefix, 没什么用
+          // prefix: getS3ChatSource().getToolFilePrefix({ appId, chatId, uId })
+          // },
           time: cTime
         },
         onMessage: ({ type, content }) => {
@@ -337,7 +355,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,
         tmbId: runningUserInfo.tmbId,
-        uid: runningUserInfo.tmbId,
+        uid: uId,
         toolId: systemToolId,
         result: 0,
         msg: getErrText(error)

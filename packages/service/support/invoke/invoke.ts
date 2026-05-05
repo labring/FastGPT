@@ -1,0 +1,130 @@
+import jwt from 'jsonwebtoken';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import type { InvokeUserInfoResponseType } from '@fastgpt/global/openapi/plugin/invoke';
+import { getS3ChatSource } from '../../common/s3/sources/chat';
+import { env } from '../../env';
+import { getGroupsByTmbId } from '../permission/memberGroup/controllers';
+import { getOrgsByTmbId } from '../permission/org/controllers';
+import { MongoOrgModel } from '../permission/org/orgSchema';
+import { getUserDetail } from '../user/controller';
+import { MongoTeam } from '../user/team/teamSchema';
+import { InvokeFileUploadSchema, InvokeSessionSchema, type InvokeFileUploadType } from './type';
+import type { InvokeSessionType } from './type';
+
+const INVOKE_TOKEN_EXPIRES_IN = 60 * 60;
+
+/** 反向调用处理器 */
+export class InvokeProcessor {
+  private session: InvokeSessionType;
+  private jwtSecret = env.INVOKE_TOKEN_SECRET;
+
+  constructor(options: InvokeSessionType) {
+    this.session = options;
+  }
+
+  generateToken(): string {
+    const session = InvokeSessionSchema.parse(this.session);
+
+    return jwt.sign(session, this.jwtSecret, {
+      expiresIn: INVOKE_TOKEN_EXPIRES_IN
+    });
+  }
+
+  static getInstanceFromToken(token: string): InvokeProcessor {
+    try {
+      const payload = jwt.verify(token, env.INVOKE_TOKEN_SECRET);
+      const session = InvokeSessionSchema.parse(payload);
+
+      return new InvokeProcessor(session);
+    } catch (error) {
+      throw ERROR_ENUM.unAuthorization;
+    }
+  }
+
+  async handleFileUpload(params?: InvokeFileUploadType) {
+    const { appId, chatId, uId } = InvokeSessionSchema.parse(this.session);
+    const prefix = getS3ChatSource().getToolFilePrefix({ appId, chatId, uId });
+
+    if (!params) {
+      return { prefix };
+    }
+
+    const { filename, body, contentType, expiredTime, maxFileSize, allowedExtensions } =
+      InvokeFileUploadSchema.parse(params);
+
+    if (body !== undefined) {
+      const result = await getS3ChatSource().uploadChatFile({
+        appId,
+        chatId,
+        uId,
+        filename,
+        body,
+        contentType,
+        expiredTime
+      });
+
+      return {
+        prefix,
+        ...result
+      };
+    }
+
+    const result = await getS3ChatSource().createUploadChatFileURL({
+      appId,
+      chatId,
+      uId,
+      filename,
+      expiredTime,
+      maxFileSize,
+      allowedExtensions
+    });
+
+    return {
+      prefix,
+      ...result
+    };
+  }
+
+  async handleGetUserInfo(): Promise<InvokeUserInfoResponseType> {
+    const { tmbId, teamId } = InvokeSessionSchema.parse(this.session);
+
+    const [user, orgs, groups, team] = await Promise.all([
+      getUserDetail({ tmbId }),
+      getOrgsByTmbId({ teamId, tmbId }),
+      getGroupsByTmbId({ tmbId, teamId }),
+      MongoTeam.findById(teamId, {
+        name: 1
+      }).lean()
+    ]);
+
+    if (!team) throw new Error('Team not found');
+
+    const orgInfos = orgs.length
+      ? await MongoOrgModel.find(
+          {
+            _id: {
+              $in: orgs.map((org) => org.orgId)
+            }
+          },
+          {
+            name: 1,
+            pathId: 1
+          }
+        ).lean()
+      : [];
+
+    return {
+      username: user.username,
+      memberName: user.team.memberName,
+      contact: user.contact,
+      orgs: orgInfos.map((org) => ({
+        name: org.name,
+        pathId: org.pathId
+      })),
+      groups: groups.map((group) => ({
+        name: group.name === DefaultGroupName ? team.name : group.name
+      }))
+    };
+  }
+}

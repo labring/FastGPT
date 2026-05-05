@@ -298,7 +298,10 @@ export const serviceEnv = createEnv({
     FEISHU_BASE_URL: UrlSchema.default('https://open.feishu.cn'),
     DINGTALK_BASE_URL: UrlSchema.default('https://api.dingtalk.com'),
     DINGTALK_OAPI_BASE_URL: UrlSchema.default('https://oapi.dingtalk.com'),
-    YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com')
+    YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com'),
+
+    // Invoke 反向调用相关
+    INVOKE_TOKEN_SECRET: z.string().default('token')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
