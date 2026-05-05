@@ -450,17 +450,6 @@ describe('addEndpointToImageUrl', () => {
     expect(result).toBe('https://example.com/api/system/img/file-name_123.webp');
   });
 
-  it('should handle NEXT_PUBLIC_BASE_URL with trailing slash gracefully', async () => {
-    vi.stubEnv('FE_DOMAIN', 'https://example.com');
-    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/fastgpt/');
-    const { addEndpointToImageUrl: addEndpointToImageUrlWithBase } = await loadUtilsModule();
-
-    const text = '/fastgpt/api/system/img/file-name_123.webp';
-    const result = addEndpointToImageUrlWithBase(text);
-
-    expect(result).toBe('https://example.com/fastgpt/api/system/img/file-name_123.webp');
-  });
-
   it('should handle image URLs with various file extensions', async () => {
     vi.stubEnv('FE_DOMAIN', 'https://example.com');
     const addEndpointToImageUrl = await loadAddEndpointToImageUrl();

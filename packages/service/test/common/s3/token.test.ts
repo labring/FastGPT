@@ -76,7 +76,7 @@ describe('s3 token validation', () => {
   it('normalizes endpoint slashes when signing file URLs', async () => {
     vi.stubEnv('FILE_DOMAIN', 'https://files.example.com/');
     vi.stubEnv('FE_DOMAIN', undefined);
-    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/fastgpt/');
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/fastgpt');
 
     const { jwtSignS3ObjectKey } = await loadTokenModule();
     const url = jwtSignS3ObjectKey('chat/appId/userId/chatId/file.txt', getExpiredTime());

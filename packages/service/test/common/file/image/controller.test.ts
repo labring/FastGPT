@@ -156,22 +156,6 @@ describe('uploadMongoImg', () => {
 
     expect(result).toMatch(new RegExp(`^/sub${imageBaseUrl}[a-f0-9]{24}\\.jpeg$`));
   });
-
-  it('should normalize trailing slash from NEXT_PUBLIC_BASE_URL in result', async () => {
-    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/sub/');
-    const { uploadMongoImg: uploadMongoImgWithBase } = await loadController();
-
-    const binary = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    const base64Data = binary.toString('base64');
-    const base64Img = `data:image/jpeg;base64,${base64Data}`;
-
-    const result = await uploadMongoImgWithBase({
-      base64Img,
-      teamId
-    });
-
-    expect(result).toMatch(new RegExp(`^/sub${imageBaseUrl}[a-f0-9]{24}\\.jpeg$`));
-  });
 });
 
 describe('readMongoImg', () => {

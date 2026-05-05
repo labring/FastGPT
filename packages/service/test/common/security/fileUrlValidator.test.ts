@@ -29,7 +29,7 @@ describe('fileUrlValidator', () => {
 
   describe('systemWhiteList construction', () => {
     it('should include STORAGE_S3_ENDPOINT when set', async () => {
-      vi.stubEnv('STORAGE_S3_ENDPOINT', 's3.example.com');
+      vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'
@@ -92,7 +92,7 @@ describe('fileUrlValidator', () => {
     });
 
     it('should combine all env vars into systemWhiteList', async () => {
-      vi.stubEnv('STORAGE_S3_ENDPOINT', 's3.example.com');
+      vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
       vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com');
       vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
       vi.stubEnv('PRO_URL', 'https://pro.example.com');
@@ -170,7 +170,7 @@ describe('fileUrlValidator', () => {
     });
 
     it('should match against both fileUrlWhitelist and systemWhiteList', async () => {
-      vi.stubEnv('STORAGE_S3_ENDPOINT', 's3.system.com');
+      vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.system.com');
       global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'

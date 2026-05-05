@@ -37,5 +37,5 @@ export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model
 
 export function getModelApiKey(modelNameOrId?: string): string {
   const cfg = getLLMModel(modelNameOrId);
-  return cfg?.requestAuth || openaiBaseKey;
+  return cfg?.requestAuth || openaiBaseKey || '';
 }
