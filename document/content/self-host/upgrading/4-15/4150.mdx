@@ -7,12 +7,17 @@ description: 'FastGPT V4.15.0 更新说明'
 
 ### 环境变量变更
 
+`fastgpt-app`, `fastgpt-pro` 可增加文件解析并发线程数
+
 ```bash
-# fastgpt-app, fastgpt-pro 可增加文件解析并发线程数
-# 线程最大数量
+# 文件解析 worker 并发数
 PARSE_FILE_WORKERS=10
-# 文件解析单任务超时时间（秒）
-PARSE_FILE_TIMEOUT_SECONDS=300
+# 文件解析超时时间（秒）
+PARSE_FILE_TIMEOUT_SECONDS=600
+# HTML 转 Markdown worker 并发数
+HTML_TO_MARKDOWN_WORKERS=10
+# 文本切块 worker 并发数
+TEXT_TO_CHUNKS_WORKERS=10
 # 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1
 SYNC_INDEX=true
 ```
