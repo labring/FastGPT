@@ -3,8 +3,10 @@ import {
   isValidImageContentType,
   detectImageTypeFromBuffer,
   guessBase64ImageType,
-  getImageBase64
+  getImageBase64,
+  addEndpointToImageUrl
 } from '@fastgpt/service/common/file/image/utils';
+import { serviceEnv } from '@fastgpt/service/env';
 
 const mockAxiosGet = vi.fn();
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -17,6 +19,11 @@ vi.mock('@fastgpt/service/common/api/axios', () => ({
 vi.mock('@fastgpt/service/common/api/serverRequest', () => ({
   serverRequestBaseUrl: 'http://localhost:3000'
 }));
+
+const originalEnv = {
+  FE_DOMAIN: serviceEnv.FE_DOMAIN,
+  NEXT_PUBLIC_BASE_URL: serviceEnv.NEXT_PUBLIC_BASE_URL
+};
 
 describe('isValidImageContentType', () => {
   it('should return true for valid image MIME types', () => {
@@ -335,34 +342,24 @@ describe('getImageBase64', () => {
 });
 
 describe('addEndpointToImageUrl', () => {
-  const originalEnv = { ...process.env };
-  const importAddEndpointToImageUrl = async () => {
-    vi.resetModules();
-    const mod = await import('@fastgpt/service/common/file/image/utils');
-    return mod.addEndpointToImageUrl;
-  };
-
   beforeEach(() => {
-    delete process.env.FE_DOMAIN;
-    delete process.env.NEXT_PUBLIC_BASE_URL;
+    serviceEnv.FE_DOMAIN = undefined;
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
   });
 
   afterEach(() => {
-    process.env.FE_DOMAIN = originalEnv.FE_DOMAIN;
-    process.env.NEXT_PUBLIC_BASE_URL = originalEnv.NEXT_PUBLIC_BASE_URL;
+    serviceEnv.FE_DOMAIN = originalEnv.FE_DOMAIN;
+    serviceEnv.NEXT_PUBLIC_BASE_URL = originalEnv.NEXT_PUBLIC_BASE_URL;
   });
 
   it('should return text unchanged when FE_DOMAIN is not set', async () => {
-    delete process.env.FE_DOMAIN;
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
     const text = '/api/system/img/abc123.png';
     expect(addEndpointToImageUrl(text)).toBe(text);
   });
 
   it('should prepend FE_DOMAIN to matching image URLs without subRoute', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = 'Here is an image: /api/system/img/abc123.png in the text';
     const result = addEndpointToImageUrl(text);
@@ -373,9 +370,8 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should prepend FE_DOMAIN to matching image URLs with subRoute', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '/fastgpt';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '/fastgpt';
 
     const text = 'Image: /fastgpt/api/system/img/abc123.png end';
     const result = addEndpointToImageUrl(text);
@@ -384,9 +380,8 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should not modify URLs that already have a full http(s) prefix', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = 'Already full: https://cdn.example.com/api/system/img/abc123.png';
     const result = addEndpointToImageUrl(text);
@@ -395,9 +390,8 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should handle multiple image URLs in the same text', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = 'First /api/system/img/img1.png and second /api/system/img/img2.jpg here';
     const result = addEndpointToImageUrl(text);
@@ -408,9 +402,8 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should not modify non-matching paths', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = 'This is /api/other/endpoint and /some/path.png';
     const result = addEndpointToImageUrl(text);
@@ -419,24 +412,21 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should return empty string unchanged', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
     expect(addEndpointToImageUrl('')).toBe('');
   });
 
   it('should handle text with no image URLs', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = 'This is plain text with no image references at all.';
     expect(addEndpointToImageUrl(text)).toBe(text);
   });
 
   it('should not double-prepend FE_DOMAIN to already-prefixed URLs with http', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = 'http://other.com/api/system/img/abc123.png';
     const result = addEndpointToImageUrl(text);
@@ -445,9 +435,8 @@ describe('addEndpointToImageUrl', () => {
   });
 
   it('should handle FE_DOMAIN with trailing slash gracefully', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com/';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     const text = '/api/system/img/file-name_123.webp';
     const result = addEndpointToImageUrl(text);
@@ -455,10 +444,19 @@ describe('addEndpointToImageUrl', () => {
     expect(result).toBe('https://example.com/api/system/img/file-name_123.webp');
   });
 
+  it('should handle NEXT_PUBLIC_BASE_URL with trailing slash gracefully', async () => {
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '/fastgpt/';
+
+    const text = '/fastgpt/api/system/img/file-name_123.webp';
+    const result = addEndpointToImageUrl(text);
+
+    expect(result).toBe('https://example.com/fastgpt/api/system/img/file-name_123.webp');
+  });
+
   it('should handle image URLs with various file extensions', async () => {
-    process.env.FE_DOMAIN = 'https://example.com';
-    process.env.NEXT_PUBLIC_BASE_URL = '';
-    const addEndpointToImageUrl = await importAddEndpointToImageUrl();
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '';
 
     expect(addEndpointToImageUrl('/api/system/img/test.jpg')).toBe(
       'https://example.com/api/system/img/test.jpg'
@@ -471,6 +469,18 @@ describe('addEndpointToImageUrl', () => {
     );
     expect(addEndpointToImageUrl('/api/system/img/test.webp')).toBe(
       'https://example.com/api/system/img/test.webp'
+    );
+  });
+
+  it('should escape special characters in subRoute', async () => {
+    serviceEnv.FE_DOMAIN = 'https://example.com';
+    serviceEnv.NEXT_PUBLIC_BASE_URL = '/fast.gpt';
+
+    expect(addEndpointToImageUrl('/fast.gpt/api/system/img/test.jpg')).toBe(
+      'https://example.com/fast.gpt/api/system/img/test.jpg'
+    );
+    expect(addEndpointToImageUrl('/fastxgpt/api/system/img/test.jpg')).toBe(
+      '/fastxgpt/api/system/img/test.jpg'
     );
   });
 });

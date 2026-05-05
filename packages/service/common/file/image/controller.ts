@@ -17,6 +17,7 @@ import { serviceEnv } from '../../../env';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
+const getImageRouteBase = () => serviceEnv.NEXT_PUBLIC_BASE_URL.replace(/\/+$/, '');
 
 export async function uploadMongoImg({
   base64Img,
@@ -60,7 +61,7 @@ export async function uploadMongoImg({
     })
   );
 
-  return `${serviceEnv.NEXT_PUBLIC_BASE_URL}${imageBaseUrl}${String(_id)}.${extension}`;
+  return `${getImageRouteBase()}${imageBaseUrl}${String(_id)}.${extension}`;
 }
 
 export const copyAvatarImage = async ({
@@ -122,7 +123,7 @@ export const copyAvatarImage = async ({
         ordered: true
       }
     );
-    return `${serviceEnv.NEXT_PUBLIC_BASE_URL}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
+    return `${getImageRouteBase()}${imageBaseUrl}${String(newImage._id)}.${image.metadata?.mime?.split('/')[1]}`;
   }
 
   return imageUrl;
