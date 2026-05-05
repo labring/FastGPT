@@ -24,7 +24,7 @@
     "@modelcontextprotocol/sdk": "catalog:",
     "@node-rs/jieba": "catalog:",
     "@opentelemetry/api": "^1.9.0",
-    "@t3-oss/env-core": "0.13.10",
+    "@t3-oss/env-core": "catalog:",
     "@xmldom/xmldom": "^0.8.10",
     "@zilliz/milvus2-sdk-node": "2.4.10",
     "axios": "catalog:",

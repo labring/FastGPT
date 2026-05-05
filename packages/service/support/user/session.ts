@@ -101,7 +101,7 @@ export const delUserAllSession = async (userId: string, whiteList?: (string | un
 // 会根据创建时间，删除超出客户端登录限制的 session
 const delRedundantSession = async (userId: string) => {
   // 至少为 1，默认为 10
-  let maxSession = serviceEnv.MAX_LOGIN_SESSION ?? 10;
+  let maxSession = serviceEnv.MAX_LOGIN_SESSION;
   if (maxSession < 1) {
     maxSession = 1;
   }

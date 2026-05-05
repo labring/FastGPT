@@ -20,7 +20,7 @@ export class CodeSandbox {
 
     this.client = createProxyAxios(
       {
-        baseURL: baseUrl ? `${baseUrl.replace(/\/$/, '')}/sandbox` : undefined,
+        baseURL: baseUrl ? `${baseUrl}/sandbox` : undefined,
         timeout: 180000,
         headers: {
           'Content-Type': 'application/json',

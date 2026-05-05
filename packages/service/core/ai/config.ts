@@ -3,7 +3,7 @@ import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { serviceEnv } from '../../env';
 
 const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
-  ? `${serviceEnv.AIPROXY_API_ENDPOINT.replace(/\/+$/, '')}/v1`
+  ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`
   : undefined;
 export const openaiBaseUrl = aiProxyBaseUrl || serviceEnv.OPENAI_BASE_URL;
 export const openaiBaseKey = aiProxyBaseUrl

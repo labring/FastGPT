@@ -62,7 +62,7 @@ const isStringArray = (val: unknown): val is string[] =>
   Array.isArray(val) && val.every(isNonEmptyString);
 
 const getEndpointUrl = () =>
-  `${(serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || '').replace(/\/+$/, '')}${serviceEnv.NEXT_PUBLIC_BASE_URL.replace(/\/+$/, '')}`;
+  `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
 
 const buildFileApiUrl = (apiPath: string, token: string, query = '') => {
   return `${getEndpointUrl()}${apiPath}/${token}${query}`;

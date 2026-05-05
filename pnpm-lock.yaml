@@ -39,6 +39,9 @@ catalogs:
     '@svgr/webpack':
       specifier: ^6.5.1
       version: 6.5.1
+    '@t3-oss/env-core':
+      specifier: 0.13.10
+      version: 0.13.10
     '@tanstack/react-query':
       specifier: ^4.24.10
       version: 4.36.1
@@ -257,6 +260,9 @@ importers:
       encoding:
         specifier: ^0.1.13
         version: 0.1.13
+      ipaddr.js:
+        specifier: ^2.3.0
+        version: 2.3.0
       js-yaml:
         specifier: 'catalog:'
         version: 4.1.1
@@ -337,7 +343,7 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@t3-oss/env-core':
-        specifier: 0.13.10
+        specifier: 'catalog:'
         version: 0.13.10(typescript@5.9.3)(zod@4.1.12)
       '@xmldom/xmldom':
         specifier: ^0.8.10
@@ -1292,9 +1298,15 @@ importers:
       '@fastgpt-sdk/logger':
         specifier: ^0.1.2
         version: 0.1.2
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../../packages/global
       '@hono/node-server':
         specifier: ^1.13.7
         version: 1.19.9(hono@4.11.7)
+      '@t3-oss/env-core':
+        specifier: 'catalog:'
+        version: 0.13.10(typescript@5.9.3)(zod@4.1.12)
       acorn:
         specifier: ^8.15.0
         version: 8.15.0
@@ -1389,6 +1401,9 @@ importers:
       '@fastgpt/web':
         specifier: workspace:*
         version: link:../../packages/web
+      '@t3-oss/env-core':
+        specifier: 'catalog:'
+        version: 0.13.10(typescript@5.9.3)(zod@4.1.12)
       axios:
         specifier: 'catalog:'
         version: 1.15.2
@@ -1456,6 +1471,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@4.1.12)
+      '@t3-oss/env-core':
+        specifier: 'catalog:'
+        version: 0.13.10(typescript@5.9.3)(zod@4.1.12)
       chalk:
         specifier: 'catalog:'
         version: 5.6.2

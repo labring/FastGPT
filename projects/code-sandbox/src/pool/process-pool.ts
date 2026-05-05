@@ -22,7 +22,7 @@ export class ProcessPool extends BaseProcessPool {
       name: 'JS',
       workerScript: WORKER_SCRIPT,
       spawnCommand: (script) => `exec ${SPAWN_RUNTIME} ${script}`,
-      allowedModules: env.jsAllowedModules
+      allowedModules: env.SANDBOX_JS_ALLOWED_MODULES
     });
   }
 }

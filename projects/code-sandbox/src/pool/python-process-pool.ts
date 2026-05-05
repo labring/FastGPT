@@ -17,7 +17,7 @@ export class PythonProcessPool extends BaseProcessPool {
       name: 'Python',
       workerScript: WORKER_SCRIPT,
       spawnCommand: (script) => `exec python3 -u ${script}`,
-      allowedModules: env.pythonAllowedModules
+      allowedModules: env.SANDBOX_PYTHON_ALLOWED_MODULES
     });
   }
 }

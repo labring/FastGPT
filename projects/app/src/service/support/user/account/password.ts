@@ -1,7 +1,7 @@
-import { getAppEnv } from '@/env';
+import { appEnv } from '@/env';
 
 export const checkPswExpired = ({ updateTime }: { updateTime?: Date }) => {
-  const expiredMonth = getAppEnv().PASSWORD_EXPIRED_MONTH;
+  const expiredMonth = appEnv.PASSWORD_EXPIRED_MONTH;
 
   if (expiredMonth === undefined) {
     return false;

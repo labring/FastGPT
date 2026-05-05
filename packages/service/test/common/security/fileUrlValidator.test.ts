@@ -46,14 +46,13 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://external.example.com/file.png')).toBe(true);
     });
 
-    it('should handle invalid STORAGE_EXTERNAL_ENDPOINT gracefully', async () => {
+    it('should reject invalid STORAGE_EXTERNAL_ENDPOINT at env validation stage', async () => {
       vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'not-a-valid-url');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
-      const { validateFileUrlDomain } = await import(
-        '@fastgpt/service/common/security/fileUrlValidator'
+
+      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
+        'Invalid environment variables. Please check: STORAGE_EXTERNAL_ENDPOINT'
       );
-      expect(validateFileUrlDomain('http://other.com/file.png')).toBe(true);
-      expect(validateFileUrlDomain('http://not-a-valid-url/file.png')).toBe(false);
     });
 
     it('should extract hostname from FE_DOMAIN', async () => {
