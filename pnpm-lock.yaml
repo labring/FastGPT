@@ -399,9 +399,6 @@ importers:
       ioredis:
         specifier: ^5.6.0
         version: 5.6.0
-      ipaddr.js:
-        specifier: ^2.3.0
-        version: 2.3.0
       joplin-turndown-plugin-gfm:
         specifier: ^1.0.12
         version: 1.0.12
@@ -1328,9 +1325,6 @@ importers:
       hono:
         specifier: ^4.7.6
         version: 4.11.7
-      ipaddr.js:
-        specifier: ^2.3.0
-        version: 2.3.0
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
