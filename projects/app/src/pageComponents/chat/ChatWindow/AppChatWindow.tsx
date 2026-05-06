@@ -52,6 +52,8 @@ const AppChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
+  const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
@@ -192,7 +194,7 @@ const AppChatWindow = () => {
             <ChatBox
               appId={appId}
               chatId={chatId}
-              isReady={!loading && !!appId}
+              isReady={!loading && !!appId && isCurrentChatReady}
               enableAutoResume
               feedbackType={'user'}
               chatType={ChatTypeEnum.chat}

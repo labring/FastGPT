@@ -89,6 +89,8 @@ const HomeChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
+  const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+
   const isQuickApp = useMemo(
     () => chatSettings?.quickAppList.some((app) => app._id === appId),
     [chatSettings?.quickAppList, appId]
@@ -463,7 +465,7 @@ const HomeChatWindow = () => {
           <ChatBox
             appId={appId}
             chatId={chatId}
-            isReady={!loading && !!appId}
+            isReady={!loading && !!appId && isCurrentChatReady}
             enableAutoResume
             feedbackType={'user'}
             chatType={ChatTypeEnum.home}
