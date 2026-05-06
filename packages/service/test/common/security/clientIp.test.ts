@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ipaddr from 'ipaddr.js';
 import {
   getClientIpFromRequest,
@@ -8,7 +8,12 @@ import {
 import { env } from '@fastgpt/service/env';
 
 const originalTrustedProxyIps = env.TRUSTED_PROXY_IPS;
+const originalTrustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
 const originalNodeEnv = process.env.NODE_ENV;
+
+const setTrustedProxyEnable = (value: boolean) => {
+  (env as { TRUSTED_PROXY_ENABLE: boolean }).TRUSTED_PROXY_ENABLE = value;
+};
 
 const setTrustedProxyIps = (value?: string) => {
   (env as { TRUSTED_PROXY_IPS?: string }).TRUSTED_PROXY_IPS = value;
@@ -39,6 +44,7 @@ const createReq = ({
 
 describe('clientIp', () => {
   afterEach(() => {
+    setTrustedProxyEnable(originalTrustedProxyEnable);
     setTrustedProxyIps(originalTrustedProxyIps);
     setNodeEnv(originalNodeEnv);
   });
@@ -68,6 +74,18 @@ describe('clientIp', () => {
   });
 
   describe('isTrustedProxyIp', () => {
+    beforeEach(() => {
+      setTrustedProxyEnable(true);
+    });
+
+    it('should not trust proxies when trusted proxy parsing is disabled', () => {
+      setTrustedProxyEnable(false);
+      setTrustedProxyIps('127.0.0.1/8, 10.0.0.0/8');
+
+      expect(isTrustedProxyIp('127.0.0.1')).toBe(false);
+      expect(isTrustedProxyIp('10.0.0.10')).toBe(false);
+    });
+
     it('should trust loopback proxies by default', () => {
       setTrustedProxyIps(undefined);
 
@@ -131,6 +149,58 @@ describe('clientIp', () => {
   });
 
   describe('getClientIpFromRequest', () => {
+    beforeEach(() => {
+      setTrustedProxyEnable(true);
+    });
+
+    it('should trust forwarding headers when trusted proxy parsing is disabled', () => {
+      setTrustedProxyEnable(false);
+      setTrustedProxyIps('127.0.0.1/8, 10.0.0.0/8');
+
+      const ip = getClientIpFromRequest(
+        createReq({
+          remoteAddress: '127.0.0.1',
+          headers: {
+            'x-forwarded-for': '203.0.113.50',
+            'x-real-ip': '203.0.113.51'
+          }
+        })
+      );
+
+      expect(ip).toBe('203.0.113.50');
+    });
+
+    it('should fall back to X-Real-IP in compatibility mode when X-Forwarded-For is invalid', () => {
+      setTrustedProxyEnable(false);
+
+      const ip = getClientIpFromRequest(
+        createReq({
+          remoteAddress: '127.0.0.1',
+          headers: {
+            'x-forwarded-for': 'not-an-ip',
+            'x-real-ip': '203.0.113.51'
+          }
+        })
+      );
+
+      expect(ip).toBe('203.0.113.51');
+    });
+
+    it('should use the left-most X-Forwarded-For IP in compatibility mode', () => {
+      setTrustedProxyEnable(false);
+
+      const ip = getClientIpFromRequest(
+        createReq({
+          remoteAddress: '127.0.0.1',
+          headers: {
+            'x-forwarded-for': '203.0.113.50, 10.0.0.20'
+          }
+        })
+      );
+
+      expect(ip).toBe('203.0.113.50');
+    });
+
     it('should ignore spoofed forwarding headers for direct requests', () => {
       setTrustedProxyIps(undefined);
 

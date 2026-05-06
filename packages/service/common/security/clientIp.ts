@@ -21,6 +21,7 @@ const MAX_FORWARDED_FOR_LENGTH = 2048;
 const MAX_FORWARDED_FOR_HOPS = 32;
 
 let cachedTrustedProxyIpEnv: string | undefined | null = null;
+let cachedTrustedProxyEnableEnv: boolean | undefined | null = null;
 let cachedNodeEnv: string | undefined | null = null;
 let cachedTrustProxyFn: TrustProxyFn = proxyaddr.compile([]);
 let warnedInvalidTrustedProxyIpEnv: string | undefined;
@@ -107,22 +108,31 @@ const parseTrustedProxyIpEnv = (trustedProxyIpEnv?: string) => {
   return Array.from(validAddresses);
 };
 
-// 构建并缓存 proxy-addr 的信任判定函数;非生产环境默认信任 loopback,叠加 TRUSTED_PROXY_IPS 配置。
+// 构建并缓存 proxy-addr 的信任判定函数;用于 TRUSTED_PROXY_ENABLE=true 的可信代理校验模式。
+// 可信代理校验模式下,非生产环境默认信任 loopback,并叠加 TRUSTED_PROXY_IPS 配置。
 // 仅当环境变量或 NODE_ENV 变化时才重新编译,避免每次请求都重复解析。
 const getTrustProxyFn = () => {
+  const trustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
   const trustedProxyIpEnv = env.TRUSTED_PROXY_IPS;
   const nodeEnv = process.env.NODE_ENV;
-  if (trustedProxyIpEnv === cachedTrustedProxyIpEnv && nodeEnv === cachedNodeEnv) {
+  if (
+    trustedProxyEnable === cachedTrustedProxyEnableEnv &&
+    trustedProxyIpEnv === cachedTrustedProxyIpEnv &&
+    nodeEnv === cachedNodeEnv
+  ) {
     return cachedTrustProxyFn;
   }
 
+  cachedTrustedProxyEnableEnv = trustedProxyEnable;
   cachedTrustedProxyIpEnv = trustedProxyIpEnv;
   cachedNodeEnv = nodeEnv;
 
-  const trustedProxyAddresses = [
-    ...(nodeEnv === 'production' ? [] : (['loopback'] satisfies proxyaddr.Address[])),
-    ...parseTrustedProxyIpEnv(trustedProxyIpEnv)
-  ];
+  const trustedProxyAddresses = trustedProxyEnable
+    ? [
+        ...(nodeEnv === 'production' ? [] : (['loopback'] satisfies proxyaddr.Address[])),
+        ...parseTrustedProxyIpEnv(trustedProxyIpEnv)
+      ]
+    : [];
   cachedTrustProxyFn = proxyaddr.compile(trustedProxyAddresses);
 
   return cachedTrustProxyFn;
@@ -149,11 +159,6 @@ export const isTrustedProxyIp = (rawIp?: string | null) => {
 
 // 取 TCP 连接对端地址(socket / 旧版 connection 兜底),作为最可信的回退来源。
 const getRemoteIp = (req: RequestWithClientIp) => {
-  console.log({
-    remoteAddress: req.socket?.remoteAddress,
-    xForwardedFor: req.headers?.['x-forwarded-for'],
-    xRealIp: req.headers?.['x-real-ip']
-  });
   return normalizeClientIp(req.socket?.remoteAddress ?? req.connection?.remoteAddress);
 };
 
@@ -166,6 +171,19 @@ const getClientIpFromRealIp = (req: RequestWithClientIp) => {
 // 读取原始 X-Forwarded-For 头(不解析、不归一),后续校验和 proxy-addr 解析使用。
 const getForwardedFor = (req: RequestWithClientIp) => {
   return getHeaderValue(req.headers, 'x-forwarded-for');
+};
+
+// 关闭可信代理校验时的兼容模式:直接相信转发头。
+// X-Forwarded-For 按行业约定取最左侧 IP;如果不存在或非法,再尝试 X-Real-IP。
+const getClientIpFromForwardingHeaders = (req: RequestWithClientIp) => {
+  const forwardedFor = getForwardedFor(req);
+  if (forwardedFor && forwardedFor.length <= MAX_FORWARDED_FOR_LENGTH) {
+    const firstForwardedIp = forwardedFor.split(',')[0]?.trim();
+    const ip = normalizeClientIp(firstForwardedIp);
+    if (ip) return ip;
+  }
+
+  return getClientIpFromRealIp(req);
 };
 
 // 在调用 proxy-addr 前对 XFF 做尺寸/跳数/格式预检,防止超长或畸形头造成解析放大攻击。
@@ -195,11 +213,16 @@ const createProxyAddrRequest = (remoteAddress: string, forwardedFor: string) => 
 
 // 对外:从请求中解析出最终客户端 IP。
 // 策略:
-//   1. 取 socket 远端 IP 作为底线;若不可解析直接返回 undefined。
-//   2. 远端不在受信代理列表 -> 直接返回远端 IP,忽略一切转发头(防伪造)。
-//   3. 远端可信 -> 优先用 X-Forwarded-For(经安全校验后交给 proxy-addr 沿信任链回溯),
+//   1. TRUSTED_PROXY_ENABLE=false -> 兼容模式,直接相信 X-Forwarded-For / X-Real-IP,再回退远端 IP。
+//   2. TRUSTED_PROXY_ENABLE=true -> 可信代理校验模式,先取 socket 远端 IP 作为底线;若不可解析直接返回 undefined。
+//   3. 远端不在受信代理列表 -> 直接返回远端 IP,忽略一切转发头(防伪造)。
+//   4. 远端可信 -> 优先用 X-Forwarded-For(经安全校验后交给 proxy-addr 沿信任链回溯),
 //      否则回退 X-Real-IP;校验失败或转发头本身仍是受信代理时退回远端 IP。
 export const getClientIpFromRequest = (req: RequestWithClientIp) => {
+  if (!env.TRUSTED_PROXY_ENABLE) {
+    return getClientIpFromForwardingHeaders(req) ?? getRemoteIp(req);
+  }
+
   const remoteIp = getRemoteIp(req);
   if (!remoteIp) return;
 

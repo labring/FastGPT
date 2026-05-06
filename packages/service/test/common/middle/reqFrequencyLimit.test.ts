@@ -5,9 +5,14 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { env } from '@fastgpt/service/env';
 
 const originalUseIpLimit = env.USE_IP_LIMIT;
+const originalTrustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
 
 const setUseIpLimit = (value: boolean) => {
   (env as { USE_IP_LIMIT: boolean }).USE_IP_LIMIT = value;
+};
+
+const setTrustedProxyEnable = (value: boolean) => {
+  (env as { TRUSTED_PROXY_ENABLE: boolean }).TRUSTED_PROXY_ENABLE = value;
 };
 
 const createRes = () =>
@@ -42,6 +47,7 @@ describe('useIPFrequencyLimit', () => {
 
   afterEach(() => {
     setUseIpLimit(originalUseIpLimit);
+    setTrustedProxyEnable(originalTrustedProxyEnable);
   });
 
   it('should enforce IP limit when USE_IP_LIMIT is enabled without force', async () => {
@@ -112,6 +118,8 @@ describe('useIPFrequencyLimit', () => {
   });
 
   it('should ignore spoofed forwarding headers from untrusted direct clients', async () => {
+    setTrustedProxyEnable(true);
+
     const middleware = useIPFrequencyLimit({
       id: 'ip-spoof-test-direct',
       seconds: 60,
@@ -141,7 +149,41 @@ describe('useIPFrequencyLimit', () => {
     expect(spoofedIpRecord).toBeNull();
   });
 
+  it('should use X-Forwarded-For as the limit key when trusted proxy parsing is disabled', async () => {
+    setTrustedProxyEnable(false);
+
+    const middleware = useIPFrequencyLimit({
+      id: 'ip-spoof-test-compat',
+      seconds: 60,
+      limit: 10,
+      force: true
+    });
+
+    await middleware(
+      createReq({
+        remoteAddress: '172.16.0.119',
+        headers: {
+          'x-forwarded-for': '60.186.209.23',
+          'x-real-ip': '60.186.209.23'
+        }
+      }),
+      createRes()
+    );
+
+    const forwardedIpRecord = await MongoFrequencyLimit.findOne({
+      eventId: 'ip-qps-limit-ip-spoof-test-compat-60.186.209.23'
+    }).lean();
+    const remoteIpRecord = await MongoFrequencyLimit.findOne({
+      eventId: 'ip-qps-limit-ip-spoof-test-compat-172.16.0.119'
+    }).lean();
+
+    expect(forwardedIpRecord?.amount).toBe(1);
+    expect(remoteIpRecord).toBeNull();
+  });
+
   it('should use proxy-addr result for trusted proxy forwarding chains', async () => {
+    setTrustedProxyEnable(true);
+
     const middleware = useIPFrequencyLimit({
       id: 'ip-spoof-test-proxy',
       seconds: 60,
@@ -171,6 +213,8 @@ describe('useIPFrequencyLimit', () => {
   });
 
   it('should use a shared fail-closed key when client IP cannot be resolved', async () => {
+    setTrustedProxyEnable(true);
+
     const middleware = useIPFrequencyLimit({
       id: 'ip-spoof-test-unknown',
       seconds: 60,

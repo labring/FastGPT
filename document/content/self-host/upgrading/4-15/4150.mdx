@@ -36,6 +36,13 @@ SYNC_INDEX=true
 5. 增加文件解析/HTML转Markdown/文本切块 worker pool，避免并发太高导致资源耗尽，可通过环境变量调整其 pool 数量。
 6. 模型思考配置。
 
+## 环境变量更新
+
+```dotenv
+TRUSTED_PROXY_ENABLE=false
+TRUSTED_PROXY_IPS=
+```
+
 ## ⚙️ 优化
 
 1. 增加父子节点选中互斥功能，解决：同时选中父子节点时，移动节点会出现抖动。
