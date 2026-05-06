@@ -654,12 +654,6 @@ const ChatBox = ({
     resumeController.current?.abort(new Error(reason));
   });
 
-  useEffect(() => {
-    return () => {
-      abortRequest('leave');
-    };
-  }, [abortRequest]);
-
   const hasMeaningfulAiOutput = useMemoizedFn((chat?: ChatSiteItemType) => {
     if (!chat || chat.obj !== ChatRoleEnum.AI) return false;
     if (chat.responseData?.length) return true;
@@ -1279,6 +1273,10 @@ const ChatBox = ({
     setValue('chatStarted', false);
     resumedChatTargetRef.current = undefined;
     abortRequest('leave');
+
+    return () => {
+      abortRequest('leave');
+    };
   }, [chatId, appId, abortRequest, setValue]);
 
   useEffect(() => {
