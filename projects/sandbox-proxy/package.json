@@ -1,0 +1,38 @@
+{
+  "name": "@fastgpt/sandbox-proxy",
+  "version": "0.1.0",
+  "description": "FastGPT Sandbox Proxy - subdomain-based reverse proxy with JWT cookie auth",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "sh build.sh",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": "10.x"
+  },
+  "dependencies": {
+    "@fastgpt-sdk/logger": "catalog:",
+    "@fastgpt/global": "workspace:*",
+    "cookie": "^0.7.2",
+    "dotenv": "^17.3.1",
+    "http-proxy": "^1.18.1",
+    "jsonwebtoken": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/cookie": "^0.6.0",
+    "@types/http-proxy": "^1.17.15",
+    "@types/jsonwebtoken": "catalog:",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -19,6 +19,8 @@ import type {
   GetSkillFolderPathResponse,
   CreateEditDebugSandboxBody,
   CreateEditDebugSandboxResponse,
+  HeartbeatSandboxBody,
+  HeartbeatSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugRecordsBody,
   ListAppsBySkillIdResponse,
@@ -73,6 +75,10 @@ export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>
 /** 创建编辑调试沙箱（SSE 流式返回状态，最终推送 endpoint 信息） */
 export const postCreateEditDebugSandbox = (data: CreateEditDebugSandboxBody) =>
   POST<CreateEditDebugSandboxResponse>('/core/agentSkills/edit', data);
+
+/** 续期编辑调试沙箱，避免打开 code-server 时被空闲清理任务暂停 */
+export const postHeartbeatSandbox = (data: HeartbeatSandboxBody) =>
+  POST<HeartbeatSandboxResponse>('/core/agentSkills/sandbox/heartbeat', data);
 
 /** 创建编辑调试沙箱 — SSE 流式版本，逐阶段回调 */
 export const streamCreateEditDebugSandbox = ({
@@ -140,6 +146,10 @@ export const SKILL_DEBUG_CHAT_URL = '/api/core/agentSkills/debugChat';
 /** 创建 Skill 文件夹 */
 export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>
   POST('/core/agentSkills/folder/create', data);
+
+/** 签发 sandbox-proxy 的 JWT（默认 10min TTL，react-query 9min 内复用） */
+export const postSandboxProxyToken = (data: { sandboxId: string }) =>
+  POST<{ token: string; exp: number; ttl: number }>('/core/sandbox/proxyAuth/token', data);
 
 /** 获取 Skill 文件夹路径 */
 export const getSkillFolderPath = (data: GetSkillFolderPathQuery) =>

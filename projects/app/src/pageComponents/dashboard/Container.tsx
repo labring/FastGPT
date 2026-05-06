@@ -112,7 +112,7 @@ const DashboardContainer = ({
       {
         groupId: TabEnum.agent,
         groupAvatar: 'core/chat/sidebar/star',
-        groupName: 'Agent',
+        groupName: 'Agents',
         children: [
           {
             isActive: !currentType,
@@ -139,7 +139,7 @@ const DashboardContainer = ({
             {
               groupId: TabEnum.skill,
               groupAvatar: 'common/skill',
-              groupName: 'Skill',
+              groupName: t('common:navbar.Skill'),
               children: []
             }
           ]

@@ -22,6 +22,11 @@ export type SandboxLogEntry = {
   phase: SandboxStatusPhase;
 };
 
+export type SandboxEndpoint = {
+  providerSandboxId: string;
+  port: number;
+};
+
 type SkillDetailContextType = {
   skillId: string;
   skillDetail: AgentSkillDetailType | undefined;
@@ -33,7 +38,7 @@ type SkillDetailContextType = {
   setShowHistories: (v: boolean) => void;
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
-  sandboxEndpointUrl: string | null;
+  sandboxEndpoint: SandboxEndpoint | null;
   sandboxError: string | null;
   startSandbox: () => void;
 };
@@ -49,7 +54,7 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   setShowHistories: () => {},
   sandboxState: 'idle',
   sandboxLogs: [],
-  sandboxEndpointUrl: null,
+  sandboxEndpoint: null,
   sandboxError: null,
   startSandbox: () => {}
 });
@@ -72,7 +77,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   // Sandbox states
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
-  const [sandboxEndpointUrl, setSandboxEndpointUrl] = useState<string | null>(null);
+  const [sandboxEndpoint, setSandboxEndpoint] = useState<SandboxEndpoint | null>(null);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const hasStartedRef = useRef(false);
@@ -109,7 +114,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
     setSandboxState('idle');
     setSandboxLogs([]);
-    setSandboxEndpointUrl(null);
+    setSandboxEndpoint(null);
     setSandboxError(null);
 
     let hasReceivedFirstEvent = false;
@@ -131,7 +136,10 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         setSandboxLogs((prev) => [...prev, entry]);
 
         if (status.phase === 'ready' && status.providerSandboxId && status.endpoint?.port) {
-          setSandboxEndpointUrl(`/proxy/${status.providerSandboxId}/${status.endpoint.port}/`);
+          setSandboxEndpoint({
+            providerSandboxId: status.providerSandboxId,
+            port: status.endpoint.port
+          });
           setSandboxState('ready');
         } else if (status.phase === 'failed') {
           setSandboxError(status.message || t('skill:sandbox_error_title'));
@@ -208,7 +216,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       setShowHistories,
       sandboxState,
       sandboxLogs,
-      sandboxEndpointUrl,
+      sandboxEndpoint,
       sandboxError,
       startSandbox
     }),
@@ -221,7 +229,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       showHistories,
       sandboxState,
       sandboxLogs,
-      sandboxEndpointUrl,
+      sandboxEndpoint,
       sandboxError,
       startSandbox
     ]

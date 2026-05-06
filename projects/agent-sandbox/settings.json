@@ -27,5 +27,6 @@
     "workbench.editor.showTabs": "none",
     "window.commandCenter": false,
     "workbench.editor.editorActionsLocation": "hidden",
-    "workbench.layoutControl.enabled": false
+    "workbench.layoutControl.enabled": false,
+    "workbench.secondarySideBar.defaultVisibility": "hidden"
 }

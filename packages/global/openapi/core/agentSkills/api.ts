@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TeamMemberStatusEnum } from '../../../support/user/team/constant';
 import {
   AgentSkillCategorySchema,
   AgentSkillListItemSchema,
@@ -44,7 +45,7 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
     .object({
       name: z.string(),
       avatar: z.string().nullable().optional(),
-      status: z.string()
+      status: z.nativeEnum(TeamMemberStatusEnum)
     })
     .optional()
 });
@@ -178,6 +179,23 @@ export const GetSandboxInfoResponseSchema = z.object({
   createTime: z.string()
 });
 export type GetSandboxInfoResponse = z.infer<typeof GetSandboxInfoResponseSchema>;
+
+/* ============================================================================
+ * API: 续期 Skill 编辑调试沙盒
+ * Route: POST /api/core/agentSkills/sandbox/heartbeat
+ * Method: POST
+ * Description: 编辑调试页面保持打开时续期 sandbox lastActiveAt，避免空闲清理任务误停活跃 code-server。
+ * Tags: ['AgentSkill', 'Sandbox', 'Write']
+ * ============================================================================ */
+export const HeartbeatSandboxBodySchema = z.object({
+  sandboxId: IdSchema.describe('编辑调试 sandbox ID')
+});
+export type HeartbeatSandboxBody = z.infer<typeof HeartbeatSandboxBodySchema>;
+
+export const HeartbeatSandboxResponseSchema = z.object({
+  success: z.boolean()
+});
+export type HeartbeatSandboxResponse = z.infer<typeof HeartbeatSandboxResponseSchema>;
 
 export const DeleteSandboxBodySchema = z.object({
   sandboxId: IdSchema

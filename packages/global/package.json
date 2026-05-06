@@ -1,6 +1,7 @@
 {
   "name": "@fastgpt/global",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts"

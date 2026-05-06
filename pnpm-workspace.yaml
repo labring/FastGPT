@@ -5,6 +5,7 @@ packages:
   - projects/code-sandbox
   - projects/marketplace
   - projects/mcp_server
+  - projects/sandbox-proxy
   - pro/admin
   - pro/sso
 
