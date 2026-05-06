@@ -1,0 +1,22 @@
+{
+  "custom_domain": "Custom Domain",
+  "DNS_record": "DNS Record",
+  "DNS_record.type": "Type",
+  "DNS_resolve_hint": "Please go to your domain service provider and add a CNAME resolution for this domain to <bold>{{domain}}</bold>. After the resolution takes effect, you can bind the custom domain.",
+  "delete_confirm": "Confirm to delete this custom domain?",
+  "dns_resolved": "Verified",
+  "dns_resolving": "Verifying",
+  "domain": "Domain",
+  "domain_verify": "Domain Verification",
+  "domain_verify.content": "File Content",
+  "domain_verify.desc": "After saving, visiting {{domain}}/{{path}} will return {{content}}",
+  "domain_verify.path": "File Path",
+  "provider": "Domain Provider",
+  "provider.aliyun": "Alibaba Cloud",
+  "provider.tencent": "Tencent Cloud",
+  "provider.volcengine": "Volcengine",
+  "registration_hint": "Please prepare your own domain and complete the ICP filing through <bold>{{provider}}</bold>, then fill in the domain in the input box below",
+  "status.active": "Active",
+  "status.inactive": "Inactive",
+  "upgrade_to_use_custom_domain": "Current plan does not support custom domains, please upgrade first"
+}

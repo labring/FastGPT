@@ -1,0 +1,22 @@
+{
+  "custom_domain": "自訂域名",
+  "DNS_record": "DNS 記錄",
+  "DNS_record.type": "類型",
+  "DNS_resolve_hint": "請到您的域名服務商處，新增該域名的 CNAME 解析到 <bold>{{domain}}</bold>，解析生效後即可繫結自訂域名。",
+  "delete_confirm": "確認刪除該自訂域名？",
+  "dns_resolved": "已驗證",
+  "dns_resolving": "驗證中",
+  "domain": "域名",
+  "domain_verify": "域名校驗",
+  "domain_verify.content": "檔案內容",
+  "domain_verify.desc": "儲存後，訪問 {{domain}}/{{path}} 將傳回 {{content}}",
+  "domain_verify.path": "檔案路徑",
+  "provider": "域名備案商",
+  "provider.aliyun": "阿里雲",
+  "provider.tencent": "騰訊雲",
+  "provider.volcengine": "火山引擎",
+  "registration_hint": "請自備域名並透過 <bold>{{provider}}</bold> 完成備案後，將域名填入下方輸入框中",
+  "status.active": "已生效",
+  "status.inactive": "未生效",
+  "upgrade_to_use_custom_domain": "目前套餐不支援自訂域名，請先升級"
+}

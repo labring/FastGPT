@@ -30,19 +30,19 @@ function domainVerifyModal({ onClose, domain }: { onClose: () => void; domain: s
   );
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('account:custom_domain.domain_verify')} minW="800px">
+    <MyModal isOpen onClose={onClose} title={t('account_custom_domain:domain_verify')} minW="800px">
       <ModalBody>
         <Grid gridTemplateColumns="1fr 1fr" gap="16px">
           <Box>
-            <FormLabel required>{t('account:custom_domain.domain_verify.path')}</FormLabel>
+            <FormLabel required>{t('account_custom_domain:domain_verify.path')}</FormLabel>
             <Input {...register('path')} />
           </Box>
           <Box>
-            <FormLabel required>{t('account:custom_domain.domain_verify.content')}</FormLabel>
+            <FormLabel required>{t('account_custom_domain:domain_verify.content')}</FormLabel>
             <Input {...register('content')} />
           </Box>
         </Grid>
-        <Box mt="2">{t('account:custom_domain.domain_verify.desc', { domain, path, content })}</Box>
+        <Box mt="2">{t('account_custom_domain:domain_verify.desc', { domain, path, content })}</Box>
       </ModalBody>
       <ModalFooter>
         <Button

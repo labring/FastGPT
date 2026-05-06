@@ -19,6 +19,7 @@ import type user from './zh-CN/user.json';
 import type chat from './zh-CN/chat.json';
 import type login from './zh-CN/login.json';
 import type account_model from './zh-CN/account_model.json';
+import type account_custom_domain from './zh-CN/account_custom_domain.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
 import type dashboard_evaluation from './zh-CN/dashboard_evaluation.json';
 import type skill from './zh-CN/skill.json';
@@ -45,6 +46,7 @@ export interface I18nNamespaces {
   account_team: typeof account_team;
   account_thirdParty: typeof account_thirdParty;
   account_model: typeof account_model;
+  account_custom_domain: typeof account_custom_domain;
   dashboard_mcp: typeof dashboard_mcp;
   dashboard_evaluation: typeof dashboard_evaluation;
   skill: typeof skill;
