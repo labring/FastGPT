@@ -55,7 +55,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/logger'),
       import('@fastgpt/service/common/system/constants')
     ]);
-    console.log(MONGO_URL, MONGO_LOG_URL, 2323232);
+
     await runInitializationStep({
       step: 'configure-logger',
       action: () => configureLogger()
