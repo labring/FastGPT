@@ -77,19 +77,7 @@ services:
     volumes:
       - fastgpt-mongo:/data/db
     healthcheck:
-      test:
-        [
-          'CMD',
-          'mongo',
-          '-u',
-          'myusername',
-          '-p',
-          'mypassword',
-          '--authenticationDatabase',
-          'admin',
-          '--eval',
-          "db.adminCommand('ping')"
-        ]
+      test: ['CMD', 'mongo', '-u', 'myusername', '-p', 'mypassword', '--authenticationDatabase', 'admin', '--eval', "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -163,7 +151,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.15
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.18 
     ports:
       - 3000:3000
     networks:
@@ -191,7 +179,7 @@ services:
       HOSTNAME: 0.0.0.0
       # ==================== 基础配置 ====================
       # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
-      FE_DOMAIN: http://localhost:3000
+      FE_DOMAIN: 
       # root key（最高权限）
       ROOT_KEY: *x-system-key
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
@@ -258,14 +246,14 @@ services:
       LLM_REQUEST_TRACKING_RETENTION_HOURS: 6
       # ==================== 功能开关与特殊配置 ====================
       # 自定义跨域；不配置时默认允许所有跨域（逗号分割）
-      ALLOWED_ORIGINS:
+      ALLOWED_ORIGINS: 
       # HTML 转 Markdown 最大字符数（超过后不执行转换）
       MAX_HTML_TRANSFORM_CHARS: 1000000
     volumes:
       - ./config.json:/app/data/config.json
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.15
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.14.18
     networks:
       - codesandbox
     restart: always
@@ -303,19 +291,18 @@ services:
       # Python allowed modules whitelist (comma-separated)
       SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
     healthcheck:
-      test:
-        [
-          'CMD',
-          'bun',
-          '-e',
-          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
-        ]
+      test: [
+        'CMD',                                                                                                                                                        
+        'bun',                                                               
+        '-e',
+        "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+      ]     
       interval: 30s
       timeout: 20s
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.15
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.18
     networks:
       - app
     ports:
@@ -519,3 +506,4 @@ configs:
 
       [ingress]
       mode = "direct"
+  
