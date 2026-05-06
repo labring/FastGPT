@@ -103,12 +103,7 @@ export const serviceEnv = createEnv({
       .default(
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
-    MONGODB_LOG_URI: z
-      .string()
-      .default(
-        'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
-      )
-      .optional(),
+    MONGODB_LOG_URI: z.string().optional(),
 
     // VectorDB
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
