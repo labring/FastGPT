@@ -1,7 +1,7 @@
 import type { IncomingHttpHeaders, IncomingMessage } from 'http';
 import ipaddr from 'ipaddr.js';
 import proxyaddr from 'proxy-addr';
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 
 type IPAddress = ipaddr.IPv4 | ipaddr.IPv6;
 
@@ -112,8 +112,8 @@ const parseTrustedProxyIpEnv = (trustedProxyIpEnv?: string) => {
 // 可信代理校验模式下,非生产环境默认信任 loopback,并叠加 TRUSTED_PROXY_IPS 配置。
 // 仅当环境变量或 NODE_ENV 变化时才重新编译,避免每次请求都重复解析。
 const getTrustProxyFn = () => {
-  const trustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
-  const trustedProxyIpEnv = env.TRUSTED_PROXY_IPS;
+  const trustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
+  const trustedProxyIpEnv = serviceEnv.TRUSTED_PROXY_IPS;
   const nodeEnv = process.env.NODE_ENV;
   if (
     trustedProxyEnable === cachedTrustedProxyEnableEnv &&
@@ -219,7 +219,7 @@ const createProxyAddrRequest = (remoteAddress: string, forwardedFor: string) => 
 //   4. 远端可信 -> 优先用 X-Forwarded-For(经安全校验后交给 proxy-addr 沿信任链回溯),
 //      否则回退 X-Real-IP;校验失败或转发头本身仍是受信代理时退回远端 IP。
 export const getClientIpFromRequest = (req: RequestWithClientIp) => {
-  if (!env.TRUSTED_PROXY_ENABLE) {
+  if (!serviceEnv.TRUSTED_PROXY_ENABLE) {
     return getClientIpFromForwardingHeaders(req) ?? getRemoteIp(req);
   }
 
