@@ -149,6 +149,11 @@ export const isTrustedProxyIp = (rawIp?: string | null) => {
 
 // 取 TCP 连接对端地址(socket / 旧版 connection 兜底),作为最可信的回退来源。
 const getRemoteIp = (req: RequestWithClientIp) => {
+  console.log({
+    remoteAddress: req.socket?.remoteAddress,
+    xForwardedFor: req.headers?.['x-forwarded-for'],
+    xRealIp: req.headers?.['x-real-ip']
+  });
   return normalizeClientIp(req.socket?.remoteAddress ?? req.connection?.remoteAddress);
 };
 
