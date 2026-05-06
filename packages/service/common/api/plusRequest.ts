@@ -9,6 +9,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { createProxyAxios } from './axios';
 import { getLogger, LogCategories } from '../logger';
 import { assertRelativePath } from '../security/network';
+import { serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -76,7 +77,7 @@ const instance = createProxyAxios(
     headers: {
       'content-type': 'application/json',
       'Cache-Control': 'no-cache',
-      rootkey: process.env.ROOT_KEY
+      rootkey: serviceEnv.ROOT_KEY
     }
   },
   false

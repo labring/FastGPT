@@ -20,7 +20,8 @@
   "dependencies": {
     "@fastgpt-sdk/logger": "^0.1.2",
     "@hono/node-server": "^1.13.7",
-    "ipaddr.js": "^2.3.0",
+    "@fastgpt/global": "workspace:*",
+    "@t3-oss/env-core": "catalog:",
     "acorn": "^8.15.0",
     "acorn-walk": "^8.3.4",
     "axios": "catalog:",

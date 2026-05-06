@@ -23,6 +23,7 @@
     "@fastgpt-sdk/logger": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
+    "@t3-oss/env-core": "catalog:",
     "axios": "catalog:",
     "i18next": "catalog:",
     "mongoose": "catalog:",

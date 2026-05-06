@@ -18,6 +18,7 @@ import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../../dataset/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../../ai/llm/agentLoop/prompt';
+import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 
 type GetFileProps = {
   requestOrigin?: string;
@@ -121,7 +122,7 @@ export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url:
   // Get file name
   const { filename, extension, imageParsePrefix } = (() => {
     if (isChatExternalUrl) {
-      const contentDisposition = response.headers['content-disposition'] || '';
+      const contentDisposition = getAxiosHeaderValue(response.headers['content-disposition']) || '';
       const matchFilename = parseContentDispositionFilename(contentDisposition);
       const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
       const extension = path.extname(filename).replace('.', '');
@@ -141,7 +142,7 @@ export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url:
     filename,
     extension,
     imageParsePrefix,
-    contentType: response.headers['content-type'],
+    contentType: getAxiosHeaderValue(response.headers['content-type']),
     stream: response.data
   };
 };

@@ -1,13 +1,15 @@
-const { i18n } = require('./next-i18next.config.js');
-const path = require('path');
+import type { NextConfig } from 'next';
+import path from 'path';
+import { i18n } from './next-i18next.config.js';
+import { webEnv } from '@fastgpt/web/env';
 
 const isDev = process.env.NODE_ENV === 'development';
 const monorepoRoot = path.join(__dirname, '../../');
 const emptyModulePath = './packages/service/common/system/emptyModule.js';
+const basePath = webEnv.NEXT_PUBLIC_BASE_URL || undefined;
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  basePath: process.env.NEXT_PUBLIC_BASE_URL,
+const nextConfig: NextConfig = {
+  basePath,
   i18n,
   output: 'standalone',
   reactStrictMode: isDev ? false : true,
@@ -83,4 +85,4 @@ const nextConfig = {
   outputFileTracingRoot: monorepoRoot
 };
 
-module.exports = nextConfig;
+export default nextConfig;

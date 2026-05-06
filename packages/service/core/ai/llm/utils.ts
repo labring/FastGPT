@@ -15,6 +15,7 @@ import { getS3ChatSource } from '../../../common/s3/sources/chat';
 import { isInternalAddress } from '../../../common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -166,7 +167,7 @@ export const loadRequestMessages = async ({
               // If imgUrl is a local path, load image from local, and set url to base64
               if (
                 imgUrl.startsWith('/') ||
-                process.env.MULTIPLE_DATA_TO_BASE64 !== 'false' ||
+                serviceEnv.MULTIPLE_DATA_TO_BASE64 ||
                 (await isInternalAddress(imgUrl))
               ) {
                 try {

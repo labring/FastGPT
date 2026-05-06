@@ -83,8 +83,8 @@ describe('decryptSecret', () => {
   it('should throw on tampered ciphertext', () => {
     const encrypted = encryptSecret('secret');
     const parts = encrypted.split(':');
-    // Flip a byte in the encrypted data
-    const tampered = parts[0] + ':' + 'ff' + parts[1].slice(2) + ':' + parts[2];
+    const replacement = parts[1][0] === '0' ? '1' : '0';
+    const tampered = `${parts[0]}:${replacement}${parts[1].slice(1)}:${parts[2]}`;
 
     expect(() => decryptSecret(tampered)).toThrow();
   });

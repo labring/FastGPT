@@ -19,7 +19,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 
 // Shrink max iterations so overflow tests run fast.
 vi.mock('@fastgpt/service/env', () => ({
-  env: { WORKFLOW_MAX_LOOP_TIMES: 5 }
+  serviceEnv: { WORKFLOW_MAX_LOOP_TIMES: 5 }
 }));
 
 // Import after mocks so runLoopRun pulls the mocked modules.

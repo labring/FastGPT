@@ -164,12 +164,12 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
       isOpen
       onClose={onClose}
       iconSrc="common/globalLine"
-      title={t('account:custom_domain')}
+      title={t('account_custom_domain:custom_domain')}
       minW="800px"
     >
       <ModalBody>
         <Box fontWeight="500" color="gray.900">
-          {t('account:custom_domain.provider')}
+          {t('account_custom_domain:provider')}
         </Box>
         <Flex flexDirection="row" gap="16px" w="100%" marginTop={'10px'}>
           <ProviderItem
@@ -193,7 +193,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
         </Flex>
         <Box marginTop={'16px'} fontSize={'sm'} color={'gray.600'}>
           <Trans
-            i18nKey="account:custom_domain.registration_hint"
+            i18nKey="account_custom_domain:registration_hint"
             values={{ provider: t(providerMap[provider]) }}
             components={{ bold: <Text as="span" fontWeight="bold" color="gray.900" /> }}
           />
@@ -211,11 +211,11 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
               {!editDomain && domain && startDnsResolve ? (
                 DnsResolved ? (
                   <Tag colorScheme="green" size="sm">
-                    {t('account:custom_domain.dns_resolved')}
+                    {t('account_custom_domain:dns_resolved')}
                   </Tag>
                 ) : (
                   <Tag colorScheme="red" size="sm">
-                    {t('account:custom_domain.dns_resolving')}
+                    {t('account_custom_domain:dns_resolving')}
                   </Tag>
                 )
               ) : (
@@ -254,11 +254,11 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
           flexDir="column"
         >
           <Box fontWeight="500" color="gray.900">
-            {t('account:custom_domain.DNS_record')}
+            {t('account_custom_domain:DNS_record')}
           </Box>
           <Box marginTop={'16px'} fontSize={'sm'} color={'gray.600'}>
             <Trans
-              i18nKey="account:custom_domain.DNS_resolve_hint"
+              i18nKey="account_custom_domain:DNS_resolve_hint"
               values={{ domain: cnameDomain }}
               components={{ bold: <Text as="span" fontWeight="bold" color="gray.900" /> }}
             />
@@ -266,7 +266,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
           <Table size="sm" marginTop={'16px'} w="full">
             <Thead>
               <Tr>
-                <Th>{t('account:custom_domain.DNS_record.type')}</Th>
+                <Th>{t('account_custom_domain:DNS_record.type')}</Th>
                 <Th>TTL</Th>
                 <Th>{t('common:value')}</Th>
               </Tr>

@@ -21,10 +21,12 @@
     "@fastgpt/global": "workspace:*",
     "@fastgpt-sdk/logger": "workspace:*",
     "@modelcontextprotocol/sdk": "catalog:",
+    "@t3-oss/env-core": "catalog:",
     "chalk": "catalog:",
     "dayjs": "catalog:",
     "dotenv": "^16.5.0",
-    "express": "catalog:"
+    "express": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/express": "^5.0.1"

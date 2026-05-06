@@ -3,6 +3,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { PG_ADDRESS } from '../constants';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.POSTGRES);
 
@@ -14,7 +15,7 @@ export const connectPg = async (): Promise<Pool> => {
   const pool = new Pool({
     connectionString: PG_ADDRESS,
     // 连接池配置
-    max: Number(process.env.DB_MAX_LINK || 30), // 增加到 30，支持更高并发
+    max: serviceEnv.DB_MAX_LINK, // 支持通过统一 env 配置并发
     min: 15, // 调整为 max 的 50%
     keepAlive: true,
 

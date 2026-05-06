@@ -4,13 +4,13 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { app, poolReady } from '../../src/index';
-import { config } from '../../src/config';
+import { env } from '../../src/env';
 
 /** 构造请求 headers，自动带上 auth（如果配置了 token） */
 function headers(extra: Record<string, string> = {}): Record<string, string> {
   const h: Record<string, string> = { ...extra };
-  if (config.token) {
-    h['Authorization'] = `Bearer ${config.token}`;
+  if (env.SANDBOX_TOKEN) {
+    h['Authorization'] = `Bearer ${env.SANDBOX_TOKEN}`;
   }
   return h;
 }
@@ -241,9 +241,9 @@ describe('API Routes', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
-    expect(data.data.js).toEqual(config.jsAllowedModules);
+    expect(data.data.js).toEqual(env.SANDBOX_JS_ALLOWED_MODULES);
     expect(data.data.builtinGlobals).toContain('SystemHelper.httpRequest');
-    expect(data.data.python).toEqual(config.pythonAllowedModules);
+    expect(data.data.python).toEqual(env.SANDBOX_PYTHON_ALLOWED_MODULES);
   });
 });
 
@@ -374,7 +374,7 @@ describe('API Zod 校验失败', () => {
  * 默认 SANDBOX_TOKEN 为空，auth 中间件不启用。
  * 设置 SANDBOX_TOKEN=xxx 运行可测试鉴权逻辑。
  */
-describe.skipIf(!config.token)('API Auth (requires SANDBOX_TOKEN)', () => {
+describe.skipIf(!env.SANDBOX_TOKEN)('API Auth (requires SANDBOX_TOKEN)', () => {
   it('无 Token 返回 401', async () => {
     const res = await app.request('/sandbox/js', {
       method: 'POST',
@@ -407,7 +407,7 @@ describe.skipIf(!config.token)('API Auth (requires SANDBOX_TOKEN)', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.token}`
+        Authorization: `Bearer ${env.SANDBOX_TOKEN}`
       },
       body: JSON.stringify({
         code: 'async function main() { return { ok: true } }',

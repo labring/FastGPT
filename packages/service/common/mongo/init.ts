@@ -1,10 +1,11 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import type { Mongoose } from 'mongoose';
+import { serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
-const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
+const maxConnecting = Math.max(30, serviceEnv.DB_MAX_LINK);
 
 /**
  * connect MongoDB and init data

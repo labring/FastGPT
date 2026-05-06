@@ -67,7 +67,7 @@ const CustomDomain = () => {
   });
 
   const { ConfirmModal, openConfirm } = useConfirm({
-    content: t('account:custom_domain.delete_confirm'),
+    content: t('account_custom_domain:delete_confirm'),
     type: 'delete'
   });
 
@@ -89,7 +89,7 @@ const CustomDomain = () => {
             {loadingCustomDomainList ? <MyLoading /> : null}
             <Flex justifyContent="space-between" alignItems="center" w="100%">
               <Box fontSize="20px" fontWeight="500">
-                {t('account:custom_domain')}
+                {t('account_custom_domain:custom_domain')}
                 {customDomainList?.length ? (
                   `: (${customDomainList.length}/${teamPlanStatus?.standard?.customDomain})`
                 ) : (
@@ -109,9 +109,9 @@ const CustomDomain = () => {
             <Table marginTop="12px">
               <Thead>
                 <Tr>
-                  <Td>{t('account:custom_domain.domain')}</Td>
+                  <Td>{t('account_custom_domain:domain')}</Td>
                   <Td>CNAME</Td>
-                  <Td>{t('account:custom_domain.provider')}</Td>
+                  <Td>{t('account_custom_domain:provider')}</Td>
                   <Td>{t('common:Status')}</Td>
                   <Td>{t('common:Action')}</Td>
                 </Tr>
@@ -165,7 +165,7 @@ const CustomDomain = () => {
                             //     onOpenDomainVerify();
                             //   }}
                             // >
-                            //   {t('account:custom_domain.domain_verify')}
+                            //   {t('account_custom_domain:domain_verify')}
                             // </Button>
                           )}
                         </Flex>
@@ -187,7 +187,7 @@ const CustomDomain = () => {
                           text={
                             !isSupportCustomDomain && (
                               <Flex flexDir="column" alignItems="center">
-                                <Box>{t('account:upgrade_to_use_custom_domain')}</Box>
+                                <Box>{t('account_custom_domain:upgrade_to_use_custom_domain')}</Box>
                                 <Button
                                   mt="4"
                                   variant="primary"
@@ -239,7 +239,7 @@ export default CustomDomain;
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account']))
+      ...(await serviceSideProps(content, ['account', 'account_custom_domain']))
     }
   };
 }

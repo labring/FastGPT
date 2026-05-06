@@ -3,12 +3,38 @@ title: 'V4.15.0(进行中)'
 description: 'FastGPT V4.15.0 更新说明'
 ---
 
+## 升级指南
+
+### 镜像变更
+
+- 更新 fastgpt-plugin 镜像
+- 更新 AIProxy 镜像 tag: v0.5.6
+
+### 环境变量变更
+
+`fastgpt-app`, `fastgpt-pro` 可增加文件解析并发线程数
+
+```bash
+# 文件解析 worker 并发数
+PARSE_FILE_WORKERS=10
+# 文件解析超时时间（秒）
+PARSE_FILE_TIMEOUT_SECONDS=600
+# HTML 转 Markdown worker 并发数
+HTML_TO_MARKDOWN_WORKERS=10
+# 文本切块 worker 并发数
+TEXT_TO_CHUNKS_WORKERS=10
+# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1
+SYNC_INDEX=true
+```
+
 ## 🚀 新增内容
 
 1. 新增循环节点，弃用旧的批量执行。
 2. 全局变量输入框支持输入 object 类型数据。
 3. 工具调用模式下，如果开启了虚拟机功能，用户对话框上传的文件会直接注入到虚拟机中。
 4. 第三方知识库接入钉钉知识库。
+5. 增加文件解析/HTML转Markdown/文本切块 worker pool，避免并发太高导致资源耗尽，可通过环境变量调整其 pool 数量。
+6. 模型思考配置。
 
 ## ⚙️ 优化
 
@@ -18,6 +44,7 @@ description: 'FastGPT V4.15.0 更新说明'
 4. 无创建权限时，隐藏模板功能。
 5. 加强第三方知识库请求的 SSRF 防护。
 6. codex-sandbox 加强 AST 检查，防止绕过安全检查。
+7. 站点同步限流错误提示，重复提示。
 
 ## 🐛 修复
 
@@ -27,4 +54,5 @@ description: 'FastGPT V4.15.0 更新说明'
 
 1. 重新调整代码结构，升级 nextjs 最新版，切换至 turbopack 构建，提高构建速度；升级容器默认 node 至 24。
 2. 优化 Agent tool 声明和运行，统一所有 tool 的声明和运行方式。
-3. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率
+3. 文件上传内容从 system prompt 中放到 user message 中，提高 cache 命中率。
+4. 服务端 env 加载全部使用`@t3-oss/env-core`，增加更多类型检查。其余服务，也采用集中导出 env 的方式进行环境变量使用。

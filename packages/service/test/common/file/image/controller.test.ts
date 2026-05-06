@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+vi.hoisted(() => {
+  vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
+});
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   uploadMongoImg,
@@ -13,9 +16,19 @@ import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 
 const teamId = new Types.ObjectId().toString();
 
+const loadController = async () => {
+  vi.resetModules();
+  return import('@fastgpt/service/common/file/image/controller');
+};
+
 describe('uploadMongoImg', () => {
   beforeEach(async () => {
     await MongoImage.deleteMany({});
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
+  });
+
+  afterEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
   });
 
   it('should upload a valid JPEG base64 image', async () => {
@@ -129,21 +142,19 @@ describe('uploadMongoImg', () => {
   });
 
   it('should include NEXT_PUBLIC_BASE_URL in result when set', async () => {
-    const originalBaseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    process.env.NEXT_PUBLIC_BASE_URL = '/sub';
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/sub');
+    const { uploadMongoImg: uploadMongoImgWithBase } = await loadController();
 
     const binary = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
     const base64Data = binary.toString('base64');
     const base64Img = `data:image/jpeg;base64,${base64Data}`;
 
-    const result = await uploadMongoImg({
+    const result = await uploadMongoImgWithBase({
       base64Img,
       teamId
     });
 
-    expect(result).toContain(imageBaseUrl);
-
-    process.env.NEXT_PUBLIC_BASE_URL = originalBaseUrl;
+    expect(result).toMatch(new RegExp(`^/sub${imageBaseUrl}[a-f0-9]{24}\\.jpeg$`));
   });
 });
 

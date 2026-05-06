@@ -1,21 +1,19 @@
 import { parentPort } from 'worker_threads';
 import { html2md } from './utils';
-import { workerResponse } from '../controller';
 
-parentPort?.on('message', (params: { html: string }) => {
+type IncomingMessage = {
+  id: string;
+  html: string;
+};
+
+parentPort?.on('message', (params: IncomingMessage) => {
+  const { id, html } = params;
+
   try {
-    const md = html2md(params?.html || '');
+    const md = html2md(html || '');
 
-    workerResponse({
-      parentPort,
-      status: 'success',
-      data: md
-    });
+    parentPort?.postMessage({ id, type: 'success', data: md });
   } catch (error) {
-    workerResponse({
-      parentPort,
-      status: 'error',
-      data: error
-    });
+    parentPort?.postMessage({ id, type: 'error', data: error });
   }
 });

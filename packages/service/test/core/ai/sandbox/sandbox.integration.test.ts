@@ -14,7 +14,7 @@ const { Types } = connectionMongo;
 
 const hasSandboxEnv = !!process.env.AGENT_SANDBOX_PROVIDER;
 vi.mock('@fastgpt/service/env', () => ({
-  env: {
+  serviceEnv: {
     AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
     AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
     AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,

@@ -1,12 +1,13 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
+import { serviceEnv } from '@fastgpt/service/env';
 import dns from 'dns/promises';
 
 describe('SSRF Protection - isInternalAddress', () => {
-  const originalEnv = process.env.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
 
   beforeEach(() => {
-    process.env.CHECK_INTERNAL_IP = 'true';
+    serviceEnv.CHECK_INTERNAL_IP = true;
     // 重建 DNS spy，避免真实 DNS 解析和用例之间的 mock 实现串味
     vi.restoreAllMocks();
     vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('No A records'));
@@ -14,12 +15,7 @@ describe('SSRF Protection - isInternalAddress', () => {
   });
 
   afterEach(() => {
-    // 恢复原始环境变量
-    if (originalEnv !== undefined) {
-      process.env.CHECK_INTERNAL_IP = originalEnv;
-    } else {
-      delete process.env.CHECK_INTERNAL_IP;
-    }
+    serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
   });
 
   describe('Localhost 检查（始终阻止）', () => {
@@ -74,7 +70,7 @@ describe('SSRF Protection - isInternalAddress', () => {
 
   describe('CHECK_INTERNAL_IP 未设置时（默认行为 - 安全优先）', () => {
     beforeEach(() => {
-      delete process.env.CHECK_INTERNAL_IP;
+      serviceEnv.CHECK_INTERNAL_IP = false;
     });
 
     test('应该允许公共 IP 地址', async () => {
@@ -112,7 +108,7 @@ describe('SSRF Protection - isInternalAddress', () => {
 
   describe('CHECK_INTERNAL_IP=false 时（向后兼容模式）', () => {
     beforeEach(() => {
-      process.env.CHECK_INTERNAL_IP = 'false';
+      serviceEnv.CHECK_INTERNAL_IP = false;
     });
 
     test('应该允许公共 IP 地址', async () => {
@@ -446,7 +442,7 @@ describe('SSRF Protection - isInternalAddress', () => {
   // GHSA-jhqw-944x-xh94: 云元数据端点 SSRF 保护绕过
   describe('GHSA-jhqw-944x-xh94 元数据端点绕过防护', () => {
     beforeEach(() => {
-      delete process.env.CHECK_INTERNAL_IP;
+      serviceEnv.CHECK_INTERNAL_IP = false;
     });
 
     test('应该阻止显式端口绕过 http://169.254.169.254:80/', async () => {

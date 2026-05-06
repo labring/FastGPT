@@ -1,12 +1,7 @@
 import { getLLMModel } from '../../../../../ai/model';
+import { openaiBaseUrl, openaiBaseKey } from '../../../../../ai/config';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
-
-const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
-  ? `${process.env.AIPROXY_API_ENDPOINT}/v1`
-  : undefined;
-const defaultBaseUrl = aiProxyBaseUrl || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
-const defaultApiKey = process.env.AIPROXY_API_TOKEN || process.env.CHAT_API_KEY || '';
 
 export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model {
   const cfg = getLLMModel(modelNameOrId);
@@ -14,8 +9,8 @@ export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model
   // pi-ai's openai-completions provider appends /chat/completions automatically,
   // so we strip it to get baseUrl.
   const rawUrl = cfg?.requestUrl ?? '';
-  const baseUrl = rawUrl ? rawUrl.replace(/\/chat\/completions$/, '') : defaultBaseUrl;
-  const apiKey = cfg?.requestAuth || defaultApiKey;
+  const baseUrl = rawUrl ? rawUrl.replace(/\/chat\/completions$/, '') : openaiBaseUrl;
+  const apiKey = cfg?.requestAuth || openaiBaseKey;
 
   return {
     id: cfg?.model ?? 'gpt-4o',
@@ -42,5 +37,5 @@ export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model
 
 export function getModelApiKey(modelNameOrId?: string): string {
   const cfg = getLLMModel(modelNameOrId);
-  return cfg?.requestAuth || defaultApiKey;
+  return cfg?.requestAuth || openaiBaseKey || '';
 }

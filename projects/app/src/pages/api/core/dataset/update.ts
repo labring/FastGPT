@@ -41,6 +41,7 @@ import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -68,6 +69,12 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     autoSync,
     chunkSettings
   } = UpdateDatasetBodySchema.parse(req.body);
+
+  if (websiteConfig?.url) {
+    if (await isInternalAddress(websiteConfig.url)) {
+      return Promise.reject(PRIVATE_URL_TEXT);
+    }
+  }
 
   const isMove = parentId !== undefined;
 

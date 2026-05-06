@@ -2,12 +2,10 @@ import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import z from 'zod';
 import type { NextApiRequest } from 'next';
+import { serviceEnv } from '../../../env';
 
-const PLUGIN_ACCESS_TOKEN_SECRET =
-  process.env.PLUGIN_ACCESS_TOKEN_SECRET || 'plugin_access_token_secret';
-const PLUGIN_ACCESS_TOKEN_EXPIRES_IN: number = process.env.PLUGIN_ACCESS_TOKEN_EXPIRES_IN
-  ? parseInt(process.env.PLUGIN_ACCESS_TOKEN_EXPIRES_IN)
-  : 3600; // Default 1 hour (3600 seconds)
+const PLUGIN_ACCESS_TOKEN_SECRET = serviceEnv.PLUGIN_ACCESS_TOKEN_SECRET;
+const PLUGIN_ACCESS_TOKEN_EXPIRES_IN = serviceEnv.PLUGIN_ACCESS_TOKEN_EXPIRES_IN;
 
 export const PluginAccessTokenPayloadSchema = z.object({
   tmbId: z.string(),

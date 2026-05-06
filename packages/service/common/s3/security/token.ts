@@ -1,10 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { differenceInSeconds } from 'date-fns';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { EndpointUrl } from '@fastgpt/global/common/file/constants';
 import type { UploadConstraints } from '../contracts/type';
 import path from 'path';
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 
 /* ==================== 路由与类型 ==================== */
 const FileApiPath = {
@@ -49,8 +48,6 @@ type SignS3UploadTokenParams = {
 };
 
 /* ==================== 通用工具函数 ==================== */
-const getTokenSecret = () => env.FILE_TOKEN_KEY;
-
 const getExpiresIn = (expiredTime: Date) => {
   return Math.max(1, differenceInSeconds(expiredTime, new Date()));
 };
@@ -62,8 +59,10 @@ const isNonEmptyString = (val: unknown): val is string => typeof val === 'string
 const isStringArray = (val: unknown): val is string[] =>
   Array.isArray(val) && val.every(isNonEmptyString);
 
+const endpointUrl = `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
+
 const buildFileApiUrl = (apiPath: string, token: string, query = '') => {
-  return `${EndpointUrl}${apiPath}/${token}${query}`;
+  return `${endpointUrl}${apiPath}/${token}${query}`;
 };
 
 const parsePayload = <T>(payload: unknown, checker: (value: unknown) => value is T): T => {
@@ -74,14 +73,14 @@ const parsePayload = <T>(payload: unknown, checker: (value: unknown) => value is
 };
 
 const signToken = <T extends object>(payload: T, expiredTime: Date) => {
-  return jwt.sign(payload, getTokenSecret(), {
+  return jwt.sign(payload, serviceEnv.FILE_TOKEN_KEY, {
     expiresIn: getExpiresIn(expiredTime)
   });
 };
 
 const verifyToken = <T>(token: string, checker: (value: unknown) => value is T) => {
   return new Promise<T>((resolve, reject) => {
-    jwt.verify(token, getTokenSecret(), (err, payload) => {
+    jwt.verify(token, serviceEnv.FILE_TOKEN_KEY, (err, payload) => {
       if (err) {
         return reject(ERROR_ENUM.unAuthFile);
       }

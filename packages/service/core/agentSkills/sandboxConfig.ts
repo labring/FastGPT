@@ -11,7 +11,7 @@ import type {
 import { createSandbox, type ISandbox, type OpenSandboxVolume } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -74,24 +74,30 @@ function toOpenSandboxCreateConfig(
  * Get sandbox provider configuration from environment variables
  */
 export function getSandboxProviderConfig(): SandboxProviderConfig {
-  const provider = (env.AGENT_SANDBOX_PROVIDER ?? 'opensandbox') as SandboxProviderType;
-  const runtime = (env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME ?? 'kubernetes') as SandboxRuntime;
+  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+  const runtime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME;
 
   switch (provider) {
     case 'opensandbox':
       return {
         provider,
-        baseUrl: env.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? 'http://127.0.0.1:8080',
-        apiKey: env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
+        baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
+        apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
         runtime,
-        useServerProxy: env.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
+        useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY
       };
 
     case 'sealosdevbox':
       return {
         provider,
-        baseUrl: env.AGENT_SANDBOX_SEALOS_BASEURL ?? env.AGENT_SANDBOX_OPENSANDBOX_BASEURL ?? '',
-        token: env.AGENT_SANDBOX_SEALOS_TOKEN ?? env.AGENT_SANDBOX_OPENSANDBOX_API_KEY ?? '',
+        baseUrl:
+          serviceEnv.AGENT_SANDBOX_SEALOS_BASEURL ??
+          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL ??
+          '',
+        token:
+          serviceEnv.AGENT_SANDBOX_SEALOS_TOKEN ??
+          serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY ??
+          '',
         runtime
       };
 
@@ -109,14 +115,14 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
 export function getSandboxDefaults(): SandboxDefaults {
   return {
     defaultImage: {
-      repository: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO ?? 'fastgpt-agent-sandbox',
-      tag: env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG ?? 'latest'
+      repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
+      tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     },
     workDirectory: '/home/sandbox/workspace',
-    // workDirectory: env.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
+    // workDirectory: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
     targetPort: 44772,
     entrypoint: '/home/sandbox/entrypoint.sh'
-    // entrypoint: env.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
+    // entrypoint: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
   };
 }
 
@@ -125,10 +131,10 @@ export function getSandboxDefaults(): SandboxDefaults {
  */
 export function getSkillSizeLimits(): SkillSizeLimits {
   return {
-    maxUploadBytes: env.AGENT_SKILL_MAX_UPLOAD_SIZE ?? 50 * 1024 * 1024,
-    maxUncompressedBytes: env.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE ?? 200 * 1024 * 1024,
-    maxDownloadBytes: env.AGENT_SKILL_MAX_DOWNLOAD_SIZE ?? 200 * 1024 * 1024,
-    maxSandboxPackageBytes: env.AGENT_SKILL_MAX_SANDBOX_SIZE ?? 200 * 1024 * 1024
+    maxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE,
+    maxUncompressedBytes: serviceEnv.AGENT_SKILL_MAX_UNCOMPRESSED_SIZE,
+    maxDownloadBytes: serviceEnv.AGENT_SKILL_MAX_DOWNLOAD_SIZE,
+    maxSandboxPackageBytes: serviceEnv.AGENT_SKILL_MAX_SANDBOX_SIZE
   };
 }
 
@@ -273,7 +279,7 @@ export function getVolumeManagerConfig(): VolumeManagerConfig {
     AGENT_SANDBOX_VOLUME_MANAGER_URL,
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN,
     AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH
-  } = env;
+  } = serviceEnv;
   if (
     !AGENT_SANDBOX_VOLUME_MANAGER_URL ||
     !AGENT_SANDBOX_VOLUME_MANAGER_TOKEN ||

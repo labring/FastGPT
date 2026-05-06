@@ -1,22 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { runHTTPTool } from '@fastgpt/service/core/app/http';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
+import { serviceEnv } from '@fastgpt/service/env';
 
 describe('SSRF Vulnerability Fix Tests', () => {
-  const originalEnv = process.env.CHECK_INTERNAL_IP;
+  const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
 
   beforeEach(() => {
     // 确保测试环境启用内部 IP 检查
-    process.env.CHECK_INTERNAL_IP = 'true';
+    serviceEnv.CHECK_INTERNAL_IP = true;
   });
 
   afterEach(() => {
-    // 恢复原始环境变量
-    if (originalEnv !== undefined) {
-      process.env.CHECK_INTERNAL_IP = originalEnv;
-    } else {
-      delete process.env.CHECK_INTERNAL_IP;
-    }
+    serviceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
   });
 
   describe('AWS Metadata Endpoint Protection', () => {
@@ -251,7 +247,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
 
   describe('Environment Variable Control', () => {
     it('should always block cloud metadata endpoints even when CHECK_INTERNAL_IP=false', async () => {
-      process.env.CHECK_INTERNAL_IP = 'false';
+      serviceEnv.CHECK_INTERNAL_IP = false;
 
       // 云服务商元数据端点应该始终被阻止，这是安全的关键
       const result = await runHTTPTool({
@@ -265,7 +261,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
 
     it('should always block localhost even when CHECK_INTERNAL_IP=false', async () => {
-      process.env.CHECK_INTERNAL_IP = 'false';
+      serviceEnv.CHECK_INTERNAL_IP = false;
 
       // localhost 应该始终被阻止
       const result = await runHTTPTool({
@@ -279,7 +275,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
 
     it('should block internal addresses by default (no env var)', async () => {
-      delete process.env.CHECK_INTERNAL_IP;
+      serviceEnv.CHECK_INTERNAL_IP = false;
 
       const result = await runHTTPTool({
         baseUrl: 'http://localhost',
@@ -292,7 +288,7 @@ describe('SSRF Vulnerability Fix Tests', () => {
     });
 
     it('should block internal addresses when CHECK_INTERNAL_IP=true', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      serviceEnv.CHECK_INTERNAL_IP = true;
 
       const result = await runHTTPTool({
         baseUrl: 'http://localhost',

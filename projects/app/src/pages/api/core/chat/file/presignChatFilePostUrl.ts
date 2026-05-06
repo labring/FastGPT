@@ -9,7 +9,7 @@ import { addSeconds } from 'date-fns';
 import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
-import { env } from '@fastgpt/service/env';
+import { serviceEnv } from '@fastgpt/service/env';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
   const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } =
@@ -26,7 +26,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
   const planStatus = await getTeamPlanStatus({ teamId });
   const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(fileSelectConfig);
 
-  if (!env.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
+  if (!serviceEnv.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
     return Promise.reject(S3ErrEnum.fileUploadDisabled);
   }
 

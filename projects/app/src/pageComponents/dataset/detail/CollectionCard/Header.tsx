@@ -331,11 +331,12 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                       >
                         {t('dataset:params_config')}
                       </Button>
-                      {!hasTrainingData && feConfigs?.isPlus && (
+                      {feConfigs?.isPlus && (
                         <Button
                           variant={'whitePrimary'}
                           onClick={openDatasetSyncConfirm}
                           leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
+                          isDisabled={hasTrainingData}
                         >
                           {t('dataset:immediate_sync')}
                         </Button>

@@ -1,5 +1,4 @@
 import type { SubPlanType } from '../../../support/wallet/sub/type';
-import { StandSubPlanLevelMapType } from '../../../support/wallet/sub/type';
 import type {
   LLMModelItemType,
   EmbeddingModelItemType,
@@ -7,7 +6,6 @@ import type {
   STTModelType,
   RerankModelItemType
 } from '../../../core/ai/model.schema';
-import { SubTypeEnum } from '../../../support/wallet/sub/constants';
 
 export type NavbarItemType = {
   id: string;
@@ -153,7 +151,7 @@ export type FastGPTFeConfigsType = {
 
 export type SystemEnvType = {
   openapiPrefix?: string;
-  tokenWorkers: number; // token count max worker
+  tokenWorkers: number; // token count max worker (min 10, max 1000)
 
   datasetParseMaxProcess: number;
   vectorMaxProcess: number;

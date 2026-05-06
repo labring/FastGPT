@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
+import { appEnv } from '@/env';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -18,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('url is empty');
     }
 
-    const marketplaceUrl = process.env.MARKETPLACE_URL || 'https://marketplace.fastgpt.cn';
+    const marketplaceUrl = appEnv.MARKETPLACE_URL;
 
     if (!marketplaceUrl) {
       throw new Error('MARKETPLACE_URL is not configured');

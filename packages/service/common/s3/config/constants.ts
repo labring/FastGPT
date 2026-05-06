@@ -4,11 +4,11 @@ import type {
   IOssStorageOptions,
   IStorageOptions
 } from '@fastgpt-sdk/storage';
-import { env } from '../../../env';
+import { serviceEnv } from '../../../env';
 
 export const S3Buckets = {
-  public: env.STORAGE_PUBLIC_BUCKET,
-  private: env.STORAGE_PRIVATE_BUCKET
+  public: serviceEnv.STORAGE_PUBLIC_BUCKET,
+  private: serviceEnv.STORAGE_PRIVATE_BUCKET
 } as const;
 
 export const getSystemMaxFileSize = () => global.feConfigs.uploadFileMaxSize || 1024; // MB, 默认 1024MB;
@@ -21,11 +21,11 @@ type BucketStorageOptions = {
   externalEndpoint?: string;
 };
 
-const storageRegion = env.STORAGE_REGION;
-const storageExternalEndpoint = env.STORAGE_EXTERNAL_ENDPOINT;
-const storageS3Endpoint = env.STORAGE_S3_ENDPOINT;
-export const storageDownloadMode = env.STORAGE_EXTERNAL_ENDPOINT ? 'presigned' : 'proxy';
-const storagePublicAccessExtraSubPath = env.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
+const storageRegion = serviceEnv.STORAGE_REGION;
+const storageExternalEndpoint = serviceEnv.STORAGE_EXTERNAL_ENDPOINT;
+const storageS3Endpoint = serviceEnv.STORAGE_S3_ENDPOINT;
+export const storageDownloadMode = serviceEnv.STORAGE_EXTERNAL_ENDPOINT ? 'presigned' : 'proxy';
+const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
 
 const bucketStorageOptions = {
   publicBucket: S3Buckets.public,
@@ -34,13 +34,13 @@ const bucketStorageOptions = {
 } satisfies BucketStorageOptions;
 
 const awsCompatibleSharedOptions = {
-  forcePathStyle: env.STORAGE_S3_FORCE_PATH_STYLE,
-  maxRetries: env.STORAGE_S3_MAX_RETRIES,
+  forcePathStyle: serviceEnv.STORAGE_S3_FORCE_PATH_STYLE,
+  maxRetries: serviceEnv.STORAGE_S3_MAX_RETRIES,
   publicAccessExtraSubPath: storagePublicAccessExtraSubPath
 };
 
 export function createDefaultStorageOptions() {
-  const vendor = env.STORAGE_VENDOR as IStorageOptions['vendor'];
+  const vendor = serviceEnv.STORAGE_VENDOR as IStorageOptions['vendor'];
 
   switch (vendor) {
     case 'minio': {
@@ -49,8 +49,8 @@ export function createDefaultStorageOptions() {
         endpoint: storageS3Endpoint,
         region: storageRegion,
         credentials: {
-          accessKeyId: env.STORAGE_ACCESS_KEY_ID,
-          secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY
+          accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+          secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
         },
         ...bucketStorageOptions,
         ...awsCompatibleSharedOptions
@@ -63,8 +63,8 @@ export function createDefaultStorageOptions() {
         endpoint: storageS3Endpoint,
         region: storageRegion,
         credentials: {
-          accessKeyId: env.STORAGE_ACCESS_KEY_ID,
-          secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY
+          accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+          secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
         },
         ...bucketStorageOptions,
         ...awsCompatibleSharedOptions
@@ -76,13 +76,13 @@ export function createDefaultStorageOptions() {
         vendor: 'cos',
         region: storageRegion,
         credentials: {
-          accessKeyId: env.STORAGE_ACCESS_KEY_ID,
-          secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY
+          accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+          secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
         },
-        protocol: env.STORAGE_COS_PROTOCOL,
-        useAccelerate: env.STORAGE_COS_USE_ACCELERATE,
-        domain: env.STORAGE_COS_CNAME_DOMAIN,
-        proxy: env.STORAGE_COS_PROXY,
+        protocol: serviceEnv.STORAGE_COS_PROTOCOL,
+        useAccelerate: serviceEnv.STORAGE_COS_USE_ACCELERATE,
+        domain: serviceEnv.STORAGE_COS_CNAME_DOMAIN,
+        proxy: serviceEnv.STORAGE_COS_PROXY,
         ...bucketStorageOptions
       } satisfies Omit<ICosStorageOptions, 'bucket'> & BucketStorageOptions;
     }
@@ -90,16 +90,16 @@ export function createDefaultStorageOptions() {
     case 'oss': {
       return {
         vendor: 'oss',
-        endpoint: env.STORAGE_OSS_ENDPOINT,
+        endpoint: serviceEnv.STORAGE_OSS_ENDPOINT,
         region: storageRegion,
         credentials: {
-          accessKeyId: env.STORAGE_ACCESS_KEY_ID,
-          secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY
+          accessKeyId: serviceEnv.STORAGE_ACCESS_KEY_ID,
+          secretAccessKey: serviceEnv.STORAGE_SECRET_ACCESS_KEY
         },
-        cname: env.STORAGE_OSS_CNAME,
-        internal: env.STORAGE_OSS_INTERNAL,
-        secure: env.STORAGE_OSS_SECURE,
-        enableProxy: env.STORAGE_OSS_ENABLE_PROXY,
+        cname: serviceEnv.STORAGE_OSS_CNAME,
+        internal: serviceEnv.STORAGE_OSS_INTERNAL,
+        secure: serviceEnv.STORAGE_OSS_SECURE,
+        enableProxy: serviceEnv.STORAGE_OSS_ENABLE_PROXY,
         ...bucketStorageOptions
       } satisfies Omit<IOssStorageOptions, 'bucket'> & BucketStorageOptions;
     }

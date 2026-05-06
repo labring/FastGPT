@@ -8,6 +8,7 @@ import { type Method } from 'axios';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { serviceEnv } from '../../../../env';
 
 type ResponseDataType = {
   success: boolean;
@@ -40,7 +41,7 @@ type YuqueTocListResponse = {
   parent_uuid: string;
 }[];
 
-const yuqueBaseUrl = process.env.YUQUE_DATASET_BASE_URL || 'https://www.yuque.com';
+const yuqueBaseUrl = serviceEnv.YUQUE_DATASET_BASE_URL;
 
 export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);

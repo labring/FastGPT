@@ -4,6 +4,7 @@ import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller
 import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { appEnv } from '@/env';
 
 const logger = getLogger(LogCategories.SYSTEM);
 
@@ -12,7 +13,7 @@ export async function initRootUser(retry = 3): Promise<any> {
     const rootUser = await MongoUser.findOne({
       username: 'root'
     });
-    const psw = process.env.DEFAULT_ROOT_PSW || '123456';
+    const psw = appEnv.DEFAULT_ROOT_PSW;
 
     let rootId = rootUser?._id || '';
 
@@ -40,7 +41,7 @@ export async function initRootUser(retry = 3): Promise<any> {
 
     logger.info('Root user initialized', {
       username: 'root',
-      fromEnvPassword: !!process.env.DEFAULT_ROOT_PSW
+      fromEnvPassword: appEnv.DEFAULT_ROOT_PSW !== '123456'
     });
   } catch (error) {
     if (retry > 0) {

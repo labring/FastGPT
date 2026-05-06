@@ -16,6 +16,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../../web/i18n/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import type { DispatchSubAppResponse } from '../../type';
 
 type FileReadParams = {
@@ -69,7 +70,7 @@ export const dispatchFileRead = async ({
 
           // Get file name
           const filename = (() => {
-            const contentDisposition = response.headers['content-disposition'];
+            const contentDisposition = getAxiosHeaderValue(response.headers['content-disposition']);
             return parseContentDispositionFilename(contentDisposition) || url;
           })();
           // Extension
@@ -77,7 +78,7 @@ export const dispatchFileRead = async ({
 
           // Get encoding
           const encoding = (() => {
-            const contentType = response.headers['content-type'];
+            const contentType = getAxiosHeaderValue(response.headers['content-type']);
             if (contentType) {
               const charsetRegex = /charset=([^;]*)/;
               const matches = charsetRegex.exec(contentType);

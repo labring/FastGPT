@@ -19,6 +19,7 @@ export const I18N_NAMESPACES = [
   'account',
   'account_team',
   'account_model',
+  'account_custom_domain',
   'dashboard_mcp',
   'dashboard_evaluation',
   'skill'

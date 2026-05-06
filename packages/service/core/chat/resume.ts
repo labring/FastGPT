@@ -1,4 +1,4 @@
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
 import type { NextApiResponse } from 'next';
@@ -7,14 +7,15 @@ import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 
 /** 生成中：定期续期（见 env `STREAM_RESUME_TTL_SECONDS`） */
-export const STREAM_RESUME_TTL_SECONDS = env.STREAM_RESUME_TTL_SECONDS;
+export const STREAM_RESUME_TTL_SECONDS = serviceEnv.STREAM_RESUME_TTL_SECONDS;
 /** 流结束后短 TTL（见 env `STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`） */
-export const STREAM_RESUME_POST_COMPLETE_TTL_SECONDS = env.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
+export const STREAM_RESUME_POST_COMPLETE_TTL_SECONDS =
+  serviceEnv.STREAM_RESUME_POST_COMPLETE_TTL_SECONDS;
 /** 当 Redis 已用内存 / maxmemory 达到该阈值时，停止为新请求创建镜像 */
-export const STREAM_RESUME_REDIS_MAXMEMORY_RATIO = env.STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
+export const STREAM_RESUME_REDIS_MAXMEMORY_RATIO = serviceEnv.STREAM_RESUME_REDIS_MAXMEMORY_RATIO;
 /** Redis 内存检测缓存时间，避免每个流请求都去调用 INFO MEMORY */
 export const STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS =
-  env.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS;
+  serviceEnv.STREAM_RESUME_REDIS_MEMORY_CHECK_INTERVAL_MS;
 /**
  * One active resume request keeps one dedicated blocking Redis connection alive for at most this
  * long before the XREAD call returns and the loop re-checks the HTTP socket state.

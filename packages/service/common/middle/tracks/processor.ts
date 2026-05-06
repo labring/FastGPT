@@ -2,10 +2,11 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { TrackModel } from './schema';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { getLogger, LogCategories } from '../../logger';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
-const batchUpdateTime = Number(process.env.TRACK_BATCH_UPDATE_TIME || 10000);
+const batchUpdateTime = serviceEnv.TRACK_BATCH_UPDATE_TIME;
 
 const getCurrentTenMinuteBoundary = () => {
   const now = new Date();

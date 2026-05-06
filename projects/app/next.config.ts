@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next';
 import path from 'path';
 
-const basePath = process.env.NEXT_PUBLIC_BASE_URL || undefined;
+import { webEnv } from '@fastgpt/web/env';
+import { appEnv } from './src/env';
+
+const basePath = webEnv.NEXT_PUBLIC_BASE_URL || undefined;
 
 const securityHeaders = [
   {
@@ -37,6 +40,11 @@ const optimizedPackageImports = [
 
 const nextConfig: NextConfig = {
   basePath,
+  env: {
+    SYSTEM_NAME: appEnv.SYSTEM_NAME,
+    SYSTEM_DESCRIPTION: appEnv.SYSTEM_DESCRIPTION,
+    SYSTEM_FAVICON: appEnv.SYSTEM_FAVICON
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh-CN', 'zh-Hant'],

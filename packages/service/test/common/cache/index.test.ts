@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
+import { serviceEnv } from '@fastgpt/service/env';
 
 vi.mock('@fastgpt/service/core/app/tool/controller', () => ({
   refreshSystemTools: vi.fn().mockResolvedValue([])
@@ -17,6 +18,8 @@ vi.mock('@fastgpt/service/common/redis', async (importOriginal) => {
 
 import { refreshVersionKey, getVersionKey, getCachedData } from '@fastgpt/service/common/cache';
 import { initCache } from '@fastgpt/service/common/cache/init';
+
+const originalDisableCache = serviceEnv.DISABLE_CACHE;
 
 describe('refreshVersionKey', () => {
   beforeEach(() => {
@@ -135,7 +138,11 @@ describe('getCachedData', () => {
     const redis = getGlobalRedisConnection() as any;
     redis._storage.clear();
     mockRefreshFunc.mockReset();
-    delete process.env.DISABLE_CACHE;
+    serviceEnv.DISABLE_CACHE = false;
+  });
+
+  afterEach(() => {
+    serviceEnv.DISABLE_CACHE = originalDisableCache;
   });
 
   it('should init systemCache if not present', async () => {
@@ -177,7 +184,7 @@ describe('getCachedData', () => {
   });
 
   it('should refresh when DISABLE_CACHE is true', async () => {
-    process.env.DISABLE_CACHE = 'true';
+    serviceEnv.DISABLE_CACHE = true;
     const mockData = [{ id: 'tool1' }];
     mockRefreshFunc.mockResolvedValue(mockData);
 

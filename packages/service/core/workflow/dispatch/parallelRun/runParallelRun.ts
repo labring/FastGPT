@@ -7,7 +7,7 @@ import {
   type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 
-import { env } from '../../../../env';
+import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
 import { cloneDeep } from 'lodash';
 import {
@@ -49,14 +49,14 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     return Promise.reject('Input value is not an array');
   }
 
-  const maxLength = env.WORKFLOW_MAX_LOOP_TIMES;
+  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
   if (loopInputArray.length > maxLength) {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
   const concurrency = clampParallelConcurrency(
     userConcurrency,
-    env.WORKFLOW_PARALLEL_MAX_CONCURRENCY
+    serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY
   );
 
   const maxRetryAttempts = clampParallelRetryTimes(userRetryTimes);

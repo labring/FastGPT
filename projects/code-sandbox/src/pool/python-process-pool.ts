@@ -5,7 +5,7 @@
  */
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { config } from '../config';
+import { env } from '../env';
 import { BaseProcessPool } from './base-process-pool';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -17,7 +17,7 @@ export class PythonProcessPool extends BaseProcessPool {
       name: 'Python',
       workerScript: WORKER_SCRIPT,
       spawnCommand: (script) => `exec python3 -u ${script}`,
-      allowedModules: config.pythonAllowedModules
+      allowedModules: env.SANDBOX_PYTHON_ALLOWED_MODULES
     });
   }
 }

@@ -24,6 +24,7 @@ import {
   incrValueToCache
 } from '../../../common/redis/cache';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.SUB);
 
@@ -328,7 +329,7 @@ export const teamPoint = {
   }
 };
 export const teamQPM = {
-  getTeamQPMLimit: async (teamId: string): Promise<number | null> => {
+  getTeamQPMLimit: async (teamId: string): Promise<number | undefined> => {
     // 1. 尝试从缓存中获取
     const cacheKey = `${CacheKeyEnum.team_qpm_limit}:${teamId}`;
     const cached = await getRedisCache(cacheKey);
@@ -342,8 +343,7 @@ export const teamQPM = {
     const limit = teamPlanStatus[SubTypeEnum.standard]?.requestsPerMinute;
 
     if (!limit) {
-      if (process.env.CHAT_MAX_QPM) return Number(process.env.CHAT_MAX_QPM);
-      return null;
+      return serviceEnv.CHAT_MAX_QPM;
     }
 
     // 3. Set cache

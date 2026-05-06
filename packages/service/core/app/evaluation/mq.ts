@@ -1,6 +1,7 @@
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { type Processor } from 'bullmq';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.MODULE.APP.EVALUATION);
 
@@ -18,7 +19,7 @@ export const evaluationQueue = getQueue<EvaluationJobData>(QueueNames.evaluation
   }
 });
 
-const concurrency = process.env.EVAL_CONCURRENCY ? Number(process.env.EVAL_CONCURRENCY) : 3;
+const concurrency = serviceEnv.EVAL_CONCURRENCY;
 export const getEvaluationWorker = (processor: Processor<EvaluationJobData>) => {
   return getWorker<EvaluationJobData>(QueueNames.evaluation, processor, {
     removeOnFail: {

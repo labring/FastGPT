@@ -1,24 +1,35 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+const originalEnv = {
+  STORAGE_S3_ENDPOINT: process.env.STORAGE_S3_ENDPOINT,
+  STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
+  FE_DOMAIN: process.env.FE_DOMAIN,
+  PRO_URL: process.env.PRO_URL
+};
+
 describe('fileUrlValidator', () => {
-  const originalEnv = { ...process.env };
+  let originalSystemEnv: any;
 
   beforeEach(() => {
+    originalSystemEnv = global.systemEnv;
     vi.resetModules();
-    delete process.env.STORAGE_S3_ENDPOINT;
-    delete process.env.STORAGE_EXTERNAL_ENDPOINT;
-    // @ts-ignore
-    delete process.env.FE_DOMAIN;
-    delete process.env.PRO_URL;
+    vi.stubEnv('STORAGE_S3_ENDPOINT', undefined);
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
+    vi.stubEnv('FE_DOMAIN', undefined);
+    vi.stubEnv('PRO_URL', undefined);
   });
 
   afterEach(() => {
-    process.env = { ...originalEnv };
+    vi.stubEnv('STORAGE_S3_ENDPOINT', originalEnv.STORAGE_S3_ENDPOINT);
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalEnv.STORAGE_EXTERNAL_ENDPOINT);
+    vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
+    vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
+    global.systemEnv = originalSystemEnv;
   });
 
   describe('systemWhiteList construction', () => {
     it('should include STORAGE_S3_ENDPOINT when set', async () => {
-      process.env.STORAGE_S3_ENDPOINT = 's3.example.com';
+      vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'
@@ -27,7 +38,7 @@ describe('fileUrlValidator', () => {
     });
 
     it('should extract hostname from STORAGE_EXTERNAL_ENDPOINT', async () => {
-      process.env.STORAGE_EXTERNAL_ENDPOINT = 'https://external.example.com/path';
+      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com/path');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'
@@ -35,18 +46,17 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://external.example.com/file.png')).toBe(true);
     });
 
-    it('should handle invalid STORAGE_EXTERNAL_ENDPOINT gracefully', async () => {
-      process.env.STORAGE_EXTERNAL_ENDPOINT = 'not-a-valid-url';
+    it('should reject invalid STORAGE_EXTERNAL_ENDPOINT at env validation stage', async () => {
+      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'not-a-valid-url');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
-      const { validateFileUrlDomain } = await import(
-        '@fastgpt/service/common/security/fileUrlValidator'
+
+      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
+        'Invalid environment variables. Please check: STORAGE_EXTERNAL_ENDPOINT'
       );
-      expect(validateFileUrlDomain('http://other.com/file.png')).toBe(true);
-      expect(validateFileUrlDomain('http://not-a-valid-url/file.png')).toBe(false);
     });
 
     it('should extract hostname from FE_DOMAIN', async () => {
-      process.env.FE_DOMAIN = 'https://fe.example.com';
+      vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'
@@ -54,17 +64,17 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://fe.example.com/page')).toBe(true);
     });
 
-    it('should handle invalid FE_DOMAIN gracefully', async () => {
-      process.env.FE_DOMAIN = 'invalid-url';
+    it('should reject invalid FE_DOMAIN at env validation stage', async () => {
+      vi.stubEnv('FE_DOMAIN', 'invalid-url');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
-      const { validateFileUrlDomain } = await import(
-        '@fastgpt/service/common/security/fileUrlValidator'
+
+      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
+        'Invalid environment variables. Please check: FE_DOMAIN'
       );
-      expect(validateFileUrlDomain('http://other.com/file.png')).toBe(true);
     });
 
     it('should extract hostname from PRO_URL', async () => {
-      process.env.PRO_URL = 'https://pro.example.com/api';
+      vi.stubEnv('PRO_URL', 'https://pro.example.com/api');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'
@@ -72,20 +82,20 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('http://pro.example.com/resource')).toBe(true);
     });
 
-    it('should handle invalid PRO_URL gracefully', async () => {
-      process.env.PRO_URL = 'bad-url';
+    it('should reject invalid PRO_URL at env validation stage', async () => {
+      vi.stubEnv('PRO_URL', 'bad-url');
       global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
-      const { validateFileUrlDomain } = await import(
-        '@fastgpt/service/common/security/fileUrlValidator'
+
+      await expect(import('@fastgpt/service/common/security/fileUrlValidator')).rejects.toThrow(
+        'Invalid environment variables. Please check: PRO_URL'
       );
-      expect(validateFileUrlDomain('http://other.com/file.png')).toBe(true);
     });
 
     it('should combine all env vars into systemWhiteList', async () => {
-      process.env.STORAGE_S3_ENDPOINT = 's3.example.com';
-      process.env.STORAGE_EXTERNAL_ENDPOINT = 'https://external.example.com';
-      process.env.FE_DOMAIN = 'https://fe.example.com';
-      process.env.PRO_URL = 'https://pro.example.com';
+      vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
+      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com');
+      vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
+      vi.stubEnv('PRO_URL', 'https://pro.example.com');
       global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'
@@ -160,7 +170,7 @@ describe('fileUrlValidator', () => {
     });
 
     it('should match against both fileUrlWhitelist and systemWhiteList', async () => {
-      process.env.STORAGE_S3_ENDPOINT = 's3.system.com';
+      vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.system.com');
       global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
       const { validateFileUrlDomain } = await import(
         '@fastgpt/service/common/security/fileUrlValidator'

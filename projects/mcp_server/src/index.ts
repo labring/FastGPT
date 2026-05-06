@@ -9,6 +9,7 @@ import express from 'express';
 import { callTool, getTools } from './api/fastgpt';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { configureLogger, getLogger, LogCategories } from './logger';
+import { mcpServerEnv } from './env';
 
 const app = express();
 const logger = getLogger(LogCategories.MODULE.MCP.SERVER);
@@ -96,15 +97,13 @@ app.post('/:key/messages', (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-
 async function bootstrap() {
   await init();
   await configureLogger({ serviceName: 'fastgpt-mcp-server' });
 
   app
-    .listen(PORT, () => {
-      logger.info(`Server is running on port ${PORT}`);
+    .listen(mcpServerEnv.PORT, () => {
+      logger.info(`Server is running on port ${mcpServerEnv.PORT}`);
     })
     .on('error', (err) => {
       logger.error('Server error', { error: err });

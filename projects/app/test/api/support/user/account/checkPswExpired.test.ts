@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as checkPswExpiredApi from '@/pages/api/support/user/account/checkPswExpired';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -7,11 +6,16 @@ import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import { Call } from '@test/utils/request';
 
+const originalPasswordExpiredMonth = process.env.PASSWORD_EXPIRED_MONTH;
+const loadCheckPswExpiredApi = async () => {
+  vi.resetModules();
+  return import('@/pages/api/support/user/account/checkPswExpired');
+};
+
 describe('checkPswExpired API', () => {
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
-  const originalEnv = process.env.PASSWORD_EXPIRED_MONTH;
 
   beforeEach(async () => {
     testUser = await MongoUser.create({
@@ -35,11 +39,12 @@ describe('checkPswExpired API', () => {
   });
 
   afterEach(() => {
-    process.env.PASSWORD_EXPIRED_MONTH = originalEnv;
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', originalPasswordExpiredMonth);
   });
 
   it('should return false when PASSWORD_EXPIRED_MONTH is not set', async () => {
-    delete process.env.PASSWORD_EXPIRED_MONTH;
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', undefined);
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
       auth: {
@@ -56,7 +61,8 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return false when PASSWORD_EXPIRED_MONTH=0', async () => {
-    process.env.PASSWORD_EXPIRED_MONTH = '0';
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '0');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
       auth: {
@@ -73,7 +79,8 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return false when password was updated recently', async () => {
-    process.env.PASSWORD_EXPIRED_MONTH = '3';
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '3');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Update password time to now
     await MongoUser.findByIdAndUpdate(testUser._id, {
@@ -95,7 +102,8 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return true when password has expired (update time older than expiry period)', async () => {
-    process.env.PASSWORD_EXPIRED_MONTH = '1';
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '1');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Set password update time to 2 months ago
     const twoMonthsAgo = new Date();
@@ -119,7 +127,8 @@ describe('checkPswExpired API', () => {
   });
 
   it('should return true when passwordUpdateTime is not set and env is configured', async () => {
-    process.env.PASSWORD_EXPIRED_MONTH = '3';
+    vi.stubEnv('PASSWORD_EXPIRED_MONTH', '3');
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     // Remove passwordUpdateTime
     await MongoUser.findByIdAndUpdate(testUser._id, {
@@ -142,6 +151,7 @@ describe('checkPswExpired API', () => {
 
   it('should return false when user is not found', async () => {
     const nonExistentId = '000000000000000000000001';
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
 
     const res = await Call(checkPswExpiredApi.default, {
       auth: {
@@ -158,6 +168,7 @@ describe('checkPswExpired API', () => {
   });
 
   it('should reject request without authentication', async () => {
+    const checkPswExpiredApi = await loadCheckPswExpiredApi();
     const res = await Call(checkPswExpiredApi.default, {});
 
     expect(res.code).toBe(500);

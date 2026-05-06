@@ -3,6 +3,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 import { OPENGAUSS_ADDRESS } from '../constants';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -13,7 +14,7 @@ export const connectOg = async (): Promise<Pool> => {
 
   const pool = new Pool({
     connectionString: OPENGAUSS_ADDRESS,
-    max: Number(process.env.DB_MAX_LINK || 30),
+    max: serviceEnv.DB_MAX_LINK,
     min: 15,
     keepAlive: true,
     idleTimeoutMillis: 1800000,

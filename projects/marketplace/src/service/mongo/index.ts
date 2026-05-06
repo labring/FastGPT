@@ -1,10 +1,12 @@
 import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 import { getLogger, LogCategories } from '../logger';
+import { marketplaceEnv } from '../../env';
 
-export const MONGO_URL = process.env.MONGODB_URI ?? '';
-const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
+export const MONGO_URL = marketplaceEnv.MONGODB_URI;
+const maxConnecting = Math.max(30, marketplaceEnv.DB_MAX_LINK);
 const logger = getLogger(LogCategories.INFRA.MONGO);
+const syncIndex = marketplaceEnv.SYNC_INDEX;
 
 declare global {
   var mongodb: Mongoose | undefined;
@@ -29,7 +31,7 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (process.env.SYNC_INDEX !== '0' && process.env.NODE_ENV !== 'test') {
+  if (syncIndex && process.env.NODE_ENV !== 'test') {
     try {
       model.syncIndexes({ background: true });
     } catch (error: any) {

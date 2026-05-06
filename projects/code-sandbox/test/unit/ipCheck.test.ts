@@ -32,18 +32,19 @@ vi.mock('dns/promises', () => ({
   resolve6
 }));
 
-// 注意：模块顶层会读取 process.env.NODE_ENV / HOSTNAME / PORT，
+// 注意：模块顶层会读取 env 与 process.env.NODE_ENV / HOSTNAME / PORT，
 // 必须在 import ipCheck 之前确保环境变量是预期值。
-const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
-const ORIGINAL_CHECK_INTERNAL_IP = process.env.CHECK_INTERNAL_IP;
+const originalEnv = {
+  NODE_ENV: process.env.NODE_ENV,
+  CHECK_INTERNAL_IP: process.env.CHECK_INTERNAL_IP
+};
 
-// 直接 require 在 vi.mock 注册后才 import
 let isInternalResolvedIP: typeof import('../../src/utils/ipCheck.util').isInternalResolvedIP;
 let isInternalAddress: typeof import('../../src/utils/ipCheck.util').isInternalAddress;
 
 beforeEach(async () => {
-  process.env.NODE_ENV = 'production';
-  process.env.CHECK_INTERNAL_IP = 'false';
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('CHECK_INTERNAL_IP', 'false');
   resolve4.mockReset();
   resolve6.mockReset();
   // 默认所有 DNS 解析失败
@@ -58,8 +59,8 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  process.env.NODE_ENV = ORIGINAL_NODE_ENV;
-  process.env.CHECK_INTERNAL_IP = ORIGINAL_CHECK_INTERNAL_IP;
+  vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
+  vi.stubEnv('CHECK_INTERNAL_IP', originalEnv.CHECK_INTERNAL_IP);
 });
 
 describe('isInternalResolvedIP', () => {
@@ -98,31 +99,31 @@ describe('isInternalResolvedIP', () => {
 
   describe('私网段：CHECK_INTERNAL_IP 控制', () => {
     it('CHECK_INTERNAL_IP=false 时放行 10.0.0.1', async () => {
-      process.env.CHECK_INTERNAL_IP = 'false';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'false');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(mod.isInternalResolvedIP('10.0.0.1')).toBe(false);
     });
     it('CHECK_INTERNAL_IP=true 时阻止 10.0.0.1', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(mod.isInternalResolvedIP('10.0.0.1')).toBe(true);
     });
     it('CHECK_INTERNAL_IP=true 时阻止 172.16.0.1', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(mod.isInternalResolvedIP('172.16.0.1')).toBe(true);
     });
     it('CHECK_INTERNAL_IP=true 时阻止 192.168.1.1', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(mod.isInternalResolvedIP('192.168.1.1')).toBe(true);
     });
     it('CHECK_INTERNAL_IP=true 时阻止 IPv6 ULA fc00::1', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(mod.isInternalResolvedIP('fc00::1')).toBe(true);
@@ -143,7 +144,7 @@ describe('isInternalResolvedIP', () => {
 
   describe('开发环境', () => {
     it('NODE_ENV=development 时放行任何 IP（包括 127.0.0.1）', async () => {
-      process.env.NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(mod.isInternalResolvedIP('127.0.0.1')).toBe(false);
@@ -226,7 +227,7 @@ describe('isInternalAddress', () => {
       expect(await isInternalAddress('http://10.0.0.1/')).toBe(false);
     });
     it('CHECK_INTERNAL_IP=true 时阻止私网 10.0.0.1', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(await mod.isInternalAddress('http://10.0.0.1/')).toBe(true);
@@ -275,7 +276,7 @@ describe('isInternalAddress', () => {
       expect(await isInternalAddress('http://intra.example.com/')).toBe(false);
     });
     it('CHECK_INTERNAL_IP=true 时解析到私网阻止', async () => {
-      process.env.CHECK_INTERNAL_IP = 'true';
+      vi.stubEnv('CHECK_INTERNAL_IP', 'true');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       resolve4.mockResolvedValue(['10.0.0.1']);
@@ -332,7 +333,7 @@ describe('isInternalAddress', () => {
 
   describe('开发环境', () => {
     it('NODE_ENV=development 时放行所有目标（包括 localhost / metadata）', async () => {
-      process.env.NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
       vi.resetModules();
       const mod = await import('../../src/utils/ipCheck.util');
       expect(await mod.isInternalAddress('http://localhost/')).toBe(false);

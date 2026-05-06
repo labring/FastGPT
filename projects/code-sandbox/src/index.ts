@@ -3,7 +3,6 @@ import { Hono } from 'hono';
 import { bearerAuth } from 'hono/bearer-auth';
 import { serve } from '@hono/node-server';
 import { z } from 'zod';
-import { config } from './config';
 import { ProcessPool } from './pool/process-pool';
 import { PythonProcessPool } from './pool/python-process-pool';
 import type { ExecuteOptions } from './types';
@@ -27,13 +26,13 @@ const executeSchema = z.object({
 const app = new Hono();
 
 /** 进程池 */
-const jsPool = new ProcessPool(config.poolSize);
-const pythonPool = new PythonProcessPool(config.poolSize);
+const jsPool = new ProcessPool(env.SANDBOX_POOL_SIZE);
+const pythonPool = new PythonProcessPool(env.SANDBOX_POOL_SIZE);
 
 const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
   .then(() => {
     serverLogger.info(
-      `Process pools ready: JS=${config.poolSize}, Python=${config.poolSize} workers`
+      `Process pools ready: JS=${env.SANDBOX_POOL_SIZE}, Python=${env.SANDBOX_POOL_SIZE} workers`
     );
   })
   .catch((err) => {
@@ -96,8 +95,8 @@ app.use('/sandbox/*', async (c, next) => {
   }
 });
 /** 认证中间件：仅当配置了 token 时启用 */
-if (config.token) {
-  app.use('/sandbox/*', bearerAuth({ token: config.token }));
+if (env.SANDBOX_TOKEN) {
+  app.use('/sandbox/*', bearerAuth({ token: env.SANDBOX_TOKEN }));
 } else {
   apiLogger.warn(
     '⚠️  WARNING: SANDBOX_TOKEN is not set. API endpoints are unauthenticated. Set SANDBOX_TOKEN in production!'
@@ -157,18 +156,18 @@ app.get('/sandbox/modules', (c) => {
   return c.json({
     success: true,
     data: {
-      js: config.jsAllowedModules,
-      python: config.pythonAllowedModules,
+      js: env.SANDBOX_JS_ALLOWED_MODULES,
+      python: env.SANDBOX_PYTHON_ALLOWED_MODULES,
       builtinGlobals: ['SystemHelper.httpRequest']
     }
   });
 });
 
 /** 启动服务 */
-serverLogger.info(`Sandbox server starting on port ${env.port}...`);
+serverLogger.info(`Sandbox server starting on port ${env.SANDBOX_PORT}...`);
 
 if (process.env.NODE_ENV !== 'test') {
-  serve({ fetch: app.fetch, port: env.port }, (info) => {
+  serve({ fetch: app.fetch, port: env.SANDBOX_PORT }, (info) => {
     serverLogger.info(`Sandbox server listening on port ${info.port}`);
   });
 }
@@ -176,6 +175,6 @@ if (process.env.NODE_ENV !== 'test') {
 /** 导出 app 和 poolReady 供测试使用 */
 export { app, poolReady };
 export default {
-  port: env.port,
+  port: env.SANDBOX_PORT,
   fetch: app.fetch
 };

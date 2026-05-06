@@ -162,8 +162,7 @@ docker run -p 3000:3000 \
 ```
 src/
 ├── index.ts                   # 入口：Hono 服务 + 进程池初始化
-├── env.ts                     # 环境变量校验（zod）
-├── config.ts                  # 配置导出
+├── env.ts                     # 环境变量加载与校验
 ├── types.ts                   # 类型定义
 ├── pool/
 │   ├── process-pool.ts        # JS 进程池管理
@@ -311,4 +310,3 @@ bash test/benchmark/bench-sandbox-python.sh
 | 边界测试 | 1 | 58 | 空输入、超时、大数据、类型边界 |
 | 兼容性测试 | 2 | 39 | 旧版 JS/Python 代码格式兼容 |
 | 示例测试 | 1 | 31 | 常用场景和第三方包 |
-

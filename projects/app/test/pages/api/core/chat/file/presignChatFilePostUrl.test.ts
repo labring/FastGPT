@@ -35,7 +35,7 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
 }));
 
 vi.mock('@fastgpt/service/env', () => ({
-  env: {
+  serviceEnv: {
     SKIP_FILE_TYPE_CHECK: false
   }
 }));

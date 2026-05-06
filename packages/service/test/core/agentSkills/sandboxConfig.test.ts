@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const envBackup = { ...process.env };
+const originalEnv = {
+  AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
+  AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
+  AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
+  AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME
+};
 
 const loadSandboxConfigModule = async () => {
   vi.resetModules();
@@ -10,18 +15,20 @@ const loadSandboxConfigModule = async () => {
 describe('sandboxConfig provider helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env = { ...envBackup };
   });
 
   afterEach(() => {
-    process.env = { ...envBackup };
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', originalEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME);
   });
 
   it('parses sealosdevbox config from env', async () => {
-    process.env.AGENT_SANDBOX_PROVIDER = 'sealosdevbox';
-    process.env.AGENT_SANDBOX_SEALOS_BASEURL = 'https://devbox.example.com';
-    process.env.AGENT_SANDBOX_SEALOS_TOKEN = 'sealos-token';
-    process.env.AGENT_SANDBOX_RUNTIME = 'docker';
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
 
     const { getSandboxProviderConfig } = await loadSandboxConfigModule();
 

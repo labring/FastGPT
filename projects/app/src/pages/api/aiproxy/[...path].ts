@@ -3,9 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
-
-const baseUrl = process.env.AIPROXY_API_ENDPOINT;
-const token = process.env.AIPROXY_API_TOKEN;
+import { getAIProxyAdminConfig } from '@fastgpt/service/thirdProvider/aiproxy/config';
 
 // 特殊路径映射，标记需要在末尾保留斜杠的路径
 const endPathMap: Record<string, boolean> = {
@@ -15,10 +13,7 @@ const endPathMap: Record<string, boolean> = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await authSystemAdmin({ req });
-
-    if (!baseUrl || !token) {
-      throw new Error('AIPROXY_API_ENDPOINT or AIPROXY_API_TOKEN is not set');
-    }
+    const { baseUrl, token } = getAIProxyAdminConfig();
 
     const { path = [], ...query } = req.query as any;
 
