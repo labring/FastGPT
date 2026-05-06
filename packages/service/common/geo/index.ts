@@ -6,10 +6,10 @@ import type { LocationName } from './type';
 import { extractLocationData } from './utils';
 import type { NextApiRequest } from 'next';
 export type { NextApiRequest } from 'next';
-import { getClientIp } from 'request-ip';
 import { getLogger } from '../logger';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
+import { getClientIpFromRequest } from '../security/clientIp';
 
 const logger = getLogger(['GEO']);
 
@@ -109,7 +109,7 @@ export function initGeo() {
 }
 
 export function getIpFromRequest(request: NextApiRequest): string {
-  const ip = getClientIp(request);
+  const ip = getClientIpFromRequest(request);
   if (!ip || ip === '::1') {
     return '127.0.0.1';
   }

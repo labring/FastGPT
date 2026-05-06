@@ -11,7 +11,6 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { createUserSession } from '@fastgpt/service/support/user/session';
-import requestIp from 'request-ip';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
@@ -20,6 +19,7 @@ import {
   type LoginSuccessResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
@@ -66,7 +66,7 @@ async function handler(
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId,
     isRoot: username === 'root',
-    ip: requestIp.getClientIp(req)
+    ip: getClientIpFromRequest(req)
   });
 
   setCookie(res, token);

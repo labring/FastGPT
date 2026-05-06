@@ -177,7 +177,7 @@ describe('getIpFromRequest', () => {
     const req = {
       headers: { 'x-forwarded-for': '203.0.113.50' },
       connection: {},
-      socket: {}
+      socket: { remoteAddress: '127.0.0.1' }
     } as unknown as NextApiRequest;
 
     const ip = getIpFromRequest(req);
@@ -188,10 +188,21 @@ describe('getIpFromRequest', () => {
     const req = {
       headers: { 'x-real-ip': '198.51.100.10' },
       connection: {},
-      socket: {}
+      socket: { remoteAddress: '127.0.0.1' }
     } as unknown as NextApiRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('198.51.100.10');
+  });
+
+  it('should ignore spoofed IP headers from untrusted direct clients', () => {
+    const req = {
+      headers: { 'x-forwarded-for': '203.0.113.50', 'x-real-ip': '198.51.100.10' },
+      connection: {},
+      socket: { remoteAddress: '192.0.2.20' }
+    } as unknown as NextApiRequest;
+
+    const ip = getIpFromRequest(req);
+    expect(ip).toBe('192.0.2.20');
   });
 });

@@ -1,10 +1,10 @@
 import { type ApiRequestProps } from '../../type/next';
-import requestIp from 'request-ip';
 import { authFrequencyLimit } from '../system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
 import { type NextApiResponse } from 'next';
 import { jsonRes } from '../response';
 import { serviceEnv } from '../../env';
+import { getClientIpFromRequest } from '../security/clientIp';
 
 // unit: times/s
 // how to use?
@@ -21,10 +21,11 @@ export function useIPFrequencyLimit({
   force?: boolean;
 }) {
   return async (req: ApiRequestProps, res: NextApiResponse) => {
-    const ip = requestIp.getClientIp(req);
-    if (!ip || (!serviceEnv.USE_IP_LIMIT && !force)) {
+    if (!serviceEnv.CHECK_INTERNAL_IP || !force) {
       return;
     }
+
+    const ip = getClientIpFromRequest(req) ?? 'unknown';
     try {
       await authFrequencyLimit({
         eventId: `ip-qps-limit-${id}-` + ip,

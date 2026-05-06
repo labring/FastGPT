@@ -187,7 +187,6 @@ export const serviceEnv = createEnv({
       description: '是否强制将图片转成 base64 传递给模型'
     }),
 
-    // ==================== 功能开关与特殊配置 ====================
     //==================== Beta features ====================
     SHOW_SKILL: BoolSchema.default(false).meta({ description: '是否展示 Skill 功能入口' }),
     AGENT_ENGINE: z

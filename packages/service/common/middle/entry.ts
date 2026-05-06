@@ -7,6 +7,7 @@ import { getLogger, LogCategories, withContext } from '../logger';
 import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
+import { getClientIpFromRequest } from '../security/clientIp';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -61,7 +62,7 @@ export const NextEntry = ({
       const url = req.url || '';
       const route = getRequestRoute(url);
       const method = req.method?.toUpperCase() || '';
-      const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress;
+      const ip = getClientIpFromRequest(req);
       const userAgent = req.headers['user-agent'];
       const contentLength = req.headers['content-length'];
       const requestBodySize = parseHeaderNumber(contentLength);

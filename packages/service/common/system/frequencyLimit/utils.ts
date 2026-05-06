@@ -30,9 +30,13 @@ export const authFrequencyLimit = async ({
     ).lean();
     // 因为始终会返回+1的结果，所以这里不能直接等，需要多一个。
     if (result.amount > maxAmount) {
-      return Promise.reject(ERROR_ENUM.uploadFileIntervalLimit);
+      throw ERROR_ENUM.tooManyRequest;
     }
   } catch (error) {
+    if (error === ERROR_ENUM.tooManyRequest) {
+      throw error;
+    }
+
     logger.error('Failed to update auth frequency limit', { eventId, error });
   }
 };
