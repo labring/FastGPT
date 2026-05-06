@@ -44,6 +44,7 @@
     "iconv-lite": "^0.6.3",
     "ioredis": "^5.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
+    "ipaddr.js": "catalog:",
     "json5": "catalog:",
     "jsonpath-plus": "^10.3.0",
     "jsonrepair": "^3.0.0",
@@ -67,9 +68,9 @@
     "pg": "^8.10.0",
     "pino": "^9.7.0",
     "pino-opentelemetry-transport": "^1.0.1",
+    "proxy-addr": "catalog:",
     "proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
-    "request-ip": "catalog:",
     "tiktoken": "1.0.17",
     "turndown": "^7.1.2",
     "undici": "^7.18.2",
@@ -87,8 +88,8 @@
     "@types/node-cron": "^3.0.11",
     "@types/papaparse": "5.3.7",
     "@types/pg": "^8.6.6",
+    "@types/proxy-addr": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
-    "@types/request-ip": "catalog:",
     "@types/tunnel": "^0.0.4",
     "@types/turndown": "^5.0.4"
   }

@@ -3,18 +3,11 @@ import type {
   LicenseDataType,
   SystemEnvType
 } from '@fastgpt/global/common/system/types';
-import {
-  TTSModelType,
-  RerankModelItemType,
-  STTModelType,
-  EmbeddingModelItemType,
-  LLMModelItemType
-} from '@fastgpt/global/core/ai/model.schema';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import type { WorkerNameEnum, WorkerPool } from './worker/utils';
-import { Worker } from 'worker_threads';
 
 declare global {
+  var countTrackQueue: Map<string, { event: string; count: number; data: Record<string, any> }>;
   var systemInitBufferId: string | undefined;
 
   var systemVersion: string;
@@ -25,3 +18,5 @@ declare global {
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
 }
+
+export {};

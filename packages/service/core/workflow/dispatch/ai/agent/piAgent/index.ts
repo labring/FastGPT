@@ -25,6 +25,7 @@ import { buildAgentTools } from './toolAdapter';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import { serviceEnv } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
+import { Agent, type AgentEvent } from '@mariozechner/pi-agent-core';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -191,8 +192,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         : [];
 
     /* ===== Create & run Agent ===== */
-    const { Agent } = await import('@mariozechner/pi-agent-core');
-    type AgentEvent = import('@mariozechner/pi-agent-core').AgentEvent;
 
     const agent = new Agent({
       initialState: {

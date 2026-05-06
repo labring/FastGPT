@@ -103,12 +103,7 @@ export const serviceEnv = createEnv({
       .default(
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
-    MONGODB_LOG_URI: z
-      .string()
-      .default(
-        'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
-      )
-      .optional(),
+    MONGODB_LOG_URI: z.string().optional(),
 
     // VectorDB
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
@@ -175,6 +170,14 @@ export const serviceEnv = createEnv({
     //==================== 安全配置 ====================
     USE_IP_LIMIT: BoolSchema.default(false).meta({ description: '是否启用 IP 限流' }),
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
+    TRUSTED_PROXY_ENABLE: BoolSchema.default(false).meta({
+      description:
+        '是否启用可信反向代理客户端 IP 校验；关闭时兼容旧逻辑，直接信任 X-Forwarded-For/X-Real-IP'
+    }),
+    TRUSTED_PROXY_IPS: z.string().optional().meta({
+      description:
+        '可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析'
+    }),
     PASSWORD_LOGIN_LOCK_SECONDS: defaultableIntSchema(120).meta({
       description: '密码错误锁定时长（秒）'
     }),
@@ -187,7 +190,6 @@ export const serviceEnv = createEnv({
       description: '是否强制将图片转成 base64 传递给模型'
     }),
 
-    // ==================== 功能开关与特殊配置 ====================
     //==================== Beta features ====================
     SHOW_SKILL: BoolSchema.default(false).meta({ description: '是否展示 Skill 功能入口' }),
     AGENT_ENGINE: z

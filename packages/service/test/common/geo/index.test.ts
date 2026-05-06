@@ -8,6 +8,17 @@ import {
   type NextApiRequest
 } from '@fastgpt/service/common/geo';
 import { cleanupIntervalMs } from '@fastgpt/service/common/geo/constants';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
+
+const setTrustedProxyEnable = (value: boolean) => {
+  serviceEnv.TRUSTED_PROXY_ENABLE = value;
+};
+
+afterEach(() => {
+  setTrustedProxyEnable(originalTrustedProxyEnable);
+});
 
 describe('getGeoReader', () => {
   it('should return a reader instance', () => {
@@ -174,10 +185,12 @@ describe('getIpFromRequest', () => {
   });
 
   it('should return the IP from x-forwarded-for header', () => {
+    setTrustedProxyEnable(true);
+
     const req = {
       headers: { 'x-forwarded-for': '203.0.113.50' },
       connection: {},
-      socket: {}
+      socket: { remoteAddress: '127.0.0.1' }
     } as unknown as NextApiRequest;
 
     const ip = getIpFromRequest(req);
@@ -185,13 +198,28 @@ describe('getIpFromRequest', () => {
   });
 
   it('should return the IP from x-real-ip header', () => {
+    setTrustedProxyEnable(true);
+
     const req = {
       headers: { 'x-real-ip': '198.51.100.10' },
       connection: {},
-      socket: {}
+      socket: { remoteAddress: '127.0.0.1' }
     } as unknown as NextApiRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('198.51.100.10');
+  });
+
+  it('should ignore spoofed IP headers from untrusted direct clients', () => {
+    setTrustedProxyEnable(true);
+
+    const req = {
+      headers: { 'x-forwarded-for': '203.0.113.50', 'x-real-ip': '198.51.100.10' },
+      connection: {},
+      socket: { remoteAddress: '192.0.2.20' }
+    } as unknown as NextApiRequest;
+
+    const ip = getIpFromRequest(req);
+    expect(ip).toBe('192.0.2.20');
   });
 });

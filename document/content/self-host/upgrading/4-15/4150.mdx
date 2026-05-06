@@ -14,17 +14,32 @@ description: 'FastGPT V4.15.0 更新说明'
 
 `fastgpt-app`, `fastgpt-pro` 可增加文件解析并发线程数
 
-```bash
-# 文件解析 worker 并发数
+```dotenv
+# 文件解析 worker 并发数(可选)
 PARSE_FILE_WORKERS=10
-# 文件解析超时时间（秒）
+# 文件解析超时时间（秒）(可选)
 PARSE_FILE_TIMEOUT_SECONDS=600
-# HTML 转 Markdown worker 并发数
+# HTML 转 Markdown worker 并发数(可选)
 HTML_TO_MARKDOWN_WORKERS=10
-# 文本切块 worker 并发数
+# 文本切块 worker 并发数(可选)
 TEXT_TO_CHUNKS_WORKERS=10
-# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1
+# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1(可选)
 SYNC_INDEX=true
+# 是否启用可信反向代理客户端 IP 校验(可选)
+TRUSTED_PROXY_ENABLE=false
+# 可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析(可选)
+TRUSTED_PROXY_IPS=
+```
+
+### 确认是否遗漏环境变量
+
+本次升级，增加了对于环境变量的检测，避免漏填必须的环境变量，需重点检查`fastgpt-app`和`fastgpt-pro`是否包含:
+
+```dotenv
+# 密钥加密密钥，两个服务需一致
+AES256_SECRET_KEY=
+# 文件 token 密钥，两个服务需一致
+FILE_TOKEN_KEY=
 ```
 
 ## 🚀 新增内容
@@ -45,6 +60,7 @@ SYNC_INDEX=true
 5. 加强第三方知识库请求的 SSRF 防护。
 6. codex-sandbox 加强 AST 检查，防止绕过安全检查。
 7. 站点同步限流错误提示，重复提示。
+8. 加强 IP 检测，避免伪造绕过。
 
 ## 🐛 修复
 
