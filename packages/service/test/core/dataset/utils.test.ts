@@ -134,10 +134,11 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toBe(text);
     });
 
-    it('temp 前缀不应被替换', () => {
+    it('temp 前缀应被替换', () => {
       const text = '![临时文件](temp/team1/temp-file.png)';
       const result = replaceS3KeyToPreviewUrl(text, expiredTime);
-      expect(result).toBe(text);
+      expect(result).toContain('https://example.com/api/system/file/download/mock-jwt-token-');
+      expect(result).toContain('temp/team1/temp-file.png');
     });
   });
 

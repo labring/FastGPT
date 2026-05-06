@@ -1,8 +1,6 @@
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3Sources } from '../../common/s3/contracts/type';
-import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
-import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { jwtSignS3DownloadToken, isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { S3Buckets } from '../../common/s3/config/constants';
@@ -67,7 +65,10 @@ export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime:
   for (const match of matches.slice().reverse()) {
     const [full, bang, alt, objectKey] = match;
 
-    if (isS3ObjectKey(objectKey, 'dataset') || isS3ObjectKey(objectKey, 'chat')) {
+    const allowedKeys: (keyof typeof S3Sources)[] = ['dataset', 'chat', 'temp'];
+    const allowedKeysGuard = allowedKeys.some((key) => isS3ObjectKey(objectKey, key));
+
+    if (allowedKeysGuard) {
       const url = jwtSignS3DownloadToken({
         objectKey,
         bucketName: S3Buckets.private,

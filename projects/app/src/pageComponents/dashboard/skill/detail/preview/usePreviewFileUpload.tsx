@@ -133,6 +133,11 @@ export const usePreviewFileUpload = ({ fileCtrl, appId, chatId }: UsePreviewFile
             filename: copyFile.rawFile.name,
             appId,
             chatId,
+            fileSelectConfig: {
+              maxFiles: maxSelectFiles,
+              canSelectFile: true,
+              canSelectImg: true
+            },
             outLinkAuthData: undefined
           });
 
@@ -171,7 +176,7 @@ export const usePreviewFileUpload = ({ fileCtrl, appId, chatId }: UsePreviewFile
     );
 
     removeFiles(errorIndexes);
-  }, [appId, chatId, fileList, removeFiles, replaceFiles, t, toast, updateFiles]);
+  }, [appId, chatId, fileList, maxSelectFiles, removeFiles, replaceFiles, t, toast, updateFiles]);
 
   const sortFileList = useMemo(
     () =>
