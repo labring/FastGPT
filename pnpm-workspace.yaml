@@ -56,7 +56,7 @@ catalog:
   mime-types: 3.0.2
   minio: 8.0.7
   mongodb-memory-server: ^10.1.4
-  mongoose: ^8.10.1
+  mongoose: ^8.22.1
   nanoid: ^5.1.3
   next: 16.2.4
   next-i18next: 15.4.2
