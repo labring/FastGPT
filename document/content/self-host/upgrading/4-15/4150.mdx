@@ -31,6 +31,17 @@ TRUSTED_PROXY_ENABLE=false
 TRUSTED_PROXY_IPS=
 ```
 
+### 确认是否遗漏环境变量
+
+本次升级，增加了对于环境变量的检测，避免漏填必须的环境变量，需重点检查`fastgpt-app`和`fastgpt-pro`是否包含:
+
+```dotenv
+# 密钥加密密钥，两个服务需一致
+AES256_SECRET_KEY=
+# 文件 token 密钥，两个服务需一致
+FILE_TOKEN_KEY=
+```
+
 ## 🚀 新增内容
 
 1. 新增循环节点，弃用旧的批量执行。

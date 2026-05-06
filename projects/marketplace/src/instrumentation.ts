@@ -7,6 +7,7 @@ import {
 export async function register() {
   try {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
+      await import('@/env');
       const { configureLogger, getLogger, LogCategories } = await import('@/service/logger');
       await runInitializationStep({
         step: 'configure-logger',

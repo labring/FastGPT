@@ -7,8 +7,6 @@ import {
 
 export async function registerNodeInstrumentation() {
   try {
-    // Load env
-    await import('@fastgpt/service/env');
     await runInitializationStep({
       step: 'load-proxy',
       action: async () => import('@fastgpt/service/common/proxy')
@@ -57,7 +55,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/logger'),
       import('@fastgpt/service/common/system/constants')
     ]);
-
+    console.log(MONGO_URL, MONGO_LOG_URL, 2323232);
     await runInitializationStep({
       step: 'configure-logger',
       action: () => configureLogger()
