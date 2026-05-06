@@ -7,6 +7,8 @@ import {
 
 export async function registerNodeInstrumentation() {
   try {
+    // Load env
+    await import('@fastgpt/service/env');
     await runInitializationStep({
       step: 'load-proxy',
       action: async () => import('@fastgpt/service/common/proxy')
