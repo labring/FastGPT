@@ -1269,7 +1269,7 @@ const ChatBox = ({
     setQuestionGuide([]);
     setValue('chatStarted', false);
     resumedChatTargetRef.current = undefined;
-    abortRequest('leave');
+    // abortRequest('leave');
 
     return () => {
       abortRequest('leave');
