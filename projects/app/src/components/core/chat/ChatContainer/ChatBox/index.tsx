@@ -1436,7 +1436,9 @@ const ChatBox = ({
           });
         }
       } finally {
-        resumeController.current = undefined;
+        if (resumeController.current === controller) {
+          resumeController.current = undefined;
+        }
         const finishedInActiveChat = isActiveResumeTarget({
           appId: resumeForAppId,
           chatId: resumeForChatId
