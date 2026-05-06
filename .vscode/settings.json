@@ -3,8 +3,6 @@
     "editor.mouseWheelZoom": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "prettier.prettierPath": "node_modules/prettier",
-    "js/ts.preferences.includePackageJsonAutoImports": "on",
-    "js/ts.tsdk.path": "node_modules/typescript/lib",
     "i18n-ally.localesPaths": [
         "packages/web/i18n",
     ],
@@ -24,6 +22,9 @@
     "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key",
     "i18n-ally.translate.engines": ["deepl","google"],
     "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "mdx.server.enable": true,
