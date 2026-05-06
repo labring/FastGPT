@@ -1,7 +1,7 @@
 import { axios } from '../../api/axios';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getContentTypeFromHeader } from '../utils';
+import { getAxiosContentType } from '@fastgpt/global/common/axios/utils';
 import { getLogger, LogCategories } from '../../logger';
 import { serviceEnv } from '../../../env';
 
@@ -110,7 +110,7 @@ export const getImageBase64 = async (url: string) => {
 
     const buffer = Buffer.from(response.data);
     const base64 = buffer.toString('base64');
-    const headerContentType = getContentTypeFromHeader(response.headers['content-type']);
+    const headerContentType = getAxiosContentType(response?.headers?.['content-type']);
 
     // 检测图片类型的优先级策略
     const imageType = (() => {

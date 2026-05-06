@@ -56,8 +56,8 @@ describe('isValidImageContentType', () => {
   });
 
   it('should be case-sensitive (requires lowercase input)', () => {
-    // Note: This function expects lowercase input
-    // The getContentTypeFromHeader function should normalize it first
+    // Note: This function expects lowercase input.
+    // Header normalization is handled by getAxiosContentType before validation.
     expect(isValidImageContentType('IMAGE/JPEG')).toBe(false);
     expect(isValidImageContentType('Image/Png')).toBe(false);
   });

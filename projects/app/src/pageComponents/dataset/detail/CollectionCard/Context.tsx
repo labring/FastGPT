@@ -1,5 +1,12 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { type Dispatch, type ReactNode, type SetStateAction, useState, useMemo } from 'react';
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useState,
+  useMemo,
+  useCallback
+} from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -94,21 +101,19 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId, searchText, filterTags]
   });
 
-  const { runAsync: syncDataset } = useRequest(
-    async () => {
-      if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
-        await checkTeamWebSyncLimit();
-      }
-
-      await postDatasetSync({ datasetId: datasetId });
-      loadDatasetDetail(datasetId);
-
-      getData(pageNum);
-    },
-    {
-      successToast: t('dataset:collection.sync.submit')
+  const syncDataset = useCallback(async () => {
+    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+      await checkTeamWebSyncLimit();
     }
-  );
+
+    await postDatasetSync({ datasetId: datasetId });
+    loadDatasetDetail(datasetId);
+
+    getData(pageNum);
+  }, [datasetDetail.type, datasetId, getData, loadDatasetDetail, pageNum]);
+  const { runAsync: onSyncDataset } = useRequest(syncDataset, {
+    successToast: t('dataset:collection.sync.submit')
+  });
 
   // dataset sync confirm
   const { openConfirm: openDatasetSyncConfirm, ConfirmModal: ConfirmDatasetSyncModal } = useConfirm(
@@ -123,7 +128,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     onClose: onCloseWebsiteModal
   } = useDisclosure();
 
-  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest(
+  const onUpdateDatasetWebsiteConfig = useCallback(
     async (websiteConfig: WebsiteConfigFormType) => {
       await updateDataset({
         id: datasetId,
@@ -131,17 +136,14 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
         chunkSettings: websiteConfig.chunkSettings
       });
       await syncDataset();
+      onCloseWebsiteModal();
     },
-    {
-      onSuccess() {
-        onCloseWebsiteModal();
-      }
-    }
+    [datasetId, onCloseWebsiteModal, syncDataset, updateDataset]
   );
 
   const contextValue: CollectionPageContextType = useMemo(
     () => ({
-      openDatasetSyncConfirm: openDatasetSyncConfirm({ onConfirm: syncDataset }),
+      openDatasetSyncConfirm: openDatasetSyncConfirm({ onConfirm: onSyncDataset }),
       onOpenWebsiteModal,
 
       searchText,
@@ -163,11 +165,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       getData,
       isGetting,
       onOpenWebsiteModal,
+      onSyncDataset,
       openDatasetSyncConfirm,
       pageNum,
       pageSize,
       searchText,
-      syncDataset,
       total
     ]
   );
