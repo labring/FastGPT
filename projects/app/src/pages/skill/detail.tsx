@@ -9,7 +9,7 @@ import Content from '@/pageComponents/dashboard/skill/detail/Content';
 const SkillDetail = () => {
   return (
     <SkillDetailContextProvider>
-      <Flex h={'100%'} flexDirection={'column'} bg={'myGray.50'} px={'16px'} pb={'12px'}>
+      <Flex h={'100%'} flexDirection={'column'} bg={'myGray.25'} pr={'16px'} pb={'12px'}>
         <Header />
         <Content />
       </Flex>

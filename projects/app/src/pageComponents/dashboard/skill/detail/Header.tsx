@@ -192,34 +192,37 @@ const Header = () => {
   return (
     <Flex flexShrink={0} h={'64px'} alignItems={'center'} position={'relative'} userSelect={'none'}>
       {/* 返回按钮 */}
-      <Box _hover={{ bg: 'rgba(18, 22, 26, 0.05)' }} p={0.5} borderRadius={'sm'}>
+      <Box _hover={{ bg: 'myGray.200' }} p={0.5} borderRadius={'sm'}>
         <IconButton
           icon={<MyIcon name={'common/leftArrowLight'} color={'myGray.600'} w={'0.8rem'} />}
           aria-label={'back'}
           size={'xs'}
-          w={'24px'}
+          w={'1rem'}
           variant={'ghost'}
           onClick={() => router.push('/dashboard/skill')}
         />
       </Box>
 
       {/* Skill 信息 */}
-      <HStack ml={1.5} spacing={2}>
-        <Avatar src={skillDetail.avatar} w={'30px'} borderRadius={'md'} />
+      <HStack ml={1} spacing={2}>
+        <Avatar src={skillDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
+        <Box color={'myGray.900'}>{skillDetail.name}</Box>
         <MyMenu
           Button={
-            <Flex
-              alignItems={'center'}
-              px={'4px'}
-              borderRadius={'4px'}
-              cursor={'pointer'}
-              _hover={{ bg: 'rgba(18, 22, 26, 0.05)' }}
-            >
-              <Box color={'myGray.600'} fontWeight={'bold'} fontSize={'md'}>
-                {skillDetail.name}
-              </Box>
-              <MyIcon name={'core/skill/help'} w={'20px'} color={'#CCD2D9'} ml={'4px'} />
-            </Flex>
+            <IconButton
+              aria-label="Expand"
+              icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
+              w={'34px'}
+              h={'34px'}
+              bg={'white'}
+              border={'1px solid'}
+              borderColor={'myGray.250'}
+              borderRadius={'sm'}
+              boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+              _hover={{
+                bg: 'myGray.50'
+              }}
+            />
           }
           menuList={menuList}
         />
