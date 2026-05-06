@@ -46,13 +46,17 @@ const OutLink = () => {
       value: PublishChannelEnum.apikey,
       isProFn: false
     },
-    {
-      icon: 'core/app/publish/wechat',
-      title: t('publish:wechat.bot'),
-      desc: t('publish:wechat.bot_desc'),
-      value: PublishChannelEnum.wechat,
-      isProFn: false
-    },
+    ...(feConfigs?.show_publish_wechat !== false
+      ? [
+          {
+            icon: 'core/app/publish/wechat',
+            title: t('publish:wechat.bot'),
+            desc: t('publish:wechat.bot_desc'),
+            value: PublishChannelEnum.wechat,
+            isProFn: false
+          }
+        ]
+      : []),
     ...(feConfigs?.show_publish_feishu !== false &&
     !userInfo?.tags?.includes(UserTagsEnum.enum.wecom)
       ? [
