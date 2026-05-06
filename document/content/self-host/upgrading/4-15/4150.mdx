@@ -14,17 +14,21 @@ description: 'FastGPT V4.15.0 更新说明'
 
 `fastgpt-app`, `fastgpt-pro` 可增加文件解析并发线程数
 
-```bash
-# 文件解析 worker 并发数
+```dotenv
+# 文件解析 worker 并发数(可选)
 PARSE_FILE_WORKERS=10
-# 文件解析超时时间（秒）
+# 文件解析超时时间（秒）(可选)
 PARSE_FILE_TIMEOUT_SECONDS=600
-# HTML 转 Markdown worker 并发数
+# HTML 转 Markdown worker 并发数(可选)
 HTML_TO_MARKDOWN_WORKERS=10
-# 文本切块 worker 并发数
+# 文本切块 worker 并发数(可选)
 TEXT_TO_CHUNKS_WORKERS=10
-# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1
+# 自动同步 mongo 数据库索引, 改成 boolean 字符串值，而不是 0 和 1(可选)
 SYNC_INDEX=true
+# 是否启用可信反向代理客户端 IP 校验(可选)
+TRUSTED_PROXY_ENABLE=false
+# 可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效；仅显式可信代理传入的 X-Forwarded-For/X-Real-IP 会用于客户端 IP 解析(可选)
+TRUSTED_PROXY_IPS=
 ```
 
 ## 🚀 新增内容
@@ -35,13 +39,6 @@ SYNC_INDEX=true
 4. 第三方知识库接入钉钉知识库。
 5. 增加文件解析/HTML转Markdown/文本切块 worker pool，避免并发太高导致资源耗尽，可通过环境变量调整其 pool 数量。
 6. 模型思考配置。
-
-## 环境变量更新
-
-```dotenv
-TRUSTED_PROXY_ENABLE=false
-TRUSTED_PROXY_IPS=
-```
 
 ## ⚙️ 优化
 
