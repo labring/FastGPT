@@ -44,6 +44,7 @@
     "iconv-lite": "^0.6.3",
     "ioredis": "^5.6.0",
     "joplin-turndown-plugin-gfm": "^1.0.12",
+    "ipaddr.js": "catalog:",
     "json5": "catalog:",
     "jsonpath-plus": "^10.3.0",
     "jsonrepair": "^3.0.0",

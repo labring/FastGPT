@@ -105,6 +105,9 @@ catalogs:
     i18next:
       specifier: 23.16.8
       version: 23.16.8
+    ipaddr.js:
+      specifier: ^2.4.0
+      version: 2.4.0
     js-yaml:
       specifier: ^4.1.1
       version: 4.1.1
@@ -267,8 +270,8 @@ importers:
         specifier: ^0.1.13
         version: 0.1.13
       ipaddr.js:
-        specifier: ^2.3.0
-        version: 2.3.0
+        specifier: 'catalog:'
+        version: 2.4.0
       js-yaml:
         specifier: 'catalog:'
         version: 4.1.1
@@ -405,6 +408,9 @@ importers:
       ioredis:
         specifier: ^5.6.0
         version: 5.6.0
+      ipaddr.js:
+        specifier: 'catalog:'
+        version: 2.4.0
       joplin-turndown-plugin-gfm:
         specifier: ^1.0.12
         version: 1.0.12
@@ -8719,8 +8725,8 @@ packages:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
     engines: {node: '>= 0.10'}
 
-  ipaddr.js@2.3.0:
-    resolution: {integrity: sha512-Zv/pA+ciVFbCSBBjGfaKUya/CcGmUHzTydLMaTwrUUEM2DIEO3iZvueGxmacvmN50fGpGVKeTXpb2LcYQxeVdg==}
+  ipaddr.js@2.4.0:
+    resolution: {integrity: sha512-9VGk3HGanVE6JoZXHiCpnGy5X0jYDnN4EA4lntFPj+1vIWlFhIylq2CrrCOJH9EAhc5CYhq18F2Av2tgoAPsYQ==}
     engines: {node: '>= 10'}
 
   is-absolute-url@4.0.1:
@@ -22313,7 +22319,7 @@ snapshots:
 
   ipaddr.js@1.9.1: {}
 
-  ipaddr.js@2.3.0: {}
+  ipaddr.js@2.4.0: {}
 
   is-absolute-url@4.0.1: {}
 
@@ -23740,7 +23746,7 @@ snapshots:
       buffer-crc32: 1.0.0
       eventemitter3: 5.0.1
       fast-xml-parser: 5.5.8
-      ipaddr.js: 2.3.0
+      ipaddr.js: 2.4.0
       lodash: 4.17.23
       mime-types: 2.1.35
       query-string: 7.1.3
