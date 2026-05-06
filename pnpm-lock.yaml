@@ -73,8 +73,8 @@ catalogs:
       specifier: ^3.9.5
       version: 3.9.5
     axios:
-      specifier: 1.13.6
-      version: 1.13.6
+      specifier: 1.15.2
+      version: 1.15.2
     chalk:
       specifier: ^5.6.2
       version: 5.6.2
@@ -247,7 +247,7 @@ importers:
         version: 0.6.1
       axios:
         specifier: 'catalog:'
-        version: 1.13.6
+        version: 1.15.2
       cron-parser:
         specifier: ^4.9.0
         version: 4.9.0
@@ -347,7 +347,7 @@ importers:
         version: 2.4.10
       axios:
         specifier: 'catalog:'
-        version: 1.13.6
+        version: 1.15.2
       bullmq:
         specifier: ^5.52.2
         version: 5.52.2
@@ -603,7 +603,7 @@ importers:
         version: 3.9.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       axios:
         specifier: 'catalog:'
-        version: 1.13.6
+        version: 1.15.2
       date-fns:
         specifier: 'catalog:'
         version: 3.6.0
@@ -748,7 +748,7 @@ importers:
         version: 2.0.1
       '@scalar/api-reference-react':
         specifier: ^0.8.1
-        version: 0.8.1(axios@1.13.6)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
+        version: 0.8.1(axios@1.15.2)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -760,7 +760,7 @@ importers:
         version: 7.0.1
       axios:
         specifier: 'catalog:'
-        version: 1.13.6
+        version: 1.15.2
       date-fns:
         specifier: 'catalog:'
         version: 3.6.0
@@ -986,7 +986,7 @@ importers:
         version: 8.3.4
       axios:
         specifier: 'catalog:'
-        version: 1.13.6
+        version: 1.15.2
       crypto-js:
         specifier: ^4.2.0
         version: 4.2.0
@@ -1074,7 +1074,7 @@ importers:
         version: link:../../packages/web
       axios:
         specifier: 'catalog:'
-        version: 1.13.6
+        version: 1.15.2
       i18next:
         specifier: 'catalog:'
         version: 23.16.8
@@ -5614,8 +5614,8 @@ packages:
     resolution: {integrity: sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==}
     engines: {node: '>=4'}
 
-  axios@1.13.6:
-    resolution: {integrity: sha512-ChTCHMouEe2kn713WHbQGcuYrr6fXTBiu460OTwWrWob16g1bXn4vtz07Ope7ewMozJAnEquLk5lWQWtBig9DQ==}
+  axios@1.15.2:
+    resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -9714,6 +9714,10 @@ packages:
 
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   psl@1.15.0:
     resolution: {integrity: sha512-JZd3gMVBAVQkSs6HdNZo9Sdo0LNcQeMNP3CozBJb3JYC/QUYZTnKxP+f8oWRX4rHP5EurWxqAHTSwUCjlNKa1w==}
@@ -15126,7 +15130,7 @@ snapshots:
     dependencies:
       zod: 3.24.1
 
-  '@scalar/api-client@2.8.1(axios@1.13.6)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)':
+  '@scalar/api-client@2.8.1(axios@1.15.2)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)':
     dependencies:
       '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))
       '@headlessui/vue': 1.7.23(vue@3.5.22(typescript@5.9.3))
@@ -15151,7 +15155,7 @@ snapshots:
       '@scalar/workspace-store': 0.17.1(typescript@5.9.3)
       '@types/har-format': 1.2.16
       '@vueuse/core': 13.9.0(vue@3.5.22(typescript@5.9.3))
-      '@vueuse/integrations': 13.9.0(axios@1.13.6)(focus-trap@7.6.5)(fuse.js@7.1.0)(nprogress@0.2.0)(qrcode@1.5.4)(vue@3.5.22(typescript@5.9.3))
+      '@vueuse/integrations': 13.9.0(axios@1.15.2)(focus-trap@7.6.5)(fuse.js@7.1.0)(nprogress@0.2.0)(qrcode@1.5.4)(vue@3.5.22(typescript@5.9.3))
       focus-trap: 7.6.5
       fuse.js: 7.1.0
       js-base64: 3.7.8
@@ -15182,9 +15186,9 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference-react@0.8.1(axios@1.13.6)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)':
+  '@scalar/api-reference-react@0.8.1(axios@1.15.2)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)':
     dependencies:
-      '@scalar/api-reference': 1.38.1(axios@1.13.6)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
+      '@scalar/api-reference': 1.38.1(axios@1.15.2)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
       '@scalar/types': 0.3.2
       react: 18.3.1
     transitivePeerDependencies:
@@ -15203,11 +15207,11 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-reference@1.38.1(axios@1.13.6)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)':
+  '@scalar/api-reference@1.38.1(axios@1.15.2)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)':
     dependencies:
       '@floating-ui/vue': 1.1.9(vue@3.5.22(typescript@5.9.3))
       '@headlessui/vue': 1.7.23(vue@3.5.22(typescript@5.9.3))
-      '@scalar/api-client': 2.8.1(axios@1.13.6)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
+      '@scalar/api-client': 2.8.1(axios@1.15.2)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.1))(typescript@5.9.3)
       '@scalar/code-highlight': 0.2.0
       '@scalar/components': 0.15.1(typescript@5.9.3)
       '@scalar/helpers': 0.0.12
@@ -16971,13 +16975,13 @@ snapshots:
       '@vueuse/shared': 13.9.0(vue@3.5.22(typescript@5.9.3))
       vue: 3.5.22(typescript@5.9.3)
 
-  '@vueuse/integrations@13.9.0(axios@1.13.6)(focus-trap@7.6.5)(fuse.js@7.1.0)(nprogress@0.2.0)(qrcode@1.5.4)(vue@3.5.22(typescript@5.9.3))':
+  '@vueuse/integrations@13.9.0(axios@1.15.2)(focus-trap@7.6.5)(fuse.js@7.1.0)(nprogress@0.2.0)(qrcode@1.5.4)(vue@3.5.22(typescript@5.9.3))':
     dependencies:
       '@vueuse/core': 13.9.0(vue@3.5.22(typescript@5.9.3))
       '@vueuse/shared': 13.9.0(vue@3.5.22(typescript@5.9.3))
       vue: 3.5.22(typescript@5.9.3)
     optionalDependencies:
-      axios: 1.13.6
+      axios: 1.15.2
       focus-trap: 7.6.5
       fuse.js: 7.1.0
       nprogress: 0.2.0
@@ -17340,11 +17344,11 @@ snapshots:
 
   axe-core@4.10.3: {}
 
-  axios@1.13.6:
+  axios@1.15.2:
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.5
-      proxy-from-env: 1.1.0
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
 
@@ -22244,6 +22248,8 @@ snapshots:
       - supports-color
 
   proxy-from-env@1.1.0: {}
+
+  proxy-from-env@2.1.0: {}
 
   psl@1.15.0:
     dependencies:
