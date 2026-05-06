@@ -5,18 +5,18 @@ import {
   isTrustedProxyIp,
   normalizeClientIp
 } from '@fastgpt/service/common/security/clientIp';
-import { env } from '@fastgpt/service/env';
+import { serviceEnv } from '@fastgpt/service/env';
 
-const originalTrustedProxyIps = env.TRUSTED_PROXY_IPS;
-const originalTrustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
+const originalTrustedProxyIps = serviceEnv.TRUSTED_PROXY_IPS;
+const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 const originalNodeEnv = process.env.NODE_ENV;
 
 const setTrustedProxyEnable = (value: boolean) => {
-  (env as { TRUSTED_PROXY_ENABLE: boolean }).TRUSTED_PROXY_ENABLE = value;
+  serviceEnv.TRUSTED_PROXY_ENABLE = value;
 };
 
 const setTrustedProxyIps = (value?: string) => {
-  (env as { TRUSTED_PROXY_IPS?: string }).TRUSTED_PROXY_IPS = value;
+  serviceEnv.TRUSTED_PROXY_IPS = value;
 };
 
 const setNodeEnv = (value?: string) => {

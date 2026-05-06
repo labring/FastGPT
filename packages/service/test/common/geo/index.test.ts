@@ -8,12 +8,12 @@ import {
   type NextApiRequest
 } from '@fastgpt/service/common/geo';
 import { cleanupIntervalMs } from '@fastgpt/service/common/geo/constants';
-import { env } from '@fastgpt/service/env';
+import { serviceEnv } from '@fastgpt/service/env';
 
-const originalTrustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
+const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 
 const setTrustedProxyEnable = (value: boolean) => {
-  (env as { TRUSTED_PROXY_ENABLE: boolean }).TRUSTED_PROXY_ENABLE = value;
+  serviceEnv.TRUSTED_PROXY_ENABLE = value;
 };
 
 afterEach(() => {

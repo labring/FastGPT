@@ -2,17 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { MongoFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/schema';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { env } from '@fastgpt/service/env';
+import { serviceEnv } from '@fastgpt/service/env';
 
-const originalUseIpLimit = env.USE_IP_LIMIT;
-const originalTrustedProxyEnable = env.TRUSTED_PROXY_ENABLE;
+const originalUseIpLimit = serviceEnv.USE_IP_LIMIT;
+const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 
 const setUseIpLimit = (value: boolean) => {
-  (env as { USE_IP_LIMIT: boolean }).USE_IP_LIMIT = value;
+  serviceEnv.USE_IP_LIMIT = value;
 };
 
 const setTrustedProxyEnable = (value: boolean) => {
-  (env as { TRUSTED_PROXY_ENABLE: boolean }).TRUSTED_PROXY_ENABLE = value;
+  serviceEnv.TRUSTED_PROXY_ENABLE = value;
 };
 
 const createRes = () =>
