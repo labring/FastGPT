@@ -1,6 +1,5 @@
 import z from 'zod';
 import { Readable } from 'node:stream';
-import type { S3BaseBucket } from '../buckets/base';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -87,9 +86,3 @@ export const UploadFileByBodySchema = z.object({
 });
 export type UploadFileByBodyParams = z.infer<typeof UploadFileByBodySchema>;
 export type UploadFileByBufferParams = UploadFileByBodyParams;
-
-declare global {
-  var s3BucketMap: {
-    [key: string]: S3BaseBucket;
-  };
-}

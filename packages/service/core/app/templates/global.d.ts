@@ -1,0 +1,8 @@
+import type { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
+
+declare global {
+  var appTemplates: AppTemplateSchemaType[];
+  var templatesRefreshTime: number;
+}
+
+export {};

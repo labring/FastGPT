@@ -6,7 +6,13 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "../../packages/**/*.ts"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "../../packages/**/*.ts",
+    "../../packages/**/*.d.ts"
+  ],
   "exclude": [
     "**/*.test.ts",
     "../../packages/**/vitest.config.ts",

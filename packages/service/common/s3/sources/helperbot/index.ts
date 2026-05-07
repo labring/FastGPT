@@ -100,7 +100,3 @@ export function getS3HelperBotSource() {
   global.helperBotBucket = new S3HelperBotSource();
   return global.helperBotBucket;
 }
-
-declare global {
-  var helperBotBucket: S3HelperBotSource;
-}

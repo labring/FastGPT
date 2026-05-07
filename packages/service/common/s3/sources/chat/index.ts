@@ -127,7 +127,3 @@ export function getS3ChatSource() {
   global.chatBucket = new S3ChatSource();
   return global.chatBucket;
 }
-
-declare global {
-  var chatBucket: S3ChatSource;
-}

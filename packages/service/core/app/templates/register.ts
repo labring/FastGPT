@@ -74,8 +74,3 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
 export const isCommercialTemaplte = (templateId: string) => {
   return templateId.startsWith(AppToolSourceEnum.commercial);
 };
-
-declare global {
-  var appTemplates: AppTemplateSchemaType[];
-  var templatesRefreshTime: number;
-}

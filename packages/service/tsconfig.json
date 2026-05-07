@@ -3,5 +3,5 @@
   "compilerOptions": {
     "moduleResolution": "bundler"
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts"]
 }

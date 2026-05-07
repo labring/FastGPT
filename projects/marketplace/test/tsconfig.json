@@ -28,6 +28,6 @@
       "#fastgpt/marketplace/test/*": ["./*"],
     }
   },
-  "include": ["**/*.test.ts"],
+  "include": ["**/*.test.ts", "../../../packages/service/**/*.d.ts"],
   "exclude": ["**/node_modules"]
 }

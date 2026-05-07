@@ -88,7 +88,3 @@ export function getS3AvatarSource() {
   global.avatarBucket = new S3AvatarSource();
   return global.avatarBucket;
 }
-
-declare global {
-  var avatarBucket: S3AvatarSource;
-}
