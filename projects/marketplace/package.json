@@ -20,7 +20,7 @@
     "@chakra-ui/styled-system": "catalog:",
     "@chakra-ui/system": "catalog:",
     "@fastgpt/global": "workspace:*",
-    "@fastgpt-sdk/logger": "workspace:*",
+    "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@t3-oss/env-core": "catalog:",

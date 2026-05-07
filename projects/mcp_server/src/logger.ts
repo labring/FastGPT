@@ -1,4 +1,4 @@
-import { configureLoggerFromEnv, getLogger } from '@fastgpt-sdk/logger';
+import { configureLoggerFromEnv, getLogger } from '@fastgpt-sdk/otel/logger';
 
 export const LogCategories = {
   MODULE: {

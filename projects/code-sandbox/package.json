@@ -18,7 +18,7 @@
     "pnpm": "10.x"
   },
   "dependencies": {
-    "@fastgpt-sdk/logger": "^0.1.2",
+    "@fastgpt-sdk/otel": "workspace:*",
     "@hono/node-server": "^1.13.7",
     "@fastgpt/global": "workspace:*",
     "@t3-oss/env-core": "catalog:",

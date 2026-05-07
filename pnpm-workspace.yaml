@@ -13,35 +13,32 @@ packages:
   - sdk/*
 
 catalog:
-  '@fastgpt-sdk/logger': 0.1.2
-  '@fastgpt-sdk/otel': 0.1.2
-  '@fastgpt-sdk/storage': 0.6.15
-  '@modelcontextprotocol/sdk': ^1
-  '@node-rs/jieba': 2.0.1
-  '@svgr/webpack': ^6.5.1
-  '@t3-oss/env-core': 0.13.10
-  '@tanstack/react-query': ^4.24.10
-  '@types/js-yaml': ^4.0.9
-  '@types/jsonwebtoken': ^9.0.3
-  '@types/lodash': ^4
-  '@types/mime-types': ^3.0.1
-  '@types/node': ^20
-  '@types/react': ^18
-  '@types/react-dom': ^18
-  '@types/request-ip': ^0.0.38
-  '@types/proxy-addr': 2.0.3
-  '@typescript-eslint/eslint-plugin': ^6.21.0
-  '@typescript-eslint/parser': ^6.21.0
-  '@vitest/coverage-v8': ^4.1.5
+  "@modelcontextprotocol/sdk": ^1
+  "@node-rs/jieba": 2.0.1
+  "@svgr/webpack": ^6.5.1
+  "@t3-oss/env-core": 0.13.10
+  "@tanstack/react-query": ^4.24.10
+  "@types/js-yaml": ^4.0.9
+  "@types/jsonwebtoken": ^9.0.3
+  "@types/lodash": ^4
+  "@types/mime-types": ^3.0.1
+  "@types/node": ^20
+  "@types/react": ^18
+  "@types/react-dom": ^18
+  "@types/request-ip": ^0.0.38
+  "@types/proxy-addr": 2.0.3
+  "@typescript-eslint/eslint-plugin": ^6.21.0
+  "@typescript-eslint/parser": ^6.21.0
+  "@vitest/coverage-v8": ^4.1.5
+  "@chakra-ui/anatomy": ^2
+  "@chakra-ui/icons": ^2
+  "@chakra-ui/next-js": ^2
+  "@chakra-ui/react": ^2
+  "@chakra-ui/styled-system": ^2
+  "@chakra-ui/system": ^2
+  "@emotion/react": ^11
+  "@emotion/styled": ^11
   ahooks: ^3.9.5
-  '@chakra-ui/anatomy': ^2
-  '@chakra-ui/icons': ^2
-  '@chakra-ui/next-js': ^2
-  '@chakra-ui/react': ^2
-  '@chakra-ui/styled-system': ^2
-  '@chakra-ui/system': ^2
-  '@emotion/react': ^11
-  '@emotion/styled': ^11
   axios: ^1.16.0
   ipaddr.js: ^2.4.0
   chalk: ^5.6.2
@@ -74,14 +71,14 @@ catalog:
   recharts: ^2.15.0
   remark-gfm: ^4.0.1
   request-ip: ^3.3.0
-  tsdown: 0.21.4
+  tsdown: 0.21.10
   tsx: ^4.20.6
   typescript: ^5.9.3
   vitest: ^4.1.5
   zod: ^4
 
 onlyBuiltDependencies:
-  - '@parcel/watcher'
+  - "@parcel/watcher"
   - bufferutil
   - canvas
   - core-js
@@ -95,7 +92,7 @@ onlyBuiltDependencies:
   - vue-demi
 
 overrides:
-  '@types/react': ^18
-  '@types/react-dom': ^18
+  "@types/react": ^18
+  "@types/react-dom": ^18
   react: ^18
   react-dom: ^18

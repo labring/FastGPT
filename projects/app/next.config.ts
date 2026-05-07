@@ -4,8 +4,6 @@ import path from 'path';
 import { webEnv } from '@fastgpt/web/env';
 import { appEnv } from './src/env';
 
-const basePath = webEnv.NEXT_PUBLIC_BASE_URL || undefined;
-
 const securityHeaders = [
   {
     key: 'X-Frame-Options',
@@ -39,7 +37,7 @@ const optimizedPackageImports = [
 ];
 
 const nextConfig: NextConfig = {
-  basePath,
+  basePath: webEnv.NEXT_PUBLIC_BASE_URL || undefined,
   env: {
     SYSTEM_NAME: appEnv.SYSTEM_NAME,
     SYSTEM_DESCRIPTION: appEnv.SYSTEM_DESCRIPTION,
@@ -95,10 +93,6 @@ const nextConfig: NextConfig = {
   // Exclude build-time-only packages from standalone output file tracing
   outputFileTracingExcludes: {
     '*': [
-      // Rspack bindings - only used in dev, not needed at runtime
-      'node_modules/@next/rspack-binding-*/**',
-      'node_modules/@rspack/binding-*/**',
-      'node_modules/next-rspack/**',
       // GNU platform binaries - Alpine uses musl only
       'node_modules/**/*-linux-x64-gnu*/**',
       // typescript - build-time only

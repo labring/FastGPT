@@ -5,7 +5,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve('..'),
-      '@fastgpt-sdk/logger': resolve('../../sdk/logger/src/index.ts'),
       '@fastgpt-sdk/storage': resolve('../../sdk/storage/src/index.ts'),
       '@fastgpt-sdk/otel/logger': resolve('../../sdk/otel/src/logger-entry.ts'),
       '@fastgpt-sdk/otel/metrics': resolve('../../sdk/otel/src/metrics-entry.ts'),
