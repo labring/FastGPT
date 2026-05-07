@@ -224,6 +224,7 @@ const CreateModal = ({
         >
           <HStack
             spacing={1}
+            alignItems={'center'}
             flex={['', '0 0 110px']}
             fontSize={'sm'}
             color={'myGray.900'}
@@ -231,6 +232,7 @@ const CreateModal = ({
             pb={['12px', '0']}
           >
             <Box>{t('dataset:vllm_model')}</Box>
+            <QuestionTip label={t('dataset:vllm_model_tip')} />
           </HStack>
           <Box w={['100%', '300px']}>
             <AIModelSelector

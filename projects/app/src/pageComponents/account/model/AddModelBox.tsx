@@ -1061,35 +1061,43 @@ export const ModelEditModal = ({
           </Section>
         )}
 
-        {isLLMModel && (
+        {(isLLMModel || isEmbeddingModel) && (
           <Section title={t('account:model.feature_config_section')}>
             <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-              <SwitchField
-                label={t('account:model.tool_choice')}
-                tip={t('account:model.tool_choice_tip')}
-                field={'toolChoice'}
-                register={register}
-              />
+              {isLLMModel && (
+                <SwitchField
+                  label={t('account:model.tool_choice')}
+                  tip={t('account:model.tool_choice_tip')}
+                  field={'toolChoice'}
+                  register={register}
+                />
+              )}
               <SwitchField
                 label={t('account:model.vision')}
-                tip={t('account:model.vision_tip')}
+                tip={
+                  isEmbeddingModel
+                    ? t('account:model.embedding_vision_tip')
+                    : t('account:model.vision_tip')
+                }
                 field={'vision'}
                 register={register}
               />
-              <SwitchField
-                label={t('account:model.reasoning')}
-                tip={t('account:model.reasoning_tip')}
-                field={'reasoning'}
-                register={register}
-              />
-              {reasoningEnabled && (
+              {isLLMModel && (
+                <SwitchField
+                  label={t('account:model.reasoning')}
+                  tip={t('account:model.reasoning_tip')}
+                  field={'reasoning'}
+                  register={register}
+                />
+              )}
+              {isLLMModel && reasoningEnabled && (
                 <SwitchField
                   label={t('account:model.reasoning_effort')}
                   field={'reasoningEffort'}
                   register={register}
                 />
               )}
-              {feConfigs?.isPlus && (
+              {isLLMModel && feConfigs?.isPlus && (
                 <SwitchField
                   label={t('account:model.censor')}
                   tip={t('account:model.censor_tip')}

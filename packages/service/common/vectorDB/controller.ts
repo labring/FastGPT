@@ -131,6 +131,25 @@ export const insertDatasetDataVector = async ({
   };
 };
 
+export const insertDatasetDataPrecomputedVector = async ({
+  vectors,
+  ...props
+}: InsertVectorControllerPropsType) => {
+  const { insertIds } = await retryFn(() =>
+    Vector.insert({
+      ...props,
+      vectors
+    })
+  );
+
+  teamVectorCache.incr(props.teamId, insertIds.length);
+
+  return {
+    tokens: 0,
+    insertIds
+  };
+};
+
 export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
   const result = await retryFn(() => Vector.delete(props));
   await teamVectorCache.invalidate(props.teamId);

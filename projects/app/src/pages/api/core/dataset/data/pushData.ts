@@ -53,7 +53,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
         billSource: UsageSourceEnum.training,
         vectorModel: getEmbeddingModel(collection.dataset.vectorModel)?.name,
         agentModel: getLLMModel(collection.dataset.agentModel)?.name,
-        vllmModel: getVlmModel(collection.dataset.vlmModel)?.name,
+        vllmModel: collection.dataset.vlmModel
+          ? getVlmModel(collection.dataset.vlmModel)?.name
+          : undefined,
         session
       });
       return newUsageId;

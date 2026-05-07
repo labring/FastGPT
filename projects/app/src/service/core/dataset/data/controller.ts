@@ -1,5 +1,8 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import {
+  insertDatasetDataPrecomputedVector,
+  insertDatasetDataVector
+} from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
@@ -9,7 +12,7 @@ import type {
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
@@ -19,6 +22,8 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
+import { getVectorsByImage } from '@fastgpt/service/core/ai/embedding';
+import { normalizeImageToBase64 } from '@fastgpt/service/core/ai/image';
 
 const formatIndexes = async ({
   indexes = [],
@@ -115,7 +120,10 @@ const formatIndexes = async ({
   const chekcIndexes = (
     await Promise.all(
       indexes.map(async (item) => {
-        if (item.type === DatasetDataIndexTypeEnum.default) {
+        if (
+          item.type === DatasetDataIndexTypeEnum.default ||
+          item.type === DatasetDataIndexTypeEnum.imageEmbedding
+        ) {
           return item;
         }
 
@@ -145,7 +153,12 @@ const formatIndexes = async ({
   // Add prefix
   const prefixIndexes = indexPrefix
     ? chekcIndexes.map((index) => {
-        if (index.type === DatasetDataIndexTypeEnum.custom) return index;
+        if (
+          index.type === DatasetDataIndexTypeEnum.custom ||
+          index.type === DatasetDataIndexTypeEnum.imageEmbedding
+        ) {
+          return index;
+        }
         return {
           ...index,
           text: formatText(index.text)
@@ -154,6 +167,50 @@ const formatIndexes = async ({
     : chekcIndexes;
 
   return prefixIndexes;
+};
+
+const getImageDisplayText = (imageId?: string) => {
+  if (!imageId) return '';
+
+  const filename = imageId.split('/').pop() || imageId;
+  return decodeURIComponent(filename).replace(/\.[^.]+$/, '') || filename;
+};
+
+const insertImageEmbeddingVectors = async ({
+  imageIds,
+  model,
+  teamId,
+  datasetId,
+  collectionId
+}: {
+  imageIds: string[];
+  model: ReturnType<typeof getEmbeddingModel>;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+}) => {
+  if (imageIds.length === 0) {
+    return {
+      insertIds: [] as string[],
+      tokens: 0
+    };
+  }
+
+  const { vectors, tokens } = await getVectorsByImage({
+    model,
+    imageUrls: await Promise.all(imageIds.map(normalizeImageToBase64)),
+    type: 'db'
+  });
+
+  return insertDatasetDataPrecomputedVector({
+    vectors,
+    teamId,
+    datasetId,
+    collectionId
+  }).then((res) => ({
+    ...res,
+    tokens
+  }));
 };
 /* insert data.
  * 1. create data id
@@ -181,8 +238,10 @@ export async function insertData2Dataset({
   imageDescMap?: Record<string, string>;
   session?: ClientSession;
 }) {
-  if (!q || !datasetId || !collectionId || !embeddingModel) {
-    return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
+  q = q || getImageDisplayText(imageId);
+
+  if ((!q && !imageId) || !datasetId || !collectionId || !embeddingModel) {
+    return Promise.reject('q or imageId, datasetId, collectionId, embeddingModel is required');
   }
   if (String(teamId) === String(tmbId)) {
     return Promise.reject("teamId and tmbId can't be the same");
@@ -202,18 +261,53 @@ export async function insertData2Dataset({
     indexPrefix
   });
 
-  // insert to vector store
-  const { tokens, insertIds } = await insertDatasetDataVector({
-    inputs: newIndexes.map((item) => item.text),
+  const textIndexes = newIndexes.filter(
+    (item) => item.type !== DatasetDataIndexTypeEnum.imageEmbedding
+  );
+  const imageIndexCandidates = newIndexes.filter(
+    (item) => item.type === DatasetDataIndexTypeEnum.imageEmbedding
+  );
+  if (imageId) {
+    imageIndexCandidates.push({
+      text: imageId,
+      type: DatasetDataIndexTypeEnum.imageEmbedding
+    });
+  }
+  const imageIndexes = isImageEmbeddingModel(embModel)
+    ? imageIndexCandidates.filter(
+        (item, index, self) => index === self.findIndex((t) => t.text === item.text)
+      )
+    : [];
+
+  const { tokens, insertIds } = textIndexes.length
+    ? await insertDatasetDataVector({
+        inputs: textIndexes.map((item) => item.text),
+        model: embModel,
+        teamId,
+        datasetId,
+        collectionId
+      })
+    : { tokens: 0, insertIds: [] };
+
+  const imageInsertResult = await insertImageEmbeddingVectors({
+    imageIds: imageIndexes.map((item) => item.text),
     model: embModel,
     teamId,
     datasetId,
     collectionId
   });
-  const results = newIndexes.map((item, index) => ({
-    ...item,
-    dataId: insertIds[index]
-  }));
+
+  const results = textIndexes
+    .map((item, index) => ({
+      ...item,
+      dataId: insertIds[index]
+    }))
+    .concat(
+      imageIndexes.map((item, index) => ({
+        ...item,
+        dataId: imageInsertResult.insertIds[index]
+      }))
+    );
 
   const [{ _id }] = await MongoDatasetData.create(
     [
@@ -261,7 +355,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens
+    tokens: tokens + imageInsertResult.tokens
   };
 }
 
@@ -310,12 +404,13 @@ export async function updateData2Dataset({
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
   // 2. Compute indexes
+  const embModel = getEmbeddingModel(model);
   const formatIndexesResult = await formatIndexes({
     indexes,
     q,
     a,
     indexSize,
-    maxIndexSize: getEmbeddingModel(model).maxToken,
+    maxIndexSize: embModel.maxToken,
     indexPrefix
   });
 
@@ -379,24 +474,45 @@ export async function updateData2Dataset({
     (item) => item.type === 'create' || item.type === 'update'
   );
   const tokens = await (async () => {
-    if (insertItems.length > 0) {
-      // Batch insert vectors
-      const result = await insertDatasetDataVector({
-        inputs: insertItems.map((item) => item.index.text),
-        model: getEmbeddingModel(model),
-        teamId: mongoData.teamId,
-        datasetId: mongoData.datasetId,
-        collectionId: mongoData.collectionId
-      });
+    if (insertItems.length === 0) return 0;
 
-      // Update dataIds for the items
-      insertItems.forEach((item, index) => {
-        item.index.dataId = result.insertIds[index];
-      });
+    const textInsertItems = insertItems.filter(
+      (item) => item.index.type !== DatasetDataIndexTypeEnum.imageEmbedding
+    );
+    const imageInsertItems = insertItems.filter(
+      (item) => item.index.type === DatasetDataIndexTypeEnum.imageEmbedding
+    );
 
-      return result.tokens;
-    }
-    return 0;
+    const textInsertResult = textInsertItems.length
+      ? await insertDatasetDataVector({
+          inputs: textInsertItems.map((item) => item.index.text),
+          model: embModel,
+          teamId: mongoData.teamId,
+          datasetId: mongoData.datasetId,
+          collectionId: mongoData.collectionId
+        })
+      : { tokens: 0, insertIds: [] as string[] };
+
+    textInsertItems.forEach((item, index) => {
+      item.index.dataId = textInsertResult.insertIds[index];
+    });
+
+    const imageInsertResult =
+      imageInsertItems.length && isImageEmbeddingModel(embModel)
+        ? await insertImageEmbeddingVectors({
+            imageIds: imageInsertItems.map((item) => item.index.text || mongoData.imageId || ''),
+            model: embModel,
+            teamId: mongoData.teamId,
+            datasetId: mongoData.datasetId,
+            collectionId: mongoData.collectionId
+          })
+        : { tokens: 0, insertIds: [] as string[] };
+
+    imageInsertItems.forEach((item, index) => {
+      item.index.dataId = imageInsertResult.insertIds[index];
+    });
+
+    return textInsertResult.tokens + imageInsertResult.tokens;
   })();
 
   const newIndexes = patchResult

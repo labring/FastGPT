@@ -1248,6 +1248,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 --data-raw '{
     "datasetId": "Dataset ID",
     "text": "Who is the director",
+    "queryImageUrls": [
+      "temp/teamId/search-image.png"
+    ],
     "limit": 5000,
     "similarity": 0,
     "searchMode": "embedding",
@@ -1265,7 +1268,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 
 <div>
 - datasetId - Dataset ID
-- text - Text to test
+- text - Text to test. It can be empty if queryImageUrls contains at least one image.
+- queryImageUrls - Temporary image keys for search testing, up to 10 images. Supports image-only search and mixed text-image search. Public image URLs, dataset keys, and chat keys are not supported here. For API calls, first upload the local image through `/api/core/dataset/file/uploadSearchTestImage`, then pass the returned `key` (`temp/${teamId}/...`) in this field. The temporary key expires after 3 hours.
 - limit - Maximum tokens
 - similarity - Minimum similarity (0~1, optional)
 - searchMode - Search mode: embedding | fullTextRecall | mixedRecall
@@ -1303,3 +1307,29 @@ Returns top k results. limit is the maximum tokens, up to 20000 tokens.
 
   </Tab>
 </Tabs>
+
+### Upload Search Test Image
+
+Use this endpoint to upload a local image from the search test page or an OpenAPI client. Only image files are supported; PDF, docx, xlsx, txt, pptx, and other document files are not accepted. Image format and size limits follow the system upload configuration. Uploaded objects are only used for temporary retrieval and expire after 3 hours.
+
+To use image retrieval with `/api/core/dataset/searchTest`, call this endpoint first and pass `data.key` from the response to `queryImageUrls`. Public image URLs are not supported directly in `queryImageUrls`.
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/file/uploadSearchTestImage' \
+--header 'Authorization: Bearer fastgpt-xxxxx' \
+--form 'datasetId="Dataset ID"' \
+--form 'file=@"./query.png"'
+```
+
+Response example:
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "data": {
+    "key": "temp/teamId/query.png",
+    "previewUrl": "https://..."
+  }
+}
+```

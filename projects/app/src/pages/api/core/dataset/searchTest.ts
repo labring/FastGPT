@@ -15,6 +15,7 @@ import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import {
   SearchDatasetTestBodySchema,
   SearchDatasetTestResponseSchema,
@@ -28,6 +29,7 @@ async function handler(
   const {
     datasetId,
     text,
+    queryImageUrls,
     limit = 5000,
     similarity,
     searchMode,
@@ -60,14 +62,23 @@ async function handler(
   // auth balance
   await checkTeamAIPoints(teamId);
 
+  const validQueryImageUrls = queryImageUrls.filter(
+    (key) => isS3ObjectKey(key, 'temp') && key.startsWith(`temp/${teamId}/`)
+  );
+  if (validQueryImageUrls.length !== queryImageUrls.length) {
+    return Promise.reject('Invalid search test image');
+  }
+
   const rerankModelData = getRerankModel(rerankModel);
 
   const searchData = {
     histories: [],
     teamId,
     reRankQuery: text,
-    queries: [text],
+    queries: text.trim() ? [text.trim()] : [],
+    queryImageUrls: validQueryImageUrls,
     model: dataset.vectorModel,
+    vlmModel: dataset.vlmModel,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
@@ -83,9 +94,10 @@ async function handler(
     reRankInputTokens,
     usingReRank: searchUsingReRank,
     queryExtensionResult,
+    imageCaptionResult,
     deepSearchResult,
     ...result
-  } = datasetDeepSearch
+  } = datasetDeepSearch && searchData.queries.length > 0
     ? await deepRagSearch({
         ...searchData,
         datasetDeepSearchModel,
@@ -122,6 +134,13 @@ async function handler(
           outputTokens: queryExtensionResult.outputTokens,
           embeddingTokens: queryExtensionResult.embeddingTokens,
           embeddingModel: dataset.vectorModel
+        }
+      : undefined,
+    imageCaptionUsage: imageCaptionResult
+      ? {
+          model: imageCaptionResult.model,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
         }
       : undefined
   });

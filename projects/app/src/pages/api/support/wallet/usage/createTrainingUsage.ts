@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest) {
     billSource: UsageSourceEnum.training,
     vectorModel: getEmbeddingModel(dataset.vectorModel).name,
     agentModel: getLLMModel(dataset.agentModel).name,
-    vllmModel: getVlmModel(dataset.vlmModel)?.name
+    vllmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel)?.name : undefined
   });
 
   return usageId;

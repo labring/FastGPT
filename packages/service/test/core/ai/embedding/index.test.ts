@@ -648,3 +648,74 @@ describe('getVectorsByText function test', () => {
     });
   });
 });
+
+describe('getVectorsByImage function test', () => {
+  let getVectorsByImage: (typeof import('@fastgpt/service/core/ai/embedding/index'))['getVectorsByImage'];
+
+  beforeAll(async () => {
+    const actual = await vi.importActual<typeof import('@fastgpt/service/core/ai/embedding/index')>(
+      '@fastgpt/service/core/ai/embedding/index'
+    );
+    getVectorsByImage = actual.getVectorsByImage;
+  });
+
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
+  const buildModel = (overrides: Partial<EmbeddingModelItemType> = {}): EmbeddingModelItemType =>
+    ({
+      model: 'multimodal-embedding',
+      name: 'multimodal-embedding',
+      normalization: false,
+      ...overrides
+    }) as EmbeddingModelItemType;
+
+  const makeResponse = (
+    embeddings: Array<number[] | string>,
+    opts: { usage?: { total_tokens: number } } = {}
+  ) => ({
+    data: embeddings.map((embedding) => ({ embedding })),
+    usage: opts.usage
+  });
+
+  it('should pass base64 image urls to embedding API request body', async () => {
+    const base64Image = 'data:image/png;base64,base64image';
+    mockCreate.mockResolvedValue(
+      makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 5 } })
+    );
+
+    const result = await getVectorsByImage({
+      model: buildModel(),
+      imageUrls: [base64Image],
+      type: EmbeddingTypeEnm.db
+    });
+
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockCreate.mock.calls[0][0]).toMatchObject({
+      model: 'multimodal-embedding',
+      input: [
+        {
+          type: 'image_url',
+          image_url: {
+            url: base64Image
+          }
+        }
+      ],
+      encoding_format: 'float'
+    });
+    expect(mockCreate.mock.calls[0][0].input[0].image_url.url).not.toContain(
+      '/api/system/file/download'
+    );
+    expect(result.tokens).toBe(5);
+    expect(result.vectors[0]).toHaveLength(1536);
+  });
+
+  it('should reject when image urls is empty', async () => {
+    await expect(getVectorsByImage({ model: buildModel(), imageUrls: [] })).rejects.toMatchObject({
+      code: 500,
+      message: 'imageUrls is empty'
+    });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+});

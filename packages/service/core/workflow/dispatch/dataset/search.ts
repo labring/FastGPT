@@ -15,6 +15,8 @@ import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getWorkflowContext, parseUrlToFileType } from '../../utils/context';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -22,7 +24,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType[];
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
-  [NodeInputKeyEnum.userChatInput]?: string;
+  [NodeInputKeyEnum.userChatInput]?: string | string[];
   [NodeInputKeyEnum.datasetSearchMode]: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
@@ -45,6 +47,43 @@ type DatasetSearchProps = ModuleDispatchProps<{
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
+
+const isLikelyFileLinkValue = (input: string) => {
+  if (/^(data:|dataset\/|chat\/|temp\/)/i.test(input)) return true;
+  if (getWorkflowContext()?.queryUrlTypeMap?.[input]) return true;
+  return false;
+};
+
+const normalizeDatasetSearchInput = (input?: string | string[]) => {
+  const inputList = (Array.isArray(input) ? input : [input])
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const textQueries: string[] = [];
+  const queryImageUrls: string[] = [];
+  let filteredFileCount = 0;
+
+  for (const item of inputList) {
+    if (isLikelyFileLinkValue(item)) {
+      const fileInfo = parseUrlToFileType(item);
+      if (fileInfo?.type === ChatFileTypeEnum.image) {
+        queryImageUrls.push(item);
+      } else {
+        filteredFileCount++;
+      }
+      continue;
+    }
+
+    textQueries.push(item);
+  }
+
+  return {
+    textQueries,
+    queryImageUrls,
+    filteredFileCount
+  };
+};
 
 export async function dispatchDatasetSearch(
   props: DatasetSearchProps
@@ -99,7 +138,11 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.toolResponses]: []
   };
 
-  if (!userChatInput) {
+  const { textQueries, queryImageUrls, filteredFileCount } =
+    normalizeDatasetSearchInput(userChatInput);
+  const normalizedUserChatInput = textQueries.join('\n');
+
+  if (!normalizedUserChatInput && queryImageUrls.length === 0) {
     return emptyResult;
   }
 
@@ -116,9 +159,11 @@ export async function dispatchDatasetSearch(
     }
 
     // Get vector model
-    const vectorModel = getEmbeddingModel(
-      (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
-    );
+    const dataset = await MongoDataset.findById(
+      datasets[0].datasetId,
+      'vectorModel vlmModel'
+    ).lean();
+    const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(rerankModel);
 
@@ -126,9 +171,11 @@ export async function dispatchDatasetSearch(
     const searchData = {
       histories,
       teamId,
-      reRankQuery: userChatInput,
-      queries: [userChatInput],
+      reRankQuery: normalizedUserChatInput,
+      queries: textQueries,
+      queryImageUrls,
       model: vectorModel.model,
+      vlmModel: dataset?.vlmModel,
       similarity,
       limit,
       datasetIds,
@@ -146,8 +193,9 @@ export async function dispatchDatasetSearch(
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
       queryExtensionResult,
+      imageCaptionResult,
       deepSearchResult
-    } = datasetDeepSearch
+    } = datasetDeepSearch && textQueries.length > 0
       ? await deepRagSearch({
           ...searchData,
           datasetDeepSearchModel,
@@ -218,7 +266,22 @@ export async function dispatchDatasetSearch(
           outputTokens: 0
         });
       }
-      // 4. Deep search
+      // 4. Image caption
+      if (imageCaptionResult) {
+        const { totalPoints, modelName } = formatModelChars2Points({
+          model: imageCaptionResult.model,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        });
+        nodeUsages.push({
+          totalPoints,
+          moduleName: i18nT('account_usage:image_parse'),
+          model: modelName,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        });
+      }
+      // 5. Deep search
       if (deepSearchResult) {
         const { totalPoints, modelName } = formatModelChars2Points({
           model: deepSearchResult.model,
@@ -243,7 +306,8 @@ export async function dispatchDatasetSearch(
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints,
-        query: userChatInput,
+        query: normalizedUserChatInput,
+        filteredFileCount,
         embeddingModel: vectorModel.name,
         embeddingTokens,
         similarity: usingSimilarityFilter ? similarity : undefined,

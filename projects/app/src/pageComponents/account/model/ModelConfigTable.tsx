@@ -405,7 +405,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         )}
                         {item.vision && (
                           <MyTag type="borderFill" colorSchema="green" py={0.5}>
-                            {t('account:model.vision_tag')}
+                            {item.type === ModelTypeEnum.embedding
+                              ? t('common:core.ai.model.multimodal')
+                              : t('account:model.vision_tag')}
                           </MyTag>
                         )}
                         {item.toolChoice && (

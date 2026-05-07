@@ -63,6 +63,18 @@ This means you can continuously improve data chunk accuracy through annotation.
 
 ![](/imgs/dataset_search_process.png)
 
+### Image and Mixed Text-Image Search
+
+When `Support Image Recognition` is enabled for an embedding model in model settings, FastGPT treats it as a multimodal embedding model. Image data can generate an `imageEmbedding` vector index for image-to-image search. If the Knowledge Base also has an image understanding model, images can also generate text-description indexes so text queries can match image content.
+
+Search automatically branches based on the Knowledge Base configuration:
+
+- Multimodal embedding model: text queries use text vector search, image queries use image vector search, and mixed text-image queries are merged with RRF.
+- Multimodal embedding model + image understanding model: in addition to image vector search, query images are captioned and used for text search.
+- Text-only embedding model + image understanding model: query images are captioned first, then searched as text.
+- Text-only embedding model without an image understanding model: image inputs are ignored; mixed text-image queries use only the text portion.
+
+The search test page supports local image uploads for image-only and mixed text-image tests, up to 10 images. Images uploaded for search testing are temporary, expire after 3 hours, and are not saved as Knowledge Base data.
 
 ## Search Parameters
 | | | |

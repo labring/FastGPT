@@ -5,7 +5,8 @@ export enum DatasetDataIndexTypeEnum {
   custom = 'custom',
   summary = 'summary',
   question = 'question',
-  image = 'image'
+  image = 'image',
+  imageEmbedding = 'imageEmbedding'
 }
 
 export const DatasetDataIndexMap: Record<
@@ -33,6 +34,10 @@ export const DatasetDataIndexMap: Record<
   },
   [DatasetDataIndexTypeEnum.image]: {
     label: i18nT('dataset:data_index_image'),
+    color: 'purple'
+  },
+  [DatasetDataIndexTypeEnum.imageEmbedding]: {
+    label: i18nT('dataset:data_index_image_embedding'),
     color: 'purple'
   }
 };

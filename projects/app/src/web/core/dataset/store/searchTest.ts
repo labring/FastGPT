@@ -10,6 +10,10 @@ export type SearchTestStoreItemType = {
   time: Date;
   duration: string;
   results: SearchDataResponseItemType[];
+  queryImageRefs?: {
+    key: string;
+    previewUrl?: string;
+  }[];
   searchMode: `${DatasetSearchModeEnum}`;
   limit: number;
   usingReRank: boolean;
@@ -50,7 +54,12 @@ export const useSearchTestStore = create<State>()(
       {
         name: 'searchTestStore',
         partialize: (state) => ({
-          datasetTestList: state.datasetTestList
+          datasetTestList: state.datasetTestList.map((item) => ({
+            ...item,
+            queryImageRefs: item.queryImageRefs?.map((image) => ({
+              key: image.key
+            }))
+          }))
         })
       }
     )

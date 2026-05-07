@@ -215,6 +215,7 @@ export const DispatchNodeResponseSchema = z
     limit: z.number().optional().meta({ description: '限制' }),
     searchMode: z.enum(DatasetSearchModeEnum).optional().meta({ description: '搜索模式' }),
     embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
+    filteredFileCount: z.number().optional().meta({ description: '过滤的非图片文件数量' }),
     rerankModel: z.string().optional().meta({ description: '重排模型' }),
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),

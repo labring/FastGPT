@@ -4,12 +4,20 @@ import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
 type GetVectorProps = {
   model: EmbeddingModelItemType;
   input: string[] | string;
+  type?: `${EmbeddingTypeEnm}`;
+  headers?: Record<string, string>;
+};
+
+type GetImageVectorProps = {
+  model: EmbeddingModelItemType;
+  imageUrls: string[];
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
 };
@@ -117,6 +125,78 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
       model: model.model,
       inputLengths: formatInput.map((item) => item.length),
       error
+    });
+
+    return Promise.reject(error);
+  }
+}
+
+export async function getVectorsByImage({ model, imageUrls, type, headers }: GetImageVectorProps) {
+  if (!imageUrls.length) {
+    return Promise.reject({
+      code: 500,
+      message: 'imageUrls is empty'
+    });
+  }
+  const ai = getAIApi();
+
+  try {
+    const result = await retryFn(() =>
+      ai.embeddings
+        .create(
+          {
+            model: model.model,
+            input: imageUrls.map((url) => ({
+              type: 'image_url',
+              image_url: {
+                url
+              }
+            })),
+            encoding_format: 'float',
+            ...model.defaultConfig,
+            ...(type === EmbeddingTypeEnm.db && model.dbConfig),
+            ...(type === EmbeddingTypeEnm.query && model.queryConfig)
+          } as any,
+          model.requestUrl
+            ? {
+                path: model.requestUrl,
+                headers: {
+                  ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
+                  ...headers
+                }
+              }
+            : { headers }
+        )
+        .then(async (res) => {
+          if (!res.data?.[0]?.embedding) {
+            logger.error('Image embedding API returned invalid embedding', {
+              model: model.model,
+              imageCount: imageUrls.length,
+              responseDataCount: res.data?.length || 0,
+              hasUsage: !!res.usage
+            });
+            return Promise.reject('Image embedding API is not responding');
+          }
+
+          const vectors = await Promise.all(
+            res.data.map((item) =>
+              formatVectors(decodeEmbedding(item.embedding), model.normalization)
+            )
+          );
+
+          return {
+            tokens: res.usage?.total_tokens || imageUrls.length,
+            vectors
+          };
+        })
+    );
+
+    return result;
+  } catch (error) {
+    logger.error('Image embedding request failed', {
+      model: model.model,
+      imageCount: imageUrls.length,
+      errorMessage: getErrText(error, 'Image embedding request failed')
     });
 
     return Promise.reject(error);

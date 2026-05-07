@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetSourceReadTypeEnum } from '../../../../core/dataset/constants';
 import { ChunkSettingsSchema } from '../../../../core/dataset/type';
+import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 
 /* ============================================================================
  * API: 预览文件分块
@@ -68,3 +69,75 @@ export const PresignDatasetFilePostUrlBodySchema = z.object({
   })
 });
 export type PresignDatasetFilePostUrlBody = z.infer<typeof PresignDatasetFilePostUrlBodySchema>;
+
+export const PresignDatasetFilePostUrlResponseSchema = CreatePostPresignedUrlResponseSchema.meta({
+  description: 'S3 预签名上传 URL 及相关头信息'
+});
+export type PresignDatasetFilePostUrlResponse = z.infer<
+  typeof PresignDatasetFilePostUrlResponseSchema
+>;
+
+/* ============================================================================
+ * API: 上传搜索测试图片
+ * Route: POST /api/core/dataset/file/uploadSearchTestImage
+ * Method: POST
+ * Description: 上传用于知识库搜索测试的临时图片，上传对象 3 小时后过期
+ * Tags: ['Dataset', 'File', 'Write']
+ * ============================================================================ */
+export const UploadSearchTestImageBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type UploadSearchTestImageBody = z.infer<typeof UploadSearchTestImageBodySchema>;
+
+export const UploadSearchTestImageResponseSchema = z.object({
+  key: z.string().meta({
+    example: 'temp/teamId/demo.png',
+    description: '临时图片 S3 key'
+  }),
+  previewUrl: z.string().meta({
+    description: '用于前端缩略图展示的临时预览 URL'
+  })
+});
+export type UploadSearchTestImageResponse = z.infer<typeof UploadSearchTestImageResponseSchema>;
+
+/* ============================================================================
+ * API: 获取搜索测试图片预览 URL
+ * Route: POST /api/core/dataset/file/getSearchTestImagePreviewUrls
+ * Method: POST
+ * Description: 根据搜索测试历史中的临时图片 key 重新生成短期预览 URL
+ * Tags: ['Dataset', 'File', 'Read']
+ * ============================================================================ */
+export const GetSearchTestImagePreviewUrlsBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  }),
+  keys: z
+    .array(z.string().min(1))
+    .max(10)
+    .meta({
+      example: ['temp/teamId/demo.png'],
+      description: '搜索测试图片临时 S3 key 列表，最多 10 个'
+    })
+});
+export type GetSearchTestImagePreviewUrlsBody = z.infer<
+  typeof GetSearchTestImagePreviewUrlsBodySchema
+>;
+
+export const GetSearchTestImagePreviewUrlsResponseSchema = z.array(
+  z.object({
+    key: z.string().meta({
+      example: 'temp/teamId/demo.png',
+      description: '临时图片 S3 key'
+    }),
+    previewUrl: z.string().meta({
+      description: '用于前端缩略图展示的临时预览 URL'
+    })
+  })
+);
+export type GetSearchTestImagePreviewUrlsResponse = z.infer<
+  typeof GetSearchTestImagePreviewUrlsResponseSchema
+>;

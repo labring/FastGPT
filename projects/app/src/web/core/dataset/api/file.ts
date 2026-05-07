@@ -1,8 +1,12 @@
 import { POST } from '@/web/common/api/request';
 import type {
+  GetSearchTestImagePreviewUrlsBody,
+  GetSearchTestImagePreviewUrlsResponse,
   GetPreviewChunksBody,
   GetPreviewChunksResponse,
-  PresignDatasetFilePostUrlBody
+  PresignDatasetFilePostUrlBody,
+  PresignDatasetFilePostUrlResponse,
+  UploadSearchTestImageResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
@@ -14,3 +18,12 @@ export const getPreviewChunks = (data: GetPreviewChunksBody) =>
     maxQuantity: 1,
     timeout: 600000
   });
+
+export const postUploadSearchTestImage = (data: FormData) =>
+  POST<UploadSearchTestImageResponse>('/core/dataset/file/uploadSearchTestImage', data);
+
+export const postGetSearchTestImagePreviewUrls = (data: GetSearchTestImagePreviewUrlsBody) =>
+  POST<GetSearchTestImagePreviewUrlsResponse>(
+    '/core/dataset/file/getSearchTestImagePreviewUrls',
+    data
+  );

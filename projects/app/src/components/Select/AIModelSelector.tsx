@@ -11,6 +11,7 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -21,26 +22,25 @@ type Props = SelectProps & {
 const isTestModeModel = (model?: SystemModelItemType) => {
   return !!model?.testMode;
 };
-
-const SelectorActiveTestModeTip = React.memo(function SelectorActiveTestModeTip() {
-  return (
-    <Box position={'absolute'} top={'50%'} right={'40px'} transform={'translateY(-50%)'} zIndex={3}>
-      <TestModeBetaTag />
-    </Box>
-  );
-});
+const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
+  return model?.type === ModelTypeEnum.embedding && !!model.vision;
+};
 
 const ModelOptionLabel = React.memo(function ModelOptionLabel({
   name,
   showTestModeTip,
+  showMultimodalTip,
   noOfLines
 }: {
   name: string;
   showTestModeTip: boolean;
+  showMultimodalTip?: boolean;
   noOfLines?: ResponsiveValue<number>;
 }) {
+  const { t } = useTranslation();
+
   return (
-    <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+    <Flex alignItems={'center'} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'}>
       <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>
@@ -48,6 +48,22 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
         <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
           <TestModeBetaTag />
         </Box>
+      )}
+      {showMultimodalTip && (
+        <MyTooltip label={t('common:core.ai.model.multimodal_tip')} shouldWrapChildren={false}>
+          <Box
+            ml={1}
+            px={1}
+            py={'1px'}
+            borderRadius={'sm'}
+            bg={'primary.50'}
+            color={'primary.600'}
+            fontSize={'mini'}
+            flexShrink={0}
+          >
+            {t('common:core.ai.model.multimodal')}
+          </Box>
+        </MyTooltip>
       )}
     </Flex>
   );
@@ -125,6 +141,7 @@ const OneRowSelector = ({
           label: (
             <Flex alignItems={'center'} py={1} minW={0}>
               <Avatar
+                flexShrink={0}
                 borderRadius={'0'}
                 mr={2}
                 src={avatar || HUGGING_FACE_ICON}
@@ -135,6 +152,7 @@ const OneRowSelector = ({
                 name={modelData.name}
                 noOfLines={noOfLines}
                 showTestModeTip={isTestModeModel(modelData)}
+                showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
               />
             </Flex>
           )
@@ -162,8 +180,9 @@ const OneRowSelector = ({
           list={avatarList}
           valueLabel={
             selectedModelData ? (
-              <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
+              <Flex alignItems={'center'} py={1} w={'100%'} minW={0} overflow={'hidden'}>
                 <Avatar
+                  flexShrink={0}
                   borderRadius={'0'}
                   mr={2}
                   src={getModelProvider(selectedModelData.provider)?.avatar || HUGGING_FACE_ICON}
@@ -173,7 +192,8 @@ const OneRowSelector = ({
                 <ModelOptionLabel
                   name={selectedModelData.name}
                   noOfLines={noOfLines}
-                  showTestModeTip={false}
+                  showTestModeTip={isTestModeModel(selectedModelData)}
+                  showMultimodalTip={isMultimodalEmbeddingModel(selectedModelData)}
                 />
               </Flex>
             ) : undefined
@@ -181,13 +201,19 @@ const OneRowSelector = ({
           placeholder={loading ? t('common:model_loading') : t('common:not_model_config')}
           h={'40px'}
           whiteSpace={'nowrap'}
+          sx={{
+            '& > div, & > div > div': {
+              flex: '1 1 auto',
+              minWidth: 0,
+              overflow: 'hidden'
+            }
+          }}
           {...props}
           onChange={(e) => {
             return onChange?.(e);
           }}
         />
       </MyTooltip>
-      {isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
     </Box>
   );
 };
@@ -249,11 +275,6 @@ const MultipleRowSelector = ({
     //@ts-ignore
     return props.size ? size[props.size] : size['md'];
   }, [props.size]);
-  const selectedModelData = useMemo(
-    () => modelList.find((model) => model?.model === props.value),
-    [modelList, props.value]
-  );
-
   const selectorList = useMemo(() => {
     const renderList = getModelProviders(i18n.language).map<{
       label: React.JSX.Element;
@@ -263,6 +284,7 @@ const MultipleRowSelector = ({
       label: (
         <Flex alignItems={'center'} py={1}>
           <Avatar
+            flexShrink={0}
             borderRadius={'0'}
             mr={2}
             src={provider?.avatar || HUGGING_FACE_ICON}
@@ -285,7 +307,11 @@ const MultipleRowSelector = ({
 
       provider?.children.push({
         label: (
-          <ModelOptionLabel name={modelData.name} showTestModeTip={isTestModeModel(modelData)} />
+          <ModelOptionLabel
+            name={modelData.name}
+            showTestModeTip={isTestModeModel(modelData)}
+            showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
+          />
         ),
         value: modelData.model
       });
@@ -313,15 +339,21 @@ const MultipleRowSelector = ({
     const avatar = getModelProvider(modelData.provider)?.avatar;
 
     return (
-      <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
+      <Flex alignItems={'center'} py={1} w={'100%'} minW={0} overflow={'hidden'}>
         <Avatar
+          flexShrink={0}
           borderRadius={'0'}
           mr={2}
           src={avatar}
           fallbackSrc={HUGGING_FACE_ICON}
           w={avatarSize}
         />
-        <ModelOptionLabel name={modelData.name} noOfLines={noOfLines} showTestModeTip={false} />
+        <ModelOptionLabel
+          name={modelData.name}
+          noOfLines={noOfLines}
+          showTestModeTip={isTestModeModel(modelData)}
+          showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
+        />
       </Flex>
     );
   }, [loading, props.value, t, modelList, getModelProvider, avatarSize, noOfLines]);
@@ -351,7 +383,6 @@ const MultipleRowSelector = ({
           }}
         />
       </MyTooltip>
-      {isTestModeModel(selectedModelData) && <SelectorActiveTestModeTip />}
     </Box>
   );
 };

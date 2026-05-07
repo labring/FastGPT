@@ -275,6 +275,7 @@ export const DatasetSearchModeMap = {
 
 export enum SearchScoreTypeEnum {
   embedding = 'embedding',
+  imageEmbedding = 'imageEmbedding',
   fullText = 'fullText',
   reRank = 'reRank',
   rrf = 'rrf'
@@ -283,6 +284,11 @@ export const SearchScoreTypeMap = {
   [SearchScoreTypeEnum.embedding]: {
     label: i18nT('common:core.dataset.search.mode.embedding'),
     desc: i18nT('common:core.dataset.search.score.embedding desc'),
+    showScore: true
+  },
+  [SearchScoreTypeEnum.imageEmbedding]: {
+    label: i18nT('common:core.dataset.search.score.imageEmbedding'),
+    desc: i18nT('common:core.dataset.search.score.imageEmbedding desc'),
     showScore: true
   },
   [SearchScoreTypeEnum.fullText]: {

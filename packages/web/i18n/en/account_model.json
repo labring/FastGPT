@@ -81,7 +81,7 @@
   "view_chart": "Chart",
   "view_table": "Table",
   "vlm_model": "Vlm",
-  "vlm_model_tip": "Used to generate additional indexing of images in a document in the knowledge base",
+  "vlm_model_tip": "Automatically labels images in documents and generates text descriptions to assist text retrieval",
   "volunme_of_failed_calls": "Error amount",
   "waiting_test": "Waiting for testing"
 }

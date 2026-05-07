@@ -3,9 +3,15 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { recallFromVectorStore } from '../../../common/vectorDB/controller';
-import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
+import { getVectorsByImage, getVectorsByText } from '../../ai/embedding';
+import {
+  getEmbeddingModel,
+  getDefaultRerankModel,
+  getLLMModel,
+  isImageEmbeddingModel
+} from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import type {
   DatasetCollectionSchemaType,
@@ -37,6 +43,8 @@ import { pushTrack } from '../../../common/middle/tracks/utils';
 import { replaceS3KeyToPreviewUrl } from '../../../core/dataset/utils';
 import { addDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { createLLMResponse } from '../../ai/llm/request';
+import { normalizeImageToBase64 } from '../../ai/image';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -46,9 +54,11 @@ export type SearchDatasetDataProps = {
   uid?: string;
   tmbId?: string;
   model: string;
+  vlmModel?: string;
   datasetIds: string[];
   reRankQuery: string;
   queries: string[];
+  queryImageUrls?: string[];
 
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
@@ -93,6 +103,12 @@ export type SearchDatasetDataResponse = {
     query: string;
   };
   deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+  imageCaptionResult?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    queries: string[];
+  };
 };
 
 export const datasetDataReRank = async ({
@@ -179,6 +195,7 @@ export async function searchDatasetData(
     reRankQuery,
     queries,
     model,
+    vlmModel,
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
@@ -189,6 +206,7 @@ export async function searchDatasetData(
     datasetIds = [],
     collectionFilterMatch
   } = props;
+  const queryImageUrls = props.queryImageUrls || [];
 
   // Constants data
   const datasetDataSelectField =
@@ -198,7 +216,7 @@ export async function searchDatasetData(
 
   /* init params */
   searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
-  usingReRank = usingReRank && !!getDefaultRerankModel();
+  let imageCaptionResult: SearchDatasetDataResponse['imageCaptionResult'];
 
   // Compatible with topk limit
   let set = new Set<string>();
@@ -476,6 +494,12 @@ export async function searchDatasetData(
         tokens: 0
       };
     }
+    if (queries.length === 0) {
+      return {
+        embeddingRecallResults: [],
+        tokens: 0
+      };
+    }
 
     const { vectors, tokens } = await getVectorsByText({
       model: getEmbeddingModel(model),
@@ -605,6 +629,216 @@ export async function searchDatasetData(
 
     return {
       embeddingRecallResults,
+      tokens
+    };
+  };
+
+  const getImageCaptionQueries = async (): Promise<{
+    queries: string[];
+    inputTokens: number;
+    outputTokens: number;
+  }> => {
+    if (!vlmModel || queryImageUrls.length === 0) {
+      return {
+        queries: [],
+        inputTokens: 0,
+        outputTokens: 0
+      };
+    }
+
+    const vlmModelData = getLLMModel(vlmModel);
+    if (!vlmModelData?.vision) {
+      return {
+        queries: [],
+        inputTokens: 0,
+        outputTokens: 0
+      };
+    }
+
+    const results = await Promise.all(
+      queryImageUrls.map(async (url) => {
+        const {
+          answerText,
+          usage: { inputTokens, outputTokens }
+        } = await createLLMResponse({
+          body: {
+            model: vlmModelData.model,
+            temperature: 0.1,
+            stream: true,
+            useVision: true,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: await normalizeImageToBase64(url)
+                    }
+                  },
+                  {
+                    type: 'text',
+                    text: '请用一句话描述这张图片的主体、场景、颜色、文字和关键视觉特征。只输出描述，不要解释。'
+                  }
+                ]
+              }
+            ] as any
+          }
+        });
+
+        return {
+          query: answerText.trim(),
+          inputTokens,
+          outputTokens
+        };
+      })
+    );
+
+    return {
+      queries: results.map((item) => item.query).filter(Boolean),
+      inputTokens: results.reduce((sum, item) => sum + item.inputTokens, 0),
+      outputTokens: results.reduce((sum, item) => sum + item.outputTokens, 0)
+    };
+  };
+
+  const imageEmbeddingRecall = async ({
+    queryImageUrls,
+    limit,
+    forbidCollectionIdList,
+    filterCollectionIdList
+  }: {
+    queryImageUrls: string[];
+    limit: number;
+    forbidCollectionIdList: string[];
+    filterCollectionIdList?: string[];
+  }): Promise<{
+    imageEmbeddingRecallResults: SearchDataResponseItemType[][];
+    tokens: number;
+  }> => {
+    if (limit === 0 || queryImageUrls.length === 0 || !isImageEmbeddingModel(model)) {
+      return {
+        imageEmbeddingRecallResults: [],
+        tokens: 0
+      };
+    }
+
+    const { vectors, tokens } = await getVectorsByImage({
+      model: getEmbeddingModel(model),
+      imageUrls: await Promise.all(queryImageUrls.map(normalizeImageToBase64)),
+      type: 'query'
+    });
+
+    const recallResults = await Promise.all(
+      vectors.map(async (vector) => {
+        return await recallFromVectorStore({
+          teamId,
+          datasetIds,
+          vector,
+          limit,
+          forbidCollectionIdList,
+          filterCollectionIdList
+        });
+      })
+    );
+
+    const collectionIdList = Array.from(
+      new Set(recallResults.map((item) => item.results.map((item) => item.collectionId)).flat())
+    );
+    const indexDataIds = Array.from(
+      new Set(recallResults.map((item) => item.results.map((item) => item.id?.trim())).flat())
+    );
+
+    const [dataMaps, collectionMaps] = await Promise.all([
+      MongoDatasetData.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          collectionId: { $in: collectionIdList },
+          'indexes.dataId': { $in: indexDataIds },
+          'indexes.type': DatasetDataIndexTypeEnum.imageEmbedding
+        },
+        datasetDataSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetDataSchemaType>();
+
+          res.forEach((item) => {
+            item.indexes.forEach((index) => {
+              if (index.type === DatasetDataIndexTypeEnum.imageEmbedding) {
+                map.set(String(index.dataId), item);
+              }
+            });
+          });
+
+          return map;
+        }),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: collectionIdList }
+        },
+        datsaetCollectionSelectField,
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((res) => {
+          const map = new Map<string, DatasetCollectionSchemaType>();
+
+          res.forEach((item) => {
+            map.set(String(item._id), item);
+          });
+
+          return map;
+        })
+    ]);
+
+    const imageEmbeddingRecallResults = recallResults.map((item) => {
+      const set = new Set<string>();
+      return item.results
+        .map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          const data = dataMaps.get(String(item.id?.trim()));
+          if (!collection || !data) return;
+
+          const result: SearchDataResponseItemType = {
+            id: String(data._id),
+            updateTime: data.updateTime,
+            ...formatDatasetDataValue({
+              q: data.q,
+              a: data.a,
+              imageId: data.imageId,
+              imageDescMap: data.imageDescMap
+            }),
+            chunkIndex: data.chunkIndex,
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            ...getCollectionSourceData(collection),
+            score: [
+              {
+                type: SearchScoreTypeEnum.imageEmbedding,
+                value: item?.score || 0,
+                index
+              }
+            ]
+          };
+
+          return result;
+        })
+        .filter((item) => {
+          if (!item) return false;
+          if (set.has(item.id)) return false;
+          set.add(item.id);
+          return true;
+        })
+        .map((item, index) => ({
+          ...item!,
+          score: item!.score.map((item) => ({ ...item, index }))
+        })) as SearchDataResponseItemType[];
+    });
+
+    return {
+      imageEmbeddingRecallResults,
       tokens
     };
   };
@@ -782,79 +1016,142 @@ export async function searchDatasetData(
       fullTextRecallResults
     };
   };
+  const concatRecallLists = (lists: SearchDataResponseItemType[][], limit: number) => {
+    return datasetSearchResultConcat(lists.map((list) => ({ weight: 1, list }))).slice(0, limit);
+  };
+  const concatWeightedRecallLists = (
+    lists: { weight: number; list: SearchDataResponseItemType[] }[]
+  ) => {
+    return datasetSearchResultConcat(
+      lists.filter((item) => item.weight > 0 && item.list.length > 0)
+    );
+  };
   const multiQueryRecall = async ({
     embeddingLimit,
-    fullTextLimit
+    fullTextLimit,
+    textQueries,
+    imageCaptionQueries
   }: {
     embeddingLimit: number;
     fullTextLimit: number;
+    textQueries: string[];
+    imageCaptionQueries: string[];
   }) => {
     const [{ forbidCollectionIdList }, filterCollectionIdList] = await Promise.all([
       getForbidData(),
       filterCollectionByMetadata()
     ]);
 
-    const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
+    const [
+      { tokens: textEmbeddingTokens, embeddingRecallResults },
+      {
+        tokens: imageCaptionEmbeddingTokens,
+        embeddingRecallResults: imageCaptionEmbeddingRecallResults
+      },
+      { tokens: imageEmbeddingTokens, imageEmbeddingRecallResults },
+      { fullTextRecallResults },
+      { fullTextRecallResults: imageCaptionFullTextRecallResults }
+    ] = await Promise.all([
       embeddingRecall({
-        queries,
+        queries: textQueries,
+        limit: embeddingLimit,
+        forbidCollectionIdList,
+        filterCollectionIdList
+      }),
+      embeddingRecall({
+        queries: imageCaptionQueries,
+        limit: embeddingLimit,
+        forbidCollectionIdList,
+        filterCollectionIdList
+      }),
+      imageEmbeddingRecall({
+        queryImageUrls,
         limit: embeddingLimit,
         forbidCollectionIdList,
         filterCollectionIdList
       }),
       fullTextRecall({
-        queries,
+        queries: textQueries,
+        limit: fullTextLimit,
+        filterCollectionIdList,
+        forbidCollectionIdList
+      }),
+      fullTextRecall({
+        queries: imageCaptionQueries,
         limit: fullTextLimit,
         filterCollectionIdList,
         forbidCollectionIdList
       })
     ]);
 
-    // rrf concat
-    const rrfEmbRecall = datasetSearchResultConcat(
-      embeddingRecallResults.map((list) => ({ weight: 1, list }))
-    ).slice(0, embeddingLimit);
-    const rrfFTRecall = datasetSearchResultConcat(
-      fullTextRecallResults.map((list) => ({ weight: 1, list }))
-    ).slice(0, fullTextLimit);
-
     return {
-      tokens,
-      embeddingRecallResults: rrfEmbRecall,
-      fullTextRecallResults: rrfFTRecall
+      tokens: textEmbeddingTokens + imageCaptionEmbeddingTokens + imageEmbeddingTokens,
+      textEmbeddingRecallResults: concatRecallLists(embeddingRecallResults, embeddingLimit),
+      imageCaptionEmbeddingRecallResults: concatRecallLists(
+        imageCaptionEmbeddingRecallResults,
+        embeddingLimit
+      ),
+      imageEmbeddingRecallResults: concatRecallLists(imageEmbeddingRecallResults, embeddingLimit),
+      fullTextRecallResults: concatRecallLists(fullTextRecallResults, fullTextLimit),
+      imageCaptionFullTextRecallResults: concatRecallLists(
+        imageCaptionFullTextRecallResults,
+        fullTextLimit
+      )
     };
   };
 
   /* main step */
+  const imageCaptionQueries = await getImageCaptionQueries();
+  if (imageCaptionQueries.queries.length > 0 && vlmModel) {
+    imageCaptionResult = {
+      model: getLLMModel(vlmModel).model,
+      inputTokens: imageCaptionQueries.inputTokens,
+      outputTokens: imageCaptionQueries.outputTokens,
+      queries: imageCaptionQueries.queries
+    };
+  }
+  const activeReRankQuery = reRankQuery;
+  usingReRank = usingReRank && !!activeReRankQuery && !!getDefaultRerankModel();
+
   // count limit
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
   const {
-    embeddingRecallResults,
+    textEmbeddingRecallResults,
+    imageCaptionEmbeddingRecallResults,
+    imageEmbeddingRecallResults,
     fullTextRecallResults,
+    imageCaptionFullTextRecallResults,
     tokens: embeddingTokens
   } = await multiQueryRecall({
     embeddingLimit,
-    fullTextLimit
+    fullTextLimit,
+    textQueries: queries,
+    imageCaptionQueries: imageCaptionQueries.queries
   });
+  const textRecallResults = concatWeightedRecallLists([
+    { weight: embeddingWeight, list: textEmbeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: fullTextRecallResults }
+  ]);
+  const imageCaptionRecallResults = concatWeightedRecallLists([
+    { weight: embeddingWeight, list: imageCaptionEmbeddingRecallResults },
+    { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
+  ]);
 
   // ReRank results
   const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
-    if (!usingReRank) {
+    if (!usingReRank || textRecallResults.length === 0) {
+      usingReRank = false;
       return {
         results: [],
         inputTokens: 0
       };
     }
 
-    set = new Set<string>(embeddingRecallResults.map((item) => item.id));
-    const concatRecallResults = embeddingRecallResults.concat(
-      fullTextRecallResults.filter((item) => !set.has(item.id))
-    );
-
     // remove same q and a data
     set = new Set<string>();
-    const filterSameDataResults = concatRecallResults.filter((item) => {
+    const filterSameDataResults = textRecallResults.filter((item) => {
       // 删除所有的标点符号与空格等，只对文本进行比较
       const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
       if (set.has(str)) return false;
@@ -864,7 +1161,7 @@ export async function searchDatasetData(
     try {
       return await datasetDataReRank({
         rerankModel,
-        query: reRankQuery,
+        query: activeReRankQuery,
         data: filterSameDataResults
       });
     } catch (error) {
@@ -876,23 +1173,42 @@ export async function searchDatasetData(
     }
   })();
 
-  const rrfSearchResult = datasetSearchResultConcat([
-    { weight: embeddingWeight, list: embeddingRecallResults },
-    { weight: 1 - embeddingWeight, list: fullTextRecallResults }
-  ]);
-  const rrfConcatResults = (() => {
-    if (reRankResults.length === 0) return rrfSearchResult;
+  const textRerankRecallResults = (() => {
+    if (reRankResults.length === 0) return textRecallResults;
     if (rerankWeight === 1) return reRankResults;
 
-    return datasetSearchResultConcat([
-      { weight: 1 - rerankWeight, list: rrfSearchResult },
+    return concatWeightedRecallLists([
+      { weight: 1 - rerankWeight, list: textRecallResults },
       { weight: rerankWeight, list: reRankResults }
     ]);
   })();
+  const hasTextQuery = queries.some((item) => item.trim());
+  const finalTextRecallWeight = 1;
+  const finalImageRecallWeight = hasTextQuery ? 0.7 : 1;
+  const imageRecallResults = concatWeightedRecallLists([
+    {
+      weight: imageCaptionRecallResults.length > 0 ? 0.3 : 0,
+      list: imageCaptionRecallResults
+    },
+    {
+      weight: imageEmbeddingRecallResults.length > 0 ? 0.7 : 0,
+      list: imageEmbeddingRecallResults
+    }
+  ]);
+  const rrfSearchResult = concatWeightedRecallLists([
+    {
+      weight: textRerankRecallResults.length > 0 ? finalTextRecallWeight : 0,
+      list: textRerankRecallResults
+    },
+    {
+      weight: imageRecallResults.length > 0 ? finalImageRecallWeight : 0,
+      list: imageRecallResults
+    }
+  ]);
 
   // remove same q and a data
   set = new Set<string>();
-  const filterSameDataResults = rrfConcatResults.filter((item) => {
+  const filterSameDataResults = rrfSearchResult.filter((item) => {
     // 删除所有的标点符号与空格等，只对文本进行比较
     const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
     if (set.has(str)) return false;
@@ -914,8 +1230,8 @@ export async function searchDatasetData(
     if (searchMode === DatasetSearchModeEnum.embedding) {
       usingSimilarityFilter = true;
       return filterSameDataResults.filter((item) => {
-        const embeddingScore = item.score.find(
-          (item) => item.type === SearchScoreTypeEnum.embedding
+        const embeddingScore = item.score.find((item) =>
+          [SearchScoreTypeEnum.embedding, SearchScoreTypeEnum.imageEmbedding].includes(item.type)
         );
         if (embeddingScore && embeddingScore.value < similarity) return false;
         return true;
@@ -942,7 +1258,8 @@ export async function searchDatasetData(
     limit: maxTokens,
     similarity,
     usingReRank,
-    usingSimilarityFilter
+    usingSimilarityFilter,
+    imageCaptionResult
   };
 }
 
@@ -957,18 +1274,24 @@ export const defaultSearchDatasetData = async ({
   datasetSearchExtensionBg,
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
-  const query = props.queries[0];
+  const query = props.queries[0] || '';
   const histories = props.histories;
 
-  const { searchQueries, reRankQuery, aiExtensionResult } = await datasetSearchQueryExtension({
-    query,
-    llmModel: datasetSearchUsingExtensionQuery
-      ? getLLMModel(datasetSearchExtensionModel).model
-      : undefined,
-    embeddingModel: props.model,
-    extensionBg: datasetSearchExtensionBg,
-    histories
-  });
+  const { searchQueries, reRankQuery, aiExtensionResult } = query
+    ? await datasetSearchQueryExtension({
+        query,
+        llmModel: datasetSearchUsingExtensionQuery
+          ? getLLMModel(datasetSearchExtensionModel).model
+          : undefined,
+        embeddingModel: props.model,
+        extensionBg: datasetSearchExtensionBg,
+        histories
+      })
+    : {
+        searchQueries: [],
+        reRankQuery: '',
+        aiExtensionResult: undefined
+      };
 
   const result = await searchDatasetData({
     ...props,

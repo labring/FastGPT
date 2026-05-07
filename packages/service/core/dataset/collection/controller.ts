@@ -1,6 +1,7 @@
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -19,7 +20,7 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel, isImageEmbeddingModel } from '../../ai/model';
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
@@ -74,11 +75,18 @@ export const createCollectionAndInsertData = async ({
   // Set default params
   const trainingType =
     formatCreateCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
-  const trainingMode = getTrainingModeByCollection({
+  const collectionTrainingMode = getTrainingModeByCollection({
     trainingType: trainingType,
     autoIndexes: formatCreateCollectionParams.autoIndexes,
     imageIndex: formatCreateCollectionParams.imageIndex
   });
+  const trainingMode =
+    imageIds &&
+    collectionTrainingMode === TrainingModeEnum.imageParse &&
+    !dataset.vlmModel &&
+    isImageEmbeddingModel(dataset.vectorModel)
+      ? TrainingModeEnum.chunk
+      : collectionTrainingMode;
 
   if (
     trainingType === DatasetCollectionDataProcessModeEnum.qa ||
@@ -192,7 +200,7 @@ export const createCollectionAndInsertData = async ({
         billSource: UsageSourceEnum.training,
         vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name,
-        vllmModel: getVlmModel(dataset.vlmModel)?.name,
+        vllmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel)?.name : undefined,
         session
       });
       return newUsageId;

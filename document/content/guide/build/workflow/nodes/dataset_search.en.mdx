@@ -21,6 +21,12 @@ For detailed parameters and internal logic, see: [FastGPT Knowledge Base Search]
 
 Select one or more Knowledge Bases using the **same embedding model** for vector search.
 
+### Input - Search Content
+
+Search content is an `Array<string>`. New nodes reference the user's question by default. You can also add file links to the same input for mixed text-image retrieval.
+
+At runtime, FastGPT separates text from file links automatically: plain text goes into text search, image links go into image search, and non-image file links such as PDF, docx, xlsx, txt, and pptx are filtered out. Filtered file links are not searched as text and do not make the node fail.
+
 ### Input - Search Parameters
 
 [View parameter details](../../../dataset/dataset_engine.en.mdx#搜索参数)

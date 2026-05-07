@@ -135,6 +135,45 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   const imageIndex = watch('imageIndex');
   const indexPrefixTitle = watch('indexPrefixTitle');
   const paragraphChunkAIMode = watch('paragraphChunkAIMode');
+  const imageIndexConfigState = useMemo(() => {
+    if (!feConfigs?.isPlus) {
+      return {
+        disabled: true,
+        tooltip: t('common:commercial_function_tip'),
+        tip: t('dataset:image_auto_parse_tip_commercial')
+      };
+    }
+
+    if (datasetDetail.vectorModel?.vision && datasetDetail.vlmModel) {
+      return {
+        disabled: false,
+        tooltip: '',
+        tip: t('dataset:image_auto_parse_tip_multimodal_with_vlm')
+      };
+    }
+
+    if (datasetDetail.vectorModel?.vision) {
+      return {
+        disabled: false,
+        tooltip: '',
+        tip: t('dataset:image_auto_parse_tip_multimodal_without_vlm')
+      };
+    }
+
+    if (datasetDetail.vlmModel) {
+      return {
+        disabled: false,
+        tooltip: '',
+        tip: t('dataset:image_auto_parse_tip_vlm_only')
+      };
+    }
+
+    return {
+      disabled: true,
+      tooltip: t('dataset:image_auto_parse_tip_no_vlm_or_multimodal'),
+      tip: t('dataset:image_auto_parse_tip_no_vlm_or_multimodal')
+    };
+  }, [datasetDetail.vectorModel?.vision, datasetDetail.vlmModel, feConfigs?.isPlus, t]);
 
   const trainingModeList = useMemo(() => {
     const list = {
@@ -224,6 +263,12 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
     }
   }, [trainingType, setValue]);
 
+  useEffect(() => {
+    if (imageIndexConfigState.disabled && imageIndex) {
+      setValue('imageIndex', false);
+    }
+  }, [imageIndex, imageIndexConfigState.disabled, setValue]);
+
   return (
     <>
       <Box>
@@ -310,24 +355,16 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                   <QuestionTip label={t('dataset:auto_indexes_tips')} />
                 </HStack>
                 <HStack flex={'1'} spacing={1}>
-                  <MyTooltip
-                    label={
-                      !feConfigs?.isPlus
-                        ? t('common:commercial_function_tip')
-                        : !datasetDetail?.vlmModel
-                          ? t('common:error_vlm_not_config')
-                          : ''
-                    }
-                  >
+                  <MyTooltip label={imageIndexConfigState.tooltip}>
                     <Checkbox
-                      isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
+                      isDisabled={imageIndexConfigState.disabled}
                       isChecked={imageIndex}
                       {...register('imageIndex')}
                     >
                       <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
                     </Checkbox>
                   </MyTooltip>
-                  <QuestionTip label={t('dataset:image_auto_parse_tips')} />
+                  <QuestionTip label={imageIndexConfigState.tip} />
                 </HStack>
               </>
             )}

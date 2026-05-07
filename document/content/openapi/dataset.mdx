@@ -1230,6 +1230,9 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 --data-raw '{
     "datasetId": "知识库的ID",
     "text": "导演是谁",
+    "queryImageUrls": [
+      "temp/teamId/search-image.png"
+    ],
     "limit": 5000,
     "similarity": 0,
     "searchMode": "embedding",
@@ -1247,7 +1250,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 
 <div>
 - datasetId - 知识库ID
-- text - 需要测试的文本
+- text - 需要测试的文本，可为空；当 text 为空时，queryImageUrls 至少需要传 1 张图片
+- queryImageUrls - 搜索测试图片临时 key，最多 10 张；支持纯图片搜索和图文混合搜索。当前不支持直接传公网 URL、dataset key 或 chat key。API 调用时需要先通过 `/api/core/dataset/file/uploadSearchTestImage` 上传本地图片，使用响应中的 `key`（格式为 `temp/${teamId}/...`）填入该字段。该临时 key 3 小时后过期
 - limit - 最大 tokens 数量
 - similarity - 最低相关度（0~1，可选）
 - searchMode - 搜索模式：embedding | fullTextRecall | mixedRecall
@@ -1285,3 +1289,29 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/searchTes
 
   </Tab>
 </Tabs>
+
+### 上传搜索测试图片
+
+该接口用于搜索测试页或 OpenAPI 调用方上传本地图片。仅支持图片文件，不支持 PDF、docx、xlsx、txt、pptx 等普通文件；图片格式和大小限制跟随系统上传配置。上传对象只用于临时检索，过期时间固定为 3 小时。
+
+如果要在 `/api/core/dataset/searchTest` 中使用图片检索，先调用本接口上传图片，然后将响应中的 `data.key` 填入 `queryImageUrls`。当前不支持把公网图片 URL 直接填入 `queryImageUrls`。
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/file/uploadSearchTestImage' \
+--header 'Authorization: Bearer fastgpt-xxxxx' \
+--form 'datasetId="知识库的ID"' \
+--form 'file=@"./query.png"'
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "data": {
+    "key": "temp/teamId/query.png",
+    "previewUrl": "https://..."
+  }
+}
+```

@@ -14,7 +14,11 @@ import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
-export type ScoreItemType = SearchDataResponseItemType['score'][0];
+export type ScoreItemType = {
+  type: SearchScoreTypeEnum;
+  value: number;
+  index: number;
+};
 export const scoreTheme: Record<
   string,
   {
@@ -52,32 +56,20 @@ export const formatScore = (score: ScoreItemType[]) => {
     };
   }
 
-  // rrf -> rerank -> embedding -> fullText 优先级
-  let rrfScore: ScoreItemType | undefined = undefined;
-  let reRankScore: ScoreItemType | undefined = undefined;
-  let embeddingScore: ScoreItemType | undefined = undefined;
-  let fullTextScore: ScoreItemType | undefined = undefined;
+  const scoreList = [
+    SearchScoreTypeEnum.rrf,
+    SearchScoreTypeEnum.reRank,
+    SearchScoreTypeEnum.imageEmbedding,
+    SearchScoreTypeEnum.embedding,
+    SearchScoreTypeEnum.fullText
+  ]
+    .map((type) => score.find((item) => item.type === type))
+    .filter((item): item is ScoreItemType => !!item);
 
-  score.forEach((item) => {
-    if (item.type === SearchScoreTypeEnum.rrf) {
-      rrfScore = item;
-    } else if (item.type === SearchScoreTypeEnum.reRank) {
-      reRankScore = item;
-    } else if (item.type === SearchScoreTypeEnum.embedding) {
-      embeddingScore = item;
-    } else if (item.type === SearchScoreTypeEnum.fullText) {
-      fullTextScore = item;
-    }
-  });
-
-  const primaryScore = (rrfScore ||
-    reRankScore ||
-    embeddingScore ||
-    fullTextScore) as unknown as ScoreItemType;
-  const secondaryScore = [rrfScore, reRankScore, embeddingScore, fullTextScore].filter(
-    // @ts-ignore
-    (item) => item && primaryScore && item.type !== primaryScore.type
-  ) as unknown as ScoreItemType[];
+  const primaryScore = scoreList[0];
+  const secondaryScore = primaryScore
+    ? scoreList.slice(1).filter((item) => item.type !== primaryScore.type)
+    : [];
 
   return {
     primaryScore,

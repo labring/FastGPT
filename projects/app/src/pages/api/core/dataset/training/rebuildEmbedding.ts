@@ -3,10 +3,16 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/core/ai/model';
+import {
+  getLLMModel,
+  getEmbeddingModel,
+  getVlmModel,
+  isImageEmbeddingModel
+} from '@fastgpt/service/core/ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -15,6 +21,13 @@ import {
   RebuildEmbeddingResponseSchema,
   type RebuildEmbeddingResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+
+const matchMarkdownImageUrls = (text = '') => {
+  const regex = /!\[([\s\S]*?)\]\((.*?)\)/g;
+  return Array.from(text.matchAll(regex))
+    .map((match) => match[2])
+    .filter(Boolean);
+};
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModel } = RebuildEmbeddingBodySchema.parse(req.body);
@@ -26,6 +39,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     datasetId,
     per: OwnerPermissionVal
   });
+
+  const supportImageIndex = !!dataset.vlmModel || isImageEmbeddingModel(vectorModel);
 
   // check vector model
   if (!vectorModel || dataset.vectorModel === vectorModel) {
@@ -47,9 +62,9 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     tmbId,
     appName: '切换索引模型',
     billSource: UsageSourceEnum.training,
-    vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
+    vectorModel: getEmbeddingModel(vectorModel)?.name,
     agentModel: getLLMModel(dataset.agentModel)?.name,
-    vllmModel: getVlmModel(dataset.vlmModel)?.name
+    vllmModel: dataset.vlmModel ? getVlmModel(dataset.vlmModel)?.name : undefined
   });
 
   // update vector model and dataset.data rebuild field
@@ -57,10 +72,27 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     await MongoDataset.findByIdAndUpdate(
       datasetId,
       {
-        vectorModel
+        $set: {
+          vectorModel,
+          ...(!supportImageIndex && { 'chunkSettings.imageIndex': false })
+        }
       },
       { session }
     );
+    if (!supportImageIndex) {
+      await MongoDatasetCollection.updateMany(
+        {
+          teamId,
+          datasetId
+        },
+        {
+          $set: {
+            imageIndex: false
+          }
+        },
+        { session }
+      );
+    }
     await MongoDatasetData.updateMany(
       {
         teamId,
@@ -102,10 +134,24 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
           }
         ).select({
           _id: 1,
-          collectionId: 1
+          collectionId: 1,
+          imageId: 1,
+          q: 1,
+          indexes: 1
         });
 
         if (data) {
+          const collection = await MongoDatasetCollection.findById(data.collectionId)
+            .select('imageIndex')
+            .session(session);
+          const hasMarkdownImages =
+            !!collection?.imageIndex && matchMarkdownImageUrls(data.q).length > 0;
+          const mode = (() => {
+            if (dataset.vlmModel && data.imageId) return TrainingModeEnum.imageParse;
+            if (dataset.vlmModel && hasMarkdownImages) return TrainingModeEnum.image;
+            return TrainingModeEnum.chunk;
+          })();
+
           await MongoDatasetTraining.create(
             [
               {
@@ -114,9 +160,18 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
                 datasetId,
                 collectionId: data.collectionId,
                 billId: usageId,
-                mode: TrainingModeEnum.chunk,
-                model: vectorModel,
+                mode,
+                model:
+                  (mode === TrainingModeEnum.imageParse || mode === TrainingModeEnum.image) &&
+                  dataset.vlmModel
+                    ? dataset.vlmModel
+                    : vectorModel,
                 dataId: data._id,
+                ...(data.imageId && { imageId: data.imageId }),
+                ...(mode === TrainingModeEnum.image && {
+                  q: data.q,
+                  indexes: data.indexes
+                }),
                 retryCount: 50
               }
             ],
