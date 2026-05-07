@@ -7,11 +7,12 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
+import { isFileTypeAllowedByAccept } from '@fastgpt/global/core/app/constants';
 import type { PreviewInputFormType, UserInputFileItemType } from './type';
 import { textareaMinH } from './constants';
 import { usePreviewFileUpload } from './usePreviewFileUpload';
 import FilePreview from './FilePreview';
+import { ACCEPTED_FILE_TYPE } from './usePreviewFileUpload';
 
 type PreviewInputProps = {
   appId: string;
@@ -20,9 +21,7 @@ type PreviewInputProps = {
   onStop: () => void;
 };
 
-const fileTypeFilter = (file: File) =>
-  file.type.includes('image') ||
-  documentFileType.split(',').some((type) => file.name.endsWith(type.trim()));
+const fileTypeFilter = (file: File) => isFileTypeAllowedByAccept(file, ACCEPTED_FILE_TYPE);
 
 const PreviewInput = ({ appId, isChatting, onSend, onStop }: PreviewInputProps) => {
   const { t } = useTranslation();

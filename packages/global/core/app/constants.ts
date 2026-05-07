@@ -123,3 +123,33 @@ export const getUploadFileType = ({
   }
   return types.join(', ');
 };
+
+export const isFileTypeAllowedByAccept = (file: Pick<File, 'name' | 'type'>, accept: string) => {
+  const acceptTypes = accept
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (acceptTypes.length === 0) return true;
+
+  const filename = file.name.toLowerCase();
+  const mimeType = file.type.toLowerCase();
+
+  return acceptTypes.some((acceptType) => {
+    if (acceptType === '*' || acceptType === '*/*') return true;
+
+    if (acceptType.startsWith('.')) {
+      return filename.endsWith(acceptType);
+    }
+
+    if (acceptType.endsWith('/*')) {
+      return mimeType.startsWith(acceptType.slice(0, -1));
+    }
+
+    if (acceptType.includes('/')) {
+      return mimeType === acceptType;
+    }
+
+    return filename.endsWith(`.${acceptType}`);
+  });
+};

@@ -266,6 +266,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     uploadFiles,
     selectFileIcon,
     selectFileLabel,
+    fileType,
     showSelectFile,
     showSelectImg,
     showSelectVideo,

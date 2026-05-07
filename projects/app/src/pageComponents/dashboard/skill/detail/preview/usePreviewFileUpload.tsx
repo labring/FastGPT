@@ -16,7 +16,7 @@ import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import type { PreviewInputFormType, UserInputFileItemType } from './type';
 
 // 支持图片 + 文档，固定配置
-const ACCEPTED_FILE_TYPE = 'image/*, .txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
+export const ACCEPTED_FILE_TYPE = 'image/*, .txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
 
 type UsePreviewFileUploadOptions = {
   fileCtrl: UseFieldArrayReturn<PreviewInputFormType, 'files', 'id'>;

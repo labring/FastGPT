@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
+import { isFileTypeAllowedByAccept } from '@fastgpt/global/core/app/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
@@ -24,13 +24,6 @@ import { postStopV2Chat } from '@/web/core/chat/api';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
-
-const fileTypeFilter = (file: File) => {
-  return (
-    file.type.includes('image') ||
-    documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
-  );
-};
 
 const ChatInput = ({
   lastInteractive,
@@ -84,6 +77,7 @@ const ChatInput = ({
     uploadFiles,
     selectFileIcon,
     selectFileLabel,
+    fileType,
     showSelectFile,
     showSelectImg,
     showSelectVideo,
@@ -107,6 +101,10 @@ const ChatInput = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
+  const fileTypeFilter = useCallback(
+    (file: File) => isFileTypeAllowedByAccept(file, fileType),
+    [fileType]
+  );
 
   // Upload files
   useRequest(uploadFiles, {
@@ -263,6 +261,7 @@ const ChatInput = ({
       setValue,
       handleSend,
       canUploadFile,
+      fileTypeFilter,
       onSelectFile
     ]
   );
