@@ -88,13 +88,15 @@ const prefixMap: Record<string, string> = {
 
 const i18nMiddleware = createI18nMiddleware(i18n);
 
-function applyRedirectMaps(path: string): string | null {
-  const normalizedPath = path.length > 1 ? path.replace(/\/+$/, '') : path;
+function normalizePath(path: string) {
+  return path.length > 1 ? path.replace(/\/+$/, '') : path;
+}
 
-  if (normalizedPath in exactMap) return exactMap[normalizedPath];
+function applyRedirectMaps(path: string): string | null {
+  if (path in exactMap) return exactMap[path];
   for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-    if (normalizedPath.startsWith(oldPrefix)) {
-      return newPrefix + normalizedPath.slice(oldPrefix.length);
+    if (path.startsWith(oldPrefix)) {
+      return newPrefix + path.slice(oldPrefix.length);
     }
   }
   return null;
@@ -126,7 +128,7 @@ export default function middleware(request: NextRequest) {
   // Legacy /docs/* URLs: strip the /docs prefix and run redirect-match.
   // Always 301 to the canonical (no-/docs) path, even if no map entry matches.
   if (pathWithoutLang === '/docs' || pathWithoutLang.startsWith('/docs/')) {
-    const stripped = pathWithoutLang.slice('/docs'.length); // '' for /docs, /foo for /docs/foo
+    const stripped = normalizePath(pathWithoutLang).slice('/docs'.length); // '' for /docs, /foo for /docs/foo
     const mapped = applyRedirectMaps(stripped);
     const finalPath = mapped ?? stripped;
     return NextResponse.redirect(createRedirectUrl(finalPath, request, lang), 301);
@@ -134,7 +136,8 @@ export default function middleware(request: NextRequest) {
 
   // Non-/docs paths still consult the same maps so that direct hits on old
   // canonical paths (e.g. /upgrading) get redirected to their new home.
-  const mapped = applyRedirectMaps(pathWithoutLang);
+  const normalizedPath = normalizePath(pathWithoutLang);
+  const mapped = applyRedirectMaps(normalizedPath);
   if (mapped !== null && mapped !== pathWithoutLang) {
     return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
   }
