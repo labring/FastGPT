@@ -32,6 +32,67 @@ import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/con
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
+export type FileSelectorValueItemType = {
+  key?: string;
+  url?: string;
+};
+
+const isFileUploading = (file: UserInputFileItemType) => {
+  return !!file.rawFile && !file.key && !file.url && !file.error;
+};
+
+const formatFilesToValue = (files: UserInputFileItemType[]): FileSelectorValueItemType[] => {
+  return files.reduce<FileSelectorValueItemType[]>((acc, file) => {
+    if (file.key) {
+      acc.push({ key: file.key });
+    } else if (file.url) {
+      acc.push({ url: file.url });
+    }
+    return acc;
+  }, []);
+};
+
+const normalizeValueToFiles = (value: unknown): UserInputFileItemType[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value.reduce<UserInputFileItemType[]>((acc, file) => {
+    if (!file) return acc;
+
+    if (typeof file === 'string') {
+      acc.push({
+        id: getNanoid(6),
+        status: 1,
+        type: ChatFileTypeEnum.file,
+        url: file,
+        name: file,
+        icon: 'common/link'
+      });
+      return acc;
+    }
+
+    if (typeof file !== 'object') return acc;
+
+    const item = file as Partial<UserInputFileItemType>;
+    const url = typeof item.url === 'string' ? item.url : '';
+    const key = typeof item.key === 'string' ? item.key : '';
+
+    if (!url && !key) return acc;
+
+    acc.push({
+      id: item.id || getNanoid(6),
+      status: item.status ?? 1,
+      type: item.type || ChatFileTypeEnum.file,
+      url,
+      key,
+      name: item.name || url || key,
+      icon: item.icon || (item.type === ChatFileTypeEnum.image ? url : getFileIcon(url || key)),
+      process: item.process,
+      error: item.error
+    });
+    return acc;
+  }, []);
+};
+
 const FileSelector = ({
   value,
   onChange,
@@ -47,13 +108,14 @@ const FileSelector = ({
   isDisabled = false,
   isInvalid = false
 }: AppFileSelectConfigType & {
-  value: UserInputFileItemType[];
-  onChange: (e: any[]) => void;
+  value: FileSelectorValueItemType[];
+  onChange: (e: FileSelectorValueItemType[]) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
   isDisabled?: boolean;
   isInvalid?: boolean;
 }) => {
+  const [files, setFiles] = useState<UserInputFileItemType[]>(() => normalizeValueToFiles(value));
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const { toast } = useToast();
@@ -69,7 +131,8 @@ const FileSelector = ({
 
   const handleChangeFiles = useCallback(
     (files: UserInputFileItemType[]) => {
-      onChange([...files]);
+      setFiles([...files]);
+      onChange(formatFilesToValue(files));
     },
     [onChange]
   );
@@ -122,7 +185,7 @@ const FileSelector = ({
     (teamPlanStatus?.standard?.maxUploadFileSize || feConfigs?.uploadFileMaxSize || 500) *
     1024 *
     1024;
-  const canSelectFileAmount = maxSelectFiles - value.length;
+  const canSelectFileAmount = maxSelectFiles - files.length;
   const isMaxSelected = canSelectFileAmount <= 0;
 
   const uploadFiles = useCallback(
@@ -191,28 +254,37 @@ const FileSelector = ({
               }
             });
             handleChangeFiles(files);
+          } finally {
+            setFileUploadingCount((state) => state - 1);
           }
-
-          setFileUploadingCount((state) => state - 1);
         })
       );
     },
-    [handleChangeFiles, setFileUploadingCount, appId, chatId, fileSelectConfig, outLinkAuthData]
+    [
+      handleChangeFiles,
+      setFileUploadingCount,
+      appId,
+      chatId,
+      fileSelectConfig,
+      outLinkAuthData,
+      t,
+      maxSize
+    ]
   );
 
   // Selector props
   const [isDragging, setIsDragging] = useState(false);
   const onSelectFile = useCallback(
-    async (files: File[]) => {
-      if (files.length > maxSelectFiles) {
-        files = files.slice(0, maxSelectFiles);
+    async (selectFiles: File[]) => {
+      if (selectFiles.length > canSelectFileAmount) {
+        selectFiles = selectFiles.slice(0, canSelectFileAmount);
         toast({
           status: 'warning',
           title: t('chat:file_amount_over', { max: maxSelectFiles })
         });
       }
-      const filterFilesByMaxSize = files.filter((file) => file.size <= maxSize);
-      if (filterFilesByMaxSize.length < files.length) {
+      const filterFilesByMaxSize = selectFiles.filter((file) => file.size <= maxSize);
+      if (filterFilesByMaxSize.length < selectFiles.length) {
         toast({
           status: 'warning',
           title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
@@ -253,11 +325,11 @@ const FileSelector = ({
             })
         )
       );
-      const newFiles = [...loadFiles, ...value];
-      handleChangeFiles(newFiles);
+      const newFiles = [...loadFiles, ...files];
+      setFiles(newFiles);
       uploadFiles(newFiles);
     },
-    [maxSelectFiles, value, handleChangeFiles, uploadFiles, toast, t, maxSize]
+    [canSelectFileAmount, files, maxSelectFiles, uploadFiles, toast, t, maxSize]
   );
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -364,7 +436,7 @@ const FileSelector = ({
       const trimmedUrl = url.trim();
       if (trimmedUrl) {
         handleChangeFiles([
-          ...value,
+          ...files,
           {
             id: getNanoid(6),
             status: 1,
@@ -378,17 +450,81 @@ const FileSelector = ({
 
       setUrlInput('');
     },
-    [t, toast, handleChangeFiles, value]
+    [t, toast, handleChangeFiles, files]
   );
 
   const handleDeleteFile = useCallback(
     (id: string) => {
-      handleChangeFiles(value.filter((file) => file.id !== id));
+      handleChangeFiles(files.filter((file) => file.id !== id));
     },
-    [handleChangeFiles, value]
+    [handleChangeFiles, files]
   );
 
-  const isUploading = value.some((file) => !file.url && !file.error);
+  useEffect(() => {
+    setFiles((state) => {
+      if (state.some(isFileUploading)) return state;
+
+      const nextFiles = normalizeValueToFiles(value);
+      if (
+        JSON.stringify(formatFilesToValue(state)) === JSON.stringify(formatFilesToValue(nextFiles))
+      ) {
+        return state;
+      }
+      return nextFiles;
+    });
+  }, [value]);
+
+  useEffect(() => {
+    const refreshFiles = files.filter((file) => file.key && !file.url && !file.error);
+    if (refreshFiles.length === 0) return;
+
+    let canceled = false;
+
+    Promise.allSettled(
+      refreshFiles.map(async (file) => {
+        const url = await getPresignedChatFileGetUrl({
+          key: file.key!,
+          appId,
+          outLinkAuthData
+        });
+
+        return {
+          id: file.id,
+          url
+        };
+      })
+    ).then((results) => {
+      if (canceled) return;
+
+      const urlMap = new Map<string, string>();
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          urlMap.set(result.value.id, result.value.url);
+        }
+      });
+
+      if (urlMap.size === 0) return;
+
+      setFiles((state) =>
+        state.map((file) => {
+          const url = urlMap.get(file.id);
+          if (!url) return file;
+
+          return {
+            ...file,
+            url,
+            icon: file.type === ChatFileTypeEnum.image ? url : file.icon
+          };
+        })
+      );
+    });
+
+    return () => {
+      canceled = true;
+    };
+  }, [appId, files, outLinkAuthData]);
+
+  const isUploading = files.some(isFileUploading);
   const disabled = isDisabled || isUploading;
 
   return (
@@ -489,11 +625,11 @@ const FileSelector = ({
       </VStack>
 
       {/* Preview */}
-      {value.length > 0 && (
+      {files.length > 0 && (
         <>
           <MyDivider />
           <VStack>
-            {value.map((file) => {
+            {files.map((file) => {
               const fileIcon =
                 file.type === ChatFileTypeEnum.image ? file.url : getFileIcon(file?.name);
               return (
