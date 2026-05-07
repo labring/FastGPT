@@ -20,7 +20,9 @@ concurrency:
 
 jobs:
   test:
-    if: ${{ github.event_name != 'pull_request_target' || contains(fromJSON('["COLLABORATOR", "OWNER"]'), github.event.pull_request.author_association) }}
+    if: ${{ github.event_name != 'pull_request_target' ||
+      contains(fromJSON('["COLLABORATOR", "OWNER"]'),
+      github.event.pull_request.author_association) }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -53,9 +55,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
+
       - uses: actions/setup-node@v4
         with:
           node-version: "24"

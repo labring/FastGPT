@@ -25,8 +25,6 @@ jobs:
             github.repository }}
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
 
       - uses: actions/setup-node@v4
         with:
@@ -48,7 +46,8 @@ jobs:
       - name: "Report Coverage (Global)"
         # Set if: always() to also generate the report if tests are failing
         # Only works if you set `reportOnFailure: true` in your vite config as specified above
-        if: always() && hashFiles('packages/global/coverage/coverage-summary.json') != ''
+        if: always() && hashFiles('packages/global/coverage/coverage-summary.json') !=
+          ''
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           name: global
@@ -56,7 +55,8 @@ jobs:
           json-summary-path: packages/global/coverage/coverage-summary.json
 
       - name: "Report Coverage (Service)"
-        if: always() && hashFiles('packages/service/coverage/coverage-summary.json') != ''
+        if: always() && hashFiles('packages/service/coverage/coverage-summary.json') !=
+          ''
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           name: service
