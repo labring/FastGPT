@@ -7,6 +7,7 @@ const config: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   compress: true,
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [
       {
