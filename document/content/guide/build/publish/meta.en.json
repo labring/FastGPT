@@ -1,0 +1,5 @@
+{
+  "title": "App Publishing",
+  "description": "Publish FastGPT apps through MCP Server, OpenAPI, and third-party channels.",
+  "pages": ["mcp_server", "openapi", "feishu", "dingtalk", "wecom", "official_account", "wechat"]
+}

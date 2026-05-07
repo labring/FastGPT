@@ -1,0 +1,5 @@
+{
+  "title": "Workflow",
+  "description": "FastGPT workflow introduction and node guides.",
+  "pages": ["intro", "nodes"]
+}

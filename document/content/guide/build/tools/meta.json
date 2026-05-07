@@ -1,0 +1,5 @@
+{
+  "title": "工具",
+  "description": "应用构建中的 MCP 工具和系统插件。",
+  "pages": ["mcp_tools", "system-plugins"]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "System Plugins",
+  "description": "Guides for using, developing, and submitting system plugins.",
+  "pages": [
+    "dev_system_tool",
+    "upload_system_tool",
+    "searxng_plugin_guide",
+    "google_search_plugin_guide",
+    "bing_search_plugin",
+    "doc2x_plugin_guide"
+  ]
+}

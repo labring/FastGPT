@@ -1,0 +1,26 @@
+{
+  "title": "Nodes",
+  "description": "FastGPT workflow node settings and usage guides.",
+  "pages": [
+    "ai_chat",
+    "dataset_search",
+    "question_classify",
+    "content_extract",
+    "user-selection",
+    "form_input",
+    "text_editor",
+    "reply",
+    "document_parsing",
+    "http",
+    "tool",
+    "tfswitch",
+    "variable_update",
+    "sandbox-v2",
+    "loop",
+    "parallel_run",
+    "knowledge_base_search_merge",
+    "coreferenceResolution",
+    "laf",
+    "custom_feedback"
+  ]
+}

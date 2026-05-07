@@ -10,6 +10,14 @@ export const source = loader({
   // it assigns a URL to your pages
   baseUrl: '/',
   source: docs.toFumadocsSource(),
+  pageTree: {
+    attachFile(node, file) {
+      return {
+        ...node,
+        sidebarTag: file?.data.sidebarTag
+      };
+    }
+  },
   icon(iconName) {
     return iconName && icons[iconName as keyof typeof icons]
       ? createElement(icons[iconName as keyof typeof icons])

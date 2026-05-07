@@ -1,0 +1,14 @@
+{
+  "title": "User Guide",
+  "root": true,
+  "pages": [
+    "getting-started",
+    "build",
+    "chat",
+    "dataset",
+    "workspace",
+    "admin",
+    "version"
+  ],
+  "order": 1
+}

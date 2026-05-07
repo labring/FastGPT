@@ -1,5 +1,6 @@
 {
-  "introduction": "Introduction",
+  "guide": "Guide",
+  "version": "Editions",
   "api_reference": "API Reference",
   "use-cases": "Use Cases",
   "selfHost": "Self-Host",

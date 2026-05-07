@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getLocalizedPath } from '@/lib/i18n';
+import { defaultHomePath, getLocalizedPath } from '@/lib/i18n';
 
 export default async function HomePage({
   params
@@ -7,5 +7,5 @@ export default async function HomePage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  redirect(getLocalizedPath('/introduction', lang));
+  redirect(getLocalizedPath(defaultHomePath, lang));
 }

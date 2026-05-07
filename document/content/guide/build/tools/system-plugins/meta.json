@@ -1,0 +1,12 @@
+{
+  "title": "系统插件",
+  "description": "系统插件的使用、开发与提交说明。",
+  "pages": [
+    "dev_system_tool",
+    "upload_system_tool",
+    "searxng_plugin_guide",
+    "google_search_plugin_guide",
+    "bing_search_plugin",
+    "doc2x_plugin_guide"
+  ]
+}

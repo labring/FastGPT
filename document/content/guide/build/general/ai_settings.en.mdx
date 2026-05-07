@@ -1,0 +1,48 @@
+---
+title: AI Configuration Parameters
+description: FastGPT AI configuration parameters explained
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+The AI Chat module in FastGPT includes an advanced configuration section with various model parameters. This guide explains what each setting does.
+
+|  |  | |
+| --- | --- | --- |
+| ![alt text](/imgs/image-51.png) | ![alt text](/imgs/image-52.png) | ![alt text](/imgs/image-53.png) |
+
+## Stream Response (Workflow AI Chat only)
+
+Previously called "Return AI Content," now renamed to "Stream Response."
+
+This is a toggle. When enabled, the AI Chat module streams its output to the browser (API response) in real time. When disabled, the model is called in non-streaming mode and the output is not sent to the browser. However, the generated content can still be accessed via the [AI Reply] output and connected to other modules for further use.
+
+### Max Context
+
+The maximum number of tokens the model can handle.
+
+### Function Calling
+
+Models that support function calling are more accurate when using tools.
+
+### Temperature
+
+Lower values produce more focused, deterministic responses (in practice, the difference is subtle).
+
+### Max Output Tokens
+
+The maximum number of tokens in the response. Note: this is the response token limit, not the context token limit.
+
+Typically: max output = min(model's max output limit, max context - used context)
+
+Because of this, you generally don't set max context to the model's actual maximum — instead, reserve space for the response. For example, a 128k model might use max_context=115000.
+
+### System Prompt
+
+Placed at the beginning of the context array with role `system` to guide the model's behavior.
+
+### Memory Rounds (Basic Mode only)
+
+Configures how many conversation rounds the model retains. If the context exceeds the model's limit, the system automatically truncates to stay within bounds.
+
+So even if you set 30 rounds, the actual number at runtime may be fewer.

@@ -1,0 +1,9 @@
+{
+  "title": "Editions",
+  "root": false,
+  "pages": [
+    "cloud",
+    "commercial",
+    "opensource"
+  ]
+}

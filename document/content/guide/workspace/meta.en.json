@@ -1,0 +1,8 @@
+{
+  "title": "Workspace",
+  "root": false,
+  "pages": [
+    "team",
+    "customDomain"
+  ]
+}

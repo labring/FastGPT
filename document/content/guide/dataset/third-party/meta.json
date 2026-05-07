@@ -1,0 +1,5 @@
+{
+  "title": "第三方知识库",
+  "description": "API、飞书、语雀、钉钉及第三方知识库开发说明。",
+  "pages": ["api_dataset", "lark_dataset", "yuque_dataset", "dingtalk_dataset", "third_dataset"]
+}
