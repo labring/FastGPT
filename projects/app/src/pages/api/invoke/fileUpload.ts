@@ -4,6 +4,7 @@ import { multer } from '@fastgpt/service/common/file/multer';
 import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
 import { InvokeFileUploadResponseSchema } from '@fastgpt/global/openapi/plugin/invoke';
 import type { InvokeFileUploadResponseType } from '@fastgpt/global/openapi/plugin/invoke';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseType> {
   if (req.method !== 'POST') {
@@ -25,7 +26,7 @@ async function handler(req: NextApiRequest): Promise<InvokeFileUploadResponseTyp
     });
     filepaths.push(result.fileMetadata.path);
 
-    const filename = decodeURIComponent(result.fileMetadata.originalname || 'file');
+    const filename = decodeURIComponent(result.fileMetadata.originalname || 'file-' + getNanoid());
     const uploadResult = await InvokeProcessor.getInstanceFromToken(token).handleFileUpload({
       filename,
       body: result.getReadStream(),

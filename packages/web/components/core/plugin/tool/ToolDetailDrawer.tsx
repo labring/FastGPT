@@ -47,7 +47,7 @@ const ToolDetailDrawer = ({
 }: {
   onClose: () => void;
   selectedTool: ToolCardItemType;
-  onToggleInstall?: (installed: boolean) => void;
+  onToggleInstall?: (installed: boolean) => void | Promise<void>;
   onUpdate?: () => void;
   isUpdating?: boolean;
   systemTitle?: string;
@@ -186,27 +186,28 @@ const ToolDetailDrawer = ({
                 {/* Determine if we have two buttons */}
                 {(() => {
                   const hasUpdateButton = selectedTool.update && onUpdate && mode !== 'marketplace';
-                  const buttonFlex = hasUpdateButton ? 1 : 1; // Both use flex=1, but when single button it fills the space
 
                   return (
                     <>
-                      <Button
-                        flex={buttonFlex}
-                        variant={isInstalled ? 'primaryOutline' : 'primary'}
-                        isLoading={isLoading || loadingDetail}
-                        isDisabled={isUpdating}
-                        onClick={async () => {
-                          onToggleInstall?.(!isInstalled);
-                          if (mode === 'marketplace') return;
-                          setIsInstalled(!isInstalled);
-                        }}
-                      >
-                        {isDownload
-                          ? t('common:Download')
-                          : isInstalled
-                            ? t('app:toolkit_uninstall')
-                            : t('app:toolkit_install')}
-                      </Button>
+                      {showActionButton && (
+                        <Button
+                          flex={1}
+                          variant={isInstalled ? 'primaryOutline' : 'primary'}
+                          isLoading={isLoading || loadingDetail}
+                          isDisabled={isUpdating}
+                          onClick={async () => {
+                            await onToggleInstall?.(!isInstalled);
+                            if (mode === 'marketplace') return;
+                            setIsInstalled(!isInstalled);
+                          }}
+                        >
+                          {isDownload
+                            ? t('common:Download')
+                            : isInstalled
+                              ? t('app:toolkit_uninstall')
+                              : t('app:toolkit_install')}
+                        </Button>
+                      )}
                       {hasUpdateButton && (
                         <Button
                           variant="primary"

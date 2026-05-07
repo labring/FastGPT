@@ -14,6 +14,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
   getDownloadURL,
   getMarketplaceToolDetail,
+  getMarketplaceToolVersions,
   getMarketplaceTools,
   getToolTags
 } from '@/web/api';
@@ -160,7 +161,7 @@ const ToolkitMarketplace = () => {
 
     return tools.map((tool) => {
       return {
-        id: tool.toolId,
+        id: tool.toolId || tool.pluginId,
         name: parseI18nString(tool.name || '', i18n.language) || '',
         description: parseI18nString(tool.description || '', i18n.language) || '',
         icon: tool.icon,
@@ -169,6 +170,7 @@ const ToolkitMarketplace = () => {
           const currentTag = toolTags.find((item) => item.tagId === tag);
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
+        version: tool.version,
         downloadCount: tool.downloadCount
       };
     });
@@ -476,10 +478,13 @@ const ToolkitMarketplace = () => {
           mode="marketplace"
           selectedTool={selectedTool}
           // @ts-ignore
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
+          onFetchDetail={async (toolId: string, version?: string) =>
+            await getMarketplaceToolDetail({ toolId, version })
+          }
           onToggleInstall={() => {
             onDownload(selectedTool.id);
           }}
+          onFetchVersions={getMarketplaceToolVersions}
         />
       )}
     </>

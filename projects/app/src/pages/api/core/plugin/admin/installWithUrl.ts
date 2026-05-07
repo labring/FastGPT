@@ -20,7 +20,7 @@ async function handler(
     return Promise.reject('Download URL is required');
   }
 
-  return await pluginClient.installTools(downloadUrls);
+  return await pluginClient.installPlugins(downloadUrls);
 }
 
 export default NextAPI(handler);

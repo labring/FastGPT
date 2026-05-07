@@ -141,8 +141,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         }
       });
 
-      console.log('tool run', res);
-
+      console.log('res', res, typeof res);
       let result = res.output || {};
 
       if (res.error) {

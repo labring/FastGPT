@@ -30,7 +30,7 @@ async function handler(
   }
 
   return toolId
-    ? getPkgdownloadURL(toolId)
-    : Array.from(tools.map((tool) => getPkgdownloadURL(tool.toolId)));
+    ? tools[0]?.downloadUrl || getPkgdownloadURL(toolId)
+    : Array.from(tools.map((tool) => tool.downloadUrl || getPkgdownloadURL(tool.toolId)));
 }
 export default NextAPI(handler);

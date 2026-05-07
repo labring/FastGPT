@@ -1,10 +1,8 @@
 import { WorkflowIOValueTypeEnum } from '../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../workflow/node/constant';
+import type { InputConfigType } from '../workflow/type/io';
 import {
   InputConfigInputTypeEnum,
-  InputConfigInputTypeSchema,
-  InputConfigType,
-  InputConfigTypeSchema,
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
 } from '../workflow/type/io';
@@ -148,7 +146,7 @@ export const jsonSchema2NodeInput = ({
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     key,
-    label: key,
+    label: value.title || key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
     toolDescription: schemaType === 'http' ? value['x-tool-description'] : value.description || key,
@@ -164,7 +162,7 @@ export const jsonSchema2NodeOutput = ({
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => ({
     id: key,
     key,
-    label: key,
+    label: value.title || key,
     required: jsonSchema?.required?.includes(key),
     type: FlowNodeOutputTypeEnum.static,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),

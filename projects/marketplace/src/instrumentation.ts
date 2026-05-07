@@ -1,4 +1,3 @@
-import { exit } from 'process';
 import {
   getInitializationErrorLog,
   runInitializationStep
@@ -34,18 +33,18 @@ export async function register() {
           mongoUrl: MONGO_URL
         }
       });
-      await runInitializationStep({
-        step: 'load-tool-list',
-        action: () => getToolList(),
-        logger
-      });
+      // await runInitializationStep({
+      //   step: 'load-tool-list',
+      //   action: () => getToolList(),
+      //   logger
+      // });
 
       logger.info('Init system success');
     }
   } catch (error) {
     const logPayload = {
-      nextRuntime: process.env.NEXT_RUNTIME,
-      nodeEnv: process.env.NODE_ENV,
+      nextRuntime: env.NEXT_RUNTIME,
+      nodeEnv: env.NODE_ENV,
       ...getInitializationErrorLog(error)
     };
 
@@ -59,7 +58,5 @@ export async function register() {
         ...getInitializationErrorLog(loggerError)
       });
     }
-
-    exit(1);
   }
 }

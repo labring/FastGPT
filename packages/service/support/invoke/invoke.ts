@@ -21,7 +21,7 @@ const INVOKE_TOKEN_EXPIRES_IN = 60 * 60;
 /** 反向调用处理器 */
 export class InvokeProcessor {
   private session: InvokeSessionType;
-  private jwtSecret = env.INVOKE_TOKEN_SECRET;
+  static jwtSecret = env.INVOKE_TOKEN_SECRET;
 
   constructor(options: InvokeSessionType) {
     this.session = options;
@@ -30,14 +30,14 @@ export class InvokeProcessor {
   generateToken(): string {
     const session = InvokeSessionSchema.parse(this.session);
 
-    return jwt.sign(session, this.jwtSecret, {
+    return jwt.sign(session, InvokeProcessor.jwtSecret, {
       expiresIn: INVOKE_TOKEN_EXPIRES_IN
     });
   }
 
   static getInstanceFromToken(token: string): InvokeProcessor {
     try {
-      const payload = jwt.verify(token, env.INVOKE_TOKEN_SECRET);
+      const payload = jwt.verify(token, this.jwtSecret);
       const session = InvokeSessionSchema.parse(payload);
 
       return new InvokeProcessor(session);
@@ -54,49 +54,24 @@ export class InvokeProcessor {
     }
   }
 
-  async handleFileUpload(params?: InvokeFileUploadType) {
+  async handleFileUpload(params: InvokeFileUploadType) {
     this.assertPermission(PluginPermissionEnum['file-upload:allow']);
 
     const { appId, chatId, uId } = InvokeSessionSchema.parse(this.session);
-    const prefix = getS3ChatSource().getToolFilePrefix({ appId, chatId, uId });
 
-    if (!params) {
-      return { prefix };
-    }
-
-    const { filename, body, contentType, expiredTime, maxFileSize, allowedExtensions } =
-      InvokeFileUploadSchema.parse(params);
-
-    if (body !== undefined) {
-      const result = await getS3ChatSource().uploadChatFile({
-        appId,
-        chatId,
-        uId,
-        filename,
-        body,
-        contentType,
-        expiredTime
-      });
-
-      return {
-        prefix,
-        ...result
-      };
-    }
-
-    const result = await getS3ChatSource().createUploadChatFileURL({
+    const { filename, body, contentType, expiredTime } = InvokeFileUploadSchema.parse(params);
+    const result = await getS3ChatSource().uploadChatFile({
       appId,
       chatId,
       uId,
       filename,
-      expiredTime,
-      maxFileSize,
-      allowedExtensions
+      body,
+      contentType,
+      expiredTime
     });
 
     return {
-      prefix,
-      ...result
+      url: result.accessUrl.url
     };
   }
 

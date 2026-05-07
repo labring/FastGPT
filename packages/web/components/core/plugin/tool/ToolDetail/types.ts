@@ -1,3 +1,4 @@
+import type { I18nStringType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -14,9 +15,9 @@ export type ToolDetailExtendedType = {
   toolId?: string;
   parentId?: string;
   version?: string;
-  name: string;
-  intro?: string;
-  description?: string;
+  name: I18nStringType | string;
+  intro?: I18nStringType | string;
+  description?: I18nStringType | string;
   icon?: string;
   avatar?: string;
   author?: string;

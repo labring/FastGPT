@@ -5,6 +5,11 @@ import type {
   ToolDetailExtendedType
 } from './types';
 import { useRequest } from '../../../../../hooks/useRequest';
+import {
+  jsonSchema2NodeInput,
+  jsonSchema2NodeOutput,
+  jsonSchema2SecretInput
+} from '@fastgpt/global/core/app/jsonschema';
 
 export type UseToolDetailProps = {
   toolId?: string;
@@ -14,6 +19,37 @@ export type UseToolDetailProps = {
   autoFetch?: boolean;
 };
 
+const getVersionList = (tool: Record<string, any>) => {
+  if (tool.versionList) return tool.versionList;
+
+  return [
+    {
+      inputs:
+        tool.inputs ||
+        jsonSchema2NodeInput({
+          jsonSchema: tool.inputSchema,
+          schemaType: 'systemTool'
+        }),
+      outputs: tool.outputs || jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema })
+    }
+  ];
+};
+
+const normalizeTool = (tool: Record<string, any>): ToolDetailExtendedType => ({
+  ...tool,
+  pluginId: tool.pluginId || tool.toolId || tool.id,
+  id: tool.id || tool.toolId || tool.pluginId,
+  name: tool.name || '',
+  intro: tool.intro || tool.description || '',
+  description: tool.description || tool.intro || '',
+  icon: tool.icon || tool.avatar,
+  courseUrl: tool.courseUrl || tool.tutorialUrl,
+  hasSystemSecret: tool.hasSystemSecret ?? Boolean(tool.secretSchema),
+  secrets: tool.secrets || jsonSchema2SecretInput({ jsonSchema: tool.secretSchema }),
+  readme: tool.readme || tool.readmeUrl,
+  versionList: getVersionList(tool)
+});
+
 const normalizeToolDetail = (
   detail?: ToolDetailFetchResponse
 ): ToolDetailResponseType | undefined => {
@@ -22,61 +58,23 @@ const normalizeToolDetail = (
   if (Array.isArray(detail.tools)) {
     return {
       ...detail,
-      tools: detail.tools.map((tool: Record<string, any>) => ({
-        ...tool,
-        pluginId: tool.pluginId || tool.toolId || tool.id,
-        id: tool.id || tool.toolId || tool.pluginId,
-        name: tool.name || '',
-        intro: tool.intro || tool.description || '',
-        description: tool.description || tool.intro || '',
-        icon: tool.icon || tool.avatar,
-        readme: tool.readme || tool.readmeUrl,
-        versionList: tool.versionList || [
-          {
-            inputs: tool.inputs || [],
-            outputs: tool.outputs || []
-          }
-        ]
-      }))
+      tools: detail.tools.map((tool: Record<string, any>) => normalizeTool(tool))
     };
   }
 
   const tool = detail as Record<string, any>;
-  const parentTool: ToolDetailExtendedType = {
-    ...tool,
-    pluginId: tool.id,
-    id: tool.id,
-    name: tool.name || '',
-    intro: tool.intro || '',
-    description: tool.intro || tool.description || '',
-    icon: tool.avatar || tool.icon,
-    readme: tool.readmeUrl || tool.readme,
-    tags: tool.tags,
-    versionList: [
-      {
-        inputs: tool.inputs || [],
-        outputs: tool.outputs || []
-      }
-    ]
-  };
+  const parentTool = normalizeTool(tool);
 
   const childTools: ToolDetailExtendedType[] = (tool.children || []).map(
     (child: Record<string, any>) => ({
-      ...child,
-      pluginId: child.id,
-      id: child.id,
-      parentId: tool.id,
-      name: child.name || '',
-      intro: child.description || '',
-      description: child.description || '',
-      icon: child.icon,
-      version: tool.version,
-      versionList: [
-        {
-          inputs: child.inputs || [],
-          outputs: child.outputs || []
-        }
-      ]
+      ...normalizeTool({
+        ...child,
+        pluginId: child.pluginId || `${parentTool.pluginId}/${child.id}`,
+        id: child.id,
+        version: tool.version
+      }),
+      parentId: parentTool.id || parentTool.pluginId,
+      author: child.author || tool.author
     })
   );
 

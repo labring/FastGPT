@@ -1,8 +1,7 @@
 import z from 'zod';
-import { type ToolSimpleType } from '../../../../sdk/fastgpt-plugin';
 import { PaginationSchema } from '../../../api';
 import { PluginToolTagSchema } from '../../../../core/plugin/type';
-import { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
+import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
 
 const formatToolDetailSchema = z.object({});
 const formatToolSimpleSchema = z.object({});
@@ -10,7 +9,9 @@ const formatToolSimpleSchema = z.object({});
 // Create intersection types for extended schemas
 export const MarketplaceToolListItemSchema = formatToolSimpleSchema;
 export type MarketplaceToolListItemType = ToolListItemType & {
+  toolId: string;
   downloadCount: number;
+  downloadUrl?: string;
 };
 
 export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
@@ -35,16 +36,43 @@ export type MarketplaceToolsResponseType = z.infer<typeof MarketplaceToolsRespon
 
 // Detail
 export const GetMarketplaceToolDetailQuerySchema = z.object({
-  toolId: z.string()
+  toolId: z.string(),
+  version: z.string().optional()
 });
 export type GetMarketplaceToolDetailQueryType = z.infer<typeof GetMarketplaceToolDetailQuerySchema>;
 
 export type GetMarketplaceToolDetailResponseType = z.infer<typeof MarketplaceToolDetailSchema>;
 
+// Upload marketplace pkg
+export const UploadMarketplacePkgBodySchema = z.object({
+  file: z.any()
+});
+
+export const UploadMarketplacePkgResponseSchema = z.object({
+  pluginId: z.string(),
+  version: z.string(),
+  etag: z.string(),
+  downloadUrl: z.string(),
+  tool: z.record(z.string(), z.unknown())
+});
+export type UploadMarketplacePkgResponseType = z.infer<typeof UploadMarketplacePkgResponseSchema>;
+
 // Tags
 export const GetMarketplaceToolTagsResponseSchema = z.array(PluginToolTagSchema);
 export type GetMarketplaceToolTagsResponseType = z.infer<
   typeof GetMarketplaceToolTagsResponseSchema
+>;
+
+// Versions
+export const MarketplaceToolVersionSchema = z.object({
+  toolId: z.string(),
+  version: z.string(),
+  etag: z.string().optional()
+});
+export type MarketplaceToolVersionType = z.infer<typeof MarketplaceToolVersionSchema>;
+export const GetMarketplaceToolVersionsResponseSchema = z.array(MarketplaceToolVersionSchema);
+export type GetMarketplaceToolVersionsResponseType = z.infer<
+  typeof GetMarketplaceToolVersionsResponseSchema
 >;
 
 // Get installed plugins
@@ -59,6 +87,7 @@ export const GetSystemInstalledPluginsResponseSchema = z.object({
     z.object({
       id: z.string(),
       version: z.string(),
+      etag: z.string().optional(),
       name: z.any().optional(),
       description: z.any().optional(),
       icon: z.string().optional(),

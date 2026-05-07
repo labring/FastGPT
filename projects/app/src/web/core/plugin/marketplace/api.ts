@@ -5,6 +5,7 @@ import type {
   GetMarketplaceToolDetailQueryType,
   GetMarketplaceToolDetailResponseType,
   GetMarketplaceToolTagsResponseType,
+  GetMarketplaceToolVersionsResponseType,
   GetSystemInstalledPluginsQueryType,
   GetSystemInstalledPluginsResponseType
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
@@ -28,5 +29,7 @@ export const getMarketplaceDownloadURL = (toolId: string) =>
 export const getMarketplaceDownloadURLs = (toolIds: string[]) =>
   POST<string[]>('/marketplace/api/tool/getDownloadUrl', { toolIds });
 
-export const getMarketplaceToolVersions = () =>
-  GET<Array<{ toolId: string; version: string }>>('/marketplace/api/tool/versions');
+export const getMarketplaceToolVersions = (toolId?: string) =>
+  GET<GetMarketplaceToolVersionsResponseType>('/marketplace/api/tool/versions', {
+    ...(toolId ? { toolId } : {})
+  });

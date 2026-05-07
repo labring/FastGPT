@@ -17,7 +17,6 @@ import BatchUpdateDrawer from '@fastgpt/web/components/core/plugin/tool/BatchUpd
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { intallPluginWithUrl } from '@/web/core/plugin/admin/api';
-import { deletePkgPlugin } from '@/web/core/plugin/admin/api';
 import {
   getMarketPlaceToolTags,
   getMarketplaceDownloadURL,
@@ -62,6 +61,23 @@ const useSearchParams = () => {
   );
 
   return { searchText, tagIds, updateParams };
+};
+
+const hasMarketplaceToolUpdate = ({
+  installedVersion,
+  installedEtag,
+  marketplaceVersion,
+  marketplaceEtag
+}: {
+  installedVersion?: string;
+  installedEtag?: string;
+  marketplaceVersion?: string;
+  marketplaceEtag?: string;
+}) => {
+  if (marketplaceVersion && installedVersion !== marketplaceVersion) return true;
+  if (marketplaceEtag && installedEtag && installedEtag !== marketplaceEtag) return true;
+
+  return false;
 };
 
 const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
@@ -183,7 +199,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           });
 
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
+            setSelectedTool((prev) =>
+              prev ? { ...prev, installed: true, update: false } : null
+            );
           }
           await refreshInstalledPlugins();
         } finally {
@@ -223,7 +241,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, status: 3 } : null));
+            setSelectedTool((prev) =>
+              prev ? { ...prev, installed: true, update: false } : null
+            );
           }
           await refreshInstalledPlugins();
         } finally {
@@ -236,38 +256,6 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       await operationPromise;
     },
     [updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins]
-  );
-
-  const { runAsync: handleDeleteTool } = useRequest(
-    async (tool: ToolCardItemType) => {
-      const existingPromise = operatingPromisesRef.current.get(tool.id);
-      if (existingPromise) {
-        await existingPromise;
-        return;
-      }
-
-      const operationPromise = (async () => {
-        installingOrDeletingToolIdsDispatch.add(tool.id);
-
-        try {
-          await deletePkgPlugin({ toolId: tool.id });
-
-          if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) => (prev ? { ...prev, status: 1 } : null));
-          }
-          await refreshInstalledPlugins();
-        } finally {
-          installingOrDeletingToolIdsDispatch.remove(tool.id);
-          operatingPromisesRef.current.delete(tool.id);
-        }
-      })();
-      operatingPromisesRef.current.set(tool.id, operationPromise);
-
-      await operationPromise;
-    },
-    {
-      manual: true
-    }
   );
 
   const { runAsync: handleBatchUpdate, loading: isBatchUpdating } = useRequest(
@@ -319,13 +307,20 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     return (
       tools
         ?.map((tool) => {
-          const isInstalled = systemInstalledPlugins?.ids.has(tool.toolId);
-          const update = !isInstalled
-            ? false
-            : systemInstalledPlugins?.map.get(tool.toolId)?.version !== tool.version;
+          const toolId = tool.toolId || tool.pluginId;
+          const installedTool = systemInstalledPlugins?.map.get(toolId);
+          const isInstalled = !!installedTool;
+          const update = installedTool
+            ? hasMarketplaceToolUpdate({
+                installedVersion: installedTool.version,
+                installedEtag: installedTool.etag,
+                marketplaceVersion: tool.version,
+                marketplaceEtag: tool.etag
+              })
+            : false;
 
           return {
-            id: tool.toolId,
+            id: toolId,
             name: parseI18nString(tool.name, i18n.language) || '',
             description: parseI18nString(tool.description || '', i18n.language) || '',
             icon: tool.icon,
@@ -336,6 +331,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             }),
             installed: isInstalled,
             update,
+            version: tool.version,
+            etag: tool.etag,
             downloadCount: tool.downloadCount
           };
         })
@@ -352,16 +349,23 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
     // Create a map for quick lookup of marketplace versions
     const marketplaceVersionMap = new Map(
-      marketplaceVersions.map((item) => [item.toolId, item.version])
+      marketplaceVersions.map((item) => [item.toolId, item])
     );
 
     // Filter installed plugins that have updates available
     const updatableList = systemInstalledPlugins.list
       .filter((installedPlugin) => {
-        const marketplaceVersion = marketplaceVersionMap.get(installedPlugin.id);
-        return marketplaceVersion && marketplaceVersion !== installedPlugin.version;
+        const marketplaceTool = marketplaceVersionMap.get(installedPlugin.id);
+        return hasMarketplaceToolUpdate({
+          installedVersion: installedPlugin.version,
+          installedEtag: installedPlugin.etag,
+          marketplaceVersion: marketplaceTool?.version,
+          marketplaceEtag: marketplaceTool?.etag
+        });
       })
       .map((installedPlugin) => {
+        const marketplaceTool = marketplaceVersionMap.get(installedPlugin.id);
+
         // Use system installed plugin info directly
         return {
           id: installedPlugin.id,
@@ -376,6 +380,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             }) || [],
           installed: true,
           update: true,
+          version: marketplaceTool?.version,
+          etag: marketplaceTool?.etag,
           downloadCount: 0
         };
       });
@@ -697,9 +703,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                       isInstallingOrDeleting={installingOrDeletingToolIds.has(tool.id)}
                       isUpdating={updatingToolIds.has(tool.id)}
                       onInstall={() => handleInstallTool(tool)}
-                      onDelete={() => handleDeleteTool(tool)}
                       onUpdate={() => handleUpdateTool(tool)}
                       onClickCard={() => setSelectedTool(tool)}
+                      showActionButton={!tool.installed}
                     />
                   );
                 })}
@@ -716,20 +722,18 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
           showPoint={false}
-          onToggleInstall={() => {
-            if (selectedTool.status === 3) {
-              handleDeleteTool(selectedTool);
-            } else {
-              handleInstallTool(selectedTool);
-            }
-          }}
+          onToggleInstall={() => handleInstallTool(selectedTool)}
           onUpdate={() => handleUpdateTool(selectedTool)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"
+          showActionButton={!selectedTool.installed}
           // TODO：这里复用 plugin 的类型，可以去掉 ts-ignore
           //@ts-ignore
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
+          onFetchDetail={async (toolId: string, version?: string) =>
+            await getMarketplaceToolDetail({ toolId, version })
+          }
+          onFetchVersions={getMarketplaceToolVersions}
         />
       )}
 
@@ -741,7 +745,9 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onBatchUpdate={handleBatchUpdate}
           isBatchUpdating={isBatchUpdating}
           //@ts-ignore
-          onFetchDetail={async (toolId: string) => await getMarketplaceToolDetail({ toolId })}
+          onFetchDetail={async (toolId: string, version?: string) =>
+            await getMarketplaceToolDetail({ toolId, version })
+          }
         />
       )}
     </Box>

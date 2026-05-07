@@ -1585,6 +1585,9 @@ importers:
       '@chakra-ui/system':
         specifier: 'catalog:'
         version: 2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1)
+      '@fastgpt-plugin/sdk-client':
+        specifier: file:/Volumes/Code/fastgpt-plugin/sdk/client
+        version: file:../fastgpt-plugin/sdk/client(zod@4.1.12)
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel

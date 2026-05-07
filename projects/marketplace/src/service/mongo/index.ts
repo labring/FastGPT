@@ -5,6 +5,7 @@ import { marketplaceEnv } from '../../env';
 
 export const MONGO_URL = marketplaceEnv.MONGODB_URI;
 const maxConnecting = Math.max(30, marketplaceEnv.DB_MAX_LINK);
+
 const logger = getLogger(LogCategories.INFRA.MONGO);
 const syncIndex = marketplaceEnv.SYNC_INDEX;
 

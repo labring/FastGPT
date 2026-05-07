@@ -5,8 +5,7 @@ import type {
   GetSystemInstalledPluginsResponseType
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { APIGetSystemToolList } from '@fastgpt/service/core/app/tool/api';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 
 export type installedQuery = GetSystemInstalledPluginsQueryType;
 
@@ -21,14 +20,13 @@ export async function handler(
 ): Promise<installedResponse> {
   await authSystemAdmin({ req });
 
-  const { type } = req.query;
-
-  const tools = await APIGetSystemToolList();
+  const tools = await pluginClient.listTools();
 
   return {
     list: tools.map((tool) => ({
-      id: tool.id.replace(`${AppToolSourceEnum.systemTool}-`, ''),
+      id: tool.pluginId,
       version: tool.version ?? '',
+      etag: tool.etag,
       name: tool.name,
       description: tool.description,
       icon: tool.icon,

@@ -40,9 +40,7 @@ export const InvokeFileUploadBodySchema = z.object({});
 export const InvokeFileUploadQuerySchema = z.object({});
 
 export const InvokeFileUploadResponseSchema = z.object({
-  prefix: z.string().describe('当前对话工具文件前缀'),
-  key: z.string().describe('上传后的 S3 object key'),
-  accessUrl: z.any().describe('文件访问信息')
+  url: z.string().describe('上传后的文件访问 URL')
 });
 
 export type InvokeFileUploadBodyType = z.infer<typeof InvokeFileUploadBodySchema>;

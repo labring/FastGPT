@@ -96,7 +96,7 @@ export const SubToolAccordionItem = ({ tool }: { tool: ToolDetailExtendedType })
             {parseI18nString(tool.name, i18n.language)}
           </Box>
           <Box fontSize={'sm'} color={'myGray.600'}>
-            {tool.intro || parseI18nString(tool.description, i18n.language)}
+            {parseI18nString(tool.intro || tool.description || '', i18n.language)}
           </Box>
         </Box>
         <AccordionIcon />

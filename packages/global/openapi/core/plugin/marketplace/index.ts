@@ -4,6 +4,8 @@ import {
   GetMarketplaceToolsBodySchema,
   MarketplaceToolDetailSchema,
   MarketplaceToolsResponseSchema,
+  UploadMarketplacePkgBodySchema,
+  UploadMarketplacePkgResponseSchema,
   GetMarketplaceToolTagsResponseSchema,
   GetSystemInstalledPluginsQuerySchema,
   GetSystemInstalledPluginsResponseSchema
@@ -78,6 +80,31 @@ export const MarketplacePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetMarketplaceToolTagsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/marketplace/api/admin/pkg/upload': {
+    post: {
+      summary: '上传 marketplace 插件 pkg',
+      tags: [TagsMap.pluginMarketplace],
+      requestBody: {
+        description: 'multipart/form-data, file 字段为 .pkg 文件',
+        required: true,
+        content: {
+          'multipart/form-data': {
+            schema: UploadMarketplacePkgBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '上传 marketplace 插件 pkg 成功',
+          content: {
+            'application/json': {
+              schema: UploadMarketplacePkgResponseSchema
             }
           }
         }
