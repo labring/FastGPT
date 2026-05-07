@@ -40,7 +40,10 @@ export default SkillHistoriesSlider;
 
 const HistoryList = ({ onClose }: { onClose: () => void }) => {
   const { t } = useSafeTranslation();
-  const { skillId } = useContextSelector(SkillDetailContext, (v) => v);
+  const { skillId, refreshSkillDetail, restartSandbox } = useContextSelector(
+    SkillDetailContext,
+    (v) => v
+  );
 
   const [editId, setEditId] = useState<string | undefined>(undefined);
   const [hoveredId, setHoveredId] = useState<string | undefined>(undefined);
@@ -58,7 +61,10 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
   const firstActiveIndex = versionList.findIndex((item) => item.isActive);
 
   const onChangeVersion = async (item: SkillVersionListItemType) => {
+    if (item.isActive) return;
     await postSwitchSkillVersion({ skillId, versionId: item._id });
+    refreshSkillDetail();
+    restartSandbox();
     onClose();
   };
 

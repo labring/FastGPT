@@ -41,6 +41,7 @@ type SkillDetailContextType = {
   sandboxEndpoint: SandboxEndpoint | null;
   sandboxError: string | null;
   startSandbox: () => void;
+  restartSandbox: () => void;
 };
 
 export const SkillDetailContext = createContext<SkillDetailContextType>({
@@ -56,7 +57,8 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   sandboxLogs: [],
   sandboxEndpoint: null,
   sandboxError: null,
-  startSandbox: () => {}
+  startSandbox: () => {},
+  restartSandbox: () => {}
 });
 
 const formatTimestamp = () => {
@@ -158,6 +160,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [skillId, phaseToMessage, t]);
 
+  const restartSandbox = useCallback(() => {
+    hasStartedRef.current = true;
+    startSandbox();
+  }, [startSandbox]);
+
   // Skill detail fetch
   const {
     data: skillDetail,
@@ -218,7 +225,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       sandboxLogs,
       sandboxEndpoint,
       sandboxError,
-      startSandbox
+      startSandbox,
+      restartSandbox
     }),
     [
       skillId,
@@ -231,7 +239,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       sandboxLogs,
       sandboxEndpoint,
       sandboxError,
-      startSandbox
+      startSandbox,
+      restartSandbox
     ]
   );
 
