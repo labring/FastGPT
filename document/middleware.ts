@@ -7,25 +7,52 @@ import { type NextRequest, NextResponse } from 'next/server';
 const exactMap: Record<string, string> = {
   '': defaultHomePath,
   '/intro': defaultHomePath,
-  '/guide/dashboard/workflow/coreferenceresolution':
-    '/guide/build/workflow/nodes/coreferenceResolution',
-  '/guide/admin/sso_dingtalk': '/guide/admin/sso#钉钉',
-  '/guide/knowledge_base/rag': '/guide/dataset/rag',
+
+  // Version / home.
   '/commercial/intro': '/guide/version/commercial',
-  '/upgrading/intro': '/self-host/upgrading/upgrade-intruction',
-  '/upgrading': '/self-host/upgrading/upgrade-intruction',
+  '/introduction': defaultHomePath,
   '/introduction/shopping_cart/intro': '/guide/version/commercial',
   '/introduction/cloud': '/guide/version/cloud/intro',
   '/protocol/terms': '/guide/version/cloud/terms',
   '/protocol/privacy': '/guide/version/cloud/privacy',
+
+  // Self-host.
+  '/upgrading/intro': '/self-host/upgrading/upgrade-intruction',
+  '/upgrading': '/self-host/upgrading/upgrade-intruction',
   '/introduction/development/docker': '/self-host/deploy/docker',
   '/introduction/development/sealos': '/self-host/deploy/sealos',
   '/introduction/development/intro': '/self-host/dev',
   '/introduction/development/object-storage': '/self-host/config/object-storage',
-  '/introduction': defaultHomePath,
-  '/guide/getting-started/video-tutorial': 'https://video.fastgpt.cn/videos',
 
-  // navbar 重定向
+  // General config / getting started.
+  '/introduction/guide/course/quick-start': '/guide/getting-started/quick-start',
+  '/introduction/guide/course/ai_settings': '/guide/build/general/ai_settings',
+  '/introduction/guide/course/chat_input_guide': '/guide/build/general/chat_input_guide',
+  '/introduction/guide/course/fileinput': '/guide/build/general/fileInput',
+  '/introduction/guide/course/fileInput': '/guide/build/general/fileInput',
+
+  // Knowledge base third-party pages moved under dataset/third-party.
+  '/introduction/guide/knowledge_base/api_dataset': '/guide/dataset/third-party/api_dataset',
+  '/introduction/guide/knowledge_base/lark_dataset': '/guide/dataset/third-party/lark_dataset',
+  '/introduction/guide/knowledge_base/feishu_dataset': '/guide/dataset/third-party/lark_dataset',
+  '/introduction/guide/knowledge_base/yuque_dataset':
+    '/guide/dataset/third-party/yuque_dataset',
+  '/introduction/guide/knowledge_base/dingtalk_dataset':
+    '/guide/dataset/third-party/dingtalk_dataset',
+  '/introduction/guide/knowledge_base/third_dataset':
+    '/guide/dataset/third-party/third_dataset',
+  '/introduction/guide/knowledge_base/RAG': '/guide/dataset/rag',
+
+  // Dashboard pages that moved to different build sub-sections.
+  '/introduction/guide/dashboard/evaluation': '/guide/build/evaluation',
+  '/introduction/guide/dashboard/intro': '/guide/build/workflow/intro',
+  '/introduction/guide/dashboard/mcp_server': '/guide/build/publish/mcp_server',
+  '/introduction/guide/dashboard/mcp_tools': '/guide/build/tools/mcp_tools',
+
+  // Workspace.
+  '/introduction/commercial': '/guide/version/commercial',
+
+  // Navbar redirects.
   '/guide': defaultHomePath,
   '/use-cases': '/use-cases/app-cases/submit_application_template',
   '/self-host': '/self-host/deploy/docker',
@@ -33,19 +60,30 @@ const exactMap: Record<string, string> = {
   '/faq': '/faq/app'
 };
 
-// 前缀匹配
+// Prefix redirects for groups that kept the same slug after moving.
 const prefixMap: Record<string, string> = {
   '/FAQ': '/faq',
   '/shopping_cart': '/guide/version/commercial',
   '/upgrading': '/self-host/upgrading',
   '/development': '/self-host',
+
+  // Project code in PR 6880 changed these three old groups.
+  '/use-cases/external-integration': '/guide/build/publish',
+  '/introduction/guide/dashboard/workflow': '/guide/build/workflow/nodes',
+  '/introduction/guide/knowledge_base': '/guide/dataset',
+
+  // Other moved documentation groups.
+  '/introduction/guide/plugins': '/guide/build/tools/system-plugins',
+  '/introduction/guide/team_permissions': '/guide/workspace/team',
+  '/introduction/guide/DialogBoxes': '/guide/chat',
+  '/introduction/guide/admin': '/guide/admin',
+
   '/introduction/development/openapi': '/openapi',
   '/introduction/development': '/self-host',
   '/introduction/version': '/guide/version',
   '/introduction/cloud': '/guide/version/cloud',
   '/introduction/opensource': '/guide/version/opensource',
-  '/introduction': '/guide',
-  '/version': '/guide/version'
+  '/introduction': '/guide'
 };
 
 const i18nMiddleware = createI18nMiddleware(i18n);
