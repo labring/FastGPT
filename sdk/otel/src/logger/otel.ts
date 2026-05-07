@@ -46,7 +46,7 @@ export type BodyFormatter = (message: Message) => AnyValue;
 export type ExceptionAttributeMode = 'semconv' | 'raw' | false;
 
 interface OpenTelemetrySinkOptionsBase {
-  messageType?: 'string' | 'array' | BodyFormatter;
+  messageType?: 'string' | 'array' | 'text' | BodyFormatter;
   objectRenderer?: ObjectRenderer;
   exceptionAttributes?: ExceptionAttributeMode;
   diagnostics?: boolean;
@@ -120,7 +120,9 @@ function emitLogRecord(
           )
         : options.messageType === 'array'
           ? convertMessageToArray(message, objectRenderer, exceptionMode)
-          : convertMessageToString(message, objectRenderer, exceptionMode),
+          : options.messageType === 'text'
+            ? convertMessageToText(message)
+            : convertMessageToString(message, objectRenderer, exceptionMode),
     attributes,
     timestamp: new Date(timestamp)
   } satisfies OTLogRecord);
@@ -441,6 +443,27 @@ function convertMessageToCustomBodyFormat(
 ): AnyValue {
   const body = message.map((msg) => convertToString(msg, objectRenderer, exceptionMode));
   return bodyFormatter(body);
+}
+
+function convertMessageToText(message: readonly unknown[]): AnyValue {
+  let body = '';
+  for (let i = 0; i < message.length; i += 2) {
+    const msg = message[i] as string;
+    body += msg;
+    if (message.length <= i + 1) break;
+
+    const value = message[i + 1];
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      body += value.toString();
+      continue;
+    }
+    if (value instanceof Date) {
+      body += value.toISOString();
+    }
+  }
+
+  return body.trimEnd().replace(/[:：,，]\s*$/, '');
 }
 
 class DiagLoggerAdaptor implements DiagLogger {

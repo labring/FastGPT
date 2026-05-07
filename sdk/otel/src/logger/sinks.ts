@@ -61,7 +61,8 @@ function normalizeOtelOptions(options?: false | OtelLoggerOptions) {
     level: options.level ?? defaultOtelOptions.level,
     serviceName: options.serviceName,
     url: options.url,
-    loggerName: options.loggerName ?? options.serviceName
+    loggerName: options.loggerName ?? options.serviceName,
+    messageType: options.messageType ?? 'text'
   };
 }
 
@@ -130,6 +131,7 @@ export async function createSinks(options: CreateSinksOptions): Promise<CreateSi
       getOpenTelemetrySink({
         serviceName: otelOptions.serviceName,
         loggerName: otelOptions.loggerName,
+        messageType: otelOptions.messageType,
         otlpExporterConfig: otelOptions.url ? { url: otelOptions.url } : undefined
       }),
       (record) => {
