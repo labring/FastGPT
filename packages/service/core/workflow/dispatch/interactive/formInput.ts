@@ -10,6 +10,7 @@ import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/templa
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getS3ChatSource } from '../../../../common/s3/sources/chat';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 
@@ -60,31 +61,43 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     }
   })();
 
-  const userInputVal = Object.entries(rawUserInputVal).reduce(
-    (acc, [key, value]) => {
-      const inputConfig = userInputForms.find((form) => form.key === key);
+  const userInputVal: Record<string, any> = {};
+  for (const [key, value] of Object.entries(rawUserInputVal)) {
+    const inputConfig = userInputForms.find((form) => form.key === key);
 
-      if (inputConfig?.type === FlowNodeInputTypeEnum.password) {
-        acc[key] = anyValueDecrypt(value);
-      } else if (inputConfig?.type === FlowNodeInputTypeEnum.fileSelect) {
-        if (Array.isArray(value)) {
-          acc[key] = value.map((file: any) => {
-            if (typeof file === 'object' && file.url) {
+    if (inputConfig?.type === FlowNodeInputTypeEnum.password) {
+      userInputVal[key] = anyValueDecrypt(value);
+    } else if (inputConfig?.type === FlowNodeInputTypeEnum.fileSelect) {
+      if (Array.isArray(value)) {
+        const files = await Promise.all(
+          value.map(async (file: any) => {
+            if (typeof file === 'string' && file) {
+              return file;
+            }
+
+            if (!file || typeof file !== 'object') return;
+
+            if (typeof file.key === 'string' && file.key) {
+              const { url } = await getS3ChatSource().createGetChatFileURL({
+                key: file.key,
+                external: true
+              });
+              return url;
+            }
+
+            if (typeof file.url === 'string' && file.url) {
               return file.url;
             }
-            return file;
-          });
-        } else {
-          acc[key] = value;
-        }
+          })
+        );
+        userInputVal[key] = files.filter((file) => typeof file === 'string' && file);
       } else {
-        acc[key] = value;
+        userInputVal[key] = typeof value === 'string' && value ? [value] : [];
       }
-
-      return acc;
-    },
-    {} as Record<string, any>
-  );
+    } else {
+      userInputVal[key] = value;
+    }
+  }
 
   return {
     data: {

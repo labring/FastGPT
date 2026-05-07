@@ -163,7 +163,12 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                     }
                   }
                   if (input.type === 'fileSelect' && input.required) {
-                    if (!value || !Array.isArray(value) || value.length === 0) {
+                    if (
+                      !value ||
+                      !Array.isArray(value) ||
+                      value.length === 0 ||
+                      !value.some((file) => file?.key || file?.url)
+                    ) {
                       return t('common:required');
                     }
                   }

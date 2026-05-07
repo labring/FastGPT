@@ -325,6 +325,12 @@ function $ssefetch(params: SSEFetchParams) {
             return onfailed(await res.clone().text());
           }
 
+          if (res.status === 413) {
+            return onfailed({
+              message: 'common:core.chat.error.Request too large'
+            });
+          }
+
           if (!res.ok || !contentType?.startsWith(EventStreamContentType) || res.status !== 200) {
             try {
               onfailed(await res.clone().json());

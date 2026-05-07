@@ -365,6 +365,7 @@
   "core.chat.Unpin": "Unpin",
   "core.chat.error.Chat error": "Chat Error",
   "core.chat.error.Messages empty": "API Content is Empty, Possibly Due to Text Being Too Long",
+  "core.chat.error.Request too large": "The debug request is too large. Reduce this input or split the file and try again.",
   "core.chat.error.Select dataset empty": "You Have Not Selected a Dataset",
   "core.chat.error.data_error": "Data Retrieval Error",
   "core.chat.feedback.No Content": "User Did Not Provide Specific Feedback Content",

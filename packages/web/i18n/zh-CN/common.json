@@ -365,6 +365,7 @@
   "core.chat.Unpin": "取消置顶",
   "core.chat.error.Chat error": "对话出现异常",
   "core.chat.error.Messages empty": "接口内容为空，可能文本超长了~",
+  "core.chat.error.Request too large": "调试请求内容过大，请减少本次输入内容或拆分文件后重试",
   "core.chat.error.Select dataset empty": "你没有选择知识库",
   "core.chat.error.data_error": "获取数据异常",
   "core.chat.feedback.No Content": "用户没有填写具体反馈内容",

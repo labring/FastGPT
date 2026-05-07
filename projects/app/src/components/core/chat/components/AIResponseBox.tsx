@@ -43,6 +43,46 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+const formatFileSelectSubmitValue = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+
+  return value.reduce<{ key?: string; url?: string }[]>((acc, file) => {
+    if (!file || typeof file !== 'object') return acc;
+
+    const { key, url } = file as { key?: unknown; url?: unknown };
+
+    if (typeof key === 'string' && key) {
+      acc.push({ key });
+    } else if (typeof url === 'string' && url) {
+      acc.push({ url });
+    }
+
+    return acc;
+  }, []);
+};
+
+const formatInteractiveFormSubmitData = ({
+  inputForm,
+  data
+}: {
+  inputForm: UserInputInteractive['params']['inputForm'];
+  data: Record<string, any>;
+}) => {
+  return inputForm.reduce(
+    (acc, item) => {
+      if (!(item.key in data)) return acc;
+
+      const value = data[item.key];
+      acc[item.key] =
+        item.type === FlowNodeInputTypeEnum.fileSelect ? formatFileSelectSubmitValue(value) : value;
+
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+};
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -286,11 +326,9 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 
   const handleFormSubmit = useCallback(
     (data: Record<string, any>) => {
-      const finalData: Record<string, any> = {};
-      interactive.params.inputForm?.forEach((item) => {
-        if (item.key in data) {
-          finalData[item.key] = data[item.key];
-        }
+      const finalData = formatInteractiveFormSubmitData({
+        inputForm: interactive.params.inputForm || [],
+        data
       });
 
       onSendPrompt(JSON.stringify(finalData));
