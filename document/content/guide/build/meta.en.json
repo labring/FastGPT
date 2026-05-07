@@ -1,0 +1,11 @@
+{
+  "title": "App Building",
+  "root": false,
+  "pages": [
+    "general",
+    "workflow",
+    "tools",
+    "publish",
+    "evaluation"
+  ]
+}

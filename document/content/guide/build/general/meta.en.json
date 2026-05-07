@@ -1,0 +1,5 @@
+{
+  "title": "General Configuration",
+  "description": "Model, file upload, input guide, and basic app configuration.",
+  "pages": ["ai_settings", "fileInput", "chat_input_guide"]
+}

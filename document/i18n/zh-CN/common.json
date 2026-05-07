@@ -1,5 +1,6 @@
 {
-  "introduction": "使用文档",
+  "guide": "使用指南",
+  "version": "版本介绍",
   "api_reference": "API 文档",
   "use-cases": "使用场景",
   "selfHost": "自部署",

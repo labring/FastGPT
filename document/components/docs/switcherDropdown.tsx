@@ -42,7 +42,7 @@ export function SwitcherDropdown({
   keepSidebarOpenOnSelect = false
 }: SwitcherDropdownProps) {
   const [open, setOpen] = useState(false);
-  const { closeOnRedirect } = useSidebar();
+  const closeOnRedirect = useSidebar().closeOnRedirect as { current: boolean };
   const selected = options.find((item) => item.active) ?? options[0];
 
   const selectItem = (item: SwitcherDropdownOption) => {

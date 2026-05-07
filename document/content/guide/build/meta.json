@@ -1,0 +1,11 @@
+{
+  "title": "应用构建",
+  "root": false,
+  "pages": [
+    "general",
+    "workflow",
+    "tools",
+    "publish",
+    "evaluation"
+  ]
+}

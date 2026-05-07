@@ -1,0 +1,5 @@
+{
+  "title": "通用配置",
+  "description": "应用构建中的模型、文件上传、输入引导和基础配置。",
+  "pages": ["ai_settings", "fileInput", "chat_input_guide"]
+}

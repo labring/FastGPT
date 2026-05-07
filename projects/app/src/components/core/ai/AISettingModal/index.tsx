@@ -178,7 +178,7 @@ const AIChatSettingsModal = ({
               w={'24px'}
               cursor={'pointer'}
               onClick={() => {
-                window.open(getDocPath('/introduction/guide/course/ai_settings/'), '_blank');
+                window.open(getDocPath('/guide/build/general/ai_settings'), '_blank');
               }}
             />
           )}

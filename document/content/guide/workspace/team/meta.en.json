@@ -1,0 +1,5 @@
+{
+  "title": "Team Management",
+  "description": "Team members, permissions, and invitation link management.",
+  "pages": ["team_roles_permissions", "invitation_link"]
+}

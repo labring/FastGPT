@@ -1,0 +1,8 @@
+{
+  "title": "工作区",
+  "root": false,
+  "pages": [
+    "team",
+    "customDomain"
+  ]
+}

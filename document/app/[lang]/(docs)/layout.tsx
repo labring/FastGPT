@@ -11,6 +11,7 @@ import { SidebarKeepOpen } from '@/components/sidebarKeepOpen';
 import { SidebarScrollFix } from '@/components/sidebarScrollFix';
 import { CategorySwitcher } from '@/components/docs/categorySwitcher';
 import { LanguageSwitcher } from '@/components/docs/languageSwitcher';
+import { normalizePageTreeSections } from '@/lib/page-tree';
 import { BookOpen, Code, Lightbulb, CircleHelp, Server } from 'lucide-react';
 
 export default async function Layout({
@@ -26,8 +27,8 @@ export default async function Layout({
   const tab = [
     {
       icon: <BookOpen className={iconClass} />,
-      title: t('common:introduction', lang),
-      url: getLocalizedPath('/introduction', lang)
+      title: t('common:guide', lang),
+      url: getLocalizedPath('/guide', lang)
     },
     {
       icon: <Lightbulb className={iconClass} />,
@@ -54,11 +55,14 @@ export default async function Layout({
   const tabUrls = tab.map((t) => t.url);
 
   const base = baseOptions(lang);
+  const tree = normalizePageTreeSections(
+    source.pageTree[lang] || source.pageTree[i18n.defaultLanguage]
+  );
 
   return (
     <DocsLayout
       {...base}
-      tree={source.pageTree[lang] || source.pageTree[i18n.defaultLanguage]}
+      tree={tree}
       i18n={false}
       searchToggle={{
         enabled: true,

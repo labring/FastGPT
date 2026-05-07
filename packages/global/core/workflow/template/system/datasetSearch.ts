@@ -33,7 +33,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   showStatus: true,
   isTool: true,
   catchError: false,
-  courseUrl: '/introduction/guide/dashboard/workflow/dataset_search/',
+  courseUrl: '/guide/build/workflow/nodes/dataset_search',
   version: '4.9.2',
   inputs: [
     {

@@ -17,7 +17,7 @@ const getCategoryKey = (path: string): string => {
 export function SidebarKeepOpen({ tabUrls }: { tabUrls: string[] }) {
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
-  const { closeOnRedirect } = useSidebar();
+  const closeOnRedirect = useSidebar().closeOnRedirect as { current: boolean };
 
   if (prevPathname.current !== pathname) {
     const prev = prevPathname.current;

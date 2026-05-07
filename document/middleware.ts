@@ -1,50 +1,73 @@
 import { createI18nMiddleware } from 'fumadocs-core/i18n';
-import { i18n } from '@/lib/i18n';
+import { defaultHomePath, i18n } from '@/lib/i18n';
 import { type NextRequest, NextResponse } from 'next/server';
 
 // Old path redirects mapping. Keys/values are POST-strip (no /docs prefix).
 // Old links like /docs/foo are first stripped to /foo, then matched here.
 const exactMap: Record<string, string> = {
-  '': '/introduction',
-  '/intro': '/introduction',
+  '': defaultHomePath,
+  '/intro': defaultHomePath,
   '/guide/dashboard/workflow/coreferenceresolution':
-    '/introduction/guide/dashboard/workflow/coreferenceResolution',
-  '/guide/admin/sso_dingtalk':
-    '/introduction/guide/admin/sso#/introduction/guide/admin/sso#钉钉',
-  '/guide/knowledge_base/rag': '/introduction/guide/knowledge_base/RAG',
-  '/commercial/intro': '/introduction/commercial',
+    '/guide/build/workflow/nodes/coreferenceResolution',
+  '/guide/admin/sso_dingtalk': '/guide/admin/sso#钉钉',
+  '/guide/knowledge_base/rag': '/guide/dataset/rag',
+  '/commercial/intro': '/guide/version/commercial',
   '/upgrading/intro': '/self-host/upgrading/upgrade-intruction',
   '/upgrading': '/self-host/upgrading/upgrade-intruction',
-  '/introduction/shopping_cart/intro/': '/introduction/commercial',
-  '/introduction/cloud': '/introduction/cloud/intro',
-  '/protocol/terms': '/introduction/cloud/terms',
-  '/protocol/privacy': '/introduction/cloud/privacy',
+  '/introduction/shopping_cart/intro': '/guide/version/commercial',
+  '/introduction/cloud': '/guide/version/cloud/intro',
+  '/protocol/terms': '/guide/version/cloud/terms',
+  '/protocol/privacy': '/guide/version/cloud/privacy',
   '/introduction/development/docker': '/self-host/deploy/docker',
   '/introduction/development/sealos': '/self-host/deploy/sealos',
   '/introduction/development/intro': '/self-host/dev',
-  '/introduction/development/object-storage': '/self-host/config/object-storage'
+  '/introduction/development/object-storage': '/self-host/config/object-storage',
+  '/introduction': defaultHomePath,
+  '/guide/getting-started/video-tutorial': 'https://video.fastgpt.cn/videos',
+
+  // navbar 重定向
+  '/guide': defaultHomePath,
+  '/use-cases': '/use-cases/app-cases/submit_application_template',
+  '/self-host': '/self-host/deploy/docker',
+  '/openapi': '/openapi/intro',
+  '/faq': '/faq/app'
 };
 
+// 前缀匹配
 const prefixMap: Record<string, string> = {
   '/FAQ': '/faq',
-  '/guide': '/introduction/guide',
-  '/shopping_cart': '/introduction/shopping_cart',
+  '/shopping_cart': '/guide/version/commercial',
   '/upgrading': '/self-host/upgrading',
   '/development': '/self-host',
   '/introduction/development/openapi': '/openapi',
-  '/introduction/development': '/self-host'
+  '/introduction/development': '/self-host',
+  '/introduction/version': '/guide/version',
+  '/introduction/cloud': '/guide/version/cloud',
+  '/introduction/opensource': '/guide/version/opensource',
+  '/introduction': '/guide',
+  '/version': '/guide/version'
 };
 
 const i18nMiddleware = createI18nMiddleware(i18n);
 
 function applyRedirectMaps(path: string): string | null {
-  if (path in exactMap) return exactMap[path];
+  const normalizedPath = path.length > 1 ? path.replace(/\/+$/, '') : path;
+
+  if (normalizedPath in exactMap) return exactMap[normalizedPath];
   for (const [oldPrefix, newPrefix] of Object.entries(prefixMap)) {
-    if (path.startsWith(oldPrefix)) {
-      return newPrefix + path.slice(oldPrefix.length);
+    if (normalizedPath.startsWith(oldPrefix)) {
+      return newPrefix + normalizedPath.slice(oldPrefix.length);
     }
   }
   return null;
+}
+
+function createRedirectUrl(target: string, request: NextRequest, lang: string) {
+  if (/^https?:\/\//i.test(target)) {
+    return new URL(target);
+  }
+
+  return new URL(`/${lang}${target || '/'}`, request.url);
 }
 
 export default function middleware(request: NextRequest) {
@@ -68,17 +91,14 @@ export default function middleware(request: NextRequest) {
     const stripped = pathWithoutLang.slice('/docs'.length); // '' for /docs, /foo for /docs/foo
     const mapped = applyRedirectMaps(stripped);
     const finalPath = mapped ?? stripped;
-    return NextResponse.redirect(
-      new URL(`/${lang}${finalPath || '/'}`, request.url),
-      301
-    );
+    return NextResponse.redirect(createRedirectUrl(finalPath, request, lang), 301);
   }
 
   // Non-/docs paths still consult the same maps so that direct hits on old
   // canonical paths (e.g. /upgrading) get redirected to their new home.
   const mapped = applyRedirectMaps(pathWithoutLang);
   if (mapped !== null && mapped !== pathWithoutLang) {
-    return NextResponse.redirect(new URL(`/${lang}${mapped || '/'}`, request.url), 301);
+    return NextResponse.redirect(createRedirectUrl(mapped, request, lang), 301);
   }
 
   // Build enhanced request headers so server components (e.g. (docs)/layout)

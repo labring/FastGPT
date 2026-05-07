@@ -1,0 +1,9 @@
+{
+  "title": "入门",
+  "root": false,
+  "pages": [
+    "index",
+    "quick-start",
+    "[视频教程](https://video.fastgpt.cn/videos)"
+  ]
+}

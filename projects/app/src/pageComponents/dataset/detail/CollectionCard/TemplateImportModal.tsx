@@ -77,7 +77,7 @@ const TemplateImportModal = ({
               display={'flex'}
               alignItems={'center'}
               gap={0.5}
-              href={getDocPath('/introduction/guide/knowledge_base/template/')}
+              href={getDocPath('/guide/dataset/template')}
               color="primary.600"
               target="_blank"
             >

@@ -6,6 +6,8 @@ export const i18n: I18nConfig = {
   hideLocale: 'never'
 };
 
+export const defaultHomePath = '/guide/getting-started';
+
 export async function getTranslations(locale: string) {
   const translations = await import(`@/i18n/${locale}/common.json`);
   return translations.default;
@@ -32,7 +34,7 @@ export function t(key: string, locale?: string) {
 
 /**
  * Get localized URL path based on i18n configuration
- * @param path - The base path (e.g., '/introduction')
+ * @param path - The base path (e.g., '/guide')
  * @param lang - The language code
  * @returns Localized path with language prefix if needed
  */

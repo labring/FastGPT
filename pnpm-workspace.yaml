@@ -8,6 +8,7 @@ packages:
   - pro/admin
   - pro/sso
 
+  - document/
   - scripts/icon
   - sdk/*
 

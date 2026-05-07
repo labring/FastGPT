@@ -1,0 +1,5 @@
+{
+  "title": "应用发布",
+  "description": "通过 MCP 服务、OpenAPI 和第三方渠道发布 FastGPT 应用。",
+  "pages": ["mcp_server", "openapi", "feishu", "dingtalk", "wecom", "official_account", "wechat"]
+}

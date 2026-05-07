@@ -1,0 +1,8 @@
+{
+  "title": "管理员后台",
+  "root": false,
+  "pages": [
+    "sso",
+    "teamMode"
+  ]
+}

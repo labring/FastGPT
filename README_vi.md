@@ -21,7 +21,7 @@ FastGPT là nền tảng xây dựng AI Agent cung cấp khả năng sẵn sàng
   <a href="https://fastgpt.io/">
     <img height="21" src="https://img.shields.io/badge/Sử_Dụng_Online-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/introduction">
+  <a href="https://doc.fastgpt.io/guide/getting-started">
     <img height="21" src="https://img.shields.io/badge/Tài_Liệu-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/self-host/dev">
@@ -58,7 +58,7 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
   Bạn có thể triển khai nhanh chóng bằng [Docker](https://doc.fastgpt.io/self-host/deploy/docker) hoặc sử dụng [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) để triển khai FastGPT bằng một cú nhấp chuột.
 
 - **Phiên Bản Thương Mại**  
-  Nếu bạn cần các tính năng đầy đủ hơn hoặc hỗ trợ dịch vụ chuyên sâu, bạn có thể chọn [Phiên Bản Thương Mại](https://doc.fastgpt.io/introduction/commercial). Ngoài việc cung cấp phần mềm đầy đủ, chúng tôi còn cung cấp hướng dẫn triển khai cho các kịch bản cụ thể. Bạn có thể gửi [tư vấn thương mại](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  Nếu bạn cần các tính năng đầy đủ hơn hoặc hỗ trợ dịch vụ chuyên sâu, bạn có thể chọn [Phiên Bản Thương Mại](https://doc.fastgpt.io/guide/version/commercial). Ngoài việc cung cấp phần mềm đầy đủ, chúng tôi còn cung cấp hướng dẫn triển khai cho các kịch bản cụ thể. Bạn có thể gửi [tư vấn thương mại](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
 
 ## 💡 Tính Năng Cốt Lõi
 
@@ -203,4 +203,4 @@ Kho này tuân thủ [FastGPT Open Source License](./LICENSE).
 1. Cho phép sử dụng thương mại như dịch vụ backend, nhưng không cho phép cung cấp dịch vụ SaaS.
 2. Bất kỳ dịch vụ thương mại nào không có giấy phép thương mại phải giữ lại thông tin bản quyền liên quan.
 3. Xem [FastGPT Open Source License](./LICENSE) để biết đầy đủ chi tiết.
-4. Liên hệ: Dennis@sealos.io, [Xem Giá Thương Mại](https://doc.fastgpt.io/introduction/commercial/)
+4. Liên hệ: Dennis@sealos.io, [Xem Giá Thương Mại](https://doc.fastgpt.io/guide/version/commercial)

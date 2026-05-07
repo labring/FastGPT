@@ -1,0 +1,5 @@
+{
+  "title": "Third-party Knowledge Base",
+  "description": "API, Lark, Yuque, DingTalk, and custom third-party knowledge base guides.",
+  "pages": ["api_dataset", "lark_dataset", "yuque_dataset", "dingtalk_dataset", "third_dataset"]
+}

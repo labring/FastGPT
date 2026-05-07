@@ -197,7 +197,10 @@ const ImportPluginModal = ({
           leftIcon={<MyIcon name={'book'} w={'14px'} />}
           color={'primary.600'}
           onClick={() => {
-            window.open(getDocPath('/introduction/guide/plugins/upload_system_tool'), '_blank');
+            window.open(
+              getDocPath('/guide/build/tools/system-plugins/upload_system_tool'),
+              '_blank'
+            );
           }}
         >
           {t('common:Instructions')}

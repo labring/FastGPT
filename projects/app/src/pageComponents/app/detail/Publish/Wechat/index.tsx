@@ -72,7 +72,7 @@ const Wechat = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={getDocPath('/use-cases/external-integration/wechat')}
+              href={getDocPath('/guide/build/publish/wechat')}
               target={'_blank'}
               ml={2}
               color={'primary.500'}

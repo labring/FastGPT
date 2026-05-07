@@ -18,7 +18,7 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
   colorSchema: 'blue',
   name: i18nT('workflow:assigned_reply'),
   intro: i18nT('workflow:intro_assigned_reply'),
-  courseUrl: '/introduction/guide/dashboard/workflow/reply/',
+  courseUrl: '/guide/build/workflow/nodes/reply',
   isTool: true,
   inputs: [
     {

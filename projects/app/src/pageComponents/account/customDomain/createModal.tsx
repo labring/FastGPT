@@ -291,22 +291,21 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
             </Tbody>
           </Table>
 
-          <Link
-            href={
-              feConfigs.openAPIDocUrl ||
-              getDocPath('/introduction/guide/team_permissions/customDomain')
-            }
-            target={'_blank'}
-            mt="2"
-            ml="2"
-            color={'primary.500'}
-            fontSize={'sm'}
-          >
-            <Flex alignItems={'center'}>
+          <Flex>
+            <Link
+              href={feConfigs.openAPIDocUrl || getDocPath('/guide/workspace/customDomain')}
+              target={'_blank'}
+              mt="2"
+              ml="2"
+              color={'primary.500'}
+              fontSize={'sm'}
+              display={'inline-flex'}
+              alignItems={'center'}
+            >
               <Icon w={'17px'} h={'17px'} name="book" mr="1" />
               {t('common:read_doc')}
-            </Flex>
-          </Link>
+            </Link>
+          </Flex>
         </Flex>
       </ModalBody>
       <ModalFooter>

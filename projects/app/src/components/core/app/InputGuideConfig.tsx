@@ -144,9 +144,7 @@ const InputGuideConfig = ({
                 <Flex mt={8} alignItems={'center'}>
                   <FormLabel>{t('chat:custom_input_guide_url')}</FormLabel>
                   <Flex
-                    onClick={() =>
-                      window.open(getDocPath('/introduction/guide/course/chat_input_guide/'))
-                    }
+                    onClick={() => window.open(getDocPath('/guide/build/general/chat_input_guide'))}
                     color={'primary.700'}
                     alignItems={'center'}
                     cursor={'pointer'}

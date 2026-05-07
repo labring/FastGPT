@@ -12,8 +12,8 @@ FASTGPT_HOME_DOMAIN =    #要跳转的FastGPT项目的域名，默认海外版
 你可以在FastGPT项目根目录下执行以下命令来运行文档。
 
 ```bash
-npm install # 只能 npm install，不能 pnpm
-npm run dev
+pnpm install
+pnpm dev
 ```
 项目会默认跑在`http:localhost:3000`端口
 

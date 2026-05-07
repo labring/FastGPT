@@ -1,0 +1,5 @@
+{
+  "title": "团队管理",
+  "description": "团队成员、权限和邀请链接管理。",
+  "pages": ["team_roles_permissions", "invitation_link"]
+}
