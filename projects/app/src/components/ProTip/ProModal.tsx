@@ -81,7 +81,7 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
             <Button
               w={'full'}
               onClick={() => {
-                window.open(getDocPath('/introduction/commercial'), '_blank');
+                window.open(getDocPath('/guide/version/commercial'), '_blank');
               }}
               fontSize={'14px'}
             >

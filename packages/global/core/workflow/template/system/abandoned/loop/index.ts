@@ -32,7 +32,7 @@ export const LoopNode: FlowNodeTemplateType = {
   name: i18nT('workflow:loop'),
   intro: i18nT('workflow:intro_loop'),
   showStatus: true,
-  courseUrl: '/introduction/guide/dashboard/workflow/loop/',
+  courseUrl: '/guide/build/workflow/nodes/loop',
   inputs: [
     {
       key: NodeInputKeyEnum.nestedInputArray,

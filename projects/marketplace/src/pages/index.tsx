@@ -9,7 +9,6 @@ import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/pl
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { ToolListItem } from '@/pages/api/tool/list';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
@@ -241,7 +240,7 @@ const ToolkitMarketplace = () => {
             <Button
               onClick={() => {
                 window.open(
-                  'https://doc.fastgpt.io/introduction/guide/plugins/dev_system_tool',
+                  'https://doc.fastgpt.io/guide/build/tools/system-plugins/dev_system_tool',
                   '_blank'
                 );
               }}

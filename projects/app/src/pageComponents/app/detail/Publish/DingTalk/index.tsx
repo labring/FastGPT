@@ -74,7 +74,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
           </Box>
           {feConfigs?.docUrl && (
             <Link
-              href={getDocPath('/use-cases/external-integration/dingtalk/')}
+              href={getDocPath('/guide/build/publish/dingtalk')}
               target={'_blank'}
               color={'primary.500'}
               fontSize={'sm'}

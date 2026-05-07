@@ -21,7 +21,7 @@ FastGPT is an AI Agent building platform that provides out-of-the-box capabiliti
   <a href="https://fastgpt.io/">
     <img height="21" src="https://img.shields.io/badge/Online_Usage-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/introduction">
+  <a href="https://doc.fastgpt.io/guide/getting-started">
     <img height="21" src="https://img.shields.io/badge/Documentation-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/self-host/dev">
@@ -58,7 +58,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
   You can quickly deploy using [Docker](https://doc.fastgpt.io/self-host/deploy/docker) or use [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) to deploy FastGPT with one click.
 
 - **Commercial Version**  
-  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/introduction/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/guide/version/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
 
 ## 💡 Core Features
 
@@ -203,4 +203,4 @@ This repository follows the [FastGPT Open Source License](./LICENSE).
 1. Commercial use as backend services is allowed, but SaaS services are not permitted.
 2. Any commercial services without commercial authorization must retain the relevant copyright information.
 3. Please see [FastGPT Open Source License](./LICENSE) for full details.
-4. Contact: Dennis@sealos.io, [View Commercial Pricing](https://doc.fastgpt.io/introduction/commercial/)
+4. Contact: Dennis@sealos.io, [View Commercial Pricing](https://doc.fastgpt.io/guide/version/commercial)

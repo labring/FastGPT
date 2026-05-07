@@ -82,10 +82,7 @@ const CustomLinkImport = () => {
           {t('common:core.dataset.website.Selector')}
           <Box color={'myGray.500'} fontSize={'sm'}>
             {feConfigs?.docUrl && (
-              <Link
-                href={getDocPath('/introduction/guide/knowledge_base/websync/#选择器如何使用')}
-                target="_blank"
-              >
+              <Link href={getDocPath('/guide/dataset/websync#选择器如何使用')} target="_blank">
                 {t('common:core.dataset.website.Selector Course')}
               </Link>
             )}

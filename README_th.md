@@ -21,7 +21,7 @@ FastGPT เป็นแพลตฟอร์มสำหรับสร้าง
   <a href="https://fastgpt.io/">
     <img height="21" src="https://img.shields.io/badge/ใช้งานออนไลน์-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.io/introduction">
+  <a href="https://doc.fastgpt.io/guide/getting-started">
     <img height="21" src="https://img.shields.io/badge/เอกสาร-7d09f1?style=flat-square" alt="document">
   </a>
   <a href="https://doc.fastgpt.io/self-host/dev">
@@ -58,7 +58,7 @@ docker compose up -d
   คุณสามารถติดตั้งได้อย่างรวดเร็วโดยใช้ [Docker](https://doc.fastgpt.io/self-host/deploy/docker) หรือใช้ [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) เพื่อติดตั้ง FastGPT ด้วยคลิกเดียว
 
 - **เวอร์ชันพาณิชย์**  
-  หากคุณต้องการคุณสมบัติที่สมบูรณ์มากขึ้นหรือการสนับสนุนบริการเชิงลึก คุณสามารถเลือก [เวอร์ชันพาณิชย์](https://doc.fastgpt.io/introduction/commercial) นอกจากการให้ซอฟต์แวร์ที่สมบูรณ์ เรายังให้คำแนะนำการนำไปใช้สำหรับสถานการณ์เฉพาะ คุณสามารถส่ง[ปรึกษาธุรกิจ](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)
+  หากคุณต้องการคุณสมบัติที่สมบูรณ์มากขึ้นหรือการสนับสนุนบริการเชิงลึก คุณสามารถเลือก [เวอร์ชันพาณิชย์](https://doc.fastgpt.io/guide/version/commercial) นอกจากการให้ซอฟต์แวร์ที่สมบูรณ์ เรายังให้คำแนะนำการนำไปใช้สำหรับสถานการณ์เฉพาะ คุณสามารถส่ง[ปรึกษาธุรกิจ](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)
 
 ## 💡 คุณสมบัติหลัก
 
@@ -203,4 +203,4 @@ docker compose up -d
 1. อนุญาตให้ใช้เชิงพาณิชย์เป็นบริการแบ็กเอนด์ แต่ไม่อนุญาตให้ให้บริการ SaaS
 2. บริการเชิงพาณิชย์ใดๆ ที่ไม่มีการอนุญาตเชิงพาณิชย์ต้องเก็บข้อมูลลิขสิทธิ์ที่เกี่ยวข้องไว้
 3. โปรดดู [FastGPT Open Source License](./LICENSE) สำหรับรายละเอียดฉบับเต็ม
-4. ติดต่อ: Dennis@sealos.io, [ดูราคาพาณิชย์](https://doc.fastgpt.io/introduction/commercial/)
+4. ติดต่อ: Dennis@sealos.io, [ดูราคาพาณิชย์](https://doc.fastgpt.io/guide/version/commercial)

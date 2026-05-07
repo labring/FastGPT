@@ -90,7 +90,7 @@ const DingTalkEditModal = ({
             <Box color="myGray.600">{t('publish:dingtalk.api')}</Box>
             {feConfigs?.docUrl && (
               <Link
-                href={getDocPath('/use-cases/external-integration/dingtalk/')}
+                href={getDocPath('/guide/build/publish/dingtalk')}
                 target={'_blank'}
                 ml={2}
                 color={'primary.500'}
