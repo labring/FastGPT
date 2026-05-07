@@ -95,11 +95,11 @@ export const filterGPTMessageByMaxContext = async ({
 export const loadRequestMessages = async ({
   messages,
   useVision = false,
-  origin
+  supportReason = false
 }: {
   messages: ChatCompletionMessageParam[];
   useVision?: boolean;
-  origin?: string;
+  supportReason?: boolean;
 }) => {
   const parseSystemMessage = (
     content: string | ChatCompletionContentPartText[]
@@ -265,12 +265,13 @@ export const loadRequestMessages = async ({
   const formatAssistantItem = (
     item: ChatCompletionAssistantMessageParam & {
       reasoning_content?: string;
-    }
+    },
+    supportReason: boolean
   ) => {
     return {
       role: item.role,
       content: item.content || undefined,
-      reasoning_content: item.reasoning_content || undefined,
+      reasoning_content: supportReason ? item.reasoning_content || undefined : undefined,
       function_call: item.function_call || undefined,
       name: item.name || undefined,
       refusal: item.refusal || undefined,
@@ -411,8 +412,8 @@ export const loadRequestMessages = async ({
                 : (formatContent as ChatCompletionContentPartText[])
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-          if (item.tool_calls || item.function_call || item.reasoning_content) {
-            return formatAssistantItem(item);
+          if (item.tool_calls || item.function_call) {
+            return formatAssistantItem(item, supportReason);
           }
 
           const parseContent = parseAssistantContent(item.content);
@@ -433,7 +434,7 @@ export const loadRequestMessages = async ({
           if (!formatContent) return;
 
           return {
-            ...formatAssistantItem(item),
+            ...formatAssistantItem(item, supportReason),
             content: formatContent
           };
         } else {

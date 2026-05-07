@@ -188,7 +188,3 @@ export function getS3DatasetSource() {
   global.datasetBucket = new S3DatasetSource();
   return global.datasetBucket;
 }
-
-declare global {
-  var datasetBucket: S3DatasetSource;
-}

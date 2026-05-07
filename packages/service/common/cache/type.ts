@@ -10,7 +10,7 @@ export type SystemCacheDataType = {
   [SystemCacheKeyEnum.modelPermission]: null;
 };
 
-type SystemCacheType = {
+export type SystemCacheType = {
   [K in SystemCacheKeyEnum]: {
     versionKey: string;
     data: SystemCacheDataType[K];
@@ -18,7 +18,3 @@ type SystemCacheType = {
     devRefresh?: boolean;
   };
 };
-
-declare global {
-  var systemCache: SystemCacheType;
-}

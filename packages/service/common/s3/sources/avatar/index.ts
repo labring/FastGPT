@@ -1,10 +1,9 @@
-import { S3Sources } from '../contracts/type';
-import { MongoS3TTL } from '../models/ttl';
-import { S3PublicBucket } from '../buckets/public';
-import { avatarAllowedExtensions } from '../utils/uploadConstraints';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import type { ClientSession } from 'mongoose';
-import { getFileS3Key } from '../utils';
+import { getFileS3Key } from '../../utils';
+import { MongoS3TTL } from '../../models/ttl';
+import { S3PublicBucket } from '../../buckets/public';
+import { avatarAllowedExtensions } from '../../utils/uploadConstraints';
 
 class S3AvatarSource extends S3PublicBucket {
   constructor() {
@@ -87,8 +86,4 @@ export function getS3AvatarSource() {
   }
   global.avatarBucket = new S3AvatarSource();
   return global.avatarBucket;
-}
-
-declare global {
-  var avatarBucket: S3AvatarSource;
 }

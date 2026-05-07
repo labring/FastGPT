@@ -93,7 +93,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   const requestMessages = await loadRequestMessages({
     messages,
     useVision: useVision && model.vision,
-    origin: requestOrigin
+    supportReason: model.reasoning
   });
   // Message process
   const rewriteMessages = (() => {
@@ -102,7 +102,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
     return requestMessages;
   })();
-
+  // console.log(23232323);
+  // console.dir(rewriteMessages, { depth: null });
   const { requestBody, modelData } = await llmCompletionsBodyFormat({
     ...body,
     messages: rewriteMessages

@@ -13,7 +13,8 @@
     "**/*.ts",
     "**/*.tsx",
     "../../packages/**/*.ts",
-    "../../packages/**/*.tsx"
+    "../../packages/**/*.tsx",
+    "../../packages/**/*.d.ts"
   ],
   "exclude": [
     "**/*.test.ts",

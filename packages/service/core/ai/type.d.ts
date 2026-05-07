@@ -52,3 +52,5 @@ declare global {
   var systemActiveDesensitizedModels: SystemModelItemType[];
   var systemDefaultModel: SystemDefaultModelType;
 }
+
+export {};

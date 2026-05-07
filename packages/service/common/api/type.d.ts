@@ -17,3 +17,5 @@ declare global {
   var concatUsageHandler: (data: ConcatUsageProps) => any;
   var pushUsageItemsHandler: (data: PushUsageItemsProps) => any;
 }
+
+export {};

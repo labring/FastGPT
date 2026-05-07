@@ -632,6 +632,9 @@ importers:
       '@types/multer':
         specifier: ^1.4.10
         version: 1.4.12
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.17.24
       '@types/node-cron':
         specifier: ^3.0.11
         version: 3.0.11

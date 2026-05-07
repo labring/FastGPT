@@ -81,7 +81,3 @@ export function getS3RawTextSource() {
   global.rawTextBucket = new S3RawTextSource();
   return global.rawTextBucket;
 }
-
-declare global {
-  var rawTextBucket: S3RawTextSource;
-}
