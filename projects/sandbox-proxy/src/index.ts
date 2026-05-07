@@ -1,28 +1,37 @@
 import http, { type IncomingMessage, type ServerResponse } from 'http';
 import httpProxy from 'http-proxy';
 import { env } from './env';
-import { configureLogger, logger } from './logger';
+import { configureLogger, getLogger, LogCategories } from './logger';
 import { buildSetCookie } from './cookie';
 import { deriveCsLoginTarget, ensureCsSession, evictCsSession, injectCsKey } from './csSession';
-import { authenticate } from './auth';
-import * as proxyTokenModule from '@fastgpt/global/core/ai/sandbox/proxyToken';
-
-const SANDBOX_PROXY_AUTH_REFRESH_PATH =
-  proxyTokenModule.SANDBOX_PROXY_AUTH_REFRESH_PATH ??
-  (proxyTokenModule as { default?: { SANDBOX_PROXY_AUTH_REFRESH_PATH?: string } }).default
-    ?.SANDBOX_PROXY_AUTH_REFRESH_PATH ??
-  (
-    proxyTokenModule as {
-      'module.exports'?: { SANDBOX_PROXY_AUTH_REFRESH_PATH?: string };
-    }
-  )['module.exports']?.SANDBOX_PROXY_AUTH_REFRESH_PATH ??
-  '/__fastgpt_proxy_auth';
+import { authenticate, getSandboxId } from './auth';
+import { startSandboxHeartbeat } from './heartbeat';
+import { SANDBOX_PROXY_AUTH_REFRESH_PATH } from '@fastgpt/global/core/ai/sandbox/proxyToken';
 
 await configureLogger();
 
+const logger = getLogger(LogCategories.MODULE.SANDBOX_PROXY.SERVER);
+
 const proxy = httpProxy.createProxyServer({ xfwd: true, changeOrigin: true });
 
+const evictRequestCsSession = (req: IncomingMessage, reason: string, extra?: string) => {
+  const sid = getSandboxId(req);
+  if (!sid) return;
+  evictCsSession(sid);
+  logger.warning(
+    `evict code-server session sandboxId=${sid} reason=${reason} path=${req.url || ''}${extra ? ` ${extra}` : ''}`
+  );
+};
+
 proxy.on('error', (err, req, res) => {
+  const sid = getSandboxId(req as IncomingMessage);
+  if (sid) {
+    evictCsSession(sid);
+    logger.warning(
+      `proxy error evicted code-server session sandboxId=${sid} path=${(req as IncomingMessage).url || ''}: ${err.message}`
+    );
+  }
+
   if (res instanceof http.ServerResponse) {
     if (!res.headersSent) {
       res.writeHead(502, { 'Content-Type': 'text/plain' });
@@ -41,9 +50,38 @@ proxy.on('proxyRes', (proxyRes, req) => {
     typeof proxyRes.headers.location === 'string' &&
     proxyRes.headers.location.includes('/login')
   ) {
-    const sid = (req as IncomingMessage).headers['x-fastgpt-sandbox-id'] as string | undefined;
-    if (sid) evictCsSession(sid);
+    evictRequestCsSession(
+      req as IncomingMessage,
+      'http-redirect-login',
+      `status=${proxyRes.statusCode}`
+    );
   }
+});
+
+proxy.on('proxyReqWs', (proxyReq, req) => {
+  proxyReq.on('upgrade', (_proxyRes, proxySocket) => {
+    const sid = getSandboxId(req as IncomingMessage);
+    if (!sid) return;
+
+    const stopHeartbeat = startSandboxHeartbeat(sid);
+    proxySocket.once('close', stopHeartbeat);
+    proxySocket.once('end', stopHeartbeat);
+    proxySocket.once('error', stopHeartbeat);
+  });
+
+  proxyReq.on('response', (proxyRes: IncomingMessage) => {
+    const statusCode = proxyRes.statusCode ?? 0;
+    const location = proxyRes.headers.location;
+    const loginRedirect = typeof location === 'string' && location.includes('/login');
+
+    if (statusCode === 401 || statusCode === 403 || statusCode === 302 || loginRedirect) {
+      evictRequestCsSession(
+        req as IncomingMessage,
+        loginRedirect ? 'ws-redirect-login' : 'ws-upstream-rejected',
+        `status=${statusCode}`
+      );
+    }
+  });
 });
 
 async function handleHttp(req: IncomingMessage, res: ServerResponse) {
@@ -62,7 +100,6 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
   }
 
   req.url = auth.cleanedUrl;
-
   if (req.url === SANDBOX_PROXY_AUTH_REFRESH_PATH) {
     res.writeHead(204, {
       'Cache-Control': 'no-store',

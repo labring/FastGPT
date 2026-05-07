@@ -16,13 +16,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import type {
   ListAppsBySkillIdQuery,
-  AppsBySkillIdItem
+  ListAppsBySkillIdResponse
 } from '@fastgpt/global/core/agentSkills/api';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
-): Promise<AppsBySkillIdItem[]> {
+): Promise<ListAppsBySkillIdResponse> {
   const { skillId } = req.query;
 
   if (!skillId) {
@@ -85,45 +85,48 @@ async function handler(
     .lean();
 
   // Filter apps with read permission and resolve per-app permissions
-  const formatApps = apps
-    .map((app) => {
-      const getPer = (appId: string) => {
-        const tmbRole = myPerList.find(
-          (item) => String(item.resourceId) === appId && !!item.tmbId
-        )?.permission;
-        const groupAndOrgRole = sumPer(
-          ...myPerList
-            .filter((item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId))
-            .map((item) => item.permission)
-        );
-        return new AppPermission({
-          role: tmbRole ?? groupAndOrgRole,
-          isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
-        });
-      };
+  const appsWithPer = apps.map((app) => {
+    const getPer = (appId: string) => {
+      const tmbRole = myPerList.find(
+        (item) => String(item.resourceId) === appId && !!item.tmbId
+      )?.permission;
+      const groupAndOrgRole = sumPer(
+        ...myPerList
+          .filter((item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId))
+          .map((item) => item.permission)
+      );
+      return new AppPermission({
+        role: tmbRole ?? groupAndOrgRole,
+        isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
+      });
+    };
 
-      const Per = (() => {
-        if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
-          return getPer(String(app.parentId)).addRole(getPer(String(app._id)).role);
-        }
-        return getPer(String(app._id));
-      })();
+    const Per = (() => {
+      if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
+        return getPer(String(app.parentId)).addRole(getPer(String(app._id)).role);
+      }
+      return getPer(String(app._id));
+    })();
 
-      return {
-        _id: String(app._id),
-        name: app.name,
-        avatar: app.avatar,
-        intro: app.intro,
-        tmbId: String(app.tmbId),
-        type: app.type,
-        updateTime: app.updateTime,
-        permission: Per
-      };
-    })
+    return {
+      _id: String(app._id),
+      name: app.name,
+      avatar: app.avatar,
+      intro: app.intro,
+      tmbId: String(app.tmbId),
+      type: app.type,
+      updateTime: app.updateTime,
+      permission: Per
+    };
+  });
+
+  const visibleApps = appsWithPer
     .filter((app) => app.permission.hasReadPer)
     .map(({ permission: _permission, ...rest }) => rest);
+  const hiddenCount = appsWithPer.length - visibleApps.length;
 
-  return addSourceMember({ list: formatApps });
+  const list = await addSourceMember({ list: visibleApps });
+  return { list, hiddenCount };
 }
 
 export default NextAPI(handler);

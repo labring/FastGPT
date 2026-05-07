@@ -36,8 +36,7 @@ import {
 import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import type { AppsBySkillIdItem } from '@fastgpt/global/core/agentSkills/api';
+import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/agentSkills/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -47,40 +46,52 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
+import ConfirmDeleteSkillModal from './ConfirmDeleteSkillModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
-// 5 items × 36px + 4 dividers × (1px + 8px top + 8px bottom) = 248px
-const RELATED_APPS_MAX_H = '248px';
+// 5 行 × 48px = 240px
+const RELATED_APPS_MAX_H = '240px';
 
 const RelatedAppsContent = ({ skillId }: { skillId: string }) => {
   const { t } = useTranslation();
-  const [apps, setApps] = useState<AppsBySkillIdItem[]>([]);
+  const [data, setData] = useState<ListAppsBySkillIdResponse>({ list: [], hiddenCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     getAppsBySkillId(skillId)
-      .then(setApps)
+      .then(setData)
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, [skillId]);
 
+  const { list, hiddenCount } = data;
+
   return (
-    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} p={'8px'}>
+    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} px={'12px'} py={'8px'}>
       <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
-        {apps.map((app, index) => (
-          <Box key={app._id}>
-            {index > 0 && <Box h={'1px'} bg={'#E8EBF0'} my={'8px'} />}
-            <Flex h={'36px'} px={'8px'} align={'center'} justify={'space-between'}>
-              <Flex align={'center'} gap={'8px'} overflow={'hidden'}>
+        <Flex>
+          <Flex flex={'1 0 0'} minW={0} direction={'column'}>
+            {list.map((app) => (
+              <Flex
+                key={app._id}
+                h={'48px'}
+                align={'center'}
+                gap={'8px'}
+                px={'12px'}
+                borderBottom={'sm'}
+                _last={{ borderBottom: 'none' }}
+                overflow={'hidden'}
+              >
                 <Avatar src={app.avatar} w={'20px'} h={'20px'} borderRadius={'sm'} flexShrink={0} />
                 <Box
+                  flex={'1 1 0'}
+                  minW={0}
                   fontSize={'14px'}
-                  fontWeight={'600'}
                   lineHeight={'20px'}
-                  color={'#333'}
+                  color={'myGray.900'}
                   overflow={'hidden'}
                   textOverflow={'ellipsis'}
                   whiteSpace={'nowrap'}
@@ -88,25 +99,55 @@ const RelatedAppsContent = ({ skillId }: { skillId: string }) => {
                   {app.name}
                 </Box>
               </Flex>
-              {app.sourceMember && (
-                <HStack spacing={'4px'} flexShrink={0} ml={'8px'}>
-                  <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
-                  <Box
-                    color={'#999'}
-                    maxW={'80px'}
-                    overflow={'hidden'}
-                    textOverflow={'ellipsis'}
-                    whiteSpace={'nowrap'}
-                    fontSize={'xs'}
-                  >
-                    {app.sourceMember.name}
-                  </Box>
-                </HStack>
-              )}
-            </Flex>
-          </Box>
-        ))}
+            ))}
+          </Flex>
+          <Flex w={'120px'} flexShrink={0} direction={'column'}>
+            {list.map((app) => (
+              <Flex
+                key={app._id}
+                h={'48px'}
+                align={'center'}
+                gap={'4px'}
+                px={'12px'}
+                borderBottom={'sm'}
+                _last={{ borderBottom: 'none' }}
+                overflow={'hidden'}
+              >
+                <MyIcon
+                  name={'common/lineUser'}
+                  w={'13px'}
+                  h={'14px'}
+                  color={'myGray.400'}
+                  flexShrink={0}
+                />
+                <Box
+                  flex={'1 1 0'}
+                  minW={0}
+                  fontSize={'14px'}
+                  lineHeight={'20px'}
+                  color={'myGray.500'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {app.sourceMember?.name || '-'}
+                </Box>
+              </Flex>
+            ))}
+          </Flex>
+        </Flex>
       </Box>
+      {hiddenCount > 0 && (
+        <Box
+          mt={'8px'}
+          fontSize={'12px'}
+          lineHeight={'16px'}
+          color={'myGray.500'}
+          letterSpacing={'0.4px'}
+        >
+          {t('skill:related_apps_hidden', { count: hiddenCount })}
+        </Box>
+      )}
     </MyBox>
   );
 };
@@ -117,10 +158,13 @@ const RelatedAppsPopover = ({ skillId, count }: { skillId: string; count: number
   return (
     <MyPopover
       trigger={'hover'}
-      placement={'bottom-start'}
-      hasArrow={false}
-      w={'260px'}
+      placement={'bottom'}
+      hasArrow
+      w={'320px'}
       p={0}
+      borderRadius={'6px'}
+      boxShadow={'3.5'}
+      border={'none'}
       Trigger={
         <HStack spacing={1} cursor={'pointer'}>
           <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
@@ -158,9 +202,10 @@ const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
     [editPerSkillId, skills]
   );
 
-  const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
-    type: 'delete'
-  });
+  const [deleteTarget, setDeleteTarget] = useState<{
+    skillId: string;
+    refsCount: number;
+  }>();
 
   const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
     content: t('skill:copy_skill_confirm')
@@ -435,17 +480,11 @@ const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
                                 type: 'danger' as const,
                                 icon: 'delete',
                                 label: t('common:Delete'),
-                                disabled: !isFolder && relatedAppsCount > 0,
-                                disabledTip:
-                                  !isFolder && relatedAppsCount > 0
-                                    ? t('skill:delete_disabled_tip')
-                                    : undefined,
                                 onClick: () =>
-                                  openConfirmDel({
-                                    onConfirm: () => onClickDeleteSkill(skill._id),
-                                    inputConfirmText: skill.name,
-                                    customContent: t('skill:confirm_delete_tip')
-                                  })()
+                                  setDeleteTarget({
+                                    skillId: skill._id,
+                                    refsCount: isFolder ? 0 : relatedAppsCount
+                                  })
                               }
                             ]
                           }
@@ -459,7 +498,12 @@ const List = ({ onClickCreate }: { onClickCreate?: () => void }) => {
           );
         })}
       </Grid>
-      <DelConfirmModal />
+      <ConfirmDeleteSkillModal
+        isOpen={!!deleteTarget}
+        refsCount={deleteTarget?.refsCount ?? 0}
+        onClose={() => setDeleteTarget(undefined)}
+        onConfirm={() => (deleteTarget ? onClickDeleteSkill(deleteTarget.skillId) : undefined)}
+      />
       <ConfirmCopyModal />
       {!!editedSkill && (
         <EditResourceModal

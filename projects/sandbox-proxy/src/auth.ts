@@ -76,8 +76,7 @@ export function authenticate(req: Pick<IncomingMessage, 'headers' | 'url'>): Aut
   const cookies = parseCookieHeader(req.headers.cookie);
   const cookieToken = cookies.get(PROXY_COOKIE);
 
-  // Always strip `_t` from the forwarded URL — even on the cookie auth path, where
-  // a stale query param might still be present from a bookmark or back-button.
+  // Always strip `_t` from the forwarded URL — even on the cookie auth path
   const cleaned = stripBootstrapToken(req.url || '/');
 
   const tryToken = (raw: string | null | undefined, fresh: boolean): AuthOk | null => {
@@ -100,3 +99,7 @@ export function authenticate(req: Pick<IncomingMessage, 'headers' | 'url'>): Aut
     tryToken(cookieToken, false) ?? { error: 'Unauthorized', status: 401 }
   );
 }
+
+export const getSandboxId = (req: {
+  headers: Record<string, string | string[] | undefined>;
+}): string | undefined => req.headers['x-fastgpt-sandbox-id'] as string | undefined;

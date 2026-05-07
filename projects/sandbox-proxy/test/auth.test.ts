@@ -4,9 +4,10 @@ import { authenticate, type AuthOk, stripBootstrapToken, verifyProxyToken } from
 import { PROXY_COOKIE } from '../src/cookie';
 
 const SECRET = 'a'.repeat(32);
+const DEFAULT_TTL_SECONDS = 3600;
 
 const sign = (payload: object, opts?: jwt.SignOptions) =>
-  jwt.sign(payload, SECRET, { expiresIn: 600, ...opts });
+  jwt.sign(payload, SECRET, { expiresIn: DEFAULT_TTL_SECONDS, ...opts });
 
 const mkReq = (host: string | undefined, url: string, cookie?: string) => ({
   headers: { host, ...(cookie ? { cookie } : {}) },
@@ -42,7 +43,7 @@ describe('authenticate', () => {
     expect(r.jwt).toBe(tk);
     expect(r.token.sid).toBe('abc');
     expect(r.cookieMaxAgeSeconds).toBeGreaterThan(0);
-    expect(r.cookieMaxAgeSeconds).toBeLessThanOrEqual(600);
+    expect(r.cookieMaxAgeSeconds).toBeLessThanOrEqual(DEFAULT_TTL_SECONDS);
     expect(r.cleanedUrl).toBe('/path');
   });
 
@@ -94,7 +95,7 @@ describe('authenticate', () => {
 
   it('rejects tokens signed with a different secret', () => {
     const tk = jwt.sign({ sid: 'abc', p: 1, t: 'http://x' }, 'other-secret-12345678', {
-      expiresIn: 600
+      expiresIn: DEFAULT_TTL_SECONDS
     });
     expect(authenticate(mkReq('abc.localhost:3006', `/?_t=${tk}`))).toEqual({
       error: 'Unauthorized',
@@ -126,7 +127,7 @@ describe('authenticate', () => {
 describe('verifyProxyToken', () => {
   it('accepts a well-formed signed token', () => {
     const tk = jwt.sign({ sid: 'abc', p: 44772, t: 'http://localhost:55549' }, SECRET, {
-      expiresIn: 600
+      expiresIn: DEFAULT_TTL_SECONDS
     });
     expect(verifyProxyToken(tk)).toEqual({
       sid: 'abc',
@@ -138,7 +139,7 @@ describe('verifyProxyToken', () => {
 
   it('rejects a token signed with a different secret', () => {
     const tk = jwt.sign({ sid: 'abc', p: 1, t: 'http://x' }, 'other-secret-12345678', {
-      expiresIn: 600
+      expiresIn: DEFAULT_TTL_SECONDS
     });
     expect(verifyProxyToken(tk)).toBeNull();
   });
@@ -149,7 +150,7 @@ describe('verifyProxyToken', () => {
   });
 
   it('rejects a token missing required fields', () => {
-    const tk = jwt.sign({ sid: 'abc' }, SECRET, { expiresIn: 600 });
+    const tk = jwt.sign({ sid: 'abc' }, SECRET, { expiresIn: DEFAULT_TTL_SECONDS });
     expect(verifyProxyToken(tk)).toBeNull();
   });
 
@@ -159,7 +160,9 @@ describe('verifyProxyToken', () => {
   });
 
   it('rejects when types mismatch (e.g. sid is a number)', () => {
-    const tk = jwt.sign({ sid: 123, p: 1, t: 'http://x' }, SECRET, { expiresIn: 600 });
+    const tk = jwt.sign({ sid: 123, p: 1, t: 'http://x' }, SECRET, {
+      expiresIn: DEFAULT_TTL_SECONDS
+    });
     expect(verifyProxyToken(tk)).toBeNull();
   });
 });

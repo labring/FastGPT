@@ -255,23 +255,23 @@ export const serviceEnv = createEnv({
     SANDBOX_PROXY_BASE: z.string().optional(),
     SANDBOX_PROXY_SECRET: z.string().min(16).optional(),
     /**
-     * JWT (and cookie Max-Age) lifetime in seconds. Default 600 (10min) — short to
+     * JWT (and cookie Max-Age) lifetime in seconds. Default 3600 (1h) — still short enough to
      * minimise revocation latency on team-membership changes. Active code-server
      * WebSocket connections established within the window stay alive past TTL
      * (TCP-pipe is opaque to JWT), so users editing continuously aren't interrupted
      * at the boundary; only sporadic HTTP fetches and WS reconnects need a fresh
      * token, at which point the iframe will reload the Skill page.
      */
-    SANDBOX_PROXY_TOKEN_TTL: NumSchema.int().positive().default(600),
+    SANDBOX_PROXY_TOKEN_TTL: NumSchema.int().positive().default(3600),
     /** Whether the proxy serves over https (controls iframe scheme on the frontend). */
     SANDBOX_PROXY_HTTPS: BoolSchema.default(false),
     /**
      * 这里改写发生在 app 进程，但改写结果（host:port）会塞进 JWT.t 由 sandbox-proxy 进程消费——
      * 所以判定标准是 "sandbox-proxy 跑在哪儿"：
-     *   - sandbox-proxy 在宿主进程跑：true（默认；宿主无 host.docker.internal 解析）
-     *   - sandbox-proxy 在容器/k8s 跑：false（容器内 host.docker.internal 是宿主别名，保留即可）
+     *   - sandbox-proxy 在容器/k8s 跑：false（默认；容器内 host.docker.internal 是宿主别名，保留即可）
+     *   - sandbox-proxy 在宿主进程跑（如本地 dev 直接 tsx 起 proxy）：手动设 true，宿主进程无 host.docker.internal 解析。
      */
-    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(true),
+    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false),
 
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
@@ -313,5 +313,11 @@ export const serviceEnv = createEnv({
 if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_TIMES) {
   throw new Error(
     `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${serviceEnv.WORKFLOW_MAX_LOOP_TIMES})`
+  );
+}
+
+if (serviceEnv.SHOW_SKILL && (!serviceEnv.SANDBOX_PROXY_BASE || !serviceEnv.SANDBOX_PROXY_SECRET)) {
+  throw new Error(
+    'Invalid environment configuration: SHOW_SKILL=true requires both SANDBOX_PROXY_BASE and SANDBOX_PROXY_SECRET'
   );
 }

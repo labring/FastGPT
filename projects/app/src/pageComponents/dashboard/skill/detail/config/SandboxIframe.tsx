@@ -3,11 +3,9 @@ import { Box, Spinner } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useQuery } from '@tanstack/react-query';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { postHeartbeatSandbox, postSandboxProxyToken } from '@/web/core/skill/api';
+import { postSandboxProxyToken } from '@/web/core/skill/api';
 import { SkillDetailContext } from '../context';
 import { SANDBOX_PROXY_AUTH_REFRESH_PATH } from '@fastgpt/global/core/ai/sandbox/proxyToken';
-
-const SANDBOX_HEARTBEAT_INTERVAL = 60 * 1000;
 
 const getTokenRefreshInterval = (ttlSeconds: number) => {
   const ttlMs = Math.max(ttlSeconds, 1) * 1000;
@@ -19,42 +17,29 @@ const SandboxIframe = () => {
   const sandboxEndpoint = useContextSelector(SkillDetailContext, (v) => v.sandboxEndpoint);
   const proxyBase = useSystemStore((s) => s.feConfigs?.sandbox_proxy_base);
   const proxyScheme = useSystemStore((s) => s.feConfigs?.sandbox_proxy_scheme) ?? 'http';
-  const tokenTtl = useSystemStore((s) => s.feConfigs?.sandbox_proxy_token_ttl) ?? 600;
+  const tokenTtl = useSystemStore((s) => s.feConfigs?.sandbox_proxy_token_ttl) ?? 3600;
   const tokenRefreshInterval = getTokenRefreshInterval(tokenTtl);
-  const [bootstrapToken, setBootstrapToken] = React.useState<string | null>(null);
   const providerSandboxId = sandboxEndpoint?.providerSandboxId;
 
   const { data: tokenData } = useQuery({
     queryKey: ['sandboxProxyToken', providerSandboxId],
     queryFn: () => postSandboxProxyToken({ sandboxId: providerSandboxId! }),
     enabled: !!sandboxEndpoint && !!proxyBase,
-    // Refresh before the proxy cookie expires. The fresh token is written by a hidden
-    // image request below so code-server can reconnect without reloading the main iframe.
+    // 提前过期刷新；新 token 走下面的隐藏 img 写回 cookie，不重载 iframe。
     staleTime: tokenRefreshInterval,
     refetchInterval: tokenRefreshInterval,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true
-  });
-
-  useQuery({
-    queryKey: ['sandboxHeartbeat', providerSandboxId],
-    queryFn: () => postHeartbeatSandbox({ sandboxId: providerSandboxId! }),
-    enabled: !!providerSandboxId,
-    refetchInterval: SANDBOX_HEARTBEAT_INTERVAL,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true
   });
 
-  React.useEffect(() => {
-    setBootstrapToken(null);
-  }, [providerSandboxId]);
-
-  React.useEffect(() => {
-    if (!bootstrapToken && tokenData?.token) {
-      setBootstrapToken(tokenData.token);
-    }
-  }, [bootstrapToken, tokenData?.token]);
+  // 锁定每个 sandbox 的首个 token，iframe src 不变，后续刷新走隐藏 img。
+  const [bootstrap, setBootstrap] = React.useState<{ sandboxId: string; token: string } | null>(
+    null
+  );
+  if (providerSandboxId && tokenData?.token && bootstrap?.sandboxId !== providerSandboxId) {
+    setBootstrap({ sandboxId: providerSandboxId, token: tokenData.token });
+  }
 
   if (!sandboxEndpoint) return null;
   if (!proxyBase) {
@@ -71,7 +56,7 @@ const SandboxIframe = () => {
       </Box>
     );
   }
-  if (!tokenData || !bootstrapToken) {
+  if (!tokenData || !bootstrap || bootstrap.sandboxId !== providerSandboxId) {
     return (
       <Box w={'100%'} h={'100%'} display="flex" alignItems="center" justifyContent="center">
         <Spinner />
@@ -79,17 +64,11 @@ const SandboxIframe = () => {
     );
   }
 
-  // URL: `<scheme>://<sid>.<base>/proxy/8080/?_t=<jwt>`
-  // Two-layer routing:
-  //   - subdomain `<sid>.<base>` selects the sandbox (handled by sandbox-proxy)
-  //   - `/proxy/8080/` is execd's "forward to inner port 8080" path (handled by execd
-  //     inside the container and proxied to code-server)
-  // code-server sees Host=<sid>.<base> so absolute URLs / vscode-remote URIs / WS
-  // endpoints all stay on the same subdomain and ride the cookie.
-  const sandboxOrigin = `${proxyScheme}://${sandboxEndpoint.providerSandboxId}.${proxyBase}`;
-  const src = `${sandboxOrigin}/proxy/8080/?_t=${encodeURIComponent(bootstrapToken)}`;
+  // 子域路由到 sandbox + /proxy/8080/ 转发到 code-server；用子域而非 path 是为了 code-server 的绝对 URL/WS 共用 cookie。
+  const sandboxOrigin = `${proxyScheme}://${bootstrap.sandboxId}.${proxyBase}`;
+  const src = `${sandboxOrigin}/proxy/8080/?_t=${encodeURIComponent(bootstrap.token)}`;
   const refreshSrc =
-    tokenData.token === bootstrapToken
+    tokenData.token === bootstrap.token
       ? null
       : `${sandboxOrigin}${SANDBOX_PROXY_AUTH_REFRESH_PATH}?_t=${encodeURIComponent(tokenData.token)}`;
 

@@ -4,7 +4,7 @@ import {
   connectToProviderSandbox,
   disconnectFromProviderSandbox
 } from '@fastgpt/service/core/agentSkills/sandboxConfig';
-import { env } from '@fastgpt/service/env';
+import { serviceEnv } from '@fastgpt/service/env';
 
 /**
  * Read code-server's password from the container's config.yaml via exec.
@@ -59,12 +59,12 @@ export async function getDirectSandboxBaseUrl(
   providerSandboxId: string,
   port: number
 ): Promise<string> {
-  const baseUrl = env.AGENT_SANDBOX_OPENSANDBOX_BASEURL;
+  const baseUrl = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL;
   if (!baseUrl) throw new Error('AGENT_SANDBOX_OPENSANDBOX_BASEURL not configured');
 
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (env.AGENT_SANDBOX_OPENSANDBOX_API_KEY) {
-    headers['Authorization'] = `Bearer ${env.AGENT_SANDBOX_OPENSANDBOX_API_KEY}`;
+  if (serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY) {
+    headers['Authorization'] = `Bearer ${serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY}`;
   }
 
   const resp = await fetch(
@@ -83,7 +83,7 @@ export async function getDirectSandboxBaseUrl(
   let hostPort = data.endpoint.replace(/\/proxy\/\d+\/?$/, '');
 
   // 宿主进程解析不到 host.docker.internal —— proxy 在宿主跑时改写为 localhost。
-  if (env.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST) {
+  if (serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST) {
     hostPort = hostPort.replace(/^host\.docker\.internal\b/, 'localhost');
   }
 

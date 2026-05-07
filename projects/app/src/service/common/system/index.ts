@@ -163,7 +163,7 @@ export async function initSystemConfig() {
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
       show_agent_sandbox: !!serviceEnv.AGENT_SANDBOX_PROVIDER,
-      show_skill: serviceEnv.SHOW_SKILL && !!serviceEnv.SANDBOX_PROXY_BASE,
+      show_skill: serviceEnv.SHOW_SKILL,
       sandbox_proxy_base: serviceEnv.SANDBOX_PROXY_BASE,
       sandbox_proxy_scheme: serviceEnv.SANDBOX_PROXY_HTTPS ? 'https' : 'http',
       sandbox_proxy_token_ttl: serviceEnv.SANDBOX_PROXY_TOKEN_TTL,

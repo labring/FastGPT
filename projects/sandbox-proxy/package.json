@@ -17,12 +17,13 @@
     "pnpm": "10.x"
   },
   "dependencies": {
-    "@fastgpt-sdk/logger": "catalog:",
+    "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "cookie": "^0.7.2",
     "dotenv": "^17.3.1",
     "http-proxy": "^1.18.1",
     "jsonwebtoken": "catalog:",
+    "lru-cache": "^11.3.6",
     "zod": "catalog:"
   },
   "devDependencies": {

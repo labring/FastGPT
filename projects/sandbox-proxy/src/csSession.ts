@@ -1,53 +1,42 @@
+import { LRUCache } from 'lru-cache';
 import { env } from './env';
-import { logger } from './logger';
+import { getLogger, LogCategories } from './logger';
 
-const MAX_SIZE = 1000;
+const logger = getLogger(LogCategories.MODULE.SANDBOX_PROXY.SERVER);
 
 type CsSession = { name: string; value: string };
-type Entry = CsSession & { exp: number };
-const store = new Map<string, Entry>();
 
-// Backoff cache for repeated login failures.
-const loginBackoff = new Map<string, number>();
+// Bound both upstream calls; password fetch goes through app exec adapter so it gets a wider budget.
+const PASSWORD_FETCH_TIMEOUT_MS = 8000;
+const CS_LOGIN_TIMEOUT_MS = 5000;
+
+/**
+ * Cache for code-server sessions.
+ * TTL is controlled by SANDBOX_PROXY_TOKEN_TTL.
+ * Max 1000 sandboxes per proxy instance.
+ */
+const sessionCache = new LRUCache<string, CsSession>({
+  max: 1000,
+  ttl: env.tokenTtlSeconds * 1000,
+  updateAgeOnGet: true
+});
+
+/**
+ * Backoff cache to prevent spamming the app/upstream after login failures.
+ */
+const loginBackoff = new LRUCache<string, boolean>({
+  max: 1000,
+  ttl: env.csLoginBackoffMs
+});
+
+// Coalesce per-sandboxId so iframe first paint doesn't race N parallel /login attempts.
+const inFlight = new Map<string, Promise<CsSession | null>>();
 
 // Common code-server cookie names across versions / forks.
 const COOKIE_RE = /(?:^|;\s*)(code-server-session|coder-session|key)=([^;]+)/i;
 
-const evictExpired = () => {
-  const now = Date.now();
-  for (const [k, v] of store) if (v.exp < now) store.delete(k);
-};
-
-const evictOldest = () => {
-  let evictKey: string | null = null;
-  let minExp = Infinity;
-  for (const [k, v] of store) {
-    if (v.exp < minExp) {
-      minExp = v.exp;
-      evictKey = k;
-    }
-  }
-  if (evictKey) store.delete(evictKey);
-};
-
-const get = (sandboxId: string): CsSession | null => {
-  const entry = store.get(sandboxId);
-  if (!entry || entry.exp < Date.now()) {
-    store.delete(sandboxId);
-    return null;
-  }
-  entry.exp = Date.now() + env.tokenTtlSeconds * 1000;
-  return { name: entry.name, value: entry.value };
-};
-
-const put = (sandboxId: string, session: CsSession) => {
-  if (!store.has(sandboxId) && store.size >= MAX_SIZE) evictOldest();
-  store.set(sandboxId, { ...session, exp: Date.now() + env.tokenTtlSeconds * 1000 });
-  evictExpired();
-};
-
 export const evictCsSession = (sandboxId: string) => {
-  store.delete(sandboxId);
+  sessionCache.delete(sandboxId);
   loginBackoff.delete(sandboxId);
 };
 
@@ -67,7 +56,8 @@ const fetchPasswordFromApp = async (sandboxId: string): Promise<string | null> =
         'Content-Type': 'application/json',
         Authorization: `Bearer ${env.secret}`
       },
-      body: JSON.stringify({ sandboxId })
+      body: JSON.stringify({ sandboxId }),
+      signal: AbortSignal.timeout(PASSWORD_FETCH_TIMEOUT_MS)
     });
     if (!resp.ok) return null;
     const data = (await resp.json()) as { password?: string | null };
@@ -78,23 +68,10 @@ const fetchPasswordFromApp = async (sandboxId: string): Promise<string | null> =
   }
 };
 
-/**
- * Ensure a cached code-server session exists for this sandbox.
- */
-export const ensureCsSession = async (
-  sandboxId: string,
-  target: string
-): Promise<CsSession | null> => {
-  const cached = get(sandboxId);
-  if (cached) return cached;
-
-  const backoffExp = loginBackoff.get(sandboxId);
-  if (backoffExp && backoffExp > Date.now()) return null;
-  if (backoffExp) loginBackoff.delete(sandboxId);
-
+const doCsLogin = async (sandboxId: string, target: string): Promise<CsSession | null> => {
   const password = await fetchPasswordFromApp(sandboxId);
   if (!password) {
-    loginBackoff.set(sandboxId, Date.now() + env.csLoginBackoffMs);
+    loginBackoff.set(sandboxId, true);
     return null;
   }
 
@@ -107,14 +84,19 @@ export const ensureCsSession = async (
         origin: new URL(target).origin
       },
       body: `password=${encodeURIComponent(password)}`,
-      redirect: 'manual'
+      redirect: 'manual',
+      signal: AbortSignal.timeout(CS_LOGIN_TIMEOUT_MS)
     });
   } catch (e) {
     logger.error(`csLogin fetch sandboxId=${sandboxId}: ${(e as Error).message}`);
+    loginBackoff.set(sandboxId, true);
     return null;
   }
 
-  if (resp.status !== 302 && resp.status !== 301) return null;
+  if (resp.status !== 302 && resp.status !== 301) {
+    loginBackoff.set(sandboxId, true);
+    return null;
+  }
 
   const setCookies: string[] = (
     resp.headers as unknown as { getSetCookie?: () => string[] }
@@ -130,12 +112,43 @@ export const ensureCsSession = async (
   }
 
   if (!session) {
-    loginBackoff.set(sandboxId, Date.now() + env.csLoginBackoffMs);
+    // code-server upgrades have historically renamed this cookie; surface unknown
+    // names so we can update COOKIE_RE before users hit silent backoff.
+    const cookieNames = setCookies
+      .map((h) => h.split('=')[0]?.trim())
+      .filter(Boolean)
+      .join(',');
+    if (cookieNames) {
+      logger.warning(
+        `csLogin sandboxId=${sandboxId} 302 carried unrecognised Set-Cookie names=[${cookieNames}]; update COOKIE_RE in csSession.ts if code-server changed its session cookie`
+      );
+    }
+    loginBackoff.set(sandboxId, true);
     return null;
   }
 
-  put(sandboxId, session);
+  sessionCache.set(sandboxId, session);
   return session;
+};
+
+/**
+ * Ensure a cached code-server session exists for this sandbox.
+ */
+export const ensureCsSession = async (
+  sandboxId: string,
+  target: string
+): Promise<CsSession | null> => {
+  const cached = sessionCache.get(sandboxId);
+  if (cached) return cached;
+
+  if (loginBackoff.has(sandboxId)) return null;
+
+  const ongoing = inFlight.get(sandboxId);
+  if (ongoing) return ongoing;
+
+  const p = doCsLogin(sandboxId, target).finally(() => inFlight.delete(sandboxId));
+  inFlight.set(sandboxId, p);
+  return p;
 };
 
 /** Replace any code-server cookie in the request header with the given session value. */

@@ -1,7 +1,7 @@
 import type { OpenAPIPath } from '../../type';
 import { TagsMap } from '../../tag';
 import {
-  AppsBySkillIdItemSchema,
+  ListAppsBySkillIdResponseSchema,
   CreateEditDebugSandboxBodySchema,
   CreateEditDebugSandboxResponseSchema,
   CreateSkillBodySchema,
@@ -197,7 +197,7 @@ export const AgentSkillsPath: OpenAPIPath = {
           description: '成功返回引用应用列表',
           content: {
             'application/json': {
-              schema: AppsBySkillIdItemSchema.array()
+              schema: ListAppsBySkillIdResponseSchema
             }
           }
         }

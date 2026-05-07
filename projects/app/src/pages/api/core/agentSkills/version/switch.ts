@@ -10,10 +10,13 @@ import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/controller';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import {
   type SwitchSkillVersionBody,
   type SwitchSkillVersionResponse
 } from '@fastgpt/global/openapi/core/agentSkills/api';
+
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export type { SwitchSkillVersionBody, SwitchSkillVersionResponse };
 
@@ -76,7 +79,12 @@ async function handler(
   await Promise.allSettled(
     editSandboxes.map(async (sandbox) => {
       const client = await getSandboxClient({ sandboxId: sandbox.sandboxId });
-      await client.delete();
+      await client.delete().catch((err) => {
+        logger.error('Failed to delete edit-debug sandbox on version switch', {
+          sandboxId: sandbox.sandboxId,
+          error: err
+        });
+      });
     })
   );
 

@@ -15,7 +15,7 @@ const envSchema = z.object({
   /** host:port forms the proxy considers "base"; sandbox lives at <sid>.<base>. */
   SANDBOX_PROXY_BASE: z.string().min(1),
   SANDBOX_PROXY_SECRET: z.string().min(16, 'SANDBOX_PROXY_SECRET must be at least 16 chars'),
-  SANDBOX_PROXY_TOKEN_TTL: z.coerce.number().int().positive().default(600),
+  SANDBOX_PROXY_TOKEN_TTL: z.coerce.number().int().positive().default(3600),
   /**
    * Backoff window after transient code-server login failures (milliseconds).
    * Prevents repeated password-fetch + /login retries on every request.

@@ -1,122 +1,114 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Box } from '@chakra-ui/react';
-import { keyframes } from '@emotion/react';
 
-const B = 6; // block size px
-const G = 2; // gap px
-const U = B + G; // 8px unit
+const config = {
+  rotate: true,
+  particleCount: 30,
+  trailSpan: 0.38,
+  durationMs: 3000,
+  rotationDurationMs: 16000,
+  pulseDurationMs: 4600,
+  strokeWidth: 8.33,
+  orbitRadius: 7,
+  detailAmplitude: 2.7,
+  petalCount: 5,
+  curveScale: 3.9
+};
 
-const BLUE = '#197DFF';
-const GREEN = '#66CC88';
+const TWO_PI = Math.PI * 2;
+const PETAL_K = Math.round(config.petalCount);
 
-type Block = { row: number; col: number; color: 'blue' | 'green' };
+const point = (progress: number, detailScale: number) => {
+  const t = progress * TWO_PI;
+  const r = config.orbitRadius - config.detailAmplitude * detailScale * Math.cos(PETAL_K * t);
+  return {
+    x: 50 + Math.cos(t) * r * config.curveScale,
+    y: 50 + Math.sin(t) * r * config.curveScale
+  };
+};
 
-// 4 letter-shaped frames: F → A → 4 → T
-const FRAMES: Block[][] = [
-  // Frame 1: "F"
-  [
-    { row: 0, col: 0, color: 'blue' },
-    { row: 0, col: 1, color: 'blue' },
-    { row: 0, col: 2, color: 'blue' },
-    { row: 1, col: 0, color: 'green' },
-    { row: 1, col: 1, color: 'green' },
-    { row: 1, col: 2, color: 'green' },
-    { row: 2, col: 0, color: 'blue' }
-  ],
-  // Frame 2: "A"
-  [
-    { row: 0, col: 1, color: 'green' },
-    { row: 1, col: 0, color: 'blue' },
-    { row: 1, col: 1, color: 'green' },
-    { row: 1, col: 2, color: 'blue' },
-    { row: 2, col: 0, color: 'blue' },
-    { row: 2, col: 2, color: 'green' }
-  ],
-  // Frame 3: "4"
-  [
-    { row: 0, col: 0, color: 'blue' },
-    { row: 0, col: 1, color: 'green' },
-    { row: 1, col: 0, color: 'blue' },
-    { row: 1, col: 1, color: 'blue' },
-    { row: 1, col: 2, color: 'green' },
-    { row: 2, col: 1, color: 'green' },
-    { row: 2, col: 2, color: 'blue' }
-  ],
-  // Frame 4: "T"
-  [
-    { row: 0, col: 0, color: 'blue' },
-    { row: 0, col: 1, color: 'blue' },
-    { row: 0, col: 2, color: 'green' },
-    { row: 1, col: 1, color: 'green' },
-    { row: 2, col: 1, color: 'blue' }
-  ]
-];
+const normalizeProgress = (progress: number) => ((progress % 1) + 1) % 1;
 
-const snapIn = keyframes`
-  0%   { opacity: 0; transform: scale(0.2); }
-  65%  { opacity: 1; transform: scale(1.2); }
-  100% { opacity: 1; transform: scale(1); }
-`;
+const getDetailScale = (time: number) => {
+  const pulseProgress = (time % config.pulseDurationMs) / config.pulseDurationMs;
+  const pulseAngle = pulseProgress * TWO_PI;
+  return 0.52 + ((Math.sin(pulseAngle + 0.55) + 1) / 2) * 0.48;
+};
 
-const snapOut = keyframes`
-  0%   { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.2); }
-`;
+const getRotation = (time: number) => {
+  if (!config.rotate) return 0;
+  return -((time % config.rotationDurationMs) / config.rotationDurationMs) * 360;
+};
 
-const HOLD_MS = 900; // each frame stays for this duration
-const EXIT_MS = 180; // exit animation duration
-const ENTER_MS = 180; // enter animation duration
-const STAGGER_MS = 50; // delay between each block appearing
+const getParticle = (index: number, progress: number, detailScale: number) => {
+  const tailOffset = index / (config.particleCount - 1);
+  const p = point(normalizeProgress(progress - tailOffset * config.trailSpan), detailScale);
+  const fade = Math.pow(1 - tailOffset, 0.56);
+  return {
+    x: p.x,
+    y: p.y,
+    radius: 0.6 + fade * 3.57,
+    opacity: 0.04 + fade * 0.96
+  };
+};
 
 const BuildingAnimation = () => {
-  const [frameIdx, setFrameIdx] = useState(0);
-  const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
+  const groupRef = useRef<SVGGElement>(null);
+  const particleRefs = useRef<(SVGCircleElement | null)[]>([]);
+
+  const indices = useMemo(() => Array.from({ length: config.particleCount }, (_, i) => i), []);
 
   useEffect(() => {
-    const tick = () => {
-      setPhase('exit');
-      setTimeout(() => {
-        setFrameIdx((prev) => (prev + 1) % FRAMES.length);
-        setPhase('enter');
-      }, EXIT_MS + 30);
+    const startedAt = performance.now();
+    let rafId = 0;
+
+    const render = (now: number) => {
+      const time = now - startedAt;
+      const progress = (time % config.durationMs) / config.durationMs;
+      const detailScale = getDetailScale(time);
+
+      if (groupRef.current) {
+        groupRef.current.setAttribute('transform', `rotate(${getRotation(time)} 50 50)`);
+      }
+
+      for (let i = 0; i < particleRefs.current.length; i++) {
+        const node = particleRefs.current[i];
+        if (!node) continue;
+        const particle = getParticle(i, progress, detailScale);
+        node.setAttribute('cx', particle.x.toFixed(2));
+        node.setAttribute('cy', particle.y.toFixed(2));
+        node.setAttribute('r', particle.radius.toFixed(2));
+        node.setAttribute('opacity', particle.opacity.toFixed(3));
+      }
+
+      rafId = requestAnimationFrame(render);
     };
-    const id = setInterval(tick, HOLD_MS + EXIT_MS);
-    return () => clearInterval(id);
+
+    rafId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Sort top-to-bottom, left-to-right so blocks "build" from top
-  const blocks = [...FRAMES[frameIdx]].sort((a, b) =>
-    a.row !== b.row ? a.row - b.row : a.col - b.col
-  );
-
   return (
-    <Box w="22px" h="22px" position="relative" flexShrink={0}>
-      {blocks.map((block, i) => (
-        <Box
-          key={
-            phase === 'enter'
-              ? `e${frameIdx}-${block.row}-${block.col}`
-              : `x-${block.row}-${block.col}`
-          }
-          position="absolute"
-          top={`${block.row * U}px`}
-          left={`${block.col * U}px`}
-          w={`${B}px`}
-          h={`${B}px`}
-          bg={block.color === 'blue' ? BLUE : GREEN}
-          borderRadius="1px"
-          sx={
-            phase === 'enter'
-              ? {
-                  animation: `${snapIn} ${ENTER_MS}ms ease-out both`,
-                  animationDelay: `${i * STAGGER_MS}ms`
-                }
-              : {
-                  animation: `${snapOut} ${EXIT_MS}ms ease-in both`
-                }
-          }
-        />
-      ))}
+    <Box w="64px" h="64px" position="relative" flexShrink={0} display="grid" placeItems="center">
+      <Box
+        as="svg"
+        viewBox="8 8 84 84"
+        fill="none"
+        sx={{ width: '100%', height: '100%', overflow: 'visible' }}
+        aria-hidden="true"
+      >
+        <g ref={groupRef}>
+          {indices.map((i) => (
+            <circle
+              key={i}
+              ref={(el) => {
+                particleRefs.current[i] = el;
+              }}
+              fill="#3370FF"
+            />
+          ))}
+        </g>
+      </Box>
     </Box>
   );
 };

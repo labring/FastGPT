@@ -33,16 +33,16 @@ describe('parseCookieHeader', () => {
 
 describe('buildSetCookie', () => {
   it('contains the required attributes', () => {
-    const c = buildSetCookie('jwt-value', 600);
+    const c = buildSetCookie('jwt-value', 3600);
     expect(c).toContain(`${PROXY_COOKIE}=jwt-value`);
     expect(c).toContain('Path=/');
     expect(c).toContain('HttpOnly');
     expect(c).toContain('SameSite=None');
     expect(c).toContain('Secure');
-    expect(c).toContain('Max-Age=600');
+    expect(c).toContain('Max-Age=3600');
   });
 
   it('does not set Domain (host-only by design)', () => {
-    expect(buildSetCookie('jwt', 600)).not.toContain('Domain=');
+    expect(buildSetCookie('jwt', 3600)).not.toContain('Domain=');
   });
 });

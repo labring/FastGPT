@@ -6,7 +6,6 @@ import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { SkillDetailContext, TabEnum } from './context';
 import SkillHistoriesSlider from './config/SkillHistoriesSlider';
@@ -27,6 +26,7 @@ import { SkillRoleList } from '@fastgpt/global/support/permission/agentSkill/con
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import ConfirmDeleteSkillModal from '../ConfirmDeleteSkillModal';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -83,9 +83,7 @@ const Header = () => {
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
 
-  const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
-    type: 'delete'
-  });
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { runAsync: onClickDeleteSkill } = useRequest(deleteSkill, {
     onSuccess() {
@@ -170,21 +168,15 @@ const Header = () => {
             type: 'danger' as const,
             icon: 'delete' as const,
             label: t('common:Delete'),
-            disabled: (skillDetail?.appCount ?? 0) > 0,
-            disabledTip:
-              (skillDetail?.appCount ?? 0) > 0 ? t('skill:delete_disabled_tip') : undefined,
             onClick: () => {
               if (!skillDetail) return;
-              openConfirmDel({
-                onConfirm: () => onClickDeleteSkill(skillDetail._id),
-                inputConfirmText: skillDetail.name
-              })();
+              setDeleteOpen(true);
             }
           }
         ]
       }
     ],
-    [t, skillDetail, onExportSkill, onClickDeleteSkill, openConfirmDel]
+    [t, skillDetail, onExportSkill]
   );
 
   if (!skillDetail) return null;
@@ -264,7 +256,12 @@ const Header = () => {
       {showHistories && <SkillHistoriesSlider onClose={() => setShowHistories(false)} />}
 
       {/* 删除确认弹窗 */}
-      <DelConfirmModal />
+      <ConfirmDeleteSkillModal
+        isOpen={deleteOpen}
+        refsCount={skillDetail?.appCount ?? 0}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => (skillDetail ? onClickDeleteSkill(skillDetail._id) : undefined)}
+      />
 
       {/* 编辑信息弹窗 */}
       {!!editedSkill && (

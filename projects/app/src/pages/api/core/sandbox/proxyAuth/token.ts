@@ -18,6 +18,8 @@ type Response = {
 };
 
 async function handler(req: ApiRequestProps<Body>): Promise<Response> {
+  if (req.method !== 'POST') return Promise.reject('Method not allowed');
+
   const { sandboxId } = req.body;
   if (!sandboxId) return Promise.reject('Missing sandboxId');
 

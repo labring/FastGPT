@@ -1,20 +1,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod';
 import { NextAPI } from '@/service/middleware/entry';
-import { getCodeServerPasswordFromSandbox } from '@/service/core/sandbox/proxy';
 import { serviceEnv } from '@fastgpt/service/env';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/schema';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const BodySchema = z.object({
   sandboxId: z.string().min(1)
 });
 
 /**
- * Internal-only endpoint called by sandbox-proxy when its code-server cookie cache
- * misses. Authenticated via a bearer header carrying the shared SANDBOX_PROXY_SECRET.
- *
- * Keeping the password OUT of the JWT (where it would be base64-decodable in any leak)
- * costs us one HTTP roundtrip per (sandboxId × proxy-process) — the result is cached
- * in proxy memory as a code-server `key` cookie, so it's amortised across the session.
+ * Internal-only endpoint called by sandbox-proxy while a code-server websocket is alive.
+ * Authenticated with SANDBOX_PROXY_SECRET so it does not depend on browser timers or user cookies.
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -36,8 +33,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   const { sandboxId } = parsed.data;
 
-  const password = await getCodeServerPasswordFromSandbox(sandboxId).catch(() => null);
-  return res.json({ password });
+  const result = await MongoSandboxInstance.updateOne(
+    {
+      sandboxId,
+      status: SandboxStatusEnum.running
+    },
+    {
+      $set: {
+        lastActiveAt: new Date()
+      }
+    }
+  );
+
+  if (result.matchedCount === 0) {
+    return res.status(404).json({ error: 'Sandbox not found or not running' });
+  }
+
+  return res.json({ success: true });
 }
 
 export default NextAPI(handler);
