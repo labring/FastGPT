@@ -48,7 +48,7 @@ RUN apk add --no-cache libc6-compat curl bash && npm install -g pnpm@10.33.2
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:$PATH"
 
-RUN pnpm --filter @fastgpt-sdk/logger build
+RUN pnpm --filter @fastgpt-sdk/otel build
 RUN pnpm --filter=@fastgpt/mcp_server build
 
 # runner

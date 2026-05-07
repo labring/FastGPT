@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@fastgpt-sdk/logger": "workspace:*",
+    "@fastgpt-sdk/otel": "workspace:*",
     "@modelcontextprotocol/sdk": "catalog:",
     "@t3-oss/env-core": "catalog:",
     "chalk": "catalog:",

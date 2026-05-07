@@ -23,7 +23,7 @@
     "test:service": "turbo run test --filter=@fastgpt/service",
     "test:service:integration": "turbo run test:integration --filter=@fastgpt/service",
     "test:vector": "turbo run test:integration --filter=@fastgpt/service",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/logger --filter @fastgpt-sdk/otel build"
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel build"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
@@ -40,7 +40,7 @@
     "next-i18next": "catalog:",
     "prettier": "3.2.4",
     "react-i18next": "catalog:",
-    "turbo": "2.9.6",
+    "turbo": "2.9.9",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
@@ -65,5 +65,5 @@
     "node": ">=20",
     "pnpm": "10.x"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@10.33.4"
 }

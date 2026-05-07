@@ -4,7 +4,7 @@ const originalSyncIndex = process.env.SYNC_INDEX;
 
 const importEnv = async () => {
   vi.resetModules();
-  return import('../../projects/marketplace/src/env');
+  return import('../src/env');
 };
 
 describe('marketplace env', () => {
