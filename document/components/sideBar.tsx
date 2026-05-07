@@ -64,7 +64,7 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
     <SidebarItem
       href={item.url}
       className={cn(
-        'group/sidebar-item min-h-8 rounded-lg px-2 text-sm hover:cursor-pointer',
+        'group/sidebar-item min-h-8 w-full min-w-0 max-w-full rounded-lg px-2 text-sm hover:cursor-pointer',
         !isActive && 'text-fd-muted-foreground hover:text-fd-accent-foreground',
         level === 0 && 'font-medium',
         isActive &&
@@ -72,8 +72,8 @@ const CustomItem: FC<{ item: PageTree.Item }> = ({ item }) => {
       )}
     >
       {item.icon}
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        <span className="truncate">{item.name}</span>
+      <span className="inline-flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        <span className="min-w-0 break-words leading-5">{item.name}</span>
         {tag && (
           <span
             className={cn(
@@ -124,9 +124,9 @@ const CustomFolder: FC<{ item: PageTree.Folder; level: number; children: ReactNo
           </div>
         ) : (
           <SidebarFolderTrigger
-            className="min-h-8 rounded-lg px-2 text-sm text-fd-muted-foreground hover:cursor-pointer hover:text-fd-accent-foreground data-[state=open]:text-fd-foreground"
+            className="min-h-8 min-w-0 max-w-full rounded-lg px-2 text-sm text-fd-muted-foreground hover:cursor-pointer hover:text-fd-accent-foreground data-[state=open]:text-fd-foreground [&>svg[data-icon]]:shrink-0"
           >
-            {item.name}
+            <span className="min-w-0 flex-1 break-words text-left leading-5">{item.name}</span>
           </SidebarFolderTrigger>
         )}
         <SidebarFolderContent>{children}</SidebarFolderContent>
