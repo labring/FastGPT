@@ -1,9 +1,9 @@
 import { createMDX } from 'fumadocs-mdx/next';
+import type { NextConfig } from 'next';
 
 const withMDX = createMDX();
 
-/** @type {import('next').NextConfig} */
-const config = {
+const config:NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   compress: true,

@@ -28,8 +28,9 @@ ENV NEXT_PUBLIC_DOC_TRACK_SRC=$DOC_TRACK_SRC
 ENV NEXT_PUBLIC_DOC_TRACK_SITE_ID=$DOC_TRACK_SITE_ID
 
 COPY . .
-RUN npm install 
-RUN npm run build
+RUN corepack enable
+RUN pnpm install
+RUN pnpm build
 
 
 FROM base AS runner
