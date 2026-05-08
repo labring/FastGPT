@@ -8,7 +8,7 @@ import {
   jsonSchema2SecretInput
 } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
-import { getToolRawId, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -191,14 +191,11 @@ export class SystemToolRepo {
     }
 
     // System tool
-    const [tool, runtimeConfig] = await Promise.all([
-      pluginClient.getTool({
-        pluginId: parentPluginId,
-        version,
-        source
-      }),
-      pluginClient.getPluginRuntimeConfig(getToolRawId(pluginId))
-    ]);
+    const tool = await pluginClient.getTool({
+      pluginId: parentPluginId,
+      version,
+      source
+    });
 
     const getToolParent = tool.isToolset && !getChildToolDetail;
 
@@ -271,7 +268,6 @@ export class SystemToolRepo {
       courseUrl: tool.tutorialUrl,
       readmeUrl: tool.readmeUrl,
       version: tool.version,
-      runtimeConfig,
       hideTags: dbTool?.hideTags ?? [],
       promoteTags: dbTool?.promoteTags ?? [],
       pluginOrder: dbTool?.pluginOrder,

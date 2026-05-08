@@ -31,9 +31,11 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import {
+  getAdminToolRuntimeConfig,
   getAdminSystemToolDetail,
   getAdminSystemToolVersions,
   postAdminResetToolRuntimeConfig,
+  putAdminUpdateToolRuntimeConfig,
   putAdminUpdateSystemTool
 } from '@/web/core/plugin/admin/tool/api';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -218,33 +220,43 @@ const SystemToolConfigModal = ({
     }
   );
 
+  const { data: tool, loading } = useRequest(
+    () => getAdminSystemToolDetail({ toolId, version: selectedVersion }),
+    {
+      onSuccess(res) {
+        const formData: Partial<UpdateSystemToolBodyType> = {
+          status: res.status,
+          secretsVal: res.secretsVal,
+          systemKeyCost: res.systemKeyCost,
+          children: res.children?.map((childTool: ChildToolConfigItem) => ({
+            id: childTool.id,
+            systemKeyCost: childTool.systemKeyCost ?? 0
+          })),
+          promoteTags: res.promoteTags,
+          hideTags: res.hideTags,
+          tags: res.tags || []
+        };
+        reset(formData as UpdateSystemToolBodyType);
+        setSelectedTags(res.tags || []);
+        if (!selectedVersion && res.version) {
+          setSelectedVersion(res.version);
+        }
+      },
+      manual: false,
+      refreshDeps: [toolId, selectedVersion]
+    }
+  );
+
   const {
-    data: tool,
-    loading,
-    runAsync: refreshToolDetail
-  } = useRequest(() => getAdminSystemToolDetail({ toolId, version: selectedVersion }), {
+    data: runtimeConfigData,
+    loading: loadingRuntimeConfig,
+    runAsync: refreshRuntimeConfig
+  } = useRequest(() => getAdminToolRuntimeConfig({ pluginId: toolId }), {
     onSuccess(res) {
-      const formData: Partial<UpdateSystemToolBodyType> = {
-        status: res.status,
-        secretsVal: res.secretsVal,
-        systemKeyCost: res.systemKeyCost,
-        children: res.children?.map((childTool: ChildToolConfigItem) => ({
-          id: childTool.id,
-          systemKeyCost: childTool.systemKeyCost ?? 0
-        })),
-        promoteTags: res.promoteTags,
-        hideTags: res.hideTags,
-        tags: res.tags || []
-      };
-      reset(formData as UpdateSystemToolBodyType);
-      setSelectedTags(res.tags || []);
       setRuntimeConfig(normalizeRuntimeConfig(res.runtimeConfig));
-      if (!selectedVersion && res.version) {
-        setSelectedVersion(res.version);
-      }
     },
     manual: false,
-    refreshDeps: [toolId, selectedVersion]
+    refreshDeps: [toolId]
   });
 
   // 从表单 watch 可变数据
@@ -270,7 +282,7 @@ const SystemToolConfigModal = ({
 
   // 是否显示系统密钥配置
   const showSystemSecretInput = !!inputList && inputList.length > 0;
-  const showRuntimeConfig = tool?.runtimeConfig !== undefined;
+  const showRuntimeConfig = runtimeConfigData?.runtimeConfig !== undefined;
 
   const updateRuntimeConfigField = (key: RuntimeConfigFieldKey, value: string) => {
     setRuntimeConfig((config) => ({
@@ -360,9 +372,14 @@ const SystemToolConfigModal = ({
 
       await putAdminUpdateSystemTool({
         ...formData,
-        id: toolId,
-        ...(submitRuntimeConfig !== undefined ? { runtimeConfig: submitRuntimeConfig } : {})
+        id: toolId
       });
+      if (submitRuntimeConfig !== undefined) {
+        await putAdminUpdateToolRuntimeConfig({
+          pluginId: toolId,
+          runtimeConfig: submitRuntimeConfig
+        });
+      }
     },
     {
       successToast: t('common:Config') + t('common:Success'),
@@ -377,7 +394,7 @@ const SystemToolConfigModal = ({
     () => postAdminResetToolRuntimeConfig({ pluginId: toolId }),
     {
       successToast: t('common:Reset') + t('common:Success'),
-      onSuccess: refreshToolDetail
+      onSuccess: refreshRuntimeConfig
     }
   );
 
@@ -666,7 +683,7 @@ const SystemToolConfigModal = ({
   return (
     <MyModal
       isOpen
-      isLoading={loading || loadingTags || loadingVersions}
+      isLoading={loading || loadingTags || loadingVersions || loadingRuntimeConfig}
       onClose={onClose}
       width={'560px'}
       maxW={['92vw', '560px']}

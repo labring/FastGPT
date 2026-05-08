@@ -9,6 +9,8 @@ import {
   GetAdminSystemToolsResponseSchema,
   GetAllSystemAppsBodySchema,
   GetAllSystemAppsResponseSchema,
+  GetToolRuntimeConfigQuerySchema,
+  GetToolRuntimeConfigResponseSchema,
   ResetToolRuntimeConfigBodySchema,
   UpdateSystemToolBodySchema,
   UpdateToolOrderBodySchema,
@@ -148,6 +150,26 @@ export const AdminPluginToolPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: z.object({})
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/plugin/admin/tool/runtimeConfig/detail': {
+    get: {
+      summary: '获取工具运行时配置',
+      description: '获取插件服务中的工具运行时配置，需要系统管理员权限',
+      tags: [TagsMap.pluginToolAdmin],
+      requestParams: {
+        query: GetToolRuntimeConfigQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功获取工具运行时配置',
+          content: {
+            'application/json': {
+              schema: GetToolRuntimeConfigResponseSchema
             }
           }
         }

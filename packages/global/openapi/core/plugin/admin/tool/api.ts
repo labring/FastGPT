@@ -38,6 +38,15 @@ export type GetAdminSystemToolVersionsResponseType = z.infer<
 
 // Update/reset tool runtime config
 export const RuntimeConfigSchema = SystemToolRuntimeSchema;
+export const GetToolRuntimeConfigQuerySchema = z.object({
+  pluginId: z.string()
+});
+export type GetToolRuntimeConfigQueryType = z.infer<typeof GetToolRuntimeConfigQuerySchema>;
+export const GetToolRuntimeConfigResponseSchema = z.object({
+  runtimeConfig: RuntimeConfigSchema.optional()
+});
+export type GetToolRuntimeConfigResponseType = z.infer<typeof GetToolRuntimeConfigResponseSchema>;
+
 export const UpdateToolRuntimeConfigBodySchema = z.object({
   pluginId: z.string(),
   runtimeConfig: RuntimeConfigSchema
@@ -76,8 +85,7 @@ export const UpdateSystemToolBodySchema = AdminSystemToolDetailSchema.pick({
   secretsVal: true,
   promoteTags: true,
   hideTags: true,
-  originCost: true,
-  runtimeConfig: true
+  originCost: true
 })
   .partial()
   .extend({

@@ -4,8 +4,6 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { UpdateSystemToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
-import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 
 export type updateToolQuery = {};
 
@@ -18,7 +16,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<updateToolResponse> {
   await authSystemAdmin({ req });
-  const { id: pluginId, runtimeConfig, ...updateFields } = req.body;
+  const { id: pluginId, ...updateFields } = req.body;
 
   const plugin = await MongoSystemTool.findOne({ pluginId });
 
@@ -78,17 +76,12 @@ async function handler(
         });
       }
 
-      await MongoSystemTool.updateOne(
-        { pluginId: childPluginId },
-        childUpdateFields,
-        { upsert: true, session }
-      );
+      await MongoSystemTool.updateOne({ pluginId: childPluginId }, childUpdateFields, {
+        upsert: true,
+        session
+      });
     }
   });
-
-  if (runtimeConfig !== undefined) {
-    await pluginClient.setPluginRuntimeConfig(getToolRawId(pluginId), runtimeConfig);
-  }
 
   return {};
 }

@@ -14,7 +14,9 @@ import type {
   GetAllSystemAppTypeToolsResponse,
   CreateAppToolBodyType,
   UpdateToolRuntimeConfigBodyType,
-  ResetToolRuntimeConfigBodyType
+  ResetToolRuntimeConfigBodyType,
+  GetToolRuntimeConfigQueryType,
+  GetToolRuntimeConfigResponseType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import type {
   CreatePluginToolTagBody,
@@ -46,6 +48,9 @@ export const delAdminSystemTool = (data: DeleteSystemToolQueryType) =>
 
 export const putAdminUpdateToolRuntimeConfig = (data: UpdateToolRuntimeConfigBodyType) =>
   PUT('/core/plugin/admin/tool/runtimeConfig/update', data);
+
+export const getAdminToolRuntimeConfig = (data: GetToolRuntimeConfigQueryType) =>
+  GET<GetToolRuntimeConfigResponseType>('/core/plugin/admin/tool/runtimeConfig/detail', data);
 
 export const postAdminResetToolRuntimeConfig = (data: ResetToolRuntimeConfigBodyType) =>
   POST('/core/plugin/admin/tool/runtimeConfig/reset', data);

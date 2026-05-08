@@ -28,6 +28,8 @@ export const SystemToolRuntimeSchema = z
   })
   .catchall(z.unknown());
 
+export type SystemToolRuntimeConfigType = z.infer<typeof SystemToolRuntimeSchema>;
+
 export const SystemToolListItemSchema = z.object({
   ...SystemToolBaseSchema.shape,
   // 基础信息
@@ -88,7 +90,6 @@ export const SystemToolDetailSchema = z.object({
   secrets: z.array(InputConfigTypeSchema).optional(),
   secretsVal: z.record(z.string(), z.any()).optional(),
   isLatestVersion: z.boolean().optional(),
-  runtimeConfig: SystemToolRuntimeSchema.optional(),
   associatedPluginId: z.string().optional(),
   permissions: z.array(PluginPermissionEnumSchema).optional()
 });
