@@ -14,7 +14,7 @@
     "mcp_test": "npx @modelcontextprotocol/inspector"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.19.0",
     "pnpm": "10.x"
   },
   "dependencies": {

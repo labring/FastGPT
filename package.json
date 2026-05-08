@@ -9,7 +9,7 @@
     "postinstall": "pnpm gen:theme-typings && pnpm run build:sdks",
     "initIcon": "node ./scripts/icon/init.js && prettier --config \"./.prettierrc.js\" --write \"packages/web/components/common/Icon/constants.ts\"",
     "previewIcon": "node ./scripts/icon/index.js",
-    "lint": "eslint \"**/*.{ts,tsx}\" --fix --ignore-path .eslintignore",
+    "lint": "turbo run lint",
     "create:i18n": "node ./scripts/i18n/index.js",
     "clean:unused:pro": "node --experimental-strip-types ./pro/scripts/cleanup-unused.ts",
     "clean:unused:pro:write": "node --experimental-strip-types ./pro/scripts/cleanup-unused.ts --write",
@@ -27,42 +27,24 @@
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
-    "@typescript-eslint/eslint-plugin": "catalog:",
-    "@typescript-eslint/parser": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "eslint": "catalog:",
-    "eslint-config-next": "catalog:",
+    "eslint": "catalog:eslint",
+    "eslint-config-next": "catalog:eslint",
     "husky": "^8.0.3",
     "i18next": "catalog:",
     "js-yaml": "catalog:",
-    "lint-staged": "^13.3.0",
+    "lint-staged": "catalog:",
     "mongodb-memory-server": "catalog:",
     "next-i18next": "catalog:",
-    "prettier": "3.2.4",
+    "prettier": "catalog:",
     "react-i18next": "catalog:",
     "turbo": "2.9.9",
+    "typescript-eslint": "catalog:eslint",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "lint-staged": {
-    "./document/**/**/*.mdx": [
-      "pnpm -C ./document run format-doc",
-      "pnpm -C ./document run initDocTime",
-      "pnpm -C ./document run initDocToc",
-      "pnpm -C ./document run checkDocRefs",
-      "pnpm -C ./document run removeInvalidImg",
-      "git add ."
-    ],
-    "**/*.{ts,tsx}": [
-      "prettier --config ./.prettierrc.js --write",
-      "eslint --fix --ignore-path .eslintignore"
-    ],
-    "**/*.scss": [
-      "prettier --config ./.prettierrc.js --write"
-    ]
-  },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.19.0",
     "pnpm": "10.x"
   },
   "packageManager": "pnpm@10.33.4"

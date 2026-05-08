@@ -5,11 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.19.0",
     "pnpm": "10.x"
   },
   "dependencies": {
@@ -39,8 +38,8 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "eslint": "catalog:",
-    "eslint-config-next": "catalog:",
+    "eslint": "catalog:eslint",
+    "eslint-config-next": "catalog:eslint",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "catalog:"
