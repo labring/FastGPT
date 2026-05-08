@@ -7,6 +7,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '@fastgpt/global/core/workflow/runtime/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
@@ -148,6 +149,20 @@ const makeResponseItem = (nodeId: string, override: Partial<ChatHistoryItemResTy
     ...override
   }) as ChatHistoryItemResType;
 
+const makeVariableState = (variables: Record<string, unknown> = {}): WorkflowVariableStateLike =>
+  ({
+    get: (key: string) => variables[key],
+    set: async (key: string, value: unknown) => {
+      variables[key] = value;
+      return value;
+    },
+    getStoreValue: (key: string) => variables[key],
+    getFileStoreValueByRuntimeUrl: () => undefined,
+    toRuntimeRecord: () => variables,
+    toStoreRecord: () => variables,
+    clone: () => makeVariableState({ ...variables })
+  }) satisfies WorkflowVariableStateLike;
+
 const makeProps = (
   params: any,
   opts: { withBreak?: boolean; childrenNodeIdList?: string[] } = {}
@@ -169,7 +184,7 @@ const makeProps = (
     runtimeNodes,
     runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
     runtimeEdges: [],
-    variables: {},
+    variableState: makeVariableState(),
     usagePush: vi.fn(),
     lastInteractive: undefined,
     checkIsStopping: () => false
@@ -215,7 +230,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variables: {},
+      variableState: makeVariableState(),
       usagePush: vi.fn(),
       lastInteractive: undefined,
       checkIsStopping: () => false
@@ -231,6 +246,28 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     // Last snapshot exposed on data
     expect(result.data.answer).toBe('v-c');
     expect(result.error).toBeUndefined();
+  });
+
+  it('子运行返回的 newVariables 不再透出到 loopRun 节点结果', async () => {
+    runWorkflowMock.mockImplementation((args: any) => {
+      void args.variableState.set('runtimeOnly', 'runtime-value');
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          [DispatchNodeResponseKeyEnum.newVariables]: {
+            runtimeOnly: { value: '', secret: 'encrypted-store-value' }
+          }
+        })
+      );
+    });
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['a']
+    });
+
+    const result: any = await dispatchLoopRun(props);
+
+    expect(result[DispatchNodeResponseKeyEnum.newVariables]).toBeUndefined();
   });
 
   it('array mode 第 2 轮节点出错 → 本轮 success:false, 失败轮快照对未跑节点返回 undefined', async () => {
@@ -268,7 +305,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variables: {},
+      variableState: makeVariableState(),
       usagePush: vi.fn(),
       lastInteractive: undefined,
       checkIsStopping: () => false
@@ -476,7 +513,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variables: {},
+      variableState: makeVariableState(),
       usagePush: vi.fn(),
       lastInteractive: {
         type: 'loopRunInteractive',
@@ -528,7 +565,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variables: {},
+      variableState: makeVariableState(),
       usagePush: vi.fn(),
       lastInteractive: {
         type: 'loopRunInteractive',
@@ -614,7 +651,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variables: {},
+      variableState: makeVariableState(),
       usagePush: vi.fn(),
       lastInteractive: undefined,
       checkIsStopping: () => false
@@ -785,7 +822,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeNodes,
       runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
       runtimeEdges: [],
-      variables: {},
+      variableState: makeVariableState(),
       usagePush: vi.fn(),
       checkIsStopping: () => false,
       lastInteractive: {

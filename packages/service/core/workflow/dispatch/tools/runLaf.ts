@@ -29,7 +29,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
     runningAppInfo: { id: appId },
     chatId,
     responseChatItemId,
-    variables,
+    variableState,
     node: { outputs },
     histories,
     params: {
@@ -38,6 +38,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
       ...body
     }
   } = props;
+  const variables = variableState.toRuntimeRecord();
 
   if (!httpReqUrl) {
     return Promise.reject('Http url is empty');

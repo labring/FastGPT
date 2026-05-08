@@ -28,7 +28,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import z from 'zod';
-import { getUploadChatFilePresignedUrl } from '@/web/common/file/api';
+import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -38,6 +38,7 @@ import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import {
   getFileSelectorDisplayIcon,
   isFileSelectorCleanValueEcho,
+  isFileSelectorPreviewUrlMissing,
   isFileSelectorUploading,
   markFileSelectorUploadError,
   markFileSelectorUploading,
@@ -89,7 +90,7 @@ const FileSelector = ({
   isDisabled = false,
   isInvalid = false
 }: AppFileSelectConfigType & {
-  value: FileSelectorValueItemType[];
+  value: FileSelectorInputValueType;
   onChange: (e: FileSelectorValueItemType[]) => void;
   canLocalUpload?: boolean;
   canUrlUpload?: boolean;
@@ -124,15 +125,12 @@ const FileSelector = ({
             if (!valueFile) return;
 
             return {
-              id: valueFile.id || getNanoid(6),
+              ...valueFile,
+              id: getNanoid(6),
               type: valueFile.type || ChatFileTypeEnum.file,
               name: valueFile.name || valueFile.url || valueFile.key || '',
-              icon:
-                valueFile.type === ChatFileTypeEnum.image
-                  ? valueFile.url
-                  : getFileIcon(valueFile.name || valueFile.url || valueFile.key),
-              status: 1,
-              ...valueFile
+              icon: getFileSelectorDisplayIcon(valueFile),
+              status: 1
             };
           }
 
@@ -151,14 +149,17 @@ const FileSelector = ({
           return {
             ...valueFile,
             ...(previewUrl ? { url: previewUrl } : {}),
-            id: valueFile?.id || file.id || getNanoid(6),
+            id: file.id || getNanoid(6),
             rawFile,
             type: renderType,
             name: fileName,
-            icon:
-              renderType === ChatFileTypeEnum.image
-                ? previewUrl || fileIcon
-                : fileIcon || getFileIcon(fileName),
+            icon: getFileSelectorDisplayIcon({
+              type: renderType,
+              url: previewUrl,
+              icon: fileIcon,
+              name: fileName,
+              key: valueFile?.key
+            }),
             status: file.status ?? 1,
             process: file.process,
             error: file.error
@@ -169,6 +170,9 @@ const FileSelector = ({
     []
   );
   const lastEmittedValue = useRef<FileSelectorValueItemType[]>();
+  const skipNextCleanEcho = useRef(false);
+  const previewUrlCache = useRef(new Map<string, string>());
+  const fetchingPreviewUrlKeys = useRef(new Set<string>());
   const [fileList, setFileList] = useState<FileSelectorRenderItemType[]>(() =>
     formatInternalValue(value)
   );
@@ -176,14 +180,18 @@ const FileSelector = ({
   useEffect(() => {
     const cleanedValue = cleanValue(value);
     if (
+      skipNextCleanEcho.current &&
       isFileSelectorCleanValueEcho({
         value,
         cleanedValue,
         lastEmittedValue: lastEmittedValue.current
       })
-    )
+    ) {
+      skipNextCleanEcho.current = false;
       return;
+    }
 
+    skipNextCleanEcho.current = false;
     setFileList(formatInternalValue(value));
     lastEmittedValue.current = cleanedValue;
     if (!isEqual(cleanedValue, value)) {
@@ -198,11 +206,95 @@ const FileSelector = ({
       if (emitChange) {
         const cleanedFiles = cleanValue(files);
         lastEmittedValue.current = cleanedFiles;
+        skipNextCleanEcho.current = true;
         onChange(cleanedFiles);
       }
     },
     [cleanValue, onChange]
   );
+
+  useEffect(() => {
+    if (!appId) return;
+
+    const filesNeedPreviewUrl = fileList.filter(
+      (file): file is FileSelectorRenderItemType & { key: string; url?: undefined } =>
+        isFileSelectorPreviewUrlMissing(file) && !fetchingPreviewUrlKeys.current.has(file.key)
+    );
+    if (filesNeedPreviewUrl.length === 0) return;
+
+    let isUnmounted = false;
+
+    filesNeedPreviewUrl.forEach((file) => {
+      if (file.key) {
+        fetchingPreviewUrlKeys.current.add(file.key);
+      }
+    });
+
+    void Promise.allSettled(
+      filesNeedPreviewUrl.map(async (file) => {
+        const key = file.key;
+        const cachedPreviewUrl = previewUrlCache.current.get(key);
+        if (cachedPreviewUrl) {
+          return {
+            key,
+            url: cachedPreviewUrl
+          };
+        }
+
+        const url = await getPresignedChatFileGetUrl({
+          key,
+          appId,
+          outLinkAuthData
+        });
+        previewUrlCache.current.set(key, url);
+
+        return {
+          key,
+          url
+        };
+      })
+    )
+      .then((results) => {
+        if (isUnmounted) return;
+
+        const previewUrlMap = new Map<string, string>();
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            previewUrlMap.set(result.value.key, result.value.url);
+          }
+        });
+        if (previewUrlMap.size === 0) return;
+
+        setFileList((currentFiles) =>
+          currentFiles.map((file) => {
+            if (!file.key || file.url) return file;
+
+            const previewUrl = previewUrlMap.get(file.key);
+            if (!previewUrl) return file;
+
+            return {
+              ...file,
+              url: previewUrl,
+              icon: getFileSelectorDisplayIcon({
+                ...file,
+                url: previewUrl
+              })
+            };
+          })
+        );
+      })
+      .finally(() => {
+        filesNeedPreviewUrl.forEach((file) => {
+          if (file.key) {
+            fetchingPreviewUrlKeys.current.delete(file.key);
+          }
+        });
+      });
+
+    return () => {
+      isUnmounted = true;
+    };
+  }, [appId, fileList, outLinkAuthData]);
 
   const fileType = useMemo(() => {
     return getUploadFileType({
@@ -529,7 +621,7 @@ const FileSelector = ({
     [handleChangeFiles, fileList]
   );
 
-  const isUploading = fileList.some((file) => !file.key && !file.url && !file.error);
+  const isUploading = fileList.some(isFileSelectorUploading);
   const disabled = isDisabled || isUploading;
 
   return (

@@ -104,7 +104,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
   let totalPoints = 0;
-  let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined;
   // Pre-interrupt children of the in-flight iteration survive across resume here,
   // so pushIterationDetail can stitch them back with the resumed iteration's
@@ -163,7 +162,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const response = await runWorkflow({
       ...props,
       lastInteractive: interactiveData?.childrenResponse,
-      variables: newVariables,
       runtimeNodes: isolatedNodes,
       runtimeEdges: cloneDeep(
         storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
@@ -190,7 +188,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     });
     totalPoints += iterationTotalPoints;
     collectResponseFeedbacks(response, customFeedbacks);
-    newVariables = { ...newVariables, ...response.newVariables };
 
     // Pause: stash accumulated children so the next resume still sees pre-interrupt
     // nodes (supports multiple interrupts in the same iteration).
@@ -206,7 +203,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const customOutputs = readCustomOutputSnapshot({
       customOutputInputs,
       runtimeNodes: isolatedNodes,
-      variables: newVariables,
+      variableState: props.variableState,
       finishedNodeIds,
       childrenNodeIdList
     });
@@ -292,7 +289,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
           }
         }
       : undefined,
-    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,

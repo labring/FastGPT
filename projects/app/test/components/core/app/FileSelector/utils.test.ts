@@ -3,12 +3,14 @@ import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelec
 import {
   getFileSelectorDisplayIcon,
   isFileSelectorCleanValueEcho,
+  isFileSelectorPreviewUrlMissing,
   isFileSelectorUploading,
   markFileSelectorUploadError,
   markFileSelectorUploading,
   markFileSelectorUploadSuccess,
   sanitizeFileSelectValue
 } from '@/components/core/app/FileSelector/utils';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 describe('sanitizeFileSelectValue', () => {
   it('清洗 S3 文件对象，移除 base64 预览和上传态字段', () => {
@@ -19,7 +21,7 @@ describe('sanitizeFileSelectValue', () => {
           key: 'apps/app/chat/file.png',
           url: 'https://signed-url.example.com/file.png',
           name: 'file.png',
-          type: 'image',
+          type: ChatFileTypeEnum.image,
           icon: 'data:image/png;base64,abc',
           rawFile: new File(['file'], 'file.png'),
           process: 100,
@@ -29,10 +31,9 @@ describe('sanitizeFileSelectValue', () => {
       ])
     ).toEqual([
       {
-        id: 'file-id',
         key: 'apps/app/chat/file.png',
         name: 'file.png',
-        type: 'image'
+        type: ChatFileTypeEnum.image
       }
     ]);
   });
@@ -44,7 +45,7 @@ describe('sanitizeFileSelectValue', () => {
           id: 'url-id',
           url: 'https://example.com/file.pdf',
           name: 'https://example.com/file.pdf',
-          type: 'file',
+          type: ChatFileTypeEnum.file,
           icon: 'common/link'
         },
         'https://example.com/legacy.pdf',
@@ -52,15 +53,14 @@ describe('sanitizeFileSelectValue', () => {
       ])
     ).toEqual([
       {
-        id: 'url-id',
         url: 'https://example.com/file.pdf',
         name: 'https://example.com/file.pdf',
-        type: 'file'
+        type: ChatFileTypeEnum.file
       },
       {
         url: 'https://example.com/legacy.pdf',
         name: 'https://example.com/legacy.pdf',
-        type: 'file'
+        type: ChatFileTypeEnum.file
       }
     ]);
   });
@@ -71,7 +71,7 @@ describe('sanitizeFileSelectValue', () => {
         {
           id: 'uploading',
           name: 'uploading.png',
-          type: 'image',
+          type: ChatFileTypeEnum.image,
           icon: 'data:image/png;base64,abc',
           rawFile: new File(['file'], 'uploading.png'),
           status: 0,
@@ -96,14 +96,14 @@ describe('FileSelector upload state', () => {
       id: 'done',
       key: 'apps/app/chat/done.png',
       name: 'done.png',
-      type: 'image',
+      type: ChatFileTypeEnum.image,
       status: 1,
       process: 100
     };
     const pendingFile: FileSelectorRenderItemType = {
       id: 'pending',
       name: 'pending.html',
-      type: 'file',
+      type: ChatFileTypeEnum.file,
       status: 0,
       process: 80,
       error: 'old error',
@@ -124,23 +124,27 @@ describe('FileSelector upload state', () => {
   it('有 key 或 url 的文件即使保留历史 process，也不应显示上传中', () => {
     expect(
       isFileSelectorUploading({
+        status: 1,
         key: 'apps/app/chat/file.png',
         process: 100
       })
     ).toBe(false);
     expect(
       isFileSelectorUploading({
+        status: 1,
         url: 'https://example.com/file.png',
         process: 100
       })
     ).toBe(false);
     expect(
       isFileSelectorUploading({
+        status: 1,
         process: 30
       })
     ).toBe(true);
     expect(
       isFileSelectorUploading({
+        status: 1,
         error: 'upload failed',
         process: 30
       })
@@ -152,7 +156,7 @@ describe('FileSelector upload state', () => {
       {
         id: 'file-id',
         name: 'file.png',
-        type: 'image',
+        type: ChatFileTypeEnum.image,
         status: 1,
         process: 100
       }
@@ -183,17 +187,60 @@ describe('FileSelector upload state', () => {
     expect(files[0].process).toBeUndefined();
     expect(isFileSelectorUploading(files[0])).toBe(false);
   });
+
+  it('刚选择的本地文件即使还没有 process，也应视为上传中', () => {
+    expect(
+      isFileSelectorUploading({
+        status: 0,
+        rawFile: new File(['file'], 'image.png')
+      })
+    ).toBe(true);
+  });
 });
 
 describe('FileSelector display icon', () => {
   it('图片历史值缺少预览 url 时，使用文件名图标兜底', () => {
     expect(
       getFileSelectorDisplayIcon({
-        type: 'image',
+        type: ChatFileTypeEnum.image,
         name: 'image.png',
         key: 'chat/files/image.png'
       })
     ).toBe('image');
+  });
+
+  it('非图片 URL 文件缺少名称时，使用 URL 推断文件图标', () => {
+    expect(
+      getFileSelectorDisplayIcon({
+        type: ChatFileTypeEnum.file,
+        name: '',
+        url: 'https://example.com/demo.pdf'
+      })
+    ).toBe('file/fill/pdf');
+  });
+});
+
+describe('FileSelector preview url', () => {
+  it('只有 key 但缺少 url 的有效文件需要补预览链接', () => {
+    expect(
+      isFileSelectorPreviewUrlMissing({
+        key: 'apps/app/chat/image.png'
+      })
+    ).toBe(true);
+
+    expect(
+      isFileSelectorPreviewUrlMissing({
+        key: 'apps/app/chat/image.png',
+        url: 'https://signed-url.example.com/image.png'
+      })
+    ).toBe(false);
+
+    expect(
+      isFileSelectorPreviewUrlMissing({
+        key: 'apps/app/chat/image.png',
+        error: 'upload failed'
+      })
+    ).toBe(false);
   });
 });
 
@@ -204,7 +251,7 @@ describe('FileSelector external sync', () => {
         id: 'file-id',
         key: 'apps/app/chat/image.png',
         name: 'image.png',
-        type: 'image' as const
+        type: ChatFileTypeEnum.image
       }
     ];
 

@@ -41,9 +41,8 @@ export const sanitizeFileSelectValue = (
       if (!key && !url) return;
 
       const baseFile = {
-        ...(file.id ? { id: file.id } : {}),
-        ...(file.name ? { name: file.name } : {}),
-        ...(file.type ? { type: file.type } : {})
+        name: file.name || file.key || file.url || '',
+        type: file.type || ChatFileTypeEnum.file
       };
 
       if (key) {
@@ -64,13 +63,24 @@ export const sanitizeFileSelectValue = (
 };
 
 export const isFileSelectorUploading = (
-  file: Pick<FileSelectorRenderItemType, 'key' | 'url' | 'error' | 'process'>
-) => !file.key && !file.url && !file.error && file.process !== undefined;
+  file: Pick<FileSelectorRenderItemType, 'key' | 'url' | 'error' | 'process' | 'status' | 'rawFile'>
+) =>
+  !file.key &&
+  !file.url &&
+  !file.error &&
+  (!!file.rawFile || file.status === 0 || file.process !== undefined);
+
+export const isFileSelectorPreviewUrlMissing = <
+  T extends Pick<FileSelectorRenderItemType, 'key' | 'url' | 'error'>
+>(
+  file: T
+): file is T & { key: string; url?: undefined; error?: undefined } =>
+  !!file.key && !file.url && !file.error;
 
 export const getFileSelectorDisplayIcon = (
   file: Pick<FileSelectorRenderItemType, 'type' | 'url' | 'icon' | 'name' | 'key'>
 ) => {
-  const fallbackIcon = getFileIcon(file.name || file.key);
+  const fallbackIcon = getFileIcon(file.name || file.url || file.key);
 
   if (file.type === ChatFileTypeEnum.image) {
     return file.url || file.icon || fallbackIcon;

@@ -146,6 +146,18 @@ export const UserChatItemFileItemSchema = z.object({
 });
 export type UserChatItemFileItemType = z.infer<typeof UserChatItemFileItemSchema>;
 
+export type ChatFileStoreValue =
+  | {
+      key: string;
+      name: string;
+      type: ChatFileTypeEnum;
+    }
+  | {
+      url: string;
+      name: string;
+      type: ChatFileTypeEnum;
+    };
+
 export const UserChatItemValueItemSchema = z.object({
   planId: z.string().nullish(),
   text: z

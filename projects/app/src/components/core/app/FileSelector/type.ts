@@ -2,19 +2,21 @@ import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type FileSelectorBaseItemType = {
   id?: string;
-  type?: `${ChatFileTypeEnum}`;
+  type?: ChatFileTypeEnum;
   name?: string;
   key?: string;
   url?: string;
 };
 
-export type FileSelectorValueItemType = FileSelectorBaseItemType &
-  ({ key: string; url?: string } | { key?: string; url: string });
+export type FileSelectorValueItemType = {
+  type: ChatFileTypeEnum;
+  name: string;
+} & ({ key: string; url?: never } | { key?: never; url: string });
 
 export type FileSelectorRenderItemType = FileSelectorBaseItemType & {
   id: string;
   rawFile?: File;
-  type: `${ChatFileTypeEnum}`;
+  type: ChatFileTypeEnum;
   name: string;
   icon?: string;
   status?: 0 | 1;

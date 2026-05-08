@@ -37,6 +37,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { normalizeChatFileStoreValues } from './fileStoreValue';
 
 export type Props = {
   chatId: string;
@@ -967,6 +968,13 @@ export const updateInteractiveChat = async ({
           return {
             ...item,
             value: itemValue
+          };
+        }
+
+        if (item.type === FlowNodeInputTypeEnum.fileSelect) {
+          return {
+            ...item,
+            value: normalizeChatFileStoreValues(itemValue)
           };
         }
 
