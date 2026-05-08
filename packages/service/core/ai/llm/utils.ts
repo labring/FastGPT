@@ -12,7 +12,6 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { i18nT } from '../../../../web/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getS3ChatSource } from '../../../common/s3/sources/chat';
-import { isInternalAddress } from '../../../common/system/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
@@ -165,11 +164,7 @@ export const loadRequestMessages = async ({
 
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
-              if (
-                imgUrl.startsWith('/') ||
-                serviceEnv.MULTIPLE_DATA_TO_BASE64 ||
-                (await isInternalAddress(imgUrl))
-              ) {
+              if (imgUrl.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64) {
                 try {
                   const url = await (async () => {
                     if (item.key) {
