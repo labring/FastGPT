@@ -1,7 +1,12 @@
 import type { Readable } from 'node:stream';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import { parsePkg, type ParsedPkgFile, type ToolDetailType } from '@fastgpt-plugin/sdk-client';
-import { MongoMarketplaceTool, MarketplaceToolZodSchema } from '../mongo/models/tool';
+import {
+  parsePkg,
+  type ParsedPkgFile,
+  type ToolDetailType
+} from '@fastgpt/global/sdk/fastgpt-plugin';
+import { MarketplaceToolManifestZodSchema } from '../mongo/models/tool';
+import { pluginRepo } from '../plugin/repo';
 import {
   getPkgDownloadURLByKey,
   getPkgObjectKey,
@@ -51,10 +56,8 @@ const formatPkgParseError = (error: unknown) => {
   if (reason) {
     return typeof reason === 'string'
       ? reason
-      : parseI18nString(
-          reason as { en: string; 'zh-CN'?: string; 'zh-Hant'?: string },
-          'zh-CN'
-        ) || JSON.stringify(reason);
+      : parseI18nString(reason as { en: string; 'zh-CN'?: string; 'zh-Hant'?: string }, 'zh-CN') ||
+          JSON.stringify(reason);
   }
   return error instanceof Error ? error.message : String(error);
 };
@@ -129,7 +132,7 @@ export const uploadMarketplacePkg = async ({
   ]);
 
   const now = new Date();
-  const record = MarketplaceToolZodSchema.parse({
+  const record = MarketplaceToolManifestZodSchema.parse({
     type: 'tool',
     pluginId: tool.pluginId,
     version: tool.version,
@@ -143,26 +146,8 @@ export const uploadMarketplacePkg = async ({
     createTime: now,
     updateTime: now
   });
-  const { createTime, ...recordUpdate } = record;
 
-  await MongoMarketplaceTool.updateOne(
-    {
-      pluginId: record.pluginId,
-      version: record.version
-    },
-    {
-      $set: {
-        ...recordUpdate,
-        updateTime: now
-      },
-      $setOnInsert: {
-        createTime
-      }
-    },
-    {
-      upsert: true
-    }
-  );
+  await pluginRepo.publishToolManifest(record);
 
   await refreshToolList();
 

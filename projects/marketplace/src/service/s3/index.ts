@@ -1,5 +1,6 @@
 import { createStorage, MinioStorageAdapter, type IStorageOptions } from '@fastgpt-sdk/storage';
 import { marketplaceEnv, marketplaceStorageEnv } from '@/env';
+import type { Readable } from 'node:stream';
 
 type StorageClient = ReturnType<typeof createStorage>;
 
@@ -106,6 +107,35 @@ export const getPkgObjectKey = ({ pluginId, version }: { pluginId: string; versi
   return `pkgs/${encodeObjectKeyPart(pluginId)}/${encodeObjectKeyPart(version)}.pkg`;
 };
 
+export const getToolManifestObjectKey = ({
+  pluginId,
+  version
+}: {
+  pluginId: string;
+  version: string;
+}) => {
+  return `marketplace/tools/${encodeObjectKeyPart(pluginId)}/${encodeObjectKeyPart(version)}.json`;
+};
+
+export const getPluginAssetPrefix = ({
+  pluginId,
+  version,
+  etag
+}: {
+  pluginId: string;
+  version: string;
+  etag: string;
+}) => {
+  return [
+    'system',
+    'plugin',
+    'tools',
+    encodeObjectKeyPart(pluginId),
+    encodeObjectKeyPart(version),
+    encodeObjectKeyPart(etag)
+  ].join('/');
+};
+
 export const getPluginAssetObjectKey = ({
   pluginId,
   version,
@@ -121,12 +151,11 @@ export const getPluginAssetObjectKey = ({
     .flatMap((item) => item.split('/'))
     .filter((item) => item && item !== '.' && item !== '..');
   return [
-    'system',
-    'plugin',
-    'tools',
-    encodeObjectKeyPart(pluginId),
-    encodeObjectKeyPart(version),
-    encodeObjectKeyPart(etag),
+    getPluginAssetPrefix({
+      pluginId,
+      version,
+      etag
+    }),
     ...safeFilePath.map(encodeObjectKeyPart)
   ].join('/');
 };
@@ -161,6 +190,42 @@ export const uploadBufferToS3 = async ({
       uploadTime: new Date().toISOString()
     }
   });
+};
+
+const streamToBuffer = async (stream: Readable) => {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+};
+
+export const downloadBufferFromS3 = async (objectKey: string) => {
+  const result = await getPublicStorage().downloadObject({ key: objectKey });
+  return streamToBuffer(result.body);
+};
+
+export const uploadJsonToS3 = async ({
+  objectKey,
+  data
+}: {
+  objectKey: string;
+  data: unknown;
+}) => {
+  const content = JSON.stringify(data);
+  await getPublicStorage().uploadObject({
+    key: objectKey,
+    body: content,
+    contentType: 'application/json; charset=utf-8',
+    contentLength: Buffer.byteLength(content),
+    metadata: {
+      uploadTime: new Date().toISOString()
+    }
+  });
+};
+
+export const deleteObjectsByPrefixFromS3 = async (prefix: string) => {
+  return getPublicStorage().deleteObjectsByPrefix({ prefix });
 };
 
 export const uploadPkgToS3 = async (params: {

@@ -1,11 +1,7 @@
 import type { ToolDetailType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getDownloadCounts } from '../downloadCount';
-
-import {
-  MongoMarketplaceTool,
-  MarketplaceToolZodSchema,
-  type MarketplaceToolSchemaType
-} from '../mongo/models/tool';
+import { compareVersions, pluginRepo } from '../plugin/repo';
+import type { MarketplaceToolManifestSchemaType } from '../mongo/models/tool';
 
 export type MarketplaceToolListDataItem = ToolDetailType & {
   toolId: string;
@@ -22,43 +18,8 @@ declare global {
   var expire: Date;
 }
 
-export const compareVersions = (a: string, b: string) => {
-  const aParts = a.split(/[.-]/).map((item) => Number(item));
-  const bParts = b.split(/[.-]/).map((item) => Number(item));
-  const maxLength = Math.max(aParts.length, bParts.length);
-
-  for (let index = 0; index < maxLength; index++) {
-    const aPart = aParts[index] ?? 0;
-    const bPart = bParts[index] ?? 0;
-    if (Number.isNaN(aPart) || Number.isNaN(bPart)) {
-      return a.localeCompare(b);
-    }
-    if (aPart !== bPart) return aPart - bPart;
-  }
-
-  return 0;
-};
-
-const getLatestToolRecords = (records: MarketplaceToolSchemaType[]) => {
-  const latestRecordMap = new Map<string, MarketplaceToolSchemaType>();
-
-  for (const record of records) {
-    const existing = latestRecordMap.get(record.pluginId);
-    if (!existing || compareVersions(record.version, existing.version) > 0) {
-      latestRecordMap.set(record.pluginId, record);
-    }
-  }
-
-  return Array.from(latestRecordMap.values()).sort((a, b) => a.pluginId.localeCompare(b.pluginId));
-};
-
 export const getToolVersionList = async (toolId?: string) => {
-  const records = await MongoMarketplaceTool.find({
-    type: 'tool',
-    ...(toolId ? { pluginId: toolId } : {})
-  }).lean();
-  const parsedRecords = records.map((record) => MarketplaceToolZodSchema.parse(record));
-  const displayRecords = toolId ? parsedRecords : getLatestToolRecords(parsedRecords);
+  const displayRecords = await pluginRepo.listToolVersionIndexes(toolId);
 
   return displayRecords
     .sort((a, b) => {
@@ -74,7 +35,7 @@ export const getToolVersionList = async (toolId?: string) => {
 };
 
 const getMarketplaceToolFromRecord = (
-  record: MarketplaceToolSchemaType,
+  record: MarketplaceToolManifestSchemaType,
   downloadCount: number
 ): MarketplaceToolListDataItem => {
   const tool = record.tool as ToolDetailType;
@@ -96,7 +57,7 @@ const getMarketplaceToolFromRecord = (
   } as MarketplaceToolListDataItem;
 };
 
-const getMarketplaceChildToolsFromRecord = (record: MarketplaceToolSchemaType) => {
+const getMarketplaceChildToolsFromRecord = (record: MarketplaceToolManifestSchemaType) => {
   const tool = record.tool as ToolDetailType;
 
   return (tool.children ?? []).map((child) => {
@@ -124,7 +85,7 @@ const getMarketplaceChildToolsFromRecord = (record: MarketplaceToolSchemaType) =
   }) as MarketplaceToolListDataItem[];
 };
 
-const getToolListFromMongo = async ({
+const getToolListFromRepo = async ({
   toolId,
   version,
   latestOnly = true
@@ -133,21 +94,17 @@ const getToolListFromMongo = async ({
   version?: string;
   latestOnly?: boolean;
 } = {}) => {
-  const records = await MongoMarketplaceTool.find({
-    type: 'tool',
-    ...(toolId ? { pluginId: toolId } : {}),
-    ...(version ? { version } : {})
-  }).lean();
-  const parsedRecords = records.map((record) => MarketplaceToolZodSchema.parse(record));
+  const parsedRecords = await pluginRepo.listToolManifests({
+    toolId,
+    version,
+    latestOnly
+  });
 
   if (parsedRecords.length === 0) return [];
 
-  const [downloadCount, latestRecords] = await Promise.all([
-    getDownloadCounts(),
-    Promise.resolve(latestOnly ? getLatestToolRecords(parsedRecords) : parsedRecords)
-  ]);
+  const downloadCount = await getDownloadCounts();
 
-  return latestRecords.flatMap((record) => [
+  return parsedRecords.flatMap((record) => [
     getMarketplaceToolFromRecord(record, downloadCount.get(record.pluginId)?.downloadCount ?? 0),
     ...getMarketplaceChildToolsFromRecord(record)
   ]);
@@ -161,14 +118,14 @@ export const getToolList = async ({
   version?: string;
 } = {}) => {
   if (toolId || version) {
-    return getToolListFromMongo({ toolId, version, latestOnly: false });
+    return getToolListFromRepo({ toolId, version, latestOnly: false });
   }
 
   if (!global.toolListData || global.toolListData.length === 0 || global.expire < new Date()) {
     global.expire = new Date(Date.now() + 1000 * 10 * 60); // 10 minutes
-    const mongoTools = await getToolListFromMongo();
-    if (mongoTools.length > 0) {
-      global.toolListData = mongoTools;
+    const tools = await getToolListFromRepo();
+    if (tools.length > 0) {
+      global.toolListData = tools;
       return global.toolListData;
     }
     global.toolListData = [];
@@ -179,4 +136,5 @@ export const getToolList = async ({
 export const refreshToolList = async () => {
   global.toolListData = [];
   global.expire = new Date(0);
+  pluginRepo.invalidateToolCache();
 };

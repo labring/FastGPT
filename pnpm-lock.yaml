@@ -383,8 +383,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: file:/Volumes/Code/fastgpt-plugin/sdk/client
-        version: file:../fastgpt-plugin/sdk/client(zod@4.1.12)
+        specifier: 0.0.1-alpha.2
+        version: 0.0.1-alpha.2(zod@4.1.12)
       '@fastgpt-sdk/plugin':
         specifier: 0.6.1
         version: 0.6.1
@@ -1183,9 +1183,9 @@ importers:
 
   pro/sso:
     dependencies:
-      '@fastgpt-sdk/otel':
+      '@fastgpt-sdk/logger':
         specifier: workspace:*
-        version: link:../../sdk/otel
+        version: link:../../sdk/logger
       '@node-saml/node-saml':
         specifier: ^5.1.0
         version: 5.1.0
@@ -1585,12 +1585,15 @@ importers:
       '@chakra-ui/system':
         specifier: 'catalog:'
         version: 2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1)
-      '@fastgpt-plugin/sdk-client':
-        specifier: file:/Volumes/Code/fastgpt-plugin/sdk/client
-        version: file:../fastgpt-plugin/sdk/client(zod@4.1.12)
+      '@fastgpt-sdk/logger':
+        specifier: workspace:*
+        version: link:../../sdk/logger
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
+      '@fastgpt-sdk/storage':
+        specifier: workspace:*
+        version: link:../../sdk/storage
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -3593,13 +3596,13 @@ packages:
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
-  '@fastgpt-sdk/plugin@0.6.1':
-    resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
-  '@fastgpt-plugin/sdk-client@file:../fastgpt-plugin/sdk/client':
-    resolution: {directory: ../fastgpt-plugin/sdk/client, type: directory}
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.2':
+    resolution: {integrity: sha512-QUcIdtF32HlnzZbHpQLikol/x7BH6mqEuGEOt26y0PyYt1mJM4IiOOw7tiDHctDjuFdO4FmFjAITL85k+9jyTQ==}
     peerDependencies:
       zod: ^4
 
+  '@fastgpt-sdk/plugin@0.6.1':
+    resolution: {integrity: sha512-2sut2mgiZmrgJl8A5XPas5mYYyDs9Sdl2E5xF9CmBJuwblSrsdibbxe1lv2saLX5z6vHQ+C/aGb/JjwOGBIocA==}
 
   '@fidm/asn1@1.0.4':
     resolution: {integrity: sha512-esd1jyNvRb2HVaQGq2Gg8Z0kbQPXzV9Tq5Z14KNIov6KfFD6PTaRIO8UpcsYiTNzOqJpmyzWgVTrUwFV3UF4TQ==}
@@ -17513,9 +17516,10 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
-  '@fastgpt-plugin/sdk-client@file:../fastgpt-plugin/sdk/client(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.2(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
+
   '@fastgpt-sdk/plugin@0.6.1':
     dependencies:
       '@fortaine/fetch-event-source': 3.0.6
@@ -23615,6 +23619,7 @@ snapshots:
       '@next/eslint-plugin-next': 16.2.6
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
+<<<<<<< HEAD
       eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3))(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.7.0))
@@ -23624,6 +23629,10 @@ snapshots:
       typescript-eslint: 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
       eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+=======
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
+>>>>>>> 83b459d89 (chore(marketplace): use manifest)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.4(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.2.0(eslint@8.57.1)
@@ -23667,14 +23676,18 @@ snapshots:
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
+<<<<<<< HEAD
       eslint: 9.39.4(jiti@1.21.7)
+=======
+      eslint: 8.57.1
+>>>>>>> 83b459d89 (chore(marketplace): use manifest)
       get-tsconfig: 4.14.0
       is-bun-module: 1.3.0
       oxc-resolver: 5.0.0
       stable-hash: 0.0.5
       tinyglobby: 0.2.16
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23700,7 +23713,7 @@ snapshots:
       '@typescript-eslint/parser': 8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@6.0.3)
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23725,7 +23738,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.59.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@8.57.1)
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3

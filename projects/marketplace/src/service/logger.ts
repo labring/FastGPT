@@ -1,5 +1,5 @@
 import { configureLoggerFromEnv, getLogger } from '@fastgpt-sdk/otel/logger';
-import { env } from '../../env';
+import { marketplaceEnv } from '@/env';
 
 export const LogCategories = {
   SYSTEM: ['system'] as const,
@@ -14,7 +14,7 @@ export const LogCategories = {
 
 export async function configureLogger() {
   await configureLoggerFromEnv({
-    env,
+    env: marketplaceEnv,
     defaultCategory: LogCategories.SYSTEM,
     defaultServiceName: 'fastgpt-marketplace',
     sensitiveProperties: ['fastgpt']

@@ -7,7 +7,7 @@ import {
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import type { InvokeUserInfoResponseType } from '@fastgpt/global/openapi/plugin/invoke';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { env } from '../../env';
+import { serviceEnv } from '../../env';
 import { getGroupsByTmbId } from '../permission/memberGroup/controllers';
 import { getOrgsByTmbId } from '../permission/org/controllers';
 import { MongoOrgModel } from '../permission/org/orgSchema';
@@ -21,7 +21,7 @@ const INVOKE_TOKEN_EXPIRES_IN = 60 * 60;
 /** 反向调用处理器 */
 export class InvokeProcessor {
   private session: InvokeSessionType;
-  static jwtSecret = env.INVOKE_TOKEN_SECRET;
+  static jwtSecret = serviceEnv.INVOKE_TOKEN_SECRET;
 
   constructor(options: InvokeSessionType) {
     this.session = options;

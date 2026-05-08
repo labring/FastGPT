@@ -2,6 +2,7 @@ import {
   getInitializationErrorLog,
   runInitializationStep
 } from '@fastgpt/service/common/system/initError';
+import { marketplaceEnv } from '@/env';
 
 export async function register() {
   try {
@@ -43,8 +44,8 @@ export async function register() {
     }
   } catch (error) {
     const logPayload = {
-      nextRuntime: env.NEXT_RUNTIME,
-      nodeEnv: env.NODE_ENV,
+      nextRuntime: marketplaceEnv.NEXT_RUNTIME,
+      nodeEnv: marketplaceEnv.NODE_ENV,
       ...getInitializationErrorLog(error)
     };
 

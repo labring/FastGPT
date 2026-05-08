@@ -24,6 +24,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { hasAgentSandboxConfig, serviceEnv } from '@fastgpt/service/env';
 import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
+import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const defaultOpenSourceLoginGuideDocUrl =
