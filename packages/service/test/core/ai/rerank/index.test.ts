@@ -264,6 +264,83 @@ describe('reRankRecall', () => {
     expect(url.endsWith('/rerank')).toBe(true);
   });
 
+  it('合并 defaultConfig 到请求体，透传 top_k 参数', async () => {
+    mockAxiosPost.mockResolvedValueOnce({
+      id: 'r1',
+      results: [{ index: 0, relevance_score: 0.8 }],
+      meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
+    });
+
+    const result = await reRankRecall({
+      model: {
+        ...mockModel,
+        defaultConfig: {
+          top_k: 1
+        }
+      },
+      query: 'q',
+      documents: [
+        { id: 'doc1', text: 'hello' },
+        { id: 'doc2', text: 'world' }
+      ]
+    });
+
+    expect(mockAxiosPost).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        model: mockModel.model,
+        query: 'q',
+        documents: ['hello', 'world'],
+        top_k: 1
+      }),
+      expect.any(Object)
+    );
+    expect(result.results).toEqual([{ id: 'doc1', score: 0.8 }]);
+  });
+
+  it('透传 topn，不在本地做截断', async () => {
+    mockAxiosPost.mockResolvedValueOnce({
+      id: 'r1',
+      results: [
+        { index: 2, relevance_score: 0.9 },
+        { index: 1, relevance_score: 0.8 },
+        { index: 0, relevance_score: 0.7 }
+      ],
+      meta: { tokens: { input_tokens: 5, output_tokens: 0 } }
+    });
+
+    const result = await reRankRecall({
+      model: {
+        ...mockModel,
+        defaultConfig: {
+          topn: 1
+        }
+      },
+      query: 'q',
+      documents: [
+        { id: 'doc1', text: 'hello' },
+        { id: 'doc2', text: 'world' },
+        { id: 'doc3', text: 'fastgpt' }
+      ]
+    });
+
+    expect(mockAxiosPost).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        model: mockModel.model,
+        query: 'q',
+        documents: ['hello', 'world', 'fastgpt'],
+        topn: 1
+      }),
+      expect.any(Object)
+    );
+    expect(result.results).toEqual([
+      { id: 'doc3', score: 0.9 },
+      { id: 'doc2', score: 0.8 },
+      { id: 'doc1', score: 0.7 }
+    ]);
+  });
+
   // ── 异常场景 ──────────────────────────────────────────────────────────────
 
   it('model 为 undefined 时 reject', async () => {
