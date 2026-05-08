@@ -26,7 +26,7 @@ import type {
 } from '../template/system/interactive/type';
 import { SearchDataResponseItemSchema } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
-import { type UserChatItemValueItemType } from '../../chat/type';
+import { type ChatFileStoreValue, type UserChatItemValueItemType } from '../../chat/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
@@ -46,6 +46,16 @@ export type NodeEdgeGroupsMap = Map<string, NodeEdgeGroups>;
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
+};
+
+export type WorkflowVariableStateLike = {
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => Promise<unknown>;
+  getStoreValue: (key: string) => unknown;
+  getFileStoreValueByRuntimeUrl: (url: string) => ChatFileStoreValue | undefined;
+  toRuntimeRecord: () => Record<string, unknown>;
+  toStoreRecord: () => Record<string, unknown>;
+  clone: () => WorkflowVariableStateLike;
 };
 
 /* workflow props */
@@ -78,7 +88,7 @@ export type ChatDispatchProps = {
   chatId: string;
   responseChatItemId?: string;
   histories: ChatItemMiniType[];
-  variables: Record<string, any>; // global variable
+  variableState: WorkflowVariableStateLike; // global variable state
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchemaType['chatConfig'];
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
@@ -360,7 +370,6 @@ export type DispatchNodeResultType<T = {}, ERR = { [NodeOutputKeyEnum.errorText]
   [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // Assistant response(Store to db)
   [DispatchNodeResponseKeyEnum.rewriteHistories]?: ChatItemMiniType[];
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
-  [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.interactive]?: InteractiveNodeResponseType;
   [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];

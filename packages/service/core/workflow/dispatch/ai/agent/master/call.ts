@@ -80,7 +80,6 @@ export const masterCall = async ({
     runningAppInfo,
     chatId,
     uid,
-    variables,
     externalProvider,
     stream,
     workflowStreamResponse,

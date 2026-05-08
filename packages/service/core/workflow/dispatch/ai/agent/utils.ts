@@ -111,7 +111,7 @@ export type ToolDispatchContext = Pick<
   | 'runningAppInfo'
   | 'chatId'
   | 'uid'
-  | 'variables'
+  | 'variableState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
@@ -144,7 +144,7 @@ export const getExecuteTool = ({
   runningAppInfo,
   chatId,
   uid,
-  variables,
+  variableState,
   externalProvider,
   stream,
   streamResponseFn,
@@ -330,7 +330,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             chatId,
             uid,
-            variables,
+            variableState,
             workflowStreamResponse: streamResponseFn
           });
 
@@ -356,12 +356,14 @@ export const getExecuteTool = ({
             mode,
             timezone,
             externalProvider,
+            chatId,
+            uid,
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
             maxRunTimes,
             workflowDispatchDeep,
-            variables
+            variableState
           });
 
           return {
@@ -384,12 +386,14 @@ export const getExecuteTool = ({
             mode,
             timezone,
             externalProvider,
+            chatId,
+            uid,
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
             maxRunTimes,
             workflowDispatchDeep,
-            variables
+            variableState
           });
 
           return {

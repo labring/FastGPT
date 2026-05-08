@@ -7,7 +7,10 @@ import {
   formatVariableValByType,
   getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  RuntimeNodeItemType,
+  WorkflowVariableStateLike
+} from '@fastgpt/global/core/workflow/runtime/type';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -54,13 +57,13 @@ export const extractFinishedNodeIds = (flowResponses: ChatHistoryItemResType[]):
 export const readCustomOutputSnapshot = ({
   customOutputInputs,
   runtimeNodes,
-  variables,
+  variableState,
   finishedNodeIds,
   childrenNodeIdList
 }: {
   customOutputInputs: FlowNodeInputItemType[];
   runtimeNodes: RuntimeNodeItemType[];
-  variables: Record<string, any>;
+  variableState: WorkflowVariableStateLike;
   finishedNodeIds?: Set<string>;
   childrenNodeIdList?: string[];
 }): Record<string, any> => {
@@ -98,7 +101,7 @@ export const readCustomOutputSnapshot = ({
     const resolved = getReferenceVariableValue({
       value: refValue,
       nodesMap,
-      variables
+      variables: variableState.toRuntimeRecord()
     });
     snapshot[item.key] = formatVariableValByType(resolved, item.valueType);
   }

@@ -2,13 +2,11 @@ import { PaginationResponseSchema } from '../../../api';
 import { PaginationSchema } from '../../../api';
 import {
   HelperBotChatItemSiteSchema,
-  type HelperBotChatItemSiteType,
   HelperBotTypeEnum,
   HelperBotTypeEnumSchema
 } from '../../../../core/chat/helperBot/type';
 import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
 import { z } from 'zod';
-import type { PaginationResponse } from '../../../api';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 
 // 分页获取记录

@@ -3,7 +3,8 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   type RuntimeNodeItemType,
-  type DispatchNodeResultType
+  type DispatchNodeResultType,
+  type WorkflowVariableStateLike
 } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   IfElseResultEnum,
@@ -104,16 +105,17 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
 function getResult(
   condition: IfElseConditionType,
   list: ConditionListItemType[],
-  variables: Record<string, any>,
+  variableState: WorkflowVariableStateLike,
   runtimeNodesMap: Map<string, RuntimeNodeItemType>
 ) {
+  const runtimeVariables = variableState.toRuntimeRecord();
   const listResult = list.map((item) => {
     const { variable, condition: variableCondition, value, valueType } = item;
     if (!variableCondition) return;
 
     const conditionLeftValue = getReferenceVariableValue({
       value: variable,
-      variables,
+      variables: runtimeVariables,
       nodesMap: runtimeNodesMap
     });
 
@@ -121,7 +123,7 @@ function getResult(
       valueType === 'reference'
         ? getReferenceVariableValue({
             value: value as ReferenceItemValueType,
-            variables,
+            variables: runtimeVariables,
             nodesMap: runtimeNodesMap
           })
         : value;
@@ -136,7 +138,7 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   const {
     params,
     runtimeNodesMap,
-    variables,
+    variableState,
     node: { nodeId }
   } = props;
   const { ifElseList } = params;
@@ -144,7 +146,7 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   let res = IfElseResultEnum.ELSE as string;
   for (let i = 0; i < ifElseList.length; i++) {
     const item = ifElseList[i];
-    const result = getResult(item.condition, item.list, variables, runtimeNodesMap);
+    const result = getResult(item.condition, item.list, variableState, runtimeNodesMap);
     if (result) {
       res = getElseIFLabel(i);
       break;

@@ -6,7 +6,7 @@ import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { getS3ChatSource } from '../../../../common/s3/sources/chat';
+import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
 
 export type PluginInputProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -16,11 +16,24 @@ export type PluginInputResponse = DispatchNodeResultType<{
   [key: string]: any;
 }>;
 
+type PluginFileItem = {
+  type: ChatFileTypeEnum;
+  key?: string;
+  url?: string;
+};
+
+const isPluginFileItem = (item: unknown): item is PluginFileItem =>
+  !!item &&
+  typeof item === 'object' &&
+  ((item as PluginFileItem).type === ChatFileTypeEnum.file ||
+    (item as PluginFileItem).type === ChatFileTypeEnum.image);
+
 export const dispatchPluginInput = async (
   props: PluginInputProps
 ): Promise<PluginInputResponse> => {
   const { params, query } = props;
   const { files } = chatValue2RuntimePrompt(query);
+  const getPreviewUrl = createChatFilePreviewUrlGetter({ expiredHours: 1 });
 
   /*
     对 params 中文件类型数据进行处理
@@ -30,29 +43,22 @@ export const dispatchPluginInput = async (
 
     TODO: 需要 filter max files
   */
-  for (const key in params) {
-    const val = params[key];
-    if (
-      Array.isArray(val) &&
-      val.every(
-        (item) => item.type === ChatFileTypeEnum.file || item.type === ChatFileTypeEnum.image
-      )
-    ) {
-      // 为文件对象重新签发 URL（如果有 key 但没有 url）
-      for (let i = 0; i < val.length; i++) {
-        const fileItem = val[i];
-        if (fileItem.key && !fileItem.url) {
-          const { url } = await getS3ChatSource().createGetChatFileURL({
-            key: fileItem.key,
-            external: true,
-            expiredHours: 1
-          });
-          val[i].url = url;
-        }
+  await Promise.all(
+    Object.keys(params).map(async (key) => {
+      const val = params[key];
+      if (Array.isArray(val) && val.every(isPluginFileItem)) {
+        // 为文件对象重新签发 URL（如果有 key 但没有 url）
+        await Promise.all(
+          val.map(async (fileItem) => {
+            if (fileItem.key && !fileItem.url) {
+              fileItem.url = await getPreviewUrl(fileItem.key);
+            }
+          })
+        );
+        params[key] = val.map((item) => item.url);
       }
-      params[key] = val.map((item) => item.url);
-    }
-  }
+    })
+  );
 
   return {
     data: {

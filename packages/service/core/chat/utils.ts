@@ -1,70 +1,125 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { getS3ChatSource } from '../../common/s3/sources/chat';
+import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import { createChatFilePreviewUrlGetter } from '../../common/s3/sources/chat';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { cloneDeep } from 'lodash';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+
+type ChatFileValueWithPreview = Partial<UserChatItemFileItemType>;
+type RuntimeValue = string | number | boolean | object | null | undefined;
+type RuntimeVariableMap = Record<string, RuntimeValue>;
+type InteractiveWithChildrenResponse = WorkflowInteractiveResponseType & {
+  params: {
+    childrenResponse?: WorkflowInteractiveResponseType;
+  };
+};
+
+const formatFileValueList = (value: RuntimeValue): ChatFileValueWithPreview[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(
+    (file): file is ChatFileValueWithPreview => !!file && typeof file === 'object'
+  );
+};
+
+const hasChildrenResponse = (
+  interactive: WorkflowInteractiveResponseType
+): interactive is InteractiveWithChildrenResponse =>
+  !!interactive.params &&
+  'childrenResponse' in interactive.params &&
+  !!interactive.params.childrenResponse;
 
 export const addPreviewUrlToChatItems = async (
   histories: ChatItemMiniType[],
   type: 'chatFlow' | 'workflowTool'
 ) => {
-  async function addToChatflow(item: ChatItemMiniType) {
-    for await (const value of item.value) {
-      if ('file' in value && value.file && value.file.key) {
-        const { url } = await s3ChatSource.createGetChatFileURL({
-          key: value.file.key,
-          external: true
-        });
-        value.file.url = url;
-      }
+  const getPreviewUrl = createChatFilePreviewUrlGetter();
+
+  async function addPreviewUrlToFileValue(files: ChatFileValueWithPreview[]) {
+    await Promise.all(
+      files.map(async (file) => {
+        if (!file || typeof file !== 'object') return;
+
+        if (!file.key) return;
+
+        file.url = await getPreviewUrl(file.key);
+      })
+    );
+  }
+
+  async function addToInteractive(interactive: WorkflowInteractiveResponseType) {
+    if (
+      (interactive.type === 'userInput' || interactive.type === 'agentPlanAskUserForm') &&
+      Array.isArray(interactive.params?.inputForm)
+    ) {
+      await Promise.all(
+        interactive.params.inputForm.map(async (input) => {
+          if (input.type === FlowNodeInputTypeEnum.fileSelect) {
+            const files = formatFileValueList(input.value);
+            await addPreviewUrlToFileValue(files);
+          }
+        })
+      );
     }
+
+    if (hasChildrenResponse(interactive)) {
+      await addToInteractive(interactive.params.childrenResponse);
+    }
+  }
+
+  async function addToChatflow(item: ChatItemMiniType) {
+    await Promise.all(
+      item.value.map(async (value) => {
+        if ('file' in value && value.file && value.file.key) {
+          await addPreviewUrlToFileValue([value.file]);
+        }
+
+        if ('interactive' in value && value.interactive) {
+          await addToInteractive(value.interactive);
+        }
+      })
+    );
   }
 
   async function addToWorkflowTool(item: ChatItemMiniType) {
     if (item.obj !== ChatRoleEnum.Human || !Array.isArray(item.value)) return;
 
-    for (let j = 0; j < item.value.length; j++) {
-      const value = item.value[j];
-      if (!('text' in value)) continue;
-      const inputValueString = value.text?.content || '';
-      const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
+    await Promise.all(
+      item.value.map(async (value, index) => {
+        if (!('text' in value)) return;
+        const inputValueString = value.text?.content || '';
+        const parsedInputValue = JSON.parse(inputValueString) as FlowNodeInputItemType[];
 
-      for (const input of parsedInputValue) {
-        if (
-          input.renderTypeList[0] !== FlowNodeInputTypeEnum.fileSelect ||
-          !Array.isArray(input.value)
-        )
-          continue;
+        await Promise.all(
+          parsedInputValue.map(async (input) => {
+            if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect)) {
+              return;
+            }
+            const files = formatFileValueList(input.value);
+            await addPreviewUrlToFileValue(files);
+          })
+        );
 
-        for (const file of input.value) {
-          if (!file.key) continue;
-          const { url } = await getS3ChatSource().createGetChatFileURL({
-            key: file.key,
-            external: true
-          });
-          file.url = url;
-        }
-      }
-
-      item.value[j].text = {
-        ...value.text,
-        content: JSON.stringify(parsedInputValue)
-      };
-    }
+        item.value[index].text = {
+          ...value.text,
+          content: JSON.stringify(parsedInputValue)
+        };
+      })
+    );
   }
 
   // Presign file urls
-  const s3ChatSource = getS3ChatSource();
-  for await (const item of histories) {
-    if (type === 'chatFlow') {
-      await addToChatflow(item);
-    } else if (type === 'workflowTool') {
-      await addToWorkflowTool(item);
-    }
-  }
+  await Promise.all(
+    histories.map(async (item) => {
+      if (type === 'chatFlow') {
+        await addToChatflow(item);
+      } else if (type === 'workflowTool') {
+        await addToWorkflowTool(item);
+      }
+    })
+  );
 };
 
 // Presign variables file urls
@@ -72,33 +127,30 @@ export const presignVariablesFileUrls = async ({
   variables,
   variableConfig
 }: {
-  variables?: Record<string, any>;
+  variables?: RuntimeVariableMap;
   variableConfig?: VariableItemType[];
 }) => {
   if (!variables || !variableConfig) return variables;
 
-  const cloneVars = cloneDeep(variables);
+  const cloneVars: RuntimeVariableMap = { ...variables };
+  const getPreviewUrl = createChatFilePreviewUrlGetter();
+
   await Promise.all(
     variableConfig.map(async (item) => {
       if (item.type === VariableInputEnum.file) {
-        const val = cloneVars[item.key];
-        if (Array.isArray(val)) {
-          cloneVars[item.key] = await Promise.all(
-            val.map(async (item) => {
-              if (!item.key) return item;
+        const files = formatFileValueList(variables[item.key]);
+        cloneVars[item.key] = await Promise.all(
+          files.map(async (file) => {
+            if (!file.key) {
+              return file;
+            }
 
-              const { url } = await getS3ChatSource().createGetChatFileURL({
-                key: item.key,
-                external: true
-              });
-
-              return {
-                ...item,
-                url
-              };
-            })
-          ).then((urls) => urls.filter(Boolean));
-        }
+            return {
+              ...file,
+              url: await getPreviewUrl(file.key)
+            };
+          })
+        ).then((urls) => urls.filter(Boolean));
       }
     })
   );

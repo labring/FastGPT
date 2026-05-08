@@ -48,10 +48,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     params,
     runningUserInfo,
     runningAppInfo,
-    variables,
+    variableState,
     workflowStreamResponse,
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
+  const cTime = String(variableState.get('cTime') ?? '');
 
   const {
     uid: uId,
@@ -101,7 +102,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         inputs,
         systemVar: {
           user: {
-            id: variables.userId,
+            id: props.uid,
             username: runningUserInfo.username,
             contact: runningUserInfo.contact,
             membername: runningUserInfo.memberName,
@@ -118,7 +119,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             version: version || tool.versionList?.[0]?.value || '',
             prefix: getS3ChatSource().getToolFilePrefix({ appId, chatId, uId })
           },
-          time: variables.cTime
+          time: cTime
         },
         onMessage: ({ type, content }) => {
           if (workflowStreamResponse && content) {

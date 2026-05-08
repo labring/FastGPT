@@ -45,6 +45,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
 
     // get app and history
     const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+    const systemConfigNode = getGuideModule(nodes);
+    const appChatConfig = getAppChatConfig({
+      chatConfig,
+      systemConfigNode,
+      storeVariables: chat?.variableList,
+      storeWelcomeText: chat?.welcomeText,
+      isPublicFetch: false
+    });
     const pluginInputs =
       chat?.pluginInputs ??
       nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
@@ -52,7 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
 
     const variables = await presignVariablesFileUrls({
       variables: chat?.variables,
-      variableConfig: chat?.variableList
+      variableConfig: appChatConfig.variables
     });
 
     return {
@@ -64,13 +72,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       chatGenerateStatus: chat?.chatGenerateStatus,
       hasBeenRead: chat?.hasBeenRead,
       app: {
-        chatConfig: getAppChatConfig({
-          chatConfig,
-          systemConfigNode: getGuideModule(nodes),
-          storeVariables: chat?.variableList,
-          storeWelcomeText: chat?.welcomeText,
-          isPublicFetch: false
-        }),
+        chatConfig: appChatConfig,
         chatModels: getChatModelNameListByModules(nodes),
         name: app.name,
         avatar: app.avatar,

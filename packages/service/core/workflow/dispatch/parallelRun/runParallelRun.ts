@@ -9,7 +9,6 @@ import {
 
 import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
-import { cloneDeep } from 'lodash';
 import {
   clampParallelConcurrency,
   clampParallelRetryTimes,
@@ -84,7 +83,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         try {
           const response = await runWorkflow({
             ...props,
-            variables: cloneDeep(props.variables),
+            variableState: props.variableState.clone(),
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
           });

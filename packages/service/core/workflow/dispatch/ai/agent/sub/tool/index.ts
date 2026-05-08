@@ -43,7 +43,7 @@ export type Props = {
   runningAppInfo: ChatDispatchProps['runningAppInfo'];
   chatId: ChatDispatchProps['chatId'];
   uid: ChatDispatchProps['uid'];
-  variables: ChatDispatchProps['variables'];
+  variableState: ChatDispatchProps['variableState'];
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
 
@@ -54,7 +54,7 @@ export const dispatchTool = async ({
   runningAppInfo,
   chatId,
   uid,
-  variables,
+  variableState,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
   const getNodeResponse = ({
@@ -115,7 +115,7 @@ export const dispatchTool = async ({
         inputs,
         systemVar: {
           user: {
-            id: variables.userId,
+            id: uid,
             username: runningUserInfo.username,
             contact: runningUserInfo.contact,
             membername: runningUserInfo.memberName,
@@ -136,7 +136,7 @@ export const dispatchTool = async ({
               uId: uid
             })
           },
-          time: variables.cTime
+          time: String(variableState.get('cTime') ?? '')
         },
         onMessage: ({ type, content }) => {
           if (workflowStreamResponse && content) {

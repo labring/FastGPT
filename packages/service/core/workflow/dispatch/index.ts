@@ -44,12 +44,8 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { getLogger, LogCategories } from '../../../common/logger';
 import { surrenderProcess } from '../../../common/system/tools';
 import type { DispatchFlowResponse, WorkflowDebugResponse } from './type';
-import {
-  rewriteRuntimeWorkFlow,
-  runtimeSystemVar2StoreType,
-  filterOrphanEdges,
-  getSystemVariables
-} from './utils';
+import { rewriteRuntimeWorkFlow, filterOrphanEdges } from './utils';
+import { WorkflowVariableState } from './utils/variables';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
@@ -57,7 +53,7 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -72,8 +68,9 @@ const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
 type Props = Omit<
   ChatDispatchProps,
-  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider'
+  'checkIsStopping' | 'workflowDispatchDeep' | 'timezone' | 'externalProvider' | 'variableState'
 > & {
+  variables: Record<string, any>;
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
@@ -188,6 +185,8 @@ export async function dispatchWorkFlow({
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
+  const getPreviewUrl = createChatFilePreviewUrlGetter();
+
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {
@@ -206,15 +205,11 @@ export async function dispatchWorkFlow({
       return usageId;
     })(),
     // Add preview url to chat items
-    await addPreviewUrlToChatItems(histories, 'chatFlow'),
+    addPreviewUrlToChatItems(histories, 'chatFlow'),
     // Add preview url to query
     ...query.map(async (item) => {
       if (!item.file?.key) return;
-      const { url } = await getS3ChatSource().createGetChatFileURL({
-        key: item.file.key,
-        external: true
-      });
-      item.file.url = url;
+      item.file.url = await getPreviewUrl(item.file.key);
     }),
     // Remove stopping sign
     delAgentRuntimeStopSign({
@@ -252,20 +247,17 @@ export async function dispatchWorkFlow({
     }
   }
 
-  // Get default variables
-  const defaultVariables = {
-    ...externalProvider.externalWorkflowVariables,
-    ...(await getSystemVariables({
-      runningAppInfo: runningAppInfo,
-      chatId: chatId,
-      responseChatItemId: data.responseChatItemId,
-      histories: histories,
-      uid: data.uid,
-      chatConfig: data.chatConfig,
-      variables: data.variables,
-      timezone: timezone
-    }))
-  };
+  const variableState = await WorkflowVariableState.create({
+    timezone,
+    runningAppInfo,
+    uid: data.uid,
+    chatId,
+    responseChatItemId: data.responseChatItemId,
+    histories,
+    variablesConfig: data.chatConfig?.variables,
+    inputVariables: data.variables,
+    externalVariables: externalProvider.externalWorkflowVariables
+  });
 
   // Stop sign(没有 apiVersion，说明不会有暂停)
   let stopping = false;
@@ -309,7 +301,7 @@ export async function dispatchWorkFlow({
           histories,
           timezone,
           externalProvider,
-          variables: defaultVariables,
+          variableState,
           workflowDispatchDeep: 0,
           usageId: newUsageId,
           concatUsage
@@ -838,6 +830,7 @@ export class WorkflowQueue {
             }
           : {};
 
+        const runtimeVariables = this.data.variableState.toRuntimeRecord();
         node.inputs.forEach((input) => {
           // Special input, not format
           if (input.key === dynamicInput?.key) return;
@@ -856,14 +849,14 @@ export class WorkflowQueue {
           let value = replaceEditorVariable({
             text: input.value,
             nodesMap: this.runtimeNodesMap,
-            variables: this.data.variables
+            variables: runtimeVariables
           });
 
           // replace reference variables
           value = getReferenceVariableValue({
             value,
             nodesMap: this.runtimeNodesMap,
-            variables: this.data.variables
+            variables: runtimeVariables
           });
 
           // Dynamic input is stored in the dynamic key
@@ -897,7 +890,6 @@ export class WorkflowQueue {
         lastInteractive: this.data.lastInteractive?.entryNodeIds?.includes(node.nodeId)
           ? this.data.lastInteractive
           : undefined,
-        variables: this.data.variables,
         histories: this.data.histories,
         retainDatasetCite: this.data.retainDatasetCite,
         node,
@@ -1033,14 +1025,6 @@ export class WorkflowQueue {
           if (dispatchRes.data?.[item.key] !== undefined) return;
           dispatchRes.data![item.key] = valueTypeFormat(item.defaultValue, item.valueType);
         });
-      }
-
-      // Update new variables
-      if (dispatchRes[DispatchNodeResponseKeyEnum.newVariables]) {
-        this.data.variables = {
-          ...this.data.variables,
-          ...dispatchRes[DispatchNodeResponseKeyEnum.newVariables]
-        };
       }
 
       // Error
@@ -1519,11 +1503,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
-        variables: data.variables,
-        removeObj: data.externalProvider.externalWorkflowVariables,
-        userVariablesConfigs: data.chatConfig?.variables
-      }),
+      [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
       durationSeconds: 0
     };
   }
@@ -1639,11 +1619,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               workflowQueue.chatAssistantResponse
             ),
             [DispatchNodeResponseKeyEnum.toolResponses]: workflowQueue.toolRunResponse,
-            [DispatchNodeResponseKeyEnum.newVariables]: runtimeSystemVar2StoreType({
-              variables: data.variables,
-              removeObj: data.externalProvider.externalWorkflowVariables,
-              userVariablesConfigs: data.chatConfig?.variables
-            }),
+            [DispatchNodeResponseKeyEnum.newVariables]: data.variableState.toStoreRecord(),
             [DispatchNodeResponseKeyEnum.memories]:
               Object.keys(workflowQueue.system_memories).length > 0
                 ? workflowQueue.system_memories

@@ -12,11 +12,9 @@ import { type UseFieldArrayReturn } from 'react-hook-form';
 import type { ChatBoxInputFormType, UserInputFileItemType } from '../../ChatContainer/ChatBox/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
-import { getHelperBotFilePresign, getHelperBotFilePreview } from '../api';
+import { getHelperBotFilePresign } from '../api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 
@@ -177,7 +175,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const fileIndex = fileList.findIndex((item) => item.id === file.id)!;
 
           // Get Upload Post Presigned URL
-          const { url, key, headers, maxSize } = await getHelperBotFilePresign({
+          const { url, key, headers, maxSize, previewUrl } = await getHelperBotFilePresign({
             type,
             chatId,
             filename: copyFile.rawFile.name
@@ -196,10 +194,6 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
             },
             t,
             maxSize
-          });
-
-          const previewUrl = await getHelperBotFilePreview({
-            key: key
           });
 
           // Update file url and key

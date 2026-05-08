@@ -891,7 +891,6 @@ describe('pushChatRecords', () => {
         chatId: props.chatId,
         obj: ChatRoleEnum.AI
       });
-      console.log(chatItem?.value, 1212);
       if (chatItem) {
         if (chatItem.obj === ChatRoleEnum.AI) {
           const lastValue = chatItem.value[chatItem.value.length - 1];
@@ -995,6 +994,133 @@ describe('pushChatRecords', () => {
           throw new Error('chatItem does not have value');
         }
       }
+    });
+
+    it('should sanitize fileSelect form value before storing interactive history', async () => {
+      await MongoChatItem.create({
+        chatId: 'test-chat-id',
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        appId: testAppId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'data-id-1',
+        value: [
+          {
+            interactive: {
+              type: 'userInput',
+              params: {
+                submitted: false,
+                inputForm: [
+                  {
+                    key: 'upload',
+                    type: FlowNodeInputTypeEnum.fileSelect,
+                    label: 'Upload',
+                    value: []
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      });
+
+      const props = createMockProps(
+        {
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                text: {
+                  content: JSON.stringify({
+                    upload: [
+                      {
+                        id: 'runtime-id',
+                        key: 'chat/files/invoice.png',
+                        url: 'https://preview.example.com/invoice.png',
+                        name: 'invoice.png',
+                        type: ChatFileTypeEnum.image,
+                        icon: 'https://preview.example.com/invoice.png',
+                        status: 'done',
+                        process: 100,
+                        error: 'should not persist'
+                      },
+                      {
+                        id: 'external-id',
+                        url: 'https://external.example.com/report.pdf',
+                        name: 'report.pdf',
+                        type: ChatFileTypeEnum.file,
+                        status: 'done'
+                      },
+                      {
+                        url: 'data:image/png;base64,AAAA',
+                        name: 'inline.png',
+                        type: ChatFileTypeEnum.image
+                      }
+                    ]
+                  })
+                }
+              }
+            ]
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [],
+            responseData: []
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      const interactive = {
+        type: 'userInput' as const,
+        params: {
+          description: '',
+          submitted: false,
+          inputForm: [
+            {
+              key: 'upload',
+              type: FlowNodeInputTypeEnum.fileSelect,
+              label: 'Upload',
+              value: [],
+              valueType: WorkflowIOValueTypeEnum.arrayString,
+              required: false
+            }
+          ]
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
+
+      const chatItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI
+      });
+
+      if (chatItem?.obj !== ChatRoleEnum.AI) {
+        throw new Error('chatItem does not have AI interactive value');
+      }
+
+      const lastValue = chatItem.value[chatItem.value.length - 1];
+      if (lastValue.interactive?.type !== 'userInput') {
+        throw new Error('chatItem does not have userInput interactive');
+      }
+
+      expect(lastValue.interactive.params.inputForm[0].value).toEqual([
+        {
+          key: 'chat/files/invoice.png',
+          name: 'invoice.png',
+          type: ChatFileTypeEnum.image
+        },
+        {
+          url: 'https://external.example.com/report.pdf',
+          name: 'report.pdf',
+          type: ChatFileTypeEnum.file
+        }
+      ]);
     });
 
     it('should persist agentPlanAskQuery answer before pushing new records', async () => {

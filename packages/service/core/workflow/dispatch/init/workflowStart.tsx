@@ -17,7 +17,7 @@ type Response = DispatchNodeResultType<{
 export const dispatchWorkflowStart = async (props: Record<string, any>): Promise<Response> => {
   const {
     query,
-    variables,
+    variableState,
     params: { userChatInput }
   } = props as UserChatInputProps;
 
@@ -28,9 +28,8 @@ export const dispatchWorkflowStart = async (props: Record<string, any>): Promise
       return item?.url ?? '';
     })
     .filter(Boolean);
-  const variablesFiles: string[] = Array.isArray(variables?.fileUrlList)
-    ? variables.fileUrlList
-    : [];
+  const fileUrlList = variableState.get('fileUrlList');
+  const variablesFiles: string[] = Array.isArray(fileUrlList) ? fileUrlList : [];
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {},
