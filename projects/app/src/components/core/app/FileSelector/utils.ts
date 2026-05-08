@@ -1,5 +1,6 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
 import { isEqual } from 'lodash';
 import type {
   FileSelectorInputObjectItemType,
@@ -12,8 +13,30 @@ import type {
 const isFileObject = (file: FileSelectorInputItemType): file is FileSelectorInputObjectItemType =>
   !!file && typeof file === 'object';
 
+const imageFileExtensions = imageFileType.split(',').map((item) => item.trim().toLowerCase());
+
+const inferFileSelectorType = (filename?: string): ChatFileTypeEnum => {
+  const normalizedName = (() => {
+    if (!filename) return '';
+
+    try {
+      return decodeURIComponent(new URL(filename).pathname).toLowerCase();
+    } catch {
+      return filename.split(/[?#]/)[0].toLowerCase();
+    }
+  })();
+  const extension = normalizedName.match(/\.[^./\\]+$/)?.[0];
+
+  return extension && imageFileExtensions.includes(extension)
+    ? ChatFileTypeEnum.image
+    : ChatFileTypeEnum.file;
+};
+
 /**
- *  移除无效的文件选择值
+ * 清洗 FileSelector 对外输出的值。
+ *
+ * 组件内部会保留 rawFile、base64 icon、上传进度、错误等渲染态字段；
+ * 对外只允许传递后端可存储的 key/url + name/type，避免 base64 被写入变量或表单值。
  */
 export const sanitizeFileSelectValue = (
   value: FileSelectorInputValueType = []
@@ -29,7 +52,7 @@ export const sanitizeFileSelectValue = (
         return {
           url: trimmedFile,
           name: trimmedFile,
-          type: ChatFileTypeEnum.file
+          type: inferFileSelectorType(trimmedFile)
         };
       }
       if (!isFileObject(file)) return;
@@ -42,7 +65,7 @@ export const sanitizeFileSelectValue = (
 
       const baseFile = {
         name: file.name || file.key || file.url || '',
-        type: file.type || ChatFileTypeEnum.file
+        type: file.type || inferFileSelectorType(file.name || file.key || url)
       };
 
       if (key) {
@@ -77,6 +100,10 @@ export const isFileSelectorPreviewUrlMissing = <
 ): file is T & { key: string; url?: undefined; error?: undefined } =>
   !!file.key && !file.url && !file.error;
 
+/**
+ * 统一生成预览区图标。
+ * 图片优先使用可访问 URL；非图片使用文件名/URL/key 推断出的通用文件图标。
+ */
 export const getFileSelectorDisplayIcon = (
   file: Pick<FileSelectorRenderItemType, 'type' | 'url' | 'icon' | 'name' | 'key'>
 ) => {
@@ -99,6 +126,9 @@ export const isFileSelectorCleanValueEcho = ({
   lastEmittedValue?: FileSelectorValueItemType[];
 }) => isEqual(cleanedValue, lastEmittedValue) && isEqual(value, cleanedValue);
 
+/**
+ * 将待上传文件从“已选中”推进到“上传中”，并返回这批需要真正上传的文件。
+ */
 export const markFileSelectorUploading = (files: FileSelectorRenderItemType[]) => {
   const uploadingFiles = files.filter((item) => item.status === 0);
 
@@ -111,6 +141,9 @@ export const markFileSelectorUploading = (files: FileSelectorRenderItemType[]) =
   return uploadingFiles;
 };
 
+/**
+ * 上传成功后补齐后端 key 和临时预览 URL。后续 emit 时会由 sanitizeFileSelectValue 去掉预览 URL。
+ */
 export const markFileSelectorUploadSuccess = ({
   files,
   id,
@@ -131,6 +164,9 @@ export const markFileSelectorUploadSuccess = ({
   });
 };
 
+/**
+ * 上传失败只保留错误态，不再继续把该文件当作上传中。
+ */
 export const markFileSelectorUploadError = ({
   files,
   id,

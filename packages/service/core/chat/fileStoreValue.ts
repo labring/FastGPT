@@ -52,8 +52,10 @@ const isChatFileValueInput = (value: unknown): value is ChatFileValueInput =>
   typeof value === 'object' &&
   !Array.isArray(value) &&
   value !== null &&
-  'type' in value &&
-  (value.type === ChatFileTypeEnum.image || value.type === ChatFileTypeEnum.file);
+  (typeof (value as ChatFileValueInput).key === 'string' ||
+    typeof (value as ChatFileValueInput).url === 'string' ||
+    (value as ChatFileValueInput).type === ChatFileTypeEnum.image ||
+    (value as ChatFileValueInput).type === ChatFileTypeEnum.file);
 
 /** 从前端/历史文件对象中只读取文件存储需要的字段。 */
 export const parseRawChatFileValue = (file: ChatFileValueInput): RawChatFileValue => {

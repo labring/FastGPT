@@ -1,6 +1,7 @@
 import type { DragEvent } from 'react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import type {
+  FileSelectorInputObjectItemType,
   FileSelectorInputValueType,
   FileSelectorRenderItemType,
   FileSelectorValueItemType
@@ -75,6 +76,81 @@ const getFileSystemEntry = (item?: DataTransferItem): WebkitFileSystemEntry | nu
     | null
     | undefined) ?? null;
 
+const isFileSelectorInputObject = (
+  file: FileSelectorInputValueType[number]
+): file is FileSelectorInputObjectItemType => !!file && typeof file === 'object';
+
+const findExistingRenderFile = (
+  file: FileSelectorValueItemType | undefined,
+  existingFiles: FileSelectorRenderItemType[]
+) => {
+  if (!file) return;
+
+  if (file.key) {
+    return existingFiles.find((item) => item.key === file.key);
+  }
+
+  return existingFiles.find((item) => item.url === file.url);
+};
+
+/**
+ * 将外部 value 转成组件内部渲染态。
+ *
+ * FileSelector 对外只暴露可存储值（key/url + name/type），但渲染还需要 id、
+ * 上传进度、错误、临时预览 URL 等字段。外部重新传入 key-only 存储值时，
+ * 这里会复用已有的 url/icon/id，避免图片预览在父组件回写时反复闪烁。
+ */
+const formatFileSelectorInternalValue = (
+  files: FileSelectorInputValueType,
+  existingFiles: FileSelectorRenderItemType[] = []
+): FileSelectorRenderItemType[] => {
+  if (!Array.isArray(files)) return [];
+
+  return files
+    .map((file): FileSelectorRenderItemType | undefined => {
+      const valueFile = sanitizeFileSelectValue([file])[0];
+      const inputFile = isFileSelectorInputObject(file) ? file : undefined;
+      const rawFile = inputFile?.rawFile;
+      if (!valueFile && !rawFile) return;
+
+      const existingFile = findExistingRenderFile(valueFile, existingFiles);
+      const inputUrl = inputFile?.url;
+      const previewUrl =
+        (inputUrl && !inputUrl.startsWith('data:') ? inputUrl : valueFile?.url) ||
+        existingFile?.url;
+      const renderType = valueFile?.type || inputFile?.type || ChatFileTypeEnum.file;
+      const fileName =
+        valueFile?.name ||
+        inputFile?.name ||
+        valueFile?.url ||
+        valueFile?.key ||
+        rawFile?.name ||
+        previewUrl ||
+        '';
+      const fileIcon = inputFile?.icon || existingFile?.icon;
+
+      return {
+        ...valueFile,
+        ...(previewUrl ? { url: previewUrl } : {}),
+        id: inputFile?.id || existingFile?.id || getNanoid(6),
+        rawFile,
+        type: renderType,
+        name: fileName,
+        icon: getFileSelectorDisplayIcon({
+          type: renderType,
+          url: previewUrl,
+          icon: fileIcon,
+          name: fileName,
+          key: valueFile?.key
+        }),
+        status: inputFile?.status ?? 1,
+        process: inputFile?.process,
+        error: inputFile?.error
+      };
+    })
+    .filter((file): file is FileSelectorRenderItemType => Boolean(file));
+};
+
 const FileSelector = ({
   value,
   onChange,
@@ -110,75 +186,15 @@ const FileSelector = ({
     (v) => v.setFileUploadingCount
   );
 
-  const cleanValue = useCallback(
-    (files: FileSelectorInputValueType) => sanitizeFileSelectValue(files),
-    []
-  );
-  const formatInternalValue = useCallback(
-    (files: FileSelectorInputValueType): FileSelectorRenderItemType[] => {
-      if (!Array.isArray(files)) return [];
-
-      return files
-        .map((file): FileSelectorRenderItemType | undefined => {
-          if (!file || typeof file !== 'object') {
-            const valueFile = sanitizeFileSelectValue([file])[0];
-            if (!valueFile) return;
-
-            return {
-              ...valueFile,
-              id: getNanoid(6),
-              type: valueFile.type || ChatFileTypeEnum.file,
-              name: valueFile.name || valueFile.url || valueFile.key || '',
-              icon: getFileSelectorDisplayIcon(valueFile),
-              status: 1
-            };
-          }
-
-          const valueFile = sanitizeFileSelectValue([file])[0];
-          const rawFile = file.rawFile;
-          if (!valueFile && !rawFile) return;
-
-          const fileUrl = file.url;
-          const previewUrl = fileUrl && !fileUrl.startsWith('data:') ? fileUrl : valueFile?.url;
-          const fileType = valueFile?.type || file.type;
-          const renderType = fileType || ChatFileTypeEnum.file;
-          const fileName =
-            valueFile?.name || file.name || valueFile?.url || valueFile?.key || rawFile?.name || '';
-          const fileIcon = file.icon;
-
-          return {
-            ...valueFile,
-            ...(previewUrl ? { url: previewUrl } : {}),
-            id: file.id || getNanoid(6),
-            rawFile,
-            type: renderType,
-            name: fileName,
-            icon: getFileSelectorDisplayIcon({
-              type: renderType,
-              url: previewUrl,
-              icon: fileIcon,
-              name: fileName,
-              key: valueFile?.key
-            }),
-            status: file.status ?? 1,
-            process: file.process,
-            error: file.error
-          };
-        })
-        .filter((file): file is FileSelectorRenderItemType => Boolean(file));
-    },
-    []
-  );
   const lastEmittedValue = useRef<FileSelectorValueItemType[]>();
   const skipNextCleanEcho = useRef(false);
-  const previewUrlCache = useRef(new Map<string, string>());
   const fetchingPreviewUrlKeys = useRef(new Set<string>());
   const [fileList, setFileList] = useState<FileSelectorRenderItemType[]>(() =>
-    formatInternalValue(value)
+    formatFileSelectorInternalValue(value)
   );
 
   useEffect(() => {
-    const cleanedValue = cleanValue(value);
+    const cleanedValue = sanitizeFileSelectValue(value);
     if (
       skipNextCleanEcho.current &&
       isFileSelectorCleanValueEcho({
@@ -192,27 +208,32 @@ const FileSelector = ({
     }
 
     skipNextCleanEcho.current = false;
-    setFileList(formatInternalValue(value));
+    setFileList((currentFiles) => {
+      const nextFiles = formatFileSelectorInternalValue(value, currentFiles);
+      return isEqual(nextFiles, currentFiles) ? currentFiles : nextFiles;
+    });
     lastEmittedValue.current = cleanedValue;
     if (!isEqual(cleanedValue, value)) {
       onChange(cleanedValue);
     }
-  }, [cleanValue, formatInternalValue, onChange, value]);
+  }, [onChange, value]);
 
   const handleChangeFiles = useCallback(
     (files: FileSelectorRenderItemType[], emitChange = true) => {
       setFileList([...files]);
 
       if (emitChange) {
-        const cleanedFiles = cleanValue(files);
+        const cleanedFiles = sanitizeFileSelectValue(files);
         lastEmittedValue.current = cleanedFiles;
         skipNextCleanEcho.current = true;
         onChange(cleanedFiles);
       }
     },
-    [cleanValue, onChange]
+    [onChange]
   );
 
+  // 后端存储值只保留 key；组件渲染时再为 key-only 文件补临时预览 URL。
+  // 这里不会触发 onChange，避免把预览 URL 写回全局变量或表单存储值。
   useEffect(() => {
     if (!appId) return;
 
@@ -225,28 +246,17 @@ const FileSelector = ({
     let isUnmounted = false;
 
     filesNeedPreviewUrl.forEach((file) => {
-      if (file.key) {
-        fetchingPreviewUrlKeys.current.add(file.key);
-      }
+      fetchingPreviewUrlKeys.current.add(file.key);
     });
 
     void Promise.allSettled(
       filesNeedPreviewUrl.map(async (file) => {
         const key = file.key;
-        const cachedPreviewUrl = previewUrlCache.current.get(key);
-        if (cachedPreviewUrl) {
-          return {
-            key,
-            url: cachedPreviewUrl
-          };
-        }
-
         const url = await getPresignedChatFileGetUrl({
           key,
           appId,
           outLinkAuthData
         });
-        previewUrlCache.current.set(key, url);
 
         return {
           key,
@@ -285,9 +295,7 @@ const FileSelector = ({
       })
       .finally(() => {
         filesNeedPreviewUrl.forEach((file) => {
-          if (file.key) {
-            fetchingPreviewUrlKeys.current.delete(file.key);
-          }
+          fetchingPreviewUrlKeys.current.delete(file.key);
         });
       });
 
@@ -746,42 +754,40 @@ const FileSelector = ({
                     </Box>
 
                     {/* Status icon */}
-                    <>
-                      {!isUploadingFile ? (
-                        <HStack spacing={1}>
-                          {/* View button - 查看文件 */}
-                          {file?.url && (
-                            <IconButton
-                              size={'xsSquare'}
-                              variant={'grayGhost'}
-                              aria-label={'View file'}
-                              icon={<MyIcon name={'common/viewLight'} w={'1rem'} />}
-                              onClick={() => window.open(file.url, '_blank')}
-                            />
-                          )}
-                          {/* Delete button - 只在未禁用时显示 */}
-                          {!disabled && (
-                            <IconButton
-                              size={'xsSquare'}
-                              borderRadius={'xs'}
-                              variant={'transparentDanger'}
-                              aria-label={'Delete file'}
-                              icon={<MyIcon name={'close'} w={'1rem'} />}
-                              onClick={() => handleDeleteFile(file?.id)}
-                            />
-                          )}
-                        </HStack>
-                      ) : (
-                        <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
-                          <CircularProgress
-                            value={file.process}
-                            color="primary.600"
-                            bg={'white'}
-                            size={'1.2rem'}
+                    {!isUploadingFile ? (
+                      <HStack spacing={1}>
+                        {/* View button - 查看文件 */}
+                        {file?.url && (
+                          <IconButton
+                            size={'xsSquare'}
+                            variant={'grayGhost'}
+                            aria-label={'View file'}
+                            icon={<MyIcon name={'common/viewLight'} w={'1rem'} />}
+                            onClick={() => window.open(file.url, '_blank')}
                           />
-                        </HStack>
-                      )}
-                    </>
+                        )}
+                        {/* Delete button - 只在未禁用时显示 */}
+                        {!disabled && (
+                          <IconButton
+                            size={'xsSquare'}
+                            borderRadius={'xs'}
+                            variant={'transparentDanger'}
+                            aria-label={'Delete file'}
+                            icon={<MyIcon name={'close'} w={'1rem'} />}
+                            onClick={() => handleDeleteFile(file?.id)}
+                          />
+                        )}
+                      </HStack>
+                    ) : (
+                      <HStack w={'24px'} h={'24px'} justifyContent={'center'}>
+                        <CircularProgress
+                          value={file.process}
+                          color="primary.600"
+                          bg={'white'}
+                          size={'1.2rem'}
+                        />
+                      </HStack>
+                    )}
                   </HStack>
                   {file?.error && (
                     <Box mt={1} fontSize={'xs'} color={'red.600'}>

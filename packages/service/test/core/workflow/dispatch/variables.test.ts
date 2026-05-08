@@ -181,6 +181,46 @@ describe('WorkflowVariableState', () => {
     expect(state.toStoreRecord().missingFiles).toEqual([]);
   });
 
+  it('should keep legacy file store values without type and infer metadata', async () => {
+    const state = await createState({
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ],
+      inputVariables: {
+        files: [
+          {
+            key: 'chat/app/legacy.png',
+            name: 'legacy.png'
+          },
+          {
+            url: 'https://example.com/files/report.pdf',
+            name: 'report.pdf'
+          }
+        ]
+      }
+    });
+
+    expect(state.get('files')).toEqual([
+      'http://preview.local/chat/app/legacy.png',
+      'https://example.com/files/report.pdf'
+    ]);
+    expect(state.toStoreRecord().files).toEqual([
+      {
+        key: 'chat/app/legacy.png',
+        name: 'legacy.png',
+        type: ChatFileTypeEnum.image
+      },
+      {
+        url: 'https://example.com/files/report.pdf',
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file
+      }
+    ]);
+  });
+
   it('should restore parent file metadata from runtime url in child state', async () => {
     const parent = await createState({
       variablesConfig: [

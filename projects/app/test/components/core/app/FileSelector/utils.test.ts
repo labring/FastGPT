@@ -65,6 +65,38 @@ describe('sanitizeFileSelectValue', () => {
     ]);
   });
 
+  it('兼容缺少 type 的历史文件对象，并按文件名推断图片类型', () => {
+    expect(
+      sanitizeFileSelectValue([
+        {
+          key: 'chat/files/image.png',
+          name: 'image.png'
+        },
+        {
+          url: 'https://example.com/report.pdf',
+          name: 'report.pdf'
+        },
+        'https://example.com/legacy.jpg'
+      ])
+    ).toEqual([
+      {
+        key: 'chat/files/image.png',
+        name: 'image.png',
+        type: ChatFileTypeEnum.image
+      },
+      {
+        url: 'https://example.com/report.pdf',
+        name: 'report.pdf',
+        type: ChatFileTypeEnum.file
+      },
+      {
+        url: 'https://example.com/legacy.jpg',
+        name: 'https://example.com/legacy.jpg',
+        type: ChatFileTypeEnum.image
+      }
+    ]);
+  });
+
   it('过滤仅存在于组件内部上传态的未完成文件', () => {
     expect(
       sanitizeFileSelectValue([
