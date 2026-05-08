@@ -18,7 +18,7 @@ import {
 import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -585,9 +585,17 @@ describe('runtimeSystemVar2StoreType', () => {
     expect(result.pwd).toBe(123);
   });
 
-  it('should handle file variables with valid URLs', () => {
+  it('should preserve file variable objects with keys', () => {
     const variables = {
-      myFile: ['https://example.com/fastgpt-private/path/to/file.jpg']
+      myFile: [
+        {
+          id: 'file',
+          type: ChatFileTypeEnum.file,
+          key: 'path/to/file.jpg',
+          name: 'file.jpg',
+          url: 'https://preview.example.com/file.jpg'
+        }
+      ]
     };
     const result = runtimeSystemVar2StoreType({
       variables,
@@ -597,11 +605,47 @@ describe('runtimeSystemVar2StoreType', () => {
     expect(result.myFile[0]).toHaveProperty('key', 'path/to/file.jpg');
     expect(result.myFile[0]).toHaveProperty('name', 'file.jpg');
     expect(result.myFile[0]).toHaveProperty('id', 'file');
+    expect(result.myFile[0]).toHaveProperty('type', ChatFileTypeEnum.file);
+    expect(result.myFile[0]).not.toHaveProperty('url');
   });
 
-  it('should filter out invalid URLs in file variables', () => {
+  it('should preserve file variable objects with urls', () => {
     const variables = {
-      myFile: ['not-a-url']
+      myFile: [
+        {
+          id: 'file',
+          type: ChatFileTypeEnum.file,
+          name: 'file.jpg',
+          url: 'https://example.com/files/file.jpg'
+        }
+      ]
+    };
+    const result = runtimeSystemVar2StoreType({
+      variables,
+      userVariablesConfigs: [{ key: 'myFile', type: VariableInputEnum.file } as any]
+    });
+
+    expect(result.myFile).toEqual([
+      {
+        id: 'file',
+        type: ChatFileTypeEnum.file,
+        name: 'file.jpg',
+        url: 'https://example.com/files/file.jpg'
+      }
+    ]);
+    expect(result.myFile[0]).not.toHaveProperty('key');
+  });
+
+  it('should filter out base64 urls in file variables', () => {
+    const variables = {
+      myFile: [
+        {
+          id: 'base64',
+          type: ChatFileTypeEnum.image,
+          name: 'image.png',
+          url: 'data:image/png;base64,abc'
+        }
+      ]
     };
     const result = runtimeSystemVar2StoreType({
       variables,
@@ -621,11 +665,52 @@ describe('runtimeSystemVar2StoreType', () => {
   it('should preserve stored file variable objects with keys', () => {
     const result = runtimeSystemVar2StoreType({
       variables: {
-        myFile: [{ id: 'doc', key: 'path/to/doc.pdf', name: 'doc.pdf' }]
+        myFile: [
+          {
+            id: 'doc',
+            type: ChatFileTypeEnum.file,
+            key: 'path/to/doc.pdf',
+            name: 'doc.pdf',
+            url: 'https://preview.example.com/doc.pdf'
+          }
+        ]
       },
       userVariablesConfigs: [{ key: 'myFile', type: VariableInputEnum.file } as any]
     });
-    expect(result.myFile).toEqual([{ id: 'doc', key: 'path/to/doc.pdf', name: 'doc.pdf' }]);
+    expect(result.myFile).toEqual([
+      {
+        id: 'doc',
+        type: ChatFileTypeEnum.file,
+        key: 'path/to/doc.pdf',
+        name: 'doc.pdf'
+      }
+    ]);
+  });
+
+  it('should preserve stored file variable objects with urls', () => {
+    const result = runtimeSystemVar2StoreType({
+      variables: {
+        myFile: [
+          {
+            id: 'remote',
+            type: ChatFileTypeEnum.image,
+            url: 'https://example.com/image.png',
+            name: 'image.png'
+          }
+        ]
+      },
+      userVariablesConfigs: [{ key: 'myFile', type: VariableInputEnum.file } as any]
+    });
+
+    expect(result.myFile).toEqual([
+      {
+        id: 'remote',
+        type: ChatFileTypeEnum.image,
+        url: 'https://example.com/image.png',
+        name: 'image.png'
+      }
+    ]);
+    expect(result.myFile[0]).not.toHaveProperty('key');
   });
 });
 
@@ -1262,6 +1347,57 @@ describe('getSystemVariables', () => {
       ]
     });
     expect((result as any).fileKey).toEqual(['http://example.com/a']);
+  });
+
+  it('should keep file type when passing file variables into presign', async () => {
+    mockPresignVariablesFileUrls.mockResolvedValueOnce({
+      fileKey: [
+        {
+          key: 'a',
+          type: ChatFileTypeEnum.image,
+          url: 'http://example.com/a'
+        }
+      ]
+    });
+
+    await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'fileKey',
+            label: 'fileLabel',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      } as any,
+      variables: {
+        fileKey: [
+          {
+            key: 'a',
+            type: ChatFileTypeEnum.image
+          }
+        ]
+      }
+    });
+
+    expect(mockPresignVariablesFileUrls).toHaveBeenLastCalledWith({
+      variables: {
+        fileKey: [
+          {
+            key: 'a',
+            type: ChatFileTypeEnum.image
+          }
+        ]
+      },
+      variableConfig: [
+        expect.objectContaining({
+          key: 'fileKey',
+          type: VariableInputEnum.file
+        })
+      ]
+    });
   });
 
   it('should keep legacy string urls for file variables', async () => {

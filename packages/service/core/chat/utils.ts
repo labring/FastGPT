@@ -1,7 +1,6 @@
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { createChatFilePreviewUrlGetter } from '../../common/s3/sources/chat';
-import { resolveMimeType } from '../../common/s3/utils/mime';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
@@ -25,18 +24,6 @@ const formatFileValueList = (value: RuntimeValue): ChatFileValueWithPreview[] =>
   );
 };
 
-const removeUrlSearch = (url?: string) => url?.split('?')[0]?.split('#')[0];
-
-const inferChatFileType = (file: ChatFileValueWithPreview): ChatFileTypeEnum => {
-  const mimeType = resolveMimeType([
-    file.name,
-    removeUrlSearch(file.url),
-    removeUrlSearch(file.key)
-  ]);
-
-  return mimeType.startsWith('image/') ? ChatFileTypeEnum.image : ChatFileTypeEnum.file;
-};
-
 const hasChildrenResponse = (
   interactive: WorkflowInteractiveResponseType
 ): interactive is InteractiveWithChildrenResponse =>
@@ -55,7 +42,6 @@ export const addPreviewUrlToChatItems = async (
       files.map(async (file) => {
         if (!file || typeof file !== 'object') return;
 
-        file.type = file.type ?? inferChatFileType(file);
         if (!file.key) return;
 
         file.url = await getPreviewUrl(file.key);
@@ -70,8 +56,8 @@ export const addPreviewUrlToChatItems = async (
     ) {
       await Promise.all(
         interactive.params.inputForm.map(async (input) => {
-          const files = formatFileValueList(input.value);
-          if (input.type === FlowNodeInputTypeEnum.fileSelect && files.length > 0) {
+          if (input.type === FlowNodeInputTypeEnum.fileSelect) {
+            const files = formatFileValueList(input.value);
             await addPreviewUrlToFileValue(files);
           }
         })
@@ -108,13 +94,10 @@ export const addPreviewUrlToChatItems = async (
 
         await Promise.all(
           parsedInputValue.map(async (input) => {
-            const files = formatFileValueList(input.value);
-            if (
-              !input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect) ||
-              files.length === 0
-            )
+            if (!input.renderTypeList?.includes(FlowNodeInputTypeEnum.fileSelect)) {
               return;
-
+            }
+            const files = formatFileValueList(input.value);
             await addPreviewUrlToFileValue(files);
           })
         );
@@ -156,26 +139,18 @@ export const presignVariablesFileUrls = async ({
     variableConfig.map(async (item) => {
       if (item.type === VariableInputEnum.file) {
         const files = formatFileValueList(variables[item.key]);
-        if (files.length > 0) {
-          cloneVars[item.key] = await Promise.all(
-            files.map(async (file) => {
-              const type = file.type ?? inferChatFileType(file);
+        cloneVars[item.key] = await Promise.all(
+          files.map(async (file) => {
+            if (!file.key) {
+              return file;
+            }
 
-              if (!file.key) {
-                return {
-                  ...file,
-                  type
-                };
-              }
-
-              return {
-                ...file,
-                type,
-                url: await getPreviewUrl(file.key)
-              };
-            })
-          ).then((urls) => urls.filter(Boolean));
-        }
+            return {
+              ...file,
+              url: await getPreviewUrl(file.key)
+            };
+          })
+        ).then((urls) => urls.filter(Boolean));
       }
     })
   );

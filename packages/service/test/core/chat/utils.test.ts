@@ -34,7 +34,7 @@ describe('presignVariablesFileUrls', () => {
     mockCreateGetChatFileURL.mockReset();
   });
 
-  it('为全局变量文件补预览 url，并按文件名补齐图片 type', async () => {
+  it('为全局变量文件补预览 url，并保留已有 type', async () => {
     mockCreateGetChatFileURL.mockResolvedValueOnce({
       url: 'https://preview.example.com/image.png'
     });
@@ -43,7 +43,8 @@ describe('presignVariablesFileUrls', () => {
       imageFiles: [
         {
           key: 'chat/files/image.png',
-          name: 'image.png'
+          name: 'image.png',
+          type: ChatFileTypeEnum.image
         }
       ]
     };
@@ -75,13 +76,14 @@ describe('presignVariablesFileUrls', () => {
     });
   });
 
-  it('没有 S3 key 的文件值不请求预览 url，但会补齐普通文件 type', async () => {
+  it('没有 S3 key 的文件值不请求预览 url，并保留已有 type', async () => {
     const result = await presignVariablesFileUrls({
       variables: {
         files: [
           {
             url: 'https://example.com/doc.pdf',
-            name: 'doc.pdf'
+            name: 'doc.pdf',
+            type: ChatFileTypeEnum.file
           }
         ]
       },
@@ -103,6 +105,41 @@ describe('presignVariablesFileUrls', () => {
       }
     ]);
     expect(mockCreateGetChatFileURL).not.toHaveBeenCalled();
+  });
+
+  it('保留全局变量文件已有 type，不用文件名推断覆盖', async () => {
+    mockCreateGetChatFileURL.mockResolvedValueOnce({
+      url: 'https://preview.example.com/photo.png'
+    });
+
+    const result = await presignVariablesFileUrls({
+      variables: {
+        files: [
+          {
+            key: 'chat/files/photo.png',
+            name: 'photo.png',
+            type: ChatFileTypeEnum.file
+          }
+        ]
+      },
+      variableConfig: [
+        {
+          key: 'files',
+          label: '文件',
+          type: VariableInputEnum.file,
+          valueType: WorkflowIOValueTypeEnum.arrayString
+        }
+      ]
+    });
+
+    expect(result?.files).toEqual([
+      {
+        key: 'chat/files/photo.png',
+        name: 'photo.png',
+        type: ChatFileTypeEnum.file,
+        url: 'https://preview.example.com/photo.png'
+      }
+    ]);
   });
 
   it('只重建文件变量，保留非文件变量引用，避免深拷贝大对象', async () => {
@@ -183,7 +220,8 @@ describe('addPreviewUrlToChatItems', () => {
                     value: [
                       {
                         key: 'chat/files/image.png',
-                        name: 'image.png'
+                        name: 'image.png',
+                        type: ChatFileTypeEnum.image
                       }
                     ]
                   }
@@ -228,7 +266,8 @@ describe('addPreviewUrlToChatItems', () => {
                   value: [
                     {
                       key: 'chat/files/doc.pdf',
-                      name: 'doc.pdf'
+                      name: 'doc.pdf',
+                      type: ChatFileTypeEnum.file
                     }
                   ]
                 }

@@ -1,5 +1,5 @@
-import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -347,48 +347,43 @@ export const runtimeSystemVar2StoreType = ({
     }
     // Handle file variables
     else if (item.type === VariableInputEnum.file) {
-      const currentValue = copyVariables[item.key];
+      const currentValue = copyVariables[item.key] as {
+        id?: string;
+        type: ChatFileTypeEnum;
+        name?: string;
+        key?: string;
+        url?: string;
+      }[];
 
       copyVariables[item.key] = Array.isArray(currentValue)
         ? currentValue
             .map((fileValue) => {
-              if (
-                fileValue &&
-                typeof fileValue === 'object' &&
-                'key' in fileValue &&
-                typeof fileValue.key === 'string'
-              ) {
-                const id =
-                  'id' in fileValue && typeof fileValue.id === 'string' ? fileValue.id : undefined;
-                const name =
-                  'name' in fileValue && typeof fileValue.name === 'string'
-                    ? fileValue.name
-                    : path.basename(fileValue.key) || 'file';
+              if (fileValue && typeof fileValue === 'object') {
+                const { id, name, type, key, url } = fileValue;
+                if (!type) return;
 
-                return {
-                  ...(id ? { id } : {}),
-                  key: fileValue.key,
-                  name
-                };
-              }
-              if (typeof fileValue !== 'string') return null;
+                if (key) {
+                  return {
+                    id,
+                    name,
+                    type,
+                    key
+                  };
+                }
 
-              try {
-                const urlObj = new URL(fileValue);
-                // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
-                const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
-                const filename = path.basename(key) || 'file';
+                if (url && !url.startsWith('data:')) {
+                  return {
+                    id,
+                    name,
+                    type,
+                    url
+                  };
+                }
 
-                return {
-                  id: path.basename(key, path.extname(key)), // filename without extension
-                  key,
-                  name: filename
-                };
-              } catch {
-                return null;
+                return;
               }
             })
-            .filter((file): file is { id?: string; key: string; name: string } => file !== null)
+            .filter(Boolean)
         : [];
     }
   });
