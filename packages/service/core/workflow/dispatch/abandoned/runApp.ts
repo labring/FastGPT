@@ -14,10 +14,12 @@ import {
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories } from '../utils';
+import { WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getUserChatInfo } from '../../../../support/user/team/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -35,6 +37,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     workflowStreamResponse,
     histories,
     query,
+    variableState,
     params: { userChatInput, history, app }
   } = props;
 
@@ -58,26 +61,42 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
+  const childRunningAppInfo = {
+    id: String(appData._id),
+    name: appData.name,
+    teamId: String(appData.teamId),
+    tmbId: String(appData.tmbId),
+    isChildApp: true
+  };
+  const { externalProvider } = await getUserChatInfo(appData.tmbId);
+  const childVariableState = await WorkflowVariableState.create({
+    timezone: props.timezone,
+    runningAppInfo: childRunningAppInfo,
+    uid: props.uid,
+    chatId: props.chatId,
+    responseChatItemId: props.responseChatItemId,
+    histories: chatHistories,
+    variablesConfig: appData.chatConfig?.variables,
+    inputVariables: variableState.toStoreRecord(),
+    externalVariables: externalProvider?.externalWorkflowVariables,
+    sourceVariableState: variableState
+  });
 
   const { flowResponses, flowUsages, assistantResponses, system_memories } = await runWorkflow({
     ...props,
-    runningAppInfo: {
-      id: String(appData._id),
-      name: appData.name,
-      teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId)
-    },
+    runningAppInfo: childRunningAppInfo,
     runtimeNodes: storeNodes2RuntimeNodes(
       appData.modules,
       getWorkflowEntryNodeIds(appData.modules)
     ),
     runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
+    variableState: childVariableState,
+    chatConfig: appData.chatConfig,
     histories: chatHistories,
     query: runtimePrompt2ChatsValue({
       files,
       text: userChatInput
-    }),
-    variables: props.variables
+    })
   });
 
   const completeMessages = chatHistories.concat([

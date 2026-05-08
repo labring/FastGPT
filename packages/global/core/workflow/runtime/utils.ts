@@ -301,7 +301,7 @@ export const getReferenceVariableValue = ({
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
-  variables: Record<string, any>;
+  variables: Record<string, unknown>;
 }) => {
   if (!value) return value;
 
@@ -394,7 +394,7 @@ export function replaceEditorVariable({
 }: {
   text: any;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
-  variables: Record<string, any>; // global variables
+  variables: Record<string, unknown>; // runtime global variables
   depth?: number;
 }) {
   const getNode = (nodeId: string) => {

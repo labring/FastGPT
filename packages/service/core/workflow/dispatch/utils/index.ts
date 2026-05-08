@@ -1,22 +1,13 @@
-import path from 'path';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  VariableInputEnum
-} from '@fastgpt/global/core/workflow/constants';
-import type { VariableItemType } from '@fastgpt/global/core/app/type';
-import { encryptSecret } from '../../../common/secret/aes256gcm';
-import { imageFileType } from '@fastgpt/global/common/file/constants';
-import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   type RuntimeNodeItemType,
   type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { responseWrite } from '../../../common/response';
+import { responseWrite } from '../../../../common/response';
 import { type NextApiResponse } from 'next';
 import {
   DispatchNodeResponseKeyEnum,
@@ -30,85 +21,17 @@ import {
   parseHttpToolConfig
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { MongoApp } from '../../../core/app/schema';
-import { getMCPChildren } from '../../../core/app/mcp';
-import { getSystemToolRunTimeNodeFromSystemToolset } from '../utils';
+import { MongoApp } from '../../../app/schema';
+import { getMCPChildren } from '../../../app/mcp';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import type { WorkflowResponseType } from './type';
-import { getLogger, LogCategories } from '../../../common/logger';
-import { anyValueDecrypt } from '../../../common/secret/utils';
-import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { presignVariablesFileUrls } from '../../chat/utils';
-import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import type { WorkflowResponseType } from '../type';
+import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { getMcpToolsets } from '../../app/tool/mcpTool/entity';
-import { getHttpToolsets } from '../../app/tool/httpTool/entity';
-import { getHTTPToolList } from '../../app/http';
-
-/* get system variable */
-export const getSystemVariables = async ({
-  timezone,
-  runningAppInfo,
-  chatId,
-  responseChatItemId,
-  histories = [],
-  uid,
-  chatConfig,
-  variables
-}: {
-  runningAppInfo: ChatDispatchProps['runningAppInfo'];
-  chatId: ChatDispatchProps['chatId'];
-  responseChatItemId: ChatDispatchProps['responseChatItemId'];
-  histories: ChatDispatchProps['histories'];
-  uid: ChatDispatchProps['uid'];
-  chatConfig: ChatDispatchProps['chatConfig'];
-  variables: ChatDispatchProps['variables'];
-  timezone: string;
-}): Promise<SystemVariablesType> => {
-  // Get global variables(Label -> key; Key -> key)
-  const variablesConfig = chatConfig?.variables || [];
-
-  const variablesMap: Record<string, any> = {};
-  for await (const item of variablesConfig) {
-    // For internal variables, ignore external input and use default value
-    if (item.type === VariableInputEnum.password) {
-      const val = variables[item.label] || variables[item.key] || item.defaultValue;
-      const actualValue = anyValueDecrypt(val);
-      variablesMap[item.key] = valueTypeFormat(actualValue, item.valueType);
-    }
-    //  文件类型全局变量，签发成 string[] 格式
-    else if (item.type === VariableInputEnum.file) {
-      const vars = await presignVariablesFileUrls({
-        variables,
-        variableConfig: [item]
-      });
-
-      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
-    }
-    // API
-    else if (variables[item.label] !== undefined) {
-      variablesMap[item.key] = valueTypeFormat(variables[item.label], item.valueType);
-    }
-    // Web
-    else if (variables[item.key] !== undefined) {
-      variablesMap[item.key] = valueTypeFormat(variables[item.key], item.valueType);
-    } else {
-      variablesMap[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
-    }
-  }
-
-  return {
-    ...variablesMap,
-    // System var:
-    userId: uid,
-    appId: String(runningAppInfo.id),
-    chatId,
-    responseChatItemId,
-    histories,
-    cTime: getSystemTime(timezone)
-  };
-};
+import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
+import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
+import { getHTTPToolList } from '../../../app/http';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -289,74 +212,6 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
     return undefined;
   }
   return quoteQA;
-};
-
-/* remove system variable */
-export const runtimeSystemVar2StoreType = ({
-  variables,
-  removeObj = {},
-  userVariablesConfigs = []
-}: {
-  variables: Record<string, any>;
-  removeObj?: Record<string, string>;
-  userVariablesConfigs?: VariableItemType[];
-}) => {
-  const copyVariables = { ...variables };
-
-  // Delete system variables
-  delete copyVariables.userId;
-  delete copyVariables.appId;
-  delete copyVariables.chatId;
-  delete copyVariables.responseChatItemId;
-  delete copyVariables.histories;
-  delete copyVariables.cTime;
-
-  // Delete special variables
-  Object.keys(removeObj).forEach((key) => {
-    delete copyVariables[key];
-  });
-
-  // Encrypt password variables
-  userVariablesConfigs.forEach((item) => {
-    const val = copyVariables[item.key];
-    if (item.type === VariableInputEnum.password) {
-      if (typeof val === 'string') {
-        copyVariables[item.key] = {
-          value: '',
-          secret: encryptSecret(val)
-        };
-      }
-    }
-    // Handle file variables
-    else if (item.type === VariableInputEnum.file) {
-      const currentValue = copyVariables[item.key];
-
-      copyVariables[item.key] = currentValue
-        .map((url: string) => {
-          try {
-            const urlObj = new URL(url);
-            // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
-            const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
-            const filename = path.basename(key) || 'file';
-            const extname = path.extname(key).toLowerCase(); // includes the dot, e.g., ".jpg"
-
-            // Check if it's an image type
-            const isImage = extname && imageFileType.includes(extname);
-
-            return {
-              id: path.basename(key, path.extname(key)), // filename without extension
-              key,
-              name: filename
-            };
-          } catch {
-            return null;
-          }
-        })
-        .filter((file: any) => file !== null);
-    }
-  });
-
-  return copyVariables;
 };
 
 export const filterSystemVariables = (variables: Record<string, any>): SystemVariablesType => {
@@ -567,21 +422,18 @@ export const getNodeErrResponse = ({
   customErr,
   responseData,
   runTimes,
-  newVariables,
   system_memories
 }: {
   error: any;
   customErr?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.nodeResponse]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.runTimes]?: number;
-  [DispatchNodeResponseKeyEnum.newVariables]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
 }) => {
   const errorText = getErrText(error);
 
   return {
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
-    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
     [DispatchNodeResponseKeyEnum.memories]: system_memories,
     error: {
       [NodeOutputKeyEnum.errorText]: errorText,

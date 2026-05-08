@@ -58,6 +58,11 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/fastgpt-pr:admin_${SHA}
           docker push ghcr.io/${{ github.repository_owner }}/fastgpt-pr:admin_${SHA}
 
+      - name: Format preview timestamp
+        id: preview_time
+        run: |
+          echo "value=$(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M:%S (UTC+8)')" >> "$GITHUB_OUTPUT"
+
       - name: Add PR comment on success
         if: success() && steps.pr.outputs.number != ''
         uses: actions/github-script@v7
@@ -82,6 +87,8 @@ jobs:
             \`\`\`
             ghcr.io/${{ github.repository_owner }}/fastgpt-pr:admin_${{ steps.pr.outputs.sha }}
             \`\`\`
+
+            🕒 Time: ${{ steps.preview_time.outputs.value }}
             `;
 
             if (existingComment) {

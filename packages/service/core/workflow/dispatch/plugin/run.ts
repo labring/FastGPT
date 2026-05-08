@@ -17,7 +17,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { authWorkflowToolByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedAppToolUsage } from '../../../app/tool/runtime/utils';
-import { filterSystemVariables, getNodeErrResponse } from '../utils';
+import { getNodeErrResponse } from '../utils';
 import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
 import {
   type NodeInputKeyEnum,
@@ -31,6 +31,7 @@ import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getSystemToolByIdAndVersionId } from '../../../app/tool/controller';
+import { WorkflowVariableState } from '../utils/variables';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -176,11 +177,26 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     });
 
     const { externalProvider } = await getUserChatInfo(runningAppInfo.tmbId);
-    const runtimeVariables = {
-      ...filterSystemVariables(props.variables),
-      appId: String(workflowTool.id),
-      ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
+    const childRunningAppInfo = {
+      id: String(workflowTool.id),
+      name: workflowTool.name,
+      teamId: workflowTool.teamId || runningAppInfo.teamId,
+      tmbId: workflowTool.tmbId || runningAppInfo.tmbId,
+      isChildApp: true
     };
+    const childVariableState = await WorkflowVariableState.create({
+      timezone: props.timezone,
+      runningAppInfo: childRunningAppInfo,
+      uid: props.uid,
+      chatId: props.chatId,
+      responseChatItemId: props.responseChatItemId,
+      histories: props.histories,
+      variablesConfig: [],
+      inputVariables: {},
+      externalVariables: externalProvider?.externalWorkflowVariables,
+      sourceVariableState: props.variableState
+    });
+    const runtimeVariables = childVariableState.toRuntimeRecord();
     const {
       flowResponses,
       flowUsages,
@@ -205,7 +221,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         tmbId: workflowTool.tmbId || runningAppInfo.tmbId,
         isChildApp: true
       },
-      variables: runtimeVariables,
+      variableState: childVariableState,
       query: serverGetWorkflowToolRunUserQuery({
         pluginInputs: getWorkflowToolInputsFromStoreNodes(workflowTool.nodes),
         variables: runtimeVariables,

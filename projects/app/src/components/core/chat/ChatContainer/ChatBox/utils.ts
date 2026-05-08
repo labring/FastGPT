@@ -1,4 +1,7 @@
-import { type ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  ChatItemValueItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatSiteItemType } from './type';
 import { type ChatBoxInputType, type UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
@@ -46,6 +49,21 @@ export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): Chat
     files
   };
 };
+
+export const stripChatValueFileUrls = (value: UserChatItemValueItemType[] = []) =>
+  value.map((item) => {
+    if ('file' in item && item.file?.key) {
+      return {
+        ...item,
+        file: {
+          ...item.file,
+          url: ''
+        }
+      };
+    }
+
+    return item;
+  });
 
 // 用于判断当前对话框状态。所以，如果是 child 的 interactive，需要递归去找到最后一个。
 export const getInteractiveByHistories = (

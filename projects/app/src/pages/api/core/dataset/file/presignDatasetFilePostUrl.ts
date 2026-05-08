@@ -8,14 +8,13 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import {
   PresignDatasetFilePostUrlBodySchema,
-  PresignDatasetFilePostUrlResponseSchema,
-  type PresignDatasetFilePostUrlBody,
-  type PresignDatasetFilePostUrlResponse
+  type PresignDatasetFilePostUrlBody
 } from '@fastgpt/global/openapi/core/dataset/file/api';
+import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
 async function handler(
   req: ApiRequestProps<PresignDatasetFilePostUrlBody>
-): Promise<PresignDatasetFilePostUrlResponse> {
+): Promise<CreatePostPresignedUrlResponseType> {
   const { filename, datasetId } = PresignDatasetFilePostUrlBodySchema.parse(req.body);
 
   const { teamId, userId } = await authDataset({
@@ -33,13 +32,11 @@ async function handler(
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
-  const result = await getS3DatasetSource().createUploadDatasetFileURL({
+  return getS3DatasetSource().createUploadDatasetFileURL({
     datasetId,
     filename,
     maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
   });
-
-  return PresignDatasetFilePostUrlResponseSchema.parse(result);
 }
 
 export default NextAPI(handler);

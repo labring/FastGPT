@@ -61,11 +61,7 @@ export const valToStr = (val: any) => {
 };
 
 // replace {{variable}} to value
-export function replaceVariable(
-  text: any,
-  obj: Record<string, string | number | undefined>,
-  depth = 0
-) {
+export function replaceVariable(text: any, obj: Record<string, any>, depth = 0) {
   if (typeof text !== 'string') return text;
   if (checkStrOversize(text)) {
     throw new Error('Text length exceeds 100,000,000 characters.');

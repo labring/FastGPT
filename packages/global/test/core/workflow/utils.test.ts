@@ -735,7 +735,8 @@ describe('appData2FlowNodeIO', () => {
           { key: 'textVar', label: 'Text', type: VariableInputEnum.input, description: '' },
           { key: 'numVar', label: 'Number', type: VariableInputEnum.numberInput, description: '' },
           { key: 'selectVar', label: 'Select', type: VariableInputEnum.select, description: '' },
-          { key: 'switchVar', label: 'Switch', type: VariableInputEnum.switch, description: '' }
+          { key: 'switchVar', label: 'Switch', type: VariableInputEnum.switch, description: '' },
+          { key: 'fileVar', label: 'File', type: VariableInputEnum.file, description: '' }
         ]
       }
     });
@@ -751,6 +752,12 @@ describe('appData2FlowNodeIO', () => {
 
     const switchVar = result.inputs.find((i) => i.key === 'switchVar');
     expect(switchVar?.renderTypeList).toContain(FlowNodeInputTypeEnum.switch);
+
+    const fileVar = result.inputs.find((i) => i.key === 'fileVar');
+    expect(fileVar?.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.fileSelect,
+      FlowNodeInputTypeEnum.reference
+    ]);
   });
 
   it('should preserve defaultValue on variable inputs', () => {

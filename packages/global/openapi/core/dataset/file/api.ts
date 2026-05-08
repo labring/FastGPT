@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetSourceReadTypeEnum } from '../../../../core/dataset/constants';
 import { ChunkSettingsSchema } from '../../../../core/dataset/type';
-import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 
 /* ============================================================================
  * API: 预览文件分块
@@ -69,10 +68,3 @@ export const PresignDatasetFilePostUrlBodySchema = z.object({
   })
 });
 export type PresignDatasetFilePostUrlBody = z.infer<typeof PresignDatasetFilePostUrlBodySchema>;
-
-export const PresignDatasetFilePostUrlResponseSchema = CreatePostPresignedUrlResponseSchema.meta({
-  description: 'S3 预签名上传 URL 及相关头信息'
-});
-export type PresignDatasetFilePostUrlResponse = z.infer<
-  typeof PresignDatasetFilePostUrlResponseSchema
->;

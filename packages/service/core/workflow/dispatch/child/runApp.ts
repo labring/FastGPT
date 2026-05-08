@@ -13,7 +13,8 @@ import {
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getSystemVariables, getNodeErrResponse, getHistories } from '../utils';
+import { getNodeErrResponse, getHistories } from '../utils';
+import { WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
@@ -44,7 +45,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     node: { pluginId: appId, version },
     workflowStreamResponse,
     params,
-    variables
+    variableState
   } = props;
 
   const {
@@ -101,24 +102,25 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
     // Rewrite children app variables
     const { externalProvider } = await getUserChatInfo(appData.tmbId);
-    const childrenRunVariables = {
-      ...(await getSystemVariables({
-        timezone: props.timezone,
-        runningAppInfo: {
-          id: String(appData._id),
-          teamId: appData.teamId,
-          tmbId: appData.tmbId,
-          name: appData.name
-        },
-        chatId: props.chatId,
-        responseChatItemId: props.responseChatItemId,
-        histories: chatHistories,
-        uid: props.uid,
-        chatConfig,
-        variables: childrenAppVariables
-      })),
-      ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
+    const childRunningAppInfo = {
+      id: String(appData._id),
+      teamId: appData.teamId,
+      tmbId: appData.tmbId,
+      name: appData.name,
+      isChildApp: true
     };
+    const childrenVariableState = await WorkflowVariableState.create({
+      timezone: props.timezone,
+      runningAppInfo: childRunningAppInfo,
+      chatId: props.chatId,
+      responseChatItemId: props.responseChatItemId,
+      histories: chatHistories,
+      uid: props.uid,
+      variablesConfig: chatConfig.variables,
+      inputVariables: childrenAppVariables,
+      externalVariables: externalProvider?.externalWorkflowVariables,
+      sourceVariableState: variableState
+    });
 
     const childrenInteractive =
       lastInteractive?.type === 'childrenInteractive'
@@ -166,7 +168,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       runtimeNodes,
       runtimeEdges,
       histories: chatHistories,
-      variables: childrenRunVariables,
+      variableState: childrenVariableState,
       query: theQuery,
       chatConfig
     });

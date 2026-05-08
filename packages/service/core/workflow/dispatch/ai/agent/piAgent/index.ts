@@ -172,7 +172,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       runningAppInfo,
       chatId,
       uid: props.uid,
-      variables: props.variables,
+      variableState: props.variableState,
       externalProvider: props.externalProvider,
       workflowStreamResponse,
       lang,
