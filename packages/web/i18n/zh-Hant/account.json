@@ -39,6 +39,7 @@
   "model.defaultConfig_tip": "每次請求時候，都會攜帶該額外 Body 參數",
   "model.default_config": "Body 額外欄位",
   "model.default_config_tip": "發起對話請求時候，合併該設定。例如：\n\"\"\"\n{\n   \"temperature\": 1,\n   \"max_tokens\": null\n}\n\"\"\"",
+  "model.rerank_default_config_tip": "發起重排請求時候，合併該設定。例如：\n\"\"\"\n{\n   \"topn\": 5\n}\n\"\"\"",
   "model.default_model": "預設模型",
   "model.default_system_chat_prompt": "預設提示詞",
   "model.default_system_chat_prompt_tip": "模型對話時，都會攜帶該預設提示詞",

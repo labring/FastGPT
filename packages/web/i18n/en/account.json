@@ -39,6 +39,7 @@
   "model.defaultConfig_tip": "Each request will carry this additional Body parameter.",
   "model.default_config": "Body extra fields",
   "model.default_config_tip": "When initiating a conversation request, merge this configuration. \nFor example:\n\"\"\"\n{\n   \"temperature\": 1,\n   \"max_tokens\": null\n}\n\"\"\"",
+  "model.rerank_default_config_tip": "Merge this config when sending rerank requests. \nFor example:\n\"\"\"\n{\n   \"topn\": 5\n}\n\"\"\"",
   "model.default_model": "Default model",
   "model.default_system_chat_prompt": "Default prompt",
   "model.default_system_chat_prompt_tip": "When the model talks, it will carry this default prompt word.",

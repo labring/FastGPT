@@ -1149,17 +1149,21 @@ export const ModelEditModal = ({
                 />
               </Field>
             )}
-            {(isLLMModel || isEmbeddingModel) && (
+            {(isLLMModel || isEmbeddingModel || isRerankModel) && (
               <DefaultConfigField
                 control={control}
                 setValue={setValue}
                 label={
-                  isLLMModel ? t('account:model.default_config') : t('account:model.defaultConfig')
+                  isEmbeddingModel
+                    ? t('account:model.defaultConfig')
+                    : t('account:model.default_config')
                 }
                 tip={
-                  isLLMModel
-                    ? t('account:model.default_config_tip')
-                    : t('account:model.defaultConfig_tip')
+                  isEmbeddingModel
+                    ? t('account:model.defaultConfig_tip')
+                    : isRerankModel
+                      ? t('account:model.rerank_default_config_tip')
+                      : t('account:model.default_config_tip')
                 }
               />
             )}
