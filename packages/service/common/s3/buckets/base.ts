@@ -7,7 +7,11 @@ import {
   CreatePostPresignedUrlOptionsSchema,
   type CreatePostPresignedUrlResult
 } from '../contracts/type';
-import { storageDownloadMode, getSystemMaxFileSize } from '../config/constants';
+import {
+  storageDownloadMode,
+  getSystemMaxFileSize,
+  replaceS3UrlWithCdnEndpoint
+} from '../config/constants';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { createUploadConstraints } from '../utils/uploadConstraints';
 import path from 'node:path';
@@ -244,7 +248,15 @@ export class S3BaseBucket {
       };
     }
 
-    return await this.externalClient.generatePresignedGetUrl({ key, expiredSeconds: expires });
+    const result = await this.externalClient.generatePresignedGetUrl({
+      key,
+      expiredSeconds: expires
+    });
+
+    return {
+      ...result,
+      url: replaceS3UrlWithCdnEndpoint(result.url)
+    };
   }
 
   async createPreviewUrl(params: createPreviewUrlParams) {

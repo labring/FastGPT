@@ -23,6 +23,7 @@ type BucketStorageOptions = {
 
 const storageRegion = serviceEnv.STORAGE_REGION;
 const storageExternalEndpoint = serviceEnv.STORAGE_EXTERNAL_ENDPOINT;
+export const storageS3CdnEndpoint = serviceEnv.STORAGE_S3_CDN_ENDPOINT;
 const storageS3Endpoint = serviceEnv.STORAGE_S3_ENDPOINT;
 export const storageDownloadMode = serviceEnv.STORAGE_EXTERNAL_ENDPOINT ? 'presigned' : 'proxy';
 const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
@@ -107,5 +108,31 @@ export function createDefaultStorageOptions() {
     default: {
       throw new Error(`Unsupported storage vendor: ${vendor}`);
     }
+  }
+}
+
+export function replaceS3UrlWithCdnEndpoint(url: string) {
+  if (!storageS3CdnEndpoint) {
+    return url;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    const cdnUrl = new URL(storageS3CdnEndpoint);
+    const cdnPath = cdnUrl.pathname.replace(/\/$/, '');
+    const sourcePath = parsedUrl.pathname.replace(/^\//, '');
+
+    parsedUrl.protocol = cdnUrl.protocol;
+    parsedUrl.host = cdnUrl.host;
+    parsedUrl.username = '';
+    parsedUrl.password = '';
+
+    if (cdnPath && cdnPath !== '/') {
+      parsedUrl.pathname = `${cdnPath}/${sourcePath}`;
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return url;
   }
 }

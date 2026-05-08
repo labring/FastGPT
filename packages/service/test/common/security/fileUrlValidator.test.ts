@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const originalEnv = {
   STORAGE_S3_ENDPOINT: process.env.STORAGE_S3_ENDPOINT,
   STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
+  STORAGE_S3_CDN_ENDPOINT: process.env.STORAGE_S3_CDN_ENDPOINT,
   FE_DOMAIN: process.env.FE_DOMAIN,
   PRO_URL: process.env.PRO_URL
 };
@@ -15,6 +16,7 @@ describe('fileUrlValidator', () => {
     vi.resetModules();
     vi.stubEnv('STORAGE_S3_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', undefined);
+    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
     vi.stubEnv('FE_DOMAIN', undefined);
     vi.stubEnv('PRO_URL', undefined);
   });
@@ -22,6 +24,7 @@ describe('fileUrlValidator', () => {
   afterEach(() => {
     vi.stubEnv('STORAGE_S3_ENDPOINT', originalEnv.STORAGE_S3_ENDPOINT);
     vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalEnv.STORAGE_EXTERNAL_ENDPOINT);
+    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', originalEnv.STORAGE_S3_CDN_ENDPOINT);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     global.systemEnv = originalSystemEnv;
@@ -44,6 +47,15 @@ describe('fileUrlValidator', () => {
         '@fastgpt/service/common/security/fileUrlValidator'
       );
       expect(validateFileUrlDomain('http://external.example.com/file.png')).toBe(true);
+    });
+
+    it('should extract hostname from STORAGE_S3_CDN_ENDPOINT', async () => {
+      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');
+      global.systemEnv = { fileUrlWhitelist: ['other.com'] } as any;
+      const { validateFileUrlDomain } = await import(
+        '@fastgpt/service/common/security/fileUrlValidator'
+      );
+      expect(validateFileUrlDomain('http://cdn.example.com/file.png')).toBe(true);
     });
 
     it('should reject invalid STORAGE_EXTERNAL_ENDPOINT at env validation stage', async () => {
@@ -94,6 +106,7 @@ describe('fileUrlValidator', () => {
     it('should combine all env vars into systemWhiteList', async () => {
       vi.stubEnv('STORAGE_S3_ENDPOINT', 'http://s3.example.com');
       vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://external.example.com');
+      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com');
       vi.stubEnv('FE_DOMAIN', 'https://fe.example.com');
       vi.stubEnv('PRO_URL', 'https://pro.example.com');
       global.systemEnv = { fileUrlWhitelist: ['user.com'] } as any;
@@ -102,6 +115,7 @@ describe('fileUrlValidator', () => {
       );
       expect(validateFileUrlDomain('http://s3.example.com/f')).toBe(true);
       expect(validateFileUrlDomain('http://external.example.com/f')).toBe(true);
+      expect(validateFileUrlDomain('http://cdn.example.com/f')).toBe(true);
       expect(validateFileUrlDomain('http://fe.example.com/f')).toBe(true);
       expect(validateFileUrlDomain('http://pro.example.com/f')).toBe(true);
       expect(validateFileUrlDomain('http://user.com/f')).toBe(true);
