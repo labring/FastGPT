@@ -65,8 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     filepaths.push(result.fileMetadata.path);
 
     const response = await uploadMarketplacePkg({
-      buffer: result.getBuffer(),
-      filename: decodeURIComponent(result.fileMetadata.originalname || 'plugin.pkg')
+      buffer: result.getBuffer()
     });
 
     return sendJson(res, 200, UploadMarketplacePkgResponseSchema.parse(response));

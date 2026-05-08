@@ -8,6 +8,7 @@ import {
 import { MarketplaceToolManifestZodSchema } from '../mongo/models/tool';
 import { pluginRepo } from '../plugin/repo';
 import {
+  getPkgFilename,
   getPkgDownloadURLByKey,
   getPkgObjectKey,
   getPluginAssetObjectKey,
@@ -62,13 +63,7 @@ const formatPkgParseError = (error: unknown) => {
   return error instanceof Error ? error.message : String(error);
 };
 
-export const uploadMarketplacePkg = async ({
-  buffer,
-  filename
-}: {
-  buffer: Buffer;
-  filename: string;
-}) => {
+export const uploadMarketplacePkg = async ({ buffer }: { buffer: Buffer }) => {
   const [parsedPkg, parseError] = await parsePkg({
     input: buffer,
     getAccessURL: async ({ pluginId, version, etag, filePath }) => {
@@ -95,13 +90,18 @@ export const uploadMarketplacePkg = async ({
     pluginId: tool.pluginId,
     version: tool.version
   });
+  const pkgFilename = getPkgFilename({
+    pluginId: tool.pluginId,
+    version: tool.version,
+    etag: tool.etag
+  });
   const downloadUrl = getPkgDownloadURLByKey(pkgObjectKey);
 
   await Promise.all([
     uploadPkgToS3({
       objectKey: pkgObjectKey,
       buffer,
-      filename
+      filename: pkgFilename
     }),
     ...(parsedPkg.files.readme
       ? [
@@ -141,7 +141,7 @@ export const uploadMarketplacePkg = async ({
     downloadObjectKey: pkgObjectKey,
     downloadUrl,
     readmeUrl: tool.readmeUrl,
-    filename,
+    filename: pkgFilename,
     size: buffer.length,
     createTime: now,
     updateTime: now

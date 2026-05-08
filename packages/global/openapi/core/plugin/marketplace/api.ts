@@ -64,6 +64,12 @@ export type GetMarketplaceToolTagsResponseType = z.infer<
 >;
 
 // Versions
+export const GetMarketplaceToolVersionsQuerySchema = z.object({
+  toolId: z.string().optional()
+});
+export type GetMarketplaceToolVersionsQueryType = z.infer<
+  typeof GetMarketplaceToolVersionsQuerySchema
+>;
 export const MarketplaceToolVersionSchema = z.object({
   toolId: z.string(),
   version: z.string(),

@@ -9,6 +9,7 @@ import {
 import {
   deleteObjectsByPrefixFromS3,
   downloadBufferFromS3,
+  getPkgFilename,
   getPkgDownloadURLByKey,
   getPkgObjectKey,
   getPluginAssetObjectKey,
@@ -254,7 +255,7 @@ export class PluginRepo {
       downloadObjectKey: pkgObjectKey,
       downloadUrl: getPkgDownloadURLByKey(pkgObjectKey),
       readmeUrl: tool.readmeUrl,
-      filename: `${index.pluginId}-${index.version}.pkg`,
+      filename: getPkgFilename(index),
       size: buffer.length,
       createTime: index.createTime,
       updateTime: index.updateTime

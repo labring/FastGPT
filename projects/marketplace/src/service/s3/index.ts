@@ -107,6 +107,18 @@ export const getPkgObjectKey = ({ pluginId, version }: { pluginId: string; versi
   return `pkgs/${encodeObjectKeyPart(pluginId)}/${encodeObjectKeyPart(version)}.pkg`;
 };
 
+export const getPkgFilename = ({
+  pluginId,
+  version,
+  etag
+}: {
+  pluginId: string;
+  version: string;
+  etag: string;
+}) => {
+  return `${pluginId}@${version}@${etag}.pkg`;
+};
+
 export const getToolManifestObjectKey = ({
   pluginId,
   version

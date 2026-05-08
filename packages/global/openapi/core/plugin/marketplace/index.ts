@@ -6,7 +6,9 @@ import {
   MarketplaceToolsResponseSchema,
   UploadMarketplacePkgBodySchema,
   UploadMarketplacePkgResponseSchema,
-  GetMarketplaceToolTagsResponseSchema
+  GetMarketplaceToolTagsResponseSchema,
+  GetMarketplaceToolVersionsQuerySchema,
+  GetMarketplaceToolVersionsResponseSchema
 } from './api';
 import { TagsMap } from '../../../tag';
 
@@ -59,6 +61,25 @@ export const MarketplacePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetMarketplaceToolTagsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/marketplace/api/tool/versions': {
+    get: {
+      summary: '获取工具版本列表',
+      tags: [TagsMap.pluginMarketplace],
+      requestParams: {
+        query: GetMarketplaceToolVersionsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '获取工具版本列表成功',
+          content: {
+            'application/json': {
+              schema: GetMarketplaceToolVersionsResponseSchema
             }
           }
         }
