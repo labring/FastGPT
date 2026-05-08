@@ -38,6 +38,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import {
   getFileSelectorDisplayIcon,
+  inferFileSelectorType,
   isFileSelectorCleanValueEcho,
   isFileSelectorPreviewUrlMissing,
   isFileSelectorUploading,
@@ -604,15 +605,23 @@ const FileSelector = ({
 
       const trimmedUrl = url.trim();
       if (trimmedUrl) {
+        const type = inferFileSelectorType(trimmedUrl);
         handleChangeFiles([
           ...fileList,
           {
             id: getNanoid(6),
             status: 1,
-            type: ChatFileTypeEnum.file,
+            type,
             url: trimmedUrl,
             name: trimmedUrl,
-            icon: 'common/link'
+            icon:
+              type === ChatFileTypeEnum.image
+                ? trimmedUrl
+                : getFileSelectorDisplayIcon({
+                    type,
+                    url: trimmedUrl,
+                    name: trimmedUrl
+                  })
           }
         ]);
       }

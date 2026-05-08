@@ -15,7 +15,7 @@ const isFileObject = (file: FileSelectorInputItemType): file is FileSelectorInpu
 
 const imageFileExtensions = imageFileType.split(',').map((item) => item.trim().toLowerCase());
 
-const inferFileSelectorType = (filename?: string): ChatFileTypeEnum => {
+export const inferFileSelectorType = (filename?: string): ChatFileTypeEnum => {
   const normalizedName = (() => {
     if (!filename) return '';
 

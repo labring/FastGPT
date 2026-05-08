@@ -146,7 +146,7 @@ describe('WorkflowVariableState', () => {
     ]);
   });
 
-  it('should keep external url files clean and ignore invalid initial file values', async () => {
+  it('should keep external url files clean and infer string urls on initialization', async () => {
     const state = await createState({
       variablesConfig: [
         {
@@ -176,6 +176,11 @@ describe('WorkflowVariableState', () => {
         type: ChatFileTypeEnum.file,
         name: 'file.jpg',
         url: 'https://example.com/files/file.jpg'
+      },
+      {
+        type: ChatFileTypeEnum.file,
+        name: 'doc.pdf',
+        url: 'https://preview.example.com/doc.pdf'
       }
     ]);
     expect(state.toStoreRecord().missingFiles).toEqual([]);
@@ -257,6 +262,48 @@ describe('WorkflowVariableState', () => {
         key: 'chat/app/parent.pdf',
         name: 'parent.pdf',
         type: ChatFileTypeEnum.file
+      }
+    ]);
+  });
+
+  it('should restore parent file metadata from runtime url when initializing child state', async () => {
+    const parent = await createState({
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ],
+      inputVariables: {
+        files: [
+          {
+            key: 'chat/app/parent-init.png',
+            name: 'parent-init.png',
+            type: ChatFileTypeEnum.image
+          }
+        ]
+      }
+    });
+    const [runtimeUrl] = parent.get('files') as string[];
+    const child = await createState({
+      variablesConfig: [
+        {
+          key: 'childFiles',
+          type: VariableInputEnum.file
+        } as any
+      ],
+      inputVariables: {
+        childFiles: [runtimeUrl]
+      },
+      sourceVariableState: parent
+    });
+
+    expect(child.get('childFiles')).toEqual(['http://preview.local/chat/app/parent-init.png']);
+    expect(child.toStoreRecord().childFiles).toEqual([
+      {
+        key: 'chat/app/parent-init.png',
+        name: 'parent-init.png',
+        type: ChatFileTypeEnum.image
       }
     ]);
   });

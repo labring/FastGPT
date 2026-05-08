@@ -12,10 +12,9 @@ import { anyValueDecrypt } from '../../../../common/secret/utils';
 import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
 import {
   type ChatFileRuntimeValue,
-  type ChatFileValueInput,
+  type ChatFileRuntimeValueItem,
   assertChatFileRuntimeValue,
-  normalizeChatFileStoreValue,
-  normalizeChatFileStoreValues
+  normalizeChatFileStoreValue
 } from '../../../chat/fileStoreValue';
 
 /**
@@ -255,8 +254,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
   /** 根据变量配置初始化单个用户变量，并完成特殊类型的 store/runtime 转换。 */
   private async initConfiguredVariable(config: VariableItemType, value: unknown) {
     if (config.type === VariableInputEnum.file) {
-      const val = value as ChatFileValueInput[];
-      const storeValue = normalizeChatFileStoreValues(val);
+      const storeValue = Array.isArray(value)
+        ? this.runtimeFileValueToStoreValue(
+            assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[])
+          )
+        : [];
       const runtimeValue = await fileStoreValuesToRuntimeUrls({
         files: storeValue,
         fileMetaMap: this.fileMetaMap

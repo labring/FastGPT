@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelector/type';
 import {
   getFileSelectorDisplayIcon,
+  inferFileSelectorType,
   isFileSelectorCleanValueEcho,
   isFileSelectorPreviewUrlMissing,
   isFileSelectorUploading,
@@ -119,6 +120,15 @@ describe('sanitizeFileSelectValue', () => {
 
   it('兼容历史脏数据中的 null 和 undefined 文件项', () => {
     expect(sanitizeFileSelectValue([null, undefined])).toEqual([]);
+  });
+});
+
+describe('inferFileSelectorType', () => {
+  it('按 URL 或文件名扩展名推断图片类型，未知类型兜底普通文件', () => {
+    expect(inferFileSelectorType('https://example.com/image.png?token=1')).toBe(
+      ChatFileTypeEnum.image
+    );
+    expect(inferFileSelectorType('report.unknown')).toBe(ChatFileTypeEnum.file);
   });
 });
 
