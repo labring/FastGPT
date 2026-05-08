@@ -66,6 +66,7 @@ const SkillPageContent = () => {
         pr={6}
         pl={6}
         pt={6}
+        gap={4}
         overflowY={'auto'}
         overflowX={'hidden'}
       >

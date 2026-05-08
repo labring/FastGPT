@@ -123,33 +123,36 @@ export const workflowSystemNodeTemplateList: {
   }
 ];
 
-export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
-  {
-    typeName: i18nT('common:templateTags.Writing'),
-    typeId: AppTemplateTypeEnum.writing,
-    typeOrder: 0
-  },
-  {
-    typeName: i18nT('common:templateTags.Image_generation'),
-    typeId: AppTemplateTypeEnum.imageGeneration,
-    typeOrder: 1
-  },
-  {
-    typeName: i18nT('common:templateTags.Web_search'),
-    typeId: AppTemplateTypeEnum.webSearch,
-    typeOrder: 2
-  },
-  {
-    typeName: i18nT('common:templateTags.Roleplay'),
-    typeId: AppTemplateTypeEnum.roleplay,
-    typeOrder: 3
-  },
-  {
-    typeName: i18nT('common:templateTags.Office_services'),
-    typeId: AppTemplateTypeEnum.officeServices,
-    typeOrder: 4
-  }
-];
+// export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
+//   {
+//     typeName: i18nT('common:templateTags.Writing'),
+//     typeId: AppTemplateTypeEnum.writing,
+//     typeOrder: 0
+//   },
+//   {
+//     typeName: i18nT('common:templateTags.Image_generation'),
+//     typeId: AppTemplateTypeEnum.imageGeneration,
+//     typeOrder: 1
+//   },
+//   {
+//     typeName: i18nT('common:templateTags.Web_search'),
+//     typeId: AppTemplateTypeEnum.webSearch,
+//     typeOrder: 2
+//   },
+//   {
+//     typeName: i18nT('common:templateTags.Roleplay'),
+//     typeId: AppTemplateTypeEnum.roleplay,
+//     typeOrder: 3
+//   },
+//   {
+//     typeName: i18nT('common:templateTags.Office_services'),
+//     typeId: AppTemplateTypeEnum.officeServices,
+//     typeOrder: 4
+//   }
+// ];
+
+// 交互要求去掉
+export const defaultTemplateTypes: TemplateTypeSchemaType[] = [];
 
 export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
 
