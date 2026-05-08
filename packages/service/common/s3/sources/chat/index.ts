@@ -127,3 +127,19 @@ export function getS3ChatSource() {
   global.chatBucket = new S3ChatSource();
   return global.chatBucket;
 }
+
+export const createChatFilePreviewUrlGetter = (options?: {
+  expiredHours?: number;
+  mode?: 'proxy' | 'presigned';
+}) => {
+  const s3ChatSource = getS3ChatSource();
+
+  return async (key: string) => {
+    const { url } = await s3ChatSource.createGetChatFileURL({
+      key,
+      external: true,
+      ...options
+    });
+    return url;
+  };
+};

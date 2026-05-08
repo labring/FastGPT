@@ -3,9 +3,9 @@ import { TagsMap } from '../../../tag';
 import {
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
-  PresignDatasetFilePostUrlBodySchema,
-  PresignDatasetFilePostUrlResponseSchema
+  PresignDatasetFilePostUrlBodySchema
 } from './api';
+import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 
 export const DatasetFilePath: OpenAPIPath = {
   '/core/dataset/file/getPreviewChunks': {
@@ -49,7 +49,7 @@ export const DatasetFilePath: OpenAPIPath = {
           description: '成功返回预签名上传 URL、key、请求头和最大文件大小',
           content: {
             'application/json': {
-              schema: PresignDatasetFilePostUrlResponseSchema
+              schema: CreatePostPresignedUrlResponseSchema
             }
           }
         }

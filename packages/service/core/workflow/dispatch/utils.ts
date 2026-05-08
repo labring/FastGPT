@@ -11,7 +11,6 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import { encryptSecret } from '../../../common/secret/aes256gcm';
-import { imageFileType } from '@fastgpt/global/common/file/constants';
 import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   type RuntimeNodeItemType,
@@ -82,11 +81,28 @@ export const getSystemVariables = async ({
     //  文件类型全局变量，签发成 string[] 格式
     else if (item.type === VariableInputEnum.file) {
       const vars = await presignVariablesFileUrls({
-        variables,
+        variables: {
+          [item.key]: variables[item.label] || variables[item.key] || item.defaultValue
+        },
         variableConfig: [item]
       });
 
-      variablesMap[item.key] = vars?.[item.key]?.map((item: any) => item.url);
+      const fileValues = vars?.[item.key];
+      variablesMap[item.key] = Array.isArray(fileValues)
+        ? fileValues
+            .map((file) => {
+              if (typeof file === 'string') return file;
+              if (
+                file &&
+                typeof file === 'object' &&
+                'url' in file &&
+                typeof file.url === 'string'
+              ) {
+                return file.url;
+              }
+            })
+            .filter((url): url is string => typeof url === 'string' && !!url)
+        : undefined;
     }
     // API
     else if (variables[item.label] !== undefined) {
@@ -333,28 +349,47 @@ export const runtimeSystemVar2StoreType = ({
     else if (item.type === VariableInputEnum.file) {
       const currentValue = copyVariables[item.key];
 
-      copyVariables[item.key] = currentValue
-        .map((url: string) => {
-          try {
-            const urlObj = new URL(url);
-            // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
-            const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
-            const filename = path.basename(key) || 'file';
-            const extname = path.extname(key).toLowerCase(); // includes the dot, e.g., ".jpg"
+      copyVariables[item.key] = Array.isArray(currentValue)
+        ? currentValue
+            .map((fileValue) => {
+              if (
+                fileValue &&
+                typeof fileValue === 'object' &&
+                'key' in fileValue &&
+                typeof fileValue.key === 'string'
+              ) {
+                const id =
+                  'id' in fileValue && typeof fileValue.id === 'string' ? fileValue.id : undefined;
+                const name =
+                  'name' in fileValue && typeof fileValue.name === 'string'
+                    ? fileValue.name
+                    : path.basename(fileValue.key) || 'file';
 
-            // Check if it's an image type
-            const isImage = extname && imageFileType.includes(extname);
+                return {
+                  ...(id ? { id } : {}),
+                  key: fileValue.key,
+                  name
+                };
+              }
+              if (typeof fileValue !== 'string') return null;
 
-            return {
-              id: path.basename(key, path.extname(key)), // filename without extension
-              key,
-              name: filename
-            };
-          } catch {
-            return null;
-          }
-        })
-        .filter((file: any) => file !== null);
+              try {
+                const urlObj = new URL(fileValue);
+                // Extract key: remove bucket prefix (e.g., "/fastgpt-private/")
+                const key = decodeURIComponent(urlObj.pathname.replace(/^\/[^/]+\//, ''));
+                const filename = path.basename(key) || 'file';
+
+                return {
+                  id: path.basename(key, path.extname(key)), // filename without extension
+                  key,
+                  name: filename
+                };
+              } catch {
+                return null;
+              }
+            })
+            .filter((file): file is { id?: string; key: string; name: string } => file !== null)
+        : [];
     }
   });
 

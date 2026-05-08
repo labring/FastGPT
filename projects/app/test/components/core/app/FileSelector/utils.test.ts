@@ -1,0 +1,232 @@
+import { describe, expect, it } from 'vitest';
+import type { FileSelectorRenderItemType } from '@/components/core/app/FileSelector/type';
+import {
+  getFileSelectorDisplayIcon,
+  isFileSelectorCleanValueEcho,
+  isFileSelectorUploading,
+  markFileSelectorUploadError,
+  markFileSelectorUploading,
+  markFileSelectorUploadSuccess,
+  sanitizeFileSelectValue
+} from '@/components/core/app/FileSelector/utils';
+
+describe('sanitizeFileSelectValue', () => {
+  it('清洗 S3 文件对象，移除 base64 预览和上传态字段', () => {
+    expect(
+      sanitizeFileSelectValue([
+        {
+          id: 'file-id',
+          key: 'apps/app/chat/file.png',
+          url: 'https://signed-url.example.com/file.png',
+          name: 'file.png',
+          type: 'image',
+          icon: 'data:image/png;base64,abc',
+          rawFile: new File(['file'], 'file.png'),
+          process: 100,
+          status: 1,
+          error: 'ignored'
+        }
+      ])
+    ).toEqual([
+      {
+        id: 'file-id',
+        key: 'apps/app/chat/file.png',
+        name: 'file.png',
+        type: 'image'
+      }
+    ]);
+  });
+
+  it('保留 URL 上传文件的 url，并兼容非 base64 字符串 URL', () => {
+    expect(
+      sanitizeFileSelectValue([
+        {
+          id: 'url-id',
+          url: 'https://example.com/file.pdf',
+          name: 'https://example.com/file.pdf',
+          type: 'file',
+          icon: 'common/link'
+        },
+        'https://example.com/legacy.pdf',
+        'data:image/png;base64,abc'
+      ])
+    ).toEqual([
+      {
+        id: 'url-id',
+        url: 'https://example.com/file.pdf',
+        name: 'https://example.com/file.pdf',
+        type: 'file'
+      },
+      {
+        url: 'https://example.com/legacy.pdf',
+        name: 'https://example.com/legacy.pdf',
+        type: 'file'
+      }
+    ]);
+  });
+
+  it('过滤仅存在于组件内部上传态的未完成文件', () => {
+    expect(
+      sanitizeFileSelectValue([
+        {
+          id: 'uploading',
+          name: 'uploading.png',
+          type: 'image',
+          icon: 'data:image/png;base64,abc',
+          rawFile: new File(['file'], 'uploading.png'),
+          status: 0,
+          process: 30
+        }
+      ])
+    ).toEqual([]);
+  });
+
+  it('空数组返回空数组', () => {
+    expect(sanitizeFileSelectValue([])).toEqual([]);
+  });
+
+  it('兼容历史脏数据中的 null 和 undefined 文件项', () => {
+    expect(sanitizeFileSelectValue([null, undefined])).toEqual([]);
+  });
+});
+
+describe('FileSelector upload state', () => {
+  it('仅将本次待上传文件置为上传态，不影响已完成文件', () => {
+    const doneFile: FileSelectorRenderItemType = {
+      id: 'done',
+      key: 'apps/app/chat/done.png',
+      name: 'done.png',
+      type: 'image',
+      status: 1,
+      process: 100
+    };
+    const pendingFile: FileSelectorRenderItemType = {
+      id: 'pending',
+      name: 'pending.html',
+      type: 'file',
+      status: 0,
+      process: 80,
+      error: 'old error',
+      rawFile: new File(['html'], 'pending.html')
+    };
+    const files = [doneFile, pendingFile];
+
+    const uploadingFiles = markFileSelectorUploading(files);
+
+    expect(uploadingFiles.map((file) => file.id)).toEqual(['pending']);
+    expect(doneFile.process).toBe(100);
+    expect(doneFile.status).toBe(1);
+    expect(pendingFile.status).toBe(1);
+    expect(pendingFile.process).toBe(0);
+    expect(pendingFile.error).toBeUndefined();
+  });
+
+  it('有 key 或 url 的文件即使保留历史 process，也不应显示上传中', () => {
+    expect(
+      isFileSelectorUploading({
+        key: 'apps/app/chat/file.png',
+        process: 100
+      })
+    ).toBe(false);
+    expect(
+      isFileSelectorUploading({
+        url: 'https://example.com/file.png',
+        process: 100
+      })
+    ).toBe(false);
+    expect(
+      isFileSelectorUploading({
+        process: 30
+      })
+    ).toBe(true);
+    expect(
+      isFileSelectorUploading({
+        error: 'upload failed',
+        process: 30
+      })
+    ).toBe(false);
+  });
+
+  it('上传成功或失败后清理 process，避免完成文件继续显示 loading', () => {
+    const files: FileSelectorRenderItemType[] = [
+      {
+        id: 'file-id',
+        name: 'file.png',
+        type: 'image',
+        status: 1,
+        process: 100
+      }
+    ];
+
+    markFileSelectorUploadSuccess({
+      files,
+      id: 'file-id',
+      key: 'apps/app/chat/file.png',
+      url: 'https://signed-url.example.com/file.png'
+    });
+
+    expect(files[0]).toMatchObject({
+      key: 'apps/app/chat/file.png',
+      url: 'https://signed-url.example.com/file.png'
+    });
+    expect(files[0].process).toBeUndefined();
+    expect(isFileSelectorUploading(files[0])).toBe(false);
+
+    files[0].process = 60;
+    markFileSelectorUploadError({
+      files,
+      id: 'file-id',
+      error: 'upload failed'
+    });
+
+    expect(files[0].error).toBe('upload failed');
+    expect(files[0].process).toBeUndefined();
+    expect(isFileSelectorUploading(files[0])).toBe(false);
+  });
+});
+
+describe('FileSelector display icon', () => {
+  it('图片历史值缺少预览 url 时，使用文件名图标兜底', () => {
+    expect(
+      getFileSelectorDisplayIcon({
+        type: 'image',
+        name: 'image.png',
+        key: 'chat/files/image.png'
+      })
+    ).toBe('image');
+  });
+});
+
+describe('FileSelector external sync', () => {
+  it('后端补充同 key 的预览字段时，不应被当成清洗值回写跳过', () => {
+    const cleanedValue = [
+      {
+        id: 'file-id',
+        key: 'apps/app/chat/image.png',
+        name: 'image.png',
+        type: 'image' as const
+      }
+    ];
+
+    expect(
+      isFileSelectorCleanValueEcho({
+        value: cleanedValue,
+        cleanedValue,
+        lastEmittedValue: cleanedValue
+      })
+    ).toBe(true);
+
+    expect(
+      isFileSelectorCleanValueEcho({
+        value: [
+          {
+            ...cleanedValue[0],
+            url: 'https://signed-url.example.com/image.png'
+          }
+        ],
+        cleanedValue,
+        lastEmittedValue: cleanedValue
+      })
+    ).toBe(false);
+  });
+});

@@ -1,11 +1,4 @@
-import {
-  Client,
-  type RemoveOptions,
-  type CopyConditions,
-  S3Error,
-  InvalidObjectNameError,
-  InvalidXMLError
-} from 'minio';
+import { S3Error, InvalidObjectNameError, InvalidXMLError } from 'minio';
 import {
   type CreatePostPresignedUrlOptions,
   type CreatePostPresignedUrlParams,
@@ -186,6 +179,11 @@ export class S3BaseBucket {
         });
       }
 
+      const { url: previewUrl } = await this.createExternalUrl({
+        key: params.rawKey,
+        expiredHours
+      });
+
       return {
         url: jwtSignS3UploadToken({
           objectKey: params.rawKey,
@@ -199,6 +197,7 @@ export class S3BaseBucket {
         headers: {
           'content-type': resolvedUploadConstraints.defaultContentType
         },
+        previewUrl,
         maxSize: formatMaxFileSize
       };
     } catch (error) {

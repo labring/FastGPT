@@ -609,6 +609,24 @@ describe('runtimeSystemVar2StoreType', () => {
     });
     expect(result.myFile).toHaveLength(0);
   });
+
+  it('should handle missing file variables without throwing', () => {
+    const result = runtimeSystemVar2StoreType({
+      variables: {},
+      userVariablesConfigs: [{ key: 'myFile', type: VariableInputEnum.file } as any]
+    });
+    expect(result.myFile).toEqual([]);
+  });
+
+  it('should preserve stored file variable objects with keys', () => {
+    const result = runtimeSystemVar2StoreType({
+      variables: {
+        myFile: [{ id: 'doc', key: 'path/to/doc.pdf', name: 'doc.pdf' }]
+      },
+      userVariablesConfigs: [{ key: 'myFile', type: VariableInputEnum.file } as any]
+    });
+    expect(result.myFile).toEqual([{ id: 'doc', key: 'path/to/doc.pdf', name: 'doc.pdf' }]);
+  });
 });
 
 describe('filterSystemVariables', () => {
@@ -1207,6 +1225,66 @@ describe('getSystemVariables', () => {
       }
     });
     expect((result as any).fileKey).toEqual(['http://example.com/a', 'http://example.com/b']);
+  });
+
+  it('should use variables[label] for file variables when provided by API input', async () => {
+    mockPresignVariablesFileUrls.mockResolvedValueOnce({
+      fileKey: [{ key: 'a', url: 'http://example.com/a' }]
+    });
+
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'fileKey',
+            label: 'fileLabel',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      } as any,
+      variables: {
+        fileLabel: [{ key: 'a' }]
+      }
+    });
+
+    expect(mockPresignVariablesFileUrls).toHaveBeenLastCalledWith({
+      variables: {
+        fileKey: [{ key: 'a' }]
+      },
+      variableConfig: [
+        expect.objectContaining({
+          key: 'fileKey',
+          label: 'fileLabel',
+          type: VariableInputEnum.file
+        })
+      ]
+    });
+    expect((result as any).fileKey).toEqual(['http://example.com/a']);
+  });
+
+  it('should keep legacy string urls for file variables', async () => {
+    mockPresignVariablesFileUrls.mockImplementationOnce(async ({ variables }) => variables);
+
+    const result = await getSystemVariables({
+      ...baseArgs,
+      chatConfig: {
+        variables: [
+          {
+            key: 'fileKey',
+            label: 'fileLabel',
+            type: VariableInputEnum.file,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      } as any,
+      variables: {
+        fileKey: ['https://legacy.example.com/file.pdf']
+      }
+    });
+
+    expect((result as any).fileKey).toEqual(['https://legacy.example.com/file.pdf']);
   });
 
   it('should return undefined for file variable when presign returns no entry', async () => {

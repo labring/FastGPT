@@ -57,7 +57,7 @@ import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { createChatUsageRecord, pushChatItemUsage } from '../../../support/wallet/usage/controller';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { getS3ChatSource } from '../../../common/s3/sources/chat';
+import { createChatFilePreviewUrlGetter } from '../../../common/s3/sources/chat';
 import { addPreviewUrlToChatItems } from '../../chat/utils';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '../../../../web/i18n/utils';
@@ -188,6 +188,8 @@ export async function dispatchWorkFlow({
   // Check point
   await checkTeamAIPoints(runningUserInfo.teamId);
 
+  const getPreviewUrl = createChatFilePreviewUrlGetter();
+
   const [{ timezone, externalProvider }, newUsageId] = await Promise.all([
     getUserChatInfo(runningUserInfo.tmbId),
     (() => {
@@ -206,15 +208,11 @@ export async function dispatchWorkFlow({
       return usageId;
     })(),
     // Add preview url to chat items
-    await addPreviewUrlToChatItems(histories, 'chatFlow'),
+    addPreviewUrlToChatItems(histories, 'chatFlow'),
     // Add preview url to query
     ...query.map(async (item) => {
       if (!item.file?.key) return;
-      const { url } = await getS3ChatSource().createGetChatFileURL({
-        key: item.file.key,
-        external: true
-      });
-      item.file.url = url;
+      item.file.url = await getPreviewUrl(item.file.key);
     }),
     // Remove stopping sign
     delAgentRuntimeStopSign({

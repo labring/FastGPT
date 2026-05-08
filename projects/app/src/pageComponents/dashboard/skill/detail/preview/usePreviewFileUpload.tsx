@@ -11,7 +11,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type UseFieldArrayReturn } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
+import { getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import type { PreviewInputFormType, UserInputFileItemType } from './type';
 
@@ -128,6 +128,7 @@ export const usePreviewFileUpload = ({ fileCtrl, appId, chatId }: UsePreviewFile
             url,
             key,
             headers,
+            previewUrl,
             maxSize: uploadMaxSize
           } = await getUploadChatFilePresignedUrl({
             filename: copyFile.rawFile.name,
@@ -154,12 +155,6 @@ export const usePreviewFileUpload = ({ fileCtrl, appId, chatId }: UsePreviewFile
             maxSize: uploadMaxSize
           });
 
-          // TODO: 替换为 skill 运行预览专用的文件预览 API
-          const previewUrl = await getPresignedChatFileGetUrl({
-            key,
-            appId,
-            outLinkAuthData: undefined
-          });
           copyFile.url = previewUrl;
           copyFile.key = key;
           updateFiles(fileIndex, copyFile);

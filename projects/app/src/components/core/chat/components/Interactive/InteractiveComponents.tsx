@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { Controller, useForm, type UseFormHandleSubmit } from 'react-hook-form';
 import Markdown from '@/components/Markdown';
@@ -12,10 +12,22 @@ import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import { getPresignedChatFileGetUrl } from '@/web/common/file/api';
+import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { useTranslation } from 'next-i18next';
+
+type FormFileValue = {
+  key?: unknown;
+  url?: unknown;
+  error?: unknown;
+};
+
+const isPendingFileValue = (file: unknown) => {
+  if (!file || typeof file !== 'object') return false;
+
+  const { key, url, error } = file as FormFileValue;
+  return !key && !url && !error;
+};
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -80,64 +92,26 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 }) {
   const { t } = useTranslation();
 
-  const { handleSubmit, control, watch, setValue } = useForm({
+  const { handleSubmit, control, watch } = useForm({
     defaultValues
   });
 
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
-  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const runtimeFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
   const formValues = watch();
 
-  // 刷新文件 URL（处理 TTL 过期）
-  useEffect(() => {
-    if (!submitted || !inputForm) return;
-
-    const refreshFileUrls = async () => {
-      for (const item of inputForm) {
-        if (item.type === 'fileSelect' && defaultValues[item.key]) {
-          const files = defaultValues[item.key];
-          if (Array.isArray(files) && files.length > 0 && files[0]?.key) {
-            try {
-              const refreshedFiles = await Promise.all(
-                files.map(async (file: any) => {
-                  if (file.key) {
-                    try {
-                      const newUrl = await getPresignedChatFileGetUrl({
-                        key: file.key,
-                        appId,
-                        outLinkAuthData
-                      });
-                      return {
-                        ...file,
-                        url: newUrl,
-                        icon: file.type === 'image' ? newUrl : file.icon
-                      };
-                    } catch (e) {}
-                  }
-                  return file;
-                })
-              );
-              setValue(item.key, refreshedFiles);
-            } catch (e) {}
-          }
-        }
-      }
-    };
-
-    refreshFileUrls();
-  }, [submitted, inputForm, defaultValues, appId, outLinkAuthData, setValue]);
-
   const isFileUploading = React.useMemo(() => {
+    if (runtimeFileUploading) return true;
+
     return inputForm.some((input) => {
       if (input.type === 'fileSelect') {
         const files = formValues[input.key];
         if (Array.isArray(files)) {
-          return files.some((file: any) => !file.url && !file.error);
+          return files.some(isPendingFileValue);
         }
       }
       return false;
     });
-  }, [inputForm, formValues]);
+  }, [inputForm, formValues, runtimeFileUploading]);
 
   return (
     <Box>
