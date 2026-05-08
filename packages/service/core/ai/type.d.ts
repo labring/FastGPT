@@ -6,7 +6,11 @@ import type {
   EmbeddingModelItemType,
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.schema';
-import type { AIProxyChannelsType, I18nStringStrictType } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type {
+  I18nStringStrictType,
+  AIProxyChannelsType,
+  AiproxyMapProviderItemType
+} from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 
 export type SystemModelSchemaType = {
@@ -38,8 +42,7 @@ declare global {
   var ModelProviderRawCache: { provider: string; value: I18nStringStrictType; avatar: string }[];
   var ModelProviderListCache: Record<langType, ModelProviderItemType[]>;
   var ModelProviderMapCache: Record<langType, Record<string, ModelProviderItemType>>;
-  // TODO: check 一下这个 channel type 是什么鬼
-  var aiproxyChannelsCache: AIProxyChannelsType;
+  var aiproxyChannelsCache: AiproxyMapProviderItemType[];
 
   var systemModelList: SystemModelItemType[];
   // var systemModelMap: Map<string, SystemModelItemType>;

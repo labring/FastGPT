@@ -13,6 +13,7 @@ export const AdminSystemToolListItemSchema = z.object({
   avatar: z.string().meta({ description: '工具的图标' }),
   name: z.string().meta({ description: '工具的名称' }),
   intro: z.string().meta({ description: '工具的简介' }),
+  author: z.string().meta({ description: '工具的作者' }),
   tags: z.array(z.string()).meta({ description: '工具的标签' }),
   pluginOrder: z.number().optional().meta({ description: '工具的排序字段' }),
   originCost: z.number().optional().meta({ description: '工具的原始费用' }),

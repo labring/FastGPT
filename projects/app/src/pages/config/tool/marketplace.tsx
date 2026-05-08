@@ -23,15 +23,17 @@ import {
   getMarketplaceDownloadURLs,
   getMarketplaceToolDetail,
   getMarketplaceTools,
-  getMarketplaceToolVersions,
-  getSystemInstalledPlugins
+  getMarketplaceToolVersions
 } from '@/web/core/plugin/marketplace/api';
+import { getAdminSystemTools } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 
 // Custom hook for managing URL search params
 const useSearchParams = () => {
@@ -78,6 +80,15 @@ const hasMarketplaceToolUpdate = ({
   if (marketplaceEtag && installedEtag && installedEtag !== marketplaceEtag) return true;
 
   return false;
+};
+
+const getSystemToolRawPluginId = (toolId: string) => {
+  try {
+    const { source, pluginId } = splitCombineToolId(toolId);
+    return source === AppToolSourceEnum.systemTool ? pluginId : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
@@ -156,7 +167,25 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
   const { data: systemInstalledPlugins, runAsync: refreshInstalledPlugins } = useRequest(
     async () => {
-      const { list } = await getSystemInstalledPlugins({ type: 'tool' });
+      const tools = await getAdminSystemTools({});
+      const list = tools.flatMap((tool) => {
+        const id = getSystemToolRawPluginId(tool.id);
+        if (!id) return [];
+
+        return [
+          {
+            id,
+            version: tool.version,
+            etag: tool.etag,
+            name: tool.name,
+            description: tool.intro,
+            icon: tool.avatar,
+            author: tool.author,
+            tags: tool.tags
+          }
+        ];
+      });
+
       return {
         ids: new Set(list.map((item) => item.id)),
         map: new Map(list.map((item) => [item.id, item])),
@@ -199,9 +228,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           });
 
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) =>
-              prev ? { ...prev, installed: true, update: false } : null
-            );
+            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
           }
           await refreshInstalledPlugins();
         } finally {
@@ -241,9 +268,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
-            setSelectedTool((prev) =>
-              prev ? { ...prev, installed: true, update: false } : null
-            );
+            setSelectedTool((prev) => (prev ? { ...prev, installed: true, update: false } : null));
           }
           await refreshInstalledPlugins();
         } finally {
@@ -348,9 +373,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
     if (!systemInstalledPlugins || !marketplaceVersions) return [];
 
     // Create a map for quick lookup of marketplace versions
-    const marketplaceVersionMap = new Map(
-      marketplaceVersions.map((item) => [item.toolId, item])
-    );
+    const marketplaceVersionMap = new Map(marketplaceVersions.map((item) => [item.toolId, item]));
 
     // Filter installed plugins that have updates available
     const updatableList = systemInstalledPlugins.list
@@ -373,11 +396,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           description: parseI18nString(installedPlugin.description || '', i18n.language),
           icon: installedPlugin.icon || '',
           author: installedPlugin.author || '',
-          tags:
-            installedPlugin.tags?.map((tag: string) => {
-              const currentTag = allTags.find((t) => t.tagId === tag);
-              return parseI18nString(currentTag?.tagName || tag, i18n.language);
-            }) || [],
+          tags: installedPlugin.tags || [],
           installed: true,
           update: true,
           version: marketplaceTool?.version,
@@ -387,7 +406,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       });
 
     return updatableList;
-  }, [systemInstalledPlugins, marketplaceVersions, i18n.language, allTags]);
+  }, [systemInstalledPlugins, marketplaceVersions, i18n.language]);
 
   if (toolsError && !loadingTools) {
     return (

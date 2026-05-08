@@ -9,6 +9,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 export type GetSystemPluginTemplatesBody = {
   getAll?: boolean;
@@ -17,13 +18,14 @@ export type GetSystemPluginTemplatesBody = {
   tags?: string[];
 };
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>,
   _res: NextApiResponse<any>
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
-  const { tags, parentId } = req.body;
+  const { tags, parentId, searchKey } = req.body;
   const lang = getLocale(req);
+  const searchRegex = getSearchRegex(searchKey);
 
   // Get user tags for auto-install logic
   const userDetail = await getUserDetail({ tmbId });
@@ -38,7 +40,7 @@ async function handler(
       source: 'system'
     });
 
-    return (
+    const childTemplates =
       parent.children?.map((child) => ({
         ...parent,
         templateType: FlowNodeTemplateTypeEnum.tools,
@@ -49,9 +51,11 @@ async function handler(
         name: child.name,
         intro: child.description,
         toolDescription: child.toolDescription,
-        id: `${parentId}/${child.id}`
-      })) ?? []
-    );
+        id: `${parentId}/${child.id}`,
+        avatar: child.icon ?? parent.avatar
+      })) ?? [];
+
+    return filterTemplatesBySearchKey(childTemplates, searchRegex);
   }
   // no parentId, get all tools
   const tools = await systemToolRepo.getSystemToolList({
@@ -78,7 +82,39 @@ async function handler(
       instructions: tool.userGuide ?? '',
       toolDescription: tool.toolDescription,
       tags: tool.tags
-    }));
+    }))
+    .filter((item) => filterTemplateBySearchKey(item, searchRegex));
 }
 
 export default NextAPI(handler);
+
+function getSearchRegex(searchKey?: string) {
+  const trimmedSearchKey = searchKey?.trim();
+  if (!trimmedSearchKey) return;
+  return new RegExp(replaceRegChars(trimmedSearchKey), 'i');
+}
+
+function filterTemplatesBySearchKey<T extends NodeTemplateListItemType>(
+  templates: T[],
+  searchRegex?: RegExp
+) {
+  if (!searchRegex) return templates;
+  return templates.filter((item) => filterTemplateBySearchKey(item, searchRegex));
+}
+
+function filterTemplateBySearchKey(
+  template: NodeTemplateListItemType & {
+    toolDescription?: string;
+  },
+  searchRegex?: RegExp
+) {
+  if (!searchRegex) return true;
+
+  return [
+    template.name,
+    template.intro,
+    template.instructions,
+    template.toolDescription,
+    ...(template.tags ?? [])
+  ].some((text) => searchRegex.test(String(text ?? '')));
+}

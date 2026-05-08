@@ -74,28 +74,3 @@ export const GetMarketplaceToolVersionsResponseSchema = z.array(MarketplaceToolV
 export type GetMarketplaceToolVersionsResponseType = z.infer<
   typeof GetMarketplaceToolVersionsResponseSchema
 >;
-
-// Get installed plugins
-export const GetSystemInstalledPluginsQuerySchema = z.object({
-  type: z.enum(['tool']).optional()
-});
-export type GetSystemInstalledPluginsQueryType = z.infer<
-  typeof GetSystemInstalledPluginsQuerySchema
->;
-export const GetSystemInstalledPluginsResponseSchema = z.object({
-  list: z.array(
-    z.object({
-      id: z.string(),
-      version: z.string(),
-      etag: z.string().optional(),
-      name: z.any().optional(),
-      description: z.any().optional(),
-      icon: z.string().optional(),
-      author: z.string().optional(),
-      tags: z.array(z.string()).optional()
-    })
-  )
-});
-export type GetSystemInstalledPluginsResponseType = z.infer<
-  typeof GetSystemInstalledPluginsResponseSchema
->;

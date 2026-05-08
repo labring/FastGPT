@@ -34,41 +34,6 @@ export type AppToolRuntimeType = {
 };
 
 // // System tool
-// export type AppToolTemplateItemType = WorkflowTemplateType & {
-//   status?: PluginStatusType;
-//   // FastGPT-plugin tool
-//   inputs?: FlowNodeInputItemType[];
-//   outputs?: FlowNodeOutputItemType[];
-
-//   // Admin workflow tool
-//   associatedPluginId?: string;
-//   userGuide?: string;
-//   readmeUrl?: string;
-
-//   // commercial plugin config
-//   originCost?: number; // n points/one time
-//   currentCost?: number;
-//   systemKeyCost?: number;
-//   hasTokenFee?: boolean;
-//   pluginOrder?: number;
-
-//   tags?: string[] | null;
-//   isOfficial?: boolean;
-
-//   // Admin config
-//   inputList?: FlowNodeInputItemType['inputList'];
-//   inputListVal?: Record<string, any>;
-//   hasSystemSecret?: boolean;
-
-//   // User tag filtering
-//   hideTags?: UserTagsType[] | null;
-//   promoteTags?: UserTagsType[] | null;
-
-//   /** @deprecated */
-//   isActive?: boolean; //use tags instead
-//   /** @deprecated */
-//   templateType?: string;
-// };
 
 // export type AppToolTemplateListItemType = Omit<
 //   AppToolTemplateItemType,

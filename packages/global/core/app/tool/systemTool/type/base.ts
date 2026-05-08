@@ -11,7 +11,8 @@ import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
 // 系统工具最基础最通用的类型
 export const SystemToolBaseSchema = z.object({
   id: z.string(),
-  version: z.string()
+  version: z.string(),
+  etag: z.string().optional()
 });
 
 export const SystemToolRuntimeSchema = z
@@ -73,7 +74,7 @@ export const SystemToolChildDetailSchema = z.object({
   outputs: z.array(FlowNodeOutputItemTypeSchema)
 });
 
-export type ToolChildDetailType = z.infer<typeof SystemToolChildDetailSchema>;
+export type SystemToolChildDetailType = z.infer<typeof SystemToolChildDetailSchema>;
 
 /** 系统工具的详细信息
  *  TODO: input, output, secret 这些类型其实并不合理，应当是更干净的类型, 后续再迁移

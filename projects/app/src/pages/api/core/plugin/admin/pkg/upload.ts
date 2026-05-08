@@ -29,16 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     filepaths.push(result.fileMetadata.path);
 
-    const file = new File(
-      [result.getBuffer()],
-      decodeURIComponent(result.fileMetadata.originalname || 'plugin.pkg'),
-      {
-        type: result.fileMetadata.mimetype
-      }
-    );
+    const fileBuffer = result.getBuffer();
+    const filename = decodeURIComponent(result.fileMetadata.originalname || 'plugin.pkg');
+    const file = new Blob([new Uint8Array(fileBuffer)], {
+      type: result.fileMetadata.mimetype
+    });
 
     try {
-      const uploadResult = await pluginClient.uploadPlugin(file, file.name);
+      const uploadResult = await pluginClient.uploadPlugin(file, filename);
       return jsonRes(res, {
         code: 200,
         data: uploadResult

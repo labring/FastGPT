@@ -1,14 +1,14 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { SystemToolRepo } from './systemTool/systemTool.repo';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 /**
  * 获得工具的 Template 类型供工作流渲染
@@ -31,7 +31,20 @@ export async function getToolPreviewNode({
     lang,
     source: toolSource
   });
-  console.log(toolDetail);
+
+  const inputs = [
+    ...(toolDetail.secrets?.length
+      ? [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            inputList: toolDetail.secrets
+          }
+        ]
+      : []),
+    ...(toolDetail.inputs ?? [])
+  ];
 
   return {
     id: getNanoid(),
@@ -59,7 +72,7 @@ export async function getToolPreviewNode({
     hasSystemSecret: toolDetail.hasSystemSecret,
     isFolder: toolDetail.isToolSet,
     status: toolDetail.status,
-    inputs: toolDetail.inputs ?? [],
+    inputs,
 
     outputs: toolDetail.outputs
       ? toolDetail.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)

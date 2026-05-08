@@ -27,12 +27,21 @@ import type {
 } from '@fastgpt/global/core/app/tool/systemTool/type';
 import type {
   SystemToolVersionType,
-  ToolChildDetailType
+  SystemToolChildDetailType
 } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
+import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
+
+type SystemToolRuntimeType = {
+  id: string;
+  currentCost: number;
+  systemKeyCost: number;
+  secretsVal?: Record<string, any>;
+  permissions?: PluginPermissionEnumType[];
+};
 
 /**
  * SystemTool Repo
@@ -225,24 +234,31 @@ export class SystemToolRepo {
               schemaType: 'systemTool'
             }),
             outputs: jsonSchema2NodeOutput({ jsonSchema: item.outputSchema })
-          } satisfies ToolChildDetailType;
+          } satisfies SystemToolChildDetailType;
         })
       : undefined;
+
+    const secrets = jsonSchema2SecretInput({ jsonSchema: tool.secretSchema });
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
-      avatar: tool.icon,
+      avatar: childPluginId ? child?.icon ?? tool.icon : tool.icon,
       currentCost: dbTool?.currentCost ?? 0,
-      hasSystemSecret: !!tool.secretSchema,
+      hasSystemSecret: !!(dbTool?.secretsVal ?? dbTool?.inputListVal),
       secretsVal: dbTool?.secretsVal ?? dbTool?.inputListVal,
       hasTokenFee: dbTool?.hasTokenFee ?? false,
-      intro: dbTool?.customConfig?.intro ?? parseI18nString(tool.description, lang),
+      intro:
+        dbTool?.customConfig?.intro ??
+        (childPluginId
+          ? parseI18nString(child?.description, lang)
+          : parseI18nString(tool.description, lang)),
       isToolSet: tool.isToolset && !childPluginId,
       ...(children ? { children } : {}),
       name:
         dbTool?.customConfig?.name ??
         parseI18nString(childPluginId ? child!.name : tool.name, lang),
+
       status: dbTool?.status ?? PluginStatusEnum.Normal,
       systemKeyCost: dbTool?.systemKeyCost ?? 0,
       tags: dbTool?.customConfig?.tags ?? tool.tags ?? [],
@@ -259,7 +275,7 @@ export class SystemToolRepo {
       hideTags: dbTool?.hideTags ?? [],
       promoteTags: dbTool?.promoteTags ?? [],
       pluginOrder: dbTool?.pluginOrder,
-      secrets: jsonSchema2SecretInput(tool.secretSchema),
+      secrets,
       isLatestVersion: tool.isLatestVersion,
       ...(childPluginId
         ? {
@@ -325,7 +341,43 @@ export class SystemToolRepo {
     }));
   };
 
-  getSystemToolRuntime() {}
+  getSystemToolRuntime = async ({
+    pluginId,
+    version,
+    source = 'system'
+  }: {
+    pluginId: string;
+    version?: string;
+    source?: string;
+  }): Promise<SystemToolRuntimeType> => {
+    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const [parentPluginId] = rawPluginId.split('/');
+
+    const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
+
+    if (!dbTool?.customConfig?.associatedPluginId) {
+      const tool = await pluginClient.getTool({
+        pluginId: parentPluginId,
+        version,
+        source
+      });
+
+      return {
+        id: pluginId,
+        currentCost: dbTool?.currentCost ?? 0,
+        systemKeyCost: dbTool?.systemKeyCost ?? 0,
+        secretsVal: dbTool?.secretsVal ?? dbTool?.inputListVal,
+        permissions: tool.permission
+      };
+    }
+
+    return {
+      id: pluginId,
+      currentCost: dbTool.currentCost ?? 0,
+      systemKeyCost: dbTool.systemKeyCost ?? 0,
+      secretsVal: dbTool.secretsVal ?? dbTool.inputListVal
+    };
+  };
 
   async getSystemToolWorkflowRuntime({
     pluginId,

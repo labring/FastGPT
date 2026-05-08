@@ -9,9 +9,8 @@ import { getGroupsByTmbId } from '../../../../../support/permission/memberGroup/
 import { getOrgIdSetWithParentByTmbId } from '../../../../../support/permission/org/controllers';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
-import { fetchSystemTools } from '../../../../app/tool/systemTool';
-import { getSystemToolList } from '../../../../app/tool/systemTool';
 import { getUserAvaliableWorkflowTools } from '../../../../app/tool/workflowTool';
+import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 
 const getAccessibleDatasets = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) => {
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -74,23 +73,27 @@ ${dataset}
 `;
   };
 
-  const [systemTools, myTools, myDatasets] = await Promise.all([
-    getSystemToolList({
-      sources: [
-        'system'
-        // teamId
-      ],
-      lang
-    }).then((res) =>
-      res.map((tool) => {
-        const toolId = tool.id;
-        const name = tool.name;
-        const intro = tool.intro;
-        const description = tool.toolDescription || intro || '暂无描述';
+  const systemToolRepo = SystemToolRepo.getInstance();
 
-        return `- **${toolId}** [工具]: ${name} - ${description}`;
+  const [systemTools, myTools, myDatasets] = await Promise.all([
+    systemToolRepo
+      .getSystemToolList({
+        sources: [
+          'system'
+          // teamId
+        ],
+        lang
       })
-    ),
+      .then((res) =>
+        res.map((tool) => {
+          const toolId = tool.id;
+          const name = tool.name;
+          const intro = tool.intro;
+          const description = tool.toolDescription || intro || '暂无描述';
+
+          return `- **${toolId}** [工具]: ${name} - ${description}`;
+        })
+      ),
     getUserAvaliableWorkflowTools({ teamId, tmbId }).then((res) =>
       res.map((tool) => {
         const toolId = tool._id;

@@ -11,7 +11,6 @@ import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -67,9 +66,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   try {
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
-      // PERF: 可以再实现一个 getSystemToolRuntimeInfo, 从而避免获取更多噪音/缓存
       const systemToolRepo = SystemToolRepo.getInstance();
-      const tool = await systemToolRepo.getSystemToolDetail({
+      const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
         source: 'system', // TODO : 后续用户调用时传 teamId
         version
@@ -85,11 +83,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
-            // read from mongo
-            const dbPlugin = await MongoSystemTool.findOne({
-              pluginId: toolConfig.systemTool?.toolId
-            }).lean();
-            return dbPlugin?.secretsVal ?? dbPlugin?.inputListVal ?? {};
+            return tool.secretsVal ?? {};
         }
       })();
       toolInput = Object.fromEntries(

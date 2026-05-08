@@ -32,9 +32,48 @@ import { getMCPChildren } from '../mcp';
 import { MongoApp } from '../schema';
 import { getAppVersionById, checkIsLatestVersion } from '../version/controller';
 import { getToolPreviewNode } from './presenter';
-import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import type {
+  WorkflowTemplateBasicType,
+  WorkflowTemplateType
+} from '@fastgpt/global/core/workflow/type';
+import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import type { UserTagsType } from '@fastgpt/global/support/user/type';
 
-type AppToolType = AppToolTemplateItemType & {
+type AppToolType = WorkflowTemplateType & {
+  status?: PluginStatusType;
+  // FastGPT-plugin tool
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
+
+  // Admin workflow tool
+  associatedPluginId?: string;
+  userGuide?: string;
+  readmeUrl?: string;
+
+  // commercial plugin config
+  originCost?: number; // n points/one time
+  currentCost?: number;
+  systemKeyCost?: number;
+  hasTokenFee?: boolean;
+  pluginOrder?: number;
+
+  tags?: string[] | null;
+  isOfficial?: boolean;
+
+  // Admin config
+  inputList?: FlowNodeInputItemType['inputList'];
+  inputListVal?: Record<string, any>;
+  hasSystemSecret?: boolean;
+
+  // User tag filtering
+  hideTags?: UserTagsType[] | null;
+  promoteTags?: UserTagsType[] | null;
+
+  /** @deprecated */
+  isActive?: boolean; //use tags instead
+  /** @deprecated */
+  templateType?: string;
+} & {
   teamId?: string;
   tmbId?: string;
   workflow?: WorkflowTemplateBasicType;

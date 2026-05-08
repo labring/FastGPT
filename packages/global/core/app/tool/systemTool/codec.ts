@@ -25,6 +25,7 @@ export const SystemToolCodec = {
       id: item.pluginId,
       version,
       status: item.status ?? PluginStatusEnum.Normal,
+      source: 'system',
       author,
       name,
       avatar: avatar ?? '',
@@ -61,6 +62,7 @@ export const SystemToolCodec = {
   }): SystemToolListItemType {
     return {
       id: this.getDBPluginId(tool.pluginId),
+      etag: tool.etag,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
       avatar: tool.icon,
       currentCost: config?.currentCost ?? 0,

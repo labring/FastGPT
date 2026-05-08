@@ -15,11 +15,7 @@ export {
   SystemToolDetailSchema,
   SystemToolChildDetailSchema
 } from './base';
-export type {
-  SystemToolListItemType,
-  SystemToolDetailType,
-  SystemToolChildDetailType
-} from './base';
+export type { SystemToolListItemType, SystemToolDetailType } from './base';
 
 // Admin 视角的
 export {

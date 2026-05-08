@@ -5,14 +5,9 @@ import type {
   GetMarketplaceToolDetailQueryType,
   GetMarketplaceToolDetailResponseType,
   GetMarketplaceToolTagsResponseType,
-  GetMarketplaceToolVersionsResponseType,
-  GetSystemInstalledPluginsQueryType,
-  GetSystemInstalledPluginsResponseType
+  GetMarketplaceToolVersionsResponseType
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import type { PaginationResponse } from '@fastgpt/global/openapi/api';
-
-export const getSystemInstalledPlugins = (data: GetSystemInstalledPluginsQueryType) =>
-  GET<GetSystemInstalledPluginsResponseType>('/core/plugin/admin/marketplace/installed', data);
 
 export const getMarketplaceTools = (data: GetMarketplaceToolsBodyType) =>
   POST<PaginationResponse<MarketplaceToolListItemType>>('/marketplace/api/tool/list', data);

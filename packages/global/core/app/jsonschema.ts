@@ -105,10 +105,18 @@ export const getNodeInputTypeFromSchemaInputType = ({
 };
 const getNodeInputRenderTypeFromSchemaInputType = ({
   type,
+  items,
   enum: enumList,
   minimum,
   maximum
 }: JsonSchemaPropertiesItemType) => {
+  if (type === 'array' && items?.enum && items.enum.length > 0) {
+    return {
+      value: [],
+      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
+      list: items.enum.map((item: any) => ({ label: item, value: item }))
+    };
+  }
   if (enumList && enumList.length > 0) {
     return {
       value: enumList[0],
@@ -304,7 +312,7 @@ export const jsonSchema2SecretInput = ({
     return {
       inputType,
       key,
-      label: key,
+      label: value.title ?? key,
       description: value.description,
       required: jsonSchema?.required?.includes(key),
       list: value.enum

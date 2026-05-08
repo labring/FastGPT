@@ -1,9 +1,8 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { getToolRawId, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
-import { MongoSystemTool } from '../../../../../../plugin/tool/systemToolSchema';
 import type {
   ChatDispatchProps,
   RuntimeNodeItemType
@@ -17,13 +16,13 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
-import { getS3ChatSource } from '../../../../../../../common/s3/sources/chat';
 import { parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
+import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -85,9 +84,8 @@ export const dispatchTool = async ({
 
   try {
     if (toolConfig?.systemTool?.toolId) {
-      // TODO: 应当获取 runtime 数据
       const systemToolRepo = SystemToolRepo.getInstance();
-      const tool = await systemToolRepo.getSystemToolDetail({
+      const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
         source: 'system',
         version
@@ -102,16 +100,21 @@ export const dispatchTool = async ({
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
-            // read from mongo
-            const dbPlugin = await MongoSystemTool.findOne({
-              pluginId: tool.id
-            }).lean();
-            return dbPlugin?.secretsVal ?? dbPlugin?.inputListVal ?? {};
+            return tool.secretsVal ?? {};
         }
       })();
 
       const formatToolId = getToolRawId(tool.id);
       let answerText = '';
+
+      const invokeToken = new InvokeProcessor({
+        appId: runningAppInfo.id,
+        chatId,
+        uId: uid,
+        permissions: tool.permissions ?? [],
+        teamId: runningAppInfo.teamId,
+        tmbId: runningAppInfo.tmbId
+      }).generateToken();
 
       const res = await pluginClient.runToolStream({
         pluginId: formatToolId,
@@ -119,29 +122,16 @@ export const dispatchTool = async ({
         input: Object.fromEntries(Object.entries(params)),
         secrets: inputConfigParams,
         systemVar: {
-          user: {
-            id: uid,
-            username: runningUserInfo.username,
-            contact: runningUserInfo.contact,
-            membername: runningUserInfo.memberName,
-            teamName: runningUserInfo.teamName,
-            teamId: runningUserInfo.teamId,
-            name: runningUserInfo.tmbId
-          },
           app: {
             id: runningAppInfo.id,
             name: runningAppInfo.id
           },
-          tool: {
-            id: formatToolId,
-            version: version || '',
-            prefix: getS3ChatSource().getToolFilePrefix({
-              appId: runningAppInfo.id,
-              chatId,
-              uId: uid
-            })
+          chat: {
+            chatId,
+            uid
           },
-          time: String(variableState.get('cTime') ?? '')
+          time: String(variableState.get('cTime') ?? ''),
+          invokeToken
         },
         onMessage: ({ type, content }) => {
           if (workflowStreamResponse && content) {

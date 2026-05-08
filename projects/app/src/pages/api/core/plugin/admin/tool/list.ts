@@ -8,6 +8,10 @@ import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema'
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type/admin';
 import { AdminSystemToolListItemSchema } from '@fastgpt/global/core/app/tool/systemTool/type/admin';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import {
+  GetAdminSystemToolsQuery,
+  GetAdminSystemToolsResponseSchema
+} from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 
 export type AdminGetSystemToolsQuery = {};
 
@@ -15,10 +19,12 @@ export type AdminGetSystemToolsBody = {};
 
 export type AdminGetSystemToolsResponse = AdminSystemToolListItemType[];
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<AdminGetSystemToolsBody, AdminGetSystemToolsQuery>,
   res: ApiResponseType<any>
 ): Promise<GetAdminSystemToolsResponseType> {
+  GetAdminSystemToolsQuery.parse(req.query);
+
   const lang = getLocale(req);
 
   await authSystemAdmin({ req });
@@ -33,18 +39,20 @@ async function handler(
     MongoPluginToolTag.find({}).lean()
   ]);
 
-  return systemTools.map((item) => {
-    return AdminSystemToolListItemSchema.parse({
-      ...item,
-      name: item.name,
-      intro: item.intro,
-      needsSystemSecret: !!item.secrets,
-      hasSystemSecret: item.hasSystemSecret,
-      tags: tags
-        .filter((tag) => item.tags?.includes(tag.tagId))
-        .map((tag) => parseI18nString(tag.tagName, lang))
-    } satisfies AdminSystemToolListItemType);
-  });
+  return GetAdminSystemToolsResponseSchema.parse(
+    systemTools.map((item) => {
+      return AdminSystemToolListItemSchema.parse({
+        ...item,
+        name: item.name,
+        intro: item.intro,
+        needsSystemSecret: !!item.secrets,
+        hasSystemSecret: item.hasSystemSecret,
+        tags: tags
+          .filter((tag) => item.tags?.includes(tag.tagId))
+          .map((tag) => parseI18nString(tag.tagName, lang))
+      } satisfies AdminSystemToolListItemType);
+    })
+  );
 }
 
 export default NextAPI(handler);
