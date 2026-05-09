@@ -25,12 +25,14 @@ const ToolMenu = ({
 
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
-  const { chatId, outLinkAuthData, appId } = useChatStore();
+  const { chatId, outLinkAuthData, appId, source } = useChatStore();
   const currentAppId = chatData.appId || appId;
+  const isShareAuthReady =
+    source !== 'share' || (!!outLinkAuthData.shareId && !!outLinkAuthData.outLinkUid);
 
   // Status Hook: 顶层单例，负责网络同步与入口图标显示
   const { sandboxExists, setSandboxExists, SandboxEntryIcon } = useSandboxStatus({
-    appId: currentAppId,
+    appId: isShareAuthReady ? currentAppId : '',
     chatId,
     outLinkAuthData
   });

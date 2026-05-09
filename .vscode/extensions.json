@@ -1,5 +1,6 @@
 {
     "recommendations": [
+        "dbaeumer.vscode-eslint",
         "alexcvzz.vscode-sqlite"
     ]
 }

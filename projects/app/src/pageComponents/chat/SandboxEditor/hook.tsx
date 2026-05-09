@@ -62,8 +62,8 @@ export const useSandboxEditor = ({
  * 职责：负责 checkSandboxExist 的网络同步及 SandboxEntryIcon 的显示控制。
  * 同步模式：
  *   1. 历史记录（ChatRecordContext）：useMemo 派生，无副作用。
- *   2. chatId 切换：渲染周期利用 useRef 确认 ID 变化并同步重置状态，防止 UI 闪烁。
- *   3. 网络请求：单一 useEffect，在参数变化时触发 1 次。
+ *   2. 网络请求：单一 useEffect，在参数变化时触发 1 次。
+ *   3. API 结果已返回时以 API 为准；未返回前才使用历史记录兜底。
  */
 export const useSandboxStatus = ({
   appId,
