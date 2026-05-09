@@ -7,7 +7,6 @@ import { clientInitData } from '@/web/common/system/staticData';
 import dynamic from 'next/dynamic';
 import type { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import BaseModelTrainModal from './BaseModelTrainModal';
 import TrainDetailDrawer from './TrainDetailDrawer';
 import type { FilterState, ModelRow, ModelTabType, ProviderOption, TeamPermission } from './types';
 import { modelTableTabValues } from './types';
@@ -53,19 +52,14 @@ type FilterPanelProps = {
     value: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '';
   }[];
   tabSlot?: React.ReactNode;
+  actionSlot?: React.ReactNode;
 };
 
 type TablePanelProps = TableSharedProps & {
   modelList: ModelRow[];
 };
 
-const ModelTable = ({
-  permissionConfig = false,
-  Tab
-}: {
-  permissionConfig?: boolean;
-  Tab?: React.ReactNode;
-}) => {
+const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }) => {
   const { t, i18n } = useTranslation();
   const {
     getModelProviders,
@@ -100,12 +94,12 @@ const ModelTable = ({
     isOpenDefaultModel,
     onOpenDefaultModel,
     onCloseDefaultModel,
-    isOpenTrainModel,
-    openTrainModel,
-    onCloseTrainModel,
-    handleOpenTrainDrawer,
-    trainModelData,
-    setTrainModelData,
+    // isOpenTrainModel,
+    // openTrainModel,
+    // onCloseTrainModel,
+    // handleOpenTrainDrawer,
+    // trainModelData,
+    // setTrainModelData,
     trainDetailDrawer,
     setTrainDetailDrawer
   } = useModelTableState({
@@ -124,26 +118,17 @@ const ModelTable = ({
   });
 
   const tabSlot = (
-    <FillRowTabs<ModelTabType> list={tabList} value={activeTab} onChange={setActiveTab} py={1.5} />
+    <FillRowTabs<ModelTabType> list={tabList} value={activeTab} onChange={setActiveTab} py={1} />
   );
+
+  const actionSlot = isRoot ? (
+    <Button variant={'whiteBase'} h={'36px'} onClick={onOpenDefaultModel}>
+      {t('account:model.default_model')}
+    </Button>
+  ) : undefined;
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      {isRoot && Tab && (
-        <Flex alignItems={'center'} mb={4}>
-          {Tab}
-          <Box flex={1} />
-          <Button variant={'whiteBase'} onClick={onOpenDefaultModel}>
-            {t('account:model.default_model')}
-          </Button>
-          {activeTab === modelTableTabValues.base && (
-            <Button ml={2} variant={'whiteBase'} onClick={openTrainModel}>
-              {t('account_model:train_model')}
-            </Button>
-          )}
-        </Flex>
-      )}
-
       {activeTab === modelTableTabValues.base ? (
         <ModelTabContent
           filterProps={{
@@ -152,7 +137,8 @@ const ModelTable = ({
             setFilterState: setBaseFilterState,
             providerList: filterProviderList,
             modelTypeList: selectModelTypeList,
-            tabSlot
+            tabSlot,
+            actionSlot
           }}
           tableProps={{
             ...baseTableSharedProps,
@@ -168,7 +154,8 @@ const ModelTable = ({
             setFilterState: setCustomFilterState,
             providerList: filterProviderList,
             modelTypeList: selectModelTypeList,
-            tabSlot
+            tabSlot,
+            actionSlot
           }}
           tableProps={{
             ...customTableSharedProps,
@@ -181,7 +168,8 @@ const ModelTable = ({
       {isOpenDefaultModel && (
         <DefaultModelModal onClose={onCloseDefaultModel} onSuccess={() => clientInitData()} />
       )}
-      {isOpenTrainModel && (
+      {/* 训练模型入口隐藏，先不删除 */}
+      {/* {isOpenTrainModel && (
         <BaseModelTrainModal
           onClose={() => {
             onCloseTrainModel();
@@ -190,7 +178,7 @@ const ModelTable = ({
           onSuccess={() => clientInitData()}
           defaultBaseModel={trainModelData}
         />
-      )}
+      )} */}
       {trainDetailDrawer && (
         <TrainDetailDrawer
           onClose={() => setTrainDetailDrawer(null)}

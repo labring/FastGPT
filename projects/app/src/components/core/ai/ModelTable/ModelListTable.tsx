@@ -91,7 +91,7 @@ const ModelListTable = ({
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
 
   return (
-    <TableContainer mt={5} flex={'1 0 0'} h={0} overflowY={'auto'}>
+    <TableContainer mt={4} flex={'1 0 0'} h={0} overflowY={'auto'}>
       <Table>
         <Thead>
           <Tr color={'myGray.600'}>

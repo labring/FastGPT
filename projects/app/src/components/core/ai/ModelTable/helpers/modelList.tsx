@@ -43,7 +43,7 @@ export const getProviderOptions = ({
   language: string;
   t: I18nT;
 }): ProviderOption[] => [
-  { label: t('common:All'), value: '' },
+  { label: t('common:model.all_provider'), value: '' },
   ...getModelProviders(language).map((item) => ({
     label: (
       <HStack>
@@ -56,7 +56,7 @@ export const getProviderOptions = ({
 ];
 
 export const getModelTypeOptions = (t: I18nT): { label: string; value: ModelTypeEnum | '' }[] => [
-  { label: t('common:All'), value: '' },
+  { label: t('common:model.all_type'), value: '' },
   ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
 ];
 

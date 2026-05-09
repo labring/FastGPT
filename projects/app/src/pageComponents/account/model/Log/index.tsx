@@ -48,7 +48,7 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   request_body?: string;
   response_body?: string;
 };
-const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
+const ChannelLog = () => {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
   const { getModelProvider } = useSystemStore();
@@ -166,34 +166,21 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   return (
     <>
-      {isRoot && (
-        <Flex alignItems={'center'}>
-          {Tab}
-          <Box flex={1} />
-          <Box flex={'0 0 200px'}>
-            <SearchInput
-              placeholder={t('account_model:log_request_id_search')}
-              defaultValue={filterProps.request_id}
-              onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
-            />
-          </Box>
-        </Flex>
-      )}
-      <HStack spacing={4}>
-        <HStack>
+      <Flex alignItems={'center'} gap={3} mb={4} flexWrap={'nowrap'}>
+        <HStack flexShrink={0}>
           <FormLabel>{t('common:user.Time')}</FormLabel>
-          <Box>
-            <DateRangePicker
-              defaultDate={filterProps.dateRange}
-              dateRange={filterProps.dateRange}
-              onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
-            />
-          </Box>
+          <DateRangePicker
+            h={'36px'}
+            defaultDate={filterProps.dateRange}
+            dateRange={filterProps.dateRange}
+            onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+          />
         </HStack>
-        <HStack>
+        <HStack flexShrink={0}>
           <FormLabel>{t('account_model:channel_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
+              h={'36px'}
               bg={'myGray.50'}
               isSearch
               list={channelList}
@@ -203,10 +190,11 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack>
+        <HStack flexShrink={0}>
           <FormLabel>{t('account_model:model_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
+              h={'36px'}
               bg={'myGray.50'}
               isSearch
               list={modelList}
@@ -216,10 +204,11 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack flexShrink={0} flex={'0 0 200px'}>
           <FormLabel>{t('account_model:log_status')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<'all' | 'success' | 'error'>
+              h={'36px'}
               bg={'myGray.50'}
               list={[
                 { label: t('common:All'), value: 'all' },
@@ -231,7 +220,20 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-      </HStack>
+        {isRoot && (
+          <>
+            <Box flex={1} />
+            <Box flex={'0 0 200px'}>
+              <SearchInput
+                h={'36px'}
+                placeholder={t('account_model:log_request_id_search')}
+                defaultValue={filterProps.request_id}
+                onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
+              />
+            </Box>
+          </>
+        )}
+      </Flex>
       <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
         <ScrollData h={'100%'}>
           <TableContainer fontSize={'sm'}>

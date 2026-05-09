@@ -841,6 +841,8 @@
   "model.type.reRank": "重排模型",
   "model.type.stt": "語音辨識",
   "model.type.tts": "語音合成",
+  "model.all_provider": "全部提供商",
+  "model.all_type": "全部類型",
   "model_loading": "模型加載中...",
   "move.confirm": "確認移動",
   "move_success": "移動成功",

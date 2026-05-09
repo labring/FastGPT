@@ -64,6 +64,7 @@
   "rerank_max_token": "Max Token Limit",
   "rerank_max_token_tip": "Token limit per rerank request (query + single document). Documents exceeding the limit will be automatically split.",
   "model": "Model",
+  "model_management": "Model Management",
   "model_error_rate": "Failure rate",
   "model_error_request_times": "Failed calls",
   "model_name": "Model name",
