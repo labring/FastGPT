@@ -98,7 +98,7 @@ ${stepText}`;
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemMiniType[], histories2: ChatItemMiniType[]) => {
   const newHistories = [...histories1, ...histories2];
-  return newHistories.sort((a, b) => {
+  return newHistories.sort((a) => {
     if (a.obj === ChatRoleEnum.System) {
       return -1;
     }
@@ -110,7 +110,6 @@ export const getChatTitleFromChatMessage = (
   message?: ChatItemMiniType,
   defaultValue = '新对话'
 ) => {
-  // @ts-ignore
   const textMsg = message?.value.find((item) => 'text' in item && item.text);
 
   if (textMsg?.text?.content) {
@@ -185,32 +184,32 @@ export const filterPublicNodeResponseData = ({
     [FlowNodeTypeEnum.agent]: true,
     [FlowNodeTypeEnum.pluginOutput]: true,
     [FlowNodeTypeEnum.runApp]: true,
-    [FlowNodeTypeEnum.toolCall]: true
+    [FlowNodeTypeEnum.toolCall]: true,
+    [FlowNodeTypeEnum.tool]: true
   };
 
+  const commonFields = {
+    moduleType: true,
+    pluginOutput: true,
+    runningTime: true,
+    toolId: true
+  };
   const filedMap: Record<string, boolean> = responseDetail
     ? {
         quoteList: true,
-        moduleType: true,
-        pluginOutput: true,
-        runningTime: true
+        ...commonFields
       }
-    : {
-        moduleType: true,
-        pluginOutput: true,
-        runningTime: true
-      };
+    : commonFields;
 
   return nodeRespones
     .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
-      for (let key in item) {
+      for (const key in item) {
         if (key === 'toolDetail' || key === 'pluginDetail') {
-          // @ts-ignore
           obj[key] = filterPublicNodeResponseData({ nodeRespones: item[key], responseDetail });
         } else if (filedMap[key]) {
-          // @ts-ignore
+          // @ts-expect-error Dynamic public field copy is constrained by filedMap.
           obj[key] = item[key];
         }
       }
