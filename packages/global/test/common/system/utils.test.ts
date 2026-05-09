@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
-import { delay, retryFn, batchRun } from '@fastgpt/global/common/system/utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { delay, retryFn, batchRun, withTimeout } from '@fastgpt/global/common/system/utils';
 
 describe('system utils', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe('delay', () => {
     it('should resolve after specified milliseconds', async () => {
       const start = Date.now();
@@ -86,6 +90,35 @@ describe('system utils', () => {
       const result = await retryFn(fn, 3);
 
       expect(result).toEqual(objectResult);
+    });
+  });
+
+  describe('withTimeout', () => {
+    it('should resolve when promise settles before timeout', async () => {
+      vi.useFakeTimers();
+
+      const resultPromise = withTimeout(Promise.resolve('success'), 1000);
+
+      await expect(resultPromise).resolves.toBe('success');
+    });
+
+    it('should reject when promise times out', async () => {
+      vi.useFakeTimers();
+
+      const resultPromise = withTimeout(new Promise(() => {}), 1000, 'custom timeout');
+      const assertion = expect(resultPromise).rejects.toThrow('custom timeout');
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await assertion;
+    });
+
+    it('should reject with source error when promise rejects before timeout', async () => {
+      vi.useFakeTimers();
+
+      const resultPromise = withTimeout(Promise.reject(new Error('source failure')), 1000);
+
+      await expect(resultPromise).rejects.toThrow('source failure');
     });
   });
 

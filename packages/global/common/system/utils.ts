@@ -19,6 +19,27 @@ export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T>
   }
 };
 
+export const withTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage = `Operation timed out after ${timeoutMs}ms`
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(timeoutMessage));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 export const batchRun = async <T, R>(
   arr: T[],
   fn: (item: T, index: number) => Promise<R>,
