@@ -3,16 +3,53 @@ import httpProxy from 'http-proxy';
 import { env } from './env';
 import { configureLogger, getLogger, LogCategories } from './logger';
 import { buildSetCookie } from './cookie';
-import { deriveCsLoginTarget, ensureCsSession, evictCsSession, injectCsKey } from './csSession';
-import { authenticate, getSandboxId } from './auth';
+import {
+  deriveCsLoginTarget,
+  ensureCsSession,
+  evictCsSession,
+  injectCsKey,
+  isProxyMappedRequestUrl,
+  rewriteProxyRequestUrl
+} from './csSession';
+import { authenticate, getSandboxId, type VerifiedProxyTokenPayload } from './auth';
 import { startSandboxHeartbeat } from './heartbeat';
-import { SANDBOX_PROXY_AUTH_REFRESH_PATH } from '@fastgpt/global/core/ai/sandbox/proxyToken';
+import { evictProxyTarget, resolveProxyTarget } from './proxyTarget';
+import {
+  SANDBOX_PROXY_AUTH_REFRESH_PATH,
+  SANDBOX_PROXY_CODE_SERVER_PATH
+} from '@fastgpt/global/core/ai/sandbox/proxyToken';
 
 await configureLogger();
 
 const logger = getLogger(LogCategories.MODULE.SANDBOX_PROXY.SERVER);
 
 const proxy = httpProxy.createProxyServer({ xfwd: true, changeOrigin: true });
+
+const getProxyOriginHeader = (target: string) => {
+  const targetUrl = new URL(target);
+  return `${targetUrl.protocol}//${targetUrl.host}`;
+};
+
+const prepareUpstreamRequest = async (
+  req: IncomingMessage,
+  token: VerifiedProxyTokenPayload
+): Promise<string | null> => {
+  const target = await resolveProxyTarget(token.sid, token.svc);
+  if (!target) return null;
+
+  const originalUrl = req.url || '/';
+  const pathMapping = { publicPath: SANDBOX_PROXY_CODE_SERVER_PATH, basePath: target.basePath };
+  const csTarget = deriveCsLoginTarget(target.origin, originalUrl, pathMapping);
+  if (target.auth === 'code-server' && isProxyMappedRequestUrl(originalUrl, pathMapping)) {
+    const session = await ensureCsSession(token.sid, csTarget, target.password);
+    if (session) injectCsKey(req.headers as Record<string, unknown>, session);
+  }
+
+  req.url = rewriteProxyRequestUrl(originalUrl, pathMapping);
+  req.headers['x-fastgpt-sandbox-id'] = token.sid;
+
+  return target.origin;
+};
 
 const evictRequestCsSession = (req: IncomingMessage, reason: string, extra?: string) => {
   const sid = getSandboxId(req);
@@ -27,6 +64,7 @@ proxy.on('error', (err, req, res) => {
   const sid = getSandboxId(req as IncomingMessage);
   if (sid) {
     evictCsSession(sid);
+    evictProxyTarget(sid);
     logger.warning(
       `proxy error evicted code-server session sandboxId=${sid} path=${(req as IncomingMessage).url || ''}: ${err.message}`
     );
@@ -109,19 +147,16 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     return;
   }
 
-  // Auto-login upstream code-server only for /proxy/{port}/... paths.
-  const csTarget = deriveCsLoginTarget(token.t, req.url);
-  if (csTarget !== token.t) {
-    const session = await ensureCsSession(token.sid, csTarget);
-    if (session) injectCsKey(req.headers as Record<string, unknown>, session);
+  const target = await prepareUpstreamRequest(req, token);
+  if (!target) {
+    res.writeHead(502, { 'Content-Type': 'text/plain' });
+    res.end('Sandbox proxy target unavailable');
+    return;
   }
 
-  req.headers['x-fastgpt-sandbox-id'] = token.sid;
-
-  const targetUrl = new URL(token.t);
   proxy.web(req, res, {
-    target: token.t,
-    headers: { origin: `${targetUrl.protocol}//${targetUrl.host}` }
+    target,
+    headers: { origin: getProxyOriginHeader(target) }
   });
 }
 
@@ -135,18 +170,16 @@ async function handleWsUpgrade(req: IncomingMessage, socket: import('net').Socke
   const { token } = auth;
   req.url = auth.cleanedUrl;
 
-  const csTarget = deriveCsLoginTarget(token.t, req.url);
-  if (csTarget !== token.t) {
-    const session = await ensureCsSession(token.sid, csTarget);
-    if (session) injectCsKey(req.headers as Record<string, unknown>, session);
+  const target = await prepareUpstreamRequest(req, token);
+  if (!target) {
+    socket.write('HTTP/1.1 502 Sandbox proxy target unavailable\r\n\r\n');
+    socket.destroy();
+    return;
   }
 
-  req.headers['x-fastgpt-sandbox-id'] = token.sid;
-
-  const targetUrl = new URL(token.t);
   proxy.ws(req, socket, head, {
-    target: token.t,
-    headers: { origin: `${targetUrl.protocol}//${targetUrl.host}` }
+    target,
+    headers: { origin: getProxyOriginHeader(target) }
   });
 }
 

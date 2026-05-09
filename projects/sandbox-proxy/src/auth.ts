@@ -3,7 +3,10 @@ import jwt from 'jsonwebtoken';
 import { parseSandboxHost } from './host';
 import { PROXY_COOKIE, parseCookieHeader } from './cookie';
 import { env } from './env';
-import type { ProxyTokenPayload } from '@fastgpt/global/core/ai/sandbox/proxyToken';
+import {
+  SandboxProxyServiceList,
+  type ProxyTokenPayload
+} from '@fastgpt/global/core/ai/sandbox/proxyToken';
 
 export type VerifiedProxyTokenPayload = ProxyTokenPayload & {
   exp: number;
@@ -14,13 +17,17 @@ export const verifyProxyToken = (token: string): VerifiedProxyTokenPayload | nul
     const decoded = jwt.verify(token, env.secret) as Record<string, unknown>;
     if (
       typeof decoded.sid !== 'string' ||
-      typeof decoded.p !== 'number' ||
-      typeof decoded.t !== 'string' ||
-      typeof decoded.exp !== 'number'
+      typeof decoded.exp !== 'number' ||
+      !SandboxProxyServiceList.includes(decoded.svc as (typeof SandboxProxyServiceList)[number])
     ) {
       return null;
     }
-    return { sid: decoded.sid, p: decoded.p, t: decoded.t, exp: decoded.exp };
+    const payload: VerifiedProxyTokenPayload = {
+      sid: decoded.sid,
+      svc: decoded.svc as (typeof SandboxProxyServiceList)[number],
+      exp: decoded.exp
+    };
+    return payload;
   } catch {
     return null;
   }

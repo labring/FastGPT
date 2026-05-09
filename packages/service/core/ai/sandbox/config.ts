@@ -1,7 +1,8 @@
 import { serviceEnv } from '../../../env';
 import type {
   OpenSandboxConfigType,
-  OpenSandboxConnectionConfig
+  OpenSandboxConnectionConfig,
+  SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
 import type { SandboxStorageType } from './type';
 
@@ -35,29 +36,35 @@ export const getOpenSandboxConnectionConfig = ({
   return {
     sessionId,
     useServerProxy: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY,
+    replaceDockerInternalWithLocalhost:
+      serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST,
     baseUrl: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
     apiKey: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
     runtime: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME
-  };
+  } as OpenSandboxConnectionConfig;
 };
 
 export const buildOpenSandboxCreateConfig = (
   opts: {
     volumes?: OpenSandboxConfigType['volumes'];
-    resourceLimits?: OpenSandboxConfigType['resourceLimits'];
-    createConfig?: OpenSandboxConfigType;
+    resourceLimits?: SandboxCreateSpec['resourceLimits'];
+    createConfig?: SandboxCreateSpec;
   } = {}
 ): OpenSandboxConfigType => {
   if (!serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO && !opts.createConfig?.image) {
     throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO is required for opensandbox provider');
   }
+  const { image, entrypoint, env, metadata } = opts.createConfig ?? {};
   return {
     image: {
       repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
       tag: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     },
     ...(opts.resourceLimits ? { resourceLimits: opts.resourceLimits } : {}),
-    ...opts.createConfig,
+    ...(image ? { image } : {}),
+    ...(entrypoint ? { entrypoint } : {}),
+    ...(env ? { env } : {}),
+    ...(metadata ? { metadata: metadata as OpenSandboxConfigType['metadata'] } : {}),
     ...(opts.volumes ? { volumes: opts.volumes } : {})
   };
 };

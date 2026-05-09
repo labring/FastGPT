@@ -12,7 +12,11 @@ import {
   SandboxCheckExistBodySchema,
   SandboxCheckExistResponseSchema,
   SandboxGetHtmlPreviewLinkBodySchema,
-  SandboxGetHtmlPreviewLinkResponseSchema
+  SandboxGetHtmlPreviewLinkResponseSchema,
+  SandboxProxyTokenBodySchema,
+  SandboxProxyTokenResponseSchema,
+  SandboxProxyTargetBodySchema,
+  SandboxProxyTargetResponseSchema
 } from './api';
 
 export const SandboxPath: OpenAPIPath = {
@@ -157,6 +161,56 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: SandboxCheckExistResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/sandbox/proxyAuth/token': {
+    post: {
+      summary: '签发 sandbox-proxy 访问 token',
+      description: '为已授权用户签发访问 sandbox-proxy 指定 sandbox 服务的短期 JWT',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxProxyTokenBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'sandbox-proxy token',
+          content: {
+            'application/json': {
+              schema: SandboxProxyTokenResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/sandbox/internal/proxyTarget': {
+    post: {
+      summary: '获取 sandbox-proxy 上游目标',
+      description: 'sandbox-proxy 内部接口，根据 sandboxId 和服务名解析 provider 上游目标',
+      tags: [TagsMap.sandbox],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SandboxProxyTargetBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'sandbox-proxy 上游目标',
+          content: {
+            'application/json': {
+              schema: SandboxProxyTargetResponseSchema
             }
           }
         }

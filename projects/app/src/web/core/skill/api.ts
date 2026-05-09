@@ -31,6 +31,10 @@ import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/agentSki
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
+import type {
+  SandboxProxyTokenBody,
+  SandboxProxyTokenResponse
+} from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
@@ -142,8 +146,8 @@ export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>
   POST('/core/agentSkills/folder/create', data);
 
 /** 签发 sandbox-proxy 的 JWT（默认 1h TTL，react-query 会提前刷新） */
-export const postSandboxProxyToken = (data: { sandboxId: string }) =>
-  POST<{ token: string; exp: number; ttl: number }>('/core/sandbox/proxyAuth/token', data);
+export const postSandboxProxyToken = (data: SandboxProxyTokenBody) =>
+  POST<SandboxProxyTokenResponse>('/core/sandbox/proxyAuth/token', data);
 
 /** 获取 Skill 文件夹路径 */
 export const getSkillFolderPath = (data: GetSkillFolderPathQuery) =>

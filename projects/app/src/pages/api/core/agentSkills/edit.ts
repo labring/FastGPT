@@ -79,8 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     res.end();
-  } catch (err: any) {
-    console.error('[API] Create edit-debug sandbox error:', err);
+  } catch {
     // Wrap to avoid leaking internal implementation details via SSE
     sseErrRes(res, new Error('Failed to create sandbox'));
     res.end();

@@ -20,7 +20,7 @@ import {
   getSandboxDefaults,
   validateSandboxConfig,
   disconnectFromProviderSandbox,
-  buildBaseContainerEnv
+  buildSessionRuntimeCreateConfig
 } from '../../../../../../agentSkills/sandboxConfig';
 import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -183,6 +183,16 @@ export async function createAgentSandbox(
   const providerConfig = getSandboxProviderConfig();
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
+  const createConfig = buildSessionRuntimeCreateConfig({
+    providerConfig,
+    sessionId,
+    defaults,
+    entrypoint,
+    image,
+    teamId,
+    tmbId,
+    skillIds
+  });
 
   // Step 1: Try to reuse an existing session-runtime sandbox
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
@@ -202,7 +212,10 @@ export async function createAgentSandbox(
     // getSandboxClient internally calls ensureAvailable():
     //   - updates DB status=running, lastActiveAt
     //   - calls provider.ensureRunning() to ensure container is running (handles stopped→running)
-    const client = await getSandboxClient({ sandboxId: existingInstance.sandboxId });
+    const client = await getSandboxClient(
+      { sandboxId: existingInstance.sandboxId },
+      { createConfig }
+    );
 
     const reusedSkillIds = existingInstance.metadata?.skillIds
       ? existingInstance.metadata.skillIds.map(String)
@@ -281,19 +294,8 @@ export async function createAgentSandbox(
     const client = await getSandboxClient(
       { sandboxId: sessionId },
       {
-        createConfig: {
-          image: image ?? defaults.defaultImage,
-          entrypoint: [entrypoint ?? defaults.entrypoint],
-          env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
-          // volumes: handled internally by getSandboxClient via getVolumeManagerConfig
-          metadata: {
-            teamId,
-            tmbId,
-            sandboxType: SandboxTypeEnum.sessionRuntime,
-            skillIds: skillIds.join('-'),
-            sessionId
-          }
-        }
+        // volumes: handled internally by getSandboxClient via getVolumeManagerConfig
+        createConfig
       }
     );
     sandboxClient = client;
@@ -371,7 +373,6 @@ export async function createAgentSandbox(
       } catch (cleanupError) {
         logger.error('[Agent Sandbox] Cleanup failed after creation error', { cleanupError });
       }
-      await disconnectFromProviderSandbox(sandboxClient.provider);
     }
 
     throw error;

@@ -1,4 +1,5 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import { SandboxProxyServiceList } from '../../../../core/ai/sandbox/proxyToken';
 import z from 'zod';
 
 const SandboxBaseSchema = z.object({
@@ -87,3 +88,77 @@ export type SandboxGetHtmlPreviewLinkBody = z.infer<typeof SandboxGetHtmlPreview
 export type SandboxGetHtmlPreviewLinkResponse = z.infer<
   typeof SandboxGetHtmlPreviewLinkResponseSchema
 >;
+
+/* ============================================================================
+ * API: 签发 sandbox-proxy 访问 token
+ * Route: POST /api/core/sandbox/proxyAuth/token
+ * Method: POST
+ * Description: 为已授权用户签发访问 sandbox-proxy 指定 sandbox 服务的短期 JWT
+ * Tags: ['Sandbox', 'Read']
+ * ============================================================================ */
+export const SandboxProxyTokenBodySchema = z.object({
+  sandboxId: z.string().min(1).meta({
+    example: '69fc643d541df57f5c556d9c',
+    description: 'FastGPT sandbox 实例 ID'
+  })
+});
+export type SandboxProxyTokenBody = z.infer<typeof SandboxProxyTokenBodySchema>;
+
+export const SandboxProxyTokenResponseSchema = z.object({
+  token: z.string().min(1).meta({
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'sandbox-proxy 访问 JWT'
+  }),
+  exp: z.number().int().positive().meta({
+    example: 1778294762,
+    description: 'JWT 过期时间，Unix timestamp 秒'
+  }),
+  ttl: z.number().int().positive().meta({
+    example: 3600,
+    description: 'JWT 有效期秒数'
+  })
+});
+export type SandboxProxyTokenResponse = z.infer<typeof SandboxProxyTokenResponseSchema>;
+
+/* ============================================================================
+ * API: 获取 sandbox-proxy 上游目标
+ * Route: POST /api/core/sandbox/internal/proxyTarget
+ * Method: POST
+ * Description: sandbox-proxy 内部调用，根据 sandboxId 和服务名解析 provider 上游目标
+ * Tags: ['Sandbox', 'Internal']
+ * ============================================================================ */
+export const SandboxProxyTargetBodySchema = z.object({
+  sandboxId: z.string().min(1).meta({
+    example: '69fc643d541df57f5c556d9c',
+    description: 'FastGPT sandbox 实例 ID'
+  }),
+  service: z.enum(SandboxProxyServiceList).meta({
+    example: 'code-server',
+    description: '需要代理的 sandbox 服务'
+  })
+});
+export type SandboxProxyTargetBody = z.infer<typeof SandboxProxyTargetBodySchema>;
+
+export const SandboxProxyTargetResponseSchema = z.object({
+  service: z.enum(SandboxProxyServiceList).meta({
+    example: 'code-server',
+    description: '被解析的 sandbox 服务'
+  }),
+  origin: z.url().meta({
+    example: 'https://devbox-69fc643d541df57f5c556d9c-1318.example.com',
+    description: 'sandbox-proxy 转发使用的上游 origin'
+  }),
+  basePath: z.string().meta({
+    example: '',
+    description: '上游服务 path 前缀，空字符串表示服务挂载在根路径'
+  }),
+  auth: z.enum(['code-server']).meta({
+    example: 'code-server',
+    description: 'sandbox-proxy 对该上游服务使用的认证处理方式'
+  }),
+  password: z.string().min(1).optional().meta({
+    example: '<DEVBOX_JWT_SECRET>',
+    description: 'code-server 登录密码，仅供 sandbox-proxy 内部使用，不下发给浏览器'
+  })
+});
+export type SandboxProxyTargetResponse = z.infer<typeof SandboxProxyTargetResponseSchema>;

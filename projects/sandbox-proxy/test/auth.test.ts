@@ -35,7 +35,7 @@ describe('authenticate', () => {
   });
 
   it('accepts bootstrap token via ?_t= and reports freshFromQuery', () => {
-    const tk = sign({ sid: 'abc', p: 1, t: 'http://upstream:1234' });
+    const tk = sign({ sid: 'abc', svc: 'code-server' });
     const r = authenticate(mkReq('abc.localhost:3006', `/path?_t=${tk}`));
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
@@ -48,7 +48,7 @@ describe('authenticate', () => {
   });
 
   it('accepts cookie token and reports freshFromQuery=false', () => {
-    const tk = sign({ sid: 'abc', p: 1, t: 'http://upstream:1234' });
+    const tk = sign({ sid: 'abc', svc: 'code-server' });
     const r = authenticate(mkReq('abc.localhost:3006', '/path', `${PROXY_COOKIE}=${tk}`));
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
@@ -58,18 +58,18 @@ describe('authenticate', () => {
   });
 
   it('prefers query token when both query and cookie are present', () => {
-    const qTk = sign({ sid: 'abc', p: 1, t: 'http://q:1' });
-    const cTk = sign({ sid: 'abc', p: 1, t: 'http://c:2' });
+    const qTk = sign({ sid: 'abc', svc: 'code-server' });
+    const cTk = sign({ sid: 'abc', svc: 'code-server' });
     const r = authenticate(mkReq('abc.localhost:3006', `/?_t=${qTk}`, `${PROXY_COOKIE}=${cTk}`));
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
     expect(r.freshFromQuery).toBe(true);
     expect(r.jwt).toBe(qTk);
-    expect(r.token.t).toBe('http://q:1');
+    expect(r.token.svc).toBe('code-server');
   });
 
   it('falls back to cookie when query token is invalid', () => {
-    const cTk = sign({ sid: 'abc', p: 1, t: 'http://c:2' });
+    const cTk = sign({ sid: 'abc', svc: 'code-server' });
     const r = authenticate(mkReq('abc.localhost:3006', '/?_t=garbage', `${PROXY_COOKIE}=${cTk}`));
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
@@ -78,7 +78,7 @@ describe('authenticate', () => {
   });
 
   it('rejects when JWT sid does not match the subdomain', () => {
-    const tk = sign({ sid: 'other', p: 1, t: 'http://x' });
+    const tk = sign({ sid: 'other', svc: 'code-server' });
     expect(authenticate(mkReq('abc.localhost:3006', `/?_t=${tk}`))).toEqual({
       error: 'Unauthorized',
       status: 401
@@ -86,7 +86,7 @@ describe('authenticate', () => {
   });
 
   it('rejects expired tokens', () => {
-    const tk = sign({ sid: 'abc', p: 1, t: 'http://x' }, { expiresIn: -1 });
+    const tk = sign({ sid: 'abc', svc: 'code-server' }, { expiresIn: -1 });
     expect(authenticate(mkReq('abc.localhost:3006', `/?_t=${tk}`))).toEqual({
       error: 'Unauthorized',
       status: 401
@@ -94,7 +94,7 @@ describe('authenticate', () => {
   });
 
   it('rejects tokens signed with a different secret', () => {
-    const tk = jwt.sign({ sid: 'abc', p: 1, t: 'http://x' }, 'other-secret-12345678', {
+    const tk = jwt.sign({ sid: 'abc', svc: 'code-server' }, 'other-secret-12345678', {
       expiresIn: DEFAULT_TTL_SECONDS
     });
     expect(authenticate(mkReq('abc.localhost:3006', `/?_t=${tk}`))).toEqual({
@@ -104,17 +104,17 @@ describe('authenticate', () => {
   });
 
   it('strips _t from cleanedUrl while preserving other params', () => {
-    const tk = sign({ sid: 'abc', p: 1, t: 'http://x' });
+    const tk = sign({ sid: 'abc', svc: 'code-server' });
     const r = authenticate(
-      mkReq('abc.localhost:3006', `/proxy/8080/?folder=/home/sandbox&_t=${tk}`)
+      mkReq('abc.localhost:3006', `/__fastgpt_proxy/code-server/?folder=/home/sandbox&_t=${tk}`)
     );
     expect(isOk(r)).toBe(true);
     if (!isOk(r)) return;
-    expect(r.cleanedUrl).toBe('/proxy/8080/?folder=/home/sandbox');
+    expect(r.cleanedUrl).toBe('/__fastgpt_proxy/code-server/?folder=/home/sandbox');
   });
 
   it('also strips a stale _t when authenticating via cookie', () => {
-    const tk = sign({ sid: 'abc', p: 1, t: 'http://x' });
+    const tk = sign({ sid: 'abc', svc: 'code-server' });
     const r = authenticate(
       mkReq('abc.localhost:3006', '/?_t=garbage&keep=1', `${PROXY_COOKIE}=${tk}`)
     );
@@ -126,26 +126,32 @@ describe('authenticate', () => {
 
 describe('verifyProxyToken', () => {
   it('accepts a well-formed signed token', () => {
-    const tk = jwt.sign({ sid: 'abc', p: 44772, t: 'http://localhost:55549' }, SECRET, {
-      expiresIn: DEFAULT_TTL_SECONDS
-    });
+    const tk = jwt.sign(
+      {
+        sid: 'abc',
+        svc: 'code-server'
+      },
+      SECRET,
+      {
+        expiresIn: DEFAULT_TTL_SECONDS
+      }
+    );
     expect(verifyProxyToken(tk)).toEqual({
       sid: 'abc',
-      p: 44772,
-      t: 'http://localhost:55549',
+      svc: 'code-server',
       exp: expect.any(Number)
     });
   });
 
   it('rejects a token signed with a different secret', () => {
-    const tk = jwt.sign({ sid: 'abc', p: 1, t: 'http://x' }, 'other-secret-12345678', {
+    const tk = jwt.sign({ sid: 'abc', svc: 'code-server' }, 'other-secret-12345678', {
       expiresIn: DEFAULT_TTL_SECONDS
     });
     expect(verifyProxyToken(tk)).toBeNull();
   });
 
   it('rejects an expired token', () => {
-    const tk = jwt.sign({ sid: 'abc', p: 1, t: 'http://x' }, SECRET, { expiresIn: -1 });
+    const tk = jwt.sign({ sid: 'abc', svc: 'code-server' }, SECRET, { expiresIn: -1 });
     expect(verifyProxyToken(tk)).toBeNull();
   });
 
@@ -160,7 +166,14 @@ describe('verifyProxyToken', () => {
   });
 
   it('rejects when types mismatch (e.g. sid is a number)', () => {
-    const tk = jwt.sign({ sid: 123, p: 1, t: 'http://x' }, SECRET, {
+    const tk = jwt.sign({ sid: 123, svc: 'code-server' }, SECRET, {
+      expiresIn: DEFAULT_TTL_SECONDS
+    });
+    expect(verifyProxyToken(tk)).toBeNull();
+  });
+
+  it('rejects unsupported services', () => {
+    const tk = jwt.sign({ sid: 'abc', svc: 'terminal' }, SECRET, {
       expiresIn: DEFAULT_TTL_SECONDS
     });
     expect(verifyProxyToken(tk)).toBeNull();
@@ -178,11 +191,11 @@ describe('stripBootstrapToken', () => {
   });
 
   it('removes _t while keeping other params', () => {
-    expect(stripBootstrapToken('/proxy/8080/?_t=xyz&folder=/home/sandbox')).toBe(
-      '/proxy/8080/?folder=/home/sandbox'
+    expect(stripBootstrapToken('/__fastgpt_proxy/code-server/?_t=xyz&folder=/home/sandbox')).toBe(
+      '/__fastgpt_proxy/code-server/?folder=/home/sandbox'
     );
-    expect(stripBootstrapToken('/proxy/8080/?folder=/home/sandbox&_t=xyz')).toBe(
-      '/proxy/8080/?folder=/home/sandbox'
+    expect(stripBootstrapToken('/__fastgpt_proxy/code-server/?folder=/home/sandbox&_t=xyz')).toBe(
+      '/__fastgpt_proxy/code-server/?folder=/home/sandbox'
     );
     expect(stripBootstrapToken('/path?a=1&_t=jwt&b=2')).toBe('/path?a=1&b=2');
   });

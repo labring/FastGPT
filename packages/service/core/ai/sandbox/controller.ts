@@ -10,7 +10,7 @@ import {
   type ExecuteResult,
   type ISandbox,
   type ResourceLimits,
-  type OpenSandboxConfigType
+  type SandboxCreateSpec
 } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getOpenSandboxConnectionConfig,
@@ -50,7 +50,7 @@ export class SandboxClient {
     private readonly opts: {
       resourceLimits?: ResourceLimits;
       vmConfig?: VolumeManagerResult | undefined;
-      createConfig?: OpenSandboxConfigType;
+      createConfig?: SandboxCreateSpec;
     }
   ) {
     this.sandboxId = props.sandboxId;
@@ -62,7 +62,7 @@ export class SandboxClient {
 
     if (providerName === 'sealosdevbox') {
       const config = getSealosConnectionConfig(this.sandboxId);
-      this.provider = createSandbox('sealosdevbox', config, undefined);
+      this.provider = createSandbox('sealosdevbox', config, opts?.createConfig);
     } else if (providerName === 'opensandbox') {
       // volumes always come from vmConfig (ensures PVC binding is correct);
       // custom createConfig takes priority for image/entrypoint/env/metadata
@@ -174,7 +174,7 @@ export const getSandboxClient = async (
     | UnionIdType,
   opts: {
     resourceLimits?: ResourceLimits;
-    createConfig?: OpenSandboxConfigType;
+    createConfig?: SandboxCreateSpec;
   } = {}
 ) => {
   const sandboxId = (() => {

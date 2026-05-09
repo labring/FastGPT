@@ -67,6 +67,7 @@ describe('sandboxConfig provider helpers', () => {
     expect((result as any).connectionConfig).toEqual({
       apiKey: 'api-key',
       baseUrl: 'http://sandbox.local',
+      replaceDockerInternalWithLocalhost: false,
       runtime: 'kubernetes',
       useServerProxy: undefined,
       sessionId: ''
@@ -79,28 +80,92 @@ describe('sandboxConfig provider helpers', () => {
     });
   });
 
-  it('rejects unsupported managed create config for sealosdevbox', async () => {
+  it('passes managed create config through for sealosdevbox', async () => {
     const { buildSandboxAdapter } = await loadSandboxConfigModule();
 
-    expect(() =>
-      buildSandboxAdapter(
-        {
-          provider: 'sealosdevbox',
-          baseUrl: 'https://devbox.example.com',
-          token: 'sealos-token',
-          runtime: 'docker'
-        },
-        {
-          providerSandboxId: 'devbox-1',
-          createConfig: {
-            image: {
-              repository: 'fastgpt-agent-sandbox',
-              tag: 'latest'
-            }
-          }
+    const result = buildSandboxAdapter(
+      {
+        provider: 'sealosdevbox',
+        baseUrl: 'https://devbox.example.com',
+        token: 'sealos-token',
+        runtime: 'docker'
+      },
+      {
+        providerSandboxId: 'devbox-1',
+        createConfig: {
+          env: {
+            CODE_SERVER_ENABLED: 'true'
+          },
+          workingDir: '/home/devbox/workspace'
         }
-      )
-    ).toThrow('does not support custom image/entrypoint/env/metadata');
+      }
+    );
+
+    expect(result.provider).toBe('sealosdevbox');
+  });
+
+  it('builds session-runtime create config for sealosdevbox without default image or entrypoint', async () => {
+    const { buildSessionRuntimeCreateConfig } = await loadSandboxConfigModule();
+
+    const result = buildSessionRuntimeCreateConfig({
+      providerConfig: {
+        provider: 'sealosdevbox',
+        baseUrl: 'https://devbox.example.com',
+        token: 'sealos-token',
+        runtime: 'docker'
+      },
+      sessionId: 'session-1',
+      defaults: {
+        defaultImage: { repository: '' },
+        workDirectory: '/home/devbox/workspace',
+        entrypoint: ''
+      },
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      skillIds: ['skill-1', 'skill-2']
+    });
+
+    expect(result).toEqual({
+      env: {
+        FASTGPT_SESSION_ID: 'session-1',
+        FASTGPT_WORKDIR: '/home/devbox/workspace',
+        FASTGPT_ENABLE_CODE_SERVER: 'false'
+      },
+      workingDir: '/home/devbox/workspace',
+      metadata: {
+        teamId: 'team-1',
+        tmbId: 'member-1',
+        sandboxType: 'session-runtime',
+        skillIds: 'skill-1-skill-2',
+        sessionId: 'session-1'
+      }
+    });
+  });
+
+  it('keeps explicit image override in session-runtime create config for sealosdevbox', async () => {
+    const { buildSessionRuntimeCreateConfig } = await loadSandboxConfigModule();
+
+    const result = buildSessionRuntimeCreateConfig({
+      providerConfig: {
+        provider: 'sealosdevbox',
+        baseUrl: 'https://devbox.example.com',
+        token: 'sealos-token',
+        runtime: 'docker'
+      },
+      sessionId: 'session-1',
+      defaults: {
+        defaultImage: { repository: '' },
+        workDirectory: '/home/devbox/workspace',
+        entrypoint: ''
+      },
+      image: { repository: 'custom-devbox-runtime', tag: 'test' },
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      skillIds: []
+    });
+
+    expect(result.image).toEqual({ repository: 'custom-devbox-runtime', tag: 'test' });
+    expect(result.entrypoint).toBeUndefined();
   });
 
   it('connects opensandbox via provider-specific connect hook', async () => {
@@ -166,12 +231,9 @@ describe('sandboxConfig provider helpers', () => {
     const { getProviderSandboxEndpoint } = await loadSandboxConfigModule();
 
     await expect(
-      getProviderSandboxEndpoint(
-        {
-          provider: 'sealosdevbox'
-        } as any,
-        8080
-      )
+      getProviderSandboxEndpoint({
+        provider: 'sealosdevbox'
+      } as any)
     ).rejects.toThrow('does not expose endpoint capability');
   });
 

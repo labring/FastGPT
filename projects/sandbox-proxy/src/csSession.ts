@@ -6,8 +6,6 @@ const logger = getLogger(LogCategories.MODULE.SANDBOX_PROXY.SERVER);
 
 type CsSession = { name: string; value: string };
 
-// Bound both upstream calls; password fetch goes through app exec adapter so it gets a wider budget.
-const PASSWORD_FETCH_TIMEOUT_MS = 8000;
 const CS_LOGIN_TIMEOUT_MS = 5000;
 
 /**
@@ -40,36 +38,80 @@ export const evictCsSession = (sandboxId: string) => {
   loginBackoff.delete(sandboxId);
 };
 
-export const deriveCsLoginTarget = (target: string, url: string): string => {
-  const m = url.match(/^\/proxy\/(\d+)/);
-  return m ? `${target}/proxy/${m[1]}` : target;
+type ProxyPathMapping = {
+  publicPath: string;
+  basePath: string;
 };
 
-/**
- * Fetch code-server password from FastGPT internal endpoint.
- */
-const fetchPasswordFromApp = async (sandboxId: string): Promise<string | null> => {
-  try {
-    const resp = await fetch(`${env.appBaseUrl}/api/core/sandbox/internal/csPassword`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.secret}`
-      },
-      body: JSON.stringify({ sandboxId }),
-      signal: AbortSignal.timeout(PASSWORD_FETCH_TIMEOUT_MS)
-    });
-    if (!resp.ok) return null;
-    const data = (await resp.json()) as { password?: string | null };
-    return data.password || null;
-  } catch (e) {
-    logger.error(`csLogin password fetch sandboxId=${sandboxId}: ${(e as Error).message}`);
-    return null;
-  }
+const normalizePrefix = (path: string): string => {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
 };
 
-const doCsLogin = async (sandboxId: string, target: string): Promise<CsSession | null> => {
-  const password = await fetchPasswordFromApp(sandboxId);
+const joinPath = (basePath: string, suffix: string): string => {
+  const base = basePath ? normalizePrefix(basePath) : '';
+  const normalizedSuffix = suffix.startsWith('/')
+    ? suffix
+    : suffix.startsWith('?')
+      ? `/${suffix}`
+      : `/${suffix}`;
+  return base ? `${base}${normalizedSuffix}` : normalizedSuffix;
+};
+
+const getMapping = (mapping: ProxyPathMapping): ProxyPathMapping => {
+  return {
+    publicPath: normalizePrefix(mapping.publicPath),
+    basePath: mapping.basePath ? normalizePrefix(mapping.basePath) : ''
+  };
+};
+
+const getProxySuffix = (url: string, publicPath: string): string | null => {
+  const prefix = normalizePrefix(publicPath);
+  if (url === prefix) return '/';
+  if (url.startsWith(`${prefix}?`)) return `/${url.slice(prefix.length)}`;
+  if (url.startsWith(`${prefix}/`)) return url.slice(prefix.length);
+  return null;
+};
+
+const getBasePathSuffix = (url: string, basePath: string): string | null => {
+  if (!basePath) return url.startsWith('/') ? url : `/${url}`;
+
+  const prefix = normalizePrefix(basePath);
+  if (url === prefix) return '/';
+  if (url.startsWith(`${prefix}?`)) return `/${url.slice(prefix.length)}`;
+  if (url.startsWith(`${prefix}/`)) return url.slice(prefix.length);
+  return null;
+};
+
+export const rewriteProxyRequestUrl = (url: string, mapping: ProxyPathMapping): string => {
+  const { publicPath, basePath } = getMapping(mapping);
+  const suffix = getProxySuffix(url, publicPath);
+  if (suffix !== null) return joinPath(basePath, suffix);
+
+  const baseSuffix = getBasePathSuffix(url, basePath);
+  return baseSuffix === null ? url : joinPath(basePath, baseSuffix);
+};
+
+export const deriveCsLoginTarget = (
+  target: string,
+  url: string,
+  mapping: ProxyPathMapping
+): string => {
+  const { publicPath, basePath } = getMapping(mapping);
+  const suffix = getProxySuffix(url, publicPath) ?? getBasePathSuffix(url, basePath);
+  return suffix === null ? target : `${target}${basePath}`;
+};
+
+export const isProxyMappedRequestUrl = (url: string, mapping: ProxyPathMapping): boolean => {
+  const { publicPath, basePath } = getMapping(mapping);
+  return getProxySuffix(url, publicPath) !== null || getBasePathSuffix(url, basePath) !== null;
+};
+
+const doCsLogin = async (
+  sandboxId: string,
+  target: string,
+  password?: string
+): Promise<CsSession | null> => {
   if (!password) {
     loginBackoff.set(sandboxId, true);
     return null;
@@ -136,7 +178,8 @@ const doCsLogin = async (sandboxId: string, target: string): Promise<CsSession |
  */
 export const ensureCsSession = async (
   sandboxId: string,
-  target: string
+  target: string,
+  password?: string
 ): Promise<CsSession | null> => {
   const cached = sessionCache.get(sandboxId);
   if (cached) return cached;
@@ -146,7 +189,7 @@ export const ensureCsSession = async (
   const ongoing = inFlight.get(sandboxId);
   if (ongoing) return ongoing;
 
-  const p = doCsLogin(sandboxId, target).finally(() => inFlight.delete(sandboxId));
+  const p = doCsLogin(sandboxId, target, password).finally(() => inFlight.delete(sandboxId));
   inFlight.set(sandboxId, p);
   return p;
 };

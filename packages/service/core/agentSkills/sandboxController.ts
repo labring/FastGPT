@@ -19,7 +19,7 @@ import {
   connectToProviderSandbox,
   disconnectFromProviderSandbox,
   getProviderSandboxEndpoint,
-  buildBaseContainerEnv,
+  buildEditDebugCreateConfig,
   waitForEndpointReady
 } from './sandboxConfig';
 import type {
@@ -132,36 +132,25 @@ export async function createEditDebugSandbox(
   if (existingInstance) {
     addLog.info('[Sandbox] Found existing sandbox instance, ensuring running', {
       instanceId: existingInstance._id,
-      sandboxId: existingInstance.sandboxId
+      sandboxId: existingInstance.sandboxId,
+      providerSandboxId: existingInstance.metadata?.providerSandboxId
     });
+
+    let sandbox: ISandbox | null = null;
 
     try {
       onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
 
-      // getSandboxClient internally calls ensureAvailable():
-      //   - updates DB status=running, lastActiveAt
-      //   - calls provider.ensureRunning() to handle both running and stopped containers
-      // Pass skill-specific createConfig so the container is rebuilt with the
-      // correct image/entrypoint/env/metadata if it was accidentally deleted.
-      const client = await getSandboxClient(
-        { sandboxId: existingInstance.sandboxId },
-        {
-          createConfig: {
-            image: sandboxImage,
-            entrypoint: [entrypoint ?? defaults.entrypoint],
-            env: buildBaseContainerEnv(existingInstance.sandboxId, defaults.workDirectory, true),
-            metadata: {
-              skillId,
-              teamId,
-              sandboxType: SandboxTypeEnum.editDebug,
-              sessionId: existingInstance.sandboxId
-            }
-          }
-        }
-      );
+      sandbox = await connectToProviderSandbox(providerConfig, existingInstance.sandboxId);
+      const existingProviderInfo = await sandbox.getInfo();
+      if (!existingProviderInfo) {
+        throw new Error('Provider sandbox not found');
+      }
 
-      const endpointInfo = await getProviderSandboxEndpoint(client.provider, defaults.targetPort);
-      const sandboxInfo = await client.provider.getInfo();
+      await sandbox.ensureRunning();
+
+      const endpointInfo = await getProviderSandboxEndpoint(sandbox);
+      const sandboxInfo = await sandbox.getInfo();
 
       // Wait for the HTTP service inside the container to bind its port before
       // sending the ready SSE event — prevents ECONNREFUSED in the client iframe.
@@ -190,22 +179,25 @@ export async function createEditDebugSandbox(
         status: { state: 'Running' }
       };
     } catch (error) {
-      addLog.error('[Sandbox] Failed to ensure sandbox running', { error });
-      throw error;
+      addLog.info('[Sandbox] Existing sandbox is unavailable, recreating edit-debug sandbox', {
+        sandboxId: existingInstance.sandboxId,
+        providerSandboxId: existingInstance.metadata?.providerSandboxId,
+        error
+      });
+
+      await MongoSandboxInstance.deleteOne({ _id: existingInstance._id });
+    } finally {
+      if (sandbox) {
+        await disconnectFromProviderSandbox(sandbox);
+      }
     }
   }
 
   // Download package.zip from MinIO and standardize it
-  addLog.info('[Sandbox] Downloading package from storage', {
-    key: activeVersion.storage.key
-  });
-
   onProgress?.({ sandboxId: skillId, phase: 'downloadingPackage' });
   const packageBuffer = await downloadSkillPackage({
     storageInfo: activeVersion.storage
   });
-
-  addLog.info('[Sandbox] Package downloaded', { size: packageBuffer.length });
 
   // Package is already in ZIP format from import time.
   const standardizedBuffer = packageBuffer;
@@ -230,10 +222,6 @@ export async function createEditDebugSandbox(
   let sandboxClient: SandboxClient | null = null;
 
   try {
-    addLog.info('[Sandbox] Creating sandbox instance', {
-      image: sandboxImage
-    });
-
     onProgress?.({ sandboxId: skillId, phase: 'creatingContainer' });
     const sessionId = new mongoose.Types.ObjectId().toHexString();
 
@@ -242,18 +230,15 @@ export async function createEditDebugSandbox(
     const client = await getSandboxClient(
       { sandboxId: sessionId },
       {
-        createConfig: {
-          image: sandboxImage,
-          entrypoint: [entrypoint ?? defaults.entrypoint],
-          env: buildBaseContainerEnv(sessionId, defaults.workDirectory, true),
-          // volumes: handled internally by getSandboxClient via getVolumeManagerConfig
-          metadata: {
-            skillId,
-            teamId,
-            sandboxType: SandboxTypeEnum.editDebug,
-            sessionId
-          }
-        }
+        createConfig: buildEditDebugCreateConfig({
+          providerConfig,
+          sessionId,
+          sandboxImage,
+          defaults,
+          entrypoint,
+          skillId,
+          teamId
+        })
       }
     );
     sandboxClient = client;
@@ -265,8 +250,6 @@ export async function createEditDebugSandbox(
     // Upload package to sandbox and extract
     const zipPath = `${defaults.workDirectory}/package.zip`;
 
-    addLog.info('[Sandbox] Uploading package to sandbox', { path: zipPath });
-
     onProgress?.({ sandboxId: skillId, phase: 'uploadingPackage' });
     await client.provider.writeFiles([
       {
@@ -275,7 +258,6 @@ export async function createEditDebugSandbox(
       }
     ]);
 
-    addLog.info('[Sandbox] Extracting package');
     onProgress?.({ sandboxId: skillId, phase: 'extractingPackage' });
     const extractResult = await client.provider.execute(
       `mkdir -p ${defaults.workDirectory} && cd ${defaults.workDirectory} && unzip -o package.zip && rm package.zip`
@@ -285,17 +267,12 @@ export async function createEditDebugSandbox(
       throw new Error(`Failed to extract package: ${extractResult.stderr}`);
     }
 
-    addLog.info('[Sandbox] Package extracted successfully');
-
-    // Get endpoint
-    addLog.info('[Sandbox] Getting endpoint', { port: defaults.targetPort });
-    const endpointInfo = await getProviderSandboxEndpoint(client.provider, defaults.targetPort);
+    // Get code-server endpoint
+    const endpointInfo = await getProviderSandboxEndpoint(client.provider);
 
     // Wait for the HTTP service to accept connections before persisting and emitting ready.
     // The container may still be initializing even after package extraction completes.
     await waitForEndpointReady(endpointInfo);
-
-    addLog.info('[Sandbox] Endpoint obtained', endpointInfo);
 
     // Enrich the DB record created by getSandboxClient.ensureAvailable() with full skill metadata.
     // Use sessionId (the client-side key) because ensureAvailable() stores the record with
@@ -335,10 +312,6 @@ export async function createEditDebugSandbox(
     );
 
     if (!newSandboxDoc) throw new Error('Failed to find sandbox document after creation');
-
-    addLog.info('[Sandbox] Sandbox info saved to database', {
-      sandboxId: newSandboxDoc._id
-    });
 
     onProgress?.({
       sandboxId: skillId,
@@ -478,11 +451,6 @@ export async function packageSkillInSandbox(params: {
   const defaults = getSandboxDefaults();
   const targetDir = workDirectory || defaults.workDirectory;
 
-  addLog.info('[Sandbox] Packaging skill in sandbox', {
-    providerSandboxId,
-    workDirectory: targetDir
-  });
-
   let sandbox: ISandbox | null = null;
 
   try {
@@ -495,7 +463,6 @@ export async function packageSkillInSandbox(params: {
     // busybox (Alpine), and BSD; 'find -ls' is POSIX and outputs per-file byte sizes in $7
     // uniformly across all those environments.
     const sizeCheckCmd = `find ${targetDir} -type f ! -name 'package.zip' -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
-    addLog.info('[Sandbox] Checking directory size before packaging');
     const sizeResult = await newSandbox.execute(sizeCheckCmd);
 
     if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
@@ -505,17 +472,11 @@ export async function packageSkillInSandbox(params: {
           `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${maxBytes / 1024 / 1024}MB)`
         );
       }
-      addLog.info('[Sandbox] Directory size check passed', {
-        dirBytes,
-        maxBytes
-      });
     }
 
     // Zip workDirectory directly so that archive entries are {skill-name}/...
     // keeping the same structure expected by validateZipStructure.
     const zipCommand = `cd ${targetDir} && zip -r package.zip . -x 'package.zip'`;
-
-    addLog.info('[Sandbox] Executing zip command');
 
     const zipResult = await newSandbox.execute(zipCommand);
 
@@ -523,24 +484,14 @@ export async function packageSkillInSandbox(params: {
       throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
     }
 
-    addLog.info('[Sandbox] Zip command executed successfully', {
-      stdout: zipResult.stdout
-    });
-
     // Read the generated package.zip file
     const zipFilePath = `${targetDir}/package.zip`;
-
-    addLog.info('[Sandbox] Reading package.zip from sandbox', { path: zipFilePath });
 
     const files = await newSandbox.readFiles([zipFilePath]);
 
     if (!files || files.length === 0) {
       throw new Error('Package file not found in sandbox');
     }
-
-    addLog.info('[Sandbox] Package read successfully', {
-      size: files[0].content.length
-    });
 
     // Clean up the zip file after reading to free sandbox storage
     await newSandbox.execute(`rm -f "${zipFilePath}"`);

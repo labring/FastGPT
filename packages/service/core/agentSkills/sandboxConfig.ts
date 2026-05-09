@@ -9,9 +9,15 @@ import type {
   SkillSandboxEndpointType
 } from '@fastgpt/global/core/agentSkills/type';
 import { createSandbox, type ISandbox, type OpenSandboxVolume } from '@fastgpt-sdk/sandbox-adapter';
-import type { OpenSandboxConfigType, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import type {
+  OpenSandboxConfigType,
+  SandboxCreateSpec,
+  SandboxProviderType,
+  SandboxProxyTarget
+} from '@fastgpt-sdk/sandbox-adapter';
 import type { OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
 import { serviceEnv } from '../../env';
+import { SandboxTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -38,12 +44,13 @@ export type SandboxProviderConfig = OpenSandboxProviderConfig | SealosDevboxProv
  * App-side sandbox create config.
  * Providers may support only a subset of these fields.
  */
-export type SandboxCreateConfig = OpenSandboxConfigType;
+export type SandboxCreateConfig = SandboxCreateSpec;
+
+type ProviderSandboxProxyTarget = Extract<SandboxProxyTarget, { service: 'code-server' }>;
 
 export type SandboxDefaults = {
   defaultImage: SandboxImageConfigType;
   workDirectory: string;
-  targetPort: number;
   entrypoint: string;
 };
 
@@ -58,16 +65,10 @@ function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
 }
 
-function createUnsupportedCreateConfigError(provider: SandboxProviderType): Error {
-  return new Error(
-    `Sandbox provider "${provider}" does not support custom image/entrypoint/env/metadata through @fastgpt/sandbox. Agent skill sandboxes currently require those capabilities.`
-  );
-}
-
 function toOpenSandboxCreateConfig(
   createConfig?: SandboxCreateConfig
 ): OpenSandboxConfigType | undefined {
-  return createConfig;
+  return createConfig as OpenSandboxConfigType | undefined;
 }
 
 /**
@@ -113,6 +114,16 @@ export function getSandboxProviderConfig(): SandboxProviderConfig {
  * Get sandbox default settings
  */
 export function getSandboxDefaults(): SandboxDefaults {
+  if (serviceEnv.AGENT_SANDBOX_PROVIDER === 'sealosdevbox') {
+    return {
+      defaultImage: {
+        repository: ''
+      },
+      workDirectory: '/home/devbox/workspace',
+      entrypoint: ''
+    };
+  }
+
   return {
     defaultImage: {
       repository: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
@@ -120,7 +131,6 @@ export function getSandboxDefaults(): SandboxDefaults {
     },
     workDirectory: '/home/sandbox/workspace',
     // workDirectory: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_WORK_DIRECTORY ?? '/home/sandbox/workspace',
-    targetPort: 44772,
     entrypoint: '/home/sandbox/entrypoint.sh'
     // entrypoint: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_ENTRYPOINT ?? '/home/sandbox/entrypoint.sh'
   };
@@ -175,6 +185,8 @@ export function buildSandboxAdapter(
           baseUrl: providerConfig.baseUrl,
           runtime: providerConfig.runtime,
           useServerProxy: providerConfig.useServerProxy,
+          replaceDockerInternalWithLocalhost:
+            serviceEnv.SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST,
           sessionId: props.providerSandboxId
         },
         toOpenSandboxCreateConfig(props.createConfig)
@@ -186,17 +198,13 @@ export function buildSandboxAdapter(
           'Sandbox provider "sealosdevbox" requires providerSandboxId when initializing the adapter'
         );
       }
-      if (props.createConfig) {
-        throw createUnsupportedCreateConfigError(providerConfig.provider);
-      }
-
       const connection = {
         baseUrl: providerConfig.baseUrl,
         token: providerConfig.token,
         sandboxId: props.providerSandboxId
       };
 
-      return createSandbox('sealosdevbox', connection);
+      return createSandbox('sealosdevbox', connection, props.createConfig);
     }
 
     default:
@@ -244,11 +252,14 @@ export async function disconnectFromProviderSandbox(sandbox: ISandbox): Promise<
  * in application code.
  */
 export async function getProviderSandboxEndpoint(
-  sandbox: ISandbox,
-  port: number
+  sandbox: ISandbox
 ): Promise<SkillSandboxEndpointType> {
-  if (sandbox.provider === 'opensandbox') {
-    const endpoint = await (sandbox as OpenSandboxAdapter).getEndpoint(port);
+  const endpointResolver = sandbox as unknown as {
+    getEndpoint?: (selector: 'code-server') => Promise<SkillSandboxEndpointType>;
+  };
+
+  if (endpointResolver.getEndpoint) {
+    const endpoint = await endpointResolver.getEndpoint('code-server');
     return {
       host: endpoint.host,
       port: endpoint.port,
@@ -259,6 +270,22 @@ export async function getProviderSandboxEndpoint(
 
   throw new Error(
     `Sandbox provider "${sandbox.provider}" does not expose endpoint capability through @fastgpt/sandbox. This edit-debug workflow currently requires opensandbox-compatible endpoint support.`
+  );
+}
+
+export async function getProviderSandboxProxyTarget(
+  sandbox: ISandbox
+): Promise<ProviderSandboxProxyTarget> {
+  const proxyResolver = sandbox as unknown as {
+    getProxyTarget?: (service: 'code-server') => Promise<ProviderSandboxProxyTarget>;
+  };
+
+  if (proxyResolver.getProxyTarget) {
+    return proxyResolver.getProxyTarget('code-server');
+  }
+
+  throw new Error(
+    `Sandbox provider "${sandbox.provider}" does not expose proxy target capability through @fastgpt/sandbox.`
   );
 }
 
@@ -390,5 +417,86 @@ export function buildBaseContainerEnv(
     FASTGPT_SESSION_ID: sessionId,
     FASTGPT_WORKDIR: workDirectory,
     FASTGPT_ENABLE_CODE_SERVER: enableCodeServer ? 'true' : 'false'
+  };
+}
+
+export function buildSessionRuntimeCreateConfig(params: {
+  providerConfig: SandboxProviderConfig;
+  sessionId: string;
+  defaults: SandboxDefaults;
+  entrypoint?: string;
+  image?: SandboxImageConfigType;
+  teamId: string;
+  tmbId: string;
+  skillIds: string[];
+}): SandboxCreateConfig {
+  const { providerConfig, sessionId, defaults, entrypoint, image, teamId, tmbId, skillIds } =
+    params;
+
+  if (providerConfig.provider === 'sealosdevbox') {
+    return {
+      ...(image ? { image } : {}),
+      env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
+      workingDir: defaults.workDirectory,
+      metadata: {
+        teamId,
+        tmbId,
+        sandboxType: SandboxTypeEnum.sessionRuntime,
+        skillIds: skillIds.join('-'),
+        sessionId
+      }
+    };
+  }
+
+  return {
+    image: image ?? defaults.defaultImage,
+    entrypoint: [entrypoint ?? defaults.entrypoint],
+    env: buildBaseContainerEnv(sessionId, defaults.workDirectory, false),
+    metadata: {
+      teamId,
+      tmbId,
+      sandboxType: SandboxTypeEnum.sessionRuntime,
+      skillIds: skillIds.join('-'),
+      sessionId
+    }
+  };
+}
+
+export function buildEditDebugCreateConfig(params: {
+  providerConfig: SandboxProviderConfig;
+  sessionId: string;
+  sandboxImage: SandboxImageConfigType;
+  defaults: SandboxDefaults;
+  entrypoint?: string;
+  skillId: string;
+  teamId: string;
+}): SandboxCreateConfig {
+  const { providerConfig, sessionId, sandboxImage, defaults, entrypoint, skillId, teamId } = params;
+
+  if (providerConfig.provider === 'sealosdevbox') {
+    return {
+      env: {
+        CODE_SERVER_ENABLED: 'true'
+      },
+      workingDir: defaults.workDirectory,
+      metadata: {
+        skillId,
+        teamId,
+        sandboxType: SandboxTypeEnum.editDebug,
+        sessionId
+      }
+    };
+  }
+
+  return {
+    image: sandboxImage,
+    entrypoint: [entrypoint ?? defaults.entrypoint],
+    env: buildBaseContainerEnv(sessionId, defaults.workDirectory, true),
+    metadata: {
+      skillId,
+      teamId,
+      sandboxType: SandboxTypeEnum.editDebug,
+      sessionId
+    }
   };
 }
