@@ -149,15 +149,17 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     }
 
     // 注入文件到沙盒里
-    await injectSandboxFiles({
-      appId: workflowProps.runningAppInfo.id,
-      userId: workflowProps.uid,
-      chatId: workflowProps.chatId,
-      files: currentInputFiles.map((file) => ({
-        path: file.sandboxPath!,
-        url: file.url
-      }))
-    });
+    if (currentInputFiles.length > 0) {
+      await injectSandboxFiles({
+        appId: workflowProps.runningAppInfo.id,
+        userId: workflowProps.uid,
+        chatId: workflowProps.chatId,
+        files: currentInputFiles.map((file) => ({
+          path: file.sandboxPath!,
+          url: file.url
+        }))
+      });
+    }
   }
 
   const getToolInfo = (name: string) => {
@@ -317,7 +319,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         } else if (toolInfo.type === 'file') {
           const { ids } = ReadFileToolParamsSchema.parse(parseJsonArgs(call.function.arguments));
           const { response, usages, flowResponse } = await dispatchReadFileTool({
-            files: ids.map((id) => ({ id, url: allFiles.get(id)?.url! })),
+            files: ids.map((id) => ({ id, url: allFiles.get(id)?.url ?? '' })),
             toolCallId: call.id,
             teamId: workflowProps.runningUserInfo.teamId,
             tmbId: workflowProps.runningUserInfo.tmbId,

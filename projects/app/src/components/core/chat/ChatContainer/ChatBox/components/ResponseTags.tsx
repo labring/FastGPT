@@ -88,10 +88,8 @@ const ResponseTags = ({
     outLinkAuthData
   });
 
-  useSize(quoteListRef);
-  const quoteIsOverflow = quoteListRef.current
-    ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
-    : true;
+  const quoteListSize = useSize(quoteListRef);
+  const quoteIsOverflow = quoteListSize ? quoteListSize.height >= (isPc ? 50 : 55) : true;
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     if (!isShowCite) return [];
@@ -136,7 +134,8 @@ const ResponseTags = ({
     return [...datasetItems, ...linkItems];
   }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
-  const notEmptyTags = notSharePage || quoteList.length > 0 || (isPc && durationSeconds > 0);
+  const notEmptyTags =
+    notSharePage || quoteList.length > 0 || useAgentSandbox || (isPc && durationSeconds > 0);
 
   return !showTags ? null : (
     <>
