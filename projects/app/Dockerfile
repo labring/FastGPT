@@ -30,7 +30,7 @@ ARG proxy
 ARG base_url
 
 # copy common node_modules and one project node_modules
-COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json .eslintrc.json ./
+COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json eslint.config.mjs ./
 COPY --from=maindeps /app/node_modules ./node_modules
 COPY --from=maindeps /app/packages ./packages
 COPY --from=maindeps /app/sdk ./sdk
