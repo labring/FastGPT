@@ -1,7 +1,76 @@
 import { describe, expect, it } from 'vitest';
+import { EventEmitter } from 'node:events';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
+import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { createNode, createEdge } from '../utils';
+
+describe('createClientAbortTracker', () => {
+  const mockRes = (overrides: Record<string, any> = {}) => {
+    const res = new EventEmitter() as any;
+    Object.assign(res, {
+      closed: false,
+      destroyed: false,
+      errored: null,
+      writableAborted: false,
+      writableEnded: false,
+      writableFinished: false,
+      ...overrides
+    });
+    return res;
+  };
+
+  const mockReq = () => {
+    const req = new EventEmitter() as any;
+    req.aborted = false;
+    req.socket = new EventEmitter() as any;
+    req.socket.destroyed = false;
+    return req;
+  };
+
+  it('响应正常结束后 close，不应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes({ writableEnded: true, writableFinished: true });
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.closed = true;
+    res.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('响应未结束时 close，应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+
+  it('socket 在响应结束前关闭，应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    req.socket.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+
+  it('创建 tracker 前响应已经异常关闭，应通过快照判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes({ closed: true });
+    const tracker = createClientAbortTracker({ req, res });
+
+    expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+});
 
 describe('WorkflowQueue', () => {
   describe('WorkflowQueue utils', () => {

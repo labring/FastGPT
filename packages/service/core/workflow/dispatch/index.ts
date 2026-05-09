@@ -63,6 +63,8 @@ import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
+import { createClientAbortTracker } from './utils/clientAbort';
+import type { IncomingMessage } from 'node:http';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -73,6 +75,7 @@ type Props = Omit<
   variables: Record<string, any>;
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
+  req?: IncomingMessage;
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
 };
 type NodeResponseType = DispatchNodeResultType<{
@@ -219,6 +222,8 @@ export async function dispatchWorkFlow({
   ]);
 
   let streamCheckTimer: NodeJS.Timeout | null = null;
+  const clientAbortTracker =
+    apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
 
   // set sse response headers
   if (res) {
@@ -266,8 +271,7 @@ export async function dispatchWorkFlow({
       return stopping;
     }
     if (apiVersion === 'v1') {
-      if (!res) return false;
-      return res.closed || !!res.errored;
+      return clientAbortTracker?.isClientAborted() ?? false;
     }
     return false;
   };
@@ -315,6 +319,7 @@ export async function dispatchWorkFlow({
             if (checkStoppingTimer) {
               clearInterval(checkStoppingTimer);
             }
+            clientAbortTracker?.cleanup();
 
             // Close mcpClient connections
             Object.values(ctx.mcpClientMemory).forEach((client) => {
@@ -1645,7 +1650,7 @@ const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) =
   for (let i = 0; i < response.length; i++) {
     const item = response[i];
     if (item.text) {
-      let text = item.text?.content || '';
+      const text = item.text?.content || '';
       const lastItem = result[result.length - 1];
       if (lastItem && lastItem.text?.content && item.stepId === lastItem.stepId) {
         lastItem.text.content += text;

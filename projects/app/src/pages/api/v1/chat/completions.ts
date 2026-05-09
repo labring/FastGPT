@@ -68,7 +68,8 @@ import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  let {
+  const completionProps = CompletionsPropsSchema.parse(req.body);
+  const {
     chatId,
     appId,
     customUid,
@@ -80,14 +81,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     teamToken,
 
     stream = false,
-    detail = false,
-    retainDatasetCite = false,
     showSkillReferences,
     messages = [],
-    variables = {},
     responseChatItemId = getNanoid(),
     metadata
-  } = CompletionsPropsSchema.parse(req.body);
+  } = completionProps;
+  let { detail = false, retainDatasetCite = false, variables = {} } = completionProps;
 
   const startTime = Date.now();
 
@@ -276,6 +275,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
           apiVersion: 'v1',
+          req,
           res,
           lang: getLocale(req),
           requestOrigin: req.headers.origin,
