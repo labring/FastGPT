@@ -109,6 +109,9 @@ jobs:
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
+      - name: Prepare Docker workspace catalog
+        run: cp pnpm-workspace.yaml document/pnpm-workspace.yaml
+
       - name: Build and push Docker images (CN)
         if: matrix.domain_config.suffix == 'cn'
         uses: docker/build-push-action@v5
