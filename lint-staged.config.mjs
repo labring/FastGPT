@@ -21,12 +21,13 @@ export default {
     files.length === 0
       ? []
       : [
-          'pnpm -C ./document run format-doc',
-          'pnpm -C ./document run initDocTime',
-          'pnpm -C ./document run initDocToc',
-          'pnpm -C ./document run checkDocRefs',
-          'pnpm -C ./document run removeInvalidImg'
-        ],
+        'pnpm -C ./document run format-doc',
+        'pnpm -C ./document run initDocTime',
+        'pnpm -C ./document run initDocToc',
+        'pnpm -C ./document run checkDocRefs',
+        'pnpm -C ./document run removeInvalidImg',
+        'git add .'
+      ],
   '**/*.{ts,tsx}': (files) => {
     const lintFiles = withoutIgnoredPaths(files);
     if (lintFiles.length === 0) return [];
