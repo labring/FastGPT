@@ -47,8 +47,8 @@ const ToolDetailDrawer = ({
 }: {
   onClose: () => void;
   selectedTool: ToolCardItemType;
-  onToggleInstall?: (installed: boolean) => void | Promise<void>;
-  onUpdate?: () => void;
+  onToggleInstall?: (installed: boolean, version?: string) => void | Promise<void>;
+  onUpdate?: (version?: string) => void;
   isUpdating?: boolean;
   systemTitle?: string;
   onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
@@ -196,7 +196,7 @@ const ToolDetailDrawer = ({
                           isLoading={isLoading || loadingDetail}
                           isDisabled={isUpdating}
                           onClick={async () => {
-                            await onToggleInstall?.(!isInstalled);
+                            await onToggleInstall?.(!isInstalled, currentVersion);
                             if (mode === 'marketplace') return;
                             setIsInstalled(!isInstalled);
                           }}
@@ -213,7 +213,7 @@ const ToolDetailDrawer = ({
                           variant="primary"
                           flex={1}
                           isLoading={isUpdating || loadingDetail}
-                          onClick={onUpdate}
+                          onClick={() => onUpdate?.(currentVersion)}
                         >
                           {t('app:custom_plugin_update')}
                         </Button>

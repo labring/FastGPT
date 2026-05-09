@@ -47,8 +47,13 @@ export const getToolTags = async () => {
   return res.data as Array<SystemPluginToolTagType>;
 };
 
-export const getDownloadURL = async (toolId: string) => {
-  const res = await fetch(`api/tool/getDownloadUrl?toolId=${toolId}`, { method: 'GET' }).then(
+export const getDownloadURL = async (toolId: string, version?: string) => {
+  const params = new URLSearchParams({ toolId });
+  if (version) {
+    params.set('version', version);
+  }
+
+  const res = await fetch(`api/tool/getDownloadUrl?${params.toString()}`, { method: 'GET' }).then(
     (res) => res.json()
   );
   return res.data as string;

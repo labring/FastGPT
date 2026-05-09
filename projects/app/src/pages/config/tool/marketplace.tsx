@@ -207,7 +207,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
   // Controler
   const { runAsync: handleInstallTool } = useRequest(
-    async (tool: ToolCardItemType) => {
+    async (tool: ToolCardItemType, version?: string) => {
       const existingPromise = operatingPromisesRef.current.get(tool.id);
       if (existingPromise) {
         await existingPromise;
@@ -215,7 +215,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
       }
 
       installingOrDeletingToolIdsDispatch.add(tool.id);
-      const downloadUrl = await getMarketplaceDownloadURL(tool.id);
+      const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
       if (!downloadUrl) {
         installingOrDeletingToolIdsDispatch.remove(tool.id);
         return;
@@ -246,7 +246,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
   );
 
   const handleUpdateTool = useCallback(
-    async (tool: ToolCardItemType) => {
+    async (tool: ToolCardItemType, version?: string) => {
       const existingPromise = operatingPromisesRef.current.get(tool.id);
       if (existingPromise) {
         await existingPromise;
@@ -258,7 +258,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
         try {
           // Get download URL
-          const downloadUrl = await getMarketplaceDownloadURL(tool.id);
+          const downloadUrl = await getMarketplaceDownloadURL(tool.id, version);
           if (!downloadUrl) return;
 
           // Call install interface for update
@@ -741,8 +741,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
           onClose={() => setSelectedTool(null)}
           selectedTool={selectedTool}
           showPoint={false}
-          onToggleInstall={() => handleInstallTool(selectedTool)}
-          onUpdate={() => handleUpdateTool(selectedTool)}
+          onToggleInstall={(_, version) => handleInstallTool(selectedTool, version)}
+          onUpdate={(version) => handleUpdateTool(selectedTool, version)}
           isUpdating={updatingToolIds.has(selectedTool.id)}
           isLoading={installingOrDeletingToolIds.has(selectedTool.id)}
           mode="admin"

@@ -176,9 +176,9 @@ const ToolkitMarketplace = () => {
     });
   }, [tools, i18n.language, toolTags]);
 
-  const onDownload = useCallback(async (toolId: string) => {
+  const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {
-      const url = await getDownloadURL(toolId);
+      const url = await getDownloadURL(toolId, version);
       if (url) {
         // Create download link
         const link = document.createElement('a');
@@ -481,8 +481,8 @@ const ToolkitMarketplace = () => {
           onFetchDetail={async (toolId: string, version?: string) =>
             await getMarketplaceToolDetail({ toolId, version })
           }
-          onToggleInstall={() => {
-            onDownload(selectedTool.id);
+          onToggleInstall={(_, version) => {
+            onDownload(selectedTool.id, version);
           }}
           onFetchVersions={getMarketplaceToolVersions}
         />
