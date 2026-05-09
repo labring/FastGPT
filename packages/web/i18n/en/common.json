@@ -850,6 +850,8 @@
   "model.type.reRank": "Rerank model",
   "model.type.stt": "Speech-to-text",
   "model.type.tts": "Text-to-speech",
+  "model.all_provider": "All Providers",
+  "model.all_type": "All Types",
   "model_loading": "Model loading...",
   "month_text": "month",
   "move.confirm": "Confirm",

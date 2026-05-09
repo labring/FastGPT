@@ -40,7 +40,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
-const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
+const ChannelTable = () => {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
   const { aiproxyChannels } = useSystemStore();
@@ -97,10 +97,14 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   return (
     <>
       {isRoot && (
-        <Flex alignItems={'center'}>
-          {Tab}
+        <Flex alignItems={'center'} mb={4}>
           <Box flex={1} />
-          <Button variant={'whiteBase'} mr={2} onClick={() => setEditChannel(defaultChannel)}>
+          <Button
+            h={'36px'}
+            variant={'whiteBase'}
+            mr={2}
+            onClick={() => setEditChannel(defaultChannel)}
+          >
             {t('account_model:create_channel')}
           </Button>
         </Flex>

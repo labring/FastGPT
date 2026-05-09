@@ -1,4 +1,4 @@
-import { Box, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ReactNode, Dispatch, SetStateAction } from 'react';
@@ -12,6 +12,7 @@ export type ModelFilterBarProps = {
   providerList: ProviderOption[];
   modelTypeList: { label: string; value: ModelTypeEnum | '' }[];
   tabSlot?: ReactNode;
+  actionSlot?: ReactNode;
 };
 
 const ModelFilterBar = ({
@@ -20,45 +21,43 @@ const ModelFilterBar = ({
   setFilterState,
   providerList,
   modelTypeList,
-  tabSlot
+  tabSlot,
+  actionSlot
 }: ModelFilterBarProps) => {
   return (
-    <Flex alignItems={'center'} justifyContent={'space-between'} gap={3} wrap={'wrap'} mb={5}>
+    <Flex alignItems={'center'} justifyContent={'space-between'} gap={3}>
       {tabSlot ? <Box flexShrink={0}>{tabSlot}</Box> : <Box />}
-
-      <Flex alignItems={'center'} justifyContent={'flex-end'} gap={6} wrap={'wrap'} flex={1}>
-        <HStack flexShrink={0}>
-          <Box fontSize={'sm'} color={'myGray.900'}>
-            {t('common:model.provider')}
-          </Box>
+      <Flex alignItems={'center'} gap={3}>
+        <Box flexShrink={0} minW={'120px'}>
           <MySelect
-            w={'200px'}
-            bg={'myGray.50'}
+            w={'100%'}
+            h={'36px'}
+            bg={'white'}
             value={filterState.provider}
             onChange={(provider) => setFilterState((state) => ({ ...state, provider }))}
             list={providerList}
           />
-        </HStack>
-        <HStack flexShrink={0}>
-          <Box fontSize={'sm'} color={'myGray.900'}>
-            {t('common:model.model_type')}
-          </Box>
+        </Box>
+        {/* <Box flexShrink={0} minW={'100px'}>
           <MySelect
-            w={'150px'}
-            bg={'myGray.50'}
+            w={'100%'}
+            h={'36px'}
+            bg={'white'}
             value={filterState.modelType}
             onChange={(modelType) => setFilterState((state) => ({ ...state, modelType }))}
             list={modelTypeList}
           />
-        </HStack>
-        <Box w={'250px'} maxW={'100%'}>
+        </Box> */}
+        <Box minW={0} maxW={'350px'}>
           <SearchInput
-            bg={'myGray.50'}
+            h={'36px'}
+            bg={'white'}
             value={filterState.search}
             onChange={(e) => setFilterState((state) => ({ ...state, search: e.target.value }))}
             placeholder={t('common:model.search_name_placeholder')}
           />
         </Box>
+        {actionSlot}
       </Flex>
     </Flex>
   );

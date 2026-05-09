@@ -58,7 +58,7 @@ const getDefaultDateRange = (): DateRangeType => {
   return { from, to };
 };
 
-const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
+const ModelDashboard = () => {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const { feConfigs, getModelProvider } = useSystemStore();
@@ -393,14 +393,13 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
 
   return (
     <>
-      <Box>{Tab}</Box>
-
-      <HStack spacing={4} justifyContent="space-between">
+      <HStack spacing={4} justifyContent="space-between" mb={4}>
         <HStack spacing={4}>
           <HStack>
             <FormLabel>{t('common:user.Time')}</FormLabel>
             <Box>
               <DateRangePicker
+                h={'36px'}
                 defaultDate={filterProps.dateRange}
                 dateRange={filterProps.dateRange}
                 onSuccess={handleDateRangeChange}
@@ -411,6 +410,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             <FormLabel>{t('account_model:channel_name')}</FormLabel>
             <Box flex={'1 0 0'}>
               <MySelect<string>
+                h={'36px'}
                 bg={'myGray.50'}
                 isSearch
                 list={channelList}
@@ -424,6 +424,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
             <FormLabel>{t('account_model:model_name')}</FormLabel>
             <Box flex={'1 0 0'}>
               <MySelect<string>
+                h={'36px'}
                 bg={'myGray.50'}
                 isSearch
                 list={modelList}
@@ -438,6 +439,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               <FormLabel>{t('account_model:timespan_label')}</FormLabel>
               <Box flex={'1 0 0'}>
                 <MySelect<'minute' | 'hour' | 'day'>
+                  h={'36px'}
                   bg={'myGray.50'}
                   list={timespanOptions}
                   value={filterProps.timespan}
@@ -461,7 +463,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
               value: 'table'
             }
           ]}
-          py={1.5}
+          py={1}
           px={4}
           value={viewMode}
           onChange={(val) => setViewMode(val)}

@@ -51,6 +51,7 @@
   "max_temperature_tip": "模型 temperature 参数，不填则代表模型不支持 temperature 参数。",
   "max_tpm": "最大TPM（每分钟Token数）",
   "model": "模型",
+  "model_management": "模型管理",
   "model_error_rate": "失败率",
   "model_error_request_times": "失败次数",
   "model_name": "模型名",

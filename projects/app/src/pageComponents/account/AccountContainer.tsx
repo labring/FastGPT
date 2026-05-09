@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -33,10 +33,16 @@ export enum TabEnum {
 
 const AccountContainer = ({
   children,
-  isLoading
+  isLoading,
+  header,
+  wrapperContainerProps,
+  containerInsertProps
 }: {
   children: React.ReactNode;
   isLoading?: boolean;
+  header?: React.ReactNode;
+  wrapperContainerProps?: BoxProps;
+  containerInsertProps?: BoxProps;
 }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
@@ -164,40 +170,55 @@ const AccountContainer = ({
   return (
     <>
       {isPc && <DashboardNavbar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />}
-      <Box
+      <Flex
         h={'100%'}
         pl={isPc ? sidebarWidth : 0}
         position={'relative'}
         transition="padding-left 0.2s ease"
+        direction={'column'}
       >
         <BgDecoration />
-        <PageContainer
-          isLoading={isLoading}
-          insertProps={{ p: 0, background: 'white', position: 'relative', ml: 4 }}
-        >
-          <Flex flexDirection={'column'} h={'100%'} pt={[4, 0]}>
-            {!isPc && (
-              <Box mb={3}>
-                <LightRowTabs<TabEnum>
-                  m={'auto'}
-                  w={'100%'}
-                  size={'sm'}
-                  list={tabList.map((item) => ({
-                    value: item.value,
-                    label: item.label
-                  }))}
-                  value={currentTab}
-                  onChange={setCurrentTab}
-                />
+        {header && (
+          <Box px={6} h={'64px'} flexShrink={0} display={'flex'} alignItems={'center'}>
+            {header}
+          </Box>
+        )}
+        <Box flex={'1 0 0'} overflow={'hidden'} position={'relative'}>
+          <PageContainer
+            isLoading={isLoading}
+            {...(wrapperContainerProps ? wrapperContainerProps : {})}
+            insertProps={{
+              p: 0,
+              background: 'white',
+              position: 'relative',
+              ml: 4,
+              ...containerInsertProps
+            }}
+          >
+            <Flex flexDirection={'column'} h={'100%'} pt={[4, 0]}>
+              {!isPc && (
+                <Box mb={3}>
+                  <LightRowTabs<TabEnum>
+                    m={'auto'}
+                    w={'100%'}
+                    size={'sm'}
+                    list={tabList.map((item) => ({
+                      value: item.value,
+                      label: item.label
+                    }))}
+                    value={currentTab}
+                    onChange={setCurrentTab}
+                  />
+                </Box>
+              )}
+              <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
+                {children}
               </Box>
-            )}
-            <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
-              {children}
-            </Box>
-          </Flex>
-          <ConfirmModal />
-        </PageContainer>
-      </Box>
+            </Flex>
+            <ConfirmModal />
+          </PageContainer>
+        </Box>
+      </Flex>
     </>
   );
 };
