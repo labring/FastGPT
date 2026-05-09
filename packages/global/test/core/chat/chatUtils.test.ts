@@ -7,6 +7,7 @@ import {
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { ChatItemMiniType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { SANDBOX_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   concatHistories,
   getChatTitleFromChatMessage,
@@ -179,6 +180,33 @@ describe('filterPublicNodeResponseData', () => {
     });
 
     expect(result[0].quoteList).toBeDefined();
+  });
+
+  it('should keep tool node type and toolId without exposing tool details', () => {
+    const nodeResponses: ChatHistoryItemResType[] = [
+      {
+        id: '1',
+        nodeId: 'node1',
+        moduleName: 'Sandbox',
+        moduleType: FlowNodeTypeEnum.tool,
+        runningTime: 0.8,
+        toolId: SANDBOX_TOOL_NAME,
+        toolInput: {
+          command: 'ls'
+        },
+        toolRes: 'file.txt'
+      }
+    ];
+
+    const result = filterPublicNodeResponseData({ nodeRespones: nodeResponses });
+
+    expect(result).toEqual([
+      {
+        moduleType: FlowNodeTypeEnum.tool,
+        runningTime: 0.8,
+        toolId: SANDBOX_TOOL_NAME
+      }
+    ]);
   });
 });
 

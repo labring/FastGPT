@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
 import type { IconButtonProps } from '@chakra-ui/react';
 import { IconButton } from '@chakra-ui/react';
@@ -62,8 +62,8 @@ export const useSandboxEditor = ({
  * 职责：负责 checkSandboxExist 的网络同步及 SandboxEntryIcon 的显示控制。
  * 同步模式：
  *   1. 历史记录（ChatRecordContext）：useMemo 派生，无副作用。
- *   2. chatId 切换：渲染周期利用 useRef 确认 ID 变化并同步重置状态，防止 UI 闪烁。
- *   3. 网络请求：单一 useEffect，在参数变化时触发 1 次。
+ *   2. 网络请求：单一 useEffect，在参数变化时触发 1 次。
+ *   3. API 结果已返回时以 API 为准；未返回前才使用历史记录兜底。
  */
 export const useSandboxStatus = ({
   appId,
@@ -75,13 +75,11 @@ export const useSandboxStatus = ({
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   const { t } = useTranslation();
-  const [apiSandboxExists, setApiSandboxExists] = useState(false);
-  const lastChatIdRef = useRef(chatId);
-
-  if (lastChatIdRef.current !== chatId) {
-    lastChatIdRef.current = chatId;
-    setApiSandboxExists(false);
-  }
+  const [apiSandboxStatus, setApiSandboxStatus] = useState({
+    appId: '',
+    chatId: '',
+    exists: false
+  });
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => {
     return v.chatRecords;
@@ -97,11 +95,11 @@ export const useSandboxStatus = ({
   }, [chatRecords, isChatRecordsLoaded]);
 
   useEffect(() => {
-    if (!chatId) return;
+    if (!appId || !chatId) return;
     let cancelled = false;
     checkSandboxExist({ appId, chatId, outLinkAuthData })
       .then((result) => {
-        if (!cancelled) setApiSandboxExists(result.exists);
+        if (!cancelled) setApiSandboxStatus({ appId, chatId, exists: result.exists });
       })
       .catch((error) => {
         console.error('Failed to check sandbox status:', error);
@@ -109,9 +107,20 @@ export const useSandboxStatus = ({
     return () => {
       cancelled = true;
     };
-  }, [appId, chatId]);
+  }, [appId, chatId, outLinkAuthData]);
 
+  const apiSandboxExists =
+    apiSandboxStatus.appId === appId &&
+    apiSandboxStatus.chatId === chatId &&
+    apiSandboxStatus.exists;
   const sandboxExists = hasSandboxInHistory || apiSandboxExists;
+
+  const setSandboxExists = useCallback(
+    (exists: boolean) => {
+      setApiSandboxStatus({ appId, chatId, exists });
+    },
+    [appId, chatId]
+  );
 
   const SandboxEntryIcon = useCallback(
     ({
@@ -138,7 +147,7 @@ export const useSandboxStatus = ({
 
   return {
     sandboxExists,
-    setSandboxExists: setApiSandboxExists,
+    setSandboxExists,
     SandboxEntryIcon
   };
 };
