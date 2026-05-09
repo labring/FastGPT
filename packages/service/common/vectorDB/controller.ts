@@ -18,12 +18,37 @@ import {
   setRedisCache,
   getRedisCache,
   delRedisCache,
-  incrValueToCache,
   CacheKeyEnum,
   CacheKeyEnumTime
 } from '../redis/cache';
-import { throttle } from 'lodash';
-import { retryFn } from '@fastgpt/global/common/system/utils';
+import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
+import { getLogger, LogCategories } from '../logger';
+
+const logger = getLogger(LogCategories.INFRA.REDIS);
+const TEAM_VECTOR_CACHE_OPERATION_TIMEOUT_MS = 3000;
+
+const runTeamVectorCacheOperation = async <T>({
+  teamId,
+  operation,
+  warnMessage,
+  action
+}: {
+  teamId: string;
+  operation: string;
+  warnMessage: string;
+  action: () => Promise<T>;
+}) => {
+  try {
+    return await withTimeout(
+      action(),
+      TEAM_VECTOR_CACHE_OPERATION_TIMEOUT_MS,
+      `${operation} timed out after ${TEAM_VECTOR_CACHE_OPERATION_TIMEOUT_MS}ms`
+    );
+  } catch (error) {
+    logger.warn(warnMessage, { teamId, error });
+    return undefined;
+  }
+};
 
 const getVectorObj = (): VectorControllerType => {
   if (SEEKDB_ADDRESS) return new SeekVectorCtrl({ type: 'seekdb' });
@@ -40,29 +65,35 @@ const teamVectorCache = {
     return `${CacheKeyEnum.team_vector_count}:${teamId}`;
   },
   get: async function (teamId: string) {
-    const countStr = await getRedisCache(teamVectorCache.getKey(teamId));
+    const countStr = await runTeamVectorCacheOperation({
+      teamId,
+      operation: 'Get team vector count cache',
+      warnMessage: 'Failed to get team vector count cache',
+      action: () => getRedisCache(teamVectorCache.getKey(teamId))
+    });
     if (countStr) {
       return Number(countStr);
     }
     return undefined;
   },
   set: function ({ teamId, count }: { teamId: string; count: number }) {
-    retryFn(() =>
-      setRedisCache(teamVectorCache.getKey(teamId), count, CacheKeyEnumTime.team_vector_count)
-    ).catch();
+    void runTeamVectorCacheOperation({
+      teamId,
+      operation: 'Set team vector count cache',
+      warnMessage: 'Failed to set team vector count cache',
+      action: () =>
+        retryFn(() =>
+          setRedisCache(teamVectorCache.getKey(teamId), count, CacheKeyEnumTime.team_vector_count)
+        )
+    });
   },
-  delete: throttle(
-    function (teamId: string) {
-      return retryFn(() => delRedisCache(teamVectorCache.getKey(teamId))).catch();
-    },
-    30000,
-    {
-      leading: true,
-      trailing: true
-    }
-  ),
-  incr: function (teamId: string, count: number) {
-    retryFn(() => incrValueToCache(teamVectorCache.getKey(teamId), count)).catch();
+  invalidate: async function (teamId: string) {
+    await runTeamVectorCacheOperation({
+      teamId,
+      operation: 'Invalidate team vector count cache',
+      warnMessage: 'Failed to invalidate team vector count cache',
+      action: () => delRedisCache(teamVectorCache.getKey(teamId))
+    });
   }
 };
 
@@ -92,7 +123,7 @@ export const insertDatasetDataVector = async ({
     })
   );
 
-  teamVectorCache.incr(props.teamId, insertIds.length);
+  await teamVectorCache.invalidate(props.teamId);
 
   return {
     tokens,
@@ -102,7 +133,7 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector: VectorControllerType['delete'] = async (props) => {
   const result = await retryFn(() => Vector.delete(props));
-  teamVectorCache.delete(props.teamId);
+  await teamVectorCache.invalidate(props.teamId);
   return result;
 };
 
