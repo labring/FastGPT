@@ -175,6 +175,6 @@ export default PriceBox;
 
 export async function getServerSideProps(context: any) {
   return {
-    props: { ...(await serviceSideProps(context, ['user', 'account_model'])) }
+    props: { ...(await serviceSideProps(context, ['user', 'account_model', 'chat'])) }
   };
 }

@@ -11,7 +11,8 @@
     "start": "NODE_ENV=production tsx server.ts",
     "build:workers": "npx tsx scripts/build-workers.ts",
     "typecheck": "tsc --noEmit --pretty",
-    "build:workers:watch": "npx tsx scripts/build-workers.ts --watch"
+    "build:workers:watch": "npx tsx scripts/build-workers.ts --watch",
+    "check-i18n": "node ../../scripts/i18n/check-all.js"
   },
   "engines": {
     "node": ">=20",

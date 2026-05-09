@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const enDir = path.join(__dirname, '../packages/web/i18n/en');
+const enDir = path.join(__dirname, '../../packages/web/i18n/en');
 // 正确的中文字符范围（所有范围都用 \u{} 语法以支持辅助平面字符）
 const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf\u{20000}-\u{2a6df}\u{2a700}-\u{2b73f}\u{2b740}-\u{2b81f}\u{2b820}-\u{2ceaf}\uf900-\ufaff\u{2f800}-\u{2fa1f}]/u;
 
