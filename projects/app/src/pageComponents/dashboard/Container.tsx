@@ -736,6 +736,7 @@ const DashboardContainer = ({
       >
         {[
           '/dashboard/agent',
+          '/dashboard/skill',
           '/dashboard/tool',
           '/dashboard/systemTool',
           '/dashboard/templateMarket',

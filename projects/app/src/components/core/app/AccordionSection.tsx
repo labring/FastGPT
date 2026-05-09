@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react';
 
 export interface AccordionSectionProps {
-  title: string;
+  title: string | React.ReactNode;
   children: React.ReactNode;
   defaultIndex?: number[];
   /**

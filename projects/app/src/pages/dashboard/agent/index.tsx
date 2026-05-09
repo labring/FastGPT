@@ -120,6 +120,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           pr={folderDetail ? 4 : 4}
           pl={4}
           pt={6}
+          gap={4}
           overflowY={'auto'}
           overflowX={'hidden'}
         >

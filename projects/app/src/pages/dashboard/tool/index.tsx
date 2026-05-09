@@ -272,7 +272,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
         {/* 内容区域 */}
         <Flex gap={5} flex="1 0 0" h={0}>
-          <Box flex="1 0 0" px={4} overflowY="auto" overflowX="hidden">
+          <Box flex="1 0 0" px={4} overflowY="auto" overflowX="hidden" mt={4}>
             <List showCreateCard={false} />
           </Box>
 

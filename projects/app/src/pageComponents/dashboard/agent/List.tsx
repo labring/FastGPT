@@ -178,7 +178,6 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
           <CreateButton appType={appType} />
         ) : showCreateCard ? (
           <Grid
-            py={4}
             gridTemplateColumns={
               folderDetail
                 ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
@@ -196,7 +195,6 @@ const List = ({ showCreateCard = true }: { showCreateCard?: boolean }) => {
         )
       ) : (
         <Grid
-          py={4}
           gridTemplateColumns={
             folderDetail
               ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']

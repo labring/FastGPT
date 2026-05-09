@@ -52,18 +52,19 @@ const SkillSelect = ({
       <Grid
         mt={selectedSkills.length > 0 ? 2 : 0}
         gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
-        gridGap={[2, 4]}
+        gridGap={[2, 2]}
       >
         {selectedSkills.map((item) => (
           <MyTooltip key={item.skillId} label={item.description}>
             <Flex
               overflow={'hidden'}
               alignItems={'center'}
-              p={3}
+              py={1}
+              px={3}
               bg={'white'}
               h="40px"
               borderRadius={'4px'}
-              border={'1px solid #E8EBF0'}
+              border={'base'}
               userSelect={'none'}
               _hover={{
                 borderColor: 'primary.300',

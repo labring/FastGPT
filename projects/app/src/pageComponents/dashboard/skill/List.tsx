@@ -234,13 +234,16 @@ const List = () => {
   if (skills.length === 0 && isFetchingSkills) return null;
 
   if (skills.length === 0) {
-    return <EmptyTip text={searchKey ? undefined : t('skill:no_skills')} />;
+    return (
+      <Flex h={'100%'} minH={'300px'} alignItems={'center'} justifyContent={'center'}>
+        <EmptyTip text={searchKey ? undefined : t('skill:no_skills')} />
+      </Flex>
+    );
   }
 
   return (
     <>
       <Grid
-        py={4}
         gridTemplateColumns={[
           '1fr',
           'repeat(2,1fr)',

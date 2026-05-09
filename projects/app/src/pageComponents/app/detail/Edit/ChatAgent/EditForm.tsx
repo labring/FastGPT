@@ -536,7 +536,7 @@ const EditForm = ({
           />
         </Box>
         <Box h="1px" bg="myGray.200" mx="16px" />
-        <AccordionSection title={t('app:retrieval_config')} defaultIndex={[0]}>
+        <AccordionSection title={<Box py={2}>{t('app:retrieval_config')}</Box>} defaultIndex={[0]}>
           {/* 检索方式 */}
           <FormItem
             label={t('app:retrieval_config')}
@@ -623,9 +623,7 @@ const EditForm = ({
               <Box flex={1}>
                 <AIModelSelector
                   h={'32px'}
-                  value={
-                    appForm.dataset.agenticSearchRerankModel || defaultModels.rerank?.model
-                  }
+                  value={appForm.dataset.agenticSearchRerankModel || defaultModels.rerank?.model}
                   list={reRankModelList.map((item) => ({ value: item.model, label: item.name }))}
                   onChange={(model) =>
                     setAppForm((state) => ({
