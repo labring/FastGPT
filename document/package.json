@@ -8,7 +8,8 @@
     "dev": "next dev --turbo",
     "start": "next start",
     "postinstall": "fumadocs-mdx",
-    "format-doc": "pnpx zhlint --dir ./ *.mdx --fix",
+    "format-doc": "pnpm exec textlint --fix \"content/**/*.mdx\" && pnpm exec prettier --config ../.prettierrc.js --write \"**/*.mdx\" && pnpm exec textlint \"content/**/*.mdx\"",
+    "lint-doc:text": "pnpm exec textlint \"content/**/*.mdx\"",
     "initDocTime": "node ./script/initDocTime.js",
     "initDocToc": "node ./script/generateToc.js",
     "checkDocRefs": "node ./script/checkDocRefs.js",
@@ -47,8 +48,10 @@
     "@types/react-dom": "^19.1.6",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.1.11",
+    "textlint": "catalog:lint",
+    "textlint-plugin-mdx": "catalog:lint",
+    "textlint-rule-preset-zh-technical-writing": "catalog:lint",
     "typescript": "^5.8.3",
-    "zhlint": "^0.8.2",
     "zod": "^4.0.5"
   }
 }

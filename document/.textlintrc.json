@@ -1,0 +1,6 @@
+{
+  "plugins": ["mdx"],
+  "rules": {
+    "preset-zh-technical-writing": true
+  }
+}

@@ -113,11 +113,11 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/react-syntax-highlighter": "^15.5.6",
-    "eslint": "catalog:eslint",
-    "eslint-config-next": "catalog:eslint",
+    "eslint": "catalog:lint",
+    "eslint-config-next": "catalog:lint",
     "tailwindcss": "^3",
     "tsx": "catalog:",
-    "typescript-eslint": "catalog:eslint",
+    "typescript-eslint": "catalog:lint",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
