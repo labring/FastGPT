@@ -664,7 +664,6 @@ const Table = tableMultiStyle({
         tr: {
           bg: 'myGray.100',
           fontSize: 'sm',
-          borderBottom: 'base',
           th: {
             borderBottom: 'none',
             overflow: 'hidden',

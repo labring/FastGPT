@@ -76,12 +76,31 @@ const FileSelector = ({
     [maxCount, selectFiles.length]
   );
 
-  const filterTypeReg = new RegExp(
-    `(${fileType
-      .split(',')
-      .map((item) => item.trim())
-      .join('|')})$`,
-    'i'
+  const filterTypeReg = useMemo(
+    () =>
+      new RegExp(
+        `(${fileType
+          .split(',')
+          .map((item) => item.trim())
+          .join('|')})$`,
+        'i'
+      ),
+    [fileType]
+  );
+
+  const filterAndToastUnsupported = useCallback(
+    (files: File[]): File[] => {
+      const unsupported = files.filter((f) => !filterTypeReg.test(f.name));
+      if (unsupported.length > 0) {
+        const exts = [...new Set(unsupported.map((f) => f.name.match(/(\.[^.]+)$/)?.[1] ?? ''))].filter(Boolean);
+        toast({
+          title: t('dataset:unsupported_file_format', { ext: exts.join(', ') }),
+          status: 'error'
+        });
+      }
+      return files.filter((f) => filterTypeReg.test(f.name));
+    },
+    [filterTypeReg, t, toast]
   );
 
   const selectFileCallback = useCallback(
@@ -184,15 +203,15 @@ const FileSelector = ({
       }
     } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
+      const supportedFiles = filterAndToastUnsupported(files);
+      if (supportedFiles.length === 0) return;
 
       fileList.push(
-        ...files
-          .filter((item) => filterTypeReg.test(item.name))
-          .map((file) => ({
-            fileId: getNanoid(),
-            folderPath: '',
-            file
-          }))
+        ...supportedFiles.map((file) => ({
+          fileId: getNanoid(),
+          folderPath: '',
+          file
+        }))
       );
     } else {
       return toast({
@@ -265,15 +284,17 @@ const FileSelector = ({
           </Box>
 
           <File
-            onSelect={(files) =>
+            onSelect={(files) => {
+              const supportedFiles = filterAndToastUnsupported(files);
+              if (supportedFiles.length === 0) return;
               selectFileCallback(
-                files.map((file) => ({
+                supportedFiles.map((file) => ({
                   fileId: getNanoid(),
                   folderPath: '',
                   file
                 }))
-              )
-            }
+              );
+            }}
           />
         </>
       )}

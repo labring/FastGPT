@@ -294,7 +294,7 @@
   "user_question_tool_desc": "用户输入的问题（问题需要完善）",
   "tag_filter_closed": "关闭",
   "tag_filter_auto": "自动过滤",
-  "tag_filter_manual": "手动输入",
+  "tag_filter_manual": "开启",
   "tag_filter_add_condition": "添加过滤条件",
   "tag_filter_input_value": "输入值",
   "tag_filter_select_tag": "选择标签",
@@ -322,5 +322,5 @@
   "tag_filter_op_not_empty": "不为空",
   "retrieval_filter": "检索过滤",
   "tag_filter_label": "标签过滤",
-  "tag_filter_label_tooltip": "根据标签条件精准过滤知识库文件，支持字符串、数字、时间类型的标签"
+  "tag_filter_label_tooltip": "标签过滤可精确查找对应文件，进而提升检索准确率和效率。\n如：用户提问“有效期是多久？”，已确定用户询问订单对应产品 A，通过标签过滤，可锁定产品 A 相关文件，避免在其他含有“有效期”的文件中检索。"
 }

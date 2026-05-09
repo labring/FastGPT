@@ -64,7 +64,7 @@ const RelatedAppsContent = ({ skillId }: { skillId: string }) => {
   }, [skillId]);
 
   return (
-    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} p={'8px'}>
+    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} px={'14px'} py={'8px'}>
       <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
         {apps.map((app, index) => (
           <Box key={app._id}>
@@ -114,9 +114,10 @@ const RelatedAppsPopover = ({ skillId, count }: { skillId: string; count: number
     <MyPopover
       trigger={'hover'}
       placement={'bottom-start'}
-      hasArrow={false}
       w={'260px'}
       p={0}
+      border={'none'}
+      boxShadow={'0 4px 16px 0 #E8EBF0'}
       Trigger={
         <HStack spacing={'4px'} cursor={'pointer'}>
           <Box color={'#666'}>{t('skill:related_count')}</Box>

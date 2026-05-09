@@ -116,7 +116,7 @@ const ApiDatasetForm = ({
 
   const renderBaseUrlSelector = () => (
     <Flex mt={6} alignItems={'center'}>
-      <FormLabel flex={['', '0 0 110px']} fontSize={'sm'}>
+      <FormLabel flex={'0 0 120px'} fontSize={'sm'}>
         Base URL
       </FormLabel>
       <MyBox py={1} fontSize={'sm'} flex={'1 0 0'} overflow="auto" isLoading={isFetching}>
@@ -157,7 +157,7 @@ const ApiDatasetForm = ({
       {type === DatasetTypeEnum.apiDataset && (
         <>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               {t('dataset:api_url')}
             </FormLabel>
             <Input
@@ -166,7 +166,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               Authorization
             </FormLabel>
             <Input
@@ -182,7 +182,7 @@ const ApiDatasetForm = ({
       {type === DatasetTypeEnum.feishu && (
         <>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               App ID
             </FormLabel>
             <Input
@@ -192,7 +192,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               App secret
             </FormLabel>
             <Input
@@ -202,7 +202,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               Folder token
             </FormLabel>
             <Input
@@ -218,7 +218,7 @@ const ApiDatasetForm = ({
       {type === DatasetTypeEnum.yuque && (
         <>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               User ID
             </FormLabel>
             <Input
@@ -227,7 +227,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={6} alignItems={'center'}>
-            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'} required>
+            <FormLabel flex={'0 0 120px'} fontSize={'sm'} required>
               Token
             </FormLabel>
             <Input

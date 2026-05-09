@@ -294,7 +294,7 @@
   "user_question_tool_desc": "使用者輸入的問題（問題需要完善）",
   "tag_filter_closed": "關閉",
   "tag_filter_auto": "自動過濾",
-  "tag_filter_manual": "手動輸入",
+  "tag_filter_manual": "開啟",
   "tag_filter_add_condition": "新增過濾條件",
   "tag_filter_input_value": "輸入值",
   "tag_filter_select_tag": "選擇標籤",
@@ -322,5 +322,5 @@
   "tag_filter_op_not_empty": "不為空",
   "retrieval_filter": "檢索過濾",
   "tag_filter_label": "標籤過濾",
-  "tag_filter_label_tooltip": "根據標籤條件精準過濾知識庫文件，支持字串、數字、時間類型的標籤"
+  "tag_filter_label_tooltip": "標籤過濾可精確查找對應文件，進而提升檢索準確率和效率。\n如：用戶提問「有效期是多久？」，已確定用戶詢問訂單對應產品 A，通過標籤過濾，可鎖定產品 A 相關文件，避免在其他含有「有效期」的文件中檢索。"
 }

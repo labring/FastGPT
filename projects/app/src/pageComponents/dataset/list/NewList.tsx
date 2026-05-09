@@ -60,7 +60,7 @@ const RelatedAppsContent = ({ datasetId }: { datasetId: string }) => {
   }, [datasetId]);
 
   return (
-    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} p={'8px'}>
+    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} px={'14px'} py={'8px'}>
       <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
         {apps.map((app, index) => (
           <Box key={app._id}>
@@ -110,9 +110,10 @@ const RelatedAppsPopover = ({ datasetId, count }: { datasetId: string; count: nu
     <MyPopover
       trigger={'hover'}
       placement={'bottom-start'}
-      hasArrow={false}
       w={'260px'}
       p={0}
+      border={'none'}
+      boxShadow={'0 4px 16px 0 #E8EBF0'}
       Trigger={
         <HStack spacing={'4px'} cursor={'pointer'}>
           <Box color={'#666'} fontSize={'mini'}>
@@ -448,7 +449,9 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
         {/* 右侧：创建人 + 更新时间 */}
         <HStack spacing={'12px'}>
           {dataset.sourceMember?.name && (
-            <MyTooltip label={dataset.sourceMember.name}>
+            <MyTooltip
+              label={t('dataset:creator_tooltip', { creator: dataset.sourceMember.name })}
+            >
               <HStack spacing={'4px'}>
                 <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
                 <Box
@@ -464,7 +467,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
             </MyTooltip>
           )}
           {dataset.updateTime && (
-            <MyTooltip label={updateTimeFullStr}>
+            <MyTooltip label={t('dataset:update_time_tooltip', { updateTime: updateTimeFullStr })}>
               <HStack spacing={'4px'}>
                 <MyIcon name={'history'} w={'14px'} color={'#B4B9BF'} />
                 <Box color={'#999'}>{updateTimeStr}</Box>

@@ -185,9 +185,11 @@ const SkillCard = React.memo(function SkillCard({
               {item.name}
             </Box>
           </Flex>
-          <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-            {item.description || t('common:no_intro')}
-          </Box>
+          {item.description && (
+            <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
+              {item.description}
+            </Box>
+          )}
         </Box>
       }
     >
