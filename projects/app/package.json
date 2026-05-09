@@ -2,6 +2,13 @@
   "name": "@fastgpt/app",
   "version": "4.14.19",
   "private": false,
+  "browserslist": [
+    "Chrome >= 80",
+    "Edge >= 80",
+    "Firefox >= 74",
+    "Safari >= 13",
+    "ios_saf >= 13"
+  ],
   "scripts": {
     "dev": "pnpm run build:workers && next dev",
     "dev:pro": "pnpm run dev",
