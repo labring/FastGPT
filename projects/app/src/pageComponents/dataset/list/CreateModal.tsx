@@ -63,7 +63,7 @@ const CreateModal = ({
   editId?: string;
   onUpdateSuccess?: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const { defaultModels, embeddingModelList, llmModelList, getVlmModelList } = useSystemStore();
   const { isPc } = useSystem();
@@ -208,12 +208,30 @@ const CreateModal = ({
 
   return (
     <MyModal
-      title={
-        <Flex alignItems={'center'}>
-          {isEditMode
-            ? t('dataset:edit_dataset_title', { name: t(DatasetTypeMap[type].label) })
-            : t('dataset:new_dataset_title', { name: t(DatasetTypeMap[type].label) })}
-        </Flex>
+      title={(() => {
+        const typeName = t(DatasetTypeMap[type].label);
+        const isZh = i18n.language?.startsWith('zh');
+        const name = isZh && /^[A-Za-z]/.test(typeName) ? ` ${typeName}` : typeName;
+        return isEditMode
+          ? t('dataset:edit_dataset_title', { name })
+          : t('dataset:new_dataset_title', { name });
+      })()}
+      headerExtra={
+        DatasetTypeMap[type]?.courseUrl ? (
+          <Flex
+            as={'span'}
+            alignItems={'center'}
+            color={'primary.600'}
+            fontSize={'sm'}
+            cursor={'pointer'}
+            mr={2}
+            flexShrink={0}
+            onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
+          >
+            <MyIcon name={'book'} w={4} mr={0.5} />
+            {t('common:Instructions')}
+          </Flex>
+        ) : undefined
       }
       isOpen
       onClose={onClose}
@@ -247,21 +265,6 @@ const CreateModal = ({
                 {...register('name', { required: true })}
               />
             </Flex>
-            {DatasetTypeMap[type]?.courseUrl && (
-              <Flex
-                as={'span'}
-                alignItems={'center'}
-                color={'primary.600'}
-                fontSize={'sm'}
-                cursor={'pointer'}
-                ml={3}
-                flexShrink={0}
-                onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
-              >
-                <MyIcon name={'book'} w={4} mr={0.5} />
-                {t('common:Instructions')}
-              </Flex>
-            )}
           </Flex>
 
           {/* 描述 */}

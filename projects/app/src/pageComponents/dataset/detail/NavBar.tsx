@@ -14,6 +14,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getDatasetCollectionPathById } from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
+import { CollectionPageContext } from './CollectionCard/Context';
 
 const CollectionNavActions = dynamic(
   () => import('@/pageComponents/dataset/detail/RefinedCollectionCard/CollectionNavActions')
@@ -48,9 +49,21 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     [datasetDetail._id, datasetDetail.name, collectionPaths]
   );
 
+  const total = useContextSelector(CollectionPageContext, (v) => v.total);
+
+  const collectionTabLabel = useMemo(() => {
+    if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
+      return t('dataset:tab_collection_website', { count: total });
+    }
+    if (datasetDetail.type === DatasetTypeEnum.database) {
+      return t('dataset:tab_collection_database', { count: total });
+    }
+    return t('dataset:tab_collection_file', { count: total });
+  }, [datasetDetail.type, total, t]);
+
   const tabList = [
     {
-      label: t('common:core.dataset.Collection'),
+      label: collectionTabLabel,
       value: TabEnum.collectionCard
     },
     // 同义词Tab - 仅对非数据库类型和结构化文档类型知识库显示

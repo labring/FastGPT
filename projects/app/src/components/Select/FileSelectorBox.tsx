@@ -108,12 +108,14 @@ const FileSelector = ({
           title: t('dataset:unsupported_file_format', { ext: unsupportedExtensions.join(', ') }),
           status: 'error'
         });
-        return;
       }
+
+      const supportedFiles = files.filter((file) => filterTypeReg.test(file.name));
+      if (supportedFiles.length === 0) return;
 
       // 检查文件名校验
       if (fileNameValidator) {
-        const invalidFiles = files.filter((file) => {
+        const invalidFiles = supportedFiles.filter((file) => {
           // 获取文件名（不含扩展名）
           const fileNameWithoutExt = file.name.replace(/(\.[^.]+)$/, '');
           return !fileNameValidator(fileNameWithoutExt);
@@ -128,7 +130,7 @@ const FileSelector = ({
         }
       }
 
-      const fileList = files.map((file) => ({
+      const fileList = supportedFiles.map((file) => ({
         file,
         icon: getFileIcon(file.name),
         name: file.name,
@@ -233,8 +235,7 @@ const FileSelector = ({
       }
     } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
-
-      onSelectFile(files.filter((item) => filterTypeReg.test(item.name)));
+      onSelectFile(files);
     } else {
       return toast({
         title: t('file:upload_error_description'),

@@ -17,6 +17,7 @@ export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
   iconColor?: ImageProps['color'];
   title?: any;
+  headerExtra?: React.ReactNode;
   isCentered?: boolean;
   isLoading?: boolean;
   isOpen?: boolean;
@@ -32,6 +33,7 @@ const MyModal = ({
   onClose,
   iconSrc,
   title,
+  headerExtra,
   children,
   isCentered,
   isLoading,
@@ -102,6 +104,11 @@ const MyModal = ({
               {title}
             </Box>
             <Box flex={1} />
+            {headerExtra && (
+              <Box fontWeight={'normal'} fontSize={'sm'}>
+                {headerExtra}
+              </Box>
+            )}
             {onClose && (
               <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />
             )}

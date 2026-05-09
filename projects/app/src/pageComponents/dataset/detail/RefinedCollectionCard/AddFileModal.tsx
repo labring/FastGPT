@@ -736,6 +736,7 @@ const FileFields: React.FC<{
                     <MyTooltip label={item.sourceName}>
                       <Box
                         fontSize="sm"
+                        lineHeight={1.6}
                         color="myGray.900"
                         flex={1}
                         overflow="hidden"
@@ -821,6 +822,7 @@ const FaqFields: React.FC<{
                     <MyTooltip label={item.name}>
                       <Box
                         fontSize="sm"
+                        lineHeight={1.6}
                         color="myGray.900"
                         flex={1}
                         overflow="hidden"
@@ -855,7 +857,7 @@ const FaqFields: React.FC<{
             >
               {t('dataset:add_file_download_template')}
             </Button>
-            <QuestionTip label={t('dataset:template_csv_format_tip')} maxW="400px" />
+            <QuestionTip label={<Trans i18nKey="dataset:faq_template_format_tip" components={{ bold: <strong /> }} />} maxW="400px" />
           </HStack>
         </Box>
       </Flex>

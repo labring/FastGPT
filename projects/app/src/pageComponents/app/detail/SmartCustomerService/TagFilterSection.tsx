@@ -8,6 +8,7 @@ import {
   NumberInput,
   NumberInputField,
   Button,
+  Switch,
   Accordion,
   AccordionButton,
   AccordionIcon,
@@ -162,16 +163,9 @@ const TagFilterSection = ({ datasetIds, value, onChange }: Props) => {
                 <QuestionTip ml={1} label={t('workflow:tag_filter_label_tooltip')} />
               </FormLabel>
               <Flex flex={1} alignItems={'center'} gap={2}>
-                <MySelect
-                  w={'120px'}
-                  h={'32px'}
-                  minH={'32px'}
-                  value={mode}
-                  list={[
-                    { label: t('workflow:tag_filter_closed'), value: 'closed' },
-                    { label: t('workflow:tag_filter_manual'), value: 'manual' }
-                  ]}
-                  onChange={(val) => handleModeChange(val as FilterMode)}
+                <Switch
+                  isChecked={mode === 'manual'}
+                  onChange={(e) => handleModeChange(e.target.checked ? 'manual' : 'closed')}
                 />
                 {mode === 'manual' && (
                   <Flex
