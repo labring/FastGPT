@@ -1,6 +1,5 @@
 import { jsonRes } from '../response';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { SpanStatusCode } from '@opentelemetry/api';
 import { withNextCors } from './cors';
 import { type ApiRequestProps } from '../../type/next';
 import { getLogger, LogCategories, withContext } from '../logger';
@@ -8,6 +7,7 @@ import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
 import { getClientIpFromRequest } from '../security/clientIp';
+import { reportHttpZodValidationError } from './zodValidationReporter';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -137,10 +137,18 @@ export const NextEntry = ({
             } catch (error) {
               // Handle Zod validation errors
               if (error instanceof ZodError) {
-                span.setAttribute('http.response.status_code', 400);
-                span.setStatus({
-                  code: SpanStatusCode.ERROR,
-                  message: 'Data validation error'
+                reportHttpZodValidationError({
+                  error,
+                  req,
+                  span,
+                  request: {
+                    requestId,
+                    method,
+                    url,
+                    route,
+                    ip,
+                    userAgent
+                  }
                 });
 
                 return jsonRes(res, {
