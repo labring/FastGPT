@@ -109,6 +109,11 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
     }
   }
 
+  const safeConfig = {
+    headers: config.headers,
+    timeout: config.timeout
+  };
+
   return instance
     .request({
       baseURL: FastGPTProUrl,
@@ -116,7 +121,7 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
       params: !['POST', 'PUT'].includes(method) ? data : null,
-      ...config // 用户自定义配置，可以覆盖前面的配置
+      ...safeConfig
     })
     .then((res) => checkRes(res.data))
     .catch((err) => responseError(err));

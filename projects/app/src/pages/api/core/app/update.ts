@@ -52,7 +52,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   const { appId } = req.query;
 
   if (!appId) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
   const isMove = parentId !== undefined;
 
@@ -66,7 +66,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
   });
 
   if (!app) {
-    Promise.reject(AppErrEnum.unExist);
+    return Promise.reject(AppErrEnum.unExist);
   }
 
   let targetName = '';

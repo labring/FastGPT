@@ -153,7 +153,13 @@ export async function reRankRecall({
       };
     })
     .catch((err) => {
-      logger.error('Rerank request failed', { error: err });
+      logger.error('Rerank request failed', {
+        error: {
+          message: err?.message,
+          code: err?.code,
+          status: err?.response?.status
+        }
+      });
       return Promise.reject(err);
     });
 

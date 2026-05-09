@@ -24,7 +24,7 @@ export const addAuthCode = async ({
       type
     },
     {
-      code,
+      code: code?.toLowerCase(),
       openid,
       expiredTime
     },
@@ -37,8 +37,9 @@ export const addAuthCode = async ({
 const authCodeSchema = z.object({
   key: z.string(),
   type: z.enum(UserAuthTypeEnum),
-  code: z.string()
+  code: z.string().length(6)
 });
+
 export const authCode = async (props: z.infer<typeof authCodeSchema>) => {
   const { key, type, code } = authCodeSchema.parse(props);
   return mongoSessionRun(async (session) => {
@@ -46,7 +47,8 @@ export const authCode = async (props: z.infer<typeof authCodeSchema>) => {
       {
         key,
         type,
-        code: { $regex: new RegExp(`^${code}$`, 'i') }
+        code: code.toLowerCase(),
+        expiredTime: { $gte: new Date() }
       },
       undefined,
       { session }

@@ -11,7 +11,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
 
   if (!appId) {
-    Promise.reject(CommonErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
   // 凭证校验
   const { app, teamId, isRoot } = await authApp({

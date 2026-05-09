@@ -128,9 +128,11 @@ export class S3BaseBucket {
   }
 
   async removeObject(objectKey: string): Promise<void> {
-    this.client.deleteObject({ key: objectKey }).catch((err) => {
+    try {
+      await this.client.deleteObject({ key: objectKey });
+    } catch (err: any) {
       if (isFileNotFoundError(err)) {
-        return Promise.resolve();
+        return;
       }
       logger.error('S3 delete object failed', {
         key: objectKey,
@@ -138,7 +140,7 @@ export class S3BaseBucket {
         error: err
       });
       throw err;
-    });
+    }
   }
 
   addDeleteJob(params: Omit<Parameters<typeof addS3DelJob>[0], 'bucketName'>) {

@@ -68,7 +68,7 @@ spec:
           image: fastgpt-volume-manager:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3001
+            - containerPort: 3000
           env:
             - name: VM_RUNTIME
               value: kubernetes
@@ -86,7 +86,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 3001
+              port: 3000
             initialDelaySeconds: 3
             periodSeconds: 10
           resources:
@@ -107,5 +107,5 @@ spec:
     app: volume-manager
   ports:
     - port: 3001
-      targetPort: 3001
+      targetPort: 3000
   type: ClusterIP
