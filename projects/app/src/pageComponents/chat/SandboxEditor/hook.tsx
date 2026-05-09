@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
 import type { IconButtonProps } from '@chakra-ui/react';
 import { IconButton } from '@chakra-ui/react';
@@ -75,13 +75,11 @@ export const useSandboxStatus = ({
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   const { t } = useTranslation();
-  const [apiSandboxExists, setApiSandboxExists] = useState(false);
-  const lastChatIdRef = useRef(chatId);
-
-  if (lastChatIdRef.current !== chatId) {
-    lastChatIdRef.current = chatId;
-    setApiSandboxExists(false);
-  }
+  const [apiSandboxStatus, setApiSandboxStatus] = useState({
+    appId: '',
+    chatId: '',
+    exists: false
+  });
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => {
     return v.chatRecords;
@@ -97,11 +95,11 @@ export const useSandboxStatus = ({
   }, [chatRecords, isChatRecordsLoaded]);
 
   useEffect(() => {
-    if (!chatId) return;
+    if (!appId || !chatId) return;
     let cancelled = false;
     checkSandboxExist({ appId, chatId, outLinkAuthData })
       .then((result) => {
-        if (!cancelled) setApiSandboxExists(result.exists);
+        if (!cancelled) setApiSandboxStatus({ appId, chatId, exists: result.exists });
       })
       .catch((error) => {
         console.error('Failed to check sandbox status:', error);
@@ -109,9 +107,20 @@ export const useSandboxStatus = ({
     return () => {
       cancelled = true;
     };
-  }, [appId, chatId]);
+  }, [appId, chatId, outLinkAuthData]);
 
+  const apiSandboxExists =
+    apiSandboxStatus.appId === appId &&
+    apiSandboxStatus.chatId === chatId &&
+    apiSandboxStatus.exists;
   const sandboxExists = hasSandboxInHistory || apiSandboxExists;
+
+  const setSandboxExists = useCallback(
+    (exists: boolean) => {
+      setApiSandboxStatus({ appId, chatId, exists });
+    },
+    [appId, chatId]
+  );
 
   const SandboxEntryIcon = useCallback(
     ({
@@ -138,7 +147,7 @@ export const useSandboxStatus = ({
 
   return {
     sandboxExists,
-    setSandboxExists: setApiSandboxExists,
+    setSandboxExists,
     SandboxEntryIcon
   };
 };
