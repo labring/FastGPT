@@ -13,10 +13,11 @@
     "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "tsx scripts/build-workers.ts",
     "typecheck": "tsc --noEmit --pretty",
+    "lint": "eslint ./src",
     "build:workers:watch": "tsx scripts/build-workers.ts --watch"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.19.0",
     "pnpm": "10.x"
   },
   "dependencies": {
@@ -105,12 +106,11 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/react-syntax-highlighter": "^15.5.6",
-    "@typescript-eslint/eslint-plugin": "catalog:",
-    "@typescript-eslint/parser": "catalog:",
-    "eslint": "catalog:",
-    "eslint-config-next": "catalog:",
+    "eslint": "catalog:eslint",
+    "eslint-config-next": "catalog:eslint",
     "tailwindcss": "^3",
     "tsx": "catalog:",
+    "typescript-eslint": "catalog:eslint",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
