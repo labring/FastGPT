@@ -8,7 +8,6 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
   ModuleDispatchProps,
@@ -17,7 +16,8 @@ import type {
 import {
   formatVariableValByType,
   getReferenceVariableValue,
-  replaceEditorVariable
+  replaceEditorVariable,
+  valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
@@ -67,7 +67,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     runningAppInfo: { id: appId },
     chatId,
     responseChatItemId,
-    variables,
+    variableState,
     node,
     runtimeNodesMap,
     histories,
@@ -97,7 +97,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     histories: histories?.slice(-10) || []
   };
   const concatVariables = {
-    ...variables,
+    ...variableState.toRuntimeRecord(),
     ...body,
     ...systemVariables
   };
@@ -178,7 +178,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       if (httpContentType === ContentTypes.json) {
         httpJsonBody = replaceJsonBodyString(
           { text: httpJsonBody },
-          { variables, allVariables, runtimeNodesMap }
+          {
+            allVariables,
+            runtimeNodesMap
+          }
         );
         return json5.parse(httpJsonBody);
       }
@@ -304,12 +307,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 export const replaceJsonBodyString = (
   { text, depth = 0 }: { text: string; depth?: number },
   props: {
-    variables: Record<string, any>;
     allVariables: Record<string, any>;
     runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   }
 ) => {
-  const { variables, allVariables, runtimeNodesMap } = props;
+  const { allVariables, runtimeNodesMap } = props;
 
   const MAX_REPLACEMENT_DEPTH = 10;
   const processedVariables = new Set<string>();
@@ -402,7 +404,7 @@ export const replaceJsonBodyString = (
 
     const variableVal = (() => {
       if (nodeId === VARIABLE_NODE_ID) {
-        return variables[id];
+        return allVariables[id];
       }
       // Find upstream node input/output
       const node = runtimeNodesMap.get(nodeId);
@@ -416,7 +418,7 @@ export const replaceJsonBodyString = (
         return getReferenceVariableValue({
           value: input.value,
           nodesMap: runtimeNodesMap,
-          variables
+          variables: allVariables
         });
       }
     })();

@@ -220,9 +220,15 @@ vi.mock('@fastgpt/service/common/s3/sources/chat/index', () => ({
       fields: { key: 'mock-key' },
       maxSize: 5 * 1024 * 1024
     }),
+    createGetChatFileURL: vi.fn(async ({ key }: { key: string }) => ({
+      url: `http://localhost:9000/mock-bucket/${key}`
+    })),
     deleteChatFilesByPrefix: vi.fn().mockResolvedValue(undefined),
     deleteChatFile: vi.fn().mockResolvedValue(undefined)
-  }))
+  })),
+  createChatFilePreviewUrlGetter: vi.fn(
+    () => async (key: string) => `http://localhost:9000/mock-bucket/${key}`
+  )
 }));
 
 // Mock S3 initialization

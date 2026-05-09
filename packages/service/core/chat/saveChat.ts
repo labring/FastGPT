@@ -37,6 +37,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { normalizeChatFileStoreValues } from './fileStoreValue';
 
 export type Props = {
   chatId: string;
@@ -73,6 +74,11 @@ const beforeProcess = (props: Props) => {
   // Remove url
   stripUserContentFileUrls(props.userContent);
 };
+
+/** 是否是文件对象，且包含 key */
+const isFileValueWithKey = (file: unknown): file is { key: string } =>
+  !!file && typeof file === 'object' && 'key' in file && typeof file.key === 'string' && !!file.key;
+
 const afterProcess = async ({
   contents,
   variables,
@@ -84,77 +90,79 @@ const afterProcess = async ({
   variableList?: VariableItemType[];
   session: ClientSession;
 }) => {
-  const contentFileKeys = contents
-    .map((item) => {
-      if (item.value && Array.isArray(item.value)) {
-        return item.value.flatMap((valueItem) => {
-          const keys: string[] = [];
+  // 移除 s3 ttl
+  {
+    const contentFileKeys = contents
+      .map((item) => {
+        if (item.value && Array.isArray(item.value)) {
+          return item.value.flatMap((valueItem) => {
+            const keys: string[] = [];
 
-          // 1. chat file
-          if ('file' in valueItem && valueItem.file?.key) {
-            keys.push(valueItem.file.key);
-          }
+            // 1. chat file
+            if ('file' in valueItem && valueItem.file?.key) {
+              keys.push(valueItem.file.key);
+            }
 
-          // 2. plugin input
-          if ('text' in valueItem && valueItem.text?.content) {
-            try {
-              const parsed = JSON.parse(valueItem.text.content);
-              // 2.1 plugin input - 数组格式
-              if (Array.isArray(parsed)) {
-                parsed.forEach((field) => {
-                  if (field.value && Array.isArray(field.value)) {
-                    field.value.forEach((file: { key: string }) => {
-                      if (file.key && typeof file.key === 'string') {
-                        keys.push(file.key);
-                      }
-                    });
-                  }
-                });
-              }
-              // 2.2 form input - 对象格式 { "字段名": [{ key, url, ... }] }
-              else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                Object.values(parsed).forEach((fieldValue) => {
-                  if (Array.isArray(fieldValue)) {
-                    fieldValue.forEach((file: any) => {
-                      if (
-                        file &&
-                        typeof file === 'object' &&
-                        file.key &&
-                        typeof file.key === 'string'
-                      ) {
-                        keys.push(file.key);
-                      }
-                    });
-                  }
-                });
-              }
-            } catch (err) {}
-          }
+            // 2. query 是特殊格式的（工作流工具 + 表单输入）
+            if ('text' in valueItem && valueItem.text?.content) {
+              try {
+                const parsed = JSON.parse(valueItem.text.content);
+                // 2.1 plugin input - 数组格式
+                if (Array.isArray(parsed)) {
+                  parsed.forEach((field) => {
+                    if (field.value && Array.isArray(field.value)) {
+                      field.value.forEach((file: { key: string }) => {
+                        if (file.key && typeof file.key === 'string') {
+                          keys.push(file.key);
+                        }
+                      });
+                    }
+                  });
+                }
+                // 2.2 form input - 对象格式 { "字段名": [{ key, url, ... }] }
+                else if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  Object.values(parsed).forEach((fieldValue) => {
+                    if (Array.isArray(fieldValue)) {
+                      fieldValue.forEach((file) => {
+                        if (isFileValueWithKey(file)) {
+                          keys.push(file.key);
+                        }
+                      });
+                    }
+                  });
+                }
+              } catch (err) {}
+            }
 
-          return keys;
-        });
-      }
-      return [];
-    })
-    .flat()
-    .filter(Boolean) as string[];
-
-  const variableFileKeys: string[] = [];
-  if (variables && variableList) {
-    variableList.forEach((varItem) => {
-      if (varItem.type === VariableInputEnum.file) {
-        const varValue = variables[varItem.key];
-        if (Array.isArray(varValue)) {
-          variableFileKeys.push(...varValue.map((item) => item.key));
+            return keys;
+          });
         }
-      }
-    });
-  }
+        return [];
+      })
+      .flat()
+      .filter(Boolean) as string[];
 
-  const allFileKeys = [...new Set([...contentFileKeys, ...variableFileKeys])];
+    const variableFileKeys: string[] = [];
+    if (variables && variableList) {
+      variableList.forEach((varItem) => {
+        if (varItem.type === VariableInputEnum.file) {
+          const varValue = variables[varItem.key];
+          if (Array.isArray(varValue)) {
+            variableFileKeys.push(
+              ...varValue
+                .map((item) => (isFileValueWithKey(item) ? item.key : undefined))
+                .filter((key): key is string => typeof key === 'string' && !!key)
+            );
+          }
+        }
+      });
+    }
 
-  if (allFileKeys.length > 0) {
-    await removeS3TTL({ key: allFileKeys, bucketName: 'private', session });
+    const allFileKeys = [...new Set([...contentFileKeys, ...variableFileKeys])];
+
+    if (allFileKeys.length > 0) {
+      await removeS3TTL({ key: allFileKeys, bucketName: 'private', session });
+    }
   }
 };
 
@@ -960,6 +968,13 @@ export const updateInteractiveChat = async ({
           return {
             ...item,
             value: itemValue
+          };
+        }
+
+        if (item.type === FlowNodeInputTypeEnum.fileSelect) {
+          return {
+            ...item,
+            value: normalizeChatFileStoreValues(itemValue)
           };
         }
 

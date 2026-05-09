@@ -141,7 +141,6 @@ export const putFileToS3 = async ({
   maxSize?: number;
   t: any;
 }) => {
-  console.log(headers);
   try {
     const res = await axios.put(url, file, {
       headers: {

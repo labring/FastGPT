@@ -95,7 +95,6 @@ export const masterCall = async ({
     runningAppInfo,
     chatId,
     uid,
-    variables,
     externalProvider,
     stream,
     workflowStreamResponse,
@@ -551,7 +550,7 @@ export const masterCall = async ({
               runningAppInfo,
               chatId,
               uid,
-              variables,
+              variableState: props.variableState,
               workflowStreamResponse: stepStreamResponse
             });
 
@@ -575,6 +574,8 @@ export const masterCall = async ({
 
             const { response, runningTime, usages } = await dispatchApp({
               appId: tool.id,
+              chatId,
+              uid,
               userChatInput: userChatInput,
               customAppVariables: params,
               checkIsStopping,
@@ -588,7 +589,7 @@ export const masterCall = async ({
               retainDatasetCite: props.retainDatasetCite,
               maxRunTimes: props.maxRunTimes,
               workflowDispatchDeep: props.workflowDispatchDeep,
-              variables: props.variables
+              variableState: props.variableState
             });
 
             childrenResponses.push({
@@ -611,6 +612,8 @@ export const masterCall = async ({
           } else if (tool.type === 'toolWorkflow') {
             const { response, result, runningTime, usages } = await dispatchPlugin({
               appId: tool.id,
+              chatId,
+              uid,
               userChatInput: '',
               customAppVariables: requestParams,
               checkIsStopping,
@@ -624,7 +627,7 @@ export const masterCall = async ({
               retainDatasetCite: props.retainDatasetCite,
               maxRunTimes: props.maxRunTimes,
               workflowDispatchDeep: props.workflowDispatchDeep,
-              variables: props.variables
+              variableState: props.variableState
             });
 
             childrenResponses.push({

@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.14.18",
+  "version": "4.14.19",
   "private": false,
   "scripts": {
     "dev": "pnpm run build:workers && next dev",

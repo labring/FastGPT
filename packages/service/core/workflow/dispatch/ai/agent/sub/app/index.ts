@@ -19,6 +19,7 @@ import { serverGetWorkflowToolRunUserQuery } from '../../../../../../app/tool/wo
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispatch';
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
+import { WorkflowVariableState } from '../../../../utils/variables';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -28,6 +29,9 @@ type Props = Pick<
   | 'mode'
   | 'timezone'
   | 'externalProvider'
+  | 'uid'
+  | 'chatId'
+  | 'responseChatItemId'
   | 'runningAppInfo'
   | 'runningUserInfo'
   | 'retainDatasetCite'
@@ -35,7 +39,7 @@ type Props = Pick<
   | 'workflowDispatchDeep'
   | 'responseAllData'
   | 'responseDetail'
-  | 'variables'
+  | 'variableState'
 > & {
   appId: string;
   userChatInput: string;
@@ -47,7 +51,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     runningAppInfo,
     runningUserInfo,
     appId,
-    variables,
+    variableState,
     customAppVariables,
     userChatInput,
     ...data
@@ -70,16 +74,25 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   // Rewrite children app variables
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
-  const childrenRunVariables = {
-    userId: variables.userId,
-    appId: String(appData._id),
-    chatId: variables.chatId,
-    responseChatItemId: variables.responseChatItemId,
-    histories: [],
-    cTime: variables.cTime,
-    ...customAppVariables,
-    ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
+  const childRunningAppInfo = {
+    id: String(appData._id),
+    teamId: String(appData.teamId),
+    tmbId: String(appData.tmbId),
+    name: appData.name,
+    isChildApp: true
   };
+  const childrenVariableState = await WorkflowVariableState.create({
+    timezone: data.timezone,
+    runningAppInfo: childRunningAppInfo,
+    chatId: data.chatId,
+    responseChatItemId: data.responseChatItemId,
+    histories: [],
+    uid: data.uid,
+    variablesConfig: chatConfig.variables,
+    inputVariables: customAppVariables,
+    externalVariables: externalProvider?.externalWorkflowVariables,
+    sourceVariableState: variableState
+  });
 
   const runtimeNodes = rewriteNodeOutputByHistories(
     storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes))
@@ -88,9 +101,6 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   const { assistantResponses, flowUsages, runTimes } = await runWorkflow({
     ...data,
-    uid: variables.userId,
-    chatId: variables.chatId,
-    responseChatItemId: variables.responseChatItemId,
     runningAppInfo: {
       id: String(appData._id),
       name: appData.name,
@@ -103,7 +113,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     runtimeEdges,
     chatConfig,
     histories: [],
-    variables: childrenRunVariables,
+    variableState: childrenVariableState,
     query: [
       {
         text: {
@@ -130,7 +140,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     runningAppInfo,
     runningUserInfo,
     appId,
-    variables,
+    variableState,
     customAppVariables,
     userChatInput,
     ...data
@@ -153,16 +163,26 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
 
   // Rewrite children app variables
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
-  const childrenRunVariables: Record<string, any> = {
-    userId: variables.userId,
-    appId: String(appData._id),
-    chatId: variables.chatId,
-    responseChatItemId: variables.responseChatItemId,
-    histories: [],
-    cTime: variables.cTime,
-    ...customAppVariables,
-    ...(externalProvider ? externalProvider.externalWorkflowVariables : {})
+  const childRunningAppInfo = {
+    id: String(appData._id),
+    teamId: String(appData.teamId || runningAppInfo.teamId),
+    tmbId: String(appData.tmbId || runningAppInfo.tmbId),
+    name: appData.name,
+    isChildApp: true
   };
+  const childrenVariableState = await WorkflowVariableState.create({
+    timezone: data.timezone,
+    runningAppInfo: childRunningAppInfo,
+    chatId: data.chatId,
+    responseChatItemId: data.responseChatItemId,
+    histories: [],
+    uid: data.uid,
+    variablesConfig: chatConfig.variables,
+    inputVariables: customAppVariables,
+    externalVariables: externalProvider?.externalWorkflowVariables,
+    sourceVariableState: variableState
+  });
+  const childrenRunVariables = childrenVariableState.toRuntimeRecord();
   const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
     (node) => {
       // Update plugin input value
@@ -209,9 +229,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
 
   const { flowResponses, flowUsages, runTimes } = await runWorkflow({
     ...data,
-    uid: variables.userId,
-    chatId: variables.chatId,
-    responseChatItemId: variables.responseChatItemId,
     runningAppInfo: {
       id: String(appData._id),
       // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
@@ -225,7 +242,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     runtimeEdges,
     chatConfig,
     histories: [],
-    variables: childrenRunVariables,
+    variableState: childrenVariableState,
     query: serverGetWorkflowToolRunUserQuery({
       pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
       variables: childrenRunVariables

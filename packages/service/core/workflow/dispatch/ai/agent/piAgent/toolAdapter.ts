@@ -35,7 +35,7 @@ export type ToolDispatchContext = Pick<
   | 'runningAppInfo'
   | 'chatId'
   | 'uid'
-  | 'variables'
+  | 'variableState'
   | 'externalProvider'
   | 'workflowStreamResponse'
   | 'lang'
@@ -77,7 +77,7 @@ export async function buildAgentTools({
     runningAppInfo,
     chatId,
     uid,
-    variables,
+    variableState,
     externalProvider,
     workflowStreamResponse,
     lang,
@@ -224,7 +224,7 @@ export async function buildAgentTools({
               runningAppInfo,
               chatId,
               uid,
-              variables,
+              variableState,
               workflowStreamResponse
             });
             nodeResponses.push({
@@ -245,6 +245,8 @@ export async function buildAgentTools({
             const { userChatInput, ...params } = requestParams;
             const { response, runningTime, usages } = await dispatchApp({
               appId: subApp.id,
+              chatId,
+              uid,
               userChatInput: userChatInput ?? '',
               customAppVariables: params,
               checkIsStopping,
@@ -258,7 +260,7 @@ export async function buildAgentTools({
               retainDatasetCite,
               maxRunTimes,
               workflowDispatchDeep,
-              variables
+              variableState
             });
             nodeResponses.push({
               nodeId: callId,
@@ -277,6 +279,8 @@ export async function buildAgentTools({
           if (subApp.type === 'toolWorkflow') {
             const { response, result, runningTime, usages } = await dispatchPlugin({
               appId: subApp.id,
+              chatId,
+              uid,
               userChatInput: '',
               customAppVariables: requestParams,
               checkIsStopping,
@@ -290,7 +294,7 @@ export async function buildAgentTools({
               retainDatasetCite,
               maxRunTimes,
               workflowDispatchDeep,
-              variables
+              variableState
             });
             nodeResponses.push({
               nodeId: callId,

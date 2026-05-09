@@ -41,7 +41,8 @@ import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constant
 import {
   getInteractiveByHistories,
   formatChatValue2InputType,
-  rewriteHistoriesByInteractiveResponse
+  rewriteHistoriesByInteractiveResponse,
+  stripChatValueFileUrls
 } from './utils';
 import { ChatTypeEnum, textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -781,14 +782,6 @@ const ChatBox = ({
               val = formatTime2YMDHMS(new Date(val));
             } else if (item.type === VariableInputEnum.timeRangeSelect && val) {
               val = val.map((item: string) => (item ? formatTime2YMDHMS(new Date(item)) : ''));
-            } else if (item.type === VariableInputEnum.file && Array.isArray(val)) {
-              val = val.map((item) => ({
-                id: item.id,
-                key: item.key,
-                url: item.key ? undefined : item.url,
-                name: item.name,
-                type: item.type
-              }));
             }
             requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
@@ -814,7 +807,6 @@ const ChatBox = ({
                   type: file.type,
                   name: file.name,
                   url: file.url,
-                  icon: file.icon || '',
                   key: file.key || ''
                 }
               })),
@@ -889,9 +881,10 @@ const ChatBox = ({
             const messages = chats2GPTMessages({
               messages: newChatList.slice(0, -1).map((item) => {
                 if (item.obj === ChatRoleEnum.Human) {
-                  item.files?.forEach((file) => {
-                    file.url = '';
-                  });
+                  return {
+                    ...item,
+                    value: stripChatValueFileUrls(item.value)
+                  };
                 }
                 return item;
               }),

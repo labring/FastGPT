@@ -1,8 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { dispatchUpdateVariable } from '@fastgpt/service/core/workflow/dispatch/tools/runUpdateVar';
-import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
 
 // Logger 不走真实实现，避免 log 基础设施依赖
 vi.mock('../../../../../../../../packages/service/common/logger', () => ({
@@ -21,6 +27,11 @@ vi.mock('../../../../../../../../packages/service/common/logger', () => ({
   }
 }));
 
+const mockGetChatFilePreviewUrl = vi.fn(async (key: string) => `http://example.com/${key}`);
+vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
+  createChatFilePreviewUrlGetter: () => mockGetChatFilePreviewUrl
+}));
+
 type AnyProps = Parameters<typeof dispatchUpdateVariable>[0];
 
 type BuildOpts = {
@@ -29,7 +40,40 @@ type BuildOpts = {
   isChildApp?: boolean;
   chatConfig?: any;
   externalWorkflowVariables?: Record<string, any>;
+  storeVariables?: Record<string, any>;
 };
+
+const createTestVariableState = ({
+  variables,
+  storeVariables = {},
+  chatConfig = {}
+}: {
+  variables: Record<string, any>;
+  storeVariables?: Record<string, any>;
+  chatConfig?: any;
+}) => ({
+  get: (key: string) => variables[key],
+  getStoreValue: (key: string) => storeVariables[key] ?? variables[key],
+  getFileStoreValueByRuntimeUrl: () => undefined,
+  toRuntimeRecord: () => ({ ...variables }),
+  toStoreRecord: () => (Object.keys(storeVariables).length > 0 ? storeVariables : variables),
+  clone: () => createTestVariableState({ variables: { ...variables }, storeVariables, chatConfig }),
+  set: async (key: string, value: any) => {
+    variables[key] = value;
+
+    const variableConfig = chatConfig.variables?.find((item: any) => item.key === key);
+    if (variableConfig?.type === VariableInputEnum.password) {
+      storeVariables[key] = {
+        value: '',
+        secret: `mock-secret:${value}`
+      };
+    } else if (Object.keys(storeVariables).length > 0) {
+      storeVariables[key] = value;
+    }
+
+    return value;
+  }
+});
 
 const buildProps = (
   variables: Record<string, any>,
@@ -40,7 +84,11 @@ const buildProps = (
   return {
     chatConfig: opts.chatConfig ?? {},
     params: { updateList },
-    variables,
+    variableState: createTestVariableState({
+      variables,
+      storeVariables: opts.storeVariables,
+      chatConfig: opts.chatConfig
+    }),
     runtimeNodesMap,
     workflowStreamResponse: opts.workflowStreamResponse,
     externalProvider: { externalWorkflowVariables: opts.externalWorkflowVariables ?? {} },
@@ -49,6 +97,113 @@ const buildProps = (
 };
 
 const ref = (key: string) => [VARIABLE_NODE_ID, key] as [string, string];
+
+describe('WorkflowVariableState file variable updates', () => {
+  const createFileState = (inputVariables: Record<string, unknown> = {}) =>
+    WorkflowVariableState.create({
+      timezone: 'Asia/Shanghai',
+      runningAppInfo: {
+        id: 'appId',
+        teamId: 'teamId',
+        tmbId: 'tmbId',
+        name: 'app'
+      },
+      uid: 'uid',
+      chatId: 'chatId',
+      variablesConfig: [
+        {
+          key: 'files',
+          type: VariableInputEnum.file
+        } as any
+      ],
+      inputVariables
+    });
+
+  it('should restore key file metadata from runtime url map', async () => {
+    const state = await createFileState({
+      files: [
+        {
+          key: 'chat/app/a.png',
+          name: 'a.png',
+          type: ChatFileTypeEnum.image
+        }
+      ]
+    });
+    const runtimeUrls = state.get('files') as string[];
+
+    const result = await state.set('files', [runtimeUrls[0]]);
+
+    expect(result).toEqual(['http://example.com/chat/app/a.png']);
+    expect(state.toStoreRecord().files).toEqual([
+      {
+        key: 'chat/app/a.png',
+        name: 'a.png',
+        type: ChatFileTypeEnum.image
+      }
+    ]);
+  });
+
+  it('should infer store metadata for unknown external urls', async () => {
+    const state = await createFileState();
+
+    await state.set('files', ['https://external.example.com/report.unknown']);
+
+    expect(state.toStoreRecord().files).toEqual([
+      {
+        url: 'https://external.example.com/report.unknown',
+        name: 'report.unknown',
+        type: ChatFileTypeEnum.file
+      }
+    ]);
+  });
+
+  it('should keep existing runtime urls when appending object values', async () => {
+    const state = await createFileState({
+      files: [
+        {
+          key: 'chat/app/old.pdf',
+          name: 'old.pdf',
+          type: ChatFileTypeEnum.file
+        }
+      ]
+    });
+    const runtimeUrls = state.get('files') as string[];
+
+    const result = await state.set('files', [
+      runtimeUrls[0],
+      {
+        key: 'chat/app/new.png',
+        name: 'new.png',
+        type: ChatFileTypeEnum.image
+      }
+    ]);
+
+    expect(result).toEqual([
+      'http://example.com/chat/app/old.pdf',
+      'http://example.com/chat/app/new.png'
+    ]);
+    expect(state.toStoreRecord().files).toEqual([
+      {
+        key: 'chat/app/old.pdf',
+        name: 'old.pdf',
+        type: ChatFileTypeEnum.file
+      },
+      {
+        key: 'chat/app/new.png',
+        name: 'new.png',
+        type: ChatFileTypeEnum.image
+      }
+    ]);
+  });
+
+  it('should throw when file variable update value is not an array', async () => {
+    const state = await createFileState();
+
+    await expect(state.set('files', 'https://external.example.com/report.pdf')).rejects.toThrow(
+      'File variable value must be an array'
+    );
+  });
+});
 
 describe('dispatchUpdateVariable — Number 公式', () => {
   it.each([
@@ -168,6 +323,39 @@ describe('dispatchUpdateVariable — Boolean', () => {
       ])
     );
     expect(variables.flag).toBe(false);
+  });
+});
+
+describe('dispatchUpdateVariable — Store variables', () => {
+  it('should encrypt password values when writing storeVariables', async () => {
+    const variables = { pwd: 'old' };
+    const storeVariables: Record<string, any> = {};
+
+    await dispatchUpdateVariable(
+      buildProps(
+        variables,
+        [
+          {
+            variable: ref('pwd'),
+            value: ['', 'new-secret'],
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderType: FlowNodeInputTypeEnum.input
+          }
+        ],
+        {
+          storeVariables,
+          chatConfig: {
+            variables: [{ key: 'pwd', type: VariableInputEnum.password }]
+          }
+        }
+      )
+    );
+
+    expect(variables.pwd).toBe('new-secret');
+    expect(storeVariables.pwd).toHaveProperty('value', '');
+    expect(storeVariables.pwd).toHaveProperty('secret');
+    expect(typeof storeVariables.pwd.secret).toBe('string');
+    expect(storeVariables.pwd.secret).not.toBe('new-secret');
   });
 });
 
@@ -441,7 +629,7 @@ describe('dispatchUpdateVariable — 老数据向前兼容（无新字段）', (
     expect(variables.mixed).toEqual({ x: 1 });
   });
 
-  it('返回值结构：newVariables + updateVarResult 与老接口一致', async () => {
+  it('返回值结构：仅返回 updateVarResult，变量由 variableState 统一保存', async () => {
     const variables = { a: 0, b: 0 };
     const res = await dispatchUpdateVariable(
       buildProps(variables, [
@@ -459,8 +647,9 @@ describe('dispatchUpdateVariable — 老数据向前兼容（无新字段）', (
         }
       ])
     );
-    expect((res as any).newVariables).toBe(variables);
+    expect((res as any).newVariables).toBeUndefined();
     expect((res as any).responseData?.updateVarResult).toEqual([1, null]);
+    expect(variables.a).toBe(1);
   });
 });
 
@@ -623,5 +812,49 @@ describe('dispatchUpdateVariable — 多条 update 的顺序语义', () => {
     );
     // 第一条：counter = 5；第二条：5 + 3 = 8
     expect(variables.counter).toBe(8);
+  });
+
+  it('后一条模板输入读取到前一条更新后的全局变量', async () => {
+    const variables = { source: 'old', target: '' };
+    await dispatchUpdateVariable(
+      buildProps(variables, [
+        {
+          variable: ref('source'),
+          value: ['', 'new'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.input
+        },
+        {
+          variable: ref('target'),
+          value: ['', '{{source}}'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.input
+        }
+      ])
+    );
+
+    expect(variables.target).toBe('new');
+  });
+
+  it('后一条 reference 读取到前一条更新后的全局变量', async () => {
+    const variables = { source: 'old', target: '' };
+    await dispatchUpdateVariable(
+      buildProps(variables, [
+        {
+          variable: ref('source'),
+          value: ['', 'new'],
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.input
+        },
+        {
+          variable: ref('target'),
+          value: ref('source'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderType: FlowNodeInputTypeEnum.reference
+        }
+      ])
+    );
+
+    expect(variables.target).toBe('new');
   });
 });

@@ -8,7 +8,7 @@ import {
   getWorkflowEntryNodeIds,
   storeNodes2RuntimeNodes,
   filterWorkflowEdges,
-  getReferenceVariableValue,
+  getReferenceVariableValue as baseGetReferenceVariableValue,
   formatVariableValByType,
   replaceEditorVariable,
   textAdaptGptResponse,
@@ -33,6 +33,17 @@ import type {
 } from '@fastgpt/global/core/workflow/type/edge';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+
+const getReferenceVariableValue = ({
+  variables = {},
+  ...props
+}: Omit<Parameters<typeof baseGetReferenceVariableValue>[0], 'variables'> & {
+  variables?: Record<string, unknown>;
+}) =>
+  baseGetReferenceVariableValue({
+    ...props,
+    variables
+  });
 
 describe('extractDeepestInteractive', () => {
   it('should return the same interactive when no childrenResponse', () => {

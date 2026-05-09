@@ -60,6 +60,14 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
 
   // get app and history
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+  const systemConfigNode = getGuideModule(nodes);
+  const appChatConfig = getAppChatConfig({
+    chatConfig,
+    systemConfigNode,
+    storeVariables: chat?.variableList,
+    storeWelcomeText: chat?.welcomeText,
+    isPublicFetch: false
+  });
   const pluginInputs =
     chat?.pluginInputs ??
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
@@ -67,7 +75,7 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
 
   const variables = await presignVariablesFileUrls({
     variables: chat?.variables,
-    variableConfig: chat?.variableList
+    variableConfig: appChatConfig.variables
   });
 
   jsonRes<InitChatResponseType>(res, {
@@ -80,13 +88,7 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
       chatGenerateStatus: chat?.chatGenerateStatus,
       hasBeenRead: chat?.hasBeenRead,
       app: {
-        chatConfig: getAppChatConfig({
-          chatConfig,
-          systemConfigNode: getGuideModule(nodes),
-          storeVariables: chat?.variableList,
-          storeWelcomeText: chat?.welcomeText,
-          isPublicFetch: false
-        }),
+        chatConfig: appChatConfig,
         chatModels: getChatModelNameListByModules(nodes),
         name: app.name,
         avatar: app.avatar,

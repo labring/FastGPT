@@ -41,7 +41,7 @@ export type DispatchFlowResponse = {
   [DispatchNodeResponseKeyEnum.runTimes]: number;
   [DispatchNodeResponseKeyEnum.memories]?: Record<string, any>;
   [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
-  [DispatchNodeResponseKeyEnum.newVariables]: Record<string, string>;
+  [DispatchNodeResponseKeyEnum.newVariables]: Record<string, any>;
   durationSeconds: number;
 };
 

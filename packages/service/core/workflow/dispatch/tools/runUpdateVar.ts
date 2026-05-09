@@ -12,7 +12,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { runtimeSystemVar2StoreType } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -66,43 +65,40 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const {
-    chatConfig,
-    params,
-    variables,
-    runtimeNodesMap,
-    workflowStreamResponse,
-    externalProvider,
-    runningAppInfo
-  } = props;
+  const { params, variableState, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;
 
   const { updateList } = params;
   const nodeIds = Array.from(runtimeNodesMap.keys());
 
   // 顺序执行：同一节点多条 update 依次写入，后一条读到前一条的新值
-  const result = updateList.map((item) => {
+  const result = [];
+
+  for (const item of updateList) {
     const variable = item.variable;
 
     if (!isValidReferenceValue(variable, nodeIds)) {
-      return null;
+      result.push(null);
+      continue;
     }
 
     const varNodeId = variable[0];
     const varKey = variable[1];
 
     if (!varKey) {
-      return null;
+      result.push(null);
+      continue;
     }
 
     const isInput = item.renderType === FlowNodeInputTypeEnum.input;
     const isArrayVar = isArrayValueType(item.valueType);
     const isArrayClear = isArrayVar && item.arrayMode === 'clear';
     const isArrayAppend = isArrayVar && item.arrayMode === 'append';
+    const runtimeVariables = variableState.toRuntimeRecord();
 
     // 读 oldValue（Number 公式 / Boolean negate / Array append 需要）
     const oldValue =
       varNodeId === VARIABLE_NODE_ID
-        ? variables[varKey]
+        ? variableState.get(varKey)
         : runtimeNodesMap.get(varNodeId)?.outputs?.find((o) => o.id === varKey)?.value;
 
     // 计算原始输入值（clear 分支无输入）
@@ -115,7 +111,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
             ? replaceEditorVariable({
                 text: item.value?.[1],
                 nodesMap: runtimeNodesMap,
-                variables
+                variables: runtimeVariables
               })
             : item.value?.[1];
 
@@ -127,7 +123,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       // reference
       return getReferenceVariableValue({
         value: item.value!,
-        variables,
+        variables: runtimeVariables,
         nodesMap: runtimeNodesMap
       });
     })();
@@ -163,7 +159,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
     // 写回
     if (varNodeId === VARIABLE_NODE_ID) {
-      variables[varKey] = value;
+      value = await variableState.set(varKey, value);
     } else {
       const node = runtimeNodesMap.get(varNodeId);
       node?.outputs?.find((output) => {
@@ -174,22 +170,17 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
       });
     }
 
-    return value;
-  });
+    result.push(value);
+  }
 
   if (!runningAppInfo.isChildApp) {
     workflowStreamResponse?.({
       event: SseResponseEventEnum.updateVariables,
-      data: runtimeSystemVar2StoreType({
-        variables,
-        removeObj: externalProvider.externalWorkflowVariables,
-        userVariablesConfigs: chatConfig?.variables
-      })
+      data: variableState.toStoreRecord()
     });
   }
 
   return {
-    [DispatchNodeResponseKeyEnum.newVariables]: variables,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       updateVarResult: result
     }

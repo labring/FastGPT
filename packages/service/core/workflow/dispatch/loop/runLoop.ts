@@ -54,7 +54,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   let assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
   let totalPoints = 0;
-  let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
   let index = 0;
 
@@ -84,7 +83,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     const response = await runWorkflow({
       ...props,
       lastInteractive: interactiveData?.childrenResponse,
-      variables: newVariables,
       runtimeNodes,
       runtimeEdges: cloneDeep(
         storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
@@ -101,12 +99,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     totalPoints += pushSubWorkflowUsage({ usagePush: props.usagePush, response, name, index });
 
     collectResponseFeedbacks(response, customFeedbacks);
-
-    // Concat new variables
-    newVariables = {
-      ...newVariables,
-      ...response.newVariables
-    };
 
     // handle interactive response
     if (response.workflowInteractiveResponse) {
@@ -141,7 +133,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
-    [DispatchNodeResponseKeyEnum.newVariables]: newVariables,
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined
   };

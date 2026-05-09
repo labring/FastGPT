@@ -59,6 +59,7 @@ export const CreatePostPresignedUrlResultSchema = z.object({
   url: z.string().nonempty(),
   key: z.string().nonempty(),
   headers: z.record(z.string(), z.string()),
+  previewUrl: z.string().nonempty(),
   maxSize: z.number().positive().optional()
 });
 export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrlResultSchema>;

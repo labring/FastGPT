@@ -15,7 +15,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchTextEditor = (props: Record<string, any>): Response => {
   const {
-    variables,
+    variableState,
     params: { system_textareaInput: text = '', system_addInputParam: customVariables = {} }
   } = props as Props;
 
@@ -36,7 +36,7 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
 
   const textResult = replaceVariable(text, {
     ...customVariables,
-    ...variables
+    ...variableState.toRuntimeRecord()
   });
 
   return {
