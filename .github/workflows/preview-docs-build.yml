@@ -28,6 +28,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Prepare Docker workspace catalog
+        run: cp pnpm-workspace.yaml document/pnpm-workspace.yaml
+
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v6
         with:
