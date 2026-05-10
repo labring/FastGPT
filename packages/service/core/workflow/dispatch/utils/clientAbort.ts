@@ -19,16 +19,12 @@ export const createClientAbortTracker = ({
     responseCompleted || !!(res?.writableEnded || res?.writableFinished);
   const responseWritableAborted = () =>
     !!(res as ResponseWithWritableAborted | undefined)?.writableAborted;
+  const hasExplicitAbort = () => !!(req?.aborted || responseWritableAborted());
+  const hasBrokenConnection = () => !!(req?.socket?.destroyed || res?.destroyed || res?.errored);
   const isAbortedSnapshot = () => {
     if (responseFinished()) return false;
 
-    return !!(
-      req?.aborted ||
-      res?.closed ||
-      res?.destroyed ||
-      responseWritableAborted() ||
-      res?.errored
-    );
+    return hasExplicitAbort() || hasBrokenConnection();
   };
   const markResponseCompleted = () => {
     responseCompleted = true;
@@ -38,20 +34,26 @@ export const createClientAbortTracker = ({
       clientAborted = true;
     }
   };
+  const markClientAbortedIfConnectionBroken = () => {
+    if (!responseFinished() && (hasExplicitAbort() || hasBrokenConnection())) {
+      clientAborted = true;
+    }
+  };
 
   req?.on('aborted', markClientAborted);
-  // Socket close is connection-level and can outlive the current response lifecycle.
-  // Use response close/error plus request aborted to avoid stopping workflow on connection churn.
+  // close itself is too broad; only stop when paired with explicit abort or a broken connection.
+  req?.socket?.on('close', markClientAbortedIfConnectionBroken);
   res?.on('finish', markResponseCompleted);
-  res?.on('close', markClientAborted);
+  res?.on('close', markClientAbortedIfConnectionBroken);
   res?.on('error', markClientAborted);
 
   return {
     isClientAborted: () => clientAborted || isAbortedSnapshot(),
     cleanup: () => {
       req?.off('aborted', markClientAborted);
+      req?.socket?.off('close', markClientAbortedIfConnectionBroken);
       res?.off('finish', markResponseCompleted);
-      res?.off('close', markClientAborted);
+      res?.off('close', markClientAbortedIfConnectionBroken);
       res?.off('error', markClientAborted);
     }
   };
