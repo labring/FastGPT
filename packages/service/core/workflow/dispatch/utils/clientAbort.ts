@@ -13,8 +13,10 @@ export const createClientAbortTracker = ({
   res?: NextApiResponse;
 }) => {
   let clientAborted = false;
+  let responseCompleted = !!(res?.writableEnded || res?.writableFinished);
 
-  const responseFinished = () => !!(res?.writableEnded || res?.writableFinished);
+  const responseFinished = () =>
+    responseCompleted || !!(res?.writableEnded || res?.writableFinished);
   const responseWritableAborted = () =>
     !!(res as ResponseWithWritableAborted | undefined)?.writableAborted;
   const isAbortedSnapshot = () => {
@@ -22,12 +24,14 @@ export const createClientAbortTracker = ({
 
     return !!(
       req?.aborted ||
-      req?.socket?.destroyed ||
       res?.closed ||
       res?.destroyed ||
       responseWritableAborted() ||
       res?.errored
     );
+  };
+  const markResponseCompleted = () => {
+    responseCompleted = true;
   };
   const markClientAborted = () => {
     if (!responseFinished()) {
@@ -36,7 +40,9 @@ export const createClientAbortTracker = ({
   };
 
   req?.on('aborted', markClientAborted);
-  req?.socket?.on('close', markClientAborted);
+  // Socket close is connection-level and can outlive the current response lifecycle.
+  // Use response close/error plus request aborted to avoid stopping workflow on connection churn.
+  res?.on('finish', markResponseCompleted);
   res?.on('close', markClientAborted);
   res?.on('error', markClientAborted);
 
@@ -44,7 +50,7 @@ export const createClientAbortTracker = ({
     isClientAborted: () => clientAborted || isAbortedSnapshot(),
     cleanup: () => {
       req?.off('aborted', markClientAborted);
-      req?.socket?.off('close', markClientAborted);
+      res?.off('finish', markResponseCompleted);
       res?.off('close', markClientAborted);
       res?.off('error', markClientAborted);
     }

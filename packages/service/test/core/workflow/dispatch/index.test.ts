@@ -51,14 +51,38 @@ describe('createClientAbortTracker', () => {
     tracker.cleanup();
   });
 
-  it('socket 在响应结束前关闭，应判定为客户端 abort', () => {
+  it('socket 单独关闭不应判定为当前请求 abort', () => {
     const req = mockReq();
     const res = mockRes();
     const tracker = createClientAbortTracker({ req, res });
 
     req.socket.emit('close');
 
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('请求 aborted 时应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    req.emit('aborted');
+
     expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+
+  it('响应 finish 后 close，不应受 closed 状态误判', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.emit('finish');
+    res.closed = true;
+    res.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(false);
     tracker.cleanup();
   });
 
