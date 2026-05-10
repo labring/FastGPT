@@ -52,6 +52,7 @@ export const masterCall = async ({
   getSubApp,
   completionTools,
   filesMap,
+  queryImageUrls,
   steps,
   step,
   capabilityToolCallHandler,
@@ -65,6 +66,7 @@ export const masterCall = async ({
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
+  queryImageUrls?: string[];
 
   // Step call
   steps?: AgentStepItemType[];
@@ -206,6 +208,7 @@ export const masterCall = async ({
     getSubApp,
     completionTools,
     filesMap,
+    queryImageUrls,
     capabilityToolCallHandler
   });
 

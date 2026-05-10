@@ -79,6 +79,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const {
       filesMap,
       allFilesMap,
+      queryImageUrls,
       prompt: fileInputPrompt
     } = formatFileInput({
       fileUrls: fileLinks,
@@ -174,6 +175,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       getSubApp,
       completionTools: agentCompletionTools,
       filesMap,
+      queryImageUrls,
       capabilityToolCallHandler
     };
 

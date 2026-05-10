@@ -16,7 +16,7 @@ import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prom
 import { getNodeErrResponse } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getWorkflowContext, parseUrlToFileType } from '../../utils/context';
+import { formatQueryImages, getWorkflowContext, parseUrlToFileType } from '../../utils/context';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DATASET);
 
@@ -141,6 +141,7 @@ export async function dispatchDatasetSearch(
   const { textQueries, queryImageUrls, filteredFileCount } =
     normalizeDatasetSearchInput(userChatInput);
   const normalizedUserChatInput = textQueries.join('\n');
+  const queryImages = formatQueryImages(queryImageUrls);
 
   if (!normalizedUserChatInput && queryImageUrls.length === 0) {
     return emptyResult;
@@ -307,6 +308,7 @@ export async function dispatchDatasetSearch(
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints,
         query: normalizedUserChatInput,
+        queryImages,
         filteredFileCount,
         embeddingModel: vectorModel.name,
         embeddingTokens,

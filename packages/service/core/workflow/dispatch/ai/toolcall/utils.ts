@@ -1,5 +1,7 @@
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -66,4 +68,37 @@ export const initToolNodes = (
       }
     }
   });
+};
+
+export const mergeDatasetToolQueryImages = ({
+  flowNodeType,
+  startParams,
+  queryImageUrls = []
+}: {
+  flowNodeType: RuntimeNodeItemType['flowNodeType'];
+  startParams: Record<string, any>;
+  queryImageUrls?: string[];
+}) => {
+  if (flowNodeType !== FlowNodeTypeEnum.datasetSearchNode || queryImageUrls.length === 0) {
+    return startParams;
+  }
+
+  const queryInput = startParams[NodeInputKeyEnum.userChatInput];
+  const queryList = Array.isArray(queryInput)
+    ? queryInput
+    : queryInput === undefined
+      ? []
+      : [queryInput];
+  const userChatInput = Array.from(
+    new Set(
+      [...queryList, ...queryImageUrls].filter(
+        (item): item is string => typeof item === 'string' && item.trim() !== ''
+      )
+    )
+  );
+
+  return {
+    ...startParams,
+    [NodeInputKeyEnum.userChatInput]: userChatInput
+  };
 };

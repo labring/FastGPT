@@ -7,7 +7,7 @@ import { runToolCall } from './toolCall';
 import type { FileInputType } from './type';
 import { type DispatchToolModuleProps, type ToolNodeItemType } from './type';
 import type { UserChatItemFileItemType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
   chats2GPTMessages,
@@ -121,6 +121,9 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const { userFiles } = await getMultiInput({
       fileLinks
     });
+    const queryImageUrls = userFiles
+      .filter((file) => file.type === ChatFileTypeEnum.image)
+      .map((file) => file.url);
 
     const concatenateSystemPrompt = [toolModel.defaultSystemChatPrompt, systemPrompt]
       .filter(Boolean)
@@ -226,6 +229,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         toolNodes,
         toolModel,
         messages: adaptMessages,
+        queryImageUrls,
         childrenInteractiveParams:
           lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined
       });

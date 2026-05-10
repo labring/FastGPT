@@ -530,23 +530,24 @@ const InputDataModal = ({
                           {t(data.label)}
                         </FormLabel>
                         {/* Delete */}
-                        {index.type !== 'default' && (
-                          <HStack
-                            className={'delete'}
-                            display={'none'}
-                            borderRight={'base'}
-                            pr={3}
-                            mr={2}
-                          >
-                            <DeleteIcon
-                              onClick={() => {
-                                openConfirmDeleteIndex({
-                                  onConfirm: () => removeIndexes(i)
-                                })();
-                              }}
-                            />
-                          </HStack>
-                        )}
+                        {index.type !== DatasetDataIndexTypeEnum.default &&
+                          !isImageEmbeddingIndex && (
+                            <HStack
+                              className={'delete'}
+                              display={'none'}
+                              borderRight={'base'}
+                              pr={3}
+                              mr={2}
+                            >
+                              <DeleteIcon
+                                onClick={() => {
+                                  openConfirmDeleteIndex({
+                                    onConfirm: () => removeIndexes(i)
+                                  })();
+                                }}
+                              />
+                            </HStack>
+                          )}
                         {canFoldIndex && (
                           <MyIconButton
                             icon={index.fold ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}

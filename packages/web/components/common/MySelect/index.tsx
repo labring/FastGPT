@@ -55,6 +55,8 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   customOnOpen?: () => void;
   customOnClose?: () => void;
   menuPlacement?: MenuProps['placement'];
+  itemStyle?: MenuItemProps;
+  selectedItemStyle?: MenuItemProps;
 
   isInvalid?: boolean;
   isDisabled?: boolean;
@@ -88,6 +90,8 @@ const MySelect = <T = any,>(
     customOnOpen,
     customOnClose,
     menuPlacement,
+    itemStyle,
+    selectedItemStyle,
     isInvalid,
     isDisabled,
     ...props
@@ -155,11 +159,13 @@ const MySelect = <T = any,>(
             <Box key={i}>
               <MenuItem
                 {...menuItemStyles}
+                {...itemStyle}
                 {...(value === item.value
                   ? {
                       ref: SelectedItemRef,
                       color: 'primary.700',
-                      bg: 'myGray.100'
+                      bg: 'myGray.100',
+                      ...selectedItemStyle
                     }
                   : {
                       color: 'myGray.900'
@@ -195,7 +201,7 @@ const MySelect = <T = any,>(
         )}
       </>
     );
-  }, [filterList, onClickChange, value]);
+  }, [filterList, itemStyle, onClickChange, selectedItemStyle, value]);
 
   const isSelecting = loading || isLoading;
 

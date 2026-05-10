@@ -26,6 +26,43 @@ const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
   return model?.type === ModelTypeEnum.embedding && !!model.vision;
 };
 
+const multimodalTagStyles = {
+  display: 'inline-flex',
+  px: '8px',
+  py: '4px',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: '6px',
+  borderRadius: '6px',
+  bg: '#F0FBFF',
+  color: '#005B9C',
+  fontFamily: 'PingFang SC',
+  fontSize: '10px',
+  fontStyle: 'normal',
+  fontWeight: 500,
+  lineHeight: '14px',
+  letterSpacing: '0.2px',
+  flexShrink: 0
+} as const;
+
+const modelOptionRowStyles = {
+  w: '320px',
+  h: '45px',
+  px: '12px',
+  py: '6px',
+  justifyContent: 'flex-start',
+  alignItems: 'center',
+  alignSelf: 'stretch',
+  gap: '10px',
+  borderRadius: '4px'
+} as const;
+
+const modelNameTextStyles = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap'
+} as const;
+
 const ModelOptionLabel = React.memo(function ModelOptionLabel({
   name,
   showTestModeTip,
@@ -40,30 +77,23 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
   const { t } = useTranslation();
 
   return (
-    <Flex alignItems={'center'} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'}>
-      <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+    <Flex alignItems={'center'} flex={'1 1 0'} w={'100%'} minW={0} overflow={'hidden'} gap={1}>
+      <Box flex={'1 1 0'} minW={0} {...modelNameTextStyles}>
         {name}
       </Box>
-      {showTestModeTip && (
-        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
-          <TestModeBetaTag />
-        </Box>
-      )}
-      {showMultimodalTip && (
-        <MyTooltip label={t('common:core.ai.model.multimodal_tip')} shouldWrapChildren={false}>
-          <Box
-            ml={1}
-            px={1}
-            py={'1px'}
-            borderRadius={'sm'}
-            bg={'primary.50'}
-            color={'primary.600'}
-            fontSize={'mini'}
-            flexShrink={0}
-          >
-            {t('common:core.ai.model.multimodal')}
-          </Box>
-        </MyTooltip>
+      {(showTestModeTip || showMultimodalTip) && (
+        <Flex alignItems={'center'} gap={1} flexShrink={0}>
+          {showTestModeTip && (
+            <Box flexShrink={0} pointerEvents={'auto'}>
+              <TestModeBetaTag />
+            </Box>
+          )}
+          {showMultimodalTip && (
+            <MyTooltip label={t('common:core.ai.model.multimodal_tip')} shouldWrapChildren={false}>
+              <Box {...multimodalTagStyles}>{t('common:core.ai.model.multimodal')}</Box>
+            </MyTooltip>
+          )}
+        </Flex>
       )}
     </Flex>
   );
@@ -139,11 +169,10 @@ const OneRowSelector = ({
         return {
           value: item.value,
           label: (
-            <Flex alignItems={'center'} py={1} minW={0}>
+            <Flex {...modelOptionRowStyles} minW={0}>
               <Avatar
                 flexShrink={0}
                 borderRadius={'0'}
-                mr={2}
                 src={avatar || HUGGING_FACE_ICON}
                 w={avatarSize}
                 fallbackSrc={HUGGING_FACE_ICON}
@@ -178,6 +207,18 @@ const OneRowSelector = ({
           className="nowheel"
           isDisabled={!!disableTip}
           list={avatarList}
+          itemStyle={{
+            p: 0,
+            mb: 0.5,
+            borderRadius: '4px',
+            _hover: {
+              bg: 'rgba(17, 24, 36, 0.05)'
+            }
+          }}
+          selectedItemStyle={{
+            color: 'primary.700',
+            bg: 'rgba(17, 24, 36, 0.05)'
+          }}
           valueLabel={
             selectedModelData ? (
               <Flex alignItems={'center'} py={1} w={'100%'} minW={0} overflow={'hidden'}>
@@ -307,11 +348,13 @@ const MultipleRowSelector = ({
 
       provider?.children.push({
         label: (
-          <ModelOptionLabel
-            name={modelData.name}
-            showTestModeTip={isTestModeModel(modelData)}
-            showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
-          />
+          <Flex w={'320px'} minW={0}>
+            <ModelOptionLabel
+              name={modelData.name}
+              showTestModeTip={isTestModeModel(modelData)}
+              showMultimodalTip={isMultimodalEmbeddingModel(modelData)}
+            />
+          </Flex>
         ),
         value: modelData.model
       });

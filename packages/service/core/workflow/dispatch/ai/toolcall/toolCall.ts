@@ -9,7 +9,12 @@ import { runWorkflow } from '../../index';
 import type { ChildResponseItemType, DispatchToolModuleProps, ToolNodeItemType } from './type';
 import { chats2GPTMessages, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
+import {
+  formatToolResponse,
+  initToolCallEdges,
+  initToolNodes,
+  mergeDatasetToolQueryImages
+} from './utils';
 import { parseJsonArgs } from '../../../../ai/utils';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -53,6 +58,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     childrenInteractiveParams,
     allFiles,
     currentInputFiles,
+    queryImageUrls = [],
 
     ...workflowProps
   } = props;
@@ -335,8 +341,13 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
           const toolNode = toolInfo.rawData;
 
           // Init tool params and run
-          const startParams = parseJsonArgs(call.function.arguments);
-          initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
+          const startParams = parseJsonArgs(call.function.arguments) || {};
+          const toolStartParams = mergeDatasetToolQueryImages({
+            flowNodeType: toolNode.flowNodeType,
+            startParams,
+            queryImageUrls
+          });
+          initToolNodes(runtimeNodes, [toolNode.nodeId], toolStartParams);
           initToolCallEdges(runtimeEdges, [toolNode.nodeId]);
 
           const toolRunResponse = await runWorkflow({

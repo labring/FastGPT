@@ -19,6 +19,7 @@ import type { DispatchSubAppResponse } from '../../type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchToolSchema } from './utils';
 import { parseJsonArgs } from '../../../../../../ai/utils';
+import { formatQueryImages } from '../../../../../utils/context';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
@@ -27,6 +28,7 @@ type DatasetSearchParams = {
   args: string;
   llmModel: string;
   datasetParams?: AppFormEditFormType['dataset'];
+  queryImageUrls?: string[];
 };
 
 /**
@@ -148,6 +150,7 @@ ${chunkSummaries}
 export const dispatchAgentDatasetSearch = async ({
   args,
   datasetParams,
+  queryImageUrls,
   teamId,
   tmbId,
   llmModel
@@ -187,6 +190,7 @@ export const dispatchAgentDatasetSearch = async ({
       teamId,
       reRankQuery: query,
       queries: [query],
+      queryImageUrls,
       model: vectorModel.model,
       similarity: datasetParams.similarity ?? 0.4,
       limit: datasetParams.limit || 5000,
@@ -292,6 +296,7 @@ export const dispatchAgentDatasetSearch = async ({
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
       query,
+      queryImages: formatQueryImages(queryImageUrls),
       embeddingModel: vectorModel.name,
       embeddingTokens,
       similarity: usingSimilarityFilter ? searchData.similarity : undefined,

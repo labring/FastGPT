@@ -36,6 +36,8 @@
   "common.error.unKnow": "未知錯誤",
   "common_dataset": "通用資料集",
   "common_dataset_desc": "通過導入文件、網頁鏈接或手動錄入形式構建知識庫",
+  "create_dataset_title": "建立{{name}}",
+  "dataset_name_placeholder": "給知識庫取一個名字",
   "confirm_delete_collection": "確認刪除 {{num }} 個文件？",
   "confirm_import_images": "共 {{num}} 張圖片 | 確認創建",
   "confirm_to_rebuild_embedding_tip": "確定要為資料集切換索引嗎？\n切換索引是一個重要的操作，需要對您資料集內所有資料重新建立索引，可能需要較長時間，請確保帳號內剩餘點數充足。\n\n此外，您還需要注意修改使用此資料集的應用程式，避免與其他索引模型資料集混用。",

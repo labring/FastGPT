@@ -55,6 +55,25 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
 
+const multimodalTagStyles = {
+  display: 'flex',
+  w: '59px',
+  boxSizing: 'border-box',
+  px: '10px',
+  py: 0,
+  alignItems: 'center',
+  borderRadius: '6px',
+  borderColor: '#BCE7FF',
+  bg: '#F0FBFF',
+  color: '#005B9C',
+  fontFamily: 'PingFang SC',
+  fontSize: '12px',
+  fontStyle: 'normal',
+  fontWeight: 400,
+  lineHeight: '16px',
+  letterSpacing: '0.048px'
+} as const;
+
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
@@ -230,6 +249,22 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     return modelList.filter((item) => item.isActive).length;
   }, [modelList]);
 
+  const renderVisionTag = useCallback(
+    (item: { vision?: boolean; type: `${ModelTypeEnum}` }) => {
+      if (!item.vision) return null;
+
+      const isMultimodalModel = item.type === ModelTypeEnum.embedding;
+      const tagStyles = isMultimodalModel ? multimodalTagStyles : { py: 0.5 };
+
+      return (
+        <MyTag type="borderFill" colorSchema="green" {...tagStyles}>
+          {isMultimodalModel ? t('common:core.ai.model.multimodal') : t('account:model.vision_tag')}
+        </MyTag>
+      );
+    },
+    [t]
+  );
+
   const filterProviderList = useMemo(() => {
     const allProviderIds: string[] = systemModelList.map((model) => model.provider);
 
@@ -403,13 +438,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             {Math.floor(item.contextToken / 1000)}k
                           </MyTag>
                         )}
-                        {item.vision && (
-                          <MyTag type="borderFill" colorSchema="green" py={0.5}>
-                            {item.type === ModelTypeEnum.embedding
-                              ? t('common:core.ai.model.multimodal')
-                              : t('account:model.vision_tag')}
-                          </MyTag>
-                        )}
+                        {renderVisionTag(item)}
                         {item.toolChoice && (
                           <MyTag type="borderFill" colorSchema="adora" py={0.5}>
                             {t('account:model.tool_choice_tag')}

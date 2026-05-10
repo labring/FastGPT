@@ -34,6 +34,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   childrenInteractiveParams?: ToolCallChildrenInteractive['params'];
   allFiles: Map<string, FileInputType>;
   currentInputFiles: FileInputType[];
+  queryImageUrls?: string[];
 };
 
 export type ToolNodeItemType = {

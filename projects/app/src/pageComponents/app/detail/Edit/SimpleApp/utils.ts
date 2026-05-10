@@ -477,6 +477,7 @@ export function form2AppWorkflow(
         {
           ...Input_Template_UserChatInput,
           toolDescription: i18nT('workflow:content_to_search'),
+          valueType: WorkflowIOValueTypeEnum.arrayString,
           value: question
         }
       ],
@@ -503,7 +504,10 @@ export function form2AppWorkflow(
     return {
       nodes: [
         aiChatTemplate(formData),
-        datasetNodeTemplate(formData, [workflowStartNodeId, 'userChatInput'])
+        datasetNodeTemplate(formData, [
+          [workflowStartNodeId, NodeOutputKeyEnum.userChatInput],
+          [workflowStartNodeId, NodeOutputKeyEnum.userFiles]
+        ])
       ],
       edges: [
         {

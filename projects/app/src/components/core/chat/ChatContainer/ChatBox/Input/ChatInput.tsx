@@ -146,13 +146,14 @@ const ChatInput = ({
 
   const RenderTextarea = useMemo(
     () => (
-      <Flex direction={'column'} mt={fileList.length > 0 ? 1 : 0}>
+      <Flex direction={'column'}>
         {/* Textarea */}
         <Flex w={'100%'}>
           {/* Prompt Container */}
           <Textarea
             ref={TextareaDom}
-            py={0}
+            pt={'0 !important'}
+            pb={'0 !important'}
             mx={[2, 4]}
             px={2}
             border={'none'}
@@ -166,7 +167,6 @@ const ChatInput = ({
             resize={'none'}
             rows={1}
             height={[5, 6]}
-            lineHeight={[5, 6]}
             maxHeight={[24, 32]}
             minH={'50px'}
             mb={0}
@@ -176,14 +176,22 @@ const ChatInput = ({
             whiteSpace={'pre-wrap'}
             wordBreak={'break-word'}
             boxShadow={'none !important'}
-            color={'myGray.900'}
+            color={'var(--light-general-on-surface-lowest, var(--Gray-Modern-500, #667085))'}
+            fontFamily={'"PingFang SC"'}
+            fontStyle={'normal'}
             fontWeight={400}
-            fontSize={'1rem'}
-            letterSpacing={'0.5px'}
+            fontSize={'12px'}
+            lineHeight={'16px'}
+            letterSpacing={'0.048px'}
             w={'100%'}
             _placeholder={{
-              color: '#707070',
-              fontSize: 'sm'
+              color: 'var(--light-general-on-surface-lowest, var(--Gray-Modern-500, #667085))',
+              fontFamily: '"PingFang SC"',
+              fontSize: '12px',
+              fontStyle: 'normal',
+              fontWeight: 400,
+              lineHeight: '16px',
+              letterSpacing: '0.048px'
             }}
             value={inputValue}
             onChange={(e) => {
@@ -252,7 +260,6 @@ const ChatInput = ({
       </Flex>
     ),
     [
-      fileList.length,
       TextareaDom,
       dialogTips,
       isPc,

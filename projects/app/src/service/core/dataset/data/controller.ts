@@ -23,7 +23,7 @@ import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getVectorsByImage } from '@fastgpt/service/core/ai/embedding';
-import { normalizeImageToBase64 } from '@fastgpt/service/core/ai/image';
+import { normalizeImageInputsToBase64 } from '@fastgpt/service/core/ai/image';
 
 const formatIndexes = async ({
   indexes = [],
@@ -176,29 +176,45 @@ const getImageDisplayText = (imageId?: string) => {
   return decodeURIComponent(filename).replace(/\.[^.]+$/, '') || filename;
 };
 
-const insertImageEmbeddingVectors = async ({
-  imageIds,
+const insertImageEmbeddingVectors = async <T>({
+  imageItems,
+  getImageId,
   model,
   teamId,
   datasetId,
   collectionId
 }: {
-  imageIds: string[];
+  imageItems: T[];
+  getImageId: (item: T) => string;
   model: ReturnType<typeof getEmbeddingModel>;
   teamId: string;
   datasetId: string;
   collectionId: string;
 }) => {
-  if (imageIds.length === 0) {
+  if (imageItems.length === 0) {
     return {
       insertIds: [] as string[],
-      tokens: 0
+      tokens: 0,
+      imageItems: [] as T[]
+    };
+  }
+
+  const normalizedImageItems = await normalizeImageInputsToBase64({
+    items: imageItems,
+    getImageUrl: getImageId
+  });
+
+  if (normalizedImageItems.length === 0) {
+    return {
+      insertIds: [] as string[],
+      tokens: 0,
+      imageItems: [] as T[]
     };
   }
 
   const { vectors, tokens } = await getVectorsByImage({
     model,
-    imageUrls: await Promise.all(imageIds.map(normalizeImageToBase64)),
+    imageUrls: normalizedImageItems.map((item) => item.imageUrl),
     type: 'db'
   });
 
@@ -209,7 +225,8 @@ const insertImageEmbeddingVectors = async ({
     collectionId
   }).then((res) => ({
     ...res,
-    tokens
+    tokens,
+    imageItems: normalizedImageItems.map((item) => item.item)
   }));
 };
 /* insert data.
@@ -290,7 +307,8 @@ export async function insertData2Dataset({
     : { tokens: 0, insertIds: [] };
 
   const imageInsertResult = await insertImageEmbeddingVectors({
-    imageIds: imageIndexes.map((item) => item.text),
+    imageItems: imageIndexes,
+    getImageId: (item) => item.text,
     model: embModel,
     teamId,
     datasetId,
@@ -303,7 +321,7 @@ export async function insertData2Dataset({
       dataId: insertIds[index]
     }))
     .concat(
-      imageIndexes.map((item, index) => ({
+      imageInsertResult.imageItems.map((item, index) => ({
         ...item,
         dataId: imageInsertResult.insertIds[index]
       }))
@@ -473,6 +491,7 @@ export async function updateData2Dataset({
   const insertItems = patchResult.filter(
     (item) => item.type === 'create' || item.type === 'update'
   );
+  const skippedImageInsertItems = new Set<PatchIndexesProps>();
   const tokens = await (async () => {
     if (insertItems.length === 0) return 0;
 
@@ -497,18 +516,32 @@ export async function updateData2Dataset({
       item.index.dataId = textInsertResult.insertIds[index];
     });
 
-    const imageInsertResult =
-      imageInsertItems.length && isImageEmbeddingModel(embModel)
-        ? await insertImageEmbeddingVectors({
-            imageIds: imageInsertItems.map((item) => item.index.text || mongoData.imageId || ''),
-            model: embModel,
-            teamId: mongoData.teamId,
-            datasetId: mongoData.datasetId,
-            collectionId: mongoData.collectionId
-          })
-        : { tokens: 0, insertIds: [] as string[] };
+    const imageInsertResult = await (async () => {
+      if (!imageInsertItems.length) {
+        return { tokens: 0, insertIds: [] as string[], imageItems: [] as typeof imageInsertItems };
+      }
+      if (!isImageEmbeddingModel(embModel)) {
+        imageInsertItems.forEach((item) => skippedImageInsertItems.add(item));
+        return { tokens: 0, insertIds: [] as string[], imageItems: [] as typeof imageInsertItems };
+      }
 
-    imageInsertItems.forEach((item, index) => {
+      return insertImageEmbeddingVectors({
+        imageItems: imageInsertItems,
+        getImageId: (item) => item.index.text || mongoData.imageId || '',
+        model: embModel,
+        teamId: mongoData.teamId,
+        datasetId: mongoData.datasetId,
+        collectionId: mongoData.collectionId
+      });
+    })();
+
+    const validImageInsertItems = new Set(imageInsertResult.imageItems);
+    imageInsertItems.forEach((item) => {
+      if (!validImageInsertItems.has(item)) {
+        skippedImageInsertItems.add(item);
+      }
+    });
+    imageInsertResult.imageItems.forEach((item, index) => {
       item.index.dataId = imageInsertResult.insertIds[index];
     });
 
@@ -516,7 +549,7 @@ export async function updateData2Dataset({
   })();
 
   const newIndexes = patchResult
-    .filter((item) => item.type !== 'delete')
+    .filter((item) => item.type !== 'delete' && !skippedImageInsertItems.has(item))
     .map((item) => item.index) as DatasetDataIndexItemType[];
 
   // 6. update mongo data

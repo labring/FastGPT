@@ -216,6 +216,16 @@ export const DispatchNodeResponseSchema = z
     searchMode: z.enum(DatasetSearchModeEnum).optional().meta({ description: '搜索模式' }),
     embeddingWeight: z.number().optional().meta({ description: '嵌入权重' }),
     filteredFileCount: z.number().optional().meta({ description: '过滤的非图片文件数量' }),
+    queryImages: z
+      .array(
+        z.object({
+          key: z.string().optional(),
+          url: z.string().optional(),
+          name: z.string().optional()
+        })
+      )
+      .optional()
+      .meta({ description: '参与知识库检索的图片' }),
     rerankModel: z.string().optional().meta({ description: '重排模型' }),
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),

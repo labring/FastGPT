@@ -3,9 +3,14 @@ import { filterSensitiveFormData, getAppQGuideCustomURL } from '@/web/core/app/u
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
 import { appWorkflow2AgentForm } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { workflowStartNodeId } from '@/web/core/app/constants';
 
 describe('form2AppWorkflow', () => {
   const mockT = (str: string) => str;
@@ -91,6 +96,19 @@ describe('form2AppWorkflow', () => {
 
     expect(result.nodes).toHaveLength(4);
     expect(result.edges).toHaveLength(2);
+
+    const datasetNode = result.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+    );
+    const datasetQueryInput = datasetNode?.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.userChatInput
+    );
+
+    expect(datasetQueryInput?.valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
+    expect(datasetQueryInput?.value).toEqual([
+      [workflowStartNodeId, NodeOutputKeyEnum.userChatInput],
+      [workflowStartNodeId, NodeOutputKeyEnum.userFiles]
+    ]);
   });
 });
 

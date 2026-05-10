@@ -17,6 +17,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
+  DatasetDataIndexItemType,
   DatasetDataSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
@@ -24,7 +25,10 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getVectorsByImage } from '@fastgpt/service/core/ai/embedding';
-import { normalizeImageToBase64 } from '@fastgpt/service/core/ai/image';
+import {
+  isValidImageEmbeddingSource,
+  normalizeImageInputsToBase64
+} from '@fastgpt/service/core/ai/image';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -37,7 +41,7 @@ const reduceQueue = () => {
 type PopulateType = {
   dataset: { vectorModel: string; vlmModel?: string };
   collection: { name: string; indexPrefixTitle: boolean; imageIndex?: boolean };
-  data: {
+  data?: {
     _id: string;
     q: string;
     a?: string;
@@ -46,18 +50,30 @@ type PopulateType = {
   };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
+type DatasetDataIndexInputType = Omit<DatasetDataIndexItemType, 'dataId'> & {
+  dataId?: string;
+};
 
-const matchMarkdownImageUrls = (text = '') => {
+export const matchMarkdownImageUrls = (text = '') => {
   const regex = /!\[([\s\S]*?)\]\((.*?)\)/g;
   return Array.from(text.matchAll(regex))
     .map((match) => match[2])
     .filter(Boolean);
 };
 
+export const getMarkdownImageUrlsFromTrainingData = (trainingData: {
+  q?: string;
+  data?: { q?: string };
+}) => {
+  const texts = [trainingData.q, trainingData.data?.q].filter(Boolean) as string[];
+
+  return Array.from(new Set(texts.flatMap(matchMarkdownImageUrls)));
+};
+
 const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
   const sourceIndexes = trainingData.indexes?.length
     ? trainingData.indexes.map((index) => ({ ...index, dataId: '' }))
-    : trainingData.data.indexes;
+    : trainingData.data?.indexes || [];
 
   return sourceIndexes.filter((index) => {
     if (index.type === DatasetDataIndexTypeEnum.imageEmbedding) return false;
@@ -71,25 +87,36 @@ const getRebuildBaseIndexes = (trainingData: TrainingDataType) => {
   });
 };
 
-const appendImageEmbeddingIndexes = ({
+export const appendImageEmbeddingIndexes = ({
   indexes,
   trainingData,
   embModel,
-  q
+  includeDataImageId = true
 }: {
-  indexes: ReturnType<typeof getRebuildBaseIndexes>;
-  trainingData: TrainingDataType;
+  indexes: DatasetDataIndexInputType[];
+  trainingData: Pick<TrainingDataType, 'q' | 'data' | 'collection'>;
   embModel: ReturnType<typeof getEmbeddingModel>;
-  q: string;
+  includeDataImageId?: boolean;
 }) => {
   if (!isImageEmbeddingModel(embModel)) return indexes;
 
+  const existedImageIds = new Set(
+    indexes
+      .filter((item) => item.type === DatasetDataIndexTypeEnum.imageEmbedding)
+      .map((item) => item.text)
+  );
   const imageIds = [
-    trainingData.data.imageId,
-    ...(trainingData.collection.imageIndex ? matchMarkdownImageUrls(q) : [])
-  ].filter(Boolean) as string[];
+    ...(includeDataImageId && trainingData.data?.imageId ? [trainingData.data.imageId] : []),
+    ...(trainingData.collection.imageIndex
+      ? getMarkdownImageUrlsFromTrainingData(trainingData)
+      : [])
+  ]
+    .filter(Boolean)
+    .filter(isValidImageEmbeddingSource) as string[];
 
-  const uniqueImageIds = imageIds.filter((item, index, self) => index === self.indexOf(item));
+  const uniqueImageIds = imageIds.filter(
+    (item, index, self) => index === self.indexOf(item) && !existedImageIds.has(item)
+  );
 
   return indexes.concat(
     uniqueImageIds.map((imageId) => ({
@@ -256,9 +283,10 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
     return Promise.reject('Not data');
   }
+  const datasetData = trainingData.data;
 
   // Old vectorId
-  const deleteVectorIdList = trainingData.data.indexes.map((index) => index.dataId);
+  const deleteVectorIdList = datasetData.indexes.map((index) => index.dataId);
 
   // Find next rebuilding data to insert training queue
   try {
@@ -333,13 +361,12 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   } catch (error) {}
 
   const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
-  const q = trainingData.q || trainingData.data.q;
-  const a = trainingData.a ?? trainingData.data.a;
+  const q = trainingData.q || datasetData.q;
+  const a = trainingData.a ?? datasetData.a;
   const rebuildIndexes = appendImageEmbeddingIndexes({
     indexes: getRebuildBaseIndexes(trainingData),
     trainingData,
-    embModel,
-    q
+    embModel
   });
 
   const hasPreprocessedTrainingData =
@@ -347,14 +374,12 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 
   if (hasPreprocessedTrainingData) {
     const { tokens } = await updateData2Dataset({
-      dataId: trainingData.data._id,
+      dataId: datasetData._id,
       q,
       a,
       indexes: rebuildIndexes,
       model: trainingData.dataset.vectorModel,
-      indexSize:
-        trainingData.indexSize ||
-        getMaxIndexSize(getEmbeddingModel(trainingData.dataset.vectorModel)),
+      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined
@@ -363,7 +388,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     await mongoSessionRun(async (session) => {
       if (trainingData.imageDescMap) {
         await MongoDatasetData.updateOne(
-          { _id: trainingData.data._id },
+          { _id: datasetData._id },
           { $set: { imageDescMap: trainingData.imageDescMap } },
           { session }
         );
@@ -399,13 +424,27 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     if (!imageIndexes.length) {
       return {
         tokens: 0,
-        insertIds: [] as string[]
+        insertIds: [] as string[],
+        imageIndexes: [] as typeof imageIndexes
+      };
+    }
+
+    const normalizedImageIndexes = await normalizeImageInputsToBase64({
+      items: imageIndexes,
+      getImageUrl: (index) => index.text
+    });
+
+    if (!normalizedImageIndexes.length) {
+      return {
+        tokens: 0,
+        insertIds: [] as string[],
+        imageIndexes: [] as typeof imageIndexes
       };
     }
 
     const { vectors, tokens } = await getVectorsByImage({
       model: embModel,
-      imageUrls: await Promise.all(imageIndexes.map((index) => normalizeImageToBase64(index.text))),
+      imageUrls: normalizedImageIndexes.map((item) => item.imageUrl),
       type: 'db'
     });
 
@@ -416,21 +455,23 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
       collectionId: trainingData.collectionId
     }).then((res) => ({
       ...res,
-      tokens
+      tokens,
+      imageIndexes: normalizedImageIndexes.map((item) => item.item)
     }));
   })();
 
-  imageIndexes.forEach((item, index) => {
+  imageInsertResult.imageIndexes.forEach((item, index) => {
     item.dataId = imageInsertResult.insertIds[index];
   });
+  const finalIndexes = textIndexes.concat(imageInsertResult.imageIndexes);
 
   await mongoSessionRun(async (session) => {
     // 2. Ensure that the training data is deleted after the Mongo update is successful
     await MongoDatasetData.updateOne(
-      { _id: trainingData.data._id },
+      { _id: datasetData._id },
       {
         $set: {
-          indexes: rebuildIndexes
+          indexes: finalIndexes
         },
         ...((!trainingData.dataset.vlmModel || !trainingData.collection.imageIndex) && {
           $unset: {
@@ -455,6 +496,14 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   return mongoSessionRun(async (session) => {
+    const embModel = getEmbeddingModel(trainingData.dataset.vectorModel);
+    const indexes = appendImageEmbeddingIndexes({
+      indexes: trainingData.indexes || [],
+      trainingData,
+      embModel,
+      includeDataImageId: false
+    });
+
     // insert new data to dataset
     const { tokens } = await insertData2Dataset({
       teamId: trainingData.teamId,
@@ -466,10 +515,8 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       imageId: trainingData.imageId,
       imageDescMap: trainingData.imageDescMap,
       chunkIndex: trainingData.chunkIndex,
-      indexSize:
-        trainingData.indexSize ||
-        getMaxIndexSize(getEmbeddingModel(trainingData.dataset.vectorModel)),
-      indexes: trainingData.indexes,
+      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
+      indexes,
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,

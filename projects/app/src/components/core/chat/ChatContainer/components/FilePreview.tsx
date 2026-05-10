@@ -25,7 +25,7 @@ const RenderFilePreview = ({
       pt={[2, 3]}
       userSelect={'none'}
       mb={fileList.length > 0 ? 2 : 0}
-      gap={'6px'}
+      gap={2}
     >
       {fileList.map((item, index) => {
         const isFile = item.type === ChatFileTypeEnum.file;
@@ -35,12 +35,15 @@ const RenderFilePreview = ({
         return (
           <MyBox
             key={index}
-            maxW={isFile ? 56 : 14}
-            w={isFile ? 'calc(50% - 3px)' : '12.5%'}
+            maxW={isFile ? 56 : '80px'}
+            w={isFile ? 'calc(50% - 4px)' : '80px'}
+            h={isImage ? '80px' : undefined}
+            flexShrink={isImage ? 0 : undefined}
+            alignSelf={isImage ? 'stretch' : undefined}
             aspectRatio={isFile ? 4 : 1}
           >
             <Box
-              border={'sm'}
+              border={isFile ? 'sm' : 'none'}
               boxShadow={
                 '0px 2.571px 6.429px 0px rgba(19, 51, 107, 0.08), 0px 0px 0.643px 0px rgba(19, 51, 107, 0.08)'
               }
@@ -77,10 +80,13 @@ const RenderFilePreview = ({
                 <MyImage
                   alt={'img'}
                   src={item.icon || item.url}
-                  w={'full'}
-                  h={'full'}
+                  w={'80px'}
+                  h={'80px'}
+                  minW={'80px'}
+                  minH={'80px'}
                   borderRadius={'md'}
-                  objectFit={'contain'}
+                  bg={'lightgray'}
+                  objectFit={'cover'}
                 />
               )}
               {isFile && (

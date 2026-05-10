@@ -128,6 +128,7 @@ export type ToolDispatchContext = Pick<
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
   filesMap: Record<string, string>;
+  queryImageUrls?: string[];
   capabilityToolCallHandler?: CapabilityToolCallHandlerType;
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
@@ -137,6 +138,7 @@ export const getExecuteTool = ({
   getSubApp,
   completionTools,
   filesMap,
+  queryImageUrls,
   capabilityToolCallHandler,
   checkIsStopping,
   chatConfig,
@@ -228,6 +230,7 @@ export const getExecuteTool = ({
           const result = await dispatchAgentDatasetSearch({
             args: args,
             datasetParams,
+            queryImageUrls,
             teamId: runningUserInfo.teamId,
             tmbId: runningUserInfo.tmbId,
             llmModel: model

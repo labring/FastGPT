@@ -38,6 +38,7 @@ import {
   postUploadSearchTestImage
 } from '@/web/core/dataset/api/file';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
@@ -63,6 +64,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { defaultModels, feConfigs } = useSystemStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { pushDatasetTestItem } = useSearchTestStore();
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
@@ -154,7 +156,15 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         title: t('chat:unsupported_file_type')
       });
     }
-    const maxImageSize = (feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024;
+    const planStatus =
+      teamPlanStatus ||
+      (await initTeamPlanStatus()
+        .then(() => useUserStore.getState().teamPlanStatus)
+        .catch(() => undefined));
+    const maxImageSize =
+      (planStatus?.standard?.maxUploadFileSize ?? feConfigs?.uploadFileMaxSize ?? 500) *
+      1024 *
+      1024;
     const validImageFiles = imageFiles.filter((file) => file.size <= maxImageSize);
     if (validImageFiles.length < imageFiles.length) {
       toast({
@@ -217,25 +227,34 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         h={['auto', '100%']}
         display={['block', 'flex']}
         flexDirection={'column'}
-        flex={1}
-        maxW={'500px'}
-        py={4}
+        flex={['unset', '0 0 468px']}
+        w={['100%', '468px']}
+        p={4}
+        gap={6}
+        borderRight={['none', '1px solid #E8EBF0']}
       >
-        <Flex px={4} mb={3} alignItems={'center'}>
-          <Box flex={1} fontWeight={'medium'} color={'myGray.900'}>
-            {t('common:core.dataset.test.input_title')}
-          </Box>
-          <Button
-            variant={'whitePrimary'}
-            leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
-            size={'sm'}
-            onClick={onOpenSelectMode}
-          >
-            {t('common:core.dataset.test.search_config')}
-          </Button>
-        </Flex>
+        <Box
+          display={'flex'}
+          flexDirection={'column'}
+          alignItems={'flex-start'}
+          gap={3}
+          alignSelf={'stretch'}
+        >
+          <Flex alignItems={'center'} alignSelf={'stretch'}>
+            <Box flex={1} fontWeight={500} color={'myGray.900'}>
+              {t('common:core.dataset.test.input_title')}
+            </Box>
+            <Button
+              variant={'whitePrimary'}
+              leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
+              size={'sm'}
+              fontWeight={500}
+              onClick={onOpenSelectMode}
+            >
+              {t('common:core.dataset.test.search_config')}
+            </Button>
+          </Flex>
 
-        <Box mx={4}>
           <Box
             border={'1px solid #E8EBF0'}
             p={3}
@@ -244,6 +263,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             display={'flex'}
             flexDirection={'column'}
             bg={'white'}
+            alignSelf={'stretch'}
+            position={'relative'}
           >
             {(queryImageRefs.length > 0 || uploadingImageCount > 0) && (
               <Flex mb={3} gap={2} flexWrap={'wrap'}>
@@ -346,12 +367,15 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             <MyTooltip
               label={canSearchImage ? '' : t('common:core.dataset.test.image_search_disabled_tip')}
             >
-              <Box mt={3} alignSelf={'flex-start'}>
-                <Button
-                  minW={'24px'}
+              <Box position={'absolute'} left={'12px'} bottom={'8px'}>
+                <Box
+                  as={'button'}
                   w={'24px'}
                   h={'24px'}
                   p={0}
+                  display={'flex'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
                   bg={'transparent'}
                   border={'none'}
                   boxShadow={'none'}
@@ -366,18 +390,36 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     opacity: 0.5,
                     cursor: 'not-allowed'
                   }}
-                  isDisabled={!canSearchImage}
+                  disabled={!canSearchImage}
                   onClick={onOpen}
                   aria-label={t('common:core.dataset.test.upload_image')}
                 >
-                  <MyIcon name={'image'} w={'24px'} h={'24px'} color={'#667085'} />
-                </Button>
+                  <Box
+                    as={'svg'}
+                    xmlns="http://www.w3.org/2000/svg"
+                    w={'20px'}
+                    h={'17.964px'}
+                    viewBox="0 0 20 18"
+                    fill="none"
+                    flexShrink={0}
+                  >
+                    <path
+                      d="M5.93647 7.21144C6.7649 7.21144 7.43647 6.53986 7.43647 5.71144C7.43647 4.88301 6.7649 4.21144 5.93647 4.21144C5.10804 4.21144 4.43647 4.88301 4.43647 5.71144C4.43647 6.53986 5.10804 7.21144 5.93647 7.21144Z"
+                      fill="#667085"
+                    />
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M0 5.76C0 3.74381 0 2.73572 0.392377 1.96563C0.737521 1.28825 1.28825 0.737521 1.96563 0.392377C2.73572 0 3.74381 0 5.76 0H14.24C16.2562 0 17.2643 0 18.0344 0.392377C18.7118 0.737521 19.2625 1.28825 19.6076 1.96563C20 2.73572 20 3.74381 20 5.76V12.2044C20 14.2206 20 15.2287 19.6076 15.9987C19.2625 16.6761 18.7118 17.2269 18.0344 17.572C17.2643 17.9644 16.2562 17.9644 14.24 17.9644H5.76C3.74381 17.9644 2.73572 17.9644 1.96563 17.572C1.28825 17.2269 0.737521 16.6761 0.392377 15.9987C0 15.2287 0 14.2206 0 12.2044V5.76ZM5.76 2H14.24C15.2811 2 15.9416 2.00156 16.4416 2.0424C16.9182 2.08135 17.0703 2.1458 17.1264 2.17439C17.4274 2.32779 17.6722 2.57256 17.8256 2.87362C17.8542 2.92972 17.9187 3.08177 17.9576 3.55839C17.9984 4.05836 18 4.7189 18 5.76V12.2044C18 12.2164 18 12.2284 18 12.2404L13.1493 7.38962C12.7587 6.9991 12.1256 6.9991 11.735 7.38962L3.23863 15.886C3.00661 15.8508 2.91456 15.8109 2.87362 15.79C2.57256 15.6366 2.32779 15.3918 2.17439 15.0908C2.1458 15.0347 2.08135 14.8826 2.0424 14.406C2.00156 13.906 2 13.2455 2 12.2044V5.76C2 4.7189 2.00156 4.05836 2.0424 3.55839C2.08135 3.08177 2.1458 2.92972 2.17439 2.87362C2.32779 2.57256 2.57256 2.32779 2.87362 2.17439C2.92972 2.1458 3.08177 2.08135 3.55839 2.0424C4.05836 2.00156 4.7189 2 5.76 2ZM12.4422 9.51094L5.98871 15.9644H14.24C15.2811 15.9644 15.9416 15.9628 16.4416 15.922C16.9182 15.883 17.0703 15.8186 17.1264 15.79C17.4274 15.6366 17.6722 15.3918 17.8256 15.0908C17.8379 15.0666 17.8569 15.0246 17.8776 14.9464L12.4422 9.51094Z"
+                      fill="#667085"
+                    />
+                  </Box>
+                </Box>
               </Box>
             </MyTooltip>
           </Box>
 
           <Button
-            mt={3}
             w={'100%'}
             bg={'#F0F1F6'}
             color={'#2B5FD9'}
@@ -399,7 +441,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             {t('common:core.dataset.test.Test')}
           </Button>
         </Box>
-        <Box mt={5} px={4} overflow={'overlay'} display={['none', 'block']}>
+        <Box overflow={'overlay'} display={['none', 'block']}>
           <TestHistories
             datasetId={datasetId}
             datasetTestItem={datasetTestItem}
@@ -500,9 +542,11 @@ const TestHistories = React.memo(function TestHistories({
   return (
     <>
       <Flex alignItems={'center'} color={'myGray.900'}>
-        <Box fontSize={'md'}>{t('common:core.dataset.test.test history')}</Box>
+        <Box fontSize={'md'} fontWeight={500}>
+          {t('common:core.dataset.test.test history')}
+        </Box>
       </Flex>
-      <Box mt={2}>
+      <Box mt={3} display={'flex'} flexDirection={'column'} gap={2}>
         {testHistories.map((item) => (
           <Flex
             key={item.id}
@@ -513,9 +557,6 @@ const TestHistories = React.memo(function TestHistories({
             borderColor={'borderColor.low'}
             borderWidth={'1px'}
             borderRadius={'md'}
-            _notLast={{
-              mb: 2
-            }}
             _hover={{
               borderColor: 'primary.300',
               boxShadow: '1',
@@ -660,8 +701,7 @@ const TestResults = React.memo(function TestResults({
         <EmptyTip text={t('common:core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
       ) : (
         <>
-          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
-            <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
+          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'} fontWeight={500}>
             {t('common:core.dataset.test.Test params')}
           </Flex>
           <Box mt={3}>
@@ -676,8 +716,7 @@ const TestResults = React.memo(function TestResults({
           </Box>
 
           <Flex mt={5} mb={3} alignItems={'center'}>
-            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
-              <MyIcon name={'common/resultLight'} w={'18px'} mr={2} />
+            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'} fontWeight={500}>
               {t('common:core.dataset.test.Test Result')}
             </Flex>
             <QuestionTip ml={1} label={t('common:core.dataset.test.test result tip')} />

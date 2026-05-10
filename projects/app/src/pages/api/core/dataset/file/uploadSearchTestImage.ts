@@ -16,6 +16,7 @@ import {
   uploadImage2S3Bucket
 } from '@fastgpt/service/common/s3/utils';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import {
   UploadSearchTestImageBodySchema,
   UploadSearchTestImageResponseSchema,
@@ -51,6 +52,14 @@ async function handler(req: ApiRequestProps): Promise<UploadSearchTestImageRespo
     });
 
     const planStatus = await getTeamPlanStatus({ teamId });
+    const maxUploadFileSize =
+      (planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize) * 1024 * 1024;
+    if (file.size > maxUploadFileSize) {
+      return Promise.reject(
+        new Error(`File too large. Maximum size allowed is ${formatFileSize(maxUploadFileSize)}.`)
+      );
+    }
+
     await authFrequencyLimit({
       eventId: `${userId}-uploadfile`,
       maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,

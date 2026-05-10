@@ -46,6 +46,7 @@ export const formatFileInput = ({
 }): {
   filesMap: Record<string, string>;
   allFilesMap: Record<string, { url: string; name: string; type: string }>;
+  queryImageUrls: string[];
   prompt: string;
 } => {
   const filesFromHistories = getHistoryFileLinks(histories);
@@ -54,6 +55,7 @@ export const formatFileInput = ({
     return {
       filesMap: {},
       allFilesMap: {},
+      queryImageUrls: [],
       prompt: ''
     };
   }
@@ -65,7 +67,7 @@ export const formatFileInput = ({
         if (typeof url !== 'string') return false;
 
         // 检查相对路径
-        const validPrefixList = ['/', 'http', 'ws'];
+        const validPrefixList = ['/', 'http', 'ws', 'data:', 'dataset/', 'chat/', 'temp/'];
         if (validPrefixList.some((prefix) => url.startsWith(prefix))) {
           return true;
         }
@@ -90,17 +92,25 @@ export const formatFileInput = ({
       })
       .filter(Boolean)
       .slice(0, maxFiles)
-      .map(parseUrlToFileType) as {
-      type: `${ChatFileTypeEnum}`;
-      name: string;
-      url: string;
-    }[];
+      .map(parseUrlToFileType)
+      .filter(
+        (
+          item
+        ): item is {
+          type: ChatFileTypeEnum;
+          name: string;
+          url: string;
+        } => !!item?.name && !!item.url
+      );
 
     return parseResult;
   };
 
   const historyParseResult = parseFn(filesFromHistories);
   const queryParseResult = parseFn(fileUrls);
+  const queryImageUrls = queryParseResult
+    .filter((file) => file.type === ChatFileTypeEnum.image)
+    .map((file) => file.url);
 
   // 去重：基于文件名去重，避免历史记录和当前请求中的文件重复（避免 plan agent ask 之后的文件二次传入）
   // 优先使用新的 URL（queryParseResult），因为预签名 URL 有过期时间，新的更不容易过期
@@ -175,6 +185,7 @@ ${
   return {
     filesMap,
     allFilesMap,
+    queryImageUrls,
     prompt
   };
 };

@@ -152,6 +152,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const {
       filesMap,
       allFilesMap,
+      queryImageUrls,
       prompt: fileInputPrompt
     } = formatFileInput({
       fileUrls: fileLinks,
@@ -477,6 +478,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
               steps: agentPlan.steps, // 传入所有步骤，而不仅仅是未执行的步骤
               step,
               filesMap,
+              queryImageUrls,
               capabilityToolCallHandler
             });
             const stepCallErrorText =
@@ -602,6 +604,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           getSubApp,
           completionTools: agentCompletionTools,
           filesMap,
+          queryImageUrls,
           capabilityToolCallHandler
         });
         nodeResponses.push(result.nodeResponse);

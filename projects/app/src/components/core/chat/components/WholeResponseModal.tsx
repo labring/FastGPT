@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, useDisclosure, HStack, Grid, Portal } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -19,6 +19,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
+import { postGetSearchTestImagePreviewUrls } from '@/web/core/dataset/api/file';
 
 const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'), {
   ssr: false
@@ -35,6 +36,182 @@ type sideTabItemType = {
   children: sideTabItemType[];
 };
 
+type QueryImageItemType = NonNullable<ChatHistoryItemResType['queryImages']>[number];
+
+const getDirectQueryImagePreviewUrl = (image: QueryImageItemType) => {
+  const url = image.url || image.key || '';
+  if (/^(https?:|data:|\/)/i.test(url)) return url;
+  return '';
+};
+
+const QueryImagePreview = React.memo(function QueryImagePreview({
+  image,
+  datasetId
+}: {
+  image: QueryImageItemType;
+  datasetId?: string;
+}) {
+  const { t } = useSafeTranslation();
+  const [previewUrl, setPreviewUrl] = useState(() => getDirectQueryImagePreviewUrl(image));
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [hasRefreshed, setHasRefreshed] = useState(false);
+
+  useEffect(() => {
+    setPreviewUrl(getDirectQueryImagePreviewUrl(image));
+    setLoadFailed(false);
+    setHasRefreshed(false);
+  }, [image]);
+
+  useEffect(() => {
+    if (!image.key || !datasetId || hasRefreshed || (previewUrl && !loadFailed)) return;
+
+    let canceled = false;
+    setHasRefreshed(true);
+
+    postGetSearchTestImagePreviewUrls({
+      datasetId,
+      keys: [image.key]
+    })
+      .then((res) => {
+        const nextPreviewUrl = res.find((item) => item.key === image.key)?.previewUrl;
+        if (!canceled && nextPreviewUrl) {
+          setPreviewUrl(nextPreviewUrl);
+          setLoadFailed(false);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      canceled = true;
+    };
+  }, [datasetId, hasRefreshed, image.key, loadFailed, previewUrl]);
+
+  if (previewUrl && !loadFailed) {
+    return (
+      <Box
+        as={'img'}
+        src={previewUrl}
+        alt={image.name || ''}
+        w={'80px'}
+        h={'80px'}
+        objectFit={'cover'}
+        borderRadius={'sm'}
+        onError={() => setLoadFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <Flex
+      w={'80px'}
+      h={'80px'}
+      flexDir={'column'}
+      alignItems={'center'}
+      justifyContent={'center'}
+      gap={1}
+      bg={'myGray.50'}
+      border={'1px dashed'}
+      borderColor={'myGray.300'}
+      borderRadius={'sm'}
+      color={'myGray.500'}
+      fontSize={'xs'}
+      lineHeight={'16px'}
+    >
+      <MyIcon name={'image'} w={'20px'} h={'20px'} color={'myGray.400'} />
+      <Box>{t('common:core.dataset.test.image_expired')}</Box>
+    </Flex>
+  );
+});
+
+const QueryWithImages = React.memo(function QueryWithImages({
+  query,
+  queryImages,
+  datasetId
+}: {
+  query?: string;
+  queryImages: QueryImageItemType[];
+  datasetId?: string;
+}) {
+  const { t } = useSafeTranslation();
+  const [hoveredImage, setHoveredImage] = useState<
+    | {
+        image: QueryImageItemType;
+        top: number;
+        left: number;
+      }
+    | undefined
+  >();
+
+  return (
+    <>
+      <Box
+        border={'1px solid'}
+        borderColor={'myGray.200'}
+        borderRadius={'6px'}
+        bg={'myGray.50'}
+        color={'myGray.900'}
+        minH={'32px'}
+        px={3}
+        py={2}
+      >
+        {!!query && (
+          <Box whiteSpace={'pre-wrap'} mb={queryImages.length > 0 ? 2 : 0}>
+            {query}
+          </Box>
+        )}
+        {queryImages.length > 0 && (
+          <Flex flexWrap={'wrap'} gap={2}>
+            {queryImages.map((image, index) => (
+              <Box
+                key={`${image.key || image.url || index}`}
+                px={2}
+                py={1}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                borderRadius={'md'}
+                bg={'white'}
+                color={'myGray.700'}
+                cursor={'default'}
+                lineHeight={'16px'}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setHoveredImage({
+                    image,
+                    top: rect.bottom + 8,
+                    left: rect.left
+                  });
+                }}
+                onMouseLeave={() => setHoveredImage(undefined)}
+              >
+                {t('common:core.dataset.test.image_token')}
+              </Box>
+            ))}
+          </Flex>
+        )}
+      </Box>
+      {!!hoveredImage && (
+        <Portal>
+          <Flex
+            position={'fixed'}
+            zIndex={'tooltip'}
+            top={`${hoveredImage.top}px`}
+            left={`${hoveredImage.left}px`}
+            p={3}
+            bg={'white'}
+            borderWidth={'1px'}
+            borderColor={'borderColor.base'}
+            borderRadius={'md'}
+            boxShadow={'2'}
+            pointerEvents={'none'}
+          >
+            <QueryImagePreview image={hoveredImage.image} datasetId={datasetId} />
+          </Flex>
+        </Portal>
+      )}
+    </>
+  );
+});
+
 /* Per response value */
 export const WholeResponseContent = ({
   activeModule,
@@ -50,6 +227,7 @@ export const WholeResponseContent = ({
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
+  const queryPreviewDatasetId = activeModule?.quoteList?.[0]?.datasetId;
 
   // Auto scroll to top
   const ContentRef = useRef<HTMLDivElement>(null);
@@ -285,7 +463,20 @@ export const WholeResponseContent = ({
           )}
         <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
 
-        <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+        {activeModule?.queryImages && activeModule.queryImages.length > 0 ? (
+          <Row
+            label={t('common:core.chat.response.module query')}
+            rawDom={
+              <QueryWithImages
+                query={activeModule?.query}
+                queryImages={activeModule.queryImages}
+                datasetId={queryPreviewDatasetId}
+              />
+            }
+          />
+        ) : (
+          <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
+        )}
         <Row
           label={t('common:core.chat.response.context total length')}
           value={activeModule?.contextTotalLen}

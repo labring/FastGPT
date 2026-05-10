@@ -110,3 +110,21 @@ export const parseUrlToFileType = (url: string): UserChatItemFileItemType | unde
     };
   }
 };
+
+const isObjectKeyUrl = (url: string) => /^(temp|chat|dataset)\//i.test(url);
+
+export const formatQueryImages = (queryImageUrls?: string[]) => {
+  const images = (queryImageUrls || [])
+    .map((url) => {
+      const fileInfo = parseUrlToFileType(url);
+      if (fileInfo?.type !== ChatFileTypeEnum.image) return;
+
+      return {
+        ...(isObjectKeyUrl(url) ? { key: url } : { url }),
+        name: fileInfo.name
+      };
+    })
+    .filter(Boolean) as { key?: string; url?: string; name?: string }[];
+
+  return images.length > 0 ? images : undefined;
+};

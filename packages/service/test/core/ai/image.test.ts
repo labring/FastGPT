@@ -1,5 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { normalizeImageToBase64 } from '@fastgpt/service/core/ai/image';
+import {
+  isValidImageEmbeddingSource,
+  normalizeImageInputsToBase64,
+  normalizeImageToBase64
+} from '@fastgpt/service/core/ai/image';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 
@@ -61,5 +65,75 @@ describe('normalizeImageToBase64', () => {
     mockGetImageBase64.mockRejectedValueOnce(error);
 
     await expect(normalizeImageToBase64('https://example.com/broken.jpg')).rejects.toBe(error);
+  });
+});
+
+describe('isValidImageEmbeddingSource', () => {
+  it.each([
+    'data:image/png;base64,exists',
+    'dataset/dataset-id/image.png',
+    'temp/team-id/image.png',
+    'chat/app/user/chat/image.png',
+    'https://example.com/image.jpg',
+    'http://example.com/image.jpg'
+  ])('should accept supported image source %s', (url) => {
+    expect(isValidImageEmbeddingSource(url)).toBe(true);
+  });
+
+  it.each([
+    '',
+    './image.png',
+    'images/image.png',
+    '/Users/test/image.png',
+    'file:///tmp/image.png'
+  ])('should reject unsupported image source %s', (url) => {
+    expect(isValidImageEmbeddingSource(url)).toBe(false);
+  });
+});
+
+describe('normalizeImageInputsToBase64', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetS3DatasetSource.mockReturnValue({
+      getDatasetBase64Image: mockGetDatasetBase64Image
+    } as any);
+    mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,s3image');
+  });
+
+  it('should skip unsupported or failed image sources', async () => {
+    mockGetImageBase64.mockImplementation(async (url) => {
+      if (url === 'https://example.com/broken.jpg') {
+        throw new Error('download failed');
+      }
+
+      return {
+        completeBase64: `data:image/jpeg;base64,${url}`,
+        base64: String(url)
+      };
+    });
+
+    const result = await normalizeImageInputsToBase64({
+      items: [
+        'https://example.com/ok.jpg',
+        './local.png',
+        'https://example.com/broken.jpg',
+        'dataset/dataset-id/image.png'
+      ],
+      getImageUrl: (item) => item
+    });
+
+    expect(result).toEqual([
+      {
+        item: 'https://example.com/ok.jpg',
+        imageUrl: 'data:image/jpeg;base64,https://example.com/ok.jpg'
+      },
+      {
+        item: 'dataset/dataset-id/image.png',
+        imageUrl: 'data:image/png;base64,s3image'
+      }
+    ]);
+    expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/ok.jpg');
+    expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/broken.jpg');
+    expect(mockGetImageBase64).not.toHaveBeenCalledWith('./local.png');
   });
 });

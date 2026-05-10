@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
+import { Box, Flex, Button, Input, HStack, IconButton } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -66,6 +66,11 @@ const CreateModal = ({
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
   const vlmModel = watch('vlmModel');
+  const showApiDatasetForm =
+    type === DatasetTypeEnum.apiDataset ||
+    type === DatasetTypeEnum.feishu ||
+    type === DatasetTypeEnum.yuque ||
+    type === DatasetTypeEnum.dingtalk;
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -88,183 +93,226 @@ const CreateModal = ({
 
   return (
     <MyModal
-      title={
-        <Flex alignItems={'center'} ml={-3}>
-          <Avatar
-            w={'20px'}
-            h={'20px'}
-            borderRadius={'xs'}
-            src={DatasetTypeMap[type].avatar}
-            pr={'10px'}
-          />
-          {t('common:core.dataset.Create dataset', { name: t(DatasetTypeMap[type].label) })}
-        </Flex>
-      }
       isOpen
       onClose={onClose}
       isCentered={!isPc}
-      w={'490px'}
+      showCloseButton={false}
+      w={'560px'}
+      maxW={'90vw'}
+      p={'32px'}
+      borderRadius={'10px'}
+      bg={'white'}
+      boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.10)'}
     >
-      <ModalBody py={6} px={9}>
-        <Box>
-          <Flex justify={'space-between'}>
-            <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
-              {t('common:input_name')}
-            </Box>
-            {DatasetTypeMap[type]?.courseUrl && (
-              <Flex
-                as={'span'}
-                alignItems={'center'}
-                color={'primary.600'}
-                fontSize={'sm'}
-                cursor={'pointer'}
-                onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
-              >
-                <MyIcon name={'book'} w={4} mr={0.5} />
-                {t('common:Instructions')}
-              </Flex>
-            )}
-          </Flex>
-          <Flex mt={'12px'} alignItems={'center'}>
-            <MyTooltip label={t('common:click_select_avatar')}>
-              <Avatar
-                flexShrink={0}
-                src={avatar}
-                w={['28px', '32px']}
-                h={['28px', '32px']}
-                cursor={'pointer'}
-                borderRadius={'md'}
-                onClick={handleAvatarSelectorOpen}
+      <Flex
+        flexDirection={'column'}
+        alignItems={'flex-start'}
+        minH={showApiDatasetForm ? undefined : '338px'}
+      >
+        <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Box
+            color={'#000'}
+            fontFamily={'"PingFang SC"'}
+            fontSize={'20px'}
+            fontStyle={'normal'}
+            fontWeight={500}
+            lineHeight={'26px'}
+            letterSpacing={'0.15px'}
+          >
+            {t('dataset:create_dataset_title', { name: t(DatasetTypeMap[type].label) })}
+          </Box>
+          <IconButton
+            aria-label={t('common:Close')}
+            icon={<MyIcon name={'common/closeLight'} w={'24px'} h={'24px'} />}
+            variant={'unstyled'}
+            minW={'24px'}
+            w={'24px'}
+            h={'24px'}
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'center'}
+            onClick={onClose}
+          />
+        </Flex>
+
+        <Flex mt={6} w={'100%'} flexDirection={'column'} gap={4}>
+          <Box w={'100%'}>
+            <Flex justify={'space-between'}>
+              <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
+                {t('common:Name')}
+              </Box>
+              {DatasetTypeMap[type]?.courseUrl && (
+                <Flex
+                  as={'span'}
+                  alignItems={'center'}
+                  color={'primary.600'}
+                  fontSize={'sm'}
+                  cursor={'pointer'}
+                  onClick={() => window.open(getDocPath(DatasetTypeMap[type].courseUrl!), '_blank')}
+                >
+                  <MyIcon name={'book'} w={4} mr={0.5} />
+                  {t('common:Instructions')}
+                </Flex>
+              )}
+            </Flex>
+            <Flex mt={'12px'} alignItems={'center'}>
+              <MyTooltip label={t('common:click_select_avatar')}>
+                <Avatar
+                  flexShrink={0}
+                  src={avatar}
+                  w={['28px', '32px']}
+                  h={['28px', '32px']}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  onClick={handleAvatarSelectorOpen}
+                />
+              </MyTooltip>
+              <Input
+                ml={4}
+                flex={1}
+                autoFocus
+                bg={'myWhite.600'}
+                fontSize={'14px'}
+                placeholder={t('dataset:dataset_name_placeholder')}
+                maxLength={30}
+                {...register('name', {
+                  required: true
+                })}
               />
-            </MyTooltip>
-            <Input
-              ml={3}
-              flex={1}
-              autoFocus
-              bg={'myWhite.600'}
-              placeholder={t('common:Name')}
-              maxLength={30}
-              {...register('name', {
-                required: true
-              })}
-            />
+            </Flex>
+          </Box>
+
+          <Flex
+            w={'100%'}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              alignItems={'center'}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('common:core.ai.model.Vector Model')}</Box>
+              <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={vectorModel}
+                list={filterNotHiddenVectorModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  setValue('vectorModel' as const, e);
+                }}
+              />
+            </Box>
           </Flex>
-        </Box>
 
-        <Flex
-          mt={6}
-          alignItems={['flex-start', 'center']}
-          justify={'space-between'}
-          flexDir={['column', 'row']}
-        >
-          <HStack
-            spacing={1}
-            alignItems={'center'}
-            flex={['', '0 0 110px']}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            fontWeight={500}
-            pb={['12px', '0']}
+          <Flex
+            w={'100%'}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
           >
-            <Box>{t('common:core.ai.model.Vector Model')}</Box>
-            <QuestionTip label={t('common:core.dataset.embedding model tip')} />
-          </HStack>
-          <Box w={['100%', '300px']}>
-            <AIModelSelector
-              w={['100%', '300px']}
-              value={vectorModel}
-              list={filterNotHiddenVectorModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                setValue('vectorModel' as const, e);
-              }}
-            />
-          </Box>
+            <HStack
+              spacing={1}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+              <QuestionTip label={t('dataset:file_model_function_tip')} />
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={agentModel}
+                list={llmModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  setValue('agentModel', e);
+                }}
+              />
+            </Box>
+          </Flex>
+
+          <Flex
+            w={'100%'}
+            alignItems={['flex-start', 'center']}
+            justify={'space-between'}
+            flexDir={['column', 'row']}
+          >
+            <HStack
+              spacing={1}
+              alignItems={'center'}
+              flex={['', '0 0 110px']}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={500}
+              pb={['12px', '0']}
+            >
+              <Box>{t('dataset:vllm_model')}</Box>
+              <QuestionTip label={t('dataset:vllm_model_tip')} />
+            </HStack>
+            <Box w={['100%', '300px']}>
+              <AIModelSelector
+                w={['100%', '300px']}
+                value={vlmModel}
+                list={vllmModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onChange={(e) => {
+                  setValue('vlmModel', e);
+                }}
+              />
+            </Box>
+          </Flex>
         </Flex>
 
-        <Flex
-          mt={6}
-          alignItems={['flex-start', 'center']}
-          justify={'space-between'}
-          flexDir={['column', 'row']}
-        >
-          <HStack
-            spacing={1}
-            flex={['', '0 0 110px']}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            fontWeight={500}
-            pb={['12px', '0']}
+        {showApiDatasetForm && (
+          <Box
+            mt={4}
+            w={'100%'}
+            sx={{
+              '& > *:first-of-type': {
+                mt: '0 !important'
+              }
+            }}
           >
-            <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
-            <QuestionTip label={t('dataset:file_model_function_tip')} />
-          </HStack>
-          <Box w={['100%', '300px']}>
-            <AIModelSelector
-              w={['100%', '300px']}
-              value={agentModel}
-              list={llmModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                setValue('agentModel', e);
-              }}
-            />
+            {/* @ts-ignore */}
+            <ApiDatasetForm type={type} form={form} controlWidth={['100%', '300px']} />
           </Box>
+        )}
+
+        <Flex mt={6} w={'100%'} justifyContent={'flex-end'} gap={3}>
+          <Button variant={'whiteBase'} fontSize={'12px'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button
+            fontSize={'12px'}
+            isLoading={creating}
+            onClick={handleSubmit((data) => onclickCreate(data))}
+          >
+            {t('common:Create')}
+          </Button>
         </Flex>
 
-        <Flex
-          mt={6}
-          alignItems={['flex-start', 'center']}
-          justify={'space-between'}
-          flexDir={['column', 'row']}
-        >
-          <HStack
-            spacing={1}
-            alignItems={'center'}
-            flex={['', '0 0 110px']}
-            fontSize={'sm'}
-            color={'myGray.900'}
-            fontWeight={500}
-            pb={['12px', '0']}
-          >
-            <Box>{t('dataset:vllm_model')}</Box>
-            <QuestionTip label={t('dataset:vllm_model_tip')} />
-          </HStack>
-          <Box w={['100%', '300px']}>
-            <AIModelSelector
-              w={['100%', '300px']}
-              value={vlmModel}
-              list={vllmModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onChange={(e) => {
-                setValue('vlmModel', e);
-              }}
-            />
-          </Box>
-        </Flex>
+        <ComplianceTip pb={0} pt={0} px={0} type={'dataset'} />
 
-        {/* @ts-ignore */}
-        <ApiDatasetForm type={type} form={form} />
-      </ModalBody>
-
-      <ModalFooter px={9}>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-        <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common:comfirn_create')}
-        </Button>
-      </ModalFooter>
-
-      <ComplianceTip pb={6} pt={0} px={9} type={'dataset'} />
-
-      <AvatarUploader />
+        <AvatarUploader />
+      </Flex>
     </MyModal>
   );
 };

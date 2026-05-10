@@ -36,6 +36,8 @@
   "common.error.unKnow": "Unknown error",
   "common_dataset": "General Dataset",
   "common_dataset_desc": "Building a knowledge base by importing files, web page links, or manual entry",
+  "create_dataset_title": "Create {{name}}",
+  "dataset_name_placeholder": "Give the knowledge base a name",
   "confirm_delete_collection": "Confirm to delete {{num }} files?",
   "confirm_import_images": "Total {{num}} | Confirm create",
   "confirm_to_rebuild_embedding_tip": "This will re-vectorize all data in the knowledge base. It may take a while depending on the data volume. Proceed?",

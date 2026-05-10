@@ -923,7 +923,7 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       crawlee:
-        specifier: ^3.13.1
+        specifier: ^3.16.0
         version: 3.16.0(@types/node@20.17.24)(bufferutil@4.1.0)(canvas@3.2.3)(puppeteer@23.11.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       date-fns:
         specifier: 'catalog:'
@@ -1103,9 +1103,9 @@ importers:
 
   pro/sso:
     dependencies:
-      '@fastgpt-sdk/logger':
+      '@fastgpt-sdk/otel':
         specifier: workspace:*
-        version: link:../../sdk/logger
+        version: link:../../sdk/otel
       '@node-saml/node-saml':
         specifier: ^5.1.0
         version: 5.1.0
