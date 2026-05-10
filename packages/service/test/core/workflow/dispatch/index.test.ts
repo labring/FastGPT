@@ -40,30 +40,88 @@ describe('createClientAbortTracker', () => {
     tracker.cleanup();
   });
 
-  it('响应未结束时 close，应判定为客户端 abort', () => {
+  it('响应未结束但只有 close，不应判定为客户端 abort', () => {
     const req = mockReq();
     const res = mockRes();
     const tracker = createClientAbortTracker({ req, res });
 
     res.emit('close');
 
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('响应未结束且连接已断开时 close，应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    req.socket.destroyed = true;
+    res.emit('close');
+
     expect(tracker.isClientAborted()).toBe(true);
     tracker.cleanup();
   });
 
-  it('socket 在响应结束前关闭，应判定为客户端 abort', () => {
+  it('响应 writableAborted 时 close，应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.writableAborted = true;
+    res.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(true);
+    tracker.cleanup();
+  });
+
+  it('socket 单独关闭不应判定为当前请求 abort', () => {
     const req = mockReq();
     const res = mockRes();
     const tracker = createClientAbortTracker({ req, res });
 
     req.socket.emit('close');
 
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('请求 aborted 时应判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    req.emit('aborted');
+
     expect(tracker.isClientAborted()).toBe(true);
     tracker.cleanup();
   });
 
-  it('创建 tracker 前响应已经异常关闭，应通过快照判定为客户端 abort', () => {
+  it('响应 finish 后 close，不应受 closed 状态误判', () => {
     const req = mockReq();
+    const res = mockRes();
+    const tracker = createClientAbortTracker({ req, res });
+
+    res.emit('finish');
+    res.closed = true;
+    res.emit('close');
+
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('创建 tracker 前只有 closed，不应通过快照判定为客户端 abort', () => {
+    const req = mockReq();
+    const res = mockRes({ closed: true });
+    const tracker = createClientAbortTracker({ req, res });
+
+    expect(tracker.isClientAborted()).toBe(false);
+    tracker.cleanup();
+  });
+
+  it('创建 tracker 前连接已经断开，应通过快照判定为客户端 abort', () => {
+    const req = mockReq();
+    req.socket.destroyed = true;
     const res = mockRes({ closed: true });
     const tracker = createClientAbortTracker({ req, res });
 
