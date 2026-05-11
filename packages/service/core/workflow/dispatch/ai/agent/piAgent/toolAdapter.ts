@@ -12,12 +12,12 @@ type AgentTool = import('@mariozechner/pi-agent-core').AgentTool<any>;
 export async function buildAgentTools({
   ctx,
   assistantResponses,
-  nodeResponses,
+  appendChildNodeResponse,
   usagePush
 }: {
   ctx: ToolDispatchContext;
   assistantResponses: AIChatItemValueItemType[];
-  nodeResponses: ChatHistoryItemResType[];
+  appendChildNodeResponse: (nodeResponse: ChatHistoryItemResType) => void;
   usagePush: DispatchAgentModuleProps['usagePush'];
 }): Promise<AgentTool[]> {
   const { Type } = await import('@mariozechner/pi-ai');
@@ -78,40 +78,38 @@ export async function buildAgentTools({
   for (const tool of ctx.completionTools) {
     const toolId = tool.function.name;
 
-    const execute = async (callId: string, args: Record<string, any>, _signal?: AbortSignal) => {
+    const execute = async (callId: string, args: Record<string, any>) => {
       const argStr = JSON.stringify(args);
 
       const {
         response,
         usages = [],
-        nodeResponse
+        nodeResponse,
+        capabilityAssistantResponses = []
       } = await executeTool({
         callId,
         toolId,
         args: argStr
       });
 
-      {
-        if (nodeResponse) nodeResponses.push(nodeResponse);
-        if (usages.length > 0) usagePush(usages);
-        appendAssistantToolResponse(callId, response);
-
-        ctx.streamResponseFn?.({
-          id: callId,
-          event: SseResponseEventEnum.toolResponse,
-          data: { tool: { response } }
-        });
+      if (nodeResponse) appendChildNodeResponse(nodeResponse);
+      if (usages.length > 0) usagePush(usages);
+      if (capabilityAssistantResponses.length > 0) {
+        assistantResponses.push(...capabilityAssistantResponses);
       }
+      appendAssistantToolResponse(callId, response);
+
+      ctx.streamResponseFn?.({
+        id: callId,
+        event: SseResponseEventEnum.toolResponse,
+        data: { tool: { response } }
+      });
 
       return { content: [{ type: 'text' as const, text: response }], details: {} };
     };
 
-    // Wrap execute to also emit SSE toolCall event before execution
-    const wrappedExecute = async (
-      callId: string,
-      args: Record<string, any>,
-      signal?: AbortSignal
-    ) => {
+    // Wrap execute to also emit SSE toolCall event before execution.
+    const wrappedExecute = async (callId: string, args: Record<string, any>) => {
       const subAppInfo = ctx.getSubAppInfo(toolId);
       const assistantTool: ToolModuleResponseItemType = {
         id: callId,
@@ -129,14 +127,13 @@ export async function buildAgentTools({
           tool: assistantTool
         }
       });
-      return execute(callId, args, signal);
+      return execute(callId, args);
     };
 
     tools.push({
       name: toolId,
       label: tool.function.name,
       description: tool.function.description || '',
-      // Convert JSON Schema to TypeBox using Type.Unsafe
       parameters: Type.Unsafe<any>((tool.function.parameters as Record<string, unknown>) ?? {}),
       execute: wrappedExecute
     });

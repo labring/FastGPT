@@ -19,7 +19,6 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 /**
@@ -375,15 +374,21 @@ export const getExecuteTool = ({
       }
     })();
 
-    const formatNodeResponse = nodeResponse
-      ? {
-          ...nodeResponse,
-          nodeId: callId,
-          id: callId,
-          runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-          totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
-        }
-      : undefined;
+    const formatNodeResponse = (() => {
+      if (!nodeResponse) return undefined;
+
+      const subInfo = getSubAppInfo(toolId);
+      return {
+        ...nodeResponse,
+        moduleType: nodeResponse.moduleType || FlowNodeTypeEnum.tool,
+        moduleName: nodeResponse.moduleName || subInfo.name || toolId,
+        moduleLogo: nodeResponse.moduleLogo || subInfo.avatar,
+        nodeId: callId,
+        id: callId,
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0)
+      };
+    })();
 
     return {
       response,

@@ -20,7 +20,7 @@ import {
 import { getLLMSupportParams, removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getAIApi } from '../config';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import { customNanoid, getNanoid } from '@fastgpt/global/common/string/tools';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { parsePromptToolCall, promptToolCallMessageRewrite } from './promptCall';
 import { getLLMModel } from '../model';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -31,12 +31,8 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { saveLLMRequestRecord } from '../record/controller';
+import { createLLMRequestId, saveLLMRequestRecord } from '../record/controller';
 import type { ToolCallEventType } from './toolCall/type';
-
-const getRequestId = () => {
-  return customNanoid('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-', 16);
-};
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
 
@@ -83,10 +79,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   args: CreateLLMResponseProps<T>
 ): Promise<LLMResponse> => {
   // 生成唯一的请求追踪 ID
-  const requestId = getRequestId();
+  const requestId = createLLMRequestId();
 
   const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
-  const { messages, useVision, requestOrigin, tools, toolCallMode } = body;
+  const { messages, useVision, tools, toolCallMode } = body;
   const model = getLLMModel(body.model);
 
   // Messages process
@@ -114,7 +110,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   let accumulatedReasoningText = '';
   let accumulatedToolCalls: ChatCompletionMessageToolCall[] | undefined;
   let currentFinishReason: CompletionFinishReason = 'stop';
-  let accumulatedUsage = {
+  const accumulatedUsage = {
     prompt_tokens: 0,
     completion_tokens: 0,
     total_tokens: 0
@@ -157,32 +153,38 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         isStreamResponse = currentIsStreamResponse;
       }
 
-      let { answerText, reasoningText, toolCalls, finish_reason, usage, error } =
-        await (async () => {
-          if (currentIsStreamResponse) {
-            return createStreamResponse({
-              response,
-              body,
-              isAborted: args.isAborted,
-              onStreaming: args.onStreaming,
-              onReasoning: args.onReasoning,
-              onToolCall: args.onToolCall,
-              onToolParam: args.onToolParam
-            });
-          } else {
-            return createCompleteResponse({
-              response,
-              body,
-              onStreaming: args.onStreaming,
-              onReasoning: args.onReasoning,
-              onToolCall: args.onToolCall
-            });
-          }
-        })();
+      const {
+        answerText,
+        reasoningText,
+        toolCalls: rawToolCalls,
+        finish_reason,
+        usage,
+        error
+      } = await (async () => {
+        if (currentIsStreamResponse) {
+          return createStreamResponse({
+            response,
+            body,
+            isAborted: args.isAborted,
+            onStreaming: args.onStreaming,
+            onReasoning: args.onReasoning,
+            onToolCall: args.onToolCall,
+            onToolParam: args.onToolParam
+          });
+        } else {
+          return createCompleteResponse({
+            response,
+            body,
+            onStreaming: args.onStreaming,
+            onReasoning: args.onReasoning,
+            onToolCall: args.onToolCall
+          });
+        }
+      })();
 
       // Format toolCalls
       // 1. Auto complete arguments, avoid model not support "" arguments
-      toolCalls = toolCalls?.map((tool) => ({
+      const toolCalls = rawToolCalls?.map((tool) => ({
         ...tool,
         function: {
           ...tool.function,
@@ -244,7 +246,14 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     }
 
     // Use accumulated results
-    let { answerText, reasoningText, toolCalls, finish_reason, usage, error } = {
+    const {
+      answerText,
+      reasoningText,
+      toolCalls,
+      finish_reason: rawFinishReason,
+      usage,
+      error
+    } = {
       answerText: accumulatedAnswerText,
       reasoningText: accumulatedReasoningText,
       toolCalls: accumulatedToolCalls,
@@ -252,6 +261,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       usage: accumulatedUsage,
       error: currentError
     };
+    const finish_reason = error ? 'error' : rawFinishReason;
 
     const assistantMessage: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
@@ -288,12 +298,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       }
     });
 
-    if (error) {
-      finish_reason = 'error';
-
-      if (throwError) {
-        throw error;
-      }
+    if (error && throwError) {
+      throw error;
     }
 
     const getEmptyResponseTip = () => {
@@ -714,20 +720,16 @@ type LLMRequestBodyType<T> = Omit<
   useVision?: boolean;
   requestOrigin?: string;
 };
-const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
-  retainDatasetCite,
-  useVision,
-  requestOrigin,
-
-  tools,
-  tool_choice,
-  parallel_tool_calls,
-  toolCallMode,
-  ...body
-}: LLMRequestBodyType<T>): Promise<{
+const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>(
+  input: LLMRequestBodyType<T>
+): Promise<{
   requestBody: InferCompletionsBody<T>;
   modelData: LLMModelItemType;
 }> => {
+  const { tools, tool_choice, parallel_tool_calls, toolCallMode, ...body } = input;
+  delete body.retainDatasetCite;
+  delete body.useVision;
+  delete body.requestOrigin;
   const modelData = getLLMModel(body.model);
   if (!modelData) {
     return {
@@ -744,7 +746,7 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
           type: 'json_schema',
           json_schema: json5.parse(body.response_format?.json_schema as unknown as string)
         };
-      } catch (error) {
+      } catch {
         throw new Error('Json schema error');
       }
     }
@@ -786,7 +788,7 @@ const llmCompletionsBodyFormat = async <T extends ChatCompletionCreateParams>({
 
   // Filter undefined/null value
   requestBody = Object.fromEntries(
-    Object.entries(requestBody).filter(([_, value]) => value !== null && value !== undefined)
+    Object.entries(requestBody).filter(([, value]) => value !== null && value !== undefined)
   ) as T;
 
   const supportParams = getLLMSupportParams(modelData);

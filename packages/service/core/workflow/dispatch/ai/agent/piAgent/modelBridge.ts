@@ -1,16 +1,22 @@
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getLLMModel } from '../../../../../ai/model';
 import { openaiBaseUrl, openaiBaseKey } from '../../../../../ai/config';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
-export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model {
+const normalizeBaseUrl = (url?: string) => (url ? url.replace(/\/chat\/completions$/, '') : '');
+
+export function buildPiModel(
+  modelNameOrId?: string,
+  useVision?: boolean,
+  userKey?: OpenaiAccountType
+): Model {
   const cfg = getLLMModel(modelNameOrId);
   // requestUrl is the full endpoint (e.g. https://api.deepseek.com/chat/completions).
   // pi-ai's openai-completions provider appends /chat/completions automatically,
   // so we strip it to get baseUrl.
-  const rawUrl = cfg?.requestUrl ?? '';
-  const baseUrl = rawUrl ? rawUrl.replace(/\/chat\/completions$/, '') : openaiBaseUrl;
-  const apiKey = cfg?.requestAuth || openaiBaseKey;
+  const baseUrl = normalizeBaseUrl(userKey?.baseUrl || cfg?.requestUrl) || openaiBaseUrl;
+  const apiKey = userKey?.key || cfg?.requestAuth || openaiBaseKey;
 
   return {
     id: cfg?.model ?? 'gpt-4o',
@@ -35,7 +41,7 @@ export function buildPiModel(modelNameOrId?: string, useVision?: boolean): Model
   };
 }
 
-export function getModelApiKey(modelNameOrId?: string): string {
+export function getModelApiKey(modelNameOrId?: string, userKey?: OpenaiAccountType): string {
   const cfg = getLLMModel(modelNameOrId);
-  return cfg?.requestAuth || openaiBaseKey || '';
+  return userKey?.key || cfg?.requestAuth || openaiBaseKey || '';
 }
