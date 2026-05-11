@@ -39,7 +39,33 @@ const withWrite = permission | WritePermissionVal;
 
 ---
 
-## 2. 角色值 (Role Value) - 权限映射
+## 2. 自定义权限规则
+
+`CommonPerList` 定义了基础权限位，其中低三位具有固定语义：
+
+| 位 | 权限 | 值 |
+|----|------|-----|
+| 第 1 位 | manage | 0b001 |
+| 第 2 位 | write | 0b010 |
+| 第 3 位 | read | 0b100 |
+
+**规则：自定义权限只能增加高位的位值，不得修改低三位。**
+
+原因：低三位是 `CommonRolePerMap` 角色继承体系的基础，修改会导致角色映射错乱。
+
+### 正确示例
+
+```typescript
+// packages/global/support/permission/app/constant.ts
+export const AppPerList = {
+  ...CommonPerList,
+  readChatLog: 0b1000  // 第 4 位，正确：使用高位
+};
+```
+
+---
+
+## 3. 角色值 (Role Value) - 权限映射
 
 **关键区分**：数据库中 `permission` 字段存储的是**角色值**，不是展开后的权限值。
 
@@ -64,7 +90,7 @@ read (0b100)
 
 ---
 
-## 3. 协作者类型
+## 4. 协作者类型
 
 权限可以分配给三种实体（三选一）：
 
@@ -93,7 +119,7 @@ tmbId (个人权限)
 
 ---
 
-## 4. ResourcePermission Schema
+## 5. ResourcePermission Schema
 
 ```typescript
 // packages/service/support/permission/schema.ts
@@ -122,7 +148,7 @@ const ResourcePermissionSchema = new Schema({
 
 ---
 
-## 5. 资源 Schema 权限相关字段
+## 6. 资源 Schema 权限相关字段
 
 ```typescript
 const ResourceSchema = new Schema({
