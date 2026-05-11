@@ -144,9 +144,12 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         description: tool.intro,
         icon: tool.avatar,
         author: tool.author,
-        tags: tool.tags?.map((tagId) =>
-          parseI18nString(tags.find((tag) => tag.tagId === tagId)?.tagName || '', i18n.language)
-        ),
+        tags: tool.tags
+          ?.map((tagId) => {
+            const matched = tags.find((tag) => tag.tagId === tagId);
+            return matched ? parseI18nString(matched.tagName, i18n.language) : null;
+          })
+          .filter(Boolean) as string[],
         status: tool.status,
         installed: tool.installed,
         associatedPluginId: tool.associatedPluginId

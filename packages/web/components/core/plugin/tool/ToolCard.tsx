@@ -222,26 +222,29 @@ const ToolCard = ({
         </Box>
       </Box>
       <Flex gap={1} overflow={'hidden'} ref={tagsContainerRef}>
-        {item.tags?.slice(0, visibleTagsCount).map((tag) => {
-          return (
-            <Box
-              key={tag}
-              px={2}
-              py={1}
-              border={'1px solid'}
-              borderRadius={'6px'}
-              borderColor={'myGray.200'}
-              fontSize={'11px'}
-              fontWeight={'medium'}
-              color={'myGray.700'}
-              flexShrink={0}
-              data-tag-item
-            >
-              {tag}
-            </Box>
-          );
-        })}
-        {item.tags && item.tags.length > visibleTagsCount && (
+        {item.tags
+          ?.filter((v) => v)
+          .slice(0, visibleTagsCount)
+          .map((tag) => {
+            return (
+              <Box
+                key={tag}
+                px={2}
+                py={1}
+                border={'1px solid'}
+                borderRadius={'6px'}
+                borderColor={'myGray.200'}
+                fontSize={'11px'}
+                fontWeight={'medium'}
+                color={'myGray.700'}
+                flexShrink={0}
+                data-tag-item
+              >
+                {tag}
+              </Box>
+            );
+          })}
+        {(item.tags?.filter((v) => v).length ?? 0) > visibleTagsCount && (
           <Box
             px={2}
             py={1}
@@ -253,7 +256,7 @@ const ToolCard = ({
             color={'myGray.700'}
             flexShrink={0}
           >
-            +{item.tags.length - visibleTagsCount}
+            +{(item.tags?.filter((v) => v).length ?? 0) - visibleTagsCount}
           </Box>
         )}
       </Flex>
