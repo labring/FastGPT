@@ -164,7 +164,10 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
 
   const generatePresignedGetUrl = vi.fn(
     async (p: PresignedGetUrlParams): Promise<PresignedGetUrlResult> => {
-      const getUrl = `${baseUrl}/get/${encodeURIComponent(bucketName)}/${encodeURIComponent(p.key)}`;
+      const query = p.responseContentType
+        ? `?response-content-type=${encodeURIComponent(p.responseContentType)}`
+        : '';
+      const getUrl = `${baseUrl}/get/${encodeURIComponent(bucketName)}/${encodeURIComponent(p.key)}${query}`;
       return { bucket: bucketName, key: p.key, url: getUrl };
     }
   );

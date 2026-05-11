@@ -232,7 +232,7 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, mode } = parsed;
+    const { key, expiredHours, mode, responseContentType } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     if ((mode || storageDownloadMode) === 'proxy') {
@@ -250,7 +250,8 @@ export class S3BaseBucket {
 
     const result = await this.externalClient.generatePresignedGetUrl({
       key,
-      expiredSeconds: expires
+      expiredSeconds: expires,
+      ...(responseContentType ? { responseContentType } : {})
     });
 
     return {
@@ -262,10 +263,14 @@ export class S3BaseBucket {
   async createPreviewUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours } = parsed;
+    const { key, expiredHours, responseContentType } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    return await this.client.generatePresignedGetUrl({ key, expiredSeconds: expires });
+    return await this.client.generatePresignedGetUrl({
+      key,
+      expiredSeconds: expires,
+      ...(responseContentType ? { responseContentType } : {})
+    });
   }
 
   async uploadFileByBody(params: UploadFileByBufferParams) {

@@ -72,4 +72,29 @@ describe('s3 storage constants', () => {
       'https://cdn.example.com/get/fastgpt-private/chat%2Fapp%2Fuser%2Fchat%2Ffile.png'
     );
   });
+
+  it('passes response content type overrides into external presigned URLs', async () => {
+    const { S3BaseBucket } = await vi.importActual<
+      typeof import('@fastgpt/service/common/s3/buckets/base')
+    >('@fastgpt/service/common/s3/buckets/base');
+    const storage = createVitestStorageMock({
+      vi,
+      bucketName: 'fastgpt-private',
+      baseUrl: 'https://s3.example.com'
+    });
+    const bucket = new S3BaseBucket(storage, undefined);
+
+    const result = await bucket.createExternalUrl({
+      key: 'dataset/team/aaa.md',
+      mode: 'presigned',
+      responseContentType: 'text/markdown; charset=utf-8'
+    });
+
+    expect(storage.generatePresignedGetUrl).toHaveBeenCalledWith({
+      key: 'dataset/team/aaa.md',
+      expiredSeconds: 1800,
+      responseContentType: 'text/markdown; charset=utf-8'
+    });
+    expect(result.url).toContain('response-content-type=text%2Fmarkdown%3B%20charset%3Dutf-8');
+  });
 });

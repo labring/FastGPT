@@ -65,7 +65,8 @@ export type CreatePostPresignedUrlResult = z.infer<typeof CreatePostPresignedUrl
 export const CreateGetPresignedUrlParamsSchema = z.object({
   key: z.string().nonempty(),
   expiredHours: z.number().positive().optional(),
-  mode: DownloadModeSchema.optional()
+  mode: DownloadModeSchema.optional(),
+  responseContentType: z.string().nonempty().optional()
 });
 export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
 
