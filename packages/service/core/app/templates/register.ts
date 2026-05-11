@@ -5,12 +5,12 @@ import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { addMinutes } from 'date-fns';
 
-const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
-  return (await pluginClient.listWorkflows()) as AppTemplateSchemaType[];
+const getFileTemplates = async (locale?: string): Promise<AppTemplateSchemaType[]> => {
+  return (await pluginClient.listWorkflows(locale)) as AppTemplateSchemaType[];
 };
 
-const getAppTemplates = async () => {
-  const originCommunityTemplates = await getFileTemplates();
+const getAppTemplates = async (locale?: string) => {
+  const originCommunityTemplates = await getFileTemplates(locale);
   const communityTemplates = originCommunityTemplates.map((template) => {
     return {
       ...template,
@@ -42,29 +42,32 @@ const getAppTemplates = async () => {
   return res;
 };
 
-export const getAppTemplatesAndLoadThem = async (refresh = false) => {
+export const getAppTemplatesAndLoadThem = async (refresh = false, locale = 'zh-CN') => {
   // 首次强制刷新
   if (!global.templatesRefreshTime) {
     global.templatesRefreshTime = Date.now() - 10000;
   }
-  if (!global.appTemplates) {
-    global.appTemplates = [];
+  if (!global.appTemplatesByLocale) {
+    global.appTemplatesByLocale = {};
+  }
+  if (!global.appTemplatesByLocale[locale]) {
+    global.appTemplatesByLocale[locale] = [];
   }
 
   if (
     isProduction &&
-    // 有模板缓存
-    global.appTemplates.length > 0 &&
+    // 有模板缓存且对应语言有数据
+    global.appTemplatesByLocale[locale].length > 0 &&
     // 缓存时间未过期
     global.templatesRefreshTime > Date.now() &&
     !refresh
   ) {
-    return global.appTemplates;
+    return global.appTemplatesByLocale[locale];
   }
 
   try {
-    const appTemplates = await getAppTemplates();
-    global.appTemplates = appTemplates;
+    const appTemplates = await getAppTemplates(locale);
+    global.appTemplatesByLocale[locale] = appTemplates;
     global.templatesRefreshTime = addMinutes(new Date(), 30).getTime(); // 缓存30分钟
     return appTemplates;
   } catch (error) {
@@ -77,6 +80,6 @@ export const isCommercialTemaplte = (templateId: string) => {
 };
 
 declare global {
-  var appTemplates: AppTemplateSchemaType[];
+  var appTemplatesByLocale: Record<string, AppTemplateSchemaType[]>;
   var templatesRefreshTime: number;
 }

@@ -65,7 +65,8 @@
       }
     },
     "patchedDependencies": {
-      "@mariozechner/pi-ai": "patches/@mariozechner__pi-ai.patch"
+      "@mariozechner/pi-ai": "patches/@mariozechner__pi-ai.patch",
+      "@fastgpt-sdk/plugin@0.6.0": "patches/@fastgpt-sdk__plugin@0.6.0.patch"
     }
   },
   "mongodbMemoryServer": {

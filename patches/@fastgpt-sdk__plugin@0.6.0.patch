@@ -1,0 +1,29 @@
+diff --git a/dist/client.d.ts b/dist/client.d.ts
+index 5e088277ab4be3b980416ed35360adeebfaa4695..5d724b0098f1dd53e95e23a70643eaacdb3d23c2 100644
+--- a/dist/client.d.ts
++++ b/dist/client.d.ts
+@@ -1649,7 +1649,7 @@ declare class FastGPTPluginClient {
+       description?: string | undefined;
+     }[] | undefined;
+   }[]>;
+-  listWorkflows(): Promise<{
++  listWorkflows(locale?: string): Promise<{
+     templateId: string;
+     name: string;
+     intro: string;
+diff --git a/dist/client.js b/dist/client.js
+index 7c55cd18b821d8e9cd2d79ac6acc37e5f3b37f8d..18b62f432ffc4daf2c0934ffaca228ceb3ed47c2 100644
+--- a/dist/client.js
++++ b/dist/client.js
+@@ -1501,8 +1501,9 @@ var FastGPTPluginClient = class {
+ 	async parseUploadedTool(objectName) {
+ 		return this.request(`/api/tools/upload/parse-uploaded-tool?objectName=${objectName}`);
+ 	}
+-	async listWorkflows() {
+-		return this.request("/api/list");
++	async listWorkflows(locale) {
++		const query = locale ? `?locale=${encodeURIComponent(locale)}` : "";
++		return this.request(`/api/list${query}`);
+ 	}
+ };
+ 

@@ -114,7 +114,6 @@ ${schema}
 - Do not answer the question or add any extra text.`.replace(/\n{3,}/g, '\n\n');
 
   return getLang() === LangEnum.en ? promptEn : promptZh;
-
 };
 export const getExtractJsonToolPrompt = ({
   systemPrompt,
@@ -266,16 +265,27 @@ ${typeList}
 
 Only output the category ID. Do not include any additional content.`.replace(/\n{3,}/g, '\n\n');
 
-  return getLang() === LangEnum.en ? CLASSIFY_QUESTION_SYSTEM_PROMPT_EN : CLASSIFY_QUESTION_SYSTEM_PROMPT_ZH;
+  return getLang() === LangEnum.en
+    ? CLASSIFY_QUESTION_SYSTEM_PROMPT_EN
+    : CLASSIFY_QUESTION_SYSTEM_PROMPT_ZH;
 };
 
-export const QuestionGuidePrompt = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
+export const QuestionGuidePrompt = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to analyze the conversation and output:
 
-1. Use the same language as the user's last question in the conversation history.
-2. Keep each question under 20 characters in length.
+1. The language of the user's last question in the conversation history (e.g., "Chinese", "English", "Japanese", "French", etc.).
+2. Generate 3 potential follow-up questions to guide the user to continue the conversation.
 
-Analyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.
+Rules for generating questions:
+- Use the same language as the user's last question in the conversation history.
+- Keep each question under 20 characters in length.
+- Questions should be logical extensions of the current topic or related areas the user might be interested in.
 
-Remember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics.`;
+Analyze the conversation history and use it as context to generate relevant and engaging follow-up questions. Maintain consistency in tone and style with the existing conversation while providing diverse options. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics.`;
 
-export const QuestionGuideFooterPrompt = `Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3']. Your output: `;
+export const QuestionGuideFooterPrompt = `Please strictly follow the format rules:
+Return a JSON object with the detected language and the 3 questions:
+{
+  "language": "The detected language of the user's last question",
+  "questions": ["Question 1", "Question 2", "Question 3"]
+}
+Your output: `;
