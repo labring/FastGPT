@@ -38,14 +38,6 @@ type FileParseContext = {
   usageId?: string;
 };
 
-const isPdfBufferEncrypted = (buffer: Buffer): boolean => {
-  // Only search in the last 2KB where the PDF trailer dictionary resides.
-  // A full-buffer search causes false positives when /Encrypt appears inside
-  // content streams or metadata but is NOT the actual trailer /Encrypt entry.
-  const trailerWindow = buffer.slice(Math.max(0, buffer.length - 2048));
-  return trailerWindow.includes(Buffer.from('/Encrypt'));
-};
-
 const parseByCustomService = async ({
   teamId,
   tmbId,
@@ -72,11 +64,6 @@ const parseByCustomService = async ({
 
   const start = Date.now();
   addLog.info('Parsing files from an external service', { url, extension, filename });
-
-  // PDF 加密文件提前检测，避免将加密 PDF 发送给外部服务后收到 500 错误
-  if (extension === 'pdf' && isPdfBufferEncrypted(buffer)) {
-    return Promise.reject(new UserError(CommonErrEnum.pdfEncrypted));
-  }
 
   const data = new FormData();
   data.append('file', buffer, { filename: filename || `file.${extension}` });
@@ -388,4 +375,3 @@ export const readS3FileContentByBuffer = async ({
 
   return { rawText: getFormatText ? formatText || rawText : rawText };
 };
-
