@@ -718,5 +718,6 @@
   "workflow_desc": "Orchestrate workflows to achieve complex business flows including multi-system interactions, multi-branch logic, and multi-Agent calls.",
   "import_json_config": "Import JSON configuration",
   "entry_point": "Feature Entry",
-  "entry_point_tip": "You can pin feature entries in the chat dialog to switch between different capabilities in the app. Use conditions in the workflow to set up different branch flows for each entry."
+  "entry_point_tip": "You can pin feature entries in the chat dialog to switch between different capabilities in the app. Use conditions in the workflow to set up different branch flows for each entry.",
+  "related_agent": "Related Apps"
 }

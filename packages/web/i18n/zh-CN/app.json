@@ -754,5 +754,6 @@
   "entry_point_tip": "可以在对话框上常驻功能入口，用来切换应用中的不同能力，可在工作流中用判断器设置不同功能入口的分支流程。",
   "simple_tool_tips": "该插件含有特殊输入，暂不支持被简易应用调用",
   "export_failed": "导出失败",
-  "app_not_found": "未找到应用"
+  "app_not_found": "未找到应用",
+  "related_agent": "关联应用"
 }

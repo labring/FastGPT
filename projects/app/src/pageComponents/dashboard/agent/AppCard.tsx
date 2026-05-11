@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Grid, IconButton, HStack, type UseToastOptions, Flex } from '@chakra-ui/react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Box, Grid, IconButton, HStack, type UseToastOptions, Flex, Spacer } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import PermissionIconText from '@/components/support/permission/IconText';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
@@ -19,11 +18,13 @@ import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu
 import AppTypeTag from './TypeTag';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import UserBox from '@fastgpt/web/components/common/UserBox';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import dynamic from 'next/dynamic';
+import { getAppsByToolId } from '@/web/core/app/api';
+import type { AppsByToolIdItem } from '@/pages/api/core/app/appsByToolId';
 
 const ExportConfigPopover = dynamic(() => import('./ExportConfigPopover'));
 
@@ -48,6 +49,101 @@ export type AppCardProps = {
   toast: (params: UseToastOptions) => void;
 };
 
+// ─── RelatedAppsContent ───────────────────────────────────────────────────────
+
+const RELATED_APPS_MAX_H = '248px';
+
+const RelatedAppsContent = ({ appId }: { appId: string }) => {
+  const { t } = useTranslation();
+  const [apps, setApps] = useState<AppsByToolIdItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getAppsByToolId(appId)
+      .then(setApps)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
+  }, [appId]);
+
+  return (
+    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} px={'14px'} py={'8px'}>
+      <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
+        {apps.map((relatedApp, index) => (
+          <Box key={relatedApp._id}>
+            {index > 0 && <Box h={'1px'} bg={'#E8EBF0'} my={'8px'} />}
+            <Flex h={'36px'} px={'8px'} align={'center'} justify={'space-between'}>
+              <Flex align={'center'} gap={'8px'} overflow={'hidden'}>
+                <Avatar
+                  src={relatedApp.avatar}
+                  w={'20px'}
+                  h={'20px'}
+                  borderRadius={'sm'}
+                  flexShrink={0}
+                />
+                <Box
+                  fontSize={'14px'}
+                  fontWeight={'600'}
+                  lineHeight={'20px'}
+                  color={'#333'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {relatedApp.name}
+                </Box>
+              </Flex>
+              {relatedApp.sourceMember && (
+                <HStack spacing={'4px'} flexShrink={0} ml={'8px'}>
+                  <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
+                  <Box
+                    color={'#999'}
+                    maxW={'80px'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                    fontSize={'xs'}
+                  >
+                    {relatedApp.sourceMember.name}
+                  </Box>
+                </HStack>
+              )}
+            </Flex>
+          </Box>
+        ))}
+      </Box>
+    </MyBox>
+  );
+};
+
+const RelatedAppsPopover = ({ appId, count }: { appId: string; count: number }) => {
+  const { t } = useTranslation();
+
+  return (
+    <MyPopover
+      trigger={'hover'}
+      placement={'bottom-start'}
+      w={'260px'}
+      p={0}
+      border={'none'}
+      boxShadow={'0 4px 16px 0 #E8EBF0'}
+      Trigger={
+        <HStack spacing={'4px'} cursor={'pointer'}>
+          <Box color={'#666'} fontSize={'mini'}>
+            {t('app:related_agent')}
+          </Box>
+          <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+            {count}
+          </Box>
+        </HStack>
+      }
+    >
+      {() => <RelatedAppsContent appId={appId} />}
+    </MyPopover>
+  );
+};
+
+// ─── AppCard ──────────────────────────────────────────────────────────────────
+
 const AppCard = React.memo(function AppCard({
   app,
   parentApp,
@@ -69,6 +165,12 @@ const AppCard = React.memo(function AppCard({
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const isAgent = AppTypeList.includes(app.type);
+  const isTool = ToolTypeList.includes(app.type);
+  const isFolder = AppFolderTypeList.includes(app.type);
+
+  const relatedAppCount = app.relatedAppCount;
+
   const handleOpenExportSkill = useCallback(() => {
     setIsMenuOpen(false);
     setExportSkillApp({
@@ -77,10 +179,6 @@ const AppCard = React.memo(function AppCard({
       intro: app.intro
     });
   }, [app._id, app.name, app.intro, setExportSkillApp]);
-
-  const isAgent = AppTypeList.includes(app.type);
-  const isTool = ToolTypeList.includes(app.type);
-  const isFolder = AppFolderTypeList.includes(app.type);
 
   const hasBtnPer = AppFolderTypeList.includes(app.type)
     ? app.permission.hasManagePer
@@ -244,132 +342,215 @@ const AppCard = React.memo(function AppCard({
     [app, folderDetail, parentApp, isFolder, isAgent, isTool]
   );
 
+  const updateTimeStr = app.updateTime
+    ? t(formatTimeToChatTime(new Date(app.updateTime)) as any).replace('#', ':')
+    : '';
+
+  const updateTimeFullStr = app.updateTime
+    ? (() => {
+        const d = new Date(app.updateTime);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })()
+    : '';
+
   return (
-    <MyTooltip
-      key={app._id}
-      label={
-        app.type === AppTypeEnum.folder
-          ? t('common:open_folder')
-          : app.permission.hasWritePer || app.permission.hasReadChatLogPer
-            ? t('app:edit_app')
-            : t('app:go_to_chat')
-      }
+    <MyBox
+      display={'flex'}
+      flexDirection={'column'}
+      h={'140px'}
+      pt={'18px'}
+      pb={4}
+      px={5}
+      cursor={'pointer'}
+      bg={'white'}
+      borderRadius={'8px'}
+      position={'relative'}
+      boxShadow={'0 0 0 1px #EBEDF0'}
+      _hover={{
+        boxShadow: '0 0 0 2px #91BBF2',
+        zIndex: 1,
+        '& .more': {
+          visibility: 'visible',
+          opacity: 1
+        },
+        '& .type-tag': {
+          visibility: 'hidden',
+          opacity: 0
+        }
+      }}
+      onClick={() => {
+        if (AppFolderTypeList.includes(app.type)) {
+          setSearchKey('');
+          router.push({
+            query: {
+              ...router.query,
+              parentId: app._id
+            }
+          });
+        } else if (app.permission.hasWritePer || app.permission.hasReadChatLogPer) {
+          router.push(`/app/detail?appId=${app._id}`);
+        } else {
+          window.open(
+            `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
+            '_blank'
+          );
+        }
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      {...getBoxProps({
+        dataId: app._id,
+        isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
+      })}
     >
-      <MyBox
-        py={4}
-        px={5}
-        cursor={'pointer'}
-        border={'base'}
-        bg={'white'}
-        borderRadius={'8px'}
-        position={'relative'}
-        display={'flex'}
-        flexDirection={'column'}
-        onMouseEnter={() => {
-          setIsHovered(true);
-        }}
-        onMouseLeave={() => setIsHovered(false)}
-        _hover={{
-          borderColor: 'primary.300',
-          '& .time': {
-            display: ['flex', 'none']
-          }
-        }}
-        onClick={() => {
-          if (AppFolderTypeList.includes(app.type)) {
-            setSearchKey('');
-            router.push({
-              query: {
-                ...router.query,
-                parentId: app._id
-              }
-            });
-          } else if (app.permission.hasWritePer || app.permission.hasReadChatLogPer) {
-            router.push(`/app/detail?appId=${app._id}`);
-          } else {
-            window.open(
-              `/chat?appId=${app._id}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`,
-              '_blank'
-            );
-          }
-        }}
-        {...getBoxProps({
-          dataId: app._id,
-          isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.toolFolder
-        })}
-      >
-        <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
-          <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-          <Box
-            color={'myGray.900'}
-            fontWeight={'medium'}
-            minWidth={0}
-            overflow="hidden"
-            lineHeight={'24px'}
-          >
-            <Box className={'textEllipsis'}>{app.name}</Box>
-          </Box>
-          <Box justifySelf="end" mr={-5} display={'flex'} alignItems={'center'}>
+      {/* 标题行：头像 + 名称 + 类型标签/菜单按钮 */}
+      <Flex alignItems={'center'} gap={2}>
+        <Avatar src={app.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
+        <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
+          {app.name}
+        </Box>
+        {/* 右侧：类型 tag 和菜单按钮叠加切换 */}
+        <Box flexShrink={0} position={'relative'}>
+          <Box className="type-tag">
             <AppTypeTag type={app.type} />
           </Box>
-        </Grid>
+          {hasBtnPer && (
+            <Box
+              className="more"
+              position={'absolute'}
+              right={0}
+              top={'50%'}
+              transform={'translateY(-50%)'}
+              visibility={'hidden'}
+              opacity={0}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MyMenu
+                Button={
+                  <IconButton
+                    size={'xsSquare'}
+                    variant={'whitePrimary'}
+                    icon={<MyIcon name={'more'} w={'12px'} color={'myGray.500'} />}
+                    aria-label={''}
+                  />
+                }
+                menuList={menuList}
+                isOpen={isMenuOpen}
+                onOpenChange={setIsMenuOpen}
+              />
+            </Box>
+          )}
+        </Box>
+      </Flex>
+
+      {/* 描述 */}
+      {app.intro && (
         <Box
-          flex={'1 0 56px'}
-          mt={3}
+          flex={'1 0 40px'}
+          mt={'10px'}
           textAlign={'justify'}
           wordBreak={'break-all'}
           fontSize={'xs'}
-          color={'myGray.500'}
+          color={'#666'}
         >
-          <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={1.3}>
-            {app.intro || t('common:no_intro')}
+          <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'} lineHeight={'20px'}>
+            {app.intro}
           </Box>
         </Box>
-        <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-          <HStack flex={'1 0 0'}>
-            <UserBox
-              sourceMember={app.sourceMember}
-              fontSize="xs"
-              avatarSize="1rem"
-              spacing={0.5}
-            />
-            <PermissionIconText
-              private={app.private}
-              color={'myGray.500'}
-              iconColor={'myGray.400'}
-              w={'0.875rem'}
-            />
-          </HStack>
-          <HStack>
-            {isPc && (
-              <HStack spacing={0.5} className="time">
-                <MyIcon name={'history'} w={'0.85rem'} color={'myGray.400'} />
-                <Box color={'myGray.500'}>
-                  {t(formatTimeToChatTime(app.updateTime) as any).replace('#', ':')}
+      )}
+
+      {/* 底部行 */}
+      <HStack
+        h={'24px'}
+        fontSize={'mini'}
+        color={'myGray.500'}
+        w="full"
+        mt={app.intro ? 2 : 'auto'}
+        pt={app.intro ? 0 : 3}
+      >
+        {/* Tool 场景左侧：关联 Agent 数量 */}
+        {isTool && !isFolder ? (
+          <Box onClick={(e) => e.stopPropagation()}>
+            {relatedAppCount !== undefined && relatedAppCount > 0 ? (
+              <RelatedAppsPopover appId={app._id} count={relatedAppCount} />
+            ) : (
+              <HStack spacing={'4px'}>
+                <Box color={'#666'} fontSize={'mini'}>
+                  {t('app:related_agent')}
+                </Box>
+                <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+                  {relatedAppCount ?? 0}
                 </Box>
               </HStack>
             )}
-            {hasBtnPer && (isHovered || !isPc) && (
-              <Box display={'flex'} onClick={(e) => e.stopPropagation()}>
-                <MyMenu
-                  Button={
-                    <IconButton
-                      size={'xsSquare'}
-                      variant={'transparentBase'}
-                      icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                      aria-label={''}
-                    />
-                  }
-                  menuList={menuList}
-                  isOpen={isMenuOpen}
-                  onOpenChange={setIsMenuOpen}
-                />
-              </Box>
+          </Box>
+        ) : (
+          /* Agent 场景左侧：创建人 + 更新时间 */
+          <HStack spacing={'12px'}>
+            {app.sourceMember?.name && (
+              <MyTooltip
+                label={t('common:creator_tooltip', { creator: app.sourceMember.name })}
+              >
+                <HStack spacing={'4px'}>
+                  <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
+                  <Box
+                    color={'#999'}
+                    maxW={'60px'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {app.sourceMember.name}
+                  </Box>
+                </HStack>
+              </MyTooltip>
+            )}
+            {app.updateTime && (
+              <MyTooltip label={t('common:update_time_tooltip', { updateTime: updateTimeFullStr })}>
+                <HStack spacing={'4px'}>
+                  <MyIcon name={'history'} w={'14px'} color={'#B4B9BF'} />
+                  <Box color={'#999'}>{updateTimeStr}</Box>
+                </HStack>
+              </MyTooltip>
             )}
           </HStack>
-        </HStack>
-      </MyBox>
-    </MyTooltip>
+        )}
+
+        <Spacer />
+
+        {/* Tool 场景右侧：创建人 + 更新时间 */}
+        {isTool && !isFolder && (
+          <HStack spacing={'12px'}>
+            {app.sourceMember?.name && (
+              <MyTooltip
+                label={t('common:creator_tooltip', { creator: app.sourceMember.name })}
+              >
+                <HStack spacing={'4px'}>
+                  <MyIcon name={'common/user'} w={'16px'} color={'#B4B9BF'} />
+                  <Box
+                    color={'#999'}
+                    maxW={'60px'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {app.sourceMember.name}
+                  </Box>
+                </HStack>
+              </MyTooltip>
+            )}
+            {app.updateTime && (
+              <MyTooltip label={t('common:update_time_tooltip', { updateTime: updateTimeFullStr })}>
+                <HStack spacing={'4px'}>
+                  <MyIcon name={'history'} w={'14px'} color={'#B4B9BF'} />
+                  <Box color={'#999'}>{updateTimeStr}</Box>
+                </HStack>
+              </MyTooltip>
+            )}
+          </HStack>
+        )}
+      </HStack>
+    </MyBox>
   );
 });
 

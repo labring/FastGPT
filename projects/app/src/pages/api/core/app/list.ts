@@ -10,7 +10,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -18,6 +18,7 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 export type ListAppBody = {
@@ -237,13 +238,58 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
     list: formatApps
   });
 
+  // Compute relatedAppCount for tool-type apps (non-folder)
+  const toolApps = formatList.filter(
+    (app) => ToolTypeList.includes(app.type) && !AppFolderTypeList.includes(app.type)
+  );
+  const relatedAppCountMap = new Map<string, number>();
+  if (toolApps.length > 0) {
+    const counts = await Promise.all(
+      toolApps.map((app) => {
+        const toolId = String(app._id);
+        return MongoApp.countDocuments({
+          teamId,
+          deleteTime: null,
+          $or: [
+            // advanced/workflow: pluginModule node with top-level pluginId
+            { 'modules.pluginId': toolId },
+            // chatAgent: agent node stores tools in agent_selectedTools input
+            {
+              modules: {
+                $elemMatch: {
+                  flowNodeType: FlowNodeTypeEnum.agent,
+                  inputs: {
+                    $elemMatch: {
+                      key: NodeInputKeyEnum.selectedTools,
+                      'value.id': toolId
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        });
+      })
+    );
+    toolApps.forEach((app, i) => {
+      relatedAppCountMap.set(String(app._id), counts[i]);
+    });
+  }
+
+  const listWithRelatedCount = formatList.map((app) => ({
+    ...app,
+    ...(relatedAppCountMap.has(String(app._id))
+      ? { relatedAppCount: relatedAppCountMap.get(String(app._id)) }
+      : {})
+  }));
+
   if (isPaginated) {
-    const total = formatList.length;
+    const total = listWithRelatedCount.length;
     const start = (pageNum! - 1) * pageSize!;
-    const list = formatList.slice(start, start + pageSize!);
+    const list = listWithRelatedCount.slice(start, start + pageSize!);
     return { list, total };
   }
-  return formatList;
+  return listWithRelatedCount;
 }
 
 export default NextAPI(handler);
