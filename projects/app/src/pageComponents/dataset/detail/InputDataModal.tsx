@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, Button, Textarea, HStack, VStack, type FlexProps } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, VStack, type FlexProps } from '@chakra-ui/react';
 import type { UseFormRegister } from 'react-hook-form';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
@@ -12,7 +12,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
@@ -79,12 +78,6 @@ const InputDataModal = ({
 }) => {
   const { t } = useTranslation();
   const { embeddingModelList, defaultModels } = useSystemStore();
-  const { openConfirm: openConfirmDeleteIndex, ConfirmModal: ConfirmDeleteIndexModal } = useConfirm(
-    {
-      type: 'delete',
-      content: t('dataset:delete_data_index_confirm')
-    }
-  );
 
   const [currentTab, setCurrentTab] = useState<TabEnum>();
 
@@ -191,18 +184,27 @@ const InputDataModal = ({
       };
 
       await putDatasetDataById(updateData);
-
-      return {
+      const latestData = await getDatasetDataItemById(dataId);
+      const refreshedData = {
         dataId,
-        ...e
+        q: latestData.q || '',
+        a: latestData.a || '',
+        imagePreivewUrl: latestData.imagePreivewUrl,
+        indexes: latestData.indexes.map((item) => ({
+          ...item,
+          fold: true
+        }))
       };
+
+      reset(refreshedData);
+
+      return refreshedData;
     },
     {
       refreshDeps: [currentTab],
       successToast: t('common:dataset.data.Update Success Tip'),
       onSuccess(data) {
         onSuccess(data);
-        onClose();
       }
     }
   );
@@ -532,21 +534,15 @@ const InputDataModal = ({
                         {/* Delete */}
                         {index.type !== DatasetDataIndexTypeEnum.default &&
                           !isImageEmbeddingIndex && (
-                            <HStack
+                            <Flex
                               className={'delete'}
                               display={'none'}
                               borderRight={'base'}
                               pr={3}
                               mr={2}
                             >
-                              <DeleteIcon
-                                onClick={() => {
-                                  openConfirmDeleteIndex({
-                                    onConfirm: () => removeIndexes(i)
-                                  })();
-                                }}
-                              />
-                            </HStack>
+                              <DeleteIcon onClick={() => removeIndexes(i)} />
+                            </Flex>
                           )}
                         {canFoldIndex && (
                           <MyIconButton
@@ -585,8 +581,6 @@ const InputDataModal = ({
             </Box>
           </Flex>
         </Flex>
-
-        <ConfirmDeleteIndexModal />
       </MyBox>
     </MyModal>
   );
