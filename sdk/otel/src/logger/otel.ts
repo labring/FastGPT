@@ -209,6 +209,7 @@ type SafeNormalizeOptions = {
 
 const defaultMaxNormalizeDepth = 8;
 const defaultMaxObjectKeys = 128;
+const reservedStructuredBodyKeys = new Set(['traceId', 'spanId']);
 
 function convertValueToAnyValue(value: unknown): AnyValue | null {
   if (value == null) return null;
@@ -442,6 +443,8 @@ function convertRecordToStructuredBody(record: LogRecord): AnyValue {
   };
 
   for (const [key, value] of Object.entries(record.properties ?? {})) {
+    if (reservedStructuredBodyKeys.has(key)) continue;
+
     const convertedValue = convertValueToAnyValue(value);
     if (convertedValue !== null) {
       body[key] = convertedValue;

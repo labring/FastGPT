@@ -204,6 +204,30 @@ describe('getOpenTelemetrySink', () => {
       message: 'business message'
     });
   });
+
+  it('does not duplicate trace context fields in the structured body', () => {
+    const emitted: OTelLogRecord[] = [];
+    const sink = getOpenTelemetrySink({
+      loggerProvider: createMemoryLoggerProvider(emitted)
+    });
+
+    sink(
+      createRecord({
+        message: ['Workflow node run'],
+        rawMessage: 'Workflow node run',
+        properties: {
+          traceId: 'trace-id',
+          spanId: 'span-id',
+          requestId: 'request-id'
+        }
+      })
+    );
+
+    expect(emitted[0]?.body).toEqual({
+      __log_message: 'Workflow node run',
+      requestId: 'request-id'
+    });
+  });
 });
 
 describe('createLoggerOptionsFromEnv', () => {

@@ -6,7 +6,6 @@ import {
   getCurrentSpanContext,
   getTracer
 } from '@fastgpt-sdk/otel/tracing';
-import { withContext } from '../logger';
 import { serviceEnv } from '../../env';
 
 type SpanAttributeValue = string | number | boolean;
@@ -102,24 +101,14 @@ export async function withActiveSpan<T>(
       attributes: normalizeAttributes(options.attributes)
     },
     async (span: SpanLike) => {
-      const spanContext = span.spanContext();
-
-      return withContext(
-        {
-          traceId: spanContext.traceId,
-          spanId: spanContext.spanId
-        },
-        async () => {
-          try {
-            return await callback(span);
-          } catch (error) {
-            setSpanError(span, error);
-            throw error;
-          } finally {
-            span.end();
-          }
-        }
-      );
+      try {
+        return await callback(span);
+      } catch (error) {
+        setSpanError(span, error);
+        throw error;
+      } finally {
+        span.end();
+      }
     }
   );
 }
