@@ -59,6 +59,8 @@ RUN cd projects/app && ./node_modules/.bin/esbuild server.ts \
     --external:next \
     '--banner:js=process.chdir(__dirname);try{const d=require("./.next/required-server-files.json");process.env.__NEXT_PRIVATE_STANDALONE_CONFIG=JSON.stringify(d.config);}catch(e){}'
 
+RUN cp /app/projects/app/server-proxy.js /app/projects/app/.next/standalone/projects/app/server-proxy.js
+
 # Remove build-time-only packages from standalone output before copying to runner.
 # These are traced into standalone by mistake (rspack bindings, gnu platform binaries, etc.)
 RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding-*/ \
