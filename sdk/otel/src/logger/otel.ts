@@ -1,5 +1,5 @@
 import { getLogger, type Logger, type LogRecord, type Sink } from '@logtape/logtape';
-import { diag, type DiagLogger, DiagLogLevel } from '@opentelemetry/api';
+import { context, diag, type DiagLogger, DiagLogLevel } from '@opentelemetry/api';
 import {
   type AnyValue,
   type Logger as OTLogger,
@@ -94,6 +94,7 @@ function emitLogRecord(logger: OTLogger, record: LogRecord): void {
     attributes: {
       category: [...category]
     },
+    context: context.active(),
     timestamp: new Date(timestamp)
   } satisfies OTLogRecord);
 }
