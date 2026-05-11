@@ -9,7 +9,6 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -135,13 +134,10 @@ const ChatSliderList = ({ isShareMode }: Props) => {
               mb: '4px'
             })}
           >
-            <MyIcon
-              name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
-              w={'16px'}
-            />
-            <Box flex={'1 0 0'} ml={3} className="textEllipsis">
-              {item.customTitle || item.title}
+            <Box flex={'1 0 0'} ml={'8px'} className="textEllipsis" w={0} color={'myGray.600'}>
+              <Box className="textEllipsis">{item.customTitle || item.title}</Box>
             </Box>
+
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>
                 {item.hasBeenRead === false &&
@@ -166,9 +162,8 @@ const ChatSliderList = ({ isShareMode }: Props) => {
                         : 'myGray.500'
                     }
                   >
-                    {item.chatGenerateStatus === ChatGenerateStatusEnum.generating
-                      ? t('chat:history_generating')
-                      : t(formatTimeToChatTime(item.updateTime) as any).replace('#', ':')}
+                    {item.chatGenerateStatus === ChatGenerateStatusEnum.generating &&
+                      t('chat:history_generating')}
                   </Box>
                 )}
                 <Box className="more" display={['block', 'none']}>
