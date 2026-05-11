@@ -81,7 +81,7 @@ const InputDataModal = ({
 
   const [currentTab, setCurrentTab] = useState<TabEnum>();
 
-  const { register, handleSubmit, reset, control, watch } = useForm<InputDataType>();
+  const { register, handleSubmit, reset, control, watch, getValues } = useForm<InputDataType>();
   const {
     fields: indexes,
     prepend: prependIndexes,
@@ -92,6 +92,26 @@ const InputDataModal = ({
     name: 'indexes'
   });
   const imagePreivewUrl = watch('imagePreivewUrl');
+
+  const refreshDataForm = useCallback(
+    async (targetDataId: string) => {
+      const latestData = await getDatasetDataItemById(targetDataId);
+      const refreshedData = {
+        dataId: targetDataId,
+        q: latestData.q || '',
+        a: latestData.a || '',
+        imagePreivewUrl: latestData.imagePreivewUrl,
+        indexes: latestData.indexes.map((item) => ({
+          ...item,
+          fold: true
+        }))
+      };
+
+      reset(refreshedData);
+      return refreshedData;
+    },
+    [reset]
+  );
 
   const { data: collection = defaultCollectionDetail, loading: initLoading } = useRequest(
     async () => {
@@ -184,28 +204,46 @@ const InputDataModal = ({
       };
 
       await putDatasetDataById(updateData);
-      const latestData = await getDatasetDataItemById(dataId);
-      const refreshedData = {
-        dataId,
-        q: latestData.q || '',
-        a: latestData.a || '',
-        imagePreivewUrl: latestData.imagePreivewUrl,
-        indexes: latestData.indexes.map((item) => ({
-          ...item,
-          fold: true
-        }))
-      };
-
-      reset(refreshedData);
-
-      return refreshedData;
+      return refreshDataForm(dataId);
     },
     {
-      refreshDeps: [currentTab],
+      refreshDeps: [currentTab, refreshDataForm],
       successToast: t('common:dataset.data.Update Success Tip'),
       onSuccess(data) {
         onSuccess(data);
       }
+    }
+  );
+
+  const { runAsync: onDeleteIndex, loading: isDeletingIndex } = useRequest(
+    async (index: number) => {
+      if (!dataId) {
+        removeIndexes(index);
+        return;
+      }
+
+      const targetIndex = getValues().indexes[index];
+      if (!targetIndex?.dataId) {
+        removeIndexes(index);
+        return;
+      }
+
+      const latestData = await getDatasetDataItemById(dataId);
+      const nextIndexes = latestData.indexes.filter((item) => item.dataId !== targetIndex.dataId);
+
+      await putDatasetDataById({
+        dataId,
+        q: latestData.q,
+        a: latestData.a || '',
+        indexes: nextIndexes
+      });
+
+      const refreshedData = await refreshDataForm(dataId);
+      onSuccess(refreshedData);
+    },
+    {
+      refreshDeps: [dataId, getValues, refreshDataForm],
+      successToast: t('common:delete_success')
     }
   );
 
@@ -541,7 +579,12 @@ const InputDataModal = ({
                               pr={3}
                               mr={2}
                             >
-                              <DeleteIcon onClick={() => removeIndexes(i)} />
+                              <DeleteIcon
+                                onClick={() => {
+                                  if (isDeletingIndex) return;
+                                  onDeleteIndex(i);
+                                }}
+                              />
                             </Flex>
                           )}
                         {canFoldIndex && (
