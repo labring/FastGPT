@@ -6,6 +6,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Flex, Box, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { format } from 'date-fns';
+import dayjs from 'dayjs';
 import LogList from './LogList';
 import OptimizeRecords from './OptimizeRecords';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
@@ -15,8 +16,12 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { exportChatCorrectionRecords } from '@/web/core/app/api/log';
+import { downloadFetch } from '@/web/common/system/utils';
+import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { AppLogKeysEnumMap } from '@fastgpt/global/core/app/logs/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 type SubTabType = 'list' | 'optimize';
 
@@ -43,6 +48,9 @@ const ConversationLogs = () => {
   // 日志筛选条件
   const [logFilters, setLogFilters] = useState<LogFiltersType | null>(null);
 
+  // 导出相关状态
+  const [exportTotal, setExportTotal] = useState<number>(0);
+
   // 处理日志筛选条件变化
   const handleLogFiltersChange = useCallback((filters: LogFiltersType) => {
     setLogFilters(filters);
@@ -63,6 +71,38 @@ const ConversationLogs = () => {
       });
     },
     { errorToast: t('app:fetch_optimize_records_error') }
+  );
+
+  const { runAsync: handleExportLogs } = useRequest(
+    async () => {
+      if (!logFilters) return;
+
+      const enabledKeys = logFilters.logKeys.filter((item) => item.enable).map((item) => item.key);
+      const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
+
+      await downloadFetch({
+        url: '/api/core/app/logs/exportLogs',
+        filename: t('app:export_log_filename', { name: appDetail.name }),
+        body: {
+          appId,
+          dateStart: dayjs(logFilters.dateRange.from || new Date()).format(),
+          dateEnd: dayjs(logFilters.dateRange.to || new Date()).format(),
+          sources: logFilters.isSelectAllSource ? undefined : logFilters.chatSources,
+          tmbIds: logFilters.isSelectAllTmb ? undefined : logFilters.selectTmbIds,
+          chatSearch: logFilters.chatSearch,
+          feedbackFilter: logFilters.isSelectAllFeedback ? undefined : logFilters.feedbackFilters,
+          title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
+          logKeys: enabledKeys,
+          sourcesMap: Object.fromEntries(
+            Object.entries(ChatSourceMap).map(([key, config]) => [
+              key,
+              { label: t(config.name as any) }
+            ])
+          )
+        }
+      });
+    },
+    { errorToast: t('app:export_failed') }
   );
 
   // 处理日期范围确认
@@ -105,7 +145,21 @@ const ConversationLogs = () => {
             </MyTooltip>
           </Flex>
         )}
-        {subTab === 'list' && <LogFilters appId={appId} onFiltersChange={handleLogFiltersChange} />}
+        {subTab === 'list' && (
+          <Flex alignItems={'center'} gap={2}>
+            <LogFilters appId={appId} onFiltersChange={handleLogFiltersChange} />
+            <PopoverConfirm
+              Trigger={
+                <Button h="36px" rounded="4px" variant={'whiteBase'}>
+                  {t('common:Export')}
+                </Button>
+              }
+              showCancel
+              content={t('app:logs_export_confirm_tip', { total: exportTotal })}
+              onConfirm={handleExportLogs}
+            />
+          </Flex>
+        )}
       </Flex>
     );
   }, [
@@ -116,14 +170,16 @@ const ConversationLogs = () => {
     appId,
     handleLogFiltersChange,
     handleExport,
-    isExporting
+    isExporting,
+    handleExportLogs,
+    exportTotal
   ]);
 
   return (
     <Flex flexDirection={'column'} h={'full'} bg={'white'} borderRadius={'8px'}>
       <Box px={4}>{SubTabHeader}</Box>
       <Box flex={'1 0 0'} h={0} my={4} bg={'white'} px={4}>
-        {subTab === 'list' && <LogList filters={logFilters} />}
+        {subTab === 'list' && <LogList filters={logFilters} onTotalChange={setExportTotal} />}
         {subTab === 'optimize' && <OptimizeRecords dateRange={dateRange} />}
       </Box>
     </Flex>

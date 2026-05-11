@@ -14,7 +14,7 @@ import {
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { type ChatSourceEnum, FeedbackFilterEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -51,6 +51,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     sourcesMap,
     logKeys = [],
     feedbackType,
+    feedbackFilter,
     unreadOnly,
     errorFilter
   } = ExportChatLogsBodySchema.parse(req.body);
@@ -93,6 +94,26 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     }
   ]);
 
+  // Build feedbackFilter MongoDB condition (used when feedbackType is not provided)
+  const feedbackFilterCondition =
+    !feedbackType && feedbackFilter && feedbackFilter.length < 3
+      ? (() => {
+          const hasGood = feedbackFilter.includes(FeedbackFilterEnum.good);
+          const hasBad = feedbackFilter.includes(FeedbackFilterEnum.bad);
+          const hasNo = feedbackFilter.includes(FeedbackFilterEnum.noFeedback);
+
+          if (feedbackFilter.length === 1) {
+            if (hasGood) return { hasGoodFeedback: true };
+            if (hasBad) return { hasBadFeedback: true };
+            return { hasGoodFeedback: { $ne: true }, hasBadFeedback: { $ne: true } };
+          }
+          // Two selected — exclude the missing one
+          if (hasGood && hasBad) return { $or: [{ hasGoodFeedback: true }, { hasBadFeedback: true }] };
+          if (hasGood && hasNo) return { hasBadFeedback: { $ne: true } };
+          return { hasGoodFeedback: { $ne: true } };
+        })()
+      : {};
+
   const where = {
     appId: new Types.ObjectId(appId),
     // Feedback type filtering (BEFORE pagination for performance)
@@ -120,6 +141,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       unreadOnly && {
         hasUnreadBadFeedback: true
       }),
+    ...feedbackFilterCondition,
     ...(sources && { source: { $in: sources } }),
     ...(tmbIds || outLinkUids
       ? {
@@ -263,9 +285,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       {
         $lookup: {
           from: AppVersionCollectionName,
-          localField: 'appVersionId',
-          foreignField: '_id',
+          let: { versionId: '$appVersionId' },
           pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$_id', '$$versionId'] }
+              }
+            },
             {
               $project: {
                 versionName: 1,
@@ -402,7 +428,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     `\uFEFF${title},${variables.map((variable) => formatJsonString(variable.label)).join(',')}`
   );
 
+  let rowCount = 0;
+
   cursor.on('data', (doc) => {
+    rowCount++;
     const createdTime = doc.createTime
       ? dayjs(doc.createTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
@@ -476,12 +505,22 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   });
 
   cursor.on('end', () => {
+    logger.info(`export chat logs completed`, { appId, rowCount });
     cursor.close();
     res.end();
   });
 
   cursor.on('error', (err) => {
-    logger.error(`export chat logs error`, { error: err });
+    logger.error(`export chat logs error`, {
+      appId,
+      error: err,
+      rowCount,
+      dateStart,
+      dateEnd,
+      sources,
+      feedbackType,
+      errorFilter
+    });
     res.status(500);
     res.end();
   });

@@ -75,34 +75,37 @@ const LogTable = () => {
     };
   }, [selectedUsers, isSelectAllUser]);
 
-  const { runAsync: exportLogs } = useRequest(async () => {
-    const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
-    const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
-    await downloadFetch({
-      url: '/api/core/app/logs/exportLogs',
-      filename: t('app:export_log_filename', { name: appName }),
-      body: {
-        appId,
-        dateStart: dayjs(dateRange.from || new Date()).format(),
-        dateEnd: dayjs(dateRange.to || new Date()).format(),
-        sources: isSelectAllSource ? undefined : chatSources,
-        tmbIds: tmbIds?.length ? tmbIds : undefined,
-        outLinkUids: outLinkUids?.length ? outLinkUids : undefined,
-        chatSearch,
-        title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
-        logKeys: enabledKeys,
-        sourcesMap: Object.fromEntries(
-          Object.entries(ChatSourceMap).map(([key, config]) => [
-            key,
-            { label: t(config.name as any) }
-          ])
-        ),
-        feedbackType,
-        unreadOnly,
-        errorFilter: errorFilter === 'all' ? undefined : errorFilter
-      }
-    });
-  });
+  const { runAsync: exportLogs } = useRequest(
+    async () => {
+      const enabledKeys = logKeys.filter((item) => item.enable).map((item) => item.key);
+      const headerTitle = enabledKeys.map((k) => t(AppLogKeysEnumMap[k])).join(',');
+      await downloadFetch({
+        url: '/api/core/app/logs/exportLogs',
+        filename: t('app:export_log_filename', { name: appName }),
+        body: {
+          appId,
+          dateStart: dayjs(dateRange.from || new Date()).format(),
+          dateEnd: dayjs(dateRange.to || new Date()).format(),
+          sources: isSelectAllSource ? undefined : chatSources,
+          tmbIds: tmbIds?.length ? tmbIds : undefined,
+          outLinkUids: outLinkUids?.length ? outLinkUids : undefined,
+          chatSearch,
+          title: `${headerTitle},${t('app:logs_keys_chatDetails')}`,
+          logKeys: enabledKeys,
+          sourcesMap: Object.fromEntries(
+            Object.entries(ChatSourceMap).map(([key, config]) => [
+              key,
+              { label: t(config.name as any) }
+            ])
+          ),
+          feedbackType,
+          unreadOnly,
+          errorFilter: errorFilter === 'all' ? undefined : errorFilter
+        }
+      });
+    },
+    { errorToast: t('app:export_failed') }
+  );
 
   useEffect(() => {
     setOnExport(exportLogs);
