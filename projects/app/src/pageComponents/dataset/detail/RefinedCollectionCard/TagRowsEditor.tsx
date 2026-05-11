@@ -12,8 +12,6 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
-import { utcTsToDisplayDate, displayDateToUtcTs } from '@fastgpt/global/common/string/time';
 
 export type TagEditorRow = {
   tagId: string;
@@ -47,16 +45,16 @@ const ValueInput = ({
     );
   }
   if (tagType === 'datetime') {
-    const ts = Number(value);
-    const dateValue = !isNaN(ts) && ts > 0 ? utcTsToDisplayDate(ts) : null;
     return (
-      <Box flex={1}>
-        <DateTimePicker
-          h="34px"
-          value={dateValue}
-          onChange={(date) => onChange(date ? String(displayDateToUtcTs(date)) : '')}
-        />
-      </Box>
+      <Input
+        flex={1}
+        h="34px"
+        bg="white"
+        type="datetime-local"
+        step={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     );
   }
   return (

@@ -24,6 +24,7 @@ import type {
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useReference, ReferSelector } from './Reference';
 import {
   type ConditionRow,
@@ -33,6 +34,13 @@ import {
   serializeFilter,
   deserializeFilter
 } from '@/web/core/dataset/tagFilterUtils';
+
+const tagTypeToValueType = (tagType: string): WorkflowIOValueTypeEnum => {
+  if (tagType === 'number') return WorkflowIOValueTypeEnum.number;
+  // datetime stored as string in workflow variables
+  if (tagType === 'datetime') return WorkflowIOValueTypeEnum.string;
+  return WorkflowIOValueTypeEnum.any;
+};
 
 const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -142,6 +150,24 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
             .map((r) => r.tagId)
             .filter(Boolean)
         );
+        const noTagSelected = !row.tagId;
+
+        // 根据标签类型过滤可选引用变量
+        const allowedValueType = tagTypeToValueType(tagType);
+        const filteredReferenceList =
+          allowedValueType === WorkflowIOValueTypeEnum.any
+            ? referenceList
+            : referenceList
+                .map((group) => ({
+                  ...group,
+                  children: group.children.filter(
+                    (child) =>
+                      !child.valueType ||
+                      child.valueType === WorkflowIOValueTypeEnum.any ||
+                      child.valueType === allowedValueType
+                  )
+                }))
+                .filter((group) => group.children.length > 0);
 
         return (
           <HStack key={index} mb={2} spacing={1} align={'center'}>
@@ -234,23 +260,29 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
                 </MyTooltip>
                 <Box flex={1} minW={0}>
                   {row.valueIsRef ? (
-                    <ReferSelector
-                      placeholder={t('common:select_reference_variable')}
-                      list={referenceList}
-                      value={row.valueRef}
-                      onSelect={(val) =>
-                        updateRow(index, { valueRef: val as ReferenceItemValueType })
-                      }
-                      isArray={false}
-                      ButtonProps={{
-                        h: '32px',
-                        minH: '32px',
-                        w: '100%',
-                        borderRadius: 'sm',
-                        borderLeftRadius: 'none',
-                        borderColor: 'myGray.200'
-                      }}
-                    />
+                    <MyTooltip
+                      label={noTagSelected ? t('workflow:tag_filter_select_tag_first') : undefined}
+                    >
+                      <Box opacity={noTagSelected ? 0.5 : 1} pointerEvents={noTagSelected ? 'none' : 'auto'}>
+                        <ReferSelector
+                          placeholder={t('common:select_reference_variable')}
+                          list={filteredReferenceList}
+                          value={row.valueRef}
+                          onSelect={(val) =>
+                            updateRow(index, { valueRef: val as ReferenceItemValueType })
+                          }
+                          isArray={false}
+                          ButtonProps={{
+                            h: '32px',
+                            minH: '32px',
+                            w: '100%',
+                            borderRadius: 'sm',
+                            borderLeftRadius: 'none',
+                            borderColor: 'myGray.200'
+                          }}
+                        />
+                      </Box>
+                    </MyTooltip>
                   ) : tagType === 'number' ? (
                     <NumberInput
                       w={'full'}
@@ -272,6 +304,7 @@ const TagFilterConfigInput = ({ item, nodeId, inputs }: RenderInputProps) => {
                       bg={'white'}
                       borderLeftRadius={'none'}
                       type="datetime-local"
+                      step={1}
                       value={row.value}
                       onChange={(e) => updateRow(index, { value: e.target.value })}
                     />
